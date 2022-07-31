@@ -1,0 +1,35 @@
+package zpa
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+)
+
+func (zpa *ZPA) get(path string, v any) error {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", zpa.baseurl, path), nil)
+	if err != nil {
+		fmt.Printf("error %s", err)
+		return err
+	}
+	req.Header.Add("Accept", "*/*")
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Token %s", zpa.token.Token))
+
+	resp, err := zpa.client.Do(req)
+	if err != nil {
+		fmt.Printf("Error %s", err)
+		return err
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	err = json.Unmarshal(body, v)
+	if err != nil {
+		fmt.Printf("Error %s", err)
+		return err
+	}
+
+	return nil
+}

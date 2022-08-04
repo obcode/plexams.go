@@ -1,21 +1,12 @@
 package zpa
 
-import "fmt"
+import (
+	"fmt"
 
-type Teacher struct {
-	Shortname    string `json:"person_shortname"`
-	Fullname     string `json:"person_fullname"`
-	IsProf       bool   `json:"is_prof"`
-	IsLBA        bool   `json:"is_lba"`
-	IsProfHC     bool   `json:"is_profhc"`
-	IsStaff      bool   `json:"is_staff"`
-	LastSemester string `json:"last_semester"`
-	FK           string `json:"fk"`
-	ID           int    `json:"person_id"`
-	Email        string `json:"email"`
-}
+	"github.com/obcode/plexams.go/graph/model"
+)
 
-func (zpa *ZPA) GetTeachers() []*Teacher {
+func (zpa *ZPA) GetTeachers() []*model.Teacher {
 	return zpa.teachers
 }
 

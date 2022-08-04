@@ -15,9 +15,9 @@ type PlexamsResolver struct {
 	plexams *plexams.Plexams
 }
 
-func NewPlexamsResolver(uri string) *PlexamsResolver {
+func NewPlexamsResolver(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string) *PlexamsResolver {
 
-	plexams, err := plexams.NewPlexams(uri)
+	plexams, err := plexams.NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword)
 
 	if err != nil {
 		panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
@@ -32,4 +32,8 @@ func (r *PlexamsResolver) Query() generated.QueryResolver { return r }
 
 func (r *PlexamsResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return r.plexams.GetAllSemesterNames(ctx)
+}
+
+func (r *PlexamsResolver) Teachers(ctx context.Context) ([]*model.Teacher, error) {
+	return r.plexams.GetTeachers(ctx)
 }

@@ -2,6 +2,20 @@ type Semester {
   id: String!
 }
 
+type Teacher {
+  shortname: String!
+  fullname: String!
+  isProf: Boolean!
+  isLBA: Boolean!
+  isProfHC: Boolean!
+  isStaff: Boolean!
+  lastSemester: String!
+  fk: String!
+  id: Int!
+  email: String!
+}
+
 type Query {
   allSemesterNames: [Semester!]!
+  teachers: [Teacher!]!
 }

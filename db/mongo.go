@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -23,4 +24,8 @@ func NewClient(uri string) (*Client, error) {
 	}
 
 	return &Client{Client: client}, nil
+}
+
+func databaseName(semester string) string {
+	return strings.Replace(semester, " ", "-", 1)
 }

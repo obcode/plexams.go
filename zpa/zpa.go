@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/obcode/plexams.go/graph/model"
 )
 
 type ZPA struct {
@@ -15,7 +17,7 @@ type ZPA struct {
 	client                 *http.Client
 	token                  Token
 	semester               string
-	teachers               []*Teacher
+	teachers               []*model.Teacher
 	exams                  []*Exam
 	supervisorRequirements []*SupervisorRequirements
 }
@@ -71,7 +73,7 @@ func NewZPA(baseurl string, username string, password string, semester string) (
 		client:                 c,
 		token:                  token,
 		semester:               strings.Replace(semester, " ", "%20", 1),
-		teachers:               []*Teacher{},
+		teachers:               []*model.Teacher{},
 		exams:                  []*Exam{},
 		supervisorRequirements: []*SupervisorRequirements{},
 	}

@@ -1,21 +1,27 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/obcode/plexams.go/graph"
 	"github.com/obcode/plexams.go/graph/generated"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
 const defaultPort = "8080"
 
 func main() {
+	debug := flag.Bool("debug", true, "sets log level to debug")
+	flag.Parse()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
@@ -29,13 +35,35 @@ func main() {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 
-	plexamsResolver := graph.NewPlexamsResolver(viper.GetString("db.uri"))
+	plexamsResolver := graph.NewPlexamsResolver(
+		viper.GetString("semester"),
+		viper.GetString("db.uri"),
+		viper.GetString("zpa.baseurl"),
+		viper.GetString("zpa.username"),
+		viper.GetString("zpa.password"),
+	)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: plexamsResolver}))
+
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+	if *debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+
+		output := zerolog.ConsoleWriter{Out: os.Stdout}
+		output.FormatLevel = func(i interface{}) string {
+			return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+		}
+		log.Logger = zerolog.New(output).With().Caller().Timestamp().Logger()
+	}
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Fatal().Err(err).Msg("fatal error")
+	}
 }

@@ -18,7 +18,7 @@ func main() {
 
 	client, _ := db.NewClient(viper.GetString("db.uri"))
 
-	semester, _ := client.GetSemester()
+	semester, _ := client.AllSemesterNames()
 
 	for _, s := range semester {
 		fmt.Println(s)

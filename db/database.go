@@ -2,12 +2,14 @@ package db
 
 import (
 	"context"
+	"sort"
 
+	"github.com/obcode/plexams.go/graph/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (client *Client) GetSemester() ([]string, error) {
+func (client *Client) AllSemesterNames() ([]*model.Semester, error) {
 	dbs, err := client.Client.ListDatabaseNames(context.Background(),
 		bson.D{primitive.E{
 			Key: "name",
@@ -20,5 +22,16 @@ func (client *Client) GetSemester() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return dbs, nil
+
+	sort.Strings(dbs)
+
+	semester := make([]*model.Semester, len(dbs))
+	n := len(dbs)
+	for i, dbName := range dbs {
+		semester[n-i-1] = &model.Semester{
+			ID: dbName,
+		}
+	}
+
+	return semester, nil
 }

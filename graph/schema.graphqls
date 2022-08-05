@@ -17,5 +17,6 @@ type Teacher {
 
 type Query {
   allSemesterNames: [Semester!]!
-  teachers: [Teacher!]!
+  teachers(fromZPA: Boolean): [Teacher!]!
+  invigilators: [Teacher!]!
 }

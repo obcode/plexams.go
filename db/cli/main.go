@@ -16,7 +16,7 @@ func main() {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 
-	client, _ := db.NewClient(viper.GetString("db.uri"))
+	client, _ := db.NewDB(viper.GetString("db.uri"), viper.GetString("semester"))
 
 	semester, _ := client.AllSemesterNames()
 

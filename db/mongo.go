@@ -9,11 +9,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-type Client struct {
-	Client *mongo.Client
+type DB struct {
+	Client   *mongo.Client
+	semester string
 }
 
-func NewClient(uri string) (*Client, error) {
+func NewDB(uri, semester string) (*DB, error) {
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, err
@@ -23,7 +24,10 @@ func NewClient(uri string) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{Client: client}, nil
+	return &DB{
+		Client:   client,
+		semester: semester,
+	}, nil
 }
 
 func databaseName(semester string) string {

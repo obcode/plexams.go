@@ -34,6 +34,10 @@ func (r *PlexamsResolver) AllSemesterNames(ctx context.Context) ([]*model.Semest
 	return r.plexams.GetAllSemesterNames(ctx)
 }
 
-func (r *PlexamsResolver) Teachers(ctx context.Context) ([]*model.Teacher, error) {
-	return r.plexams.GetTeachers(ctx)
+func (r *PlexamsResolver) Teachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error) {
+	return r.plexams.GetTeachers(ctx, fromZpa)
+}
+
+func (r *PlexamsResolver) Invigilators(ctx context.Context) ([]*model.Teacher, error) {
+	return r.plexams.GetInvigilators(ctx)
 }

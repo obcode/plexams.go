@@ -4,6 +4,8 @@ go 1.18
 
 require (
 	github.com/99designs/gqlgen v0.17.13
+	github.com/go-chi/chi v1.5.4
+	github.com/rs/cors v1.8.2
 	github.com/rs/zerolog v1.27.0
 	github.com/spf13/viper v1.12.0
 	github.com/vektah/gqlparser/v2 v2.4.6

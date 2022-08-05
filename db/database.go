@@ -9,8 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func (client *Client) AllSemesterNames() ([]*model.Semester, error) {
-	dbs, err := client.Client.ListDatabaseNames(context.Background(),
+func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
+	dbs, err := db.Client.ListDatabaseNames(context.Background(),
 		bson.D{primitive.E{
 			Key: "name",
 			Value: bson.D{

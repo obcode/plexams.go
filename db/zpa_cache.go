@@ -8,8 +8,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (client *Client) CacheTeachers(teachers []*model.Teacher, semester string) error {
-	collection := client.Client.Database(databaseName(semester)).Collection("teachers")
+func (db *DB) CacheTeachers(teachers []*model.Teacher, semester string) error {
+	collection := db.Client.Database(databaseName(semester)).Collection("teachers")
 
 	teachersIntf := make([]interface{}, 0, len(teachers))
 

@@ -37,7 +37,7 @@ func main() {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 
-	plexamsResolver := graph.NewPlexamsResolver(
+	plexamsResolver := graph.NewResolver(
 		viper.GetString("semester"),
 		viper.GetString("db.uri"),
 		viper.GetString("zpa.baseurl"),

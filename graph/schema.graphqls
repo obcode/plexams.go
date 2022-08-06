@@ -15,8 +15,26 @@ type Teacher {
   email: String!
 }
 
+type ZPAExam {
+  semester: String!
+  anCode: Int!
+  module: String!
+  mainExamer: String!
+  mainExamerID: Int!
+  examType: String!
+  duration: Int!
+  isRepeaterExam: Boolean!
+  groups: [String!]!
+}
+
 type Query {
   allSemesterNames: [Semester!]!
+  semester: Semester!
   teachers(fromZPA: Boolean): [Teacher!]!
   invigilators: [Teacher!]!
+  zpaexams(fromZPA: Boolean): [ZPAExam!]!
+}
+
+type Mutation {
+  setSemester(input: String!): Semester!
 }

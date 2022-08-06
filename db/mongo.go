@@ -33,3 +33,8 @@ func NewDB(uri, semester string) (*DB, error) {
 func databaseName(semester string) string {
 	return strings.Replace(semester, " ", "-", 1)
 }
+
+func (db *DB) SetSemester(semester string) error {
+	db.semester = semester
+	return nil
+}

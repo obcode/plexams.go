@@ -10,9 +10,19 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// SetSemester is the resolver for the setSemester field.
+func (r *mutationResolver) SetSemester(ctx context.Context, input string) (*model.Semester, error) {
+	return r.plexams.SetSemester(ctx, input)
+}
+
 // AllSemesterNames is the resolver for the allSemesterNames field.
 func (r *queryResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return r.plexams.GetAllSemesterNames(ctx)
+}
+
+// Semester is the resolver for the semester field.
+func (r *queryResolver) Semester(ctx context.Context) (*model.Semester, error) {
+	return r.plexams.GetSemester(ctx), nil
 }
 
 // Teachers is the resolver for the teachers field.
@@ -25,7 +35,16 @@ func (r *queryResolver) Invigilators(ctx context.Context) ([]*model.Teacher, err
 	return r.plexams.GetInvigilators(ctx)
 }
 
+// Zpaexams is the resolver for the zpaexams field.
+func (r *queryResolver) Zpaexams(ctx context.Context, fromZpa *bool) ([]*model.ZPAExam, error) {
+	return r.plexams.GetZPAExams(ctx, fromZpa)
+}
+
+// Mutation returns generated.MutationResolver implementation.
+func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
+type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

@@ -56,24 +56,19 @@ func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, e
 	return p.dbClient.AllSemesterNames()
 }
 
-func (p *Plexams) GetTeachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error) {
-	if fromZpa != nil && *fromZpa {
-		if err := p.SetZPA(); err != nil {
-			return nil, err
-		}
-
-		teachers := p.zpa.client.GetTeachers()
-
-		err := p.dbClient.CacheTeachers(teachers, p.semester)
-		if err != nil {
-			return nil, err
-		}
-		return teachers, nil
-	} else {
-		return p.dbClient.GetTeachers(ctx)
+func (p *Plexams) GetSemester(ctx context.Context) *model.Semester {
+	return &model.Semester{
+		ID: p.semester,
 	}
 }
 
-func (p *Plexams) GetInvigilators(ctx context.Context) ([]*model.Teacher, error) {
-	return p.dbClient.GetInvigilators(ctx)
+func (p *Plexams) SetSemester(ctx context.Context, s string) (*model.Semester, error) {
+	p.semester = s
+	err := p.dbClient.SetSemester(s)
+	if err != nil {
+		return nil, err
+	}
+	return &model.Semester{
+		ID: p.semester,
+	}, nil
 }

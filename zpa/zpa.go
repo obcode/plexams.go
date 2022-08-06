@@ -18,7 +18,7 @@ type ZPA struct {
 	token                  Token
 	semester               string
 	teachers               []*model.Teacher
-	exams                  []*Exam
+	exams                  []*model.ZPAExam
 	supervisorRequirements []*SupervisorRequirements
 }
 
@@ -74,7 +74,7 @@ func NewZPA(baseurl string, username string, password string, semester string) (
 		token:                  token,
 		semester:               strings.Replace(semester, " ", "%20", 1),
 		teachers:               []*model.Teacher{},
-		exams:                  []*Exam{},
+		exams:                  []*model.ZPAExam{},
 		supervisorRequirements: []*SupervisorRequirements{},
 	}
 

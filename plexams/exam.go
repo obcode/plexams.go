@@ -50,17 +50,3 @@ func (p *Plexams) GetZPAExamsGroupedByType(ctx context.Context) ([]*model.ZPAExa
 
 	return examsGroupedByType, nil
 }
-
-func (p *Plexams) GetZPAExamTypes(ctx context.Context) ([]*model.ZPAExamType, error) {
-	examsByType, err := p.GetZPAExamsGroupedByType(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	examTypes := make([]*model.ZPAExamType, 0)
-	for _, v := range examsByType {
-		examTypes = append(examTypes, &model.ZPAExamType{Type: v.Type})
-	}
-
-	return examTypes, nil
-}

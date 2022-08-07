@@ -32,10 +32,6 @@ type ZPAExamsForType {
   exams: [ZPAExam!]!
 }
 
-type ZPAExamType {
-  type: String!
-}
-
 type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
@@ -43,7 +39,6 @@ type Query {
   invigilators: [Teacher!]!
   zpaexams(fromZPA: Boolean): [ZPAExam!]!
   zpaexamsByType: [ZPAExamsForType!]!
-  zpaexamTypes: [ZPAExamType!]!
 }
 
 type Mutation {

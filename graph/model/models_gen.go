@@ -6,10 +6,6 @@ type Semester struct {
 	ID string `json:"id"`
 }
 
-type ZPAExamType struct {
-	Type string `json:"type"`
-}
-
 type ZPAExamsForType struct {
 	Type  string     `json:"type"`
 	Exams []*ZPAExam `json:"exams"`

@@ -40,6 +40,16 @@ func (r *queryResolver) Zpaexams(ctx context.Context, fromZpa *bool) ([]*model.Z
 	return r.plexams.GetZPAExams(ctx, fromZpa)
 }
 
+// ZpaexamsByType is the resolver for the zpaexamsByType field.
+func (r *queryResolver) ZpaexamsByType(ctx context.Context) ([]*model.ZPAExamsForType, error) {
+	return r.plexams.GetZPAExamsGroupedByType(ctx)
+}
+
+// ZpaexamTypes is the resolver for the zpaexamTypes field.
+func (r *queryResolver) ZpaexamTypes(ctx context.Context) ([]*model.ZPAExamType, error) {
+	return r.plexams.GetZPAExamTypes(ctx)
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 

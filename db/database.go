@@ -29,7 +29,7 @@ func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
 	n := len(dbs)
 	for i, dbName := range dbs {
 		semester[n-i-1] = &model.Semester{
-			ID: dbName,
+			ID: semesterName(dbName),
 		}
 	}
 

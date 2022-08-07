@@ -27,12 +27,23 @@ type ZPAExam {
   groups: [String!]!
 }
 
+type ZPAExamsForType {
+  type: String!
+  exams: [ZPAExam!]!
+}
+
+type ZPAExamType {
+  type: String!
+}
+
 type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
   teachers(fromZPA: Boolean): [Teacher!]!
   invigilators: [Teacher!]!
   zpaexams(fromZPA: Boolean): [ZPAExam!]!
+  zpaexamsByType: [ZPAExamsForType!]!
+  zpaexamTypes: [ZPAExamType!]!
 }
 
 type Mutation {

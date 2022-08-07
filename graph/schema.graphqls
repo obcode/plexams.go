@@ -36,14 +36,24 @@ type PrimussExam {
   anCode: Int!
   module: String!
   mainExamer: String!
-  group: String!
+  program: String!
   examType: String!
   presence: String!
+  studentRegs: [StudentReg!]!
 }
 
-type PrimussExamByGroup {
-  group: String!
+type PrimussExamByProgram {
+  program: String!
   exams: [PrimussExam!]!
+}
+
+type StudentReg {
+  mtknr: String!
+  anCode: Int!
+  program: String!
+  group: String!
+  name: String!
+  presence: String!
 }
 
 type Query {
@@ -55,7 +65,7 @@ type Query {
   zpaExams(fromZPA: Boolean): [ZPAExam!]!
   zpaExamsByType: [ZPAExamsForType!]!
   # Primuss
-  primussExams: [PrimussExamByGroup]
+  primussExams: [PrimussExamByProgram]
 }
 
 type Mutation {

@@ -6,6 +6,10 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-func (p *Plexams) PrimussExams(ctx context.Context) ([]*model.PrimussExamByGroup, error) {
+func (p *Plexams) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	return p.dbClient.GetPrimussExams(ctx)
+}
+
+func (p *Plexams) GetStudentRegs(ctx context.Context, exam *model.PrimussExam) ([]*model.StudentReg, error) {
+	return p.dbClient.GetPrimussStudentRegsForAncode(ctx, exam.Program, exam.AnCode)
 }

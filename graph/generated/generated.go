@@ -37,6 +37,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Mutation() MutationResolver
+	PrimussExam() PrimussExamResolver
 	Query() QueryResolver
 }
 
@@ -49,17 +50,18 @@ type ComplexityRoot struct {
 	}
 
 	PrimussExam struct {
-		AnCode     func(childComplexity int) int
-		ExamType   func(childComplexity int) int
-		Group      func(childComplexity int) int
-		MainExamer func(childComplexity int) int
-		Module     func(childComplexity int) int
-		Presence   func(childComplexity int) int
+		AnCode      func(childComplexity int) int
+		ExamType    func(childComplexity int) int
+		MainExamer  func(childComplexity int) int
+		Module      func(childComplexity int) int
+		Presence    func(childComplexity int) int
+		Program     func(childComplexity int) int
+		StudentRegs func(childComplexity int) int
 	}
 
-	PrimussExamByGroup struct {
-		Exams func(childComplexity int) int
-		Group func(childComplexity int) int
+	PrimussExamByProgram struct {
+		Exams   func(childComplexity int) int
+		Program func(childComplexity int) int
 	}
 
 	Query struct {
@@ -74,6 +76,15 @@ type ComplexityRoot struct {
 
 	Semester struct {
 		ID func(childComplexity int) int
+	}
+
+	StudentReg struct {
+		AnCode   func(childComplexity int) int
+		Group    func(childComplexity int) int
+		Mtknr    func(childComplexity int) int
+		Name     func(childComplexity int) int
+		Presence func(childComplexity int) int
+		Program  func(childComplexity int) int
 	}
 
 	Teacher struct {
@@ -110,6 +121,9 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	SetSemester(ctx context.Context, input string) (*model.Semester, error)
 }
+type PrimussExamResolver interface {
+	StudentRegs(ctx context.Context, obj *model.PrimussExam) ([]*model.StudentReg, error)
+}
 type QueryResolver interface {
 	AllSemesterNames(ctx context.Context) ([]*model.Semester, error)
 	Semester(ctx context.Context) (*model.Semester, error)
@@ -117,7 +131,7 @@ type QueryResolver interface {
 	Invigilators(ctx context.Context) ([]*model.Teacher, error)
 	ZpaExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAExam, error)
 	ZpaExamsByType(ctx context.Context) ([]*model.ZPAExamsForType, error)
-	PrimussExams(ctx context.Context) ([]*model.PrimussExamByGroup, error)
+	PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error)
 }
 
 type executableSchema struct {
@@ -161,13 +175,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PrimussExam.ExamType(childComplexity), true
 
-	case "PrimussExam.group":
-		if e.complexity.PrimussExam.Group == nil {
-			break
-		}
-
-		return e.complexity.PrimussExam.Group(childComplexity), true
-
 	case "PrimussExam.mainExamer":
 		if e.complexity.PrimussExam.MainExamer == nil {
 			break
@@ -189,19 +196,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PrimussExam.Presence(childComplexity), true
 
-	case "PrimussExamByGroup.exams":
-		if e.complexity.PrimussExamByGroup.Exams == nil {
+	case "PrimussExam.program":
+		if e.complexity.PrimussExam.Program == nil {
 			break
 		}
 
-		return e.complexity.PrimussExamByGroup.Exams(childComplexity), true
+		return e.complexity.PrimussExam.Program(childComplexity), true
 
-	case "PrimussExamByGroup.group":
-		if e.complexity.PrimussExamByGroup.Group == nil {
+	case "PrimussExam.studentRegs":
+		if e.complexity.PrimussExam.StudentRegs == nil {
 			break
 		}
 
-		return e.complexity.PrimussExamByGroup.Group(childComplexity), true
+		return e.complexity.PrimussExam.StudentRegs(childComplexity), true
+
+	case "PrimussExamByProgram.exams":
+		if e.complexity.PrimussExamByProgram.Exams == nil {
+			break
+		}
+
+		return e.complexity.PrimussExamByProgram.Exams(childComplexity), true
+
+	case "PrimussExamByProgram.program":
+		if e.complexity.PrimussExamByProgram.Program == nil {
+			break
+		}
+
+		return e.complexity.PrimussExamByProgram.Program(childComplexity), true
 
 	case "Query.allSemesterNames":
 		if e.complexity.Query.AllSemesterNames == nil {
@@ -268,6 +289,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Semester.ID(childComplexity), true
+
+	case "StudentReg.anCode":
+		if e.complexity.StudentReg.AnCode == nil {
+			break
+		}
+
+		return e.complexity.StudentReg.AnCode(childComplexity), true
+
+	case "StudentReg.group":
+		if e.complexity.StudentReg.Group == nil {
+			break
+		}
+
+		return e.complexity.StudentReg.Group(childComplexity), true
+
+	case "StudentReg.mtknr":
+		if e.complexity.StudentReg.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.StudentReg.Mtknr(childComplexity), true
+
+	case "StudentReg.name":
+		if e.complexity.StudentReg.Name == nil {
+			break
+		}
+
+		return e.complexity.StudentReg.Name(childComplexity), true
+
+	case "StudentReg.presence":
+		if e.complexity.StudentReg.Presence == nil {
+			break
+		}
+
+		return e.complexity.StudentReg.Presence(childComplexity), true
+
+	case "StudentReg.program":
+		if e.complexity.StudentReg.Program == nil {
+			break
+		}
+
+		return e.complexity.StudentReg.Program(childComplexity), true
 
 	case "Teacher.email":
 		if e.complexity.Teacher.Email == nil {
@@ -521,14 +584,24 @@ type PrimussExam {
   anCode: Int!
   module: String!
   mainExamer: String!
-  group: String!
+  program: String!
   examType: String!
   presence: String!
+  studentRegs: [StudentReg!]!
 }
 
-type PrimussExamByGroup {
-  group: String!
+type PrimussExamByProgram {
+  program: String!
   exams: [PrimussExam!]!
+}
+
+type StudentReg {
+  mtknr: String!
+  anCode: Int!
+  program: String!
+  group: String!
+  name: String!
+  presence: String!
 }
 
 type Query {
@@ -540,7 +613,7 @@ type Query {
   zpaExams(fromZPA: Boolean): [ZPAExam!]!
   zpaExamsByType: [ZPAExamsForType!]!
   # Primuss
-  primussExams: [PrimussExamByGroup]
+  primussExams: [PrimussExamByProgram]
 }
 
 type Mutation {
@@ -843,8 +916,8 @@ func (ec *executionContext) fieldContext_PrimussExam_mainExamer(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _PrimussExam_group(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PrimussExam_group(ctx, field)
+func (ec *executionContext) _PrimussExam_program(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrimussExam_program(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -857,7 +930,7 @@ func (ec *executionContext) _PrimussExam_group(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Group, nil
+		return obj.Program, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -874,7 +947,7 @@ func (ec *executionContext) _PrimussExam_group(ctx context.Context, field graphq
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PrimussExam_group(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PrimussExam_program(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PrimussExam",
 		Field:      field,
@@ -975,8 +1048,8 @@ func (ec *executionContext) fieldContext_PrimussExam_presence(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _PrimussExamByGroup_group(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExamByGroup) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PrimussExamByGroup_group(ctx, field)
+func (ec *executionContext) _PrimussExam_studentRegs(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrimussExam_studentRegs(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -989,7 +1062,65 @@ func (ec *executionContext) _PrimussExamByGroup_group(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Group, nil
+		return ec.resolvers.PrimussExam().StudentRegs(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.StudentReg)
+	fc.Result = res
+	return ec.marshalNStudentReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrimussExam_studentRegs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrimussExam",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mtknr":
+				return ec.fieldContext_StudentReg_mtknr(ctx, field)
+			case "anCode":
+				return ec.fieldContext_StudentReg_anCode(ctx, field)
+			case "program":
+				return ec.fieldContext_StudentReg_program(ctx, field)
+			case "group":
+				return ec.fieldContext_StudentReg_group(ctx, field)
+			case "name":
+				return ec.fieldContext_StudentReg_name(ctx, field)
+			case "presence":
+				return ec.fieldContext_StudentReg_presence(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type StudentReg", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PrimussExamByProgram_program(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExamByProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrimussExamByProgram_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1006,9 +1137,9 @@ func (ec *executionContext) _PrimussExamByGroup_group(ctx context.Context, field
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PrimussExamByGroup_group(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PrimussExamByProgram_program(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "PrimussExamByGroup",
+		Object:     "PrimussExamByProgram",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -1019,8 +1150,8 @@ func (ec *executionContext) fieldContext_PrimussExamByGroup_group(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _PrimussExamByGroup_exams(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExamByGroup) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PrimussExamByGroup_exams(ctx, field)
+func (ec *executionContext) _PrimussExamByProgram_exams(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExamByProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrimussExamByProgram_exams(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -1050,9 +1181,9 @@ func (ec *executionContext) _PrimussExamByGroup_exams(ctx context.Context, field
 	return ec.marshalNPrimussExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PrimussExamByGroup_exams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PrimussExamByProgram_exams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "PrimussExamByGroup",
+		Object:     "PrimussExamByProgram",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -1064,12 +1195,14 @@ func (ec *executionContext) fieldContext_PrimussExamByGroup_exams(ctx context.Co
 				return ec.fieldContext_PrimussExam_module(ctx, field)
 			case "mainExamer":
 				return ec.fieldContext_PrimussExam_mainExamer(ctx, field)
-			case "group":
-				return ec.fieldContext_PrimussExam_group(ctx, field)
+			case "program":
+				return ec.fieldContext_PrimussExam_program(ctx, field)
 			case "examType":
 				return ec.fieldContext_PrimussExam_examType(ctx, field)
 			case "presence":
 				return ec.fieldContext_PrimussExam_presence(ctx, field)
+			case "studentRegs":
+				return ec.fieldContext_PrimussExam_studentRegs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PrimussExam", field.Name)
 		},
@@ -1464,9 +1597,9 @@ func (ec *executionContext) _Query_primussExams(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*model.PrimussExamByGroup)
+	res := resTmp.([]*model.PrimussExamByProgram)
 	fc.Result = res
-	return ec.marshalOPrimussExamByGroup2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamByGroup(ctx, field.Selections, res)
+	return ec.marshalOPrimussExamByProgram2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamByProgram(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_primussExams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1477,12 +1610,12 @@ func (ec *executionContext) fieldContext_Query_primussExams(ctx context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "group":
-				return ec.fieldContext_PrimussExamByGroup_group(ctx, field)
+			case "program":
+				return ec.fieldContext_PrimussExamByProgram_program(ctx, field)
 			case "exams":
-				return ec.fieldContext_PrimussExamByGroup_exams(ctx, field)
+				return ec.fieldContext_PrimussExamByProgram_exams(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type PrimussExamByGroup", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type PrimussExamByProgram", field.Name)
 		},
 	}
 	return fc, nil
@@ -1651,6 +1784,270 @@ func (ec *executionContext) _Semester_id(ctx context.Context, field graphql.Coll
 func (ec *executionContext) fieldContext_Semester_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Semester",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentReg_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.StudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentReg_mtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentReg_mtknr(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentReg_anCode(ctx context.Context, field graphql.CollectedField, obj *model.StudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentReg_anCode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AnCode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentReg_anCode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentReg_program(ctx context.Context, field graphql.CollectedField, obj *model.StudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentReg_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentReg_program(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentReg_group(ctx context.Context, field graphql.CollectedField, obj *model.StudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentReg_group(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Group, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentReg_group(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentReg_name(ctx context.Context, field graphql.CollectedField, obj *model.StudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentReg_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentReg_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentReg_presence(ctx context.Context, field graphql.CollectedField, obj *model.StudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentReg_presence(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Presence, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentReg_presence(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentReg",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -4440,43 +4837,63 @@ func (ec *executionContext) _PrimussExam(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._PrimussExam_anCode(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "module":
 
 			out.Values[i] = ec._PrimussExam_module(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "mainExamer":
 
 			out.Values[i] = ec._PrimussExam_mainExamer(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
-		case "group":
+		case "program":
 
-			out.Values[i] = ec._PrimussExam_group(ctx, field, obj)
+			out.Values[i] = ec._PrimussExam_program(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "examType":
 
 			out.Values[i] = ec._PrimussExam_examType(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "presence":
 
 			out.Values[i] = ec._PrimussExam_presence(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "studentRegs":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PrimussExam_studentRegs(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4488,26 +4905,26 @@ func (ec *executionContext) _PrimussExam(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
-var primussExamByGroupImplementors = []string{"PrimussExamByGroup"}
+var primussExamByProgramImplementors = []string{"PrimussExamByProgram"}
 
-func (ec *executionContext) _PrimussExamByGroup(ctx context.Context, sel ast.SelectionSet, obj *model.PrimussExamByGroup) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, primussExamByGroupImplementors)
+func (ec *executionContext) _PrimussExamByProgram(ctx context.Context, sel ast.SelectionSet, obj *model.PrimussExamByProgram) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, primussExamByProgramImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("PrimussExamByGroup")
-		case "group":
+			out.Values[i] = graphql.MarshalString("PrimussExamByProgram")
+		case "program":
 
-			out.Values[i] = ec._PrimussExamByGroup_group(ctx, field, obj)
+			out.Values[i] = ec._PrimussExamByProgram_program(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
 		case "exams":
 
-			out.Values[i] = ec._PrimussExamByGroup_exams(ctx, field, obj)
+			out.Values[i] = ec._PrimussExamByProgram_exams(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -4736,6 +5153,69 @@ func (ec *executionContext) _Semester(ctx context.Context, sel ast.SelectionSet,
 		case "id":
 
 			out.Values[i] = ec._Semester_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var studentRegImplementors = []string{"StudentReg"}
+
+func (ec *executionContext) _StudentReg(ctx context.Context, sel ast.SelectionSet, obj *model.StudentReg) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, studentRegImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("StudentReg")
+		case "mtknr":
+
+			out.Values[i] = ec._StudentReg_mtknr(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "anCode":
+
+			out.Values[i] = ec._StudentReg_anCode(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "program":
+
+			out.Values[i] = ec._StudentReg_program(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "group":
+
+			out.Values[i] = ec._StudentReg_group(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+
+			out.Values[i] = ec._StudentReg_name(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "presence":
+
+			out.Values[i] = ec._StudentReg_presence(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -5468,6 +5948,60 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	return ret
 }
 
+func (ec *executionContext) marshalNStudentReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StudentReg) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNStudentReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentReg(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNStudentReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentReg(ctx context.Context, sel ast.SelectionSet, v *model.StudentReg) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._StudentReg(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNTeacher2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacherᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Teacher) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -5909,7 +6443,7 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) marshalOPrimussExamByGroup2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamByGroup(ctx context.Context, sel ast.SelectionSet, v []*model.PrimussExamByGroup) graphql.Marshaler {
+func (ec *executionContext) marshalOPrimussExamByProgram2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamByProgram(ctx context.Context, sel ast.SelectionSet, v []*model.PrimussExamByProgram) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -5936,7 +6470,7 @@ func (ec *executionContext) marshalOPrimussExamByGroup2ᚕᚖgithubᚗcomᚋobco
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOPrimussExamByGroup2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamByGroup(ctx, sel, v[i])
+			ret[i] = ec.marshalOPrimussExamByProgram2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamByProgram(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -5950,11 +6484,11 @@ func (ec *executionContext) marshalOPrimussExamByGroup2ᚕᚖgithubᚗcomᚋobco
 	return ret
 }
 
-func (ec *executionContext) marshalOPrimussExamByGroup2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamByGroup(ctx context.Context, sel ast.SelectionSet, v *model.PrimussExamByGroup) graphql.Marshaler {
+func (ec *executionContext) marshalOPrimussExamByProgram2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamByProgram(ctx context.Context, sel ast.SelectionSet, v *model.PrimussExamByProgram) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	return ec._PrimussExamByGroup(ctx, sel, v)
+	return ec._PrimussExamByProgram(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

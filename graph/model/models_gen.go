@@ -2,9 +2,9 @@
 
 package model
 
-type PrimussExamByGroup struct {
-	Group string         `json:"group"`
-	Exams []*PrimussExam `json:"exams"`
+type PrimussExamByProgram struct {
+	Program string         `json:"program"`
+	Exams   []*PrimussExam `json:"exams"`
 }
 
 type Semester struct {

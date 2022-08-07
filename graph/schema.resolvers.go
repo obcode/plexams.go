@@ -15,6 +15,11 @@ func (r *mutationResolver) SetSemester(ctx context.Context, input string) (*mode
 	return r.plexams.SetSemester(ctx, input)
 }
 
+// StudentRegs is the resolver for the studentRegs field.
+func (r *primussExamResolver) StudentRegs(ctx context.Context, obj *model.PrimussExam) ([]*model.StudentReg, error) {
+	return r.plexams.GetStudentRegs(ctx, obj)
+}
+
 // AllSemesterNames is the resolver for the allSemesterNames field.
 func (r *queryResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return r.plexams.GetAllSemesterNames(ctx)
@@ -46,15 +51,19 @@ func (r *queryResolver) ZpaExamsByType(ctx context.Context) ([]*model.ZPAExamsFo
 }
 
 // PrimussExams is the resolver for the primussExams field.
-func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamByGroup, error) {
+func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	return r.plexams.PrimussExams(ctx)
 }
 
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
+// PrimussExam returns generated.PrimussExamResolver implementation.
+func (r *Resolver) PrimussExam() generated.PrimussExamResolver { return &primussExamResolver{r} }
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
+type primussExamResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

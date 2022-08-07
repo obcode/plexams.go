@@ -2,6 +2,11 @@
 
 package model
 
+type PrimussExamByGroup struct {
+	Group string         `json:"group"`
+	Exams []*PrimussExam `json:"exams"`
+}
+
 type Semester struct {
 	ID string `json:"id"`
 }

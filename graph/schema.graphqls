@@ -32,13 +32,30 @@ type ZPAExamsForType {
   exams: [ZPAExam!]!
 }
 
+type PrimussExam {
+  anCode: Int!
+  module: String!
+  mainExamer: String!
+  group: String!
+  examType: String!
+  presence: String!
+}
+
+type PrimussExamByGroup {
+  group: String!
+  exams: [PrimussExam!]!
+}
+
 type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
+  # ZPA
   teachers(fromZPA: Boolean): [Teacher!]!
   invigilators: [Teacher!]!
-  zpaexams(fromZPA: Boolean): [ZPAExam!]!
-  zpaexamsByType: [ZPAExamsForType!]!
+  zpaExams(fromZPA: Boolean): [ZPAExam!]!
+  zpaExamsByType: [ZPAExamsForType!]!
+  # Primuss
+  primussExams: [PrimussExamByGroup]
 }
 
 type Mutation {

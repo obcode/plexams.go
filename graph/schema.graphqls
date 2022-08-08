@@ -40,6 +40,7 @@ type PrimussExam {
   examType: String!
   presence: String!
   studentRegs: [StudentReg!]!
+  conflicts: Conflicts!
 }
 
 type PrimussExamByProgram {
@@ -54,6 +55,18 @@ type StudentReg {
   group: String!
   name: String!
   presence: String!
+}
+
+type Conflicts {
+  anCode: Int!
+  module: String!
+  mainExamer: String!
+  conflicts: [Conflict!]!
+}
+
+type Conflict {
+  anCode: Int!
+  numberOfStuds: Int!
 }
 
 type Query {

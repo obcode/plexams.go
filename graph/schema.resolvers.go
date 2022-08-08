@@ -20,6 +20,11 @@ func (r *primussExamResolver) StudentRegs(ctx context.Context, obj *model.Primus
 	return r.plexams.GetStudentRegs(ctx, obj)
 }
 
+// Conflicts is the resolver for the conflicts field.
+func (r *primussExamResolver) Conflicts(ctx context.Context, obj *model.PrimussExam) (*model.Conflicts, error) {
+	return r.plexams.GetConflicts(ctx, obj)
+}
+
 // AllSemesterNames is the resolver for the allSemesterNames field.
 func (r *queryResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return r.plexams.GetAllSemesterNames(ctx)

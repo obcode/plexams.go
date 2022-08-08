@@ -45,12 +45,25 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	Conflict struct {
+		AnCode        func(childComplexity int) int
+		NumberOfStuds func(childComplexity int) int
+	}
+
+	Conflicts struct {
+		AnCode     func(childComplexity int) int
+		Conflicts  func(childComplexity int) int
+		MainExamer func(childComplexity int) int
+		Module     func(childComplexity int) int
+	}
+
 	Mutation struct {
 		SetSemester func(childComplexity int, input string) int
 	}
 
 	PrimussExam struct {
 		AnCode      func(childComplexity int) int
+		Conflicts   func(childComplexity int) int
 		ExamType    func(childComplexity int) int
 		MainExamer  func(childComplexity int) int
 		Module      func(childComplexity int) int
@@ -123,6 +136,7 @@ type MutationResolver interface {
 }
 type PrimussExamResolver interface {
 	StudentRegs(ctx context.Context, obj *model.PrimussExam) ([]*model.StudentReg, error)
+	Conflicts(ctx context.Context, obj *model.PrimussExam) (*model.Conflicts, error)
 }
 type QueryResolver interface {
 	AllSemesterNames(ctx context.Context) ([]*model.Semester, error)
@@ -149,6 +163,48 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
+	case "Conflict.anCode":
+		if e.complexity.Conflict.AnCode == nil {
+			break
+		}
+
+		return e.complexity.Conflict.AnCode(childComplexity), true
+
+	case "Conflict.numberOfStuds":
+		if e.complexity.Conflict.NumberOfStuds == nil {
+			break
+		}
+
+		return e.complexity.Conflict.NumberOfStuds(childComplexity), true
+
+	case "Conflicts.anCode":
+		if e.complexity.Conflicts.AnCode == nil {
+			break
+		}
+
+		return e.complexity.Conflicts.AnCode(childComplexity), true
+
+	case "Conflicts.conflicts":
+		if e.complexity.Conflicts.Conflicts == nil {
+			break
+		}
+
+		return e.complexity.Conflicts.Conflicts(childComplexity), true
+
+	case "Conflicts.mainExamer":
+		if e.complexity.Conflicts.MainExamer == nil {
+			break
+		}
+
+		return e.complexity.Conflicts.MainExamer(childComplexity), true
+
+	case "Conflicts.module":
+		if e.complexity.Conflicts.Module == nil {
+			break
+		}
+
+		return e.complexity.Conflicts.Module(childComplexity), true
+
 	case "Mutation.setSemester":
 		if e.complexity.Mutation.SetSemester == nil {
 			break
@@ -167,6 +223,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PrimussExam.AnCode(childComplexity), true
+
+	case "PrimussExam.conflicts":
+		if e.complexity.PrimussExam.Conflicts == nil {
+			break
+		}
+
+		return e.complexity.PrimussExam.Conflicts(childComplexity), true
 
 	case "PrimussExam.examType":
 		if e.complexity.PrimussExam.ExamType == nil {
@@ -588,6 +651,7 @@ type PrimussExam {
   examType: String!
   presence: String!
   studentRegs: [StudentReg!]!
+  conflicts: Conflicts!
 }
 
 type PrimussExamByProgram {
@@ -602,6 +666,18 @@ type StudentReg {
   group: String!
   name: String!
   presence: String!
+}
+
+type Conflicts {
+  anCode: Int!
+  module: String!
+  mainExamer: String!
+  conflicts: [Conflict!]!
+}
+
+type Conflict {
+  anCode: Int!
+  numberOfStuds: Int!
 }
 
 type Query {
@@ -724,6 +800,276 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _Conflict_anCode(ctx context.Context, field graphql.CollectedField, obj *model.Conflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Conflict_anCode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AnCode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Conflict_anCode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Conflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Conflict_numberOfStuds(ctx context.Context, field graphql.CollectedField, obj *model.Conflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Conflict_numberOfStuds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumberOfStuds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Conflict_numberOfStuds(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Conflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Conflicts_anCode(ctx context.Context, field graphql.CollectedField, obj *model.Conflicts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Conflicts_anCode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AnCode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Conflicts_anCode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Conflicts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Conflicts_module(ctx context.Context, field graphql.CollectedField, obj *model.Conflicts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Conflicts_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Conflicts_module(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Conflicts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Conflicts_mainExamer(ctx context.Context, field graphql.CollectedField, obj *model.Conflicts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Conflicts_mainExamer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MainExamer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Conflicts_mainExamer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Conflicts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Conflicts_conflicts(ctx context.Context, field graphql.CollectedField, obj *model.Conflicts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Conflicts_conflicts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Conflicts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.Conflict)
+	fc.Result = res
+	return ec.marshalNConflict2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Conflicts_conflicts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Conflicts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "anCode":
+				return ec.fieldContext_Conflict_anCode(ctx, field)
+			case "numberOfStuds":
+				return ec.fieldContext_Conflict_numberOfStuds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Conflict", field.Name)
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _Mutation_setSemester(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_setSemester(ctx, field)
@@ -1106,6 +1452,60 @@ func (ec *executionContext) fieldContext_PrimussExam_studentRegs(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _PrimussExam_conflicts(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrimussExam_conflicts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.PrimussExam().Conflicts(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Conflicts)
+	fc.Result = res
+	return ec.marshalNConflicts2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflicts(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrimussExam_conflicts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrimussExam",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "anCode":
+				return ec.fieldContext_Conflicts_anCode(ctx, field)
+			case "module":
+				return ec.fieldContext_Conflicts_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_Conflicts_mainExamer(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_Conflicts_conflicts(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Conflicts", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrimussExamByProgram_program(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExamByProgram) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrimussExamByProgram_program(ctx, field)
 	if err != nil {
@@ -1203,6 +1603,8 @@ func (ec *executionContext) fieldContext_PrimussExamByProgram_exams(ctx context.
 				return ec.fieldContext_PrimussExam_presence(ctx, field)
 			case "studentRegs":
 				return ec.fieldContext_PrimussExam_studentRegs(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_PrimussExam_conflicts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PrimussExam", field.Name)
 		},
@@ -4783,6 +5185,90 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** object.gotpl ****************************
 
+var conflictImplementors = []string{"Conflict"}
+
+func (ec *executionContext) _Conflict(ctx context.Context, sel ast.SelectionSet, obj *model.Conflict) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, conflictImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Conflict")
+		case "anCode":
+
+			out.Values[i] = ec._Conflict_anCode(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "numberOfStuds":
+
+			out.Values[i] = ec._Conflict_numberOfStuds(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var conflictsImplementors = []string{"Conflicts"}
+
+func (ec *executionContext) _Conflicts(ctx context.Context, sel ast.SelectionSet, obj *model.Conflicts) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, conflictsImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Conflicts")
+		case "anCode":
+
+			out.Values[i] = ec._Conflicts_anCode(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "module":
+
+			out.Values[i] = ec._Conflicts_module(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "mainExamer":
+
+			out.Values[i] = ec._Conflicts_mainExamer(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "conflicts":
+
+			out.Values[i] = ec._Conflicts_conflicts(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -4884,6 +5370,26 @@ func (ec *executionContext) _PrimussExam(ctx context.Context, sel ast.SelectionS
 					}
 				}()
 				res = ec._PrimussExam_studentRegs(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "conflicts":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PrimussExam_conflicts(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -5772,6 +6278,68 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNConflict2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflict(ctx context.Context, sel ast.SelectionSet, v model.Conflict) graphql.Marshaler {
+	return ec._Conflict(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNConflict2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictᚄ(ctx context.Context, sel ast.SelectionSet, v []model.Conflict) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNConflict2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflict(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNConflicts2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflicts(ctx context.Context, sel ast.SelectionSet, v model.Conflicts) graphql.Marshaler {
+	return ec._Conflicts(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNConflicts2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflicts(ctx context.Context, sel ast.SelectionSet, v *model.Conflicts) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Conflicts(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {

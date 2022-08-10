@@ -3,7 +3,7 @@ package zpa
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -23,7 +23,7 @@ func (zpa *ZPA) get(path string, v any) error {
 		return err
 	}
 	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	err = json.Unmarshal(body, v)
 	if err != nil {

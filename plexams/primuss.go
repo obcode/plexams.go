@@ -10,6 +10,14 @@ func (p *Plexams) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgr
 	return p.dbClient.GetPrimussExams(ctx)
 }
 
+func (p *Plexams) GetPrimussExam(ctx context.Context, program string, anCode int) (*model.PrimussExam, error) {
+	return p.dbClient.GetPrimussExam(ctx, program, anCode)
+}
+
+func (p *Plexams) GetPrimussExamsForAncode(ctx context.Context, anCode int) ([]*model.PrimussExam, error) {
+	return p.dbClient.GetPrimussExamsForAncode(ctx, anCode)
+}
+
 func (p *Plexams) GetStudentRegs(ctx context.Context, exam *model.PrimussExam) ([]*model.StudentReg, error) {
 	return p.dbClient.GetPrimussStudentRegsForAncode(ctx, exam.Program, exam.AnCode)
 }

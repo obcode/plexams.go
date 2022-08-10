@@ -55,9 +55,24 @@ func (r *queryResolver) ZpaExamsByType(ctx context.Context) ([]*model.ZPAExamsFo
 	return r.plexams.GetZPAExamsGroupedByType(ctx)
 }
 
+// ZpaExam is the resolver for the zpaExam field.
+func (r *queryResolver) ZpaExam(ctx context.Context, anCode int) (*model.ZPAExam, error) {
+	return r.plexams.GetZpaExamByAncode(ctx, anCode)
+}
+
 // PrimussExams is the resolver for the primussExams field.
 func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	return r.plexams.PrimussExams(ctx)
+}
+
+// PrimussExam is the resolver for the primussExam field.
+func (r *queryResolver) PrimussExam(ctx context.Context, program string, anCode int) (*model.PrimussExam, error) {
+	return r.plexams.GetPrimussExam(ctx, program, anCode)
+}
+
+// PrimussExamsForAnCode is the resolver for the primussExamsForAnCode field.
+func (r *queryResolver) PrimussExamsForAnCode(ctx context.Context, anCode int) ([]*model.PrimussExam, error) {
+	return r.plexams.GetPrimussExamsForAncode(ctx, anCode)
 }
 
 // Mutation returns generated.MutationResolver implementation.

@@ -46,6 +46,10 @@ func (p *Plexams) GetZPAExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAE
 	}
 }
 
+func (p *Plexams) GetZpaExamByAncode(ctx context.Context, anCode int) (*model.ZPAExam, error) {
+	return p.dbClient.GetZpaExamByAncode(ctx, anCode)
+}
+
 func (p *Plexams) GetZPAExamsGroupedByType(ctx context.Context) ([]*model.ZPAExamsForType, error) {
 	exams, err := p.dbClient.GetZPAExams(ctx)
 	if err != nil {

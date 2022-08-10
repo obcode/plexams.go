@@ -77,8 +77,11 @@ type Query {
   invigilators: [Teacher!]!
   zpaExams(fromZPA: Boolean): [ZPAExam!]!
   zpaExamsByType: [ZPAExamsForType!]!
+  zpaExam(anCode: Int!): ZPAExam
   # Primuss
   primussExams: [PrimussExamByProgram]
+  primussExam(program: String!, anCode: Int!): PrimussExam!
+  primussExamsForAnCode(anCode: Int!): [PrimussExam!]
 }
 
 type Mutation {

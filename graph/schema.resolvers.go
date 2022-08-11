@@ -60,6 +60,11 @@ func (r *queryResolver) ZpaExam(ctx context.Context, anCode int) (*model.ZPAExam
 	return r.plexams.GetZpaExamByAncode(ctx, anCode)
 }
 
+// ZpaAnCodes is the resolver for the zpaAnCodes field.
+func (r *queryResolver) ZpaAnCodes(ctx context.Context) ([]*model.AnCode, error) {
+	return r.plexams.GetZpaAnCodes(ctx)
+}
+
 // PrimussExams is the resolver for the primussExams field.
 func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	return r.plexams.PrimussExams(ctx)
@@ -73,6 +78,16 @@ func (r *queryResolver) PrimussExam(ctx context.Context, program string, anCode 
 // PrimussExamsForAnCode is the resolver for the primussExamsForAnCode field.
 func (r *queryResolver) PrimussExamsForAnCode(ctx context.Context, anCode int) ([]*model.PrimussExam, error) {
 	return r.plexams.GetPrimussExamsForAncode(ctx, anCode)
+}
+
+// ConnectedExam is the resolver for the connectedExam field.
+func (r *queryResolver) ConnectedExam(ctx context.Context, anCode int) (*model.ConnectedExam, error) {
+	return r.plexams.GetConnectedExam(ctx, anCode)
+}
+
+// ConnectedExams is the resolver for the connectedExams field.
+func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
+	return r.plexams.GetConnectedExams(ctx)
 }
 
 // Mutation returns generated.MutationResolver implementation.

@@ -2,6 +2,15 @@
 
 package model
 
+type AnCode struct {
+	AnCode int `json:"anCode"`
+}
+
+type ConnectedExam struct {
+	ZpaExam      *ZPAExam       `json:"zpaExam"`
+	PrimussExams []*PrimussExam `json:"primussExams"`
+}
+
 type PrimussExamByProgram struct {
 	Program string         `json:"program"`
 	Exams   []*PrimussExam `json:"exams"`

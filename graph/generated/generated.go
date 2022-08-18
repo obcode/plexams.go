@@ -713,41 +713,11 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "../schema.graphqls", Input: `type Semester {
-  id: String!
+	{Name: "../mutation.graphqls", Input: `type Mutation {
+  setSemester(input: String!): Semester!
 }
-
-type Teacher {
-  shortname: String!
-  fullname: String!
-  isProf: Boolean!
-  isLBA: Boolean!
-  isProfHC: Boolean!
-  isStaff: Boolean!
-  lastSemester: String!
-  fk: String!
-  id: Int!
-  email: String!
-}
-
-type ZPAExam {
-  semester: String!
-  anCode: Int!
-  module: String!
-  mainExamer: String!
-  mainExamerID: Int!
-  examType: String!
-  duration: Int!
-  isRepeaterExam: Boolean!
-  groups: [String!]!
-}
-
-type ZPAExamsForType {
-  type: String!
-  exams: [ZPAExam!]!
-}
-
-type PrimussExam {
+`, BuiltIn: false},
+	{Name: "../primuss.graphqls", Input: `type PrimussExam {
   anCode: Int!
   module: String!
   mainExamer: String!
@@ -788,12 +758,8 @@ type ConnectedExam {
   zpaExam: ZPAExam!
   primussExams: [PrimussExam!]!
 }
-
-type AnCode {
-  anCode: Int!
-}
-
-type Query {
+`, BuiltIn: false},
+	{Name: "../query.graphqls", Input: `type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
   # ZPA
@@ -811,9 +777,43 @@ type Query {
   connectedExam(anCode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
 }
+`, BuiltIn: false},
+	{Name: "../schema.graphqls", Input: `type Semester {
+  id: String!
+}
 
-type Mutation {
-  setSemester(input: String!): Semester!
+type Teacher {
+  shortname: String!
+  fullname: String!
+  isProf: Boolean!
+  isLBA: Boolean!
+  isProfHC: Boolean!
+  isStaff: Boolean!
+  lastSemester: String!
+  fk: String!
+  id: Int!
+  email: String!
+}
+
+type AnCode {
+  anCode: Int!
+}
+`, BuiltIn: false},
+	{Name: "../zpa.graphqls", Input: `type ZPAExam {
+  semester: String!
+  anCode: Int!
+  module: String!
+  mainExamer: String!
+  mainExamerID: Int!
+  examType: String!
+  duration: Int!
+  isRepeaterExam: Boolean!
+  groups: [String!]!
+}
+
+type ZPAExamsForType {
+  type: String!
+  exams: [ZPAExam!]!
 }
 `, BuiltIn: false},
 }

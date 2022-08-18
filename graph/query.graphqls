@@ -1,0 +1,18 @@
+type Query {
+  allSemesterNames: [Semester!]!
+  semester: Semester!
+  # ZPA
+  teachers(fromZPA: Boolean): [Teacher!]!
+  invigilators: [Teacher!]!
+  zpaExams(fromZPA: Boolean): [ZPAExam!]!
+  zpaExamsByType: [ZPAExamsForType!]!
+  zpaExam(anCode: Int!): ZPAExam
+  zpaAnCodes: [AnCode]
+  # Primuss
+  primussExams: [PrimussExamByProgram]
+  primussExam(program: String!, anCode: Int!): PrimussExam!
+  primussExamsForAnCode(anCode: Int!): [PrimussExam!]
+  # Exams connected
+  connectedExam(anCode: Int!): ConnectedExam
+  connectedExams: [ConnectedExam!]!
+}

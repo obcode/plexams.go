@@ -1,0 +1,41 @@
+type PrimussExam {
+  anCode: Int!
+  module: String!
+  mainExamer: String!
+  program: String!
+  examType: String!
+  presence: String!
+  studentRegs: [StudentReg!]!
+  conflicts: Conflicts!
+}
+
+type PrimussExamByProgram {
+  program: String!
+  exams: [PrimussExam!]!
+}
+
+type StudentReg {
+  mtknr: String!
+  anCode: Int!
+  program: String!
+  group: String!
+  name: String!
+  presence: String!
+}
+
+type Conflicts {
+  anCode: Int!
+  module: String!
+  mainExamer: String!
+  conflicts: [Conflict!]!
+}
+
+type Conflict {
+  anCode: Int!
+  numberOfStuds: Int!
+}
+
+type ConnectedExam {
+  zpaExam: ZPAExam!
+  primussExams: [PrimussExam!]!
+}

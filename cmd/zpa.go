@@ -12,7 +12,8 @@ var zpaCmd = &cobra.Command{
 	Use:   "zpa",
 	Short: "zpa to/from db",
 	Long: `Fetch from zpa and post to zpa.
-	teacher --- fetch teacher`,
+	teacher --- fetch teacher
+	exams --- fetch exams`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		plexams := initPlexams()

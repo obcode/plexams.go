@@ -10,6 +10,20 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+func (db *DB) GetTeacher(ctx context.Context, id int) (*model.Teacher, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection("teachers")
+
+	var teacher model.Teacher
+
+	err := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}}).Decode(&teacher)
+	if err != nil {
+		log.Error().Err(err).Int("id", id).Msg("cannot find teacher in db")
+		return nil, err
+	}
+
+	return &teacher, nil
+}
+
 func (db *DB) GetTeachers(ctx context.Context) ([]*model.Teacher, error) {
 	return db.getTeachers(ctx, func(model.Teacher) bool { return true })
 }
@@ -145,4 +159,18 @@ func (db *DB) CacheZPAExams(exams []*model.ZPAExam, semester string) error {
 	log.Debug().Str("semester", semester).Int("documents", len(res.InsertedIDs)).Msg("inserted zpaexams")
 
 	return nil
+}
+
+func (db *DB) GetZpaExamByAncode(ctx context.Context, anCode int) (*model.ZPAExam, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection("zpaexams")
+
+	var result model.ZPAExam
+	err := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: anCode}}).Decode(&result)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).
+			Int("anCode", anCode).Msg("cannot find ZPA exam")
+		return nil, err
+	}
+
+	return &result, nil
 }

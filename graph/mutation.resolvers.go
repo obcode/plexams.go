@@ -15,6 +15,16 @@ func (r *mutationResolver) SetSemester(ctx context.Context, input string) (*mode
 	return r.plexams.SetSemester(ctx, input)
 }
 
+// RemovePrimussExam is the resolver for the removePrimussExam field.
+func (r *mutationResolver) RemovePrimussExam(ctx context.Context, input model.PrimussExamInput) (bool, error) {
+	return r.plexams.RemovePrimussExam(ctx, input)
+}
+
+// PrepareExams is the resolver for the prepareExams field.
+func (r *mutationResolver) PrepareExams(ctx context.Context, input []*model.PrimussExamInput) (bool, error) {
+	return r.plexams.PrepareExams(ctx, input)
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 

@@ -15,9 +15,9 @@ func (db *DB) GetPrimussConflictsForAncode(ctx context.Context, program string, 
 		return nil, err
 	}
 
-	conflictsSlice := make([]model.Conflict, 0)
+	conflictsSlice := make([]*model.Conflict, 0)
 	for k, v := range conflicts.Conflicts {
-		conflictsSlice = append(conflictsSlice, model.Conflict{
+		conflictsSlice = append(conflictsSlice, &model.Conflict{
 			AnCode:        k,
 			NumberOfStuds: v,
 		})

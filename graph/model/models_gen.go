@@ -16,6 +16,11 @@ type PrimussExamByProgram struct {
 	Exams   []*PrimussExam `json:"exams"`
 }
 
+type PrimussExamInput struct {
+	AnCode  int    `json:"anCode"`
+	Program string `json:"program"`
+}
+
 type Semester struct {
 	ID string `json:"id"`
 }

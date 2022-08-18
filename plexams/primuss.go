@@ -25,3 +25,23 @@ func (p *Plexams) GetStudentRegs(ctx context.Context, exam *model.PrimussExam) (
 func (p *Plexams) GetConflicts(ctx context.Context, exam *model.PrimussExam) (*model.Conflicts, error) {
 	return p.dbClient.GetPrimussConflictsForAncode(ctx, exam.Program, exam.AnCode)
 }
+
+func (p *Plexams) RemovePrimussExam(ctx context.Context, input model.PrimussExamInput) (bool, error) {
+	// TODO: Implement me
+	// wenn schon in DB, dann einzelne Prüfung herausnehmen und updaten
+	// if true {
+	// 	oks := true
+	// 	for _, input := range input {
+	// 		ok, err := p.RemovePrimussExam(ctx, *input)
+	// 		oks = oks && ok
+	// 		if err != nil {
+	// 			log.Error().Err(err).
+	// 				Int("anCode", input.AnCode).Str("program", input.Program).
+	// 				Msg("cannot remove primuss exam")
+	// 			return oks, err
+	// 		}
+	// 	}
+	// 	return oks, nil
+	// }
+	return true, nil
+}

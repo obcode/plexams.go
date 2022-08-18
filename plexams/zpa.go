@@ -6,6 +6,10 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+func (p *Plexams) GetTeacher(ctx context.Context, id int) (*model.Teacher, error) {
+	return p.dbClient.GetTeacher(ctx, id)
+}
+
 func (p *Plexams) GetTeachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error) {
 	if fromZpa != nil && *fromZpa {
 		if err := p.SetZPA(); err != nil {

@@ -2,6 +2,7 @@ type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
   # ZPA
+  teacher(id: Int!): Teacher
   teachers(fromZPA: Boolean): [Teacher!]!
   invigilators: [Teacher!]!
   zpaExams(fromZPA: Boolean): [ZPAExam!]!

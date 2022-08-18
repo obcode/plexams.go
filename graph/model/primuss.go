@@ -19,13 +19,19 @@ type StudentReg struct {
 }
 
 type Conflicts struct {
-	AnCode     int        `json:"anCode"`
-	Module     string     `json:"module"`
-	MainExamer string     `json:"mainExamer"`
-	Conflicts  []Conflict `json:"conflicts"`
+	AnCode     int         `json:"anCode"`
+	Module     string      `json:"module"`
+	MainExamer string      `json:"mainExamer"`
+	Conflicts  []*Conflict `json:"conflicts"`
 }
 
 type Conflict struct {
 	AnCode        int `json:"anCode"`
 	NumberOfStuds int `json:"numberOfStuds"`
+}
+
+type RegisteredExam struct {
+	Exam        *PrimussExam  `json:"exam"`
+	StudentRegs []*StudentReg `json:"studentRegs"`
+	Conflicts   []*Conflict   `json:"conflicts"`
 }

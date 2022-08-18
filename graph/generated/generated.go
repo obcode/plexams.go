@@ -67,7 +67,9 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		SetSemester func(childComplexity int, input string) int
+		PrepareExams      func(childComplexity int, input []*model.PrimussExamInput) int
+		RemovePrimussExam func(childComplexity int, input model.PrimussExamInput) int
+		SetSemester       func(childComplexity int, input string) int
 	}
 
 	PrimussExam struct {
@@ -95,6 +97,7 @@ type ComplexityRoot struct {
 		PrimussExams          func(childComplexity int) int
 		PrimussExamsForAnCode func(childComplexity int, anCode int) int
 		Semester              func(childComplexity int) int
+		Teacher               func(childComplexity int, id int) int
 		Teachers              func(childComplexity int, fromZpa *bool) int
 		ZpaAnCodes            func(childComplexity int) int
 		ZpaExam               func(childComplexity int, anCode int) int
@@ -148,6 +151,8 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	SetSemester(ctx context.Context, input string) (*model.Semester, error)
+	RemovePrimussExam(ctx context.Context, input model.PrimussExamInput) (bool, error)
+	PrepareExams(ctx context.Context, input []*model.PrimussExamInput) (bool, error)
 }
 type PrimussExamResolver interface {
 	StudentRegs(ctx context.Context, obj *model.PrimussExam) ([]*model.StudentReg, error)
@@ -156,6 +161,7 @@ type PrimussExamResolver interface {
 type QueryResolver interface {
 	AllSemesterNames(ctx context.Context) ([]*model.Semester, error)
 	Semester(ctx context.Context) (*model.Semester, error)
+	Teacher(ctx context.Context, id int) (*model.Teacher, error)
 	Teachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error)
 	Invigilators(ctx context.Context) ([]*model.Teacher, error)
 	ZpaExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAExam, error)
@@ -246,6 +252,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ConnectedExam.ZpaExam(childComplexity), true
+
+	case "Mutation.prepareExams":
+		if e.complexity.Mutation.PrepareExams == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_prepareExams_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PrepareExams(childComplexity, args["input"].([]*model.PrimussExamInput)), true
+
+	case "Mutation.removePrimussExam":
+		if e.complexity.Mutation.RemovePrimussExam == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removePrimussExam_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemovePrimussExam(childComplexity, args["input"].(model.PrimussExamInput)), true
 
 	case "Mutation.setSemester":
 		if e.complexity.Mutation.SetSemester == nil {
@@ -399,6 +429,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Semester(childComplexity), true
+
+	case "Query.teacher":
+		if e.complexity.Query.Teacher == nil {
+			break
+		}
+
+		args, err := ec.field_Query_teacher_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Teacher(childComplexity, args["id"].(int)), true
 
 	case "Query.teachers":
 		if e.complexity.Query.Teachers == nil {
@@ -653,7 +695,9 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e}
-	inputUnmarshalMap := graphql.BuildUnmarshalerMap()
+	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputPrimussExamInput,
+	)
 	first := true
 
 	switch rc.Operation.Operation {
@@ -715,6 +759,8 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 var sources = []*ast.Source{
 	{Name: "../mutation.graphqls", Input: `type Mutation {
   setSemester(input: String!): Semester!
+  removePrimussExam(input: PrimussExamInput!): Boolean!
+  prepareExams(input: [PrimussExamInput!]!): Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../primuss.graphqls", Input: `type PrimussExam {
@@ -726,6 +772,11 @@ var sources = []*ast.Source{
   presence: String!
   studentRegs: [StudentReg!]!
   conflicts: Conflicts!
+}
+
+input PrimussExamInput {
+  anCode: Int!
+  program: String!
 }
 
 type PrimussExamByProgram {
@@ -763,6 +814,7 @@ type ConnectedExam {
   allSemesterNames: [Semester!]!
   semester: Semester!
   # ZPA
+  teacher(id: Int!): Teacher
   teachers(fromZPA: Boolean): [Teacher!]!
   invigilators: [Teacher!]!
   zpaExams(fromZPA: Boolean): [ZPAExam!]!
@@ -822,6 +874,36 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_prepareExams_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []*model.PrimussExamInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNPrimussExamInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInputᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removePrimussExam_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.PrimussExamInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNPrimussExamInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_setSemester_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -904,6 +986,21 @@ func (ec *executionContext) field_Query_primussExamsForAnCode_args(ctx context.C
 		}
 	}
 	args["anCode"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_teacher_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -1280,9 +1377,9 @@ func (ec *executionContext) _Conflicts_conflicts(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]model.Conflict)
+	res := resTmp.([]*model.Conflict)
 	fc.Result = res
-	return ec.marshalNConflict2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictᚄ(ctx, field.Selections, res)
+	return ec.marshalNConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Conflicts_conflicts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1483,6 +1580,116 @@ func (ec *executionContext) fieldContext_Mutation_setSemester(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setSemester_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removePrimussExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removePrimussExam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemovePrimussExam(rctx, fc.Args["input"].(model.PrimussExamInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removePrimussExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removePrimussExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_prepareExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_prepareExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().PrepareExams(rctx, fc.Args["input"].([]*model.PrimussExamInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_prepareExams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_prepareExams_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -2063,6 +2270,80 @@ func (ec *executionContext) fieldContext_Query_semester(ctx context.Context, fie
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Semester", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_teacher(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_teacher(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Teacher(rctx, fc.Args["id"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Teacher)
+	fc.Result = res
+	return ec.marshalOTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_teacher(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "shortname":
+				return ec.fieldContext_Teacher_shortname(ctx, field)
+			case "fullname":
+				return ec.fieldContext_Teacher_fullname(ctx, field)
+			case "isProf":
+				return ec.fieldContext_Teacher_isProf(ctx, field)
+			case "isLBA":
+				return ec.fieldContext_Teacher_isLBA(ctx, field)
+			case "isProfHC":
+				return ec.fieldContext_Teacher_isProfHC(ctx, field)
+			case "isStaff":
+				return ec.fieldContext_Teacher_isStaff(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_Teacher_lastSemester(ctx, field)
+			case "fk":
+				return ec.fieldContext_Teacher_fk(ctx, field)
+			case "id":
+				return ec.fieldContext_Teacher_id(ctx, field)
+			case "email":
+				return ec.fieldContext_Teacher_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_teacher_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
 	}
 	return fc, nil
 }
@@ -5904,6 +6185,42 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputPrimussExamInput(ctx context.Context, obj interface{}) (model.PrimussExamInput, error) {
+	var it model.PrimussExamInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"anCode", "program"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "anCode":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("anCode"))
+			it.AnCode, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "program":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+			it.Program, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -6082,6 +6399,24 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setSemester(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "removePrimussExam":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removePrimussExam(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "prepareExams":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_prepareExams(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -6291,6 +6626,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "teacher":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_teacher(ctx, field)
 				return res
 			}
 
@@ -7196,11 +7551,7 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNConflict2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflict(ctx context.Context, sel ast.SelectionSet, v model.Conflict) graphql.Marshaler {
-	return ec._Conflict(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNConflict2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictᚄ(ctx context.Context, sel ast.SelectionSet, v []model.Conflict) graphql.Marshaler {
+func (ec *executionContext) marshalNConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Conflict) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -7224,7 +7575,7 @@ func (ec *executionContext) marshalNConflict2ᚕgithubᚗcomᚋobcodeᚋplexams�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNConflict2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflict(ctx, sel, v[i])
+			ret[i] = ec.marshalNConflict2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflict(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -7242,6 +7593,16 @@ func (ec *executionContext) marshalNConflict2ᚕgithubᚗcomᚋobcodeᚋplexams�
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNConflict2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflict(ctx context.Context, sel ast.SelectionSet, v *model.Conflict) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Conflict(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNConflicts2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflicts(ctx context.Context, sel ast.SelectionSet, v model.Conflicts) graphql.Marshaler {
@@ -7383,6 +7744,33 @@ func (ec *executionContext) marshalNPrimussExam2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._PrimussExam(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNPrimussExamInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInput(ctx context.Context, v interface{}) (model.PrimussExamInput, error) {
+	res, err := ec.unmarshalInputPrimussExamInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNPrimussExamInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInputᚄ(ctx context.Context, v interface{}) ([]*model.PrimussExamInput, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*model.PrimussExamInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPrimussExamInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNPrimussExamInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInput(ctx context.Context, v interface{}) (*model.PrimussExamInput, error) {
+	res, err := ec.unmarshalInputPrimussExamInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNSemester2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemester(ctx context.Context, sel ast.SelectionSet, v model.Semester) graphql.Marshaler {
@@ -8149,6 +8537,13 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	}
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx context.Context, sel ast.SelectionSet, v *model.Teacher) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Teacher(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExam(ctx context.Context, sel ast.SelectionSet, v *model.ZPAExam) graphql.Marshaler {

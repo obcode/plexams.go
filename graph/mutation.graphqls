@@ -1,3 +1,5 @@
 type Mutation {
   setSemester(input: String!): Semester!
+  removePrimussExam(input: PrimussExamInput!): Boolean!
+  prepareExams(input: [PrimussExamInput!]!): Boolean!
 }

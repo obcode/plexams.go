@@ -68,7 +68,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		PrepareExams      func(childComplexity int, input []*model.PrimussExamInput) int
-		RemovePrimussExam func(childComplexity int, input model.PrimussExamInput) int
+		RemovePrimussExam func(childComplexity int, input *model.PrimussExamInput) int
 		SetSemester       func(childComplexity int, input string) int
 	}
 
@@ -151,7 +151,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	SetSemester(ctx context.Context, input string) (*model.Semester, error)
-	RemovePrimussExam(ctx context.Context, input model.PrimussExamInput) (bool, error)
+	RemovePrimussExam(ctx context.Context, input *model.PrimussExamInput) (bool, error)
 	PrepareExams(ctx context.Context, input []*model.PrimussExamInput) (bool, error)
 }
 type PrimussExamResolver interface {
@@ -275,7 +275,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemovePrimussExam(childComplexity, args["input"].(model.PrimussExamInput)), true
+		return e.complexity.Mutation.RemovePrimussExam(childComplexity, args["input"].(*model.PrimussExamInput)), true
 
 	case "Mutation.setSemester":
 		if e.complexity.Mutation.SetSemester == nil {
@@ -759,7 +759,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 var sources = []*ast.Source{
 	{Name: "../mutation.graphqls", Input: `type Mutation {
   setSemester(input: String!): Semester!
-  removePrimussExam(input: PrimussExamInput!): Boolean!
+  removePrimussExam(input: PrimussExamInput): Boolean!
   prepareExams(input: [PrimussExamInput!]!): Boolean!
 }
 `, BuiltIn: false},
@@ -893,10 +893,10 @@ func (ec *executionContext) field_Mutation_prepareExams_args(ctx context.Context
 func (ec *executionContext) field_Mutation_removePrimussExam_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 model.PrimussExamInput
+	var arg0 *model.PrimussExamInput
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNPrimussExamInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInput(ctx, tmp)
+		arg0, err = ec.unmarshalOPrimussExamInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1600,7 +1600,7 @@ func (ec *executionContext) _Mutation_removePrimussExam(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemovePrimussExam(rctx, fc.Args["input"].(model.PrimussExamInput))
+		return ec.resolvers.Mutation().RemovePrimussExam(rctx, fc.Args["input"].(*model.PrimussExamInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7746,11 +7746,6 @@ func (ec *executionContext) marshalNPrimussExam2ᚖgithubᚗcomᚋobcodeᚋplexa
 	return ec._PrimussExam(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNPrimussExamInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInput(ctx context.Context, v interface{}) (model.PrimussExamInput, error) {
-	res, err := ec.unmarshalInputPrimussExamInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) unmarshalNPrimussExamInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInputᚄ(ctx context.Context, v interface{}) ([]*model.PrimussExamInput, error) {
 	var vSlice []interface{}
 	if v != nil {
@@ -8521,6 +8516,14 @@ func (ec *executionContext) marshalOPrimussExamByProgram2ᚖgithubᚗcomᚋobcod
 		return graphql.Null
 	}
 	return ec._PrimussExamByProgram(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPrimussExamInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamInput(ctx context.Context, v interface{}) (*model.PrimussExamInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPrimussExamInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

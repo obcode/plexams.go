@@ -10,6 +10,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+func (db *DB) ExamsAlreadyPrepared(ctx context.Context) bool {
+	collection := db.Client.Database(databaseName(db.semester)).Collection("exams")
+
+	docsCount, err := collection.CountDocuments(ctx, bson.D{})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot count exams in db")
+	}
+
+	return docsCount != 0
+}
+
 func (db *DB) AddExam(ctx context.Context, exam *model.Exam) error {
 	collection := db.Client.Database(databaseName(db.semester)).Collection("exams")
 

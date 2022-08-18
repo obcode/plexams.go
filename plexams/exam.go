@@ -41,73 +41,104 @@ func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam
 }
 
 func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamInput) (bool, error) {
-	// Collection exams should be empty
-	connectedExams, err := p.GetConnectedExams(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	oks := true
-	for _, connectedExam := range connectedExams {
-		// generate Exam and add Teacher
-		exam, err := p.zpaExamToExam(ctx, connectedExam.ZpaExam)
+	if p.dbClient.ExamsAlreadyPrepared(ctx) {
+		oks := true
+		for _, input := range inputs {
+			ok, err := p.RemovePrimussExam(ctx, input)
+			if err != nil {
+				return false, err
+			}
+			oks = oks && ok
+		}
+		return oks, nil
+	} else {
+		connectedExams, err := p.GetConnectedExams(ctx)
 		if err != nil {
-			// FIXME: Maybe not a good idea?
 			return false, err
 		}
 
-		for _, primussExam := range connectedExam.PrimussExams {
+		oks := true
+		for _, connectedExam := range connectedExams {
+			// generate Exam and add Teacher
+			exam, err := p.zpaExamToExam(ctx, connectedExam.ZpaExam)
+			if err != nil {
+				// FIXME: Maybe not a good idea?
+				return false, err
+			}
 
-			if isConnected(primussExam, inputs) {
-				studentRegs, err := p.GetStudentRegs(ctx, primussExam)
-				if err != nil {
-					err := p.Log(ctx, fmt.Sprintf("no studentRegs for primuss exam %s/%d",
-						primussExam.Program, primussExam.AnCode))
+			for _, primussExam := range connectedExam.PrimussExams {
+
+				if isConnected(primussExam, inputs) {
+					studentRegs, err := p.GetStudentRegs(ctx, primussExam)
 					if err != nil {
-						log.Error().Err(err).Msg("cannot log")
+						err := p.Log(ctx, fmt.Sprintf("no studentRegs for primuss exam %s/%d",
+							primussExam.Program, primussExam.AnCode))
+						if err != nil {
+							log.Error().Err(err).Msg("cannot log")
+						}
 					}
-				}
-				conflicts, err := p.GetConflicts(ctx, primussExam)
-				if err != nil {
-					err := p.Log(ctx, fmt.Sprintf("no studentRegs for primuss exam %s/%d",
-						primussExam.Program, primussExam.AnCode))
+					conflicts, err := p.GetConflicts(ctx, primussExam)
 					if err != nil {
-						log.Error().Err(err).Msg("cannot log")
+						err := p.Log(ctx, fmt.Sprintf("no studentRegs for primuss exam %s/%d",
+							primussExam.Program, primussExam.AnCode))
+						if err != nil {
+							log.Error().Err(err).Msg("cannot log")
+						}
 					}
-				}
-				exam.RegisteredExams = append(exam.RegisteredExams, &model.RegisteredExam{
-					Exam:        primussExam,
-					StudentRegs: studentRegs,
-					Conflicts:   conflicts.Conflicts,
-				})
-			} else { // should not be connected
-				if exam.RemovedPrimussExams == nil {
-					exam.RemovedPrimussExams = make([]model.RemovedPrimussExam, 0)
-				}
-				exam.RemovedPrimussExams = append(exam.RemovedPrimussExams,
-					model.RemovedPrimussExam{
-						AnCode:  primussExam.AnCode,
-						Program: primussExam.Program,
+					exam.RegisteredExams = append(exam.RegisteredExams, &model.RegisteredExam{
+						Exam:        primussExam,
+						StudentRegs: studentRegs,
+						Conflicts:   conflicts.Conflicts,
 					})
-				// log to MongoDb
-				err := p.Log(ctx, fmt.Sprintf("removed primuss exam %s/%d from exam %d",
-					primussExam.Program, primussExam.AnCode, exam.AnCode))
-				if err != nil {
-					log.Error().Err(err).Str("program", primussExam.Program).
-						Int("anCode", primussExam.AnCode).
-						Msg("cannot log removed primuss exam")
+				} else { // should not be connected
+					if exam.RemovedPrimussExams == nil {
+						exam.RemovedPrimussExams = make([]model.RemovedPrimussExam, 0)
+					}
+					exam.RemovedPrimussExams = append(exam.RemovedPrimussExams,
+						model.RemovedPrimussExam{
+							AnCode:  primussExam.AnCode,
+							Program: primussExam.Program,
+						})
+					// log to MongoDb
+					err := p.Log(ctx, fmt.Sprintf("removed primuss exam %s/%d from exam %d",
+						primussExam.Program, primussExam.AnCode, exam.AnCode))
+					if err != nil {
+						log.Error().Err(err).Str("program", primussExam.Program).
+							Int("anCode", primussExam.AnCode).
+							Msg("cannot log removed primuss exam")
+					}
 				}
+			}
+
+			// add exam to db
+			err = p.dbClient.AddExam(ctx, exam)
+			if err != nil {
+				log.Error().Err(err).Int("anCode", exam.AnCode).Msg("cannot insert exam to db")
 			}
 		}
 
-		// add exam to db
-		err = p.dbClient.AddExam(ctx, exam)
-		if err != nil {
-			log.Error().Err(err).Int("anCode", exam.AnCode).Msg("cannot insert exam to db")
-		}
+		return oks, nil
 	}
+}
 
-	return oks, nil
+func (p *Plexams) RemovePrimussExam(ctx context.Context, input *model.PrimussExamInput) (bool, error) {
+	// TODO: Implement me
+	// wenn schon in DB, dann einzelne Prüfung herausnehmen und updaten
+	// if true {
+	// 	oks := true
+	// 	for _, input := range input {
+	// 		ok, err := p.RemovePrimussExam(ctx, *input)
+	// 		oks = oks && ok
+	// 		if err != nil {
+	// 			log.Error().Err(err).
+	// 				Int("anCode", input.AnCode).Str("program", input.Program).
+	// 				Msg("cannot remove primuss exam")
+	// 			return oks, err
+	// 		}
+	// 	}
+	// 	return oks, nil
+	// }
+	return true, nil
 }
 
 func isConnected(primussExam *model.PrimussExam, notConnectedExams []*model.PrimussExamInput) bool {

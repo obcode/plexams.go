@@ -11,7 +11,7 @@ func (zpa *ZPA) GetExams() []*model.ZPAExam {
 }
 
 func (zpa *ZPA) getExams() error {
-	err := zpa.get(fmt.Sprintf("exams?semester=%s", zpa.semester), &zpa.exams)
+	err := zpa.get(fmt.Sprintf("exams?semester=%s&all=true", zpa.semester), &zpa.exams)
 	if err != nil {
 		fmt.Printf("Error %s", err)
 		return err

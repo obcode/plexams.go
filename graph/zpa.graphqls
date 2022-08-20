@@ -1,10 +1,12 @@
 type ZPAExam {
+  zpaID: Int!
   semester: String!
   anCode: Int!
   module: String!
   mainExamer: String!
   mainExamerID: Int!
   examType: String!
+  examTypeFull: String!
   duration: Int!
   isRepeaterExam: Boolean!
   groups: [String!]!

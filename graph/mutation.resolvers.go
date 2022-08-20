@@ -25,6 +25,11 @@ func (r *mutationResolver) PrepareExams(ctx context.Context, input []*model.Prim
 	return r.plexams.PrepareExams(ctx, input)
 }
 
+// AddNta is the resolver for the addNTA field.
+func (r *mutationResolver) AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error) {
+	return r.plexams.AddNta(ctx, input)
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 

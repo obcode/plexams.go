@@ -80,6 +80,11 @@ func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedE
 	return r.plexams.GetConnectedExams(ctx)
 }
 
+// Ntas is the resolver for the ntas field.
+func (r *queryResolver) Ntas(ctx context.Context) ([]*model.NTA, error) {
+	return r.plexams.Ntas(ctx)
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 

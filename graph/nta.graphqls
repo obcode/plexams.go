@@ -1,0 +1,30 @@
+type NTAExam {
+  semester: String!
+  anCode: String!
+  module: String!
+  mainExamer: String!
+}
+
+type NTA {
+  name: String!
+  mtknr: String!
+  compensation: String!
+  deltaDurationPercent: Int!
+  needsRoomAlone: Boolean!
+  program: String!
+  from: String!
+  until: String!
+  lastSemester: String
+  exams: [NTAExam!]!
+}
+
+input NTAInput {
+  name: String!
+  mtknr: String!
+  compensation: String!
+  deltaDurationPercent: Int!
+  needsRoomAlone: Boolean!
+  program: String!
+  from: String!
+  until: String!
+}

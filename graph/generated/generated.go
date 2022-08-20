@@ -67,9 +67,30 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		AddNta            func(childComplexity int, input model.NTAInput) int
 		PrepareExams      func(childComplexity int, input []*model.PrimussExamInput) int
 		RemovePrimussExam func(childComplexity int, input *model.PrimussExamInput) int
 		SetSemester       func(childComplexity int, input string) int
+	}
+
+	NTA struct {
+		Compensation         func(childComplexity int) int
+		DeltaDurationPercent func(childComplexity int) int
+		Exams                func(childComplexity int) int
+		From                 func(childComplexity int) int
+		LastSemester         func(childComplexity int) int
+		Mtknr                func(childComplexity int) int
+		Name                 func(childComplexity int) int
+		NeedsRoomAlone       func(childComplexity int) int
+		Program              func(childComplexity int) int
+		Until                func(childComplexity int) int
+	}
+
+	NTAExam struct {
+		AnCode     func(childComplexity int) int
+		MainExamer func(childComplexity int) int
+		Module     func(childComplexity int) int
+		Semester   func(childComplexity int) int
 	}
 
 	PrimussExam struct {
@@ -93,6 +114,7 @@ type ComplexityRoot struct {
 		ConnectedExam         func(childComplexity int, anCode int) int
 		ConnectedExams        func(childComplexity int) int
 		Invigilators          func(childComplexity int) int
+		Ntas                  func(childComplexity int) int
 		PrimussExam           func(childComplexity int, program string, anCode int) int
 		PrimussExams          func(childComplexity int) int
 		PrimussExamsForAnCode func(childComplexity int, anCode int) int
@@ -135,12 +157,14 @@ type ComplexityRoot struct {
 		AnCode         func(childComplexity int) int
 		Duration       func(childComplexity int) int
 		ExamType       func(childComplexity int) int
+		ExamTypeFull   func(childComplexity int) int
 		Groups         func(childComplexity int) int
 		IsRepeaterExam func(childComplexity int) int
 		MainExamer     func(childComplexity int) int
 		MainExamerID   func(childComplexity int) int
 		Module         func(childComplexity int) int
 		Semester       func(childComplexity int) int
+		ZpaID          func(childComplexity int) int
 	}
 
 	ZPAExamsForType struct {
@@ -153,6 +177,7 @@ type MutationResolver interface {
 	SetSemester(ctx context.Context, input string) (*model.Semester, error)
 	RemovePrimussExam(ctx context.Context, input *model.PrimussExamInput) (bool, error)
 	PrepareExams(ctx context.Context, input []*model.PrimussExamInput) (bool, error)
+	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 }
 type PrimussExamResolver interface {
 	StudentRegs(ctx context.Context, obj *model.PrimussExam) ([]*model.StudentReg, error)
@@ -173,6 +198,7 @@ type QueryResolver interface {
 	PrimussExamsForAnCode(ctx context.Context, anCode int) ([]*model.PrimussExam, error)
 	ConnectedExam(ctx context.Context, anCode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
+	Ntas(ctx context.Context) ([]*model.NTA, error)
 }
 
 type executableSchema struct {
@@ -253,6 +279,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ConnectedExam.ZpaExam(childComplexity), true
 
+	case "Mutation.addNTA":
+		if e.complexity.Mutation.AddNta == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addNTA_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddNta(childComplexity, args["input"].(model.NTAInput)), true
+
 	case "Mutation.prepareExams":
 		if e.complexity.Mutation.PrepareExams == nil {
 			break
@@ -288,6 +326,104 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.SetSemester(childComplexity, args["input"].(string)), true
+
+	case "NTA.compensation":
+		if e.complexity.NTA.Compensation == nil {
+			break
+		}
+
+		return e.complexity.NTA.Compensation(childComplexity), true
+
+	case "NTA.deltaDurationPercent":
+		if e.complexity.NTA.DeltaDurationPercent == nil {
+			break
+		}
+
+		return e.complexity.NTA.DeltaDurationPercent(childComplexity), true
+
+	case "NTA.exams":
+		if e.complexity.NTA.Exams == nil {
+			break
+		}
+
+		return e.complexity.NTA.Exams(childComplexity), true
+
+	case "NTA.from":
+		if e.complexity.NTA.From == nil {
+			break
+		}
+
+		return e.complexity.NTA.From(childComplexity), true
+
+	case "NTA.lastSemester":
+		if e.complexity.NTA.LastSemester == nil {
+			break
+		}
+
+		return e.complexity.NTA.LastSemester(childComplexity), true
+
+	case "NTA.mtknr":
+		if e.complexity.NTA.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.NTA.Mtknr(childComplexity), true
+
+	case "NTA.name":
+		if e.complexity.NTA.Name == nil {
+			break
+		}
+
+		return e.complexity.NTA.Name(childComplexity), true
+
+	case "NTA.needsRoomAlone":
+		if e.complexity.NTA.NeedsRoomAlone == nil {
+			break
+		}
+
+		return e.complexity.NTA.NeedsRoomAlone(childComplexity), true
+
+	case "NTA.program":
+		if e.complexity.NTA.Program == nil {
+			break
+		}
+
+		return e.complexity.NTA.Program(childComplexity), true
+
+	case "NTA.until":
+		if e.complexity.NTA.Until == nil {
+			break
+		}
+
+		return e.complexity.NTA.Until(childComplexity), true
+
+	case "NTAExam.anCode":
+		if e.complexity.NTAExam.AnCode == nil {
+			break
+		}
+
+		return e.complexity.NTAExam.AnCode(childComplexity), true
+
+	case "NTAExam.mainExamer":
+		if e.complexity.NTAExam.MainExamer == nil {
+			break
+		}
+
+		return e.complexity.NTAExam.MainExamer(childComplexity), true
+
+	case "NTAExam.module":
+		if e.complexity.NTAExam.Module == nil {
+			break
+		}
+
+		return e.complexity.NTAExam.Module(childComplexity), true
+
+	case "NTAExam.semester":
+		if e.complexity.NTAExam.Semester == nil {
+			break
+		}
+
+		return e.complexity.NTAExam.Semester(childComplexity), true
 
 	case "PrimussExam.anCode":
 		if e.complexity.PrimussExam.AnCode == nil {
@@ -391,6 +527,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Invigilators(childComplexity), true
+
+	case "Query.ntas":
+		if e.complexity.Query.Ntas == nil {
+			break
+		}
+
+		return e.complexity.Query.Ntas(childComplexity), true
 
 	case "Query.primussExam":
 		if e.complexity.Query.PrimussExam == nil {
@@ -632,6 +775,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ZPAExam.ExamType(childComplexity), true
 
+	case "ZPAExam.examTypeFull":
+		if e.complexity.ZPAExam.ExamTypeFull == nil {
+			break
+		}
+
+		return e.complexity.ZPAExam.ExamTypeFull(childComplexity), true
+
 	case "ZPAExam.groups":
 		if e.complexity.ZPAExam.Groups == nil {
 			break
@@ -674,6 +824,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ZPAExam.Semester(childComplexity), true
 
+	case "ZPAExam.zpaID":
+		if e.complexity.ZPAExam.ZpaID == nil {
+			break
+		}
+
+		return e.complexity.ZPAExam.ZpaID(childComplexity), true
+
 	case "ZPAExamsForType.exams":
 		if e.complexity.ZPAExamsForType.Exams == nil {
 			break
@@ -696,6 +853,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputNTAInput,
 		ec.unmarshalInputPrimussExamInput,
 	)
 	first := true
@@ -761,6 +919,38 @@ var sources = []*ast.Source{
   setSemester(input: String!): Semester!
   removePrimussExam(input: PrimussExamInput): Boolean!
   prepareExams(input: [PrimussExamInput!]!): Boolean!
+  addNTA(input: NTAInput!): NTA!
+}
+`, BuiltIn: false},
+	{Name: "../nta.graphqls", Input: `type NTAExam {
+  semester: String!
+  anCode: String!
+  module: String!
+  mainExamer: String!
+}
+
+type NTA {
+  name: String!
+  mtknr: String!
+  compensation: String!
+  deltaDurationPercent: Int!
+  needsRoomAlone: Boolean!
+  program: String!
+  from: String!
+  until: String!
+  lastSemester: String
+  exams: [NTAExam!]!
+}
+
+input NTAInput {
+  name: String!
+  mtknr: String!
+  compensation: String!
+  deltaDurationPercent: Int!
+  needsRoomAlone: Boolean!
+  program: String!
+  from: String!
+  until: String!
 }
 `, BuiltIn: false},
 	{Name: "../primuss.graphqls", Input: `type PrimussExam {
@@ -828,6 +1018,8 @@ type ConnectedExam {
   # Exams connected
   connectedExam(anCode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
+  # NTAs
+  ntas: [NTA!]
 }
 `, BuiltIn: false},
 	{Name: "../schema.graphqls", Input: `type Semester {
@@ -852,12 +1044,14 @@ type AnCode {
 }
 `, BuiltIn: false},
 	{Name: "../zpa.graphqls", Input: `type ZPAExam {
+  zpaID: Int!
   semester: String!
   anCode: Int!
   module: String!
   mainExamer: String!
   mainExamerID: Int!
   examType: String!
+  examTypeFull: String!
   duration: Int!
   isRepeaterExam: Boolean!
   groups: [String!]!
@@ -874,6 +1068,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_addNTA_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.NTAInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNNTAInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_prepareExams_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -1440,6 +1649,8 @@ func (ec *executionContext) fieldContext_ConnectedExam_zpaExam(ctx context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "zpaID":
+				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
 			case "semester":
 				return ec.fieldContext_ZPAExam_semester(ctx, field)
 			case "anCode":
@@ -1452,6 +1663,8 @@ func (ec *executionContext) fieldContext_ConnectedExam_zpaExam(ctx context.Conte
 				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
 			case "examType":
 				return ec.fieldContext_ZPAExam_examType(ctx, field)
+			case "examTypeFull":
+				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
 			case "duration":
 				return ec.fieldContext_ZPAExam_duration(ctx, field)
 			case "isRepeaterExam":
@@ -1692,6 +1905,706 @@ func (ec *executionContext) fieldContext_Mutation_prepareExams(ctx context.Conte
 	if fc.Args, err = ec.field_Mutation_prepareExams_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addNTA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addNTA(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddNta(rctx, fc.Args["input"].(model.NTAInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.NTA)
+	fc.Result = res
+	return ec.marshalNNTA2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTA(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addNTA(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_NTA_name(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_NTA_mtknr(ctx, field)
+			case "compensation":
+				return ec.fieldContext_NTA_compensation(ctx, field)
+			case "deltaDurationPercent":
+				return ec.fieldContext_NTA_deltaDurationPercent(ctx, field)
+			case "needsRoomAlone":
+				return ec.fieldContext_NTA_needsRoomAlone(ctx, field)
+			case "program":
+				return ec.fieldContext_NTA_program(ctx, field)
+			case "from":
+				return ec.fieldContext_NTA_from(ctx, field)
+			case "until":
+				return ec.fieldContext_NTA_until(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_NTA_lastSemester(ctx, field)
+			case "exams":
+				return ec.fieldContext_NTA_exams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addNTA_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_name(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_mtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_mtknr(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_compensation(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_compensation(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Compensation, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_compensation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_deltaDurationPercent(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_deltaDurationPercent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DeltaDurationPercent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_deltaDurationPercent(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_needsRoomAlone(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_needsRoomAlone(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NeedsRoomAlone, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_needsRoomAlone(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_program(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_program(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_from(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_from(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.From, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_from(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_until(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_until(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Until, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_until(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_lastSemester(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_lastSemester(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LastSemester, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_lastSemester(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTA_exams(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_exams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NTAExam)
+	fc.Result = res
+	return ec.marshalNNTAExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_exams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "semester":
+				return ec.fieldContext_NTAExam_semester(ctx, field)
+			case "anCode":
+				return ec.fieldContext_NTAExam_anCode(ctx, field)
+			case "module":
+				return ec.fieldContext_NTAExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_NTAExam_mainExamer(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTAExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAExam_semester(ctx context.Context, field graphql.CollectedField, obj *model.NTAExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTAExam_semester(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Semester, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTAExam_semester(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAExam_anCode(ctx context.Context, field graphql.CollectedField, obj *model.NTAExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTAExam_anCode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AnCode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTAExam_anCode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAExam_module(ctx context.Context, field graphql.CollectedField, obj *model.NTAExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTAExam_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTAExam_module(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAExam_mainExamer(ctx context.Context, field graphql.CollectedField, obj *model.NTAExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTAExam_mainExamer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MainExamer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTAExam_mainExamer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -2530,6 +3443,8 @@ func (ec *executionContext) fieldContext_Query_zpaExams(ctx context.Context, fie
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "zpaID":
+				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
 			case "semester":
 				return ec.fieldContext_ZPAExam_semester(ctx, field)
 			case "anCode":
@@ -2542,6 +3457,8 @@ func (ec *executionContext) fieldContext_Query_zpaExams(ctx context.Context, fie
 				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
 			case "examType":
 				return ec.fieldContext_ZPAExam_examType(ctx, field)
+			case "examTypeFull":
+				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
 			case "duration":
 				return ec.fieldContext_ZPAExam_duration(ctx, field)
 			case "isRepeaterExam":
@@ -2652,6 +3569,8 @@ func (ec *executionContext) fieldContext_Query_zpaExam(ctx context.Context, fiel
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "zpaID":
+				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
 			case "semester":
 				return ec.fieldContext_ZPAExam_semester(ctx, field)
 			case "anCode":
@@ -2664,6 +3583,8 @@ func (ec *executionContext) fieldContext_Query_zpaExam(ctx context.Context, fiel
 				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
 			case "examType":
 				return ec.fieldContext_ZPAExam_examType(ctx, field)
+			case "examTypeFull":
+				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
 			case "duration":
 				return ec.fieldContext_ZPAExam_duration(ctx, field)
 			case "isRepeaterExam":
@@ -3026,6 +3947,69 @@ func (ec *executionContext) fieldContext_Query_connectedExams(ctx context.Contex
 				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_ntas(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_ntas(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Ntas(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NTA)
+	fc.Result = res
+	return ec.marshalONTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_ntas(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_NTA_name(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_NTA_mtknr(ctx, field)
+			case "compensation":
+				return ec.fieldContext_NTA_compensation(ctx, field)
+			case "deltaDurationPercent":
+				return ec.fieldContext_NTA_deltaDurationPercent(ctx, field)
+			case "needsRoomAlone":
+				return ec.fieldContext_NTA_needsRoomAlone(ctx, field)
+			case "program":
+				return ec.fieldContext_NTA_program(ctx, field)
+			case "from":
+				return ec.fieldContext_NTA_from(ctx, field)
+			case "until":
+				return ec.fieldContext_NTA_until(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_NTA_lastSemester(ctx, field)
+			case "exams":
+				return ec.fieldContext_NTA_exams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 		},
 	}
 	return fc, nil
@@ -3908,6 +4892,50 @@ func (ec *executionContext) fieldContext_Teacher_email(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _ZPAExam_zpaID(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAExam_zpaID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ZpaID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAExam_zpaID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ZPAExam_semester(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ZPAExam_semester(ctx, field)
 	if err != nil {
@@ -4172,6 +5200,50 @@ func (ec *executionContext) fieldContext_ZPAExam_examType(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _ZPAExam_examTypeFull(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamTypeFull, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAExam_examTypeFull(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ZPAExam_duration(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ZPAExam_duration(ctx, field)
 	if err != nil {
@@ -4387,6 +5459,8 @@ func (ec *executionContext) fieldContext_ZPAExamsForType_exams(ctx context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "zpaID":
+				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
 			case "semester":
 				return ec.fieldContext_ZPAExam_semester(ctx, field)
 			case "anCode":
@@ -4399,6 +5473,8 @@ func (ec *executionContext) fieldContext_ZPAExamsForType_exams(ctx context.Conte
 				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
 			case "examType":
 				return ec.fieldContext_ZPAExam_examType(ctx, field)
+			case "examTypeFull":
+				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
 			case "duration":
 				return ec.fieldContext_ZPAExam_duration(ctx, field)
 			case "isRepeaterExam":
@@ -6185,6 +7261,90 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj interface{}) (model.NTAInput, error) {
+	var it model.NTAInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "mtknr", "compensation", "deltaDurationPercent", "needsRoomAlone", "program", "from", "until"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "mtknr":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+			it.Mtknr, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "compensation":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("compensation"))
+			it.Compensation, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "deltaDurationPercent":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deltaDurationPercent"))
+			it.DeltaDurationPercent, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "needsRoomAlone":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("needsRoomAlone"))
+			it.NeedsRoomAlone, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "program":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+			it.Program, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "from":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+			it.From, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "until":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("until"))
+			it.Until, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPrimussExamInput(ctx context.Context, obj interface{}) (model.PrimussExamInput, error) {
 	var it model.PrimussExamInput
 	asMap := map[string]interface{}{}
@@ -6418,6 +7578,152 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_prepareExams(ctx, field)
 			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "addNTA":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addNTA(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var nTAImplementors = []string{"NTA"}
+
+func (ec *executionContext) _NTA(ctx context.Context, sel ast.SelectionSet, obj *model.NTA) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTA")
+		case "name":
+
+			out.Values[i] = ec._NTA_name(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "mtknr":
+
+			out.Values[i] = ec._NTA_mtknr(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "compensation":
+
+			out.Values[i] = ec._NTA_compensation(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "deltaDurationPercent":
+
+			out.Values[i] = ec._NTA_deltaDurationPercent(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "needsRoomAlone":
+
+			out.Values[i] = ec._NTA_needsRoomAlone(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "program":
+
+			out.Values[i] = ec._NTA_program(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "from":
+
+			out.Values[i] = ec._NTA_from(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "until":
+
+			out.Values[i] = ec._NTA_until(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "lastSemester":
+
+			out.Values[i] = ec._NTA_lastSemester(ctx, field, obj)
+
+		case "exams":
+
+			out.Values[i] = ec._NTA_exams(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var nTAExamImplementors = []string{"NTAExam"}
+
+func (ec *executionContext) _NTAExam(ctx context.Context, sel ast.SelectionSet, obj *model.NTAExam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAExamImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAExam")
+		case "semester":
+
+			out.Values[i] = ec._NTAExam_semester(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "anCode":
+
+			out.Values[i] = ec._NTAExam_anCode(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "module":
+
+			out.Values[i] = ec._NTAExam_module(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "mainExamer":
+
+			out.Values[i] = ec._NTAExam_mainExamer(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -6894,6 +8200,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
+		case "ntas":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_ntas(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "__type":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -7109,6 +8435,13 @@ func (ec *executionContext) _ZPAExam(ctx context.Context, sel ast.SelectionSet, 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ZPAExam")
+		case "zpaID":
+
+			out.Values[i] = ec._ZPAExam_zpaID(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "semester":
 
 			out.Values[i] = ec._ZPAExam_semester(ctx, field, obj)
@@ -7147,6 +8480,13 @@ func (ec *executionContext) _ZPAExam(ctx context.Context, sel ast.SelectionSet, 
 		case "examType":
 
 			out.Values[i] = ec._ZPAExam_examType(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "examTypeFull":
+
+			out.Values[i] = ec._ZPAExam_examTypeFull(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -7686,6 +9026,79 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNNTA2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTA(ctx context.Context, sel ast.SelectionSet, v model.NTA) graphql.Marshaler {
+	return ec._NTA(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNNTA2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTA(ctx context.Context, sel ast.SelectionSet, v *model.NTA) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._NTA(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNNTAExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTAExam) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNNTAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNNTAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAExam(ctx context.Context, sel ast.SelectionSet, v *model.NTAExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._NTAExam(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNNTAInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAInput(ctx context.Context, v interface{}) (model.NTAInput, error) {
+	res, err := ec.unmarshalInputNTAInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNPrimussExam2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExam(ctx context.Context, sel ast.SelectionSet, v model.PrimussExam) graphql.Marshaler {
@@ -8421,6 +9834,53 @@ func (ec *executionContext) marshalOConnectedExam2ᚖgithubᚗcomᚋobcodeᚋple
 		return graphql.Null
 	}
 	return ec._ConnectedExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalONTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTA) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNNTA2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTA(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOPrimussExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PrimussExam) graphql.Marshaler {

@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
 )
@@ -85,11 +86,17 @@ func (p *Plexams) GetZPAExamsGroupedByType(ctx context.Context) ([]*model.ZPAExa
 		examsByType[exam.ExamTypeFull] = append(v, exam)
 	}
 
+	keys := make([]string, 0, len(examsByType))
+	for k := range examsByType {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	examsGroupedByType := make([]*model.ZPAExamsForType, 0)
-	for k, v := range examsByType {
+	for _, k := range keys {
 		examsGroupedByType = append(examsGroupedByType, &model.ZPAExamsForType{
 			Type:  k,
-			Exams: v,
+			Exams: examsByType[k],
 		})
 	}
 

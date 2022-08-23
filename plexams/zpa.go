@@ -78,11 +78,11 @@ func (p *Plexams) GetZPAExamsGroupedByType(ctx context.Context) ([]*model.ZPAExa
 	examsByType := make(map[string][]*model.ZPAExam)
 
 	for _, exam := range exams {
-		v, ok := examsByType[exam.ExamType]
+		v, ok := examsByType[exam.ExamTypeFull]
 		if !ok {
 			v = make([]*model.ZPAExam, 0)
 		}
-		examsByType[exam.ExamType] = append(v, exam)
+		examsByType[exam.ExamTypeFull] = append(v, exam)
 	}
 
 	examsGroupedByType := make([]*model.ZPAExamsForType, 0)

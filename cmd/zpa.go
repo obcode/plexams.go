@@ -16,7 +16,7 @@ var zpaCmd = &cobra.Command{
 	exams --- fetch exams`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		plexams := initPlexams()
+		plexams := initPlexamsConfig()
 		switch args[0] {
 		case "teacher":
 			t := true

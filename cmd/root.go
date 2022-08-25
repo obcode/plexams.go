@@ -55,7 +55,7 @@ func initConfig() {
 	}
 }
 
-func initPlexams() *plexams.Plexams {
+func initPlexamsConfig() *plexams.Plexams {
 	plexams, err := plexams.NewPlexams(
 		viper.GetString("semester"),
 		viper.GetString("db.uri"),

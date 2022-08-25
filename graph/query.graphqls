@@ -1,4 +1,5 @@
 type Query {
+  workflow: [Step!]!
   allSemesterNames: [Semester!]!
   semester: Semester!
   # ZPA

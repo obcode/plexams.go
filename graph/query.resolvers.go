@@ -5,10 +5,16 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
+
+// Workflow is the resolver for the workflow field.
+func (r *queryResolver) Workflow(ctx context.Context) ([]*model.Step, error) {
+	return r.plexams.GetWorkflow(ctx)
+}
 
 // AllSemesterNames is the resolver for the allSemesterNames field.
 func (r *queryResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
@@ -89,3 +95,13 @@ func (r *queryResolver) Ntas(ctx context.Context) ([]*model.NTA, error) {
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *queryResolver) InitWorkflow(ctx context.Context) (*bool, error) {
+	panic(fmt.Errorf("not implemented"))
+}

@@ -5,10 +5,21 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
+
+// InitWorkflow is the resolver for the initWorkflow field.
+func (r *mutationResolver) InitWorkflow(ctx context.Context) ([]*model.Step, error) {
+	return r.plexams.InitWorkflow(ctx)
+}
+
+// DoneStep is the resolver for the doneStep field.
+func (r *mutationResolver) DoneStep(ctx context.Context, number int) ([]*model.Step, error) {
+	panic(fmt.Errorf("not implemented"))
+}
 
 // SetSemester is the resolver for the setSemester field.
 func (r *mutationResolver) SetSemester(ctx context.Context, input string) (*model.Semester, error) {

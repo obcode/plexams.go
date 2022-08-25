@@ -1,0 +1,5 @@
+type Step {
+  number: Int!
+  name: String!
+  done: Boolean!
+}

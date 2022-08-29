@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 )
 
 func (p *Plexams) GetTeacher(ctx context.Context, id int) (*model.Teacher, error) {
@@ -41,7 +42,7 @@ func (p *Plexams) GetZPAExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAE
 
 		exams := p.zpa.client.GetExams()
 
-		err := p.dbClient.CacheZPAExams(exams, p.semester)
+		err := p.dbClient.CacheZPAExams(exams)
 		if err != nil {
 			return nil, err
 		}
@@ -101,4 +102,55 @@ func (p *Plexams) GetZPAExamsGroupedByType(ctx context.Context) ([]*model.ZPAExa
 	}
 
 	return examsGroupedByType, nil
+}
+
+func (p *Plexams) ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error) {
+	f := false
+	allExams, err := p.GetZPAExams(ctx, &f)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get all zpa exams")
+		return nil, err
+	}
+
+	examsToPlan := make([]*model.ZPAExam, 0)
+	examsNotToPlan := make([]*model.ZPAExam, 0)
+
+	for _, exam := range allExams {
+		if contained(exam.AnCode, input) {
+			examsToPlan = append(examsToPlan, exam)
+		} else {
+			examsNotToPlan = append(examsNotToPlan, exam)
+		}
+	}
+
+	err = p.dbClient.SetZPAExamsToPlan(ctx, examsToPlan)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot set zpa exams to plan")
+		return nil, err
+	}
+
+	err = p.dbClient.SetZPAExamsNotToPlan(ctx, examsNotToPlan)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot set zpa exams not to plan")
+		return nil, err
+	}
+
+	return examsToPlan, nil
+}
+
+func contained(ancode int, ancodes []int) bool {
+	for _, ac := range ancodes {
+		if ancode == ac {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *Plexams) GetZpaExamsToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
+	return p.dbClient.GetZPAExamsToPlan(ctx)
+}
+
+func (p *Plexams) GetZpaExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
+	return p.dbClient.GetZPAExamsNotToPlan(ctx)
 }

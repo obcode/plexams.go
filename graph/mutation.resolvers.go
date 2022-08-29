@@ -26,6 +26,11 @@ func (r *mutationResolver) SetSemester(ctx context.Context, input string) (*mode
 	return r.plexams.SetSemester(ctx, input)
 }
 
+// ZpaExamsToPlan is the resolver for the zpaExamsToPlan field.
+func (r *mutationResolver) ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error) {
+	return r.plexams.ZpaExamsToPlan(ctx, input)
+}
+
 // RemovePrimussExam is the resolver for the removePrimussExam field.
 func (r *mutationResolver) RemovePrimussExam(ctx context.Context, input *model.PrimussExamInput) (bool, error) {
 	return r.plexams.RemovePrimussExam(ctx, input)

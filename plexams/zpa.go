@@ -154,3 +154,11 @@ func (p *Plexams) GetZpaExamsToPlan(ctx context.Context) ([]*model.ZPAExam, erro
 func (p *Plexams) GetZpaExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
 	return p.dbClient.GetZPAExamsNotToPlan(ctx)
 }
+
+func (p *Plexams) AddZpaExamToPlan(ctx context.Context, anCode int) (bool, error) {
+	return p.dbClient.AddZpaExamToPlan(ctx, anCode)
+}
+
+func (p *Plexams) RmZpaExamFromPlan(ctx context.Context, anCode int) (bool, error) {
+	return p.dbClient.RmZpaExamFromPlan(ctx, anCode)
+}

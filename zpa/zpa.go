@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -72,7 +71,7 @@ func NewZPA(baseurl string, username string, password string, semester string) (
 		baseurl:                baseurl,
 		client:                 c,
 		token:                  token,
-		semester:               strings.Replace(semester, " ", "%20", 1),
+		semester:               semester,
 		teachers:               []*model.Teacher{},
 		exams:                  []*model.ZPAExam{},
 		supervisorRequirements: []*SupervisorRequirements{},

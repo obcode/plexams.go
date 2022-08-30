@@ -26,3 +26,10 @@ type ZPAExam struct {
 	IsRepeaterExam bool     `json:"is_repeater_exam"`
 	Groups         []string `json:"groups"`
 }
+
+type ZPAStudentReg struct {
+	Semester string `json:"semester"`
+	AnCode   int    `json:"anCode"`
+	Mtknr    string `json:"matrikel"`
+	Program  string `json:"program"`
+}

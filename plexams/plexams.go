@@ -16,13 +16,14 @@ type Plexams struct {
 }
 
 type ZPA struct {
-	client   *zpa.ZPA
-	baseurl  string
-	username string
-	password string
+	client                *zpa.ZPA
+	baseurl               string
+	username              string
+	password              string
+	studentRegsForProgram []string
 }
 
-func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string) (*Plexams, error) {
+func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, studentRegsForProgram []string) (*Plexams, error) {
 	client, err := db.NewDB(dbUri, semester)
 
 	if err != nil {
@@ -33,10 +34,11 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string) (*
 		semester: semester,
 		dbClient: client,
 		zpa: &ZPA{
-			client:   nil,
-			baseurl:  zpaBaseurl,
-			username: zpaUsername,
-			password: zpaPassword,
+			client:                nil,
+			baseurl:               zpaBaseurl,
+			username:              zpaUsername,
+			password:              zpaPassword,
+			studentRegsForProgram: studentRegsForProgram,
 		},
 	}, nil
 }

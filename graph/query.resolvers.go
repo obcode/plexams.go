@@ -85,6 +85,11 @@ func (r *queryResolver) PrimussExamsForAnCode(ctx context.Context, anCode int) (
 	return r.plexams.GetPrimussExamsForAncode(ctx, anCode)
 }
 
+// StudentRegsForProgram is the resolver for the studentRegsForProgram field.
+func (r *queryResolver) StudentRegsForProgram(ctx context.Context, program string) ([]*model.StudentReg, error) {
+	return r.plexams.StudentRegsForProgram(ctx, program)
+}
+
 // ConnectedExam is the resolver for the connectedExam field.
 func (r *queryResolver) ConnectedExam(ctx context.Context, anCode int) (*model.ConnectedExam, error) {
 	return r.plexams.GetConnectedExam(ctx, anCode)

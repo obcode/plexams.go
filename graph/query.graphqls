@@ -16,6 +16,7 @@ type Query {
   primussExams: [PrimussExamByProgram]
   primussExam(program: String!, anCode: Int!): PrimussExam!
   primussExamsForAnCode(anCode: Int!): [PrimussExam!]
+  studentRegsForProgram(program: String!): [StudentReg!]
   # Exams connected
   connectedExam(anCode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!

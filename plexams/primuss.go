@@ -22,6 +22,10 @@ func (p *Plexams) GetStudentRegs(ctx context.Context, exam *model.PrimussExam) (
 	return p.dbClient.GetPrimussStudentRegsForAncode(ctx, exam.Program, exam.AnCode)
 }
 
+func (p *Plexams) StudentRegsForProgram(ctx context.Context, program string) ([]*model.StudentReg, error) {
+	return p.dbClient.StudentRegsForProgram(ctx, program)
+}
+
 func (p *Plexams) GetConflicts(ctx context.Context, exam *model.PrimussExam) (*model.Conflicts, error) {
 	return p.dbClient.GetPrimussConflictsForAncode(ctx, exam.Program, exam.AnCode)
 }

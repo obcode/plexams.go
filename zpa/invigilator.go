@@ -1,6 +1,9 @@
 package zpa
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type SupervisorRequirements struct {
 	Invigilator            string   `json:"invigilator"`
@@ -20,7 +23,7 @@ func (zpa *ZPA) GetSupervisorRequirements() []*SupervisorRequirements {
 }
 
 func (zpa *ZPA) getSupervisorRequirements() error {
-	err := zpa.get(fmt.Sprintf("supervisorrequirements?semester=%s", zpa.semester),
+	err := zpa.get(fmt.Sprintf("supervisorrequirements?semester=%s", strings.Replace(zpa.semester, " ", "%20", 1)),
 		&zpa.supervisorRequirements)
 	if err != nil {
 		fmt.Printf("Error %s", err)

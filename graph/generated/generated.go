@@ -124,6 +124,7 @@ type ComplexityRoot struct {
 		PrimussExams          func(childComplexity int) int
 		PrimussExamsForAnCode func(childComplexity int, anCode int) int
 		Semester              func(childComplexity int) int
+		StudentRegsForProgram func(childComplexity int, program string) int
 		Teacher               func(childComplexity int, id int) int
 		Teachers              func(childComplexity int, fromZpa *bool) int
 		Workflow              func(childComplexity int) int
@@ -218,6 +219,7 @@ type QueryResolver interface {
 	PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error)
 	PrimussExam(ctx context.Context, program string, anCode int) (*model.PrimussExam, error)
 	PrimussExamsForAnCode(ctx context.Context, anCode int) ([]*model.PrimussExam, error)
+	StudentRegsForProgram(ctx context.Context, program string) ([]*model.StudentReg, error)
 	ConnectedExam(ctx context.Context, anCode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
@@ -649,6 +651,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Semester(childComplexity), true
+
+	case "Query.studentRegsForProgram":
+		if e.complexity.Query.StudentRegsForProgram == nil {
+			break
+		}
+
+		args, err := ec.field_Query_studentRegsForProgram_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.StudentRegsForProgram(childComplexity, args["program"].(string)), true
 
 	case "Query.teacher":
 		if e.complexity.Query.Teacher == nil {
@@ -1144,6 +1158,7 @@ type ConnectedExam {
   primussExams: [PrimussExamByProgram]
   primussExam(program: String!, anCode: Int!): PrimussExam!
   primussExamsForAnCode(anCode: Int!): [PrimussExam!]
+  studentRegsForProgram(program: String!): [StudentReg!]
   # Exams connected
   connectedExam(anCode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
@@ -1390,6 +1405,21 @@ func (ec *executionContext) field_Query_primussExamsForAnCode_args(ctx context.C
 		}
 	}
 	args["anCode"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_studentRegsForProgram_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["program"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["program"] = arg0
 	return args, nil
 }
 
@@ -4525,6 +4555,72 @@ func (ec *executionContext) fieldContext_Query_primussExamsForAnCode(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_primussExamsForAnCode_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_studentRegsForProgram(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_studentRegsForProgram(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().StudentRegsForProgram(rctx, fc.Args["program"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.StudentReg)
+	fc.Result = res
+	return ec.marshalOStudentReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_studentRegsForProgram(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mtknr":
+				return ec.fieldContext_StudentReg_mtknr(ctx, field)
+			case "anCode":
+				return ec.fieldContext_StudentReg_anCode(ctx, field)
+			case "program":
+				return ec.fieldContext_StudentReg_program(ctx, field)
+			case "group":
+				return ec.fieldContext_StudentReg_group(ctx, field)
+			case "name":
+				return ec.fieldContext_StudentReg_name(ctx, field)
+			case "presence":
+				return ec.fieldContext_StudentReg_presence(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type StudentReg", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_studentRegsForProgram_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -9090,6 +9186,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
+		case "studentRegsForProgram":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_studentRegsForProgram(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "connectedExam":
 			field := field
 
@@ -11061,6 +11177,53 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	}
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOStudentReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StudentReg) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNStudentReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentReg(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx context.Context, sel ast.SelectionSet, v *model.Teacher) graphql.Marshaler {

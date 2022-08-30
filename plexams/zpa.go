@@ -162,3 +162,30 @@ func (p *Plexams) AddZpaExamToPlan(ctx context.Context, anCode int) (bool, error
 func (p *Plexams) RmZpaExamFromPlan(ctx context.Context, anCode int) (bool, error) {
 	return p.dbClient.RmZpaExamFromPlan(ctx, anCode)
 }
+
+func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudentReg, error) {
+	if err := p.SetZPA(); err != nil {
+		return nil, err
+	}
+
+	zpaStudentRegs := make([]*model.ZPAStudentReg, 0)
+
+	for _, program := range p.zpa.studentRegsForProgram {
+		studentRegs, err := p.dbClient.StudentRegsForProgram(ctx, program)
+		if err != nil {
+			log.Error().Err(err).Str("program", program).Msg("error while getting student regs")
+			return zpaStudentRegs, err
+		}
+		for _, studentReg := range studentRegs {
+			zpaStudentRegs = append(zpaStudentRegs, p.zpa.client.StudentReg2ZPAStudentReg(studentReg))
+		}
+	}
+
+	err := p.zpa.client.PostStudentRegsToZPA(zpaStudentRegs)
+	if err != nil {
+		log.Error().Err(err).Msg("error while posting student regs to zpa")
+		return zpaStudentRegs, err
+	}
+
+	return zpaStudentRegs, nil
+}

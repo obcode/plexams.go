@@ -63,6 +63,39 @@ func (db *DB) getPrimussStudentRegs(ctx context.Context, program string) (map[in
 	return studentRegs, nil
 }
 
+func (db *DB) StudentRegsForProgram(ctx context.Context, program string) ([]*model.StudentReg, error) {
+	collection := db.getCollection(program, StudentRegs)
+
+	studentRegs := make([]*model.StudentReg, 0)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("MongoDB Find (studentregs)")
+		return studentRegs, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var studentReg model.StudentReg
+
+		err := cur.Decode(&studentReg)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).Str("program", program).Interface("cur", cur).
+				Msg("Cannot decode to exam")
+			return studentRegs, err
+		}
+
+		studentRegs = append(studentRegs, &studentReg)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("Cursor returned error")
+		return studentRegs, err
+	}
+
+	return studentRegs, nil
+}
+
 type Count struct {
 	AnCode int `bson:"AnCo"`
 	Sum    int `bson:"Sum"`

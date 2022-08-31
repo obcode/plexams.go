@@ -120,3 +120,61 @@ func (db *DB) checkStudentRegsCount(ctx context.Context, program string, anCode,
 	}
 	return true
 }
+
+func (db *DB) SetRegsWithErrors(ctx context.Context, regsWithErrors []*model.RegWithError) error {
+	collectionName := "errors-zpa-studentregs"
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+
+	err := collection.Drop(ctx)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionName).Msg("cannot drop collection")
+		return err
+	}
+
+	regsWithErrorsIntf := make([]interface{}, 0, len(regsWithErrors))
+
+	for _, v := range regsWithErrors {
+		regsWithErrorsIntf = append(regsWithErrorsIntf, v)
+	}
+
+	_, err = collection.InsertMany(ctx, regsWithErrorsIntf)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionName).Msg("cannot insert documents")
+		return err
+	}
+
+	return nil
+}
+
+func (db *DB) GetRegsWithErrors(ctx context.Context) ([]*model.RegWithError, error) {
+	collectionName := "errors-zpa-studentregs"
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+
+	regWithErrors := make([]*model.RegWithError, 0)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Msg("MongoDB Find (reg with errors)")
+		return regWithErrors, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var regWithError model.RegWithError
+
+		err := cur.Decode(&regWithError)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).Interface("cur", cur).Msg("Cannot decode to regWithError")
+			return regWithErrors, err
+		}
+
+		regWithErrors = append(regWithErrors, &regWithError)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Msg("Cursor returned error")
+		return regWithErrors, err
+	}
+
+	return regWithErrors, nil
+}

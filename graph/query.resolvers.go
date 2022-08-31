@@ -70,6 +70,11 @@ func (r *queryResolver) ZpaAnCodes(ctx context.Context) ([]*model.AnCode, error)
 	return r.plexams.GetZpaAnCodes(ctx)
 }
 
+// StudentRegsImportErrors is the resolver for the studentRegsImportErrors field.
+func (r *queryResolver) StudentRegsImportErrors(ctx context.Context) ([]*model.RegWithError, error) {
+	return r.plexams.StudentRegsImportErrors(ctx)
+}
+
 // PrimussExams is the resolver for the primussExams field.
 func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	return r.plexams.PrimussExams(ctx)

@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -163,9 +164,9 @@ func (p *Plexams) RmZpaExamFromPlan(ctx context.Context, anCode int) (bool, erro
 	return p.dbClient.RmZpaExamFromPlan(ctx, anCode)
 }
 
-func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudentReg, error) {
+func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWithError, error) {
 	if err := p.SetZPA(); err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	zpaStudentRegs := make([]*model.ZPAStudentReg, 0)
@@ -174,18 +175,49 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudent
 		studentRegs, err := p.dbClient.StudentRegsForProgram(ctx, program)
 		if err != nil {
 			log.Error().Err(err).Str("program", program).Msg("error while getting student regs")
-			return zpaStudentRegs, err
+			return 0, nil, err
 		}
 		for _, studentReg := range studentRegs {
 			zpaStudentRegs = append(zpaStudentRegs, p.zpa.client.StudentReg2ZPAStudentReg(studentReg))
 		}
 	}
 
-	err := p.zpa.client.PostStudentRegsToZPA(zpaStudentRegs)
+	_, body, err := p.zpa.client.PostStudentRegsToZPA(zpaStudentRegs)
 	if err != nil {
 		log.Error().Err(err).Msg("error while posting student regs to zpa")
-		return zpaStudentRegs, err
+		return 0, nil, err
 	}
 
-	return zpaStudentRegs, nil
+	zpaStudentRegErrors := make([]*model.ZPAStudentRegError, 0)
+	err = json.Unmarshal(body, &zpaStudentRegErrors)
+	if err != nil {
+		log.Error().Err(err).Msg("error while unmarshalling errors from ZPA")
+		return 0, nil, err
+	}
+
+	regsWithErrors := make([]*model.RegWithError, 0)
+
+	for i, e := range zpaStudentRegErrors {
+		if !noError(e) {
+			regsWithErrors = append(regsWithErrors, &model.RegWithError{
+				Registration: zpaStudentRegs[i],
+				Error:        e,
+			})
+		}
+	}
+
+	err = p.dbClient.SetRegsWithErrors(ctx, regsWithErrors)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return len(zpaStudentRegs) - len(regsWithErrors), regsWithErrors, nil
+}
+
+func noError(zpaStudentRegError *model.ZPAStudentRegError) bool {
+	return len(zpaStudentRegError.Semester) == 0 &&
+		len(zpaStudentRegError.AnCode) == 0 &&
+		len(zpaStudentRegError.Exam) == 0 &&
+		len(zpaStudentRegError.Mtknr) == 0 &&
+		len(zpaStudentRegError.Program) == 0
 }

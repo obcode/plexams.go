@@ -16,3 +16,22 @@ type ZPAExamsForType {
   type: String!
   exams: [ZPAExam!]!
 }
+
+type ZPAStudentReg {
+  anCode: Int!
+  mtknr: String!
+  program: String!
+}
+
+type ZPAStudentRegError {
+  semester: String!
+  anCode: String!
+  exam: String!
+  mtknr: String!
+  program: String!
+}
+
+type RegWithError {
+  registration: ZPAStudentReg!
+  error: ZPAStudentRegError!
+}

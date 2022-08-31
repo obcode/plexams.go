@@ -35,17 +35,17 @@ func (zpa *ZPA) get(path string, v any) error {
 	return nil
 }
 
-func (zpa *ZPA) post(path string, rawBody any) error {
+func (zpa *ZPA) post(path string, rawBody any) (status string, body []byte, err error) {
 	realBody, err := json.Marshal(rawBody)
 	if err != nil {
 		fmt.Printf("Error %s", err)
-		return err
+		return "", nil, err
 	}
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/%s", zpa.baseurl, path), bytes.NewBuffer(realBody))
 	if err != nil {
 		fmt.Printf("error %s", err)
-		return err
+		return "", nil, err
 	}
 	req.Header.Add("Accept", "*/*")
 	req.Header.Add("Content-Type", "application/json")
@@ -54,13 +54,10 @@ func (zpa *ZPA) post(path string, rawBody any) error {
 	resp, err := zpa.client.Do(req)
 	if err != nil {
 		fmt.Printf("Error %s", err)
-		return err
+		return "", nil, err
 	}
 	defer resp.Body.Close()
 
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
-	return nil
+	body, _ = io.ReadAll(resp.Body)
+	return resp.Status, body, nil
 }

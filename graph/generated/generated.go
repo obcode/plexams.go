@@ -115,25 +115,31 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AllSemesterNames      func(childComplexity int) int
-		ConnectedExam         func(childComplexity int, anCode int) int
-		ConnectedExams        func(childComplexity int) int
-		Invigilators          func(childComplexity int) int
-		Ntas                  func(childComplexity int) int
-		PrimussExam           func(childComplexity int, program string, anCode int) int
-		PrimussExams          func(childComplexity int) int
-		PrimussExamsForAnCode func(childComplexity int, anCode int) int
-		Semester              func(childComplexity int) int
-		StudentRegsForProgram func(childComplexity int, program string) int
-		Teacher               func(childComplexity int, id int) int
-		Teachers              func(childComplexity int, fromZpa *bool) int
-		Workflow              func(childComplexity int) int
-		ZpaAnCodes            func(childComplexity int) int
-		ZpaExam               func(childComplexity int, anCode int) int
-		ZpaExams              func(childComplexity int, fromZpa *bool) int
-		ZpaExamsByType        func(childComplexity int) int
-		ZpaExamsNotToPlan     func(childComplexity int) int
-		ZpaExamsToPlan        func(childComplexity int) int
+		AllSemesterNames        func(childComplexity int) int
+		ConnectedExam           func(childComplexity int, anCode int) int
+		ConnectedExams          func(childComplexity int) int
+		Invigilators            func(childComplexity int) int
+		Ntas                    func(childComplexity int) int
+		PrimussExam             func(childComplexity int, program string, anCode int) int
+		PrimussExams            func(childComplexity int) int
+		PrimussExamsForAnCode   func(childComplexity int, anCode int) int
+		Semester                func(childComplexity int) int
+		StudentRegsForProgram   func(childComplexity int, program string) int
+		StudentRegsImportErrors func(childComplexity int) int
+		Teacher                 func(childComplexity int, id int) int
+		Teachers                func(childComplexity int, fromZpa *bool) int
+		Workflow                func(childComplexity int) int
+		ZpaAnCodes              func(childComplexity int) int
+		ZpaExam                 func(childComplexity int, anCode int) int
+		ZpaExams                func(childComplexity int, fromZpa *bool) int
+		ZpaExamsByType          func(childComplexity int) int
+		ZpaExamsNotToPlan       func(childComplexity int) int
+		ZpaExamsToPlan          func(childComplexity int) int
+	}
+
+	RegWithError struct {
+		Error        func(childComplexity int) int
+		Registration func(childComplexity int) int
 	}
 
 	Semester struct {
@@ -186,6 +192,20 @@ type ComplexityRoot struct {
 		Exams func(childComplexity int) int
 		Type  func(childComplexity int) int
 	}
+
+	ZPAStudentReg struct {
+		AnCode  func(childComplexity int) int
+		Mtknr   func(childComplexity int) int
+		Program func(childComplexity int) int
+	}
+
+	ZPAStudentRegError struct {
+		AnCode   func(childComplexity int) int
+		Exam     func(childComplexity int) int
+		Mtknr    func(childComplexity int) int
+		Program  func(childComplexity int) int
+		Semester func(childComplexity int) int
+	}
 }
 
 type MutationResolver interface {
@@ -216,6 +236,7 @@ type QueryResolver interface {
 	ZpaExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, error)
 	ZpaExam(ctx context.Context, anCode int) (*model.ZPAExam, error)
 	ZpaAnCodes(ctx context.Context) ([]*model.AnCode, error)
+	StudentRegsImportErrors(ctx context.Context) ([]*model.RegWithError, error)
 	PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error)
 	PrimussExam(ctx context.Context, program string, anCode int) (*model.PrimussExam, error)
 	PrimussExamsForAnCode(ctx context.Context, anCode int) ([]*model.PrimussExam, error)
@@ -664,6 +685,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.StudentRegsForProgram(childComplexity, args["program"].(string)), true
 
+	case "Query.studentRegsImportErrors":
+		if e.complexity.Query.StudentRegsImportErrors == nil {
+			break
+		}
+
+		return e.complexity.Query.StudentRegsImportErrors(childComplexity), true
+
 	case "Query.teacher":
 		if e.complexity.Query.Teacher == nil {
 			break
@@ -746,6 +774,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.ZpaExamsToPlan(childComplexity), true
+
+	case "RegWithError.error":
+		if e.complexity.RegWithError.Error == nil {
+			break
+		}
+
+		return e.complexity.RegWithError.Error(childComplexity), true
+
+	case "RegWithError.registration":
+		if e.complexity.RegWithError.Registration == nil {
+			break
+		}
+
+		return e.complexity.RegWithError.Registration(childComplexity), true
 
 	case "Semester.id":
 		if e.complexity.Semester.ID == nil {
@@ -978,6 +1020,62 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ZPAExamsForType.Type(childComplexity), true
 
+	case "ZPAStudentReg.anCode":
+		if e.complexity.ZPAStudentReg.AnCode == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudentReg.AnCode(childComplexity), true
+
+	case "ZPAStudentReg.mtknr":
+		if e.complexity.ZPAStudentReg.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudentReg.Mtknr(childComplexity), true
+
+	case "ZPAStudentReg.program":
+		if e.complexity.ZPAStudentReg.Program == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudentReg.Program(childComplexity), true
+
+	case "ZPAStudentRegError.anCode":
+		if e.complexity.ZPAStudentRegError.AnCode == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudentRegError.AnCode(childComplexity), true
+
+	case "ZPAStudentRegError.exam":
+		if e.complexity.ZPAStudentRegError.Exam == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudentRegError.Exam(childComplexity), true
+
+	case "ZPAStudentRegError.mtknr":
+		if e.complexity.ZPAStudentRegError.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudentRegError.Mtknr(childComplexity), true
+
+	case "ZPAStudentRegError.program":
+		if e.complexity.ZPAStudentRegError.Program == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudentRegError.Program(childComplexity), true
+
+	case "ZPAStudentRegError.semester":
+		if e.complexity.ZPAStudentRegError.Semester == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudentRegError.Semester(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -1154,6 +1252,7 @@ type ConnectedExam {
   zpaExamsNotToPlan: [ZPAExam!]!
   zpaExam(anCode: Int!): ZPAExam
   zpaAnCodes: [AnCode]
+  studentRegsImportErrors: [RegWithError!]!
   # Primuss
   primussExams: [PrimussExamByProgram]
   primussExam(program: String!, anCode: Int!): PrimussExam!
@@ -1210,6 +1309,25 @@ type AnCode {
 type ZPAExamsForType {
   type: String!
   exams: [ZPAExam!]!
+}
+
+type ZPAStudentReg {
+  anCode: Int!
+  mtknr: String!
+  program: String!
+}
+
+type ZPAStudentRegError {
+  semester: String!
+  anCode: String!
+  exam: String!
+  mtknr: String!
+  program: String!
+}
+
+type RegWithError {
+  registration: ZPAStudentReg!
+  error: ZPAStudentRegError!
 }
 `, BuiltIn: false},
 }
@@ -4371,6 +4489,56 @@ func (ec *executionContext) fieldContext_Query_zpaAnCodes(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_studentRegsImportErrors(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_studentRegsImportErrors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().StudentRegsImportErrors(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.RegWithError)
+	fc.Result = res
+	return ec.marshalNRegWithError2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRegWithErrorᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_studentRegsImportErrors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "registration":
+				return ec.fieldContext_RegWithError_registration(ctx, field)
+			case "error":
+				return ec.fieldContext_RegWithError_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RegWithError", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_primussExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_primussExams(ctx, field)
 	if err != nil {
@@ -4922,6 +5090,114 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 				return ec.fieldContext___Schema_directives(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Schema", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegWithError_registration(ctx context.Context, field graphql.CollectedField, obj *model.RegWithError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegWithError_registration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Registration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ZPAStudentReg)
+	fc.Result = res
+	return ec.marshalNZPAStudentReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentReg(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegWithError_registration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegWithError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "anCode":
+				return ec.fieldContext_ZPAStudentReg_anCode(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_ZPAStudentReg_mtknr(ctx, field)
+			case "program":
+				return ec.fieldContext_ZPAStudentReg_program(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAStudentReg", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegWithError_error(ctx context.Context, field graphql.CollectedField, obj *model.RegWithError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegWithError_error(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Error, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ZPAStudentRegError)
+	fc.Result = res
+	return ec.marshalNZPAStudentRegError2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentRegError(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegWithError_error(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegWithError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "semester":
+				return ec.fieldContext_ZPAStudentRegError_semester(ctx, field)
+			case "anCode":
+				return ec.fieldContext_ZPAStudentRegError_anCode(ctx, field)
+			case "exam":
+				return ec.fieldContext_ZPAStudentRegError_exam(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_ZPAStudentRegError_mtknr(ctx, field)
+			case "program":
+				return ec.fieldContext_ZPAStudentRegError_program(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAStudentRegError", field.Name)
 		},
 	}
 	return fc, nil
@@ -6398,6 +6674,358 @@ func (ec *executionContext) fieldContext_ZPAExamsForType_exams(ctx context.Conte
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudentReg_anCode(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudentReg_anCode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AnCode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudentReg_anCode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudentReg_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudentReg_mtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudentReg_mtknr(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudentReg_program(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudentReg_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudentReg_program(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudentRegError_semester(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentRegError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudentRegError_semester(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Semester, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudentRegError_semester(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudentRegError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudentRegError_anCode(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentRegError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudentRegError_anCode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AnCode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudentRegError_anCode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudentRegError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudentRegError_exam(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentRegError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudentRegError_exam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exam, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudentRegError_exam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudentRegError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudentRegError_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentRegError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudentRegError_mtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudentRegError_mtknr(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudentRegError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudentRegError_program(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentRegError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudentRegError_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudentRegError_program(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudentRegError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -9123,6 +9751,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
+		case "studentRegsImportErrors":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_studentRegsImportErrors(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "primussExams":
 			field := field
 
@@ -9281,6 +9932,41 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				return ec._Query___schema(ctx, field)
 			})
 
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var regWithErrorImplementors = []string{"RegWithError"}
+
+func (ec *executionContext) _RegWithError(ctx context.Context, sel ast.SelectionSet, obj *model.RegWithError) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, regWithErrorImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RegWithError")
+		case "registration":
+
+			out.Values[i] = ec._RegWithError_registration(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "error":
+
+			out.Values[i] = ec._RegWithError_error(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9634,6 +10320,104 @@ func (ec *executionContext) _ZPAExamsForType(ctx context.Context, sel ast.Select
 		case "exams":
 
 			out.Values[i] = ec._ZPAExamsForType_exams(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var zPAStudentRegImplementors = []string{"ZPAStudentReg"}
+
+func (ec *executionContext) _ZPAStudentReg(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAStudentReg) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, zPAStudentRegImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ZPAStudentReg")
+		case "anCode":
+
+			out.Values[i] = ec._ZPAStudentReg_anCode(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "mtknr":
+
+			out.Values[i] = ec._ZPAStudentReg_mtknr(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "program":
+
+			out.Values[i] = ec._ZPAStudentReg_program(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var zPAStudentRegErrorImplementors = []string{"ZPAStudentRegError"}
+
+func (ec *executionContext) _ZPAStudentRegError(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAStudentRegError) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, zPAStudentRegErrorImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ZPAStudentRegError")
+		case "semester":
+
+			out.Values[i] = ec._ZPAStudentRegError_semester(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "anCode":
+
+			out.Values[i] = ec._ZPAStudentRegError_anCode(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "exam":
+
+			out.Values[i] = ec._ZPAStudentRegError_exam(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "mtknr":
+
+			out.Values[i] = ec._ZPAStudentRegError_mtknr(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "program":
+
+			out.Values[i] = ec._ZPAStudentRegError_program(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -10304,6 +11088,60 @@ func (ec *executionContext) unmarshalNPrimussExamInput2ᚖgithubᚗcomᚋobcode�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNRegWithError2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRegWithErrorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RegWithError) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRegWithError2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRegWithError(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRegWithError2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRegWithError(ctx context.Context, sel ast.SelectionSet, v *model.RegWithError) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RegWithError(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNSemester2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemester(ctx context.Context, sel ast.SelectionSet, v model.Semester) graphql.Marshaler {
 	return ec._Semester(ctx, sel, &v)
 }
@@ -10677,6 +11515,26 @@ func (ec *executionContext) marshalNZPAExamsForType2ᚖgithubᚗcomᚋobcodeᚋp
 		return graphql.Null
 	}
 	return ec._ZPAExamsForType(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNZPAStudentReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentReg(ctx context.Context, sel ast.SelectionSet, v *model.ZPAStudentReg) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ZPAStudentReg(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNZPAStudentRegError2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentRegError(ctx context.Context, sel ast.SelectionSet, v *model.ZPAStudentRegError) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ZPAStudentRegError(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {

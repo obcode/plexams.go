@@ -11,6 +11,6 @@ func (zpa *ZPA) StudentReg2ZPAStudentReg(studreg *model.StudentReg) *model.ZPASt
 	}
 }
 
-func (zpa *ZPA) PostStudentRegsToZPA(studentRegs []*model.ZPAStudentReg) error {
+func (zpa *ZPA) PostStudentRegsToZPA(studentRegs []*model.ZPAStudentReg) (string, []byte, error) {
 	return zpa.post("application", studentRegs)
 }

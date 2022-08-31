@@ -33,3 +33,16 @@ type ZPAStudentReg struct {
 	Mtknr    string `json:"matrikel"`
 	Program  string `json:"program"`
 }
+
+type ZPAStudentRegError struct {
+	Semester string `json:"semester"`
+	AnCode   string `json:"anCode"`
+	Exam     string `json:"exam"`
+	Mtknr    string `json:"mtknr"`
+	Program  string `json:"program"`
+}
+
+type RegWithError struct {
+	Registration *ZPAStudentReg      `json:"registration"`
+	Error        *ZPAStudentRegError `json:"error"`
+}

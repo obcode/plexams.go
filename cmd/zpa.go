@@ -40,13 +40,11 @@ var zpaCmd = &cobra.Command{
 			}
 
 		case "studentregs":
-			_, err := plexams.PostStudentRegsToZPA(context.Background())
+			count, regsWithErrors, err := plexams.PostStudentRegsToZPA(context.Background())
 			if err != nil {
 				log.Fatal().Err(err).Msg("cannot get student regs")
 			}
-			// for i, studentReg := range studentRegs {
-			// 	fmt.Printf("%5d. %+v\n", i+1, studentReg)
-			// }
+			fmt.Printf("%d successfully imported, %d errors\n", count, len(regsWithErrors))
 
 		default:
 			fmt.Println("zpa called with unkown sub command")

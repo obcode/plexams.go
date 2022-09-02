@@ -1,6 +1,4 @@
 type Mutation {
-  initWorkflow: [Step!]!
-  doneStep(number: Int!): [Step!]!
   setSemester(input: String!): Semester!
   # Prepare ZPA-Exams
   zpaExamsToPlan(input: [Int!]!): [ZPAExam!]!

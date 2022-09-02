@@ -13,6 +13,7 @@ type Plexams struct {
 	semester string
 	dbClient *db.DB
 	zpa      *ZPA
+	workflow []*model.Step
 }
 
 type ZPA struct {
@@ -40,6 +41,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, st
 			password:              zpaPassword,
 			studentRegsForProgram: studentRegsForProgram,
 		},
+		workflow: initWorkflow(),
 	}, nil
 }
 

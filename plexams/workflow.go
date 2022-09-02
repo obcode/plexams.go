@@ -2,69 +2,37 @@ package plexams
 
 import (
 	"context"
-	"errors"
 
-	"github.com/obcode/plexams.go/db"
+	"github.com/gookit/color"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
-func initialWorkflow() []*model.Step {
-	initialWorkflow := []*model.Step{
-		{
-			Name: "Prüfungen und Dozierende mit `plexams zpa` vom ZPA importieren.",
-		},
-		{
-			Name: "Prüfungen auswählen, die geplant werden müssen.",
-		},
-		{
-			Name: "Primuss-Daten mit Makefile importieren.",
-		},
-		{
-			Name: "Zuordnung ZPA-Prüfungen zu Primuss-Anmeldungen fixieren.",
-		},
-		{
-			Name: "Alle Nachteilsausgleiche eingegeben?",
-		},
+func initWorkflow() []*model.Step {
+	var workflow []*model.Step
+	err := viper.UnmarshalKey("workflow", &workflow)
+	if err != nil {
+		log.Fatal().Err(err).Msg("cannot decode workflow with viper")
 	}
 
-	for i, s := range initialWorkflow {
+	for i, s := range workflow {
 		s.Number = i + 1
 	}
 
-	return initialWorkflow
+	return workflow
 }
 
 func (p *Plexams) GetWorkflow(ctx context.Context) ([]*model.Step, error) {
-	return p.dbClient.GetWorkflow(ctx)
+	return p.workflow, nil
 }
 
-func (p *Plexams) InitWorkflow(ctx context.Context) ([]*model.Step, error) {
-	workflow, err := p.dbClient.GetWorkflow(ctx)
-
-	if errors.Is(err, db.ErrNoWorkflowInitiated) {
-		err = p.setWorkflow(ctx, initialWorkflow())
-		if err != nil {
-			return nil, err
+func (p *Plexams) PrintWorkflow() {
+	for _, step := range p.workflow {
+		if step.Done {
+			color.Green.Printf("%2d. %s\n", step.Number, step.Name)
+		} else {
+			color.Red.Printf("%2d. %s\n", step.Number, step.Name)
 		}
-		return p.dbClient.GetWorkflow(ctx)
 	}
-
-	if err != nil {
-		log.Error().Err(err).Msg("unexpected error while trying to get the workflow from the db")
-		return nil, err
-	}
-
-	return workflow, err
-}
-
-func (p *Plexams) setWorkflow(ctx context.Context, workflow []*model.Step) error {
-	err := p.dbClient.SetWorkflow(ctx, workflow)
-
-	if err != nil {
-		log.Error().Err(err).Msg("unexpected error while trying to set the workflow")
-		return err
-	}
-
-	return nil
 }

@@ -36,12 +36,6 @@ type Semester struct {
 	ID string `json:"id"`
 }
 
-type Step struct {
-	Number int    `json:"number"`
-	Name   string `json:"name"`
-	Done   bool   `json:"done"`
-}
-
 type ZPAExamsForType struct {
 	Type  string     `json:"type"`
 	Exams []*ZPAExam `json:"exams"`

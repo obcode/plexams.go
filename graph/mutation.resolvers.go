@@ -11,16 +11,6 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// InitWorkflow is the resolver for the initWorkflow field.
-func (r *mutationResolver) InitWorkflow(ctx context.Context) ([]*model.Step, error) {
-	return r.plexams.InitWorkflow(ctx)
-}
-
-// DoneStep is the resolver for the doneStep field.
-func (r *mutationResolver) DoneStep(ctx context.Context, number int) ([]*model.Step, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
 // SetSemester is the resolver for the setSemester field.
 func (r *mutationResolver) SetSemester(ctx context.Context, input string) (*model.Semester, error) {
 	return r.plexams.SetSemester(ctx, input)
@@ -60,3 +50,13 @@ func (r *mutationResolver) AddNta(ctx context.Context, input model.NTAInput) (*m
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
 type mutationResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *mutationResolver) DoneStep(ctx context.Context, number int) ([]*model.Step, error) {
+	panic(fmt.Errorf("not implemented"))
+}

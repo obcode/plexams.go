@@ -69,6 +69,5 @@ func initPlexamsConfig() *plexams.Plexams {
 		panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
 	}
 
-	plexams.PrintWorkflow()
 	return plexams
 }

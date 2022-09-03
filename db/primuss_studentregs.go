@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func (db *DB) GetPrimussStudentRegsForAncode(ctx context.Context, program string, anCode int) ([]*model.StudentReg, error) {
+func (db *DB) GetPrimussStudentRegsForProgrammAncode(ctx context.Context, program string, anCode int) ([]*model.StudentReg, error) {
 	studentRegs, err := db.getPrimussStudentRegs(ctx, program)
 	if err != nil {
 		return nil, err
@@ -95,6 +95,33 @@ func (db *DB) StudentRegsForProgram(ctx context.Context, program string) ([]*mod
 
 	return studentRegs, nil
 }
+func (db *DB) ChangeAncodeInStudentRegs(ctx context.Context, program string, anCode, newAncode int) ([]*model.StudentReg, error) {
+	err := db.ChangeAncodeInStudentRegsCount(ctx, program, anCode, newAncode)
+	if err != nil {
+		return nil, err
+	}
+	collection := db.getCollection(program, StudentRegs)
+
+	filter := bson.D{{Key: "AnCode", Value: anCode}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "AnCode", Value: newAncode}}}}
+
+	result, err := collection.UpdateMany(ctx, filter, update)
+
+	if err != nil {
+		log.Error().Err(err).
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("error while trying to change ancode.")
+		return nil, err
+	}
+
+	if result.MatchedCount == 0 {
+		log.Debug().
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("no student regs updated while trying to change ancode.")
+	}
+
+	return db.GetPrimussStudentRegsForProgrammAncode(ctx, program, newAncode)
+}
 
 type Count struct {
 	AnCode int `bson:"AnCo"`
@@ -119,6 +146,30 @@ func (db *DB) checkStudentRegsCount(ctx context.Context, program string, anCode,
 		return false
 	}
 	return true
+}
+
+func (db *DB) ChangeAncodeInStudentRegsCount(ctx context.Context, program string, anCode, newAncode int) error {
+	collection := db.getCollection(program, Counts)
+
+	filter := bson.D{{Key: "AnCo", Value: anCode}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "AnCo", Value: newAncode}}}}
+
+	result, err := collection.UpdateMany(ctx, filter, update)
+
+	if err != nil {
+		log.Error().Err(err).
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("error while trying to change ancode in count.")
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		log.Debug().
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("no count of student regs updated while trying to change ancode.")
+	}
+
+	return nil
 }
 
 func (db *DB) SetRegsWithErrors(ctx context.Context, regsWithErrors []*model.RegWithError) error {

@@ -6,6 +6,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (db *DB) GetPrimussExamsForAncode(ctx context.Context, anCode int) ([]*model.PrimussExam, error) {
@@ -40,6 +41,45 @@ func (db *DB) GetPrimussExam(ctx context.Context, program string, anCode int) (*
 	}
 
 	return &exam, nil
+}
+
+func (db *DB) PrimussExamExists(ctx context.Context, program string, anCode int) (bool, error) {
+	collection := db.getCollection(program, Exams)
+
+	err := collection.FindOne(ctx, bson.D{{Key: "AnCode", Value: anCode}}).Err()
+	if err == mongo.ErrNoDocuments {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (db *DB) ChangeAncode(ctx context.Context, program string, anCode, newAncode int) (*model.PrimussExam, error) {
+	collection := db.getCollection(program, Exams)
+
+	filter := bson.D{{Key: "AnCode", Value: anCode}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "AnCode", Value: newAncode}}}}
+
+	result, err := collection.UpdateOne(ctx, filter, update)
+
+	if err != nil {
+		log.Error().Err(err).
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("error while trying to change ancode.")
+		return nil, err
+	}
+
+	if result.MatchedCount == 0 {
+		log.Debug().
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("no exam updated while trying to change ancode.")
+	}
+
+	return db.GetPrimussExam(ctx, program, newAncode)
 }
 
 func (db *DB) GetPrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {

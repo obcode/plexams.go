@@ -88,3 +88,49 @@ func decode(raw *bson.Raw) (*Conflict, error) {
 
 	return conflict, nil
 }
+
+func (db *DB) ChangeAncodeInConflicts(ctx context.Context, program string, anCode, newAncode int) (*model.Conflicts, error) {
+	collection := db.getCollection(program, Conflicts)
+
+	// 1. change AnCo from to
+	filter := bson.D{{Key: "AnCo", Value: anCode}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "AnCo", Value: newAncode}}}}
+
+	result, err := collection.UpdateOne(ctx, filter, update)
+
+	if err != nil {
+		log.Error().Err(err).
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("error while trying to change ancode in count.")
+		return nil, err
+	}
+
+	if result.MatchedCount == 0 {
+		log.Debug().
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("no count of student regs updated while trying to change ancode.")
+		return nil, nil
+	}
+
+	// 2. Change all keys from to
+	filter = bson.D{{}}
+	update = bson.D{{Key: "$rename", Value: bson.D{{Key: strconv.Itoa(anCode), Value: strconv.Itoa(newAncode)}}}}
+
+	result, err = collection.UpdateMany(ctx, filter, update)
+
+	if err != nil {
+		log.Error().Err(err).
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("error while trying to change ancode in count.")
+		return nil, err
+	}
+
+	if result.MatchedCount == 0 {
+		log.Debug().
+			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Msg("no count of student regs updated while trying to change ancode.")
+		return nil, nil
+	}
+
+	return db.GetPrimussConflictsForAncode(ctx, program, newAncode)
+}

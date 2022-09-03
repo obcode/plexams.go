@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -33,24 +34,74 @@ var primussCmd = &cobra.Command{
 			}
 
 			fmt.Printf("changing ancode from %s/%d to %s/%d\n", program, from, program, to)
+			ctx := context.Background()
 
 			// TODO:
 			// 1. get primuss exam and ask
-			exam, err := plexams.GetPrimussExam(context.Background(), program, from)
+			exam, err := plexams.GetPrimussExam(ctx, program, from)
 			if err != nil {
 				log.Fatalf("error while trying to get exam: %v", err)
 			}
-			fmt.Printf("Found exam: %d. %s, %s\n", exam.AnCode, exam.Module, exam.MainExamer)
-			// 1,5. check if new ancode is no exam
-			noExam, err := plexams.GetPrimussExam(context.Background(), program, to)
-			if err == nil {
+			fmt.Printf("Found exam:\n    %s/%d. %s, %s\n", exam.Program, exam.AnCode, exam.Module, exam.MainExamer)
+
+			studentRegs, err := plexams.GetStudentRegs(ctx, exam)
+			if err != nil {
+				log.Fatalf("error while trying to get student regs for exam: %v", err)
+			}
+			for i, studentReg := range studentRegs {
+				fmt.Printf("    %2d. %s\n", i+1, studentReg.Name)
+			}
+
+			conflicts, err := plexams.GetConflicts(ctx, exam)
+			if err != nil {
+				log.Fatalf("error while trying to get conflicts for exam: %v", err)
+			}
+			for i, conflict := range conflicts.Conflicts {
+				fmt.Printf("    %3d. conflict %d (%d students)\n", i+1, conflict.AnCode, conflict.NumberOfStuds)
+			}
+
+			// 2. check if new ancode is not yet used
+			exists, err := plexams.PrimussExamExists(ctx, program, to)
+			if err != nil {
+				log.Fatalf("error while trying to check if exam with new ancode exists already: %v", err)
+			}
+			if exists {
+				noExam, _ := plexams.GetPrimussExam(ctx, program, from)
 				log.Fatalf("cannot change to new ancode, exam with ancode already exists: %d. %s, %s\n",
 					noExam.AnCode, noExam.Module, noExam.MainExamer)
 			}
-			fmt.Println("Great! New ancode is free!")
-			// 2. change primuss exam ancode
-			// 3. change studentregs for exam
-			// 4. log changes
+			fmt.Println("Great! New ancode is not used!")
+			if !confirm("change exam and student regs", 10) {
+				os.Exit(0)
+			}
+
+			// 3. change primuss exam ancode
+			newExam, err := plexams.ChangeAncode(ctx, program, from, to)
+			if err != nil {
+				log.Fatalf("error while trying to change the ancode from %s/%d to %s/%d\n",
+					program, from, program, to)
+			}
+			fmt.Printf("Changed exam to:\n    %s/%d. %s, %s\n", newExam.Program, newExam.AnCode, newExam.Module, newExam.MainExamer)
+
+			// 4. change studentregs and count for exam
+			newStudentRegs, err := plexams.ChangeAncodeInStudentRegs(ctx, program, from, to)
+			if err != nil {
+				log.Fatalf("error while trying to change the ancode of all studentregs from %s/%d to %s/%d\n",
+					program, from, program, to)
+			}
+			for i, studentReg := range newStudentRegs {
+				fmt.Printf("    %2d. %s\n", i+1, studentReg.Name)
+			}
+
+			// 5. change conflicts
+			newConflicts, err := plexams.ChangeAncodeInConflicts(ctx, program, from, to)
+			if err != nil {
+				log.Fatalf("error while trying to get conflicts for exam: %v", err)
+			}
+			for i, conflict := range newConflicts.Conflicts {
+				fmt.Printf("    %3d. conflict %d (%d students)\n", i+1, conflict.AnCode, conflict.NumberOfStuds)
+			}
+			// 6. log changes
 
 		default:
 			fmt.Println("primuss called with unkown sub command")

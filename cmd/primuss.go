@@ -36,7 +36,6 @@ var primussCmd = &cobra.Command{
 			fmt.Printf("changing ancode from %s/%d to %s/%d\n", program, from, program, to)
 			ctx := context.Background()
 
-			// TODO:
 			// 1. get primuss exam and ask
 			exam, err := plexams.GetPrimussExam(ctx, program, from)
 			if err != nil {
@@ -102,6 +101,11 @@ var primussCmd = &cobra.Command{
 				fmt.Printf("    %3d. conflict %d (%d students)\n", i+1, conflict.AnCode, conflict.NumberOfStuds)
 			}
 			// 6. log changes
+			err = plexams.Log(ctx, fmt.Sprintf("successfully changed primuss exam ancode from %s/%d to %s/%d",
+				program, from, program, to))
+			if err != nil {
+				log.Fatalf("error while trying to log the change: %v", err)
+			}
 
 		default:
 			fmt.Println("primuss called with unkown sub command")

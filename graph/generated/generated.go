@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
@@ -117,6 +118,7 @@ type ComplexityRoot struct {
 		ConnectedExam           func(childComplexity int, anCode int) int
 		ConnectedExams          func(childComplexity int) int
 		Invigilators            func(childComplexity int) int
+		NextDeadline            func(childComplexity int) int
 		Ntas                    func(childComplexity int) int
 		PrimussExam             func(childComplexity int, program string, anCode int) int
 		PrimussExams            func(childComplexity int) int
@@ -145,9 +147,10 @@ type ComplexityRoot struct {
 	}
 
 	Step struct {
-		Done   func(childComplexity int) int
-		Name   func(childComplexity int) int
-		Number func(childComplexity int) int
+		Deadline func(childComplexity int) int
+		Done     func(childComplexity int) int
+		Name     func(childComplexity int) int
+		Number   func(childComplexity int) int
 	}
 
 	StudentReg struct {
@@ -221,6 +224,7 @@ type PrimussExamResolver interface {
 }
 type QueryResolver interface {
 	Workflow(ctx context.Context) ([]*model.Step, error)
+	NextDeadline(ctx context.Context) (*model.Step, error)
 	AllSemesterNames(ctx context.Context) ([]*model.Semester, error)
 	Semester(ctx context.Context) (*model.Semester, error)
 	Teacher(ctx context.Context, id int) (*model.Teacher, error)
@@ -605,6 +609,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Invigilators(childComplexity), true
 
+	case "Query.nextDeadline":
+		if e.complexity.Query.NextDeadline == nil {
+			break
+		}
+
+		return e.complexity.Query.NextDeadline(childComplexity), true
+
 	case "Query.ntas":
 		if e.complexity.Query.Ntas == nil {
 			break
@@ -772,6 +783,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Semester.ID(childComplexity), true
+
+	case "Step.deadline":
+		if e.complexity.Step.Deadline == nil {
+			break
+		}
+
+		return e.complexity.Step.Deadline(childComplexity), true
 
 	case "Step.done":
 		if e.complexity.Step.Done == nil {
@@ -1215,6 +1233,7 @@ type ConnectedExam {
 `, BuiltIn: false},
 	{Name: "../query.graphqls", Input: `type Query {
   workflow: [Step!]!
+  nextDeadline: Step
   allSemesterNames: [Semester!]!
   semester: Semester!
   # ZPA
@@ -1261,10 +1280,13 @@ type AnCode {
   anCode: Int!
 }
 `, BuiltIn: false},
-	{Name: "../workflow.graphqls", Input: `type Step {
+	{Name: "../workflow.graphqls", Input: `scalar Time
+
+type Step {
   number: Int!
   name: String!
   done: Boolean!
+  deadline: Time
 }
 `, BuiltIn: false},
 	{Name: "../zpa.graphqls", Input: `type ZPAExam {
@@ -3628,6 +3650,59 @@ func (ec *executionContext) fieldContext_Query_workflow(ctx context.Context, fie
 				return ec.fieldContext_Step_name(ctx, field)
 			case "done":
 				return ec.fieldContext_Step_done(ctx, field)
+			case "deadline":
+				return ec.fieldContext_Step_deadline(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Step", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_nextDeadline(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_nextDeadline(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().NextDeadline(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Step)
+	fc.Result = res
+	return ec.marshalOStep2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStep(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_nextDeadline(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "number":
+				return ec.fieldContext_Step_number(ctx, field)
+			case "name":
+				return ec.fieldContext_Step_name(ctx, field)
+			case "done":
+				return ec.fieldContext_Step_done(ctx, field)
+			case "deadline":
+				return ec.fieldContext_Step_deadline(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Step", field.Name)
 		},
@@ -5219,6 +5294,47 @@ func (ec *executionContext) fieldContext_Step_done(ctx context.Context, field gr
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Step_deadline(ctx context.Context, field graphql.CollectedField, obj *model.Step) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Step_deadline(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Deadline, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Step_deadline(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Step",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -9334,6 +9450,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
+		case "nextDeadline":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_nextDeadline(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "allSemesterNames":
 			field := field
 
@@ -9864,6 +10000,10 @@ func (ec *executionContext) _Step(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "deadline":
+
+			out.Values[i] = ec._Step_deadline(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11848,6 +11988,13 @@ func (ec *executionContext) unmarshalOPrimussExamInput2ᚖgithubᚗcomᚋobcode�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOStep2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStep(ctx context.Context, sel ast.SelectionSet, v *model.Step) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Step(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
 	if v == nil {
 		return nil, nil
@@ -11916,6 +12063,16 @@ func (ec *executionContext) marshalOTeacher2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._Teacher(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
+	res, err := graphql.UnmarshalTime(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	res := graphql.MarshalTime(v)
+	return res
 }
 
 func (ec *executionContext) marshalOZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExam(ctx context.Context, sel ast.SelectionSet, v *model.ZPAExam) graphql.Marshaler {

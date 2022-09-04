@@ -15,6 +15,11 @@ func (r *queryResolver) Workflow(ctx context.Context) ([]*model.Step, error) {
 	return r.plexams.GetWorkflow(ctx)
 }
 
+// NextDeadline is the resolver for the nextDeadline field.
+func (r *queryResolver) NextDeadline(ctx context.Context) (*model.Step, error) {
+	return r.plexams.NextDeadline(ctx)
+}
+
 // AllSemesterNames is the resolver for the allSemesterNames field.
 func (r *queryResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return r.plexams.GetAllSemesterNames(ctx)

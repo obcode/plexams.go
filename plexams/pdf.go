@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/johnfercher/maroto/pkg/color"
 	"github.com/johnfercher/maroto/pkg/consts"
@@ -19,7 +20,8 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	m.RegisterFooter(func() {
 		m.Row(20, func() {
 			m.Col(12, func() {
-				m.Text("generiert mit https://github.com/obcode/plexams.go", props.Text{
+				m.Text(fmt.Sprintf("Stand: %s Uhr, generiert mit https://github.com/obcode/plexams.go",
+					time.Now().Format("02.01.06, 15:04")), props.Text{
 					Top:   13,
 					Style: consts.BoldItalic,
 					Size:  8,
@@ -35,6 +37,17 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 				fmt.Sprintf("Prüfungen, die im Prüfungszeitraum %s stattfinden und daher zentral geplant werden.", p.semester), props.Text{
 					Top:   3,
 					Style: consts.Bold,
+					Align: consts.Center,
+				})
+		})
+	})
+	m.Row(20, func() {
+		m.Col(12, func() {
+			m.Text(
+				fmt.Sprintf("Melden Sie sich bitte umgehend per E-Mail (%s) bei mir (%s), wenn Ihre Prüfung hier fehlt oder hier nicht stehen sollte.",
+					p.planer.Email, p.planer.Name), props.Text{
+					Top:   3,
+					Style: consts.Normal,
 					Align: consts.Center,
 				})
 		})

@@ -7,6 +7,7 @@ import (
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/zpa"
+	"github.com/spf13/viper"
 )
 
 type Plexams struct {
@@ -14,6 +15,7 @@ type Plexams struct {
 	dbClient *db.DB
 	zpa      *ZPA
 	workflow []*model.Step
+	planer   *Planer
 }
 
 type ZPA struct {
@@ -22,6 +24,11 @@ type ZPA struct {
 	username              string
 	password              string
 	studentRegsForProgram []string
+}
+
+type Planer struct {
+	Name  string
+	Email string
 }
 
 func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, studentRegsForProgram []string) (*Plexams, error) {
@@ -42,6 +49,10 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, st
 			studentRegsForProgram: studentRegsForProgram,
 		},
 		workflow: initWorkflow(),
+		planer: &Planer{
+			Name:  viper.GetString("planer.name"),
+			Email: viper.GetString("planer.email"),
+		},
 	}, nil
 }
 

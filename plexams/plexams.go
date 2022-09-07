@@ -16,6 +16,7 @@ type Plexams struct {
 	zpa      *ZPA
 	workflow []*model.Step
 	planer   *Planer
+	email    *Email
 }
 
 type ZPA struct {
@@ -29,6 +30,13 @@ type ZPA struct {
 type Planer struct {
 	Name  string
 	Email string
+}
+
+type Email struct {
+	server   string
+	port     int
+	username string
+	password string
 }
 
 func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, studentRegsForProgram []string) (*Plexams, error) {
@@ -52,6 +60,12 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, st
 		planer: &Planer{
 			Name:  viper.GetString("planer.name"),
 			Email: viper.GetString("planer.email"),
+		},
+		email: &Email{
+			server:   viper.GetString("smtp.server.name"),
+			port:     viper.GetInt("smtp.server.port"),
+			username: viper.GetString("smtp.username"),
+			password: viper.GetString("smtp.password"),
 		},
 	}, nil
 }

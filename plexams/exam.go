@@ -72,7 +72,7 @@ func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamI
 					studentRegs, err := p.GetStudentRegs(ctx, primussExam)
 					if err != nil {
 						err := p.Log(ctx, fmt.Sprintf("no studentRegs for primuss exam %s/%d",
-							primussExam.Program, primussExam.AnCode))
+							primussExam.Program, primussExam.AnCode), "")
 						if err != nil {
 							log.Error().Err(err).Msg("cannot log")
 						}
@@ -80,7 +80,7 @@ func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamI
 					conflicts, err := p.GetConflicts(ctx, primussExam)
 					if err != nil {
 						err := p.Log(ctx, fmt.Sprintf("no studentRegs for primuss exam %s/%d",
-							primussExam.Program, primussExam.AnCode))
+							primussExam.Program, primussExam.AnCode), "")
 						if err != nil {
 							log.Error().Err(err).Msg("cannot log")
 						}
@@ -101,7 +101,7 @@ func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamI
 						})
 					// log to MongoDb
 					err := p.Log(ctx, fmt.Sprintf("removed primuss exam %s/%d from exam %d",
-						primussExam.Program, primussExam.AnCode, exam.AnCode))
+						primussExam.Program, primussExam.AnCode, exam.AnCode), "")
 					if err != nil {
 						log.Error().Err(err).Str("program", primussExam.Program).
 							Int("anCode", primussExam.AnCode).

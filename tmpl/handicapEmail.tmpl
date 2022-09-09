@@ -1,0 +1,15 @@
+Sehr geehrte:r {{ .MainExamer }},
+
+für Ihre Prüfungen sind mir folgende Studierende mit Nachteilsausgleich bekannt:
+
+{{ range .Exams -}}
+{{ .AnCode }}. {{ .Module }} ({{ .TypeExamFull }})
+{{ range .HandicapStudents }}
+  - {{ .Name }}: {{ .Compensation }}
+{{ end }}
+{{ end }}
+Sollten Ihnen weitere Studierende mit Nachteilsausgleich bekannt sein oder bekannt werden,
+geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtigen kann.
+
+Mit freundlichen Grüßen
+{{ .PlanerName }}

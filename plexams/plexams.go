@@ -102,6 +102,6 @@ func (p *Plexams) SetSemester(ctx context.Context, s string) (*model.Semester, e
 	}, nil
 }
 
-func (p *Plexams) Log(ctx context.Context, msg string) error {
-	return p.dbClient.Log(ctx, msg)
+func (p *Plexams) Log(ctx context.Context, subj, msg string) error {
+	return p.dbClient.Log(ctx, subj, msg)
 }

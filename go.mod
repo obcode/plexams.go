@@ -8,6 +8,7 @@ require (
 	github.com/gookit/color v1.5.2
 	github.com/johnfercher/maroto v0.38.0
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/rs/cors v1.8.2
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cobra v1.5.0

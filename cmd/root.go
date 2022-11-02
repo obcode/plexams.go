@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -44,14 +45,27 @@ func init() {
 }
 
 func initConfig() {
-	viper.SetConfigName("plexams")
+	home, err := homedir.Dir()
+	if err != nil {
+		er(err)
+	}
+
+	viper.AddConfigPath(home)
+	viper.SetConfigName(".plexams")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AutomaticEnv()
 
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(fmt.Errorf("fatal error config file: %w", err))
+	if err := viper.ReadInConfig(); err == nil {
+		semester := viper.GetString("semester")
+		viper.AddConfigPath(fmt.Sprintf("%s/%s", viper.GetString("semester-path"), strings.Replace(semester, " ", "", 1)))
+		viper.SetConfigName("plexams")
+		err = viper.MergeInConfig()
+		if err != nil {
+			panic(fmt.Errorf("%s: should be %s.yml", err, "plexams"))
+		}
+	} else {
+		panic(fmt.Errorf("fatal error config file: %s", err))
 	}
 }
 
@@ -70,4 +84,9 @@ func initPlexamsConfig() *plexams.Plexams {
 	}
 
 	return plexams
+}
+
+func er(msg interface{}) {
+	fmt.Println("Error:", msg)
+	os.Exit(1)
 }

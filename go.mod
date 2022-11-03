@@ -3,7 +3,7 @@ module github.com/obcode/plexams.go
 go 1.19
 
 require (
-	github.com/99designs/gqlgen v0.17.16
+	github.com/99designs/gqlgen v0.17.20
 	github.com/go-chi/chi v1.5.4
 	github.com/gookit/color v1.5.2
 	github.com/johnfercher/maroto v0.38.0
@@ -11,10 +11,10 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/rs/cors v1.8.2
 	github.com/rs/zerolog v1.28.0
-	github.com/spf13/cobra v1.5.0
-	github.com/spf13/viper v1.12.0
-	github.com/vektah/gqlparser/v2 v2.5.0
-	go.mongodb.org/mongo-driver v1.10.1
+	github.com/spf13/cobra v1.6.1
+	github.com/spf13/viper v1.13.0
+	github.com/vektah/gqlparser/v2 v2.5.1
+	go.mongodb.org/mongo-driver v1.11.0
 )
 
 require (

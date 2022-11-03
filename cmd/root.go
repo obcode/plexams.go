@@ -13,11 +13,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "plexams.go",
-	Short: "Planning exams.",
-	Long:  `Planing exams.`,
-}
+var (
+	dbURI   string
+	rootCmd = &cobra.Command{
+		Use:   "plexams.go",
+		Short: "Planning exams.",
+		Long:  `Planing exams.`,
+	}
+)
 
 func Execute() {
 	err := rootCmd.Execute()
@@ -28,6 +31,9 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	rootCmd.PersistentFlags().StringVar(&dbURI, "db-uri", "",
+		"override db.uri from confog file")
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
@@ -70,9 +76,13 @@ func initConfig() {
 }
 
 func initPlexamsConfig() *plexams.Plexams {
+	if dbURI == "" {
+		dbURI = viper.GetString("db.uri")
+	}
+
 	plexams, err := plexams.NewPlexams(
 		viper.GetString("semester"),
-		viper.GetString("db.uri"),
+		dbURI,
 		viper.GetString("zpa.baseurl"),
 		viper.GetString("zpa.username"),
 		viper.GetString("zpa.password"),

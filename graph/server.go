@@ -20,7 +20,7 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	router := chi.NewRouter()
 
 	router.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:8080"},
+		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:8080", "http://localhost:3000"},
 		AllowCredentials: true,
 		Debug:            false,
 	}).Handler)

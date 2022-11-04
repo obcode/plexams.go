@@ -11,6 +11,10 @@ type ConnectedExam struct {
 	PrimussExams []*PrimussExam `json:"primussExams"`
 }
 
+type FK07Program struct {
+	Name string `json:"name"`
+}
+
 type NTAInput struct {
 	Name                 string `json:"name"`
 	Mtknr                string `json:"mtknr"`

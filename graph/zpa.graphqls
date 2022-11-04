@@ -35,3 +35,7 @@ type RegWithError {
   registration: ZPAStudentReg!
   error: ZPAStudentRegError!
 }
+
+type FK07Program {
+  name: String!
+}

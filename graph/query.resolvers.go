@@ -45,6 +45,11 @@ func (r *queryResolver) Invigilators(ctx context.Context) ([]*model.Teacher, err
 	return r.plexams.GetInvigilators(ctx)
 }
 
+// Fk07programs is the resolver for the fk07programs field.
+func (r *queryResolver) Fk07programs(ctx context.Context) ([]*model.FK07Program, error) {
+	return r.plexams.GetFk07programs(ctx)
+}
+
 // ZpaExams is the resolver for the zpaExams field.
 func (r *queryResolver) ZpaExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAExam, error) {
 	return r.plexams.GetZPAExams(ctx, fromZpa)

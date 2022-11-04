@@ -35,6 +35,16 @@ func (p *Plexams) GetInvigilators(ctx context.Context) ([]*model.Teacher, error)
 	return p.dbClient.GetInvigilators(ctx)
 }
 
+func (p *Plexams) GetFk07programs(ctx context.Context) ([]*model.FK07Program, error) {
+	programs := make([]*model.FK07Program, 0, len(p.zpa.fk07programs))
+
+	for _, p := range p.zpa.fk07programs {
+		programs = append(programs, &model.FK07Program{Name: p})
+	}
+
+	return programs, nil
+}
+
 func (p *Plexams) GetZPAExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAExam, error) {
 	if fromZpa != nil && *fromZpa {
 		if err := p.SetZPA(); err != nil {
@@ -171,7 +181,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 
 	zpaStudentRegs := make([]*model.ZPAStudentReg, 0)
 
-	for _, program := range p.zpa.studentRegsForProgram {
+	for _, program := range p.zpa.fk07programs {
 		studentRegs, err := p.dbClient.StudentRegsForProgram(ctx, program)
 		if err != nil {
 			log.Error().Err(err).Str("program", program).Msg("error while getting student regs")

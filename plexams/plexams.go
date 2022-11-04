@@ -20,11 +20,11 @@ type Plexams struct {
 }
 
 type ZPA struct {
-	client                *zpa.ZPA
-	baseurl               string
-	username              string
-	password              string
-	studentRegsForProgram []string
+	client       *zpa.ZPA
+	baseurl      string
+	username     string
+	password     string
+	fk07programs []string
 }
 
 type Planer struct {
@@ -39,7 +39,7 @@ type Email struct {
 	password string
 }
 
-func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, studentRegsForProgram []string) (*Plexams, error) {
+func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk07programs []string) (*Plexams, error) {
 	client, err := db.NewDB(dbUri, semester)
 
 	if err != nil {
@@ -50,11 +50,11 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, st
 		semester: semester,
 		dbClient: client,
 		zpa: &ZPA{
-			client:                nil,
-			baseurl:               zpaBaseurl,
-			username:              zpaUsername,
-			password:              zpaPassword,
-			studentRegsForProgram: studentRegsForProgram,
+			client:       nil,
+			baseurl:      zpaBaseurl,
+			username:     zpaUsername,
+			password:     zpaPassword,
+			fk07programs: fk07programs,
 		},
 		workflow: initWorkflow(),
 		planer: &Planer{

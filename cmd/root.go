@@ -33,7 +33,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&dbURI, "db-uri", "",
-		"override db.uri from confog file")
+		"override db.uri from config file")
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 

@@ -81,7 +81,7 @@ func initPlexamsConfig() *plexams.Plexams {
 	}
 
 	plexams, err := plexams.NewPlexams(
-		viper.GetString("semester"),
+		strings.Replace(viper.GetString("semester"), "-", " ", 1),
 		dbURI,
 		viper.GetString("zpa.baseurl"),
 		viper.GetString("zpa.username"),

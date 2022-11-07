@@ -53,7 +53,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 		})
 	})
 
-	header := []string{"AnCode", "Modul", "Prüfer:in", "Prüfungsform"}
+	header := []string{"AnCode", "Modul", "Prüfer:in", "Gruppe(n)", "Form"}
 
 	exams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
@@ -63,7 +63,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	contents := make([][]string, 0, len(exams))
 
 	for _, exam := range exams {
-		contents = append(contents, []string{strconv.Itoa(exam.AnCode), exam.Module, exam.MainExamer, exam.ExamTypeFull})
+		contents = append(contents, []string{strconv.Itoa(exam.AnCode), exam.Module, exam.MainExamer, fmt.Sprintf("%v", exam.Groups), exam.ExamType})
 	}
 
 	grayColor := color.Color{
@@ -75,11 +75,11 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	m.TableList(header, contents, props.TableList{
 		HeaderProp: props.TableListContent{
 			Size:      9,
-			GridSizes: []uint{1, 5, 2, 4},
+			GridSizes: []uint{1, 5, 2, 3, 1},
 		},
 		ContentProp: props.TableListContent{
 			Size:      8,
-			GridSizes: []uint{1, 5, 2, 4},
+			GridSizes: []uint{1, 5, 2, 3, 1},
 		},
 		Align:                consts.Left,
 		AlternatedBackground: &grayColor,

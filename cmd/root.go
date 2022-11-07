@@ -64,7 +64,7 @@ func initConfig() {
 
 	if err := viper.ReadInConfig(); err == nil {
 		semester := viper.GetString("semester")
-		viper.AddConfigPath(fmt.Sprintf("%s/%s", viper.GetString("semester-path"), strings.Replace(semester, " ", "", 1)))
+		viper.AddConfigPath(fmt.Sprintf("%s/%s", viper.GetString("semester-path"), semester))
 		viper.SetConfigName("plexams")
 		err = viper.MergeInConfig()
 		if err != nil {

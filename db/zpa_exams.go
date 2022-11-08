@@ -138,23 +138,26 @@ func (db *DB) setZPAExams(ctx context.Context, exams []*model.ZPAExam, toCollect
 	return nil
 }
 
-func (db *DB) AddZpaExamToPlan(ctx context.Context, anCode int) (bool, error) {
+func (db *DB) AddZpaExamToPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
 	exam, err := db.GetZpaExamByAncode(ctx, anCode)
 	if err != nil {
 		return false, err
 	}
-	// rm exam from not to plan
-	collectionNot := db.Client.Database(databaseName(db.semester)).Collection(collectionNotToPlan)
 
-	res, err := collectionNot.DeleteOne(ctx, bson.D{{Key: "ancode", Value: anCode}})
-	if err != nil {
-		log.Error().Err(err).Str("semester", db.semester).
-			Int("anCode", anCode).Msg("cannot remove ZPA exam from not planned exams")
-		return false, err
-	}
-	if res.DeletedCount != 1 {
-		log.Error().Err(err).Str("semester", db.semester).
-			Int("anCode", anCode).Int64("deletedCount", res.DeletedCount).Msg("not removed exactly one ZPA exam from not planned exams")
+	// maybe rm exam from not to plan
+	if !unknown {
+		collectionNot := db.Client.Database(databaseName(db.semester)).Collection(collectionNotToPlan)
+
+		res, err := collectionNot.DeleteOne(ctx, bson.D{{Key: "ancode", Value: anCode}})
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).
+				Int("anCode", anCode).Msg("cannot remove ZPA exam from not planned exams")
+			return false, err
+		}
+		if res.DeletedCount != 1 {
+			log.Error().Err(err).Str("semester", db.semester).
+				Int("anCode", anCode).Int64("deletedCount", res.DeletedCount).Msg("not removed exactly one ZPA exam from not planned exams")
+		}
 	}
 
 	// add exam to to plan
@@ -170,23 +173,26 @@ func (db *DB) AddZpaExamToPlan(ctx context.Context, anCode int) (bool, error) {
 	return true, nil
 }
 
-func (db *DB) RmZpaExamFromPlan(ctx context.Context, anCode int) (bool, error) {
+func (db *DB) RmZpaExamFromPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
 	exam, err := db.GetZpaExamByAncode(ctx, anCode)
 	if err != nil {
 		return false, err
 	}
-	// rm exam from not to plan
-	collectionTo := db.Client.Database(databaseName(db.semester)).Collection(collectionToPlan)
 
-	res, err := collectionTo.DeleteOne(ctx, bson.D{{Key: "ancode", Value: anCode}})
-	if err != nil {
-		log.Error().Err(err).Str("semester", db.semester).
-			Int("anCode", anCode).Msg("cannot remove ZPA exam from planned exams")
-		return false, err
-	}
-	if res.DeletedCount != 1 {
-		log.Error().Err(err).Str("semester", db.semester).
-			Int("anCode", anCode).Int64("deletedCount", res.DeletedCount).Msg("not removed exactly one ZPA exam from planned exams")
+	// maybe rm exam from not to plan
+	if !unknown {
+		collectionTo := db.Client.Database(databaseName(db.semester)).Collection(collectionToPlan)
+
+		res, err := collectionTo.DeleteOne(ctx, bson.D{{Key: "ancode", Value: anCode}})
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).
+				Int("anCode", anCode).Msg("cannot remove ZPA exam from planned exams")
+			return false, err
+		}
+		if res.DeletedCount != 1 {
+			log.Error().Err(err).Str("semester", db.semester).
+				Int("anCode", anCode).Int64("deletedCount", res.DeletedCount).Msg("not removed exactly one ZPA exam from planned exams")
+		}
 	}
 
 	// add exam to to plan

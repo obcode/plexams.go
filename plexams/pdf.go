@@ -14,7 +14,7 @@ import (
 )
 
 func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) error {
-	m := pdf.NewMaroto(consts.Portrait, consts.A4)
+	m := pdf.NewMaroto(consts.Landscape, consts.A4)
 	m.SetPageMargins(10, 15, 10)
 
 	m.RegisterFooter(func() {
@@ -63,7 +63,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	contents := make([][]string, 0, len(exams))
 
 	for _, exam := range exams {
-		contents = append(contents, []string{strconv.Itoa(exam.AnCode), exam.Module, exam.MainExamer, fmt.Sprintf("%v", exam.Groups), exam.ExamType})
+		contents = append(contents, []string{strconv.Itoa(exam.AnCode), exam.Module, exam.MainExamer, fmt.Sprintf("%v", exam.Groups), exam.ExamTypeFull})
 	}
 
 	grayColor := color.Color{
@@ -75,11 +75,11 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	m.TableList(header, contents, props.TableList{
 		HeaderProp: props.TableListContent{
 			Size:      9,
-			GridSizes: []uint{1, 5, 2, 3, 1},
+			GridSizes: []uint{1, 4, 2, 2, 3},
 		},
 		ContentProp: props.TableListContent{
 			Size:      8,
-			GridSizes: []uint{1, 5, 2, 3, 1},
+			GridSizes: []uint{1, 4, 2, 2, 3},
 		},
 		Align:                consts.Left,
 		AlternatedBackground: &grayColor,

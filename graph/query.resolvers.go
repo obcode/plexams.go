@@ -70,6 +70,11 @@ func (r *queryResolver) ZpaExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam
 	return r.plexams.GetZpaExamsNotToPlan(ctx)
 }
 
+// ZpaExamsPlaningStatusUnknown is the resolver for the zpaExamsPlaningStatusUnknown field.
+func (r *queryResolver) ZpaExamsPlaningStatusUnknown(ctx context.Context) ([]*model.ZPAExam, error) {
+	return r.plexams.ZpaExamsPlaningStatusUnknown(ctx)
+}
+
 // ZpaExam is the resolver for the zpaExam field.
 func (r *queryResolver) ZpaExam(ctx context.Context, anCode int) (*model.ZPAExam, error) {
 	return r.plexams.GetZpaExamByAncode(ctx, anCode)

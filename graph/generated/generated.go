@@ -73,10 +73,10 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AddNta            func(childComplexity int, input model.NTAInput) int
-		AddZpaExamToPlan  func(childComplexity int, anCode int) int
+		AddZpaExamToPlan  func(childComplexity int, anCode int, unknown bool) int
 		PrepareExams      func(childComplexity int, input []*model.PrimussExamInput) int
 		RemovePrimussExam func(childComplexity int, input *model.PrimussExamInput) int
-		RmZpaExamFromPlan func(childComplexity int, anCode int) int
+		RmZpaExamFromPlan func(childComplexity int, anCode int, unknown bool) int
 		SetSemester       func(childComplexity int, input string) int
 		ZpaExamsToPlan    func(childComplexity int, input []int) int
 	}
@@ -118,28 +118,29 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AllSemesterNames        func(childComplexity int) int
-		ConnectedExam           func(childComplexity int, anCode int) int
-		ConnectedExams          func(childComplexity int) int
-		Fk07programs            func(childComplexity int) int
-		Invigilators            func(childComplexity int) int
-		NextDeadline            func(childComplexity int) int
-		Ntas                    func(childComplexity int) int
-		PrimussExam             func(childComplexity int, program string, anCode int) int
-		PrimussExams            func(childComplexity int) int
-		PrimussExamsForAnCode   func(childComplexity int, anCode int) int
-		Semester                func(childComplexity int) int
-		StudentRegsForProgram   func(childComplexity int, program string) int
-		StudentRegsImportErrors func(childComplexity int) int
-		Teacher                 func(childComplexity int, id int) int
-		Teachers                func(childComplexity int, fromZpa *bool) int
-		Workflow                func(childComplexity int) int
-		ZpaAnCodes              func(childComplexity int) int
-		ZpaExam                 func(childComplexity int, anCode int) int
-		ZpaExams                func(childComplexity int, fromZpa *bool) int
-		ZpaExamsByType          func(childComplexity int) int
-		ZpaExamsNotToPlan       func(childComplexity int) int
-		ZpaExamsToPlan          func(childComplexity int) int
+		AllSemesterNames             func(childComplexity int) int
+		ConnectedExam                func(childComplexity int, anCode int) int
+		ConnectedExams               func(childComplexity int) int
+		Fk07programs                 func(childComplexity int) int
+		Invigilators                 func(childComplexity int) int
+		NextDeadline                 func(childComplexity int) int
+		Ntas                         func(childComplexity int) int
+		PrimussExam                  func(childComplexity int, program string, anCode int) int
+		PrimussExams                 func(childComplexity int) int
+		PrimussExamsForAnCode        func(childComplexity int, anCode int) int
+		Semester                     func(childComplexity int) int
+		StudentRegsForProgram        func(childComplexity int, program string) int
+		StudentRegsImportErrors      func(childComplexity int) int
+		Teacher                      func(childComplexity int, id int) int
+		Teachers                     func(childComplexity int, fromZpa *bool) int
+		Workflow                     func(childComplexity int) int
+		ZpaAnCodes                   func(childComplexity int) int
+		ZpaExam                      func(childComplexity int, anCode int) int
+		ZpaExams                     func(childComplexity int, fromZpa *bool) int
+		ZpaExamsByType               func(childComplexity int) int
+		ZpaExamsNotToPlan            func(childComplexity int) int
+		ZpaExamsPlaningStatusUnknown func(childComplexity int) int
+		ZpaExamsToPlan               func(childComplexity int) int
 	}
 
 	RegWithError struct {
@@ -217,8 +218,8 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	SetSemester(ctx context.Context, input string) (*model.Semester, error)
 	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
-	AddZpaExamToPlan(ctx context.Context, anCode int) (bool, error)
-	RmZpaExamFromPlan(ctx context.Context, anCode int) (bool, error)
+	AddZpaExamToPlan(ctx context.Context, anCode int, unknown bool) (bool, error)
+	RmZpaExamFromPlan(ctx context.Context, anCode int, unknown bool) (bool, error)
 	RemovePrimussExam(ctx context.Context, input *model.PrimussExamInput) (bool, error)
 	PrepareExams(ctx context.Context, input []*model.PrimussExamInput) (bool, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
@@ -240,6 +241,7 @@ type QueryResolver interface {
 	ZpaExamsByType(ctx context.Context) ([]*model.ZPAExamsForType, error)
 	ZpaExamsToPlan(ctx context.Context) ([]*model.ZPAExam, error)
 	ZpaExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, error)
+	ZpaExamsPlaningStatusUnknown(ctx context.Context) ([]*model.ZPAExam, error)
 	ZpaExam(ctx context.Context, anCode int) (*model.ZPAExam, error)
 	ZpaAnCodes(ctx context.Context) ([]*model.AnCode, error)
 	StudentRegsImportErrors(ctx context.Context) ([]*model.RegWithError, error)
@@ -359,7 +361,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddZpaExamToPlan(childComplexity, args["anCode"].(int)), true
+		return e.complexity.Mutation.AddZpaExamToPlan(childComplexity, args["anCode"].(int), args["unknown"].(bool)), true
 
 	case "Mutation.prepareExams":
 		if e.complexity.Mutation.PrepareExams == nil {
@@ -395,7 +397,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RmZpaExamFromPlan(childComplexity, args["anCode"].(int)), true
+		return e.complexity.Mutation.RmZpaExamFromPlan(childComplexity, args["anCode"].(int), args["unknown"].(bool)), true
 
 	case "Mutation.setSemester":
 		if e.complexity.Mutation.SetSemester == nil {
@@ -775,6 +777,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.ZpaExamsNotToPlan(childComplexity), true
+
+	case "Query.zpaExamsPlaningStatusUnknown":
+		if e.complexity.Query.ZpaExamsPlaningStatusUnknown == nil {
+			break
+		}
+
+		return e.complexity.Query.ZpaExamsPlaningStatusUnknown(childComplexity), true
 
 	case "Query.zpaExamsToPlan":
 		if e.complexity.Query.ZpaExamsToPlan == nil {
@@ -1165,8 +1174,8 @@ var sources = []*ast.Source{
   setSemester(input: String!): Semester!
   # Prepare ZPA-Exams
   zpaExamsToPlan(input: [Int!]!): [ZPAExam!]!
-  addZpaExamToPlan(anCode: Int!): Boolean!
-  rmZpaExamFromPlan(anCode: Int!): Boolean!
+  addZpaExamToPlan(anCode: Int!, unknown: Boolean!): Boolean!
+  rmZpaExamFromPlan(anCode: Int!, unknown: Boolean!): Boolean!
 
   removePrimussExam(input: PrimussExamInput): Boolean!
   prepareExams(input: [PrimussExamInput!]!): Boolean!
@@ -1265,6 +1274,7 @@ type ConnectedExam {
   zpaExamsByType: [ZPAExamsForType!]!
   zpaExamsToPlan: [ZPAExam!]!
   zpaExamsNotToPlan: [ZPAExam!]!
+  zpaExamsPlaningStatusUnknown: [ZPAExam!]!
   zpaExam(anCode: Int!): ZPAExam
   zpaAnCodes: [AnCode]
   studentRegsImportErrors: [RegWithError!]!
@@ -1386,6 +1396,15 @@ func (ec *executionContext) field_Mutation_addZpaExamToPlan_args(ctx context.Con
 		}
 	}
 	args["anCode"] = arg0
+	var arg1 bool
+	if tmp, ok := rawArgs["unknown"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unknown"))
+		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["unknown"] = arg1
 	return args, nil
 }
 
@@ -1431,6 +1450,15 @@ func (ec *executionContext) field_Mutation_rmZpaExamFromPlan_args(ctx context.Co
 		}
 	}
 	args["anCode"] = arg0
+	var arg1 bool
+	if tmp, ok := rawArgs["unknown"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unknown"))
+		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["unknown"] = arg1
 	return args, nil
 }
 
@@ -2286,7 +2314,7 @@ func (ec *executionContext) _Mutation_addZpaExamToPlan(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddZpaExamToPlan(rctx, fc.Args["anCode"].(int))
+		return ec.resolvers.Mutation().AddZpaExamToPlan(rctx, fc.Args["anCode"].(int), fc.Args["unknown"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2341,7 +2369,7 @@ func (ec *executionContext) _Mutation_rmZpaExamFromPlan(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RmZpaExamFromPlan(rctx, fc.Args["anCode"].(int))
+		return ec.resolvers.Mutation().RmZpaExamFromPlan(rctx, fc.Args["anCode"].(int), fc.Args["unknown"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4369,6 +4397,74 @@ func (ec *executionContext) _Query_zpaExamsNotToPlan(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_Query_zpaExamsNotToPlan(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaID":
+				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
+			case "semester":
+				return ec.fieldContext_ZPAExam_semester(ctx, field)
+			case "anCode":
+				return ec.fieldContext_ZPAExam_anCode(ctx, field)
+			case "module":
+				return ec.fieldContext_ZPAExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_ZPAExam_mainExamer(ctx, field)
+			case "mainExamerID":
+				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
+			case "examType":
+				return ec.fieldContext_ZPAExam_examType(ctx, field)
+			case "examTypeFull":
+				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
+			case "duration":
+				return ec.fieldContext_ZPAExam_duration(ctx, field)
+			case "isRepeaterExam":
+				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
+			case "groups":
+				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_zpaExamsPlaningStatusUnknown(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_zpaExamsPlaningStatusUnknown(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ZpaExamsPlaningStatusUnknown(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ZPAExam)
+	fc.Result = res
+	return ec.marshalNZPAExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_zpaExamsPlaningStatusUnknown(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -9829,6 +9925,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_zpaExamsNotToPlan(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "zpaExamsPlaningStatusUnknown":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_zpaExamsPlaningStatusUnknown(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

@@ -22,13 +22,13 @@ func (r *mutationResolver) ZpaExamsToPlan(ctx context.Context, input []int) ([]*
 }
 
 // AddZPAExamToPlan is the resolver for the addZPAExamToPlan field.
-func (r *mutationResolver) AddZpaExamToPlan(ctx context.Context, anCode int) (bool, error) {
-	return r.plexams.AddZpaExamToPlan(ctx, anCode)
+func (r *mutationResolver) AddZpaExamToPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
+	return r.plexams.AddZpaExamToPlan(ctx, anCode, unknown)
 }
 
 // RmZPAExamFromPlan is the resolver for the rmZPAExamFromPlan field.
-func (r *mutationResolver) RmZpaExamFromPlan(ctx context.Context, anCode int) (bool, error) {
-	return r.plexams.RmZpaExamFromPlan(ctx, anCode)
+func (r *mutationResolver) RmZpaExamFromPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
+	return r.plexams.RmZpaExamFromPlan(ctx, anCode, unknown)
 }
 
 // RemovePrimussExam is the resolver for the removePrimussExam field.

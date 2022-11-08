@@ -166,12 +166,53 @@ func (p *Plexams) GetZpaExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, e
 	return p.dbClient.GetZPAExamsNotToPlan(ctx)
 }
 
-func (p *Plexams) AddZpaExamToPlan(ctx context.Context, anCode int) (bool, error) {
-	return p.dbClient.AddZpaExamToPlan(ctx, anCode)
+func (p *Plexams) ZpaExamsPlaningStatusUnknown(ctx context.Context) ([]*model.ZPAExam, error) {
+	all, err := p.dbClient.GetZPAExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+	toPlan, err := p.dbClient.GetZPAExamsToPlan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	notToPlan, err := p.dbClient.GetZPAExamsNotToPlan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	statusUnknown := make([]*model.ZPAExam, 0)
+
+	for _, exam := range all {
+		planned := false
+		for _, examP := range toPlan {
+			if exam.AnCode == examP.AnCode {
+				planned = true
+				break
+			}
+		}
+		if planned {
+			continue
+		}
+		for _, examP := range notToPlan {
+			if exam.AnCode == examP.AnCode {
+				planned = true
+				break
+			}
+		}
+		if !planned {
+			statusUnknown = append(statusUnknown, exam)
+		}
+	}
+
+	return statusUnknown, nil
 }
 
-func (p *Plexams) RmZpaExamFromPlan(ctx context.Context, anCode int) (bool, error) {
-	return p.dbClient.RmZpaExamFromPlan(ctx, anCode)
+func (p *Plexams) AddZpaExamToPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
+	return p.dbClient.AddZpaExamToPlan(ctx, anCode, unknown)
+}
+
+func (p *Plexams) RmZpaExamFromPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
+	return p.dbClient.RmZpaExamFromPlan(ctx, anCode, unknown)
 }
 
 func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWithError, error) {

@@ -12,6 +12,7 @@ type Query {
   zpaExamsByType: [ZPAExamsForType!]!
   zpaExamsToPlan: [ZPAExam!]!
   zpaExamsNotToPlan: [ZPAExam!]!
+  zpaExamsPlaningStatusUnknown: [ZPAExam!]!
   zpaExam(anCode: Int!): ZPAExam
   zpaAnCodes: [AnCode]
   studentRegsImportErrors: [RegWithError!]!

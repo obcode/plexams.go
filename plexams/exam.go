@@ -22,11 +22,32 @@ func (p *Plexams) GetConnectedExam(ctx context.Context, anCode int) (*model.Conn
 		return nil, err
 	}
 
-	primussExams, _ := p.GetPrimussExamsForAncode(ctx, anCode)
+	primussExams := make([]*model.PrimussExam, 0)
+	errors := make([]string, 0)
+
+	allKeys := make(map[string]bool)
+	programs := []string{}
+	for _, group := range zpaExam.Groups {
+		program := group[:2]
+		if _, value := allKeys[program]; !value {
+			allKeys[program] = true
+			programs = append(programs, program)
+		}
+	}
+
+	for _, program := range programs {
+		primussExam, err := p.GetPrimussExam(ctx, program, anCode)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s/%d not found", program, anCode))
+		} else {
+			primussExams = append(primussExams, primussExam)
+		}
+	}
 
 	return &model.ConnectedExam{
 		ZpaExam:      zpaExam,
 		PrimussExams: primussExams,
+		Errors:       errors,
 	}, nil
 }
 

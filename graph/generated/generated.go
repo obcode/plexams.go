@@ -73,6 +73,7 @@ type ComplexityRoot struct {
 	}
 
 	ConnectedExam struct {
+		Errors       func(childComplexity int) int
 		PrimussExams func(childComplexity int) int
 		ZpaExam      func(childComplexity int) int
 	}
@@ -404,6 +405,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Conflicts.Module(childComplexity), true
+
+	case "ConnectedExam.errors":
+		if e.complexity.ConnectedExam.Errors == nil {
+			break
+		}
+
+		return e.complexity.ConnectedExam.Errors(childComplexity), true
 
 	case "ConnectedExam.primussExams":
 		if e.complexity.ConnectedExam.PrimussExams == nil {
@@ -1485,6 +1493,7 @@ type Conflict {
 type ConnectedExam {
   zpaExam: ZPAExam!
   primussExams: [PrimussExam!]!
+  errors: [String!]!
 }
 `, BuiltIn: false},
 	{Name: "../query.graphqls", Input: `type Query {
@@ -2666,6 +2675,50 @@ func (ec *executionContext) fieldContext_ConnectedExam_primussExams(ctx context.
 				return ec.fieldContext_PrimussExam_conflicts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PrimussExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConnectedExam_errors(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConnectedExam_errors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Errors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConnectedExam_errors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConnectedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -5776,6 +5829,8 @@ func (ec *executionContext) fieldContext_Query_connectedExam(ctx context.Context
 				return ec.fieldContext_ConnectedExam_zpaExam(ctx, field)
 			case "primussExams":
 				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
+			case "errors":
+				return ec.fieldContext_ConnectedExam_errors(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
 		},
@@ -5837,6 +5892,8 @@ func (ec *executionContext) fieldContext_Query_connectedExams(ctx context.Contex
 				return ec.fieldContext_ConnectedExam_zpaExam(ctx, field)
 			case "primussExams":
 				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
+			case "errors":
+				return ec.fieldContext_ConnectedExam_errors(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
 		},
@@ -10556,6 +10613,13 @@ func (ec *executionContext) _ConnectedExam(ctx context.Context, sel ast.Selectio
 		case "primussExams":
 
 			out.Values[i] = ec._ConnectedExam_primussExams(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "errors":
+
+			out.Values[i] = ec._ConnectedExam_errors(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++

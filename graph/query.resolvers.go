@@ -30,6 +30,11 @@ func (r *queryResolver) Semester(ctx context.Context) (*model.Semester, error) {
 	return r.plexams.GetSemester(ctx), nil
 }
 
+// SemesterConfig is the resolver for the SemesterConfig field.
+func (r *queryResolver) SemesterConfig(ctx context.Context) (*model.SemesterConfig, error) {
+	return r.plexams.GetSemesterConfig(), nil
+}
+
 // Teacher is the resolver for the teacher field.
 func (r *queryResolver) Teacher(ctx context.Context, id int) (*model.Teacher, error) {
 	return r.plexams.GetTeacher(ctx, id)

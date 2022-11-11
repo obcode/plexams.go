@@ -9,6 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+var collectionNameAdditionalExams = "additional_exams"
+
 type DB struct {
 	Client   *mongo.Client
 	semester string

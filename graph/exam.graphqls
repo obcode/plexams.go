@@ -1,0 +1,18 @@
+input AdditionalExamInput {
+  anCode: Int!
+  module: String!
+  mainExamerID: Int!
+  duration: Int!
+  isRepeaterExam: Boolean!
+  groups: [String!]!
+}
+
+type AdditionalExam {
+  anCode: Int!
+  module: String!
+  mainExamer: String!
+  mainExamerID: Int!
+  duration: Int!
+  isRepeaterExam: Boolean!
+  groups: [String!]!
+}

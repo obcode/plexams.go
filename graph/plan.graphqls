@@ -1,0 +1,21 @@
+type SemesterConfig {
+  days: [ExamDay!]!
+  starttimes: [Starttime!]!
+  slots: [Slot!]!
+}
+
+type ExamDay {
+  number: Int!
+  date: Time!
+}
+
+type Starttime {
+  number: Int!
+  start: String!
+}
+
+type Slot {
+  dayNumber: Int!
+  slotNumber: Int!
+  starttime: Time!
+}

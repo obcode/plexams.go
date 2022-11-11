@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	dbURI   string
-	rootCmd = &cobra.Command{
+	dbURI    string
+	semester string
+	rootCmd  = &cobra.Command{
 		Use:   "plexams.go",
 		Short: "Planning exams.",
 		Long:  `Planing exams.`,
@@ -34,6 +35,8 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&dbURI, "db-uri", "",
 		"override db.uri from config file")
+	rootCmd.PersistentFlags().StringVar(&semester, "semester", "",
+		"override semester from config file")
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
@@ -63,7 +66,9 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {
-		semester := viper.GetString("semester")
+		if semester == "" {
+			semester = viper.GetString("semester")
+		}
 		viper.AddConfigPath(fmt.Sprintf("%s/%s", viper.GetString("semester-path"), semester))
 		viper.SetConfigName("plexams")
 		err = viper.MergeInConfig()
@@ -79,9 +84,12 @@ func initPlexamsConfig() *plexams.Plexams {
 	if dbURI == "" {
 		dbURI = viper.GetString("db.uri")
 	}
+	if semester == "" {
+		semester = viper.GetString("semester")
+	}
 
 	plexams, err := plexams.NewPlexams(
-		strings.Replace(viper.GetString("semester"), "-", " ", 1),
+		strings.Replace(semester, "-", " ", 1),
 		dbURI,
 		viper.GetString("zpa.baseurl"),
 		viper.GetString("zpa.username"),
@@ -93,6 +101,7 @@ func initPlexamsConfig() *plexams.Plexams {
 		panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
 	}
 
+	plexams.PrintSemester()
 	return plexams
 }
 

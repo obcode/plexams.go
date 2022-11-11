@@ -2,45 +2,21 @@
 
 package model
 
-type AnCode struct {
-	AnCode int `json:"anCode"`
+type AdditionalExam struct {
+	AnCode         int      `json:"anCode"`
+	Module         string   `json:"module"`
+	MainExamer     string   `json:"mainExamer"`
+	MainExamerID   int      `json:"mainExamerID"`
+	Duration       int      `json:"duration"`
+	IsRepeaterExam bool     `json:"isRepeaterExam"`
+	Groups         []string `json:"groups"`
 }
 
-type ConnectedExam struct {
-	ZpaExam      *ZPAExam       `json:"zpaExam"`
-	PrimussExams []*PrimussExam `json:"primussExams"`
-}
-
-type FK07Program struct {
-	Name string `json:"name"`
-}
-
-type NTAInput struct {
-	Name                 string `json:"name"`
-	Mtknr                string `json:"mtknr"`
-	Compensation         string `json:"compensation"`
-	DeltaDurationPercent int    `json:"deltaDurationPercent"`
-	NeedsRoomAlone       bool   `json:"needsRoomAlone"`
-	Program              string `json:"program"`
-	From                 string `json:"from"`
-	Until                string `json:"until"`
-}
-
-type PrimussExamByProgram struct {
-	Program string         `json:"program"`
-	Exams   []*PrimussExam `json:"exams"`
-}
-
-type PrimussExamInput struct {
-	AnCode  int    `json:"anCode"`
-	Program string `json:"program"`
-}
-
-type Semester struct {
-	ID string `json:"id"`
-}
-
-type ZPAExamsForType struct {
-	Type  string     `json:"type"`
-	Exams []*ZPAExam `json:"exams"`
+type AdditionalExamInput struct {
+	AnCode         int      `json:"anCode"`
+	Module         string   `json:"module"`
+	MainExamerID   int      `json:"mainExamerID"`
+	Duration       int      `json:"duration"`
+	IsRepeaterExam bool     `json:"isRepeaterExam"`
+	Groups         []string `json:"groups"`
 }

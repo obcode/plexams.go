@@ -3,6 +3,7 @@ type Query {
   nextDeadline: Step
   allSemesterNames: [Semester!]!
   semester: Semester!
+  semesterConfig: SemesterConfig!
   # ZPA
   teacher(id: Int!): Teacher
   teachers(fromZPA: Boolean): [Teacher!]!

@@ -10,6 +10,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+func (db *DB) AddAdditionalExam(ctx context.Context, exam model.AdditionalExamInput) (bool, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameAdditionalExams)
+	_, err := collection.InsertOne(ctx, exam)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (db *DB) ExamsAlreadyPrepared(ctx context.Context) bool {
 	collection := db.Client.Database(databaseName(db.semester)).Collection("exams")
 

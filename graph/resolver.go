@@ -1,7 +1,5 @@
 package graph
 
-//go:generate go run github.com/99designs/gqlgen generate
-
 import (
 	"github.com/obcode/plexams.go/plexams"
 )

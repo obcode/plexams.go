@@ -11,25 +11,89 @@ import (
 )
 
 const (
-	collecttionAll      = "zpaexams"
+	collectionAll       = "zpaexams"
 	collectionToPlan    = "zpaexams-to-plan"
 	collectionNotToPlan = "zpaexams-not-to-plan"
 )
 
 func (db *DB) GetZPAExamsToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
-	return db.getZPAExams(ctx, collectionToPlan)
+	ancodes, err := db.getZpaAnCodesFromCollection(ctx, collectionToPlan)
+	if err != nil {
+		return nil, err
+	}
+
+	exams := make([]*model.ZPAExam, 0)
+
+	for _, ancode := range ancodes {
+		exam, err := db.GetZpaExamByAncode(ctx, ancode.AnCode)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).
+				Int("ancode", ancode.AnCode).Msg("zpa exam with ancode not found")
+		} else {
+			exams = append(exams, exam)
+		}
+	}
+
+	return exams, nil
 }
 
 func (db *DB) GetZPAExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
-	return db.getZPAExams(ctx, collectionNotToPlan)
+	ancodes, err := db.getZpaAnCodesFromCollection(ctx, collectionNotToPlan)
+	if err != nil {
+		return nil, err
+	}
+
+	exams := make([]*model.ZPAExam, 0)
+
+	for _, ancode := range ancodes {
+		exam, err := db.GetZpaExamByAncode(ctx, ancode.AnCode)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).
+				Int("ancode", ancode.AnCode).Msg("zpa exam with ancode not found")
+		} else {
+			exams = append(exams, exam)
+		}
+	}
+
+	return exams, nil
+}
+
+func (db *DB) getZpaAnCodesFromCollection(ctx context.Context, collectionName string) ([]*model.AnCode, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+	ancodes := make([]*model.AnCode, 0)
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "ancode", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.M{}, findOptions)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionName).Msg("MongoDB Find")
+		return ancodes, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var ancode model.AnCode
+
+		err := cur.Decode(&ancode)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionName).Interface("cur", cur).
+				Msg("Cannot decode to exam")
+			return ancodes, err
+		}
+
+		ancodes = append(ancodes, &ancode)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionName).Msg("Cursor returned error")
+		return ancodes, err
+	}
+
+	return ancodes, nil
 }
 
 func (db *DB) GetZPAExams(ctx context.Context) ([]*model.ZPAExam, error) {
-	return db.getZPAExams(ctx, collecttionAll)
-}
-
-func (db *DB) getZPAExams(ctx context.Context, fromCollection string) ([]*model.ZPAExam, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(fromCollection)
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionAll)
 
 	exams := make([]*model.ZPAExam, 0)
 

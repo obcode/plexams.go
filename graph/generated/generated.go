@@ -73,9 +73,10 @@ type ComplexityRoot struct {
 	}
 
 	ConnectedExam struct {
-		Errors       func(childComplexity int) int
-		PrimussExams func(childComplexity int) int
-		ZpaExam      func(childComplexity int) int
+		Errors            func(childComplexity int) int
+		OtherPrimussExams func(childComplexity int) int
+		PrimussExams      func(childComplexity int) int
+		ZpaExam           func(childComplexity int) int
 	}
 
 	ExamDay struct {
@@ -137,7 +138,6 @@ type ComplexityRoot struct {
 	Query struct {
 		AdditionalExams              func(childComplexity int) int
 		AllSemesterNames             func(childComplexity int) int
-		ConnectedExam                func(childComplexity int, anCode int) int
 		ConnectedExams               func(childComplexity int) int
 		Fk07programs                 func(childComplexity int) int
 		Invigilators                 func(childComplexity int) int
@@ -310,7 +310,6 @@ type QueryResolver interface {
 	PrimussExam(ctx context.Context, program string, anCode int) (*model.PrimussExam, error)
 	PrimussExamsForAnCode(ctx context.Context, anCode int) ([]*model.PrimussExam, error)
 	StudentRegsForProgram(ctx context.Context, program string) ([]*model.StudentReg, error)
-	ConnectedExam(ctx context.Context, anCode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 }
@@ -434,6 +433,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ConnectedExam.Errors(childComplexity), true
+
+	case "ConnectedExam.otherPrimussExams":
+		if e.complexity.ConnectedExam.OtherPrimussExams == nil {
+			break
+		}
+
+		return e.complexity.ConnectedExam.OtherPrimussExams(childComplexity), true
 
 	case "ConnectedExam.primussExams":
 		if e.complexity.ConnectedExam.PrimussExams == nil {
@@ -747,18 +753,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.AllSemesterNames(childComplexity), true
-
-	case "Query.connectedExam":
-		if e.complexity.Query.ConnectedExam == nil {
-			break
-		}
-
-		args, err := ec.field_Query_connectedExam_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.ConnectedExam(childComplexity, args["anCode"].(int)), true
 
 	case "Query.connectedExams":
 		if e.complexity.Query.ConnectedExams == nil {
@@ -1585,6 +1579,7 @@ type Conflict {
 type ConnectedExam {
   zpaExam: ZPAExam!
   primussExams: [PrimussExam!]!
+  otherPrimussExams: [PrimussExam!]!
   errors: [String!]!
 }
 `, BuiltIn: false},
@@ -1615,7 +1610,7 @@ type ConnectedExam {
   primussExamsForAnCode(anCode: Int!): [PrimussExam!]
   studentRegsForProgram(program: String!): [StudentReg!]
   # Exams connected
-  connectedExam(anCode: Int!): ConnectedExam
+  # connectedExam(anCode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
   # NTAs
   ntas: [NTA!]
@@ -1872,21 +1867,6 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_connectedExam_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["anCode"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("anCode"))
-		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["anCode"] = arg0
 	return args, nil
 }
 
@@ -2764,6 +2744,68 @@ func (ec *executionContext) _ConnectedExam_primussExams(ctx context.Context, fie
 }
 
 func (ec *executionContext) fieldContext_ConnectedExam_primussExams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConnectedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "anCode":
+				return ec.fieldContext_PrimussExam_anCode(ctx, field)
+			case "module":
+				return ec.fieldContext_PrimussExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_PrimussExam_mainExamer(ctx, field)
+			case "program":
+				return ec.fieldContext_PrimussExam_program(ctx, field)
+			case "examType":
+				return ec.fieldContext_PrimussExam_examType(ctx, field)
+			case "presence":
+				return ec.fieldContext_PrimussExam_presence(ctx, field)
+			case "studentRegs":
+				return ec.fieldContext_PrimussExam_studentRegs(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_PrimussExam_conflicts(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PrimussExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConnectedExam_otherPrimussExams(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConnectedExam_otherPrimussExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OtherPrimussExams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PrimussExam)
+	fc.Result = res
+	return ec.marshalNPrimussExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConnectedExam_otherPrimussExams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ConnectedExam",
 		Field:      field,
@@ -5903,66 +5945,6 @@ func (ec *executionContext) fieldContext_Query_studentRegsForProgram(ctx context
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_connectedExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_connectedExam(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ConnectedExam(rctx, fc.Args["anCode"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.ConnectedExam)
-	fc.Result = res
-	return ec.marshalOConnectedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExam(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_connectedExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "zpaExam":
-				return ec.fieldContext_ConnectedExam_zpaExam(ctx, field)
-			case "primussExams":
-				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
-			case "errors":
-				return ec.fieldContext_ConnectedExam_errors(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_connectedExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_connectedExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_connectedExams(ctx, field)
 	if err != nil {
@@ -6006,6 +5988,8 @@ func (ec *executionContext) fieldContext_Query_connectedExams(ctx context.Contex
 				return ec.fieldContext_ConnectedExam_zpaExam(ctx, field)
 			case "primussExams":
 				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
+			case "otherPrimussExams":
+				return ec.fieldContext_ConnectedExam_otherPrimussExams(ctx, field)
 			case "errors":
 				return ec.fieldContext_ConnectedExam_errors(ctx, field)
 			}
@@ -11201,6 +11185,13 @@ func (ec *executionContext) _ConnectedExam(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "otherPrimussExams":
+
+			out.Values[i] = ec._ConnectedExam_otherPrimussExams(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "errors":
 
 			out.Values[i] = ec._ConnectedExam_errors(ctx, field, obj)
@@ -12153,26 +12144,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_studentRegsForProgram(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return rrm(innerCtx)
-			})
-		case "connectedExam":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_connectedExam(ctx, field)
 				return res
 			}
 
@@ -14813,13 +14784,6 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	}
 	res := graphql.MarshalBoolean(*v)
 	return res
-}
-
-func (ec *executionContext) marshalOConnectedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExam(ctx context.Context, sel ast.SelectionSet, v *model.ConnectedExam) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._ConnectedExam(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalONTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTA) graphql.Marshaler {

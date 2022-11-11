@@ -30,9 +30,10 @@ type AnCode struct {
 }
 
 type ConnectedExam struct {
-	ZpaExam      *ZPAExam       `json:"zpaExam"`
-	PrimussExams []*PrimussExam `json:"primussExams"`
-	Errors       []string       `json:"errors"`
+	ZpaExam           *ZPAExam       `json:"zpaExam"`
+	PrimussExams      []*PrimussExam `json:"primussExams"`
+	OtherPrimussExams []*PrimussExam `json:"otherPrimussExams"`
+	Errors            []string       `json:"errors"`
 }
 
 type ExamDay struct {

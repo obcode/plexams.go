@@ -16,14 +16,11 @@ func (p *Plexams) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam,
 	return p.dbClient.AdditionalExams(ctx)
 }
 
-func (p *Plexams) GetConnectedExam(ctx context.Context, anCode int) (*model.ConnectedExam, error) {
+func (p *Plexams) GetConnectedExam(ctx context.Context, anCode int, allPrograms []string) (*model.ConnectedExam, error) {
 	zpaExam, err := p.dbClient.GetZpaExamByAncode(ctx, anCode)
 	if err != nil {
 		return nil, err
 	}
-
-	primussExams := make([]*model.PrimussExam, 0)
-	errors := make([]string, 0)
 
 	allKeys := make(map[string]bool)
 	programs := []string{}
@@ -35,6 +32,9 @@ func (p *Plexams) GetConnectedExam(ctx context.Context, anCode int) (*model.Conn
 		}
 	}
 
+	primussExams := make([]*model.PrimussExam, 0)
+	errors := make([]string, 0)
+
 	for _, program := range programs {
 		primussExam, err := p.GetPrimussExam(ctx, program, anCode)
 		if err != nil {
@@ -44,11 +44,35 @@ func (p *Plexams) GetConnectedExam(ctx context.Context, anCode int) (*model.Conn
 		}
 	}
 
+	otherPrograms := make([]string, 0, len(allPrograms)-len(programs))
+OUTER:
+	for _, aP := range allPrograms {
+		for _, p := range programs {
+			if aP == p {
+				continue OUTER
+			}
+		}
+		otherPrograms = append(otherPrograms, aP)
+	}
+
+	otherPrimussExams := make([]*model.PrimussExam, 0)
+
+	for _, program := range otherPrograms {
+		primussExam, err := p.GetPrimussExam(ctx, program, anCode)
+		if err == nil {
+			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, anCode, primussExam.MainExamer, primussExam.Module))
+			otherPrimussExams = append(otherPrimussExams, primussExam)
+		}
+	}
+
 	return &model.ConnectedExam{
-		ZpaExam:      zpaExam,
-		PrimussExams: primussExams,
-		Errors:       errors,
+		ZpaExam:           zpaExam,
+		PrimussExams:      primussExams,
+		OtherPrimussExams: otherPrimussExams,
+		Errors:            errors,
 	}, nil
+
+	// TODO: Save connected exams in DB
 }
 
 func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
@@ -57,9 +81,14 @@ func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam
 		return nil, err
 	}
 
+	allPrograms, err := p.dbClient.GetPrograms(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	exams := make([]*model.ConnectedExam, 0)
 	for _, anCode := range anCodes {
-		exam, err := p.GetConnectedExam(ctx, anCode.AnCode)
+		exam, err := p.GetConnectedExam(ctx, anCode.AnCode, allPrograms)
 		if err != nil {
 			return exams, err
 		}

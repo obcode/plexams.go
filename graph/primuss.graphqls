@@ -43,5 +43,6 @@ type Conflict {
 type ConnectedExam {
   zpaExam: ZPAExam!
   primussExams: [PrimussExam!]!
+  otherPrimussExams: [PrimussExam!]!
   errors: [String!]!
 }

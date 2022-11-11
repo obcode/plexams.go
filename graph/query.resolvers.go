@@ -120,11 +120,6 @@ func (r *queryResolver) StudentRegsForProgram(ctx context.Context, program strin
 	return r.plexams.StudentRegsForProgram(ctx, program)
 }
 
-// ConnectedExam is the resolver for the connectedExam field.
-func (r *queryResolver) ConnectedExam(ctx context.Context, anCode int) (*model.ConnectedExam, error) {
-	return r.plexams.GetConnectedExam(ctx, anCode)
-}
-
 // ConnectedExams is the resolver for the connectedExams field.
 func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
 	return r.plexams.GetConnectedExams(ctx)

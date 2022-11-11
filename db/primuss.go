@@ -23,7 +23,7 @@ func (db *DB) getCollection(program string, primussType PrimussType) *mongo.Coll
 	return db.Client.Database(databaseName(db.semester)).Collection(fmt.Sprintf("%s_%s", primussType, program))
 }
 
-func (db *DB) getPrograms(ctx context.Context) ([]string, error) {
+func (db *DB) GetPrograms(ctx context.Context) ([]string, error) {
 	collectionNames, err := db.Client.Database(databaseName(db.semester)).ListCollectionNames(ctx,
 		bson.D{primitive.E{
 			Key: "name",

@@ -10,7 +10,7 @@ import (
 )
 
 func (db *DB) GetPrimussExamsForAncode(ctx context.Context, anCode int) ([]*model.PrimussExam, error) {
-	programs, err := db.getPrograms(ctx)
+	programs, err := db.GetPrograms(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (db *DB) ChangeAncode(ctx context.Context, program string, anCode, newAncod
 }
 
 func (db *DB) GetPrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
-	programs, err := db.getPrograms(ctx)
+	programs, err := db.GetPrograms(ctx)
 
 	primussExams := make([]*model.PrimussExamByProgram, 0)
 	for _, program := range programs {

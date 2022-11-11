@@ -10,7 +10,7 @@ import (
 )
 
 func (db *DB) GetPrimussStudentRegsForProgrammAncode(ctx context.Context, program string, anCode int) ([]*model.StudentReg, error) {
-	studentRegs, err := db.getPrimussStudentRegs(ctx, program)
+	studentRegs, err := db.GetPrimussStudentRegsPerAncode(ctx, program)
 	if err != nil {
 		return nil, err
 	}
@@ -18,7 +18,7 @@ func (db *DB) GetPrimussStudentRegsForProgrammAncode(ctx context.Context, progra
 	return studentRegs[anCode], nil
 }
 
-func (db *DB) getPrimussStudentRegs(ctx context.Context, program string) (map[int][]*model.StudentReg, error) {
+func (db *DB) GetPrimussStudentRegsPerAncode(ctx context.Context, program string) (map[int][]*model.StudentReg, error) {
 	collection := db.getCollection(program, StudentRegs)
 
 	studentRegs := make(map[int][]*model.StudentReg)
@@ -53,6 +53,45 @@ func (db *DB) getPrimussStudentRegs(ctx context.Context, program string) (map[in
 		if !db.checkStudentRegsCount(ctx, program, k, len(v)) {
 			return nil, fmt.Errorf("problem with studentregs, ancode = %d, #studentregs = %d", k, len(v))
 		}
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("Cursor returned error")
+		return studentRegs, err
+	}
+
+	return studentRegs, nil
+}
+
+func (db *DB) GetPrimussStudentRegsPerStudent(ctx context.Context, program string) (map[string][]*model.StudentReg, error) {
+	collection := db.getCollection(program, StudentRegs)
+
+	studentRegs := make(map[string][]*model.StudentReg)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("MongoDB Find (studentregs)")
+		return studentRegs, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var studentReg model.StudentReg
+
+		err := cur.Decode(&studentReg)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).Str("program", program).Interface("cur", cur).
+				Msg("Cannot decode to exam")
+			return studentRegs, err
+		}
+
+		regs, ok := studentRegs[studentReg.Mtknr]
+		if !ok {
+			regs = make([]*model.StudentReg, 0)
+		}
+
+		studentRegs[studentReg.Mtknr] = append(regs, &studentReg)
+
 	}
 
 	if err := cur.Err(); err != nil {

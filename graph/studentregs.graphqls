@@ -1,0 +1,21 @@
+type StudentRegsPerStudent {
+  student: Student!
+  anCodes: [Int!]!
+}
+
+type StudentRegsPerAncode {
+  anCode: Int!
+  perProgram: [StudentRegsPerAncodeAndProgram!]!
+}
+
+type StudentRegsPerAncodeAndProgram {
+  program: String!
+  studentRegs: [StudentReg!]!
+}
+
+type Student {
+  mtknr: String!
+  program: String!
+  group: String!
+  name: String!
+}

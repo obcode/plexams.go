@@ -58,6 +58,10 @@ func (db *DB) GetZPAExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, error
 	return exams, nil
 }
 
+func (db *DB) GetZpaAncodesPlanned(ctx context.Context) ([]*model.AnCode, error) {
+	return db.getZpaAnCodesFromCollection(ctx, collectionToPlan)
+}
+
 func (db *DB) getZpaAnCodesFromCollection(ctx context.Context, collectionName string) ([]*model.AnCode, error) {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
 	ancodes := make([]*model.AnCode, 0)

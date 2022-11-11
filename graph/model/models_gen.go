@@ -86,6 +86,28 @@ type Starttime struct {
 	Start  string `json:"start"`
 }
 
+type Student struct {
+	Mtknr   string `json:"mtknr"`
+	Program string `json:"program"`
+	Group   string `json:"group"`
+	Name    string `json:"name"`
+}
+
+type StudentRegsPerAncode struct {
+	AnCode     int                               `json:"anCode"`
+	PerProgram []*StudentRegsPerAncodeAndProgram `json:"perProgram"`
+}
+
+type StudentRegsPerAncodeAndProgram struct {
+	Program     string        `json:"program"`
+	StudentRegs []*StudentReg `json:"studentRegs"`
+}
+
+type StudentRegsPerStudent struct {
+	Student *Student `json:"student"`
+	AnCodes []int    `json:"anCodes"`
+}
+
 type ZPAExamsForType struct {
 	Type  string     `json:"type"`
 	Exams []*ZPAExam `json:"exams"`

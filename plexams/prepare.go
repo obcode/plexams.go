@@ -86,6 +86,8 @@ func (p *Plexams) prepareAllStudentRegs() (
 			return
 		}
 
+		// TODO: Use Program/Ancode if it is in ConnectedExams
+
 		for ancode, studentRegs := range studentRegsPerAncodeForProgram {
 			// per ancodes
 			regs, ok := studentRegsPerAncode[ancode]

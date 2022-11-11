@@ -34,7 +34,6 @@ func (db *DB) getZPAExams(ctx context.Context, fromCollection string) ([]*model.
 	exams := make([]*model.ZPAExam, 0)
 
 	findOptions := options.Find()
-	// Sort by `price` field descending
 	findOptions.SetSort(bson.D{{Key: "ancode", Value: 1}})
 
 	cur, err := collection.Find(ctx, bson.M{}, findOptions)
@@ -50,7 +49,7 @@ func (db *DB) getZPAExams(ctx context.Context, fromCollection string) ([]*model.
 		err := cur.Decode(&exam)
 		if err != nil {
 			log.Error().Err(err).Str("semester", db.semester).Str("collection", "zpaexams").Interface("cur", cur).
-				Msg("Cannot decode to customer")
+				Msg("Cannot decode to exam")
 			return exams, err
 		}
 

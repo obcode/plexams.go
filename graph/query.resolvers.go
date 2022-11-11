@@ -95,6 +95,11 @@ func (r *queryResolver) StudentRegsImportErrors(ctx context.Context) ([]*model.R
 	return r.plexams.StudentRegsImportErrors(ctx)
 }
 
+// AdditionalExams is the resolver for the additionalExams field.
+func (r *queryResolver) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error) {
+	return r.plexams.AdditionalExams(ctx)
+}
+
 // PrimussExams is the resolver for the primussExams field.
 func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	return r.plexams.PrimussExams(ctx)

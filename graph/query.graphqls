@@ -17,6 +17,8 @@ type Query {
   zpaExam(anCode: Int!): ZPAExam
   zpaAnCodes: [AnCode]
   studentRegsImportErrors: [RegWithError!]!
+  # Additional Exams
+  additionalExams: [AdditionalExam!]!
   # Primuss
   primussExams: [PrimussExamByProgram]
   primussExam(program: String!, anCode: Int!): PrimussExam!

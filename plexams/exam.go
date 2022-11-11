@@ -12,6 +12,10 @@ func (p *Plexams) AddAdditionalExam(ctx context.Context, exam model.AdditionalEx
 	return p.dbClient.AddAdditionalExam(ctx, exam)
 }
 
+func (p *Plexams) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error) {
+	return p.dbClient.AdditionalExams(ctx)
+}
+
 func (p *Plexams) GetConnectedExam(ctx context.Context, anCode int) (*model.ConnectedExam, error) {
 	zpaExam, err := p.dbClient.GetZpaExamByAncode(ctx, anCode)
 	if err != nil {

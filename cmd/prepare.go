@@ -12,7 +12,8 @@ var (
 		Use:   "prepare",
 		Short: "prepare [subcommand]",
 		Long: `Prepare collections.
-	studentregs --- regs per exam & regs per student`,
+	connected-exams --- prepare connected exams
+	studentregs     --- regs per exam & regs per student`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -23,8 +24,14 @@ var (
 					os.Exit(1)
 				}
 
+			case "connected-exams":
+				err := plexams.PrepareConnectedExams()
+				if err != nil {
+					os.Exit(1)
+				}
+
 			default:
-				fmt.Println("pdf called with unkown sub command")
+				fmt.Println("prepare called with unkown sub command")
 			}
 		},
 	}

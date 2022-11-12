@@ -27,7 +27,7 @@ func (db *DB) SaveStudentRegsPerAncode(ctx context.Context, studentRegsPerAncode
 	for _, ancode := range ancodes {
 		studentRegsWithProgram := studentRegsPerAncode[ancode]
 		programs := make([]string, 0, len(studentRegsWithProgram))
-		for program, _ := range studentRegsWithProgram {
+		for program := range studentRegsWithProgram {
 			programs = append(programs, program)
 		}
 		sort.Strings(programs)

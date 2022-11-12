@@ -71,31 +71,44 @@ OUTER:
 		OtherPrimussExams: otherPrimussExams,
 		Errors:            errors,
 	}, nil
-
-	// TODO: Save connected exams in DB
 }
 
 func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
+	return p.dbClient.GetConnectedExams(ctx)
+}
+
+func (p *Plexams) PrepareConnectedExams() error {
+	ctx := context.Background()
 	anCodes, err := p.GetZpaAnCodes(ctx)
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("cannot get zpa ancodes")
+		return err
 	}
 
 	allPrograms, err := p.dbClient.GetPrograms(ctx)
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("cannot get programs")
+		return err
 	}
 
 	exams := make([]*model.ConnectedExam, 0)
 	for _, anCode := range anCodes {
 		exam, err := p.GetConnectedExam(ctx, anCode.AnCode, allPrograms)
 		if err != nil {
-			return exams, err
+			log.Error().Err(err).Int("ancode", anCode.AnCode).
+				Msg("cannot connected exam")
+			return err
 		}
 		exams = append(exams, exam)
 	}
 
-	return exams, nil
+	err = p.dbClient.SaveConnectedExams(ctx, exams)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot save connected exams")
+		return err
+	}
+
+	return nil
 }
 
 func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamInput) (bool, error) {

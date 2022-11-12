@@ -86,8 +86,6 @@ func (p *Plexams) prepareAllStudentRegs() (
 			return
 		}
 
-		// TODO: Use Program/Ancode if it is in ConnectedExams
-
 		for ancode, studentRegs := range studentRegsPerAncodeForProgram {
 			// per ancodes
 			regs, ok := studentRegsPerAncode[ancode]
@@ -110,4 +108,80 @@ func (p *Plexams) prepareAllStudentRegs() (
 	}
 
 	return
+}
+
+func (p *Plexams) PrepareExamsWithRegs() error {
+	ctx := context.Background()
+	zpaExamsToPlan, err := p.GetZpaExamsToPlan(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get zpa exams to plan")
+	}
+
+	// zpaExamsToPlan := make(map[int]*model.ZPAExam)
+	// for _, exam := range zpaExamsSlice {
+	// 	zpaExamsToPlan[exam.AnCode] = exam
+	// }
+
+	connectedExamsSlice, err := p.GetConnectedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get connected exams")
+	}
+
+	connectedExams := make(map[int]*model.ConnectedExam)
+	for _, connecconnectedExam := range connectedExamsSlice {
+		connectedExams[connecconnectedExam.ZpaExam.AnCode] = connecconnectedExam
+	}
+
+	studentRegsSlice, err := p.GetStudentRegsPerAncodePlanned(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get connected exams")
+	}
+
+	studentRegs := make(map[int]*model.StudentRegsPerAncode)
+	for _, studentReg := range studentRegsSlice {
+		studentRegs[studentReg.AnCode] = studentReg
+	}
+
+	// combine the exams with regs
+
+	examsWithRegs := make([]*model.ExamWithRegs, 0, len(zpaExamsToPlan))
+	for _, zpaExam := range zpaExamsToPlan {
+		ancode := zpaExam.AnCode
+		primussExams := connectedExams[ancode].PrimussExams
+		studentRegsForAncode := studentRegs[ancode].PerProgram
+
+		studentRegsForExam := make([]*model.StudentRegsPerAncodeAndProgram, 0, len(primussExams))
+		for _, primussExam := range primussExams {
+			for _, studRegs := range studentRegsForAncode {
+				if primussExam.Program == studRegs.Program {
+					studentRegsForExam = append(studentRegsForExam, studRegs)
+				}
+			}
+		}
+
+		conflicts := make([]*model.ConflictPerProgram, 0)
+		for _, studRegs := range studentRegsForExam {
+			conflictsProgAncode, err := p.dbClient.GetPrimussConflictsForAncodeOnlyPlanned(ctx, studRegs.Program, ancode, zpaExamsToPlan)
+			if err != nil {
+				log.Error().Err(err).Str("program", studRegs.Program).Int("ancode", ancode).
+					Msg("cannot get conflicts")
+			}
+			conflicts = append(conflicts, &model.ConflictPerProgram{
+				Program:  studRegs.Program,
+				Conflics: conflictsProgAncode.Conflicts,
+			})
+		}
+
+		examWithReg := model.ExamWithRegs{
+			AnCode:        ancode,
+			ZpaExam:       zpaExam,
+			PrimussExams:  primussExams,
+			StudentRegs:   studentRegsForExam,
+			Conflicts:     conflicts,
+			ConnectErrors: connectedExams[ancode].Errors,
+		}
+		examsWithRegs = append(examsWithRegs, &examWithReg)
+	}
+
+	return p.dbClient.SaveExamsWithRegs(ctx, examsWithRegs)
 }

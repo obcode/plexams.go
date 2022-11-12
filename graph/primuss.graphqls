@@ -40,6 +40,11 @@ type Conflict {
   numberOfStuds: Int!
 }
 
+type ConflictPerProgram {
+  program: String!
+  conflics: [Conflict!]!
+}
+
 type ConnectedExam {
   zpaExam: ZPAExam!
   primussExams: [PrimussExam!]!

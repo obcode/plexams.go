@@ -9,6 +9,29 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+func (db *DB) GetPrimussConflictsForAncodeOnlyPlanned(ctx context.Context, program string, anCode int, zpaExamsToPlan []*model.ZPAExam) (*model.Conflicts, error) {
+	conflicts, err := db.GetPrimussConflictsForAncode(ctx, program, anCode)
+	if err != nil {
+		log.Error().Err(err).Str("program", program).Int("ancode", anCode).
+			Msg("cannot geht conflicts")
+		return nil, err
+	}
+
+	conflictsNeeded := make([]*model.Conflict, 0)
+	for _, conflict := range conflicts.Conflicts {
+		for _, exam := range zpaExamsToPlan {
+			if conflict.AnCode == exam.AnCode {
+				conflictsNeeded = append(conflictsNeeded, conflict)
+				break
+			}
+		}
+	}
+
+	conflicts.Conflicts = conflictsNeeded
+
+	return conflicts, nil
+}
+
 func (db *DB) GetPrimussConflictsForAncode(ctx context.Context, program string, anCode int) (*model.Conflicts, error) {
 	conflicts, err := db.getConflictsForAnCode(ctx, program, anCode)
 	if err != nil {

@@ -16,3 +16,12 @@ type AdditionalExam {
   isRepeaterExam: Boolean!
   groups: [String!]!
 }
+
+type ExamWithRegs {
+  anCode: Int!
+  zpaExam: ZPAExam!
+  primussExams: [PrimussExam!]!
+  studentRegs: [StudentRegsPerAncodeAndProgram!]!
+  conflicts: [ConflictPerProgram!]!
+  connectErrors: [String!]!
+}

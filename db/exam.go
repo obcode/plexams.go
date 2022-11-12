@@ -150,3 +150,30 @@ func (db *DB) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, er
 
 	return exams, nil
 }
+
+func (db *DB) SaveExamsWithRegs(ctx context.Context, exams []*model.ExamWithRegs) error {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamsWithRegs)
+
+	err := collection.Drop(ctx)
+	if err != nil {
+		log.Error().Err(err).
+			Str("collectionName", collectionNameExamsWithRegs).
+			Msg("cannot drop collection")
+		return err
+	}
+
+	examsToInsert := make([]interface{}, 0, len(exams))
+	for _, exam := range exams {
+		examsToInsert = append(examsToInsert, exam)
+	}
+
+	_, err = collection.InsertMany(ctx, examsToInsert)
+	if err != nil {
+		log.Error().Err(err).
+			Str("collectionName", collectionNameExamsWithRegs).
+			Msg("cannot insert exams")
+		return err
+	}
+
+	return nil
+}

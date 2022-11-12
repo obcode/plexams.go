@@ -29,6 +29,11 @@ type AnCode struct {
 	AnCode int `json:"anCode"`
 }
 
+type ConflictPerProgram struct {
+	Program  string      `json:"program"`
+	Conflics []*Conflict `json:"conflics"`
+}
+
 type ConnectedExam struct {
 	ZpaExam           *ZPAExam       `json:"zpaExam"`
 	PrimussExams      []*PrimussExam `json:"primussExams"`
@@ -39,6 +44,15 @@ type ConnectedExam struct {
 type ExamDay struct {
 	Number int       `json:"number"`
 	Date   time.Time `json:"date"`
+}
+
+type ExamWithRegs struct {
+	AnCode        int                               `json:"anCode"`
+	ZpaExam       *ZPAExam                          `json:"zpaExam"`
+	PrimussExams  []*PrimussExam                    `json:"primussExams"`
+	StudentRegs   []*StudentRegsPerAncodeAndProgram `json:"studentRegs"`
+	Conflicts     []*ConflictPerProgram             `json:"conflicts"`
+	ConnectErrors []string                          `json:"connectErrors"`
 }
 
 type FK07Program struct {

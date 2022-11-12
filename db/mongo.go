@@ -12,6 +12,7 @@ import (
 const (
 	collectionNameAdditionalExams = "additional_exams"
 	collectionNameConnectedExams  = "connected_exams"
+	collectionNameExamsWithRegs   = "exams_with_regs"
 )
 
 type DB struct {

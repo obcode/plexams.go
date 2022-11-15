@@ -9,13 +9,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func (db *DB) GetPrimussStudentRegsForProgrammAncode(ctx context.Context, program string, anCode int) ([]*model.StudentReg, error) {
+func (db *DB) GetPrimussStudentRegsForProgrammAncode(ctx context.Context, program string, ancode int) ([]*model.StudentReg, error) {
 	studentRegs, err := db.GetPrimussStudentRegsPerAncode(ctx, program)
 	if err != nil {
 		return nil, err
 	}
 
-	return studentRegs[anCode], nil
+	return studentRegs[ancode], nil
 }
 
 func (db *DB) GetPrimussStudentRegsPerAncode(ctx context.Context, program string) (map[int][]*model.StudentReg, error) {
@@ -134,28 +134,28 @@ func (db *DB) StudentRegsForProgram(ctx context.Context, program string) ([]*mod
 
 	return studentRegs, nil
 }
-func (db *DB) ChangeAncodeInStudentRegs(ctx context.Context, program string, anCode, newAncode int) ([]*model.StudentReg, error) {
-	err := db.ChangeAncodeInStudentRegsCount(ctx, program, anCode, newAncode)
+func (db *DB) ChangeAncodeInStudentRegs(ctx context.Context, program string, ancode, newAncode int) ([]*model.StudentReg, error) {
+	err := db.ChangeAncodeInStudentRegsCount(ctx, program, ancode, newAncode)
 	if err != nil {
 		return nil, err
 	}
 	collection := db.getCollection(program, StudentRegs)
 
-	filter := bson.D{{Key: "AnCode", Value: anCode}}
+	filter := bson.D{{Key: "AnCode", Value: ancode}}
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: "AnCode", Value: newAncode}}}}
 
 	result, err := collection.UpdateMany(ctx, filter, update)
 
 	if err != nil {
 		log.Error().Err(err).
-			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Str("program", program).Int("from", ancode).Int("to", newAncode).
 			Msg("error while trying to change ancode.")
 		return nil, err
 	}
 
 	if result.MatchedCount == 0 {
 		log.Debug().
-			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Str("program", program).Int("from", ancode).Int("to", newAncode).
 			Msg("no student regs updated while trying to change ancode.")
 	}
 
@@ -167,44 +167,44 @@ type Count struct {
 	Sum    int `bson:"Sum"`
 }
 
-func (db *DB) checkStudentRegsCount(ctx context.Context, program string, anCode, studentRegsCount int) bool {
-	// log.Debug().Str("collectionName", collectionName).Int("anCode", anCode).Int("studentRegsCount", studentRegsCount).
+func (db *DB) checkStudentRegsCount(ctx context.Context, program string, ancode, studentRegsCount int) bool {
+	// log.Debug().Str("collectionName", collectionName).Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).
 	// 	Msg("checking count")
 	collection := db.getCollection(program, Counts)
 	var result Count
-	err := collection.FindOne(ctx, bson.D{{Key: "AnCo", Value: anCode}}).Decode(&result)
+	err := collection.FindOne(ctx, bson.D{{Key: "AnCo", Value: ancode}}).Decode(&result)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Str("program", program).
-			Int("anCode", anCode).Int("studentRegsCount", studentRegsCount).Msg("error finding count")
+			Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).Msg("error finding count")
 		return false
 	}
 	if result.Sum != studentRegsCount {
 		log.Debug().Str("semester", db.semester).Str("program", program).
-			Int("anCode", anCode).Int("studentRegsCount", studentRegsCount).Int("result.Sum", result.Sum).
+			Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).Int("result.Sum", result.Sum).
 			Msg("sum != student registrations")
 		return false
 	}
 	return true
 }
 
-func (db *DB) ChangeAncodeInStudentRegsCount(ctx context.Context, program string, anCode, newAncode int) error {
+func (db *DB) ChangeAncodeInStudentRegsCount(ctx context.Context, program string, ancode, newAncode int) error {
 	collection := db.getCollection(program, Counts)
 
-	filter := bson.D{{Key: "AnCo", Value: anCode}}
+	filter := bson.D{{Key: "AnCo", Value: ancode}}
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: "AnCo", Value: newAncode}}}}
 
 	result, err := collection.UpdateMany(ctx, filter, update)
 
 	if err != nil {
 		log.Error().Err(err).
-			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Str("program", program).Int("from", ancode).Int("to", newAncode).
 			Msg("error while trying to change ancode in count.")
 		return err
 	}
 
 	if result.MatchedCount == 0 {
 		log.Debug().
-			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Str("program", program).Int("from", ancode).Int("to", newAncode).
 			Msg("no count of student regs updated while trying to change ancode.")
 	}
 

@@ -1,6 +1,6 @@
 type NTAExam {
   semester: String!
-  anCode: String!
+  ancode: String!
   module: String!
   mainExamer: String!
 }

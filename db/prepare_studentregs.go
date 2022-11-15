@@ -41,7 +41,7 @@ func (db *DB) SaveStudentRegsPerAncode(ctx context.Context, studentRegsPerAncode
 		}
 
 		studentRegsPerAncodeSlice = append(studentRegsPerAncodeSlice, &model.StudentRegsPerAncode{
-			AnCode:     ancode,
+			Ancode:     ancode,
 			PerProgram: perProgram,
 		})
 	}
@@ -87,7 +87,7 @@ func (db *DB) SaveStudentRegsPerStudent(ctx context.Context, studentRegsPerStude
 					Group:   regs[0].Group,
 					Name:    regs[0].Name,
 				},
-				AnCodes: ancodes,
+				Ancodes: ancodes,
 			})
 		}
 	}

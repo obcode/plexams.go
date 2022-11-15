@@ -16,5 +16,5 @@ type Teacher {
 }
 
 type AnCode {
-  anCode: Int!
+  ancode: Int!
 }

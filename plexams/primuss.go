@@ -10,16 +10,16 @@ func (p *Plexams) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgr
 	return p.dbClient.GetPrimussExams(ctx)
 }
 
-func (p *Plexams) GetPrimussExam(ctx context.Context, program string, anCode int) (*model.PrimussExam, error) {
-	return p.dbClient.GetPrimussExam(ctx, program, anCode)
+func (p *Plexams) GetPrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error) {
+	return p.dbClient.GetPrimussExam(ctx, program, ancode)
 }
 
-func (p *Plexams) PrimussExamExists(ctx context.Context, program string, anCode int) (bool, error) {
-	return p.dbClient.PrimussExamExists(ctx, program, anCode)
+func (p *Plexams) PrimussExamExists(ctx context.Context, program string, ancode int) (bool, error) {
+	return p.dbClient.PrimussExamExists(ctx, program, ancode)
 }
 
-func (p *Plexams) GetPrimussExamsForAncode(ctx context.Context, anCode int) ([]*model.PrimussExam, error) {
-	return p.dbClient.GetPrimussExamsForAncode(ctx, anCode)
+func (p *Plexams) GetPrimussExamsForAncode(ctx context.Context, ancode int) ([]*model.PrimussExam, error) {
+	return p.dbClient.GetPrimussExamsForAncode(ctx, ancode)
 }
 
 func (p *Plexams) GetStudentRegs(ctx context.Context, exam *model.PrimussExam) ([]*model.StudentReg, error) {

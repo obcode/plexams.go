@@ -19,14 +19,14 @@ type StudentReg struct {
 }
 
 type Conflicts struct {
-	AnCode     int         `json:"anCode"`
+	AnCode     int         `json:"ancode"`
 	Module     string      `json:"module"`
 	MainExamer string      `json:"mainExamer"`
 	Conflicts  []*Conflict `json:"conflicts"`
 }
 
 type Conflict struct {
-	AnCode        int `json:"anCode"`
+	AnCode        int `json:"ancode"`
 	NumberOfStuds int `json:"numberOfStuds"`
 }
 

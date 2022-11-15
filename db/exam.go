@@ -71,9 +71,9 @@ func (db *DB) ExamsAlreadyPrepared(ctx context.Context) bool {
 func (db *DB) AddExam(ctx context.Context, exam *model.Exam) error {
 	collection := db.Client.Database(databaseName(db.semester)).Collection("exams")
 
-	result := collection.FindOne(ctx, bson.D{{Key: "anCode", Value: exam.AnCode}})
+	result := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: exam.AnCode}})
 	if result.Err() == nil {
-		log.Error().Int("anCode", exam.AnCode).Msg("cannot add exam, exam with ancode already in db")
+		log.Error().Int("ancode", exam.AnCode).Msg("cannot add exam, exam with ancode already in db")
 		return fmt.Errorf("cannot add exam, exam with ancode %d already in db", exam.AnCode)
 	}
 

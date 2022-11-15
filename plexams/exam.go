@@ -16,8 +16,8 @@ func (p *Plexams) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam,
 	return p.dbClient.AdditionalExams(ctx)
 }
 
-func (p *Plexams) GetConnectedExam(ctx context.Context, anCode int, allPrograms []string) (*model.ConnectedExam, error) {
-	zpaExam, err := p.dbClient.GetZpaExamByAncode(ctx, anCode)
+func (p *Plexams) GetConnectedExam(ctx context.Context, ancode int, allPrograms []string) (*model.ConnectedExam, error) {
+	zpaExam, err := p.dbClient.GetZpaExamByAncode(ctx, ancode)
 	if err != nil {
 		return nil, err
 	}
@@ -36,12 +36,12 @@ func (p *Plexams) GetConnectedExam(ctx context.Context, anCode int, allPrograms 
 	var errors []string
 
 	for _, program := range programs {
-		primussExam, err := p.GetPrimussExam(ctx, program, anCode)
+		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
 		if err != nil {
 			if errors == nil {
 				errors = make([]string, 0)
 			}
-			errors = append(errors, fmt.Sprintf("%s/%d not found", program, anCode))
+			errors = append(errors, fmt.Sprintf("%s/%d not found", program, ancode))
 		} else {
 			primussExams = append(primussExams, primussExam)
 		}
@@ -61,7 +61,7 @@ OUTER:
 	var otherPrimussExams []*model.PrimussExam
 
 	for _, program := range otherPrograms {
-		primussExam, err := p.GetPrimussExam(ctx, program, anCode)
+		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
 		if err == nil {
 			if otherPrimussExams == nil {
 				otherPrimussExams = make([]*model.PrimussExam, 0)
@@ -69,7 +69,7 @@ OUTER:
 			if errors == nil {
 				errors = make([]string, 0)
 			}
-			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, anCode, primussExam.MainExamer, primussExam.Module))
+			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, ancode, primussExam.MainExamer, primussExam.Module))
 			otherPrimussExams = append(otherPrimussExams, primussExam)
 		}
 	}
@@ -88,7 +88,7 @@ func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam
 
 func (p *Plexams) PrepareConnectedExams() error {
 	ctx := context.Background()
-	anCodes, err := p.GetZpaAnCodes(ctx)
+	ancodes, err := p.GetZpaAnCodes(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get zpa ancodes")
 		return err
@@ -101,10 +101,10 @@ func (p *Plexams) PrepareConnectedExams() error {
 	}
 
 	exams := make([]*model.ConnectedExam, 0)
-	for _, anCode := range anCodes {
-		exam, err := p.GetConnectedExam(ctx, anCode.AnCode, allPrograms)
+	for _, ancode := range ancodes {
+		exam, err := p.GetConnectedExam(ctx, ancode.Ancode, allPrograms)
 		if err != nil {
-			log.Error().Err(err).Int("ancode", anCode.AnCode).
+			log.Error().Err(err).Int("ancode", ancode.Ancode).
 				Msg("cannot connected exam")
 			return err
 		}
@@ -184,7 +184,7 @@ func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamI
 						primussExam.Program, primussExam.AnCode, exam.AnCode), "")
 					if err != nil {
 						log.Error().Err(err).Str("program", primussExam.Program).
-							Int("anCode", primussExam.AnCode).
+							Int("ancode", primussExam.AnCode).
 							Msg("cannot log removed primuss exam")
 					}
 				}
@@ -193,7 +193,7 @@ func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamI
 			// add exam to db
 			err = p.dbClient.AddExam(ctx, exam)
 			if err != nil {
-				log.Error().Err(err).Int("anCode", exam.AnCode).Msg("cannot insert exam to db")
+				log.Error().Err(err).Int("ancode", exam.AnCode).Msg("cannot insert exam to db")
 			}
 		}
 
@@ -211,7 +211,7 @@ func (p *Plexams) RemovePrimussExam(ctx context.Context, input *model.PrimussExa
 	// 		oks = oks && ok
 	// 		if err != nil {
 	// 			log.Error().Err(err).
-	// 				Int("anCode", input.AnCode).Str("program", input.Program).
+	// 				Int("ancode", input.AnCode).Str("program", input.Program).
 	// 				Msg("cannot remove primuss exam")
 	// 			return oks, err
 	// 		}
@@ -223,7 +223,7 @@ func (p *Plexams) RemovePrimussExam(ctx context.Context, input *model.PrimussExa
 
 func isConnected(primussExam *model.PrimussExam, notConnectedExams []*model.PrimussExamInput) bool {
 	for _, notConnectedExam := range notConnectedExams {
-		if primussExam.AnCode == notConnectedExam.AnCode && primussExam.Program == notConnectedExam.Program {
+		if primussExam.AnCode == notConnectedExam.Ancode && primussExam.Program == notConnectedExam.Program {
 			return false
 		}
 	}

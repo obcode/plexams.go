@@ -25,10 +25,10 @@ func (db *DB) GetZPAExamsToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
 	exams := make([]*model.ZPAExam, 0)
 
 	for _, ancode := range ancodes {
-		exam, err := db.GetZpaExamByAncode(ctx, ancode.AnCode)
+		exam, err := db.GetZpaExamByAncode(ctx, ancode.Ancode)
 		if err != nil {
 			log.Error().Err(err).Str("semester", db.semester).
-				Int("ancode", ancode.AnCode).Msg("zpa exam with ancode not found")
+				Int("ancode", ancode.Ancode).Msg("zpa exam with ancode not found")
 		} else {
 			exams = append(exams, exam)
 		}
@@ -46,10 +46,10 @@ func (db *DB) GetZPAExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, error
 	exams := make([]*model.ZPAExam, 0)
 
 	for _, ancode := range ancodes {
-		exam, err := db.GetZpaExamByAncode(ctx, ancode.AnCode)
+		exam, err := db.GetZpaExamByAncode(ctx, ancode.Ancode)
 		if err != nil {
 			log.Error().Err(err).Str("semester", db.semester).
-				Int("ancode", ancode.AnCode).Msg("zpa exam with ancode not found")
+				Int("ancode", ancode.Ancode).Msg("zpa exam with ancode not found")
 		} else {
 			exams = append(exams, exam)
 		}
@@ -132,14 +132,14 @@ func (db *DB) GetZPAExams(ctx context.Context) ([]*model.ZPAExam, error) {
 	return exams, nil
 }
 
-func (db *DB) GetZpaExamByAncode(ctx context.Context, anCode int) (*model.ZPAExam, error) {
+func (db *DB) GetZpaExamByAncode(ctx context.Context, ancode int) (*model.ZPAExam, error) {
 	collection := db.Client.Database(databaseName(db.semester)).Collection("zpaexams")
 
 	var result model.ZPAExam
-	err := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: anCode}}).Decode(&result)
+	err := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}}).Decode(&result)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).
-			Int("anCode", anCode).Msg("cannot find ZPA exam")
+			Int("ancode", ancode).Msg("cannot find ZPA exam")
 		return nil, err
 	}
 
@@ -205,8 +205,8 @@ func (db *DB) setZPAExams(ctx context.Context, exams []*model.ZPAExam, toCollect
 	return nil
 }
 
-func (db *DB) AddZpaExamToPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
-	exam, err := db.GetZpaExamByAncode(ctx, anCode)
+func (db *DB) AddZpaExamToPlan(ctx context.Context, ancode int, unknown bool) (bool, error) {
+	exam, err := db.GetZpaExamByAncode(ctx, ancode)
 	if err != nil {
 		return false, err
 	}
@@ -215,15 +215,15 @@ func (db *DB) AddZpaExamToPlan(ctx context.Context, anCode int, unknown bool) (b
 	if !unknown {
 		collectionNot := db.Client.Database(databaseName(db.semester)).Collection(collectionNotToPlan)
 
-		res, err := collectionNot.DeleteOne(ctx, bson.D{{Key: "ancode", Value: anCode}})
+		res, err := collectionNot.DeleteOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
 		if err != nil {
 			log.Error().Err(err).Str("semester", db.semester).
-				Int("anCode", anCode).Msg("cannot remove ZPA exam from not planned exams")
+				Int("ancode", ancode).Msg("cannot remove ZPA exam from not planned exams")
 			return false, err
 		}
 		if res.DeletedCount != 1 {
 			log.Error().Err(err).Str("semester", db.semester).
-				Int("anCode", anCode).Int64("deletedCount", res.DeletedCount).Msg("not removed exactly one ZPA exam from not planned exams")
+				Int("ancode", ancode).Int64("deletedCount", res.DeletedCount).Msg("not removed exactly one ZPA exam from not planned exams")
 		}
 	}
 
@@ -233,15 +233,15 @@ func (db *DB) AddZpaExamToPlan(ctx context.Context, anCode int, unknown bool) (b
 	_, err = collectionTo.InsertOne(ctx, exam)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).
-			Int("anCode", anCode).Msg("cannot add ZPA exam to planned exams")
+			Int("ancode", ancode).Msg("cannot add ZPA exam to planned exams")
 		return false, err
 	}
 
 	return true, nil
 }
 
-func (db *DB) RmZpaExamFromPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
-	exam, err := db.GetZpaExamByAncode(ctx, anCode)
+func (db *DB) RmZpaExamFromPlan(ctx context.Context, ancode int, unknown bool) (bool, error) {
+	exam, err := db.GetZpaExamByAncode(ctx, ancode)
 	if err != nil {
 		return false, err
 	}
@@ -250,15 +250,15 @@ func (db *DB) RmZpaExamFromPlan(ctx context.Context, anCode int, unknown bool) (
 	if !unknown {
 		collectionTo := db.Client.Database(databaseName(db.semester)).Collection(collectionToPlan)
 
-		res, err := collectionTo.DeleteOne(ctx, bson.D{{Key: "ancode", Value: anCode}})
+		res, err := collectionTo.DeleteOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
 		if err != nil {
 			log.Error().Err(err).Str("semester", db.semester).
-				Int("anCode", anCode).Msg("cannot remove ZPA exam from planned exams")
+				Int("ancode", ancode).Msg("cannot remove ZPA exam from planned exams")
 			return false, err
 		}
 		if res.DeletedCount != 1 {
 			log.Error().Err(err).Str("semester", db.semester).
-				Int("anCode", anCode).Int64("deletedCount", res.DeletedCount).Msg("not removed exactly one ZPA exam from planned exams")
+				Int("ancode", ancode).Int64("deletedCount", res.DeletedCount).Msg("not removed exactly one ZPA exam from planned exams")
 		}
 	}
 
@@ -268,7 +268,7 @@ func (db *DB) RmZpaExamFromPlan(ctx context.Context, anCode int, unknown bool) (
 	_, err = collectionNot.InsertOne(ctx, exam)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).
-			Int("anCode", anCode).Msg("cannot add ZPA exam to not planned exams")
+			Int("ancode", ancode).Msg("cannot add ZPA exam to not planned exams")
 		return false, err
 	}
 

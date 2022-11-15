@@ -14,19 +14,22 @@ type Query {
   zpaExamsToPlan: [ZPAExam!]!
   zpaExamsNotToPlan: [ZPAExam!]!
   zpaExamsPlaningStatusUnknown: [ZPAExam!]!
-  zpaExam(anCode: Int!): ZPAExam
+  zpaExam(ancode: Int!): ZPAExam
   zpaAnCodes: [AnCode]
   studentRegsImportErrors: [RegWithError!]!
   # Additional Exams
   additionalExams: [AdditionalExam!]!
   # Primuss
   primussExams: [PrimussExamByProgram]
-  primussExam(program: String!, anCode: Int!): PrimussExam!
-  primussExamsForAnCode(anCode: Int!): [PrimussExam!]
+  primussExam(program: String!, ancode: Int!): PrimussExam!
+  primussExamsForAnCode(ancode: Int!): [PrimussExam!]
   studentRegsForProgram(program: String!): [StudentReg!]
   # Exams connected
-  # connectedExam(anCode: Int!): ConnectedExam
+  # connectedExam(ancode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
+  # constraints
+  constraintForAncode(ancode: Int!): Constraints
+  zpaExamsToPlanWithConstraints: [ZPAExamWithConstraints!]!
   # NTAs
   ntas: [NTA!]
 }

@@ -5,7 +5,6 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
@@ -22,13 +21,13 @@ func (r *mutationResolver) ZpaExamsToPlan(ctx context.Context, input []int) ([]*
 }
 
 // AddZPAExamToPlan is the resolver for the addZPAExamToPlan field.
-func (r *mutationResolver) AddZpaExamToPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
-	return r.plexams.AddZpaExamToPlan(ctx, anCode, unknown)
+func (r *mutationResolver) AddZpaExamToPlan(ctx context.Context, ancode int, unknown bool) (bool, error) {
+	return r.plexams.AddZpaExamToPlan(ctx, ancode, unknown)
 }
 
 // RmZPAExamFromPlan is the resolver for the rmZPAExamFromPlan field.
-func (r *mutationResolver) RmZpaExamFromPlan(ctx context.Context, anCode int, unknown bool) (bool, error) {
-	return r.plexams.RmZpaExamFromPlan(ctx, anCode, unknown)
+func (r *mutationResolver) RmZpaExamFromPlan(ctx context.Context, ancode int, unknown bool) (bool, error) {
+	return r.plexams.RmZpaExamFromPlan(ctx, ancode, unknown)
 }
 
 // AddAdditionalExam is the resolver for the addAdditionalExam field.
@@ -51,17 +50,32 @@ func (r *mutationResolver) AddNta(ctx context.Context, input model.NTAInput) (*m
 	return r.plexams.AddNta(ctx, input)
 }
 
+// NotPlannedByMe is the resolver for the notPlannedByMe field.
+func (r *mutationResolver) NotPlannedByMe(ctx context.Context, ancode int) (bool, error) {
+	return r.plexams.NotPlannedByMe(ctx, ancode)
+}
+
+// ExcludeDays is the resolver for the excludeDays field.
+func (r *mutationResolver) ExcludeDays(ctx context.Context, ancode int, days []string) (bool, error) {
+	return r.plexams.ExcludeDays(ctx, ancode, days)
+}
+
+// SameSlot is the resolver for the sameSlot field.
+func (r *mutationResolver) SameSlot(ctx context.Context, ancode int, ancodes []int) (bool, error) {
+	return r.plexams.SameSlot(ctx, ancode, ancodes)
+}
+
+// RoomWithSockets is the resolver for the roomWithSockets field.
+func (r *mutationResolver) PlacesWithSockets(ctx context.Context, ancode int) (bool, error) {
+	return r.plexams.PlacesWithSockets(ctx, ancode)
+}
+
+// ExahmRooms is the resolver for the exahmRooms field.
+func (r *mutationResolver) ExahmRooms(ctx context.Context, ancode int) (bool, error) {
+	return r.plexams.ExahmRooms(ctx, ancode)
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
 type mutationResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//     it when you're done.
-//   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *mutationResolver) DoneStep(ctx context.Context, number int) ([]*model.Step, error) {
-	panic(fmt.Errorf("not implemented"))
-}

@@ -23,7 +23,7 @@ func (p *Plexams) PrepareStudentRegs() error {
 
 	studentRegsPerAncodePlanned := make(map[int]map[string][]*model.StudentReg)
 	for _, ancode := range ancodes {
-		studentRegsPerAncodePlanned[ancode.AnCode] = studentRegsPerAncode[ancode.AnCode]
+		studentRegsPerAncodePlanned[ancode.Ancode] = studentRegsPerAncode[ancode.Ancode]
 	}
 
 	studentRegsPerStudentPlanned := make(map[string][]*model.StudentReg, 0)
@@ -31,7 +31,7 @@ func (p *Plexams) PrepareStudentRegs() error {
 		studentRegsPlanned := make([]*model.StudentReg, 0)
 		for _, studentReg := range studentRegs {
 			for _, ancode := range ancodes {
-				if ancode.AnCode == studentReg.AnCode {
+				if ancode.Ancode == studentReg.AnCode {
 					studentRegsPlanned = append(studentRegsPlanned, studentReg)
 					break
 				}
@@ -139,7 +139,7 @@ func (p *Plexams) PrepareExamsWithRegs() error {
 
 	studentRegs := make(map[int]*model.StudentRegsPerAncode)
 	for _, studentReg := range studentRegsSlice {
-		studentRegs[studentReg.AnCode] = studentReg
+		studentRegs[studentReg.Ancode] = studentReg
 	}
 
 	// combine the exams with regs
@@ -173,7 +173,7 @@ func (p *Plexams) PrepareExamsWithRegs() error {
 		}
 
 		examWithReg := model.ExamWithRegs{
-			AnCode:        ancode,
+			Ancode:        ancode,
 			ZpaExam:       zpaExam,
 			PrimussExams:  primussExams,
 			StudentRegs:   studentRegsForExam,

@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (db *DB) GetPrimussExamsForAncode(ctx context.Context, anCode int) ([]*model.PrimussExam, error) {
+func (db *DB) GetPrimussExamsForAncode(ctx context.Context, ancode int) ([]*model.PrimussExam, error) {
 	programs, err := db.GetPrograms(ctx)
 	if err != nil {
 		return nil, err
@@ -17,10 +17,10 @@ func (db *DB) GetPrimussExamsForAncode(ctx context.Context, anCode int) ([]*mode
 
 	exams := make([]*model.PrimussExam, 0)
 	for _, program := range programs {
-		exam, err := db.GetPrimussExam(ctx, program, anCode)
+		exam, err := db.GetPrimussExam(ctx, program, ancode)
 		if err != nil {
 			log.Error().Err(err).Str("semester", db.semester).Str("program", program).
-				Int("anCode", anCode).Msg("cannot find primuss exam")
+				Int("ancode", ancode).Msg("cannot find primuss exam")
 		} else {
 			exams = append(exams, exam)
 		}
@@ -29,24 +29,24 @@ func (db *DB) GetPrimussExamsForAncode(ctx context.Context, anCode int) ([]*mode
 	return exams, nil
 }
 
-func (db *DB) GetPrimussExam(ctx context.Context, program string, anCode int) (*model.PrimussExam, error) {
+func (db *DB) GetPrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error) {
 	collection := db.getCollection(program, Exams)
 
 	var exam model.PrimussExam
-	err := collection.FindOne(ctx, bson.D{{Key: "AnCode", Value: anCode}}).Decode(&exam)
+	err := collection.FindOne(ctx, bson.D{{Key: "AnCode", Value: ancode}}).Decode(&exam)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Str("program", program).
-			Int("anCode", anCode).Msg("cannot find primuss exam")
+			Int("ancode", ancode).Msg("cannot find primuss exam")
 		return nil, err
 	}
 
 	return &exam, nil
 }
 
-func (db *DB) PrimussExamExists(ctx context.Context, program string, anCode int) (bool, error) {
+func (db *DB) PrimussExamExists(ctx context.Context, program string, ancode int) (bool, error) {
 	collection := db.getCollection(program, Exams)
 
-	err := collection.FindOne(ctx, bson.D{{Key: "AnCode", Value: anCode}}).Err()
+	err := collection.FindOne(ctx, bson.D{{Key: "AnCode", Value: ancode}}).Err()
 	if err == mongo.ErrNoDocuments {
 		return false, nil
 	}
@@ -58,24 +58,24 @@ func (db *DB) PrimussExamExists(ctx context.Context, program string, anCode int)
 	return true, nil
 }
 
-func (db *DB) ChangeAncode(ctx context.Context, program string, anCode, newAncode int) (*model.PrimussExam, error) {
+func (db *DB) ChangeAncode(ctx context.Context, program string, ancode, newAncode int) (*model.PrimussExam, error) {
 	collection := db.getCollection(program, Exams)
 
-	filter := bson.D{{Key: "AnCode", Value: anCode}}
+	filter := bson.D{{Key: "AnCode", Value: ancode}}
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: "AnCode", Value: newAncode}}}}
 
 	result, err := collection.UpdateOne(ctx, filter, update)
 
 	if err != nil {
 		log.Error().Err(err).
-			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Str("program", program).Int("from", ancode).Int("to", newAncode).
 			Msg("error while trying to change ancode.")
 		return nil, err
 	}
 
 	if result.MatchedCount == 0 {
 		log.Debug().
-			Str("program", program).Int("from", anCode).Int("to", newAncode).
+			Str("program", program).Int("from", ancode).Int("to", newAncode).
 			Msg("no exam updated while trying to change ancode.")
 	}
 

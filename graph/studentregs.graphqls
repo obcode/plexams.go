@@ -1,10 +1,10 @@
 type StudentRegsPerStudent {
   student: Student!
-  anCodes: [Int!]!
+  ancodes: [Int!]!
 }
 
 type StudentRegsPerAncode {
-  anCode: Int!
+  ancode: Int!
   perProgram: [StudentRegsPerAncodeAndProgram!]!
 }
 

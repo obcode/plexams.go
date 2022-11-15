@@ -1,5 +1,5 @@
 type PrimussExam {
-  anCode: Int!
+  ancode: Int!
   module: String!
   mainExamer: String!
   program: String!
@@ -10,7 +10,7 @@ type PrimussExam {
 }
 
 input PrimussExamInput {
-  anCode: Int!
+  ancode: Int!
   program: String!
 }
 
@@ -21,7 +21,7 @@ type PrimussExamByProgram {
 
 type StudentReg {
   mtknr: String!
-  anCode: Int!
+  ancode: Int!
   program: String!
   group: String!
   name: String!
@@ -29,14 +29,14 @@ type StudentReg {
 }
 
 type Conflicts {
-  anCode: Int!
+  ancode: Int!
   module: String!
   mainExamer: String!
   conflicts: [Conflict!]!
 }
 
 type Conflict {
-  anCode: Int!
+  ancode: Int!
   numberOfStuds: Int!
 }
 

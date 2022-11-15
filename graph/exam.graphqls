@@ -1,5 +1,5 @@
 input AdditionalExamInput {
-  anCode: Int!
+  ancode: Int!
   module: String!
   mainExamerID: Int!
   duration: Int!
@@ -8,7 +8,7 @@ input AdditionalExamInput {
 }
 
 type AdditionalExam {
-  anCode: Int!
+  ancode: Int!
   module: String!
   mainExamer: String!
   mainExamerID: Int!
@@ -18,10 +18,23 @@ type AdditionalExam {
 }
 
 type ExamWithRegs {
-  anCode: Int!
+  ancode: Int!
   zpaExam: ZPAExam!
   primussExams: [PrimussExam!]!
   studentRegs: [StudentRegsPerAncodeAndProgram!]!
   conflicts: [ConflictPerProgram!]!
   connectErrors: [String!]!
+}
+
+type Constraints {
+  ancode: Int!
+  notPlannedByMe: Boolean!
+  excludeDays: [Time!]
+  sameSlot: [Int!]
+  roomConstraints: RoomConstraints
+}
+
+type RoomConstraints {
+  placesWithSocket: Boolean!
+  exahmRooms: Boolean!
 }

@@ -2,7 +2,7 @@ package model
 
 type NTAExam struct {
 	Semester   string `bson:"semester"`
-	AnCode     string `bson:"anCode"`
+	AnCode     string `bson:"ancode"`
 	Module     string `bson:"module"`
 	MainExamer string `bson:"mainExamer"`
 }

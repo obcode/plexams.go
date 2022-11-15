@@ -7,7 +7,7 @@ import (
 )
 
 type AdditionalExam struct {
-	AnCode         int      `json:"anCode"`
+	Ancode         int      `json:"ancode"`
 	Module         string   `json:"module"`
 	MainExamer     string   `json:"mainExamer"`
 	MainExamerID   int      `json:"mainExamerID"`
@@ -17,7 +17,7 @@ type AdditionalExam struct {
 }
 
 type AdditionalExamInput struct {
-	AnCode         int      `json:"anCode"`
+	Ancode         int      `json:"ancode"`
 	Module         string   `json:"module"`
 	MainExamerID   int      `json:"mainExamerID"`
 	Duration       int      `json:"duration"`
@@ -26,7 +26,7 @@ type AdditionalExamInput struct {
 }
 
 type AnCode struct {
-	AnCode int `json:"anCode"`
+	Ancode int `json:"ancode"`
 }
 
 type ConflictPerProgram struct {
@@ -41,13 +41,21 @@ type ConnectedExam struct {
 	Errors            []string       `json:"errors"`
 }
 
+type Constraints struct {
+	Ancode          int              `json:"ancode"`
+	NotPlannedByMe  bool             `json:"notPlannedByMe"`
+	ExcludeDays     []*time.Time     `json:"excludeDays"`
+	SameSlot        []int            `json:"sameSlot"`
+	RoomConstraints *RoomConstraints `json:"roomConstraints"`
+}
+
 type ExamDay struct {
 	Number int       `json:"number"`
 	Date   time.Time `json:"date"`
 }
 
 type ExamWithRegs struct {
-	AnCode        int                               `json:"anCode"`
+	Ancode        int                               `json:"ancode"`
 	ZpaExam       *ZPAExam                          `json:"zpaExam"`
 	PrimussExams  []*PrimussExam                    `json:"primussExams"`
 	StudentRegs   []*StudentRegsPerAncodeAndProgram `json:"studentRegs"`
@@ -76,8 +84,13 @@ type PrimussExamByProgram struct {
 }
 
 type PrimussExamInput struct {
-	AnCode  int    `json:"anCode"`
+	Ancode  int    `json:"ancode"`
 	Program string `json:"program"`
+}
+
+type RoomConstraints struct {
+	PlacesWithSocket bool `json:"placesWithSocket"`
+	ExahmRooms       bool `json:"exahmRooms"`
 }
 
 type Semester struct {
@@ -109,7 +122,7 @@ type Student struct {
 }
 
 type StudentRegsPerAncode struct {
-	AnCode     int                               `json:"anCode"`
+	Ancode     int                               `json:"ancode"`
 	PerProgram []*StudentRegsPerAncodeAndProgram `json:"perProgram"`
 }
 
@@ -120,7 +133,12 @@ type StudentRegsPerAncodeAndProgram struct {
 
 type StudentRegsPerStudent struct {
 	Student *Student `json:"student"`
-	AnCodes []int    `json:"anCodes"`
+	Ancodes []int    `json:"ancodes"`
+}
+
+type ZPAExamWithConstraints struct {
+	ZpaExam     *ZPAExam     `json:"zpaExam"`
+	Constraints *Constraints `json:"constraints"`
 }
 
 type ZPAExamsForType struct {

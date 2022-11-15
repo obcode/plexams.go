@@ -16,7 +16,7 @@ type Teacher struct {
 type ZPAExam struct {
 	ZpaID          int      `json:"id"`
 	Semester       string   `json:"semester"`
-	AnCode         int      `json:"anCode"`
+	AnCode         int      `json:"ancode"`
 	Module         string   `json:"module"`
 	MainExamer     string   `json:"main_examer"`
 	MainExamerID   int      `json:"main_examer_id"`
@@ -29,14 +29,14 @@ type ZPAExam struct {
 
 type ZPAStudentReg struct {
 	Semester string `json:"semester"`
-	AnCode   int    `json:"anCode"`
+	AnCode   int    `json:"ancode"`
 	Mtknr    string `json:"matrikel"`
 	Program  string `json:"program"`
 }
 
 type ZPAStudentRegError struct {
 	Semester string `json:"semester"`
-	AnCode   string `json:"anCode"`
+	AnCode   string `json:"ancode"`
 	Exam     string `json:"exam"`
 	Mtknr    string `json:"mtknr"`
 	Program  string `json:"program"`

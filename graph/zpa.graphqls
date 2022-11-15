@@ -1,7 +1,7 @@
 type ZPAExam {
   zpaID: Int!
   semester: String!
-  anCode: Int!
+  ancode: Int!
   module: String!
   mainExamer: String!
   mainExamerID: Int!
@@ -18,14 +18,14 @@ type ZPAExamsForType {
 }
 
 type ZPAStudentReg {
-  anCode: Int!
+  ancode: Int!
   mtknr: String!
   program: String!
 }
 
 type ZPAStudentRegError {
   semester: String!
-  anCode: String!
+  ancode: String!
   exam: String!
   mtknr: String!
   program: String!
@@ -38,4 +38,9 @@ type RegWithError {
 
 type FK07Program {
   name: String!
+}
+
+type ZPAExamWithConstraints {
+  zpaExam: ZPAExam!
+  constraints: Constraints # == nil if no constraint
 }

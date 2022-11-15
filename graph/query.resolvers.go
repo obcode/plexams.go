@@ -81,8 +81,8 @@ func (r *queryResolver) ZpaExamsPlaningStatusUnknown(ctx context.Context) ([]*mo
 }
 
 // ZpaExam is the resolver for the zpaExam field.
-func (r *queryResolver) ZpaExam(ctx context.Context, anCode int) (*model.ZPAExam, error) {
-	return r.plexams.GetZpaExamByAncode(ctx, anCode)
+func (r *queryResolver) ZpaExam(ctx context.Context, ancode int) (*model.ZPAExam, error) {
+	return r.plexams.GetZpaExamByAncode(ctx, ancode)
 }
 
 // ZpaAnCodes is the resolver for the zpaAnCodes field.
@@ -106,13 +106,13 @@ func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamB
 }
 
 // PrimussExam is the resolver for the primussExam field.
-func (r *queryResolver) PrimussExam(ctx context.Context, program string, anCode int) (*model.PrimussExam, error) {
-	return r.plexams.GetPrimussExam(ctx, program, anCode)
+func (r *queryResolver) PrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error) {
+	return r.plexams.GetPrimussExam(ctx, program, ancode)
 }
 
 // PrimussExamsForAnCode is the resolver for the primussExamsForAnCode field.
-func (r *queryResolver) PrimussExamsForAnCode(ctx context.Context, anCode int) ([]*model.PrimussExam, error) {
-	return r.plexams.GetPrimussExamsForAncode(ctx, anCode)
+func (r *queryResolver) PrimussExamsForAnCode(ctx context.Context, ancode int) ([]*model.PrimussExam, error) {
+	return r.plexams.GetPrimussExamsForAncode(ctx, ancode)
 }
 
 // StudentRegsForProgram is the resolver for the studentRegsForProgram field.
@@ -123,6 +123,16 @@ func (r *queryResolver) StudentRegsForProgram(ctx context.Context, program strin
 // ConnectedExams is the resolver for the connectedExams field.
 func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
 	return r.plexams.GetConnectedExams(ctx)
+}
+
+// ConstraintForAncode is the resolver for the constraintForAncode field.
+func (r *queryResolver) ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error) {
+	return r.plexams.ConstraintForAncode(ctx, ancode)
+}
+
+// ZpaExamsToPlanWithConstraints is the resolver for the zpaExamsToPlanWithConstraints field.
+func (r *queryResolver) ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error) {
+	return r.plexams.ZpaExamsToPlanWithConstraints(ctx)
 }
 
 // Ntas is the resolver for the ntas field.

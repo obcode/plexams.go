@@ -7,7 +7,7 @@ type RemovedPrimussExam struct {
 
 type Exam struct {
 	Semester            string               `json:"semester"`
-	AnCode              int                  `json:"anCode"`
+	AnCode              int                  `json:"ancode"`
 	Module              string               `json:"module"`
 	MainExamer          *Teacher             `json:"main_examer"`
 	MainExamerName      string               `json:"main_examer_name"`

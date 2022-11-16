@@ -15,6 +15,7 @@ type Mutation {
   excludeDays(ancode: Int!, days: [String!]!): Boolean!
   sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
   placesWithSockets(ancode: Int!): Boolean!
+  lab(ancode: Int!): Boolean!
   exahmRooms(ancode: Int!): Boolean!
   online(ancode: Int!): Boolean!
 }

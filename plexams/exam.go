@@ -16,7 +16,7 @@ func (p *Plexams) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam,
 	return p.dbClient.AdditionalExams(ctx)
 }
 
-func (p *Plexams) GetConnectedExam(ctx context.Context, ancode int, allPrograms []string) (*model.ConnectedExam, error) {
+func (p *Plexams) prepareConnectedExam(ctx context.Context, ancode int, allPrograms []string) (*model.ConnectedExam, error) {
 	zpaExam, err := p.dbClient.GetZpaExamByAncode(ctx, ancode)
 	if err != nil {
 		return nil, err
@@ -86,6 +86,10 @@ func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam
 	return p.dbClient.GetConnectedExams(ctx)
 }
 
+func (p *Plexams) GetConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error) {
+	return p.dbClient.GetConnectedExam(ctx, ancode)
+}
+
 func (p *Plexams) PrepareConnectedExams() error {
 	ctx := context.Background()
 	ancodes, err := p.GetZpaAnCodes(ctx)
@@ -102,7 +106,7 @@ func (p *Plexams) PrepareConnectedExams() error {
 
 	exams := make([]*model.ConnectedExam, 0)
 	for _, ancode := range ancodes {
-		exam, err := p.GetConnectedExam(ctx, ancode.Ancode, allPrograms)
+		exam, err := p.prepareConnectedExam(ctx, ancode.Ancode, allPrograms)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", ancode.Ancode).
 				Msg("cannot connected exam")
@@ -199,6 +203,46 @@ func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamI
 
 		return oks, nil
 	}
+}
+
+func (p *Plexams) ConnectExam(ancode int, program string) error {
+	ctx := context.Background()
+	connectedExam, err := p.GetConnectedExam(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get connected exam")
+		return err
+	}
+
+	for _, primussExam := range connectedExam.PrimussExams {
+		if primussExam.AnCode == ancode && primussExam.Program == program {
+			log.Debug().Msg("primuss exam already connected")
+			return fmt.Errorf("primuss exam already connected")
+		}
+	}
+
+	primussExam, err := p.GetPrimussExam(ctx, program, ancode)
+	if err != nil {
+		log.Error().Err(err).Str("program", program).Int("ancode", ancode).Msg("cannot get primuss exam")
+		return err
+	}
+
+	connectedExam.PrimussExams = append(connectedExam.PrimussExams, primussExam)
+
+	if len(connectedExam.OtherPrimussExams) > 0 {
+		otherPrimussExams := make([]*model.PrimussExam, 0)
+		for _, exam := range connectedExam.OtherPrimussExams {
+			if exam.AnCode != ancode || exam.Program != program {
+				otherPrimussExams = append(otherPrimussExams, exam)
+			}
+			if len(otherPrimussExams) > 0 {
+				connectedExam.OtherPrimussExams = otherPrimussExams
+			} else {
+				connectedExam.OtherPrimussExams = nil
+			}
+		}
+	}
+
+	return p.dbClient.ReplaceConnectedExam(ctx, connectedExam)
 }
 
 func (p *Plexams) RemovePrimussExam(ctx context.Context, input *model.PrimussExamInput) (bool, error) {

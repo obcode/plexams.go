@@ -70,6 +70,11 @@ func (r *mutationResolver) PlacesWithSockets(ctx context.Context, ancode int) (b
 	return r.plexams.PlacesWithSockets(ctx, ancode)
 }
 
+// Lab is the resolver for the lab field.
+func (r *mutationResolver) Lab(ctx context.Context, ancode int) (bool, error) {
+	return r.plexams.Lab(ctx, ancode)
+}
+
 // ExahmRooms is the resolver for the exahmRooms field.
 func (r *mutationResolver) ExahmRooms(ctx context.Context, ancode int) (bool, error) {
 	return r.plexams.ExahmRooms(ctx, ancode)

@@ -91,6 +91,7 @@ type PrimussExamInput struct {
 
 type RoomConstraints struct {
 	PlacesWithSocket bool `json:"placesWithSocket"`
+	Lab              bool `json:"lab"`
 	ExahmRooms       bool `json:"exahmRooms"`
 }
 

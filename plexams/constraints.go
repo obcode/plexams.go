@@ -64,6 +64,10 @@ func (p *Plexams) PlacesWithSockets(ctx context.Context, ancode int) (bool, erro
 	return p.dbClient.PlacesWithSockets(ctx, ancode)
 }
 
+func (p *Plexams) Lab(ctx context.Context, ancode int) (bool, error) {
+	return p.dbClient.Lab(ctx, ancode)
+}
+
 func (p *Plexams) ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error) {
 	return p.dbClient.GetConstraintsForAncode(ctx, ancode)
 }

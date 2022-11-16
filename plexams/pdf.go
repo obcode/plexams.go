@@ -305,6 +305,9 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 				if constraints.RoomConstraints.ExahmRooms {
 					contents = append(contents, []string{"", "", "", "", "", "benötigt EXaHM-Raum"})
 				}
+				if constraints.RoomConstraints.Lab {
+					contents = append(contents, []string{"", "", "", "", "", "benötigt Labor"})
+				}
 				if constraints.RoomConstraints.PlacesWithSocket {
 					contents = append(contents, []string{"", "", "", "", "", "benötigt Steckdosen an den Sitzplätzen"})
 				}

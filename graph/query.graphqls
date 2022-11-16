@@ -25,7 +25,7 @@ type Query {
   primussExamsForAnCode(ancode: Int!): [PrimussExam!]
   studentRegsForProgram(program: String!): [StudentReg!]
   # Exams connected
-  # connectedExam(ancode: Int!): ConnectedExam
+  connectedExam(ancode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
   # constraints
   constraintForAncode(ancode: Int!): Constraints

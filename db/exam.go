@@ -115,6 +115,32 @@ func (db *DB) SaveConnectedExams(ctx context.Context, exams []*model.ConnectedEx
 	return nil
 }
 
+func (db *DB) ReplaceConnectedExam(ctx context.Context, exam *model.ConnectedExam) error {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
+
+	_, err := collection.ReplaceOne(ctx, bson.D{{Key: "zpaexam.ancode", Value: exam.ZpaExam.AnCode}}, exam)
+	if err != nil {
+		log.Error().Err(err).Int("zpaexam.ancode", exam.ZpaExam.AnCode).Msg("cannot replace connected exam")
+		return err
+	}
+
+	return nil
+}
+
+func (db *DB) GetConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
+
+	var result model.ConnectedExam
+	err := collection.FindOne(ctx, bson.D{{Key: "zpaexam.ancode", Value: ancode}}).Decode(&result)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).
+			Int("ancode", ancode).Msg("cannot find Connected exam")
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 func (db *DB) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
 

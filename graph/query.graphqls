@@ -27,6 +27,8 @@ type Query {
   # Exams connected
   connectedExam(ancode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
+  # exam with regs
+  examWithRegs(ancode: Int!): ExamWithRegs
   # constraints
   constraintForAncode(ancode: Int!): Constraints
   zpaExamsToPlanWithConstraints: [ZPAExamWithConstraints!]!

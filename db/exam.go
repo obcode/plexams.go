@@ -203,3 +203,21 @@ func (db *DB) SaveExamsWithRegs(ctx context.Context, exams []*model.ExamWithRegs
 
 	return nil
 }
+
+func (db *DB) ExamWithRegs(ctx context.Context, ancode int) (*model.ExamWithRegs, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamsWithRegs)
+
+	res := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
+	if res.Err() != nil {
+		log.Error().Err(res.Err()).Int("ancode", ancode).Msg("no constraint found")
+		return nil, nil // no constraint available
+	}
+	var exam model.ExamWithRegs
+	err := res.Decode(&exam)
+	if err != nil {
+		log.Error().Err(res.Err()).Int("ancode", ancode).Msg("cannot decode constraint")
+		return nil, err
+	}
+
+	return &exam, nil
+}

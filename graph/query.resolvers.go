@@ -130,6 +130,11 @@ func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedE
 	return r.plexams.GetConnectedExams(ctx)
 }
 
+// ExamWithRegs is the resolver for the examWithRegs field.
+func (r *queryResolver) ExamWithRegs(ctx context.Context, ancode int) (*model.ExamWithRegs, error) {
+	return r.plexams.ExamWithRegs(ctx, ancode)
+}
+
 // ConstraintForAncode is the resolver for the constraintForAncode field.
 func (r *queryResolver) ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error) {
 	return r.plexams.ConstraintForAncode(ctx, ancode)

@@ -298,3 +298,7 @@ func (p *Plexams) zpaExamToExam(ctx context.Context, zpaExam *model.ZPAExam) (*m
 		RegisteredExams:     []*model.RegisteredExam{},
 	}, nil
 }
+
+func (p *Plexams) ExamWithRegs(ctx context.Context, ancode int) (*model.ExamWithRegs, error) {
+	return p.dbClient.ExamWithRegs(ctx, ancode)
+}

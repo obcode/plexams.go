@@ -46,6 +46,7 @@ type Constraints struct {
 	NotPlannedByMe  bool             `json:"notPlannedByMe"`
 	ExcludeDays     []*time.Time     `json:"excludeDays"`
 	SameSlot        []int            `json:"sameSlot"`
+	Online          bool             `json:"online"`
 	RoomConstraints *RoomConstraints `json:"roomConstraints"`
 }
 

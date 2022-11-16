@@ -12,6 +12,10 @@ func (p *Plexams) NotPlannedByMe(ctx context.Context, ancode int) (bool, error) 
 	return p.dbClient.NotPlannedByMe(ctx, ancode)
 }
 
+func (p *Plexams) Online(ctx context.Context, ancode int) (bool, error) {
+	return p.dbClient.Online(ctx, ancode)
+}
+
 func (p *Plexams) ExcludeDays(ctx context.Context, ancode int, dayStrings []string) (bool, error) {
 	days := make([]*time.Time, 0, len(dayStrings))
 	for _, dayStr := range dayStrings {

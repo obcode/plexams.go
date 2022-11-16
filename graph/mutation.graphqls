@@ -16,4 +16,5 @@ type Mutation {
   sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
   placesWithSockets(ancode: Int!): Boolean!
   exahmRooms(ancode: Int!): Boolean!
+  online(ancode: Int!): Boolean!
 }

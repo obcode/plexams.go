@@ -75,6 +75,11 @@ func (r *mutationResolver) ExahmRooms(ctx context.Context, ancode int) (bool, er
 	return r.plexams.ExahmRooms(ctx, ancode)
 }
 
+// Online is the resolver for the online field.
+func (r *mutationResolver) Online(ctx context.Context, ancode int) (bool, error) {
+	return r.plexams.Online(ctx, ancode)
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 

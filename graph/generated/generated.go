@@ -88,6 +88,7 @@ type ComplexityRoot struct {
 		Ancode          func(childComplexity int) int
 		ExcludeDays     func(childComplexity int) int
 		NotPlannedByMe  func(childComplexity int) int
+		Online          func(childComplexity int) int
 		RoomConstraints func(childComplexity int) int
 		SameSlot        func(childComplexity int) int
 	}
@@ -117,6 +118,7 @@ type ComplexityRoot struct {
 		ExahmRooms        func(childComplexity int, ancode int) int
 		ExcludeDays       func(childComplexity int, ancode int, days []string) int
 		NotPlannedByMe    func(childComplexity int, ancode int) int
+		Online            func(childComplexity int, ancode int) int
 		PlacesWithSockets func(childComplexity int, ancode int) int
 		PrepareExams      func(childComplexity int, input []*model.PrimussExamInput) int
 		RemovePrimussExam func(childComplexity int, input *model.PrimussExamInput) int
@@ -326,6 +328,7 @@ type MutationResolver interface {
 	SameSlot(ctx context.Context, ancode int, ancodes []int) (bool, error)
 	PlacesWithSockets(ctx context.Context, ancode int) (bool, error)
 	ExahmRooms(ctx context.Context, ancode int) (bool, error)
+	Online(ctx context.Context, ancode int) (bool, error)
 }
 type PrimussExamResolver interface {
 	StudentRegs(ctx context.Context, obj *model.PrimussExam) ([]*model.StudentReg, error)
@@ -536,6 +539,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Constraints.NotPlannedByMe(childComplexity), true
 
+	case "Constraints.online":
+		if e.complexity.Constraints.Online == nil {
+			break
+		}
+
+		return e.complexity.Constraints.Online(childComplexity), true
+
 	case "Constraints.roomConstraints":
 		if e.complexity.Constraints.RoomConstraints == nil {
 			break
@@ -684,6 +694,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.NotPlannedByMe(childComplexity, args["ancode"].(int)), true
+
+	case "Mutation.online":
+		if e.complexity.Mutation.Online == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_online_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.Online(childComplexity, args["ancode"].(int)), true
 
 	case "Mutation.placesWithSockets":
 		if e.complexity.Mutation.PlacesWithSockets == nil {
@@ -1725,6 +1747,7 @@ type Constraints {
   notPlannedByMe: Boolean!
   excludeDays: [Time!]
   sameSlot: [Int!]
+  online: Boolean!
   roomConstraints: RoomConstraints
 }
 
@@ -1751,6 +1774,7 @@ type RoomConstraints {
   sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
   placesWithSockets(ancode: Int!): Boolean!
   exahmRooms(ancode: Int!): Boolean!
+  online(ancode: Int!): Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../nta.graphqls", Input: `type NTAExam {
@@ -2096,6 +2120,21 @@ func (ec *executionContext) field_Mutation_excludeDays_args(ctx context.Context,
 }
 
 func (ec *executionContext) field_Mutation_notPlannedByMe_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["ancode"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["ancode"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_online_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
@@ -3537,6 +3576,50 @@ func (ec *executionContext) fieldContext_Constraints_sameSlot(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Constraints_online(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Constraints_online(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Online, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Constraints_online(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Constraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Constraints_roomConstraints(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Constraints_roomConstraints(ctx, field)
 	if err != nil {
@@ -4793,6 +4876,61 @@ func (ec *executionContext) fieldContext_Mutation_exahmRooms(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_exahmRooms_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_online(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_online(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Online(rctx, fc.Args["ancode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_online(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_online_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -7340,6 +7478,8 @@ func (ec *executionContext) fieldContext_Query_constraintForAncode(ctx context.C
 				return ec.fieldContext_Constraints_excludeDays(ctx, field)
 			case "sameSlot":
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
+			case "online":
+				return ec.fieldContext_Constraints_online(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -10157,6 +10297,8 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_constraints(ctx 
 				return ec.fieldContext_Constraints_excludeDays(ctx, field)
 			case "sameSlot":
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
+			case "online":
+				return ec.fieldContext_Constraints_online(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -12897,6 +13039,13 @@ func (ec *executionContext) _Constraints(ctx context.Context, sel ast.SelectionS
 
 			out.Values[i] = ec._Constraints_sameSlot(ctx, field, obj)
 
+		case "online":
+
+			out.Values[i] = ec._Constraints_online(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "roomConstraints":
 
 			out.Values[i] = ec._Constraints_roomConstraints(ctx, field, obj)
@@ -13169,6 +13318,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_exahmRooms(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "online":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_online(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {

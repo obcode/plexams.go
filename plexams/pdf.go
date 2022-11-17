@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/johnfercher/maroto/pkg/color"
@@ -14,6 +15,22 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
+
+func (p *Plexams) semesterFull() string {
+	s := strings.Split(p.semester, " ")
+	year := s[0]
+	sem := s[1]
+	full := ""
+
+	if sem == "SS" {
+		full = fmt.Sprint("Sommersemester ", year)
+	} else {
+		yearInt, _ := strconv.Atoi(year)
+		full = fmt.Sprintf("Wintersemester %d/%d", yearInt, yearInt-1999)
+	}
+
+	return full
+}
 
 func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) error {
 	m := pdf.NewMaroto(consts.Landscape, consts.A4)
@@ -36,7 +53,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	m.Row(10, func() {
 		m.Col(12, func() {
 			m.Text(
-				fmt.Sprintf("Prüfungen, die im Prüfungszeitraum %s stattfinden und daher zentral geplant werden.", p.semester), props.Text{
+				fmt.Sprintf("Prüfungen, die im Prüfungszeitraum %s stattfinden und daher zentral geplant werden.", p.semesterFull()), props.Text{
 					Top:   3,
 					Style: consts.Bold,
 					Align: consts.Center,
@@ -118,7 +135,7 @@ func (p *Plexams) SameModulNames(ctx context.Context, outfile string) error {
 	m.Row(10, func() {
 		m.Col(12, func() {
 			m.Text(
-				fmt.Sprintf("Module mit gleichem Namen im Prüfungszeitraum %s.", p.semester), props.Text{
+				fmt.Sprintf("Module mit gleichem Namen im Prüfungszeitraum %s.", p.semesterFull()), props.Text{
 					Top:   3,
 					Style: consts.Bold,
 					Align: consts.Center,
@@ -216,7 +233,7 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 	m.Row(10, func() {
 		m.Col(12, func() {
 			m.Text(
-				fmt.Sprintf("Constraints für den Prüfungszeitraum %s.", p.semester), props.Text{
+				fmt.Sprintf("Constraints für den Prüfungszeitraum %s.", p.semesterFull()), props.Text{
 					Top:   3,
 					Style: consts.Bold,
 					Align: consts.Center,

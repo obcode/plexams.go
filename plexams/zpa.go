@@ -78,6 +78,20 @@ func (p *Plexams) GetZpaAnCodes(ctx context.Context) ([]*model.AnCode, error) {
 	return ancodes, nil
 }
 
+func (p *Plexams) GetZpaAnCodesToPlan(ctx context.Context) ([]*model.AnCode, error) {
+	exams, err := p.GetZpaExamsToPlan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ancodes := make([]*model.AnCode, 0)
+	for _, exam := range exams {
+		ancodes = append(ancodes, &model.AnCode{Ancode: exam.AnCode})
+	}
+
+	return ancodes, nil
+}
+
 func (p *Plexams) GetZpaExamByAncode(ctx context.Context, ancode int) (*model.ZPAExam, error) {
 	return p.dbClient.GetZpaExamByAncode(ctx, ancode)
 }

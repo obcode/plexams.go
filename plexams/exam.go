@@ -92,7 +92,7 @@ func (p *Plexams) GetConnectedExam(ctx context.Context, ancode int) (*model.Conn
 
 func (p *Plexams) PrepareConnectedExams() error {
 	ctx := context.Background()
-	ancodes, err := p.GetZpaAnCodes(ctx)
+	ancodes, err := p.GetZpaAnCodesToPlan(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get zpa ancodes")
 		return err

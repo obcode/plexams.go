@@ -117,11 +117,6 @@ func (p *Plexams) PrepareExamsWithRegs() error {
 		log.Error().Err(err).Msg("cannot get zpa exams to plan")
 	}
 
-	// zpaExamsToPlan := make(map[int]*model.ZPAExam)
-	// for _, exam := range zpaExamsSlice {
-	// 	zpaExamsToPlan[exam.AnCode] = exam
-	// }
-
 	connectedExamsSlice, err := p.GetConnectedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get connected exams")

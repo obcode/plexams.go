@@ -221,3 +221,39 @@ func (db *DB) ExamWithRegs(ctx context.Context, ancode int) (*model.ExamWithRegs
 
 	return &exam, nil
 }
+
+func (db *DB) ExamsWithRegs(ctx context.Context) ([]*model.ExamWithRegs, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamsWithRegs)
+
+	exams := make([]*model.ExamWithRegs, 0)
+
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "ancode", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.M{}, findOptions)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameExamsWithRegs).Msg("MongoDB Find")
+		return exams, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var exam model.ExamWithRegs
+
+		err := cur.Decode(&exam)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameExamsWithRegs).Interface("cur", cur).
+				Msg("Cannot decode to additional exam")
+			return exams, err
+		}
+
+		exams = append(exams, &exam)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameExamsWithRegs).Msg("Cursor returned error")
+		return exams, err
+	}
+
+	return exams, nil
+}

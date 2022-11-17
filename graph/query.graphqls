@@ -29,6 +29,7 @@ type Query {
   connectedExams: [ConnectedExam!]!
   # exam with regs
   examWithRegs(ancode: Int!): ExamWithRegs
+  examsWithRegs: [ExamWithRegs!]
   # constraints
   constraintForAncode(ancode: Int!): Constraints
   zpaExamsToPlanWithConstraints: [ZPAExamWithConstraints!]!

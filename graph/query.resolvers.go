@@ -150,6 +150,16 @@ func (r *queryResolver) ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*m
 	return r.plexams.ZpaExamsToPlanWithConstraints(ctx)
 }
 
+// ExamGroups is the resolver for the examGroups field.
+func (r *queryResolver) ExamGroups(ctx context.Context) ([]*model.ExamGroup, error) {
+	return r.plexams.ExamGroups(ctx)
+}
+
+// ExamGroup is the resolver for the examGroup field.
+func (r *queryResolver) ExamGroup(ctx context.Context, examGroupCode int) (*model.ExamGroup, error) {
+	return r.plexams.ExamGroup(ctx, examGroupCode)
+}
+
 // Ntas is the resolver for the ntas field.
 func (r *queryResolver) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return r.plexams.Ntas(ctx)

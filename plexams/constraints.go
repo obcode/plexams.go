@@ -30,6 +30,20 @@ func (p *Plexams) ExcludeDays(ctx context.Context, ancode int, dayStrings []stri
 	return p.dbClient.ExcludeDays(ctx, ancode, days)
 }
 
+func (p *Plexams) PossibleDays(ctx context.Context, ancode int, dayStrings []string) (bool, error) {
+	days := make([]*time.Time, 0, len(dayStrings))
+	for _, dayStr := range dayStrings {
+		dayUTC, err := time.Parse("2006-01-02", dayStr)
+		if err != nil {
+			log.Error().Err(err).Str("date", dayStr).Msg("cannot parse date")
+		}
+		day := time.Date(dayUTC.Year(), dayUTC.Month(), dayUTC.Day(), 0, 0, 0, 0, time.Local)
+		days = append(days, &day)
+	}
+
+	return p.dbClient.PossibleDays(ctx, ancode, days)
+}
+
 func (p *Plexams) SameSlot(ctx context.Context, ancodeInput int, ancodesInput []int) (bool, error) {
 	// FIXME: Does not work on updates.
 	allAncodes := append(ancodesInput, ancodeInput)
@@ -70,6 +84,10 @@ func (p *Plexams) Lab(ctx context.Context, ancode int) (bool, error) {
 
 func (p *Plexams) ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error) {
 	return p.dbClient.GetConstraintsForAncode(ctx, ancode)
+}
+
+func (p *Plexams) Constraints(ctx context.Context) ([]*model.Constraints, error) {
+	return p.dbClient.GetConstraints(ctx)
 }
 
 func (p *Plexams) ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error) {

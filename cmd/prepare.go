@@ -17,7 +17,8 @@ var (
 	connected-exams --- prepare connected exams                    --- step 1
 	connect-exam ancode program   --- connect an unconnected exam  --- step 1,5
 	studentregs     --- regs per exam & regs per student           --- step 2
-	exams-with-regs --- exams from connected-exams and studentregs --- step 3`,
+	exams-with-regs --- exams from connected-exams and studentregs --- step 3
+	exam-groups     --- group of exams in the same slot            --- step 4`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -52,6 +53,12 @@ var (
 
 			case "exams-with-regs":
 				err := plexams.PrepareExamsWithRegs()
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "exam-groups":
+				err := plexams.PrepareExamsGroups()
 				if err != nil {
 					os.Exit(1)
 				}

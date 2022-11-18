@@ -30,6 +30,9 @@ type Constraints {
   ancode: Int!
   notPlannedByMe: Boolean!
   excludeDays: [Time!]
+  possibleDays: [Time!]
+  fixedDay: Time
+  fixedTime: Time
   sameSlot: [Int!]
   online: Boolean!
   roomConstraints: RoomConstraints
@@ -39,4 +42,9 @@ type RoomConstraints {
   placesWithSocket: Boolean!
   lab: Boolean!
   exahmRooms: Boolean!
+}
+
+type ExamToPlan {
+  exam: ExamWithRegs!
+  constraints: Constraints
 }

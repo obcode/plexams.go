@@ -306,3 +306,11 @@ func (p *Plexams) ExamWithRegs(ctx context.Context, ancode int) (*model.ExamWith
 func (p *Plexams) ExamsWithRegs(ctx context.Context) ([]*model.ExamWithRegs, error) {
 	return p.dbClient.ExamsWithRegs(ctx)
 }
+
+func (p *Plexams) ExamGroup(ctx context.Context, examGroupCode int) (*model.ExamGroup, error) {
+	return p.dbClient.ExamGroup(ctx, examGroupCode)
+}
+
+func (p *Plexams) ExamGroups(ctx context.Context) ([]*model.ExamGroup, error) {
+	return p.dbClient.ExamGroups(ctx)
+}

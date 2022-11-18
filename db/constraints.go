@@ -8,6 +8,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const collectionConstraints = "constraints"
@@ -82,6 +83,35 @@ func (db *DB) ExcludeDays(ctx context.Context, ancode int, days []*time.Time) (b
 	}
 
 	constraint.ExcludeDays = days
+
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+
+	if update {
+		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
+	} else {
+		_, err = collection.InsertOne(ctx, constraint)
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (db *DB) PossibleDays(ctx context.Context, ancode int, days []*time.Time) (bool, error) {
+	constraint, err := db.GetConstraintsForAncode(ctx, ancode)
+	if err != nil {
+		return false, err
+	}
+
+	update := false
+	if constraint == nil {
+		constraint = &model.Constraints{Ancode: ancode}
+	} else {
+		update = true
+	}
+
+	constraint.PossibleDays = days
 
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
 
@@ -251,4 +281,40 @@ func (db *DB) GetConstraintsForAncode(ctx context.Context, ancode int) (*model.C
 	}
 
 	return &constraint, nil
+}
+
+func (db *DB) GetConstraints(ctx context.Context) ([]*model.Constraints, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+
+	constraints := make([]*model.Constraints, 0)
+
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "ancode", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.M{}, findOptions)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionConstraints).Msg("MongoDB Find")
+		return constraints, err
+	}
+	defer cur.Close(ctx)
+
+	for cur.Next(ctx) {
+		var constraint model.Constraints
+
+		err := cur.Decode(&constraint)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionConstraints).Interface("cur", cur).
+				Msg("Cannot decode to additional exam")
+			return constraints, err
+		}
+
+		constraints = append(constraints, &constraint)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionConstraints).Msg("Cursor returned error")
+		return constraints, err
+	}
+
+	return constraints, nil
 }

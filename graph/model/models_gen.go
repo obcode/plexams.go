@@ -45,6 +45,9 @@ type Constraints struct {
 	Ancode          int              `json:"ancode"`
 	NotPlannedByMe  bool             `json:"notPlannedByMe"`
 	ExcludeDays     []*time.Time     `json:"excludeDays"`
+	PossibleDays    []*time.Time     `json:"possibleDays"`
+	FixedDay        *time.Time       `json:"fixedDay"`
+	FixedTime       *time.Time       `json:"fixedTime"`
 	SameSlot        []int            `json:"sameSlot"`
 	Online          bool             `json:"online"`
 	RoomConstraints *RoomConstraints `json:"roomConstraints"`
@@ -53,6 +56,36 @@ type Constraints struct {
 type ExamDay struct {
 	Number int       `json:"number"`
 	Date   time.Time `json:"date"`
+}
+
+type ExamGroup struct {
+	ExamGroupCode int            `json:"examGroupCode"`
+	Exams         []*ExamToPlan  `json:"exams"`
+	ExamGroupInfo *ExamGroupInfo `json:"examGroupInfo"`
+}
+
+type ExamGroupConflict struct {
+	ExamGroupCode int `json:"examGroupCode"`
+	Count         int `json:"count"`
+}
+
+type ExamGroupInfo struct {
+	NotPlannedByMe bool                 `json:"notPlannedByMe"`
+	ExcludeDays    []int                `json:"excludeDays"`
+	PossibleDays   []int                `json:"possibleDays"`
+	FixedDay       *int                 `json:"fixedDay"`
+	FixedSlot      *Slot                `json:"fixedSlot"`
+	PossibleSlots  []*Slot              `json:"possibleSlots"`
+	Conflicts      []*ExamGroupConflict `json:"conflicts"`
+	StudentRegs    int                  `json:"studentRegs"`
+	Programs       []string             `json:"programs"`
+	MaxDuration    int                  `json:"maxDuration"`
+	MaxDurationNta *int                 `json:"maxDurationNTA"`
+}
+
+type ExamToPlan struct {
+	Exam        *ExamWithRegs `json:"exam"`
+	Constraints *Constraints  `json:"constraints"`
 }
 
 type ExamWithRegs struct {
@@ -77,6 +110,11 @@ type NTAInput struct {
 	Program              string `json:"program"`
 	From                 string `json:"from"`
 	Until                string `json:"until"`
+}
+
+type Plan struct {
+	SemesterConfig *SemesterConfig       `json:"semesterConfig"`
+	Slots          []*SlotWithExamGroups `json:"slots"`
 }
 
 type PrimussExamByProgram struct {
@@ -109,6 +147,12 @@ type Slot struct {
 	DayNumber  int       `json:"dayNumber"`
 	SlotNumber int       `json:"slotNumber"`
 	Starttime  time.Time `json:"starttime"`
+}
+
+type SlotWithExamGroups struct {
+	DayNumber  int          `json:"dayNumber"`
+	SlotNumber int          `json:"slotNumber"`
+	ExamGroups []*ExamGroup `json:"examGroups"`
 }
 
 type Starttime struct {

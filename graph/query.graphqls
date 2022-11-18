@@ -33,6 +33,9 @@ type Query {
   # constraints
   constraintForAncode(ancode: Int!): Constraints
   zpaExamsToPlanWithConstraints: [ZPAExamWithConstraints!]!
+  # exam groups
+  examGroups: [ExamGroup!]!
+  examGroup(examGroupCode: Int!): ExamGroup
   # NTAs
   ntas: [NTA!]
 }

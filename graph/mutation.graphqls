@@ -13,6 +13,7 @@ type Mutation {
   # Contraints
   notPlannedByMe(ancode: Int!): Boolean!
   excludeDays(ancode: Int!, days: [String!]!): Boolean!
+  possibleDays(ancode: Int!, days: [String!]!): Boolean!
   sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
   placesWithSockets(ancode: Int!): Boolean!
   lab(ancode: Int!): Boolean!

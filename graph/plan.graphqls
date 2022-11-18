@@ -19,3 +19,39 @@ type Slot {
   slotNumber: Int!
   starttime: Time!
 }
+
+type ExamGroup {
+  examGroupCode: Int!
+  exams: [ExamToPlan!]!
+  examGroupInfo: ExamGroupInfo
+}
+
+type ExamGroupInfo {
+  notPlannedByMe: Boolean!
+  excludeDays: [Int!]
+  possibleDays: [Int!]
+  fixedDay: Int
+  fixedSlot: Slot
+  possibleSlots: [Slot!]
+  conflicts: [ExamGroupConflict]
+  studentRegs: Int!
+  programs: [String!]!
+  maxDuration: Int!
+  maxDurationNTA: Int
+}
+
+type ExamGroupConflict {
+  examGroupCode: Int!
+  count: Int!
+}
+
+type Plan {
+  semesterConfig: SemesterConfig
+  slots: [SlotWithExamGroups]
+}
+
+type SlotWithExamGroups {
+  dayNumber: Int!
+  slotNumber: Int!
+  examGroups: [ExamGroup]
+}

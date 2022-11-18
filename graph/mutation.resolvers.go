@@ -60,6 +60,11 @@ func (r *mutationResolver) ExcludeDays(ctx context.Context, ancode int, days []s
 	return r.plexams.ExcludeDays(ctx, ancode, days)
 }
 
+// PossibleDays is the resolver for the possibleDays field.
+func (r *mutationResolver) PossibleDays(ctx context.Context, ancode int, days []string) (bool, error) {
+	return r.plexams.PossibleDays(ctx, ancode, days)
+}
+
 // SameSlot is the resolver for the sameSlot field.
 func (r *mutationResolver) SameSlot(ctx context.Context, ancode int, ancodes []int) (bool, error) {
 	return r.plexams.SameSlot(ctx, ancode, ancodes)

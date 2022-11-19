@@ -165,6 +165,16 @@ func (r *queryResolver) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return r.plexams.Ntas(ctx)
 }
 
+// NtasWithRegs is the resolver for the ntasWithRegs field.
+func (r *queryResolver) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
+	return r.plexams.NtasWithRegs(ctx)
+}
+
+// Nta is the resolver for the nta field.
+func (r *queryResolver) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
+	return r.plexams.Nta(ctx, mtknr)
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 

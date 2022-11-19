@@ -30,6 +30,10 @@ func (p *Plexams) StudentRegsForProgram(ctx context.Context, program string) ([]
 	return p.dbClient.StudentRegsForProgram(ctx, program)
 }
 
+func (p *Plexams) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.StudentRegsPerStudent, error) {
+	return p.dbClient.StudentRegsPerStudentPlanned(ctx)
+}
+
 func (p *Plexams) StudentRegsImportErrors(ctx context.Context) ([]*model.RegWithError, error) {
 	return p.dbClient.GetRegsWithErrors(ctx)
 }

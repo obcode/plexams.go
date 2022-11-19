@@ -38,4 +38,6 @@ type Query {
   examGroup(examGroupCode: Int!): ExamGroup
   # NTAs
   ntas: [NTA!]
+  ntasWithRegs: [NTAWithRegs!]
+  nta(mtknr: String!): NTAWithRegs
 }

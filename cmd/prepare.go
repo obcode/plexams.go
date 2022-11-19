@@ -17,9 +17,10 @@ var (
 	connected-exams --- prepare connected exams                    --- step 1
 	connect-exam ancode program   --- connect an unconnected exam  --- step 1,5
 	studentregs     --- regs per exam & regs per student           --- step 2
-	exams-with-regs --- exams from connected-exams and studentregs --- step 3
-	exam-groups     --- group of exams in the same slot            --- step 4
-	partition       --- generate partition of groups               --- step 5`,
+	nta             --- find NTAs                                  --- step 3
+	exams-with-regs --- exams from connected-exams and studentregs --- step 4
+	exam-groups     --- group of exams in the same slot            --- step 5
+	partition       --- generate partition of groups               --- step 6`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -66,6 +67,12 @@ var (
 
 			case "partition":
 				err := plexams.PartitionGroups()
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "nta":
+				err := plexams.PrepareNta()
 				if err != nil {
 					os.Exit(1)
 				}

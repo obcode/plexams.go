@@ -112,6 +112,11 @@ type NTAInput struct {
 	Until                string `json:"until"`
 }
 
+type NTAWithRegs struct {
+	Nta  *NTA                   `json:"nta"`
+	Regs *StudentRegsPerStudent `json:"regs"`
+}
+
 type Plan struct {
 	SemesterConfig *SemesterConfig       `json:"semesterConfig"`
 	Slots          []*SlotWithExamGroups `json:"slots"`

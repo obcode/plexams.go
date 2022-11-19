@@ -194,13 +194,50 @@ func (p *Plexams) PrepareExamsGroups() error {
 }
 
 func calculateExamGroupConflicts(groups []*model.ExamGroup) {
-	// TODO: calculate a map: ancode -> examgoupcode
+	// calculate a map: ancode -> examgoupcode
+	groupCode := make(map[int]int)
 
-	// TODO: calculate examGroupConficts from exam conflicts and the map
+	for _, group := range groups {
+		eGcode := group.ExamGroupCode
+		for _, exam := range group.Exams {
+			groupCode[exam.Exam.Ancode] = eGcode
+		}
+	}
+
+	// calculate examGroupConficts from exam conflicts and the map
+	for _, group := range groups {
+		conflictsMap := make(map[int]int) // examGroupCode -> count
+		for _, examToPlan := range group.Exams {
+			for _, conflictsProgram := range examToPlan.Exam.Conflicts {
+				for _, conflicts := range conflictsProgram.Conflics {
+					conflictGroup := groupCode[conflicts.AnCode]
+					count, ok := conflictsMap[conflictGroup]
+					if !ok {
+						count = 0
+					}
+					conflictsMap[conflictGroup] = count + conflicts.NumberOfStuds
+				}
+			}
+		}
+		conflictKeys := make([]int, 0, len(conflictsMap))
+		for k := range conflictsMap {
+			conflictKeys = append(conflictKeys, k)
+		}
+		sort.Ints(conflictKeys)
+
+		examGroupConficts := make([]*model.ExamGroupConflict, 0, len(conflictKeys))
+		for _, code := range conflictKeys {
+			examGroupConficts = append(examGroupConficts, &model.ExamGroupConflict{
+				ExamGroupCode: code,
+				Count:         conflictsMap[code],
+			})
+		}
+		group.ExamGroupInfo.Conflicts = examGroupConficts
+	}
 }
 
 func calculatePossibleSlots(semesterConfig *model.SemesterConfig, group *model.ExamGroup) {
-
+	// FIXME: Implement me
 }
 
 func ancodeAlreadyInGroup(ancode int, ancodes []int) bool {

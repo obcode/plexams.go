@@ -188,6 +188,16 @@ type ComplexityRoot struct {
 		Regs func(childComplexity int) int
 	}
 
+	NTAWithRegsByExam struct {
+		Exam func(childComplexity int) int
+		Ntas func(childComplexity int) int
+	}
+
+	NTAWithRegsByExamAndTeacher struct {
+		Exams   func(childComplexity int) int
+		Teacher func(childComplexity int) int
+	}
+
 	Plan struct {
 		SemesterConfig func(childComplexity int) int
 		Slots          func(childComplexity int) int
@@ -225,6 +235,7 @@ type ComplexityRoot struct {
 		Nta                           func(childComplexity int, mtknr string) int
 		Ntas                          func(childComplexity int) int
 		NtasWithRegs                  func(childComplexity int) int
+		NtasWithRegsByTeacher         func(childComplexity int) int
 		PrimussExam                   func(childComplexity int, program string, ancode int) int
 		PrimussExams                  func(childComplexity int) int
 		PrimussExamsForAnCode         func(childComplexity int, ancode int) int
@@ -428,6 +439,7 @@ type QueryResolver interface {
 	ExamGroup(ctx context.Context, examGroupCode int) (*model.ExamGroup, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error)
+	NtasWithRegsByTeacher(ctx context.Context) ([]*model.NTAWithRegsByExamAndTeacher, error)
 	Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
 }
 
@@ -1142,6 +1154,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.NTAWithRegs.Regs(childComplexity), true
 
+	case "NTAWithRegsByExam.exam":
+		if e.complexity.NTAWithRegsByExam.Exam == nil {
+			break
+		}
+
+		return e.complexity.NTAWithRegsByExam.Exam(childComplexity), true
+
+	case "NTAWithRegsByExam.ntas":
+		if e.complexity.NTAWithRegsByExam.Ntas == nil {
+			break
+		}
+
+		return e.complexity.NTAWithRegsByExam.Ntas(childComplexity), true
+
+	case "NTAWithRegsByExamAndTeacher.exams":
+		if e.complexity.NTAWithRegsByExamAndTeacher.Exams == nil {
+			break
+		}
+
+		return e.complexity.NTAWithRegsByExamAndTeacher.Exams(childComplexity), true
+
+	case "NTAWithRegsByExamAndTeacher.teacher":
+		if e.complexity.NTAWithRegsByExamAndTeacher.Teacher == nil {
+			break
+		}
+
+		return e.complexity.NTAWithRegsByExamAndTeacher.Teacher(childComplexity), true
+
 	case "Plan.semesterConfig":
 		if e.complexity.Plan.SemesterConfig == nil {
 			break
@@ -1355,6 +1395,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.NtasWithRegs(childComplexity), true
+
+	case "Query.ntasWithRegsByTeacher":
+		if e.complexity.Query.NtasWithRegsByTeacher == nil {
+			break
+		}
+
+		return e.complexity.Query.NtasWithRegsByTeacher(childComplexity), true
 
 	case "Query.primussExam":
 		if e.complexity.Query.PrimussExam == nil {
@@ -2187,6 +2234,16 @@ type NTAWithRegs {
   nta: NTA!
   regs: StudentRegsPerStudent
 }
+
+type NTAWithRegsByExamAndTeacher {
+  teacher: Teacher!
+  exams: [NTAWithRegsByExam!]
+}
+
+type NTAWithRegsByExam {
+  exam: ZPAExam!
+  ntas: [NTAWithRegs!]
+}
 `, BuiltIn: false},
 	{Name: "../plan.graphqls", Input: `type SemesterConfig {
   days: [ExamDay!]!
@@ -2341,6 +2398,7 @@ type ConnectedExam {
   # NTAs
   ntas: [NTA!]
   ntasWithRegs: [NTAWithRegs!]
+  ntasWithRegsByTeacher: [NTAWithRegsByExamAndTeacher!]
   nta(mtknr: String!): NTAWithRegs
 }
 `, BuiltIn: false},
@@ -7282,6 +7340,234 @@ func (ec *executionContext) fieldContext_NTAWithRegs_regs(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _NTAWithRegsByExam_exam(ctx context.Context, field graphql.CollectedField, obj *model.NTAWithRegsByExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTAWithRegsByExam_exam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exam, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ZPAExam)
+	fc.Result = res
+	return ec.marshalNZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTAWithRegsByExam_exam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAWithRegsByExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaID":
+				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
+			case "semester":
+				return ec.fieldContext_ZPAExam_semester(ctx, field)
+			case "ancode":
+				return ec.fieldContext_ZPAExam_ancode(ctx, field)
+			case "module":
+				return ec.fieldContext_ZPAExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_ZPAExam_mainExamer(ctx, field)
+			case "mainExamerID":
+				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
+			case "examType":
+				return ec.fieldContext_ZPAExam_examType(ctx, field)
+			case "examTypeFull":
+				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
+			case "duration":
+				return ec.fieldContext_ZPAExam_duration(ctx, field)
+			case "isRepeaterExam":
+				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
+			case "groups":
+				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAWithRegsByExam_ntas(ctx context.Context, field graphql.CollectedField, obj *model.NTAWithRegsByExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTAWithRegsByExam_ntas(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ntas, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NTAWithRegs)
+	fc.Result = res
+	return ec.marshalONTAWithRegs2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTAWithRegsByExam_ntas(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAWithRegsByExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "nta":
+				return ec.fieldContext_NTAWithRegs_nta(ctx, field)
+			case "regs":
+				return ec.fieldContext_NTAWithRegs_regs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTAWithRegs", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAWithRegsByExamAndTeacher_teacher(ctx context.Context, field graphql.CollectedField, obj *model.NTAWithRegsByExamAndTeacher) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTAWithRegsByExamAndTeacher_teacher(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Teacher, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Teacher)
+	fc.Result = res
+	return ec.marshalNTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTAWithRegsByExamAndTeacher_teacher(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAWithRegsByExamAndTeacher",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "shortname":
+				return ec.fieldContext_Teacher_shortname(ctx, field)
+			case "fullname":
+				return ec.fieldContext_Teacher_fullname(ctx, field)
+			case "isProf":
+				return ec.fieldContext_Teacher_isProf(ctx, field)
+			case "isLBA":
+				return ec.fieldContext_Teacher_isLBA(ctx, field)
+			case "isProfHC":
+				return ec.fieldContext_Teacher_isProfHC(ctx, field)
+			case "isStaff":
+				return ec.fieldContext_Teacher_isStaff(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_Teacher_lastSemester(ctx, field)
+			case "fk":
+				return ec.fieldContext_Teacher_fk(ctx, field)
+			case "id":
+				return ec.fieldContext_Teacher_id(ctx, field)
+			case "email":
+				return ec.fieldContext_Teacher_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAWithRegsByExamAndTeacher_exams(ctx context.Context, field graphql.CollectedField, obj *model.NTAWithRegsByExamAndTeacher) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTAWithRegsByExamAndTeacher_exams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NTAWithRegsByExam)
+	fc.Result = res
+	return ec.marshalONTAWithRegsByExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsByExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTAWithRegsByExamAndTeacher_exams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAWithRegsByExamAndTeacher",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "exam":
+				return ec.fieldContext_NTAWithRegsByExam_exam(ctx, field)
+			case "ntas":
+				return ec.fieldContext_NTAWithRegsByExam_ntas(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTAWithRegsByExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Plan_semesterConfig(ctx context.Context, field graphql.CollectedField, obj *model.Plan) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Plan_semesterConfig(ctx, field)
 	if err != nil {
@@ -9776,6 +10062,53 @@ func (ec *executionContext) fieldContext_Query_ntasWithRegs(ctx context.Context,
 				return ec.fieldContext_NTAWithRegs_regs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTAWithRegs", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_ntasWithRegsByTeacher(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_ntasWithRegsByTeacher(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().NtasWithRegsByTeacher(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NTAWithRegsByExamAndTeacher)
+	fc.Result = res
+	return ec.marshalONTAWithRegsByExamAndTeacher2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsByExamAndTeacherᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_ntasWithRegsByTeacher(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "teacher":
+				return ec.fieldContext_NTAWithRegsByExamAndTeacher_teacher(ctx, field)
+			case "exams":
+				return ec.fieldContext_NTAWithRegsByExamAndTeacher_exams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTAWithRegsByExamAndTeacher", field.Name)
 		},
 	}
 	return fc, nil
@@ -16138,6 +16471,70 @@ func (ec *executionContext) _NTAWithRegs(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var nTAWithRegsByExamImplementors = []string{"NTAWithRegsByExam"}
+
+func (ec *executionContext) _NTAWithRegsByExam(ctx context.Context, sel ast.SelectionSet, obj *model.NTAWithRegsByExam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAWithRegsByExamImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAWithRegsByExam")
+		case "exam":
+
+			out.Values[i] = ec._NTAWithRegsByExam_exam(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "ntas":
+
+			out.Values[i] = ec._NTAWithRegsByExam_ntas(ctx, field, obj)
+
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var nTAWithRegsByExamAndTeacherImplementors = []string{"NTAWithRegsByExamAndTeacher"}
+
+func (ec *executionContext) _NTAWithRegsByExamAndTeacher(ctx context.Context, sel ast.SelectionSet, obj *model.NTAWithRegsByExamAndTeacher) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAWithRegsByExamAndTeacherImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAWithRegsByExamAndTeacher")
+		case "teacher":
+
+			out.Values[i] = ec._NTAWithRegsByExamAndTeacher_teacher(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "exams":
+
+			out.Values[i] = ec._NTAWithRegsByExamAndTeacher_exams(ctx, field, obj)
+
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var planImplementors = []string{"Plan"}
 
 func (ec *executionContext) _Plan(ctx context.Context, sel ast.SelectionSet, obj *model.Plan) graphql.Marshaler {
@@ -17008,6 +17405,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_ntasWithRegs(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "ntasWithRegsByTeacher":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_ntasWithRegsByTeacher(ctx, field)
 				return res
 			}
 
@@ -18865,6 +19282,26 @@ func (ec *executionContext) marshalNNTAWithRegs2ᚖgithubᚗcomᚋobcodeᚋplexa
 	return ec._NTAWithRegs(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNNTAWithRegsByExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsByExam(ctx context.Context, sel ast.SelectionSet, v *model.NTAWithRegsByExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._NTAWithRegsByExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNNTAWithRegsByExamAndTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsByExamAndTeacher(ctx context.Context, sel ast.SelectionSet, v *model.NTAWithRegsByExamAndTeacher) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._NTAWithRegsByExamAndTeacher(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPrimussExam2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExam(ctx context.Context, sel ast.SelectionSet, v model.PrimussExam) graphql.Marshaler {
 	return ec._PrimussExam(ctx, sel, &v)
 }
@@ -20321,6 +20758,100 @@ func (ec *executionContext) marshalONTAWithRegs2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._NTAWithRegs(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalONTAWithRegsByExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsByExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTAWithRegsByExam) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNNTAWithRegsByExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsByExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalONTAWithRegsByExamAndTeacher2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsByExamAndTeacherᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTAWithRegsByExamAndTeacher) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNNTAWithRegsByExamAndTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsByExamAndTeacher(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOPrimussExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PrimussExam) graphql.Marshaler {

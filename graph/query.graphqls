@@ -39,5 +39,6 @@ type Query {
   # NTAs
   ntas: [NTA!]
   ntasWithRegs: [NTAWithRegs!]
+  ntasWithRegsByTeacher: [NTAWithRegsByExamAndTeacher!]
   nta(mtknr: String!): NTAWithRegs
 }

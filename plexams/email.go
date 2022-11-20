@@ -6,11 +6,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
-	"log"
 	"net/smtp"
 	"net/textproto"
 
 	"github.com/jordan-wright/email"
+	"github.com/rs/zerolog/log"
 )
 
 type HandicapsEmail struct {
@@ -49,70 +49,75 @@ func (p *Plexams) SendTestMail() error {
 		})
 }
 
-func (p *Plexams) SendHandicapsMail(ctx context.Context) error {
+func (p *Plexams) SendHandicapsMails(ctx context.Context, run bool) error {
+	ntasByTeacher, err := p.NtasWithRegsByTeacher(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, nta := range ntasByTeacher {
+		exams := make([]*HandicapExam, 0, len(nta.Exams))
+		for _, exam := range nta.Exams {
+			handicapStudents := make([]*HandicapStudent, 0, len(exam.Ntas))
+			for _, ntaForExam := range exam.Ntas {
+				handicapStudents = append(handicapStudents, &HandicapStudent{
+					Name:         ntaForExam.Nta.Name,
+					Compensation: ntaForExam.Nta.Compensation,
+				})
+			}
+
+			exams = append(exams, &HandicapExam{
+				AnCode:           exam.Exam.AnCode,
+				Module:           exam.Exam.Module,
+				TypeExamFull:     exam.Exam.ExamTypeFull,
+				HandicapStudents: handicapStudents,
+			})
+		}
+
+		var to []string
+		if run {
+			to = []string{nta.Teacher.Email}
+		} else {
+			to = []string{"galority@gmail.com"}
+		}
+
+		err = p.SendHandicapsMailToMainExamer(ctx, to, &HandicapsEmail{
+			MainExamer: nta.Teacher.Fullname,
+			Exams:      exams,
+			PlanerName: p.planer.Name,
+		})
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func (p *Plexams) SendHandicapsMailToMainExamer(ctx context.Context, personID int) error {
-	handicapsEmail := &HandicapsEmail{
-		MainExamer: "Prof. Dr. Hugo Egon Balder",
-		Exams: []*HandicapExam{
-			{
-				AnCode:       123,
-				Module:       "Vereinigte Programmierung",
-				TypeExamFull: "kurzer Vortrag 180 Minuten",
-				HandicapStudents: []*HandicapStudent{
-					{
-						Name:         "Rainer Maria Rilke",
-						Compensation: "100% Verlängerung und zwei eigene Räume",
-					},
-					{
-						Name:         "Marius Müller Westernhagen",
-						Compensation: "3 Bläser und 2 Schlagzeuger",
-					},
-				},
-			},
-			{
-				AnCode:       123,
-				Module:       "Cancel Culture",
-				TypeExamFull: "nix machen",
-				HandicapStudents: []*HandicapStudent{
-					{
-						Name:         "Rudolf Kunze",
-						Compensation: "1000 mal schreiben",
-					},
-					{
-						Name:         "Ramona und Ramona",
-						Compensation: "Sushi-Stäbchen und drei Schüsseln",
-					},
-				},
-			},
-		},
-		PlanerName: "Oliver Braun",
-	}
+func (p *Plexams) SendHandicapsMailToMainExamer(ctx context.Context, to []string, handicapsEmail *HandicapsEmail) error {
+	log.Debug().Interface("to", to).Msg("sending email")
 
 	tmpl, err := template.ParseFiles("tmpl/handicapEmail.tmpl")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	bufText := new(bytes.Buffer)
 	err = tmpl.Execute(bufText, handicapsEmail)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	tmpl, err = template.ParseFiles("tmpl/handicapEmailHTML.tmpl")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	bufHTML := new(bytes.Buffer)
 	err = tmpl.Execute(bufHTML, handicapsEmail)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	return p.sendMail([]string{"galority@gmail.com"},
-		fmt.Sprintf("[Prüfungsplanung %s] Nachteilausgleiche für Ihre Prüfungen", p.semester),
+	return p.sendMail(to,
+		fmt.Sprintf("[Prüfungsplanung %s] Nachteilausgleich(e) für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
 		bufHTML.Bytes(),
 	)

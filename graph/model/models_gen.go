@@ -117,6 +117,16 @@ type NTAWithRegs struct {
 	Regs *StudentRegsPerStudent `json:"regs"`
 }
 
+type NTAWithRegsByExam struct {
+	Exam *ZPAExam       `json:"exam"`
+	Ntas []*NTAWithRegs `json:"ntas"`
+}
+
+type NTAWithRegsByExamAndTeacher struct {
+	Teacher *Teacher             `json:"teacher"`
+	Exams   []*NTAWithRegsByExam `json:"exams"`
+}
+
 type Plan struct {
 	SemesterConfig *SemesterConfig       `json:"semesterConfig"`
 	Slots          []*SlotWithExamGroups `json:"slots"`

@@ -33,3 +33,13 @@ type NTAWithRegs {
   nta: NTA!
   regs: StudentRegsPerStudent
 }
+
+type NTAWithRegsByExamAndTeacher {
+  teacher: Teacher!
+  exams: [NTAWithRegsByExam!]
+}
+
+type NTAWithRegsByExam {
+  exam: ZPAExam!
+  ntas: [NTAWithRegs!]
+}

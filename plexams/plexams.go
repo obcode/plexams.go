@@ -11,6 +11,7 @@ import (
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/zpa"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -22,6 +23,7 @@ type Plexams struct {
 	planer         *Planer
 	email          *Email
 	semesterConfig *model.SemesterConfig
+	goSlots        [][]int
 }
 
 type ZPA struct {
@@ -45,10 +47,17 @@ type Email struct {
 }
 
 func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk07programs []string) (*Plexams, error) {
-	client, err := db.NewDB(dbUri, semester)
 
-	if err != nil {
-		panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
+	var client *db.DB
+	var err error
+	if dbUri == "" {
+		log.Info().Msg("starting without DB!")
+	} else {
+		client, err = db.NewDB(dbUri, semester)
+
+		if err != nil {
+			panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
+		}
 	}
 
 	plexams := Plexams{
@@ -75,6 +84,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 	}
 
 	plexams.setSemesterConfig()
+	plexams.setGoSlots()
 
 	return &plexams, nil
 }
@@ -88,6 +98,34 @@ func (p *Plexams) SetZPA() error {
 		p.zpa.client = zpaClient
 	}
 	return nil
+}
+
+func (p *Plexams) setGoSlots() {
+	goSlotsValue := viper.Get("goslots")
+	goSlotsRaw, ok := goSlotsValue.([]interface{})
+	if !ok {
+		log.Error().Interface("goSlots", goSlotsRaw).Msg("cannot get go slots from config")
+		return
+	}
+	goSlots := make([][]int, 0, len(goSlotsRaw))
+	for _, goSlotRaw := range goSlotsRaw {
+		goSlot := make([]int, 0, 2)
+		for _, intRaw := range goSlotRaw.([]interface{}) {
+			number, ok := intRaw.(int)
+			if !ok {
+				log.Error().Interface("intRaw", intRaw).Msg("cannot convert to int")
+				return
+			}
+			goSlot = append(goSlot, number)
+		}
+		goSlots = append(goSlots, goSlot)
+	}
+
+	p.goSlots = goSlots
+}
+
+func (p *Plexams) GetGoSlots() [][]int {
+	return p.goSlots
 }
 
 func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, error) {

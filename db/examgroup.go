@@ -41,10 +41,10 @@ func (db *DB) SaveExamGroups(ctx context.Context, exams []*model.ExamGroup) erro
 func (db *DB) ExamGroup(ctx context.Context, examGroupCode int) (*model.ExamGroup, error) {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamGroups)
 
-	res := collection.FindOne(ctx, bson.D{{Key: "examGroupCode", Value: examGroupCode}})
+	res := collection.FindOne(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
 	if res.Err() != nil {
-		log.Error().Err(res.Err()).Int("examGroupCode", examGroupCode).Msg("no constraint found")
-		return nil, nil // no constraint available
+		log.Error().Err(res.Err()).Int("examGroupCode", examGroupCode).Msg("no exam group found")
+		return nil, res.Err()
 	}
 	var examGroup model.ExamGroup
 	err := res.Decode(&examGroup)

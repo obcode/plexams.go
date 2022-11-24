@@ -180,6 +180,16 @@ func (r *queryResolver) Nta(ctx context.Context, mtknr string) (*model.NTAWithRe
 	return r.plexams.Nta(ctx, mtknr)
 }
 
+// AllowedSlots is the resolver for the allowedSlots field.
+func (r *queryResolver) AllowedSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
+	return r.plexams.AllowedSlots(ctx, examGroupCode)
+}
+
+// ExamGroupsInSlot is the resolver for the examGroupsInSlot field.
+func (r *queryResolver) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model.ExamGroup, error) {
+	return r.plexams.ExamGroupsInSlot(ctx, day, time)
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 

@@ -19,4 +19,6 @@ type Mutation {
   lab(ancode: Int!): Boolean!
   exahmRooms(ancode: Int!): Boolean!
   online(ancode: Int!): Boolean!
+  # Plan
+  addExamGroupToSlot(day: Int!, time: Int!, examGroupCode: Int!): Boolean!
 }

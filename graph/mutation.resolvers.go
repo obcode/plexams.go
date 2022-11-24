@@ -90,6 +90,11 @@ func (r *mutationResolver) Online(ctx context.Context, ancode int) (bool, error)
 	return r.plexams.Online(ctx, ancode)
 }
 
+// AddExamGroupToSlot is the resolver for the addExamGroupToSlot field.
+func (r *mutationResolver) AddExamGroupToSlot(ctx context.Context, day int, time int, examGroupCode int) (bool, error) {
+	return r.plexams.AddExamGroupToSlot(ctx, day, time, examGroupCode)
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 

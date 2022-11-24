@@ -221,7 +221,9 @@ func calculateExamGroupConflicts(groups []*model.ExamGroup) {
 		}
 		conflictKeys := make([]int, 0, len(conflictsMap))
 		for k := range conflictsMap {
-			conflictKeys = append(conflictKeys, k)
+			if k != group.ExamGroupCode {
+				conflictKeys = append(conflictKeys, k)
+			}
 		}
 		sort.Ints(conflictKeys)
 

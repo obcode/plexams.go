@@ -41,4 +41,7 @@ type Query {
   ntasWithRegs: [NTAWithRegs!]
   ntasWithRegsByTeacher: [NTAWithRegsByExamAndTeacher!]
   nta(mtknr: String!): NTAWithRegs
+  # Plan
+  allowedSlots(examGroupCode: Int!): [Slot!]
+  examGroupsInSlot(day: Int!, time: Int!): [ExamGroup!]
 }

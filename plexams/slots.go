@@ -2,8 +2,10 @@ package plexams
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
+	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
@@ -66,52 +68,55 @@ func CalculatedAllowedSlots(semesterConfigSlots []*model.Slot, goSlots [][]int, 
 
 	slots := slotsToModelSlots(semesterConfigSlots, slotsMap)
 
-	if constraints.ExcludeDays != nil && len(constraints.ExcludeDays) > 0 {
-		slotsWithoutExcludedDays := make([]*model.Slot, 0)
-		for _, excludeDay := range constraints.ExcludeDays {
-			for _, slot := range slots {
-				if !time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local).
-					Equal(*excludeDay) {
-					slotsWithoutExcludedDays = append(slotsWithoutExcludedDays, slot)
+	if constraints != nil {
+
+		if constraints.ExcludeDays != nil && len(constraints.ExcludeDays) > 0 {
+			slotsWithoutExcludedDays := make([]*model.Slot, 0)
+			for _, excludeDay := range constraints.ExcludeDays {
+				for _, slot := range slots {
+					if !time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local).
+						Equal(*excludeDay) {
+						slotsWithoutExcludedDays = append(slotsWithoutExcludedDays, slot)
+					}
 				}
 			}
+			slots = slotsWithoutExcludedDays
 		}
-		slots = slotsWithoutExcludedDays
-	}
 
-	if constraints.PossibleDays != nil && len(constraints.PossibleDays) > 0 {
-		slotsWithIncludedDays := make([]*model.Slot, 0)
-		for _, includeDay := range constraints.PossibleDays {
+		if constraints.PossibleDays != nil && len(constraints.PossibleDays) > 0 {
+			slotsWithIncludedDays := make([]*model.Slot, 0)
+			for _, includeDay := range constraints.PossibleDays {
+				for _, slot := range slots {
+					if time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local).
+						Equal(*includeDay) {
+						slotsWithIncludedDays = append(slotsWithIncludedDays, slot)
+					}
+				}
+			}
+			slots = slotsWithIncludedDays
+		}
+
+		if constraints.FixedDay != nil {
+			allowed := make([]*model.Slot, 0)
 			for _, slot := range slots {
 				if time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local).
-					Equal(*includeDay) {
-					slotsWithIncludedDays = append(slotsWithIncludedDays, slot)
+					Equal(*constraints.FixedDay) {
+					allowed = append(allowed, slot)
 				}
 			}
+			slots = allowed
 		}
-		slots = slotsWithIncludedDays
-	}
 
-	if constraints.FixedDay != nil {
-		allowed := make([]*model.Slot, 0)
-		for _, slot := range slots {
-			if time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local).
-				Equal(*constraints.FixedDay) {
-				allowed = append(allowed, slot)
+		if constraints.FixedTime != nil {
+			allowed := []*model.Slot{}
+			for _, slot := range slots {
+				if slot.Starttime.Equal(*constraints.FixedTime) {
+					allowed = []*model.Slot{slot}
+					break
+				}
 			}
+			slots = allowed
 		}
-		slots = allowed
-	}
-
-	if constraints.FixedTime != nil {
-		allowed := []*model.Slot{}
-		for _, slot := range slots {
-			if slot.Starttime.Equal(*constraints.FixedTime) {
-				allowed = []*model.Slot{slot}
-				break
-			}
-		}
-		slots = allowed
 	}
 
 	return slots
@@ -125,4 +130,44 @@ func slotsToModelSlots(semesterConfigSlots []*model.Slot, slots map[int]map[int]
 		}
 	}
 	return modelSlots
+}
+
+func mergeAllowedSlots(sliceOfSlots [][]*model.Slot) []*model.Slot {
+	slotsRes := set.NewSet[*model.Slot]()
+	for i, slots := range sliceOfSlots {
+		slotsSet := set.NewSet[*model.Slot]()
+		for _, slot := range slots {
+			slotsSet.Add(slot)
+		}
+		if i == 0 {
+			slotsRes = slotsSet
+		} else {
+			slotsRes = slotsRes.Intersect(slotsSet)
+		}
+	}
+
+	slots := make([]*model.Slot, 0)
+	for slot := range slotsRes.Iter() {
+		slots = append(slots, slot)
+	}
+
+	return sortSlots(slots)
+}
+
+func sortSlots(slots []*model.Slot) []*model.Slot {
+	slotMap := make(map[int]*model.Slot)
+	keys := make([]int, 0)
+	for _, slot := range slots {
+		// assume there are not more than 9 Slots
+		key := slot.DayNumber*10 + slot.SlotNumber
+		slotMap[key] = slot
+		keys = append(keys, key)
+	}
+
+	sort.Ints(keys)
+	sortedSlots := make([]*model.Slot, 0, len(slots))
+	for _, key := range keys {
+		sortedSlots = append(sortedSlots, slotMap[key])
+	}
+	return sortedSlots
 }

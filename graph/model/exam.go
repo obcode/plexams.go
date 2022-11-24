@@ -19,3 +19,12 @@ type Exam struct {
 	RemovedPrimussExams []RemovedPrimussExam `json:"removedPrimussExams"`
 	RegisteredExams     []*RegisteredExam    `json:"registeredExams"`
 }
+
+func (exam *ExamToPlan) IsGO() bool {
+	for _, primussExam := range exam.Exam.PrimussExams {
+		if primussExam.Program == "GO" || primussExam.Program == "GN" || primussExam.Program == "GS" {
+			return true
+		}
+	}
+	return false
+}

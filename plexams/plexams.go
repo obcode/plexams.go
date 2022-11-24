@@ -23,7 +23,6 @@ type Plexams struct {
 	planer         *Planer
 	email          *Email
 	semesterConfig *model.SemesterConfig
-	goSlots        [][]int
 }
 
 type ZPA struct {
@@ -84,7 +83,10 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 	}
 
 	plexams.setSemesterConfig()
-	plexams.setGoSlots()
+	err = plexams.dbClient.SaveSemesterConfig(context.Background(), plexams.semesterConfig)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot save semester config")
+	}
 
 	return &plexams, nil
 }
@@ -121,11 +123,11 @@ func (p *Plexams) setGoSlots() {
 		goSlots = append(goSlots, goSlot)
 	}
 
-	p.goSlots = goSlots
+	p.semesterConfig.GoSlots = goSlots
 }
 
 func (p *Plexams) GetGoSlots() [][]int {
-	return p.goSlots
+	return p.semesterConfig.GoSlots
 }
 
 func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
@@ -202,6 +204,7 @@ func (p *Plexams) setSemesterConfig() {
 			Slots:      slots,
 		}
 	}
+	p.setGoSlots()
 }
 
 func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {

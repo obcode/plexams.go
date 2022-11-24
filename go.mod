@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/99designs/gqlgen v0.17.20
+	github.com/deckarep/golang-set/v2 v2.1.0
 	github.com/go-chi/chi v1.5.4
 	github.com/gookit/color v1.5.2
 	github.com/johnfercher/maroto v0.38.0

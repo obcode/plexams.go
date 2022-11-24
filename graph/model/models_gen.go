@@ -156,6 +156,7 @@ type SemesterConfig struct {
 	Days       []*ExamDay   `json:"days"`
 	Starttimes []*Starttime `json:"starttimes"`
 	Slots      []*Slot      `json:"slots"`
+	GoSlots    [][]int      `json:"goSlots"`
 }
 
 type Slot struct {

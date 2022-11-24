@@ -273,6 +273,7 @@ type ComplexityRoot struct {
 
 	SemesterConfig struct {
 		Days       func(childComplexity int) int
+		GoSlots    func(childComplexity int) int
 		Slots      func(childComplexity int) int
 		Starttimes func(childComplexity int) int
 	}
@@ -1613,6 +1614,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SemesterConfig.Days(childComplexity), true
 
+	case "SemesterConfig.goSlots":
+		if e.complexity.SemesterConfig.GoSlots == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.GoSlots(childComplexity), true
+
 	case "SemesterConfig.slots":
 		if e.complexity.SemesterConfig.Slots == nil {
 			break
@@ -2249,6 +2257,7 @@ type NTAWithRegsByExam {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
   slots: [Slot!]!
+  goSlots: [[Int!]!]
 }
 
 type ExamDay {
@@ -7610,6 +7619,8 @@ func (ec *executionContext) fieldContext_Plan_semesterConfig(ctx context.Context
 				return ec.fieldContext_SemesterConfig_starttimes(ctx, field)
 			case "slots":
 				return ec.fieldContext_SemesterConfig_slots(ctx, field)
+			case "goSlots":
+				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
 		},
@@ -8394,6 +8405,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(ctx context.Contex
 				return ec.fieldContext_SemesterConfig_starttimes(ctx, field)
 			case "slots":
 				return ec.fieldContext_SemesterConfig_slots(ctx, field)
+			case "goSlots":
+				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
 		},
@@ -10732,6 +10745,47 @@ func (ec *executionContext) fieldContext_SemesterConfig_slots(ctx context.Contex
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Slot", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfig_goSlots(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_goSlots(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GoSlots, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([][]int)
+	fc.Result = res
+	return ec.marshalOInt2ᚕᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_goSlots(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -17614,6 +17668,10 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "goSlots":
+
+			out.Values[i] = ec._SemesterConfig_goSlots(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -20632,6 +20690,44 @@ func (ec *executionContext) marshalOInt2ᚕintᚄ(ctx context.Context, sel ast.S
 	ret := make(graphql.Array, len(v))
 	for i := range v {
 		ret[i] = ec.marshalNInt2int(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOInt2ᚕᚕintᚄ(ctx context.Context, v interface{}) ([][]int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([][]int, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2ᚕintᚄ(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOInt2ᚕᚕintᚄ(ctx context.Context, sel ast.SelectionSet, v [][]int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2ᚕintᚄ(ctx, sel, v[i])
 	}
 
 	for _, e := range ret {

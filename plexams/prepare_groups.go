@@ -182,7 +182,7 @@ func (p *Plexams) PrepareExamsGroups() error {
 			},
 		}
 
-		calculatePossibleSlots(p.semesterConfig, &group)
+		setPossibleSlots(p.semesterConfig, &group)
 		groups = append(groups, &group)
 
 		ancodesAlreadyInGroup = append(ancodesAlreadyInGroup, ancodesToGroup...)
@@ -236,8 +236,13 @@ func calculateExamGroupConflicts(groups []*model.ExamGroup) {
 	}
 }
 
-func calculatePossibleSlots(semesterConfig *model.SemesterConfig, group *model.ExamGroup) {
-	// FIXME: Implement me
+func setPossibleSlots(semesterConfig *model.SemesterConfig, group *model.ExamGroup) {
+	possibleSlotsPerExam := make([][]*model.Slot, 0)
+	for _, exam := range group.Exams {
+		possibleSlotsPerExam = append(possibleSlotsPerExam,
+			CalculatedAllowedSlots(semesterConfig.Slots, semesterConfig.GoSlots, exam.IsGO(), exam.Constraints))
+	}
+	group.ExamGroupInfo.PossibleSlots = mergeAllowedSlots(possibleSlotsPerExam)
 }
 
 func ancodeAlreadyInGroup(ancode int, ancodes []int) bool {

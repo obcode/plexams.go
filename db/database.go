@@ -5,9 +5,12 @@ import (
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+var collectionNameSemesterConfig = "semester_config"
 
 func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
 	dbs, err := db.Client.ListDatabaseNames(context.Background(),
@@ -34,4 +37,21 @@ func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
 	}
 
 	return semester, nil
+}
+
+func (db *DB) SaveSemesterConfig(ctx context.Context, semesterConfig *model.SemesterConfig) error {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameSemesterConfig)
+
+	err := collection.Drop(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = collection.InsertOne(ctx, semesterConfig)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot save semester config")
+		return err
+	}
+
+	return nil
 }

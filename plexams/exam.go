@@ -314,3 +314,12 @@ func (p *Plexams) ExamGroup(ctx context.Context, examGroupCode int) (*model.Exam
 func (p *Plexams) ExamGroups(ctx context.Context) ([]*model.ExamGroup, error) {
 	return p.dbClient.ExamGroups(ctx)
 }
+
+func (p *Plexams) ConflictingGroupCodes(ctx context.Context, examGroupCode int) ([]*model.ExamGroupConflict, error) {
+	examGroup, err := p.ExamGroup(ctx, examGroupCode)
+	if err != nil {
+		log.Error().Err(err).Int("examGroupCode", examGroupCode).Msg("cannot get exam group")
+		return nil, err
+	}
+	return examGroup.ExamGroupInfo.Conflicts, nil
+}

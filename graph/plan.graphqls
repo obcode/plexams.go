@@ -56,3 +56,8 @@ type SlotWithExamGroups {
   slotNumber: Int!
   examGroups: [ExamGroup]
 }
+
+type ExamerInPlan {
+  mainExamer: String!
+  mainExamerID: Int!
+}

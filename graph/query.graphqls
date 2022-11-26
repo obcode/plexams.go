@@ -36,6 +36,7 @@ type Query {
   # exam groups
   examGroups: [ExamGroup!]!
   examGroup(examGroupCode: Int!): ExamGroup
+  conflictingGroupCodes(examGroupCode: Int!): [ExamGroupConflict!]
   # NTAs
   ntas: [NTA!]
   ntasWithRegs: [NTAWithRegs!]
@@ -43,5 +44,10 @@ type Query {
   nta(mtknr: String!): NTAWithRegs
   # Plan
   allowedSlots(examGroupCode: Int!): [Slot!]
+  awkwardSlots(examGroupCode: Int!): [Slot!]! # slots before or after a conflict
   examGroupsInSlot(day: Int!, time: Int!): [ExamGroup!]
+  examGroupsWithoutSlot: [ExamGroup!]
+  allProgramsInPlan: [String!]
+  ancodesInPlan: [Int!]
+  examerInPlan: [ExamerInPlan!]
 }

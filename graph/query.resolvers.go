@@ -160,6 +160,11 @@ func (r *queryResolver) ExamGroup(ctx context.Context, examGroupCode int) (*mode
 	return r.plexams.ExamGroup(ctx, examGroupCode)
 }
 
+// ConflictingGroupCodes is the resolver for the conflictingGroupCodes field.
+func (r *queryResolver) ConflictingGroupCodes(ctx context.Context, examGroupCode int) ([]*model.ExamGroupConflict, error) {
+	return r.plexams.ConflictingGroupCodes(ctx, examGroupCode)
+}
+
 // Ntas is the resolver for the ntas field.
 func (r *queryResolver) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return r.plexams.Ntas(ctx)
@@ -185,9 +190,34 @@ func (r *queryResolver) AllowedSlots(ctx context.Context, examGroupCode int) ([]
 	return r.plexams.AllowedSlots(ctx, examGroupCode)
 }
 
+// AwkwardSlots is the resolver for the awkwardSlots field.
+func (r *queryResolver) AwkwardSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
+	return r.plexams.AwkwardSlots(ctx, examGroupCode)
+}
+
 // ExamGroupsInSlot is the resolver for the examGroupsInSlot field.
 func (r *queryResolver) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model.ExamGroup, error) {
 	return r.plexams.ExamGroupsInSlot(ctx, day, time)
+}
+
+// ExamGroupsWithoutSlot is the resolver for the examGroupsWithoutSlot field.
+func (r *queryResolver) ExamGroupsWithoutSlot(ctx context.Context) ([]*model.ExamGroup, error) {
+	return r.plexams.ExamGroupsWithoutSlot(ctx)
+}
+
+// AllProgramsInPlan is the resolver for the allProgramsInPlan field.
+func (r *queryResolver) AllProgramsInPlan(ctx context.Context) ([]string, error) {
+	return r.plexams.AllProgramsInPlan(ctx)
+}
+
+// AncodesInPlan is the resolver for the ancodesInPlan field.
+func (r *queryResolver) AncodesInPlan(ctx context.Context) ([]int, error) {
+	return r.plexams.AncodesInPlan(ctx)
+}
+
+// ExamerNamesInPlan is the resolver for the examerNamesInPlan field.
+func (r *queryResolver) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {
+	return r.plexams.ExamerInPlan(ctx)
 }
 
 // Query returns generated.QueryResolver implementation.

@@ -3,7 +3,10 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
 
+	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
@@ -93,4 +96,91 @@ OUTER:
 	}
 
 	return allowedSlots, nil
+}
+
+func (p *Plexams) AwkwardSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
+	examGroup, err := p.ExamGroup(ctx, examGroupCode)
+	if err != nil {
+		log.Error().Err(err).Int("examGroupCode", examGroupCode).Msg("exam group does not exist")
+	}
+
+	awkwardSlots := make([]*model.Slot, 0)
+	for _, conflict := range examGroup.ExamGroupInfo.Conflicts {
+		planEntry, err := p.dbClient.PlanEntryForExamGroup(ctx, conflict.ExamGroupCode)
+		if err != nil {
+			log.Error().Err(err).Int("examGroupCode", conflict.ExamGroupCode).Msg("error while trying to get plan entry")
+			continue
+		}
+
+		if planEntry != nil {
+			awkwardSlots = append(awkwardSlots,
+				&model.Slot{
+					DayNumber:  planEntry.DayNumber,
+					SlotNumber: planEntry.SlotNumber - 1,
+					Starttime:  time.Time{},
+				},
+				&model.Slot{
+					DayNumber:  planEntry.DayNumber,
+					SlotNumber: planEntry.SlotNumber + 1,
+					Starttime:  time.Time{},
+				},
+			)
+		}
+	}
+
+	return awkwardSlots, nil
+}
+
+func (p *Plexams) ExamGroupsWithoutSlot(ctx context.Context) ([]*model.ExamGroup, error) {
+	examGroupsWithoutSlots := make([]*model.ExamGroup, 0)
+
+	examGroups, err := p.ExamGroups(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get exam groups")
+	}
+
+	planEntries, err := p.dbClient.PlanEntries(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get plan entries")
+	}
+
+OUTER:
+	for _, examGroup := range examGroups {
+		for _, planEntry := range planEntries {
+			if examGroup.ExamGroupCode == planEntry.ExamGroupCode {
+				continue OUTER
+			}
+		}
+		examGroupsWithoutSlots = append(examGroupsWithoutSlots, examGroup)
+	}
+
+	return examGroupsWithoutSlots, nil
+}
+
+func (p *Plexams) AllProgramsInPlan(ctx context.Context) ([]string, error) {
+	examGroups, err := p.ExamGroups(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get exam groups")
+	}
+
+	programSet := set.NewSet[string]()
+
+	for _, group := range examGroups {
+		for _, program := range group.ExamGroupInfo.Programs {
+			programSet.Add(program)
+		}
+	}
+
+	allPrograms := programSet.ToSlice()
+	sort.Strings(allPrograms)
+
+	return allPrograms, nil
+}
+
+func (p *Plexams) AncodesInPlan(ctx context.Context) ([]int, error) {
+	return p.dbClient.AncodesInPlan(ctx)
+}
+
+func (p *Plexams) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {
+	return p.dbClient.ExamerInPlan(ctx)
 }

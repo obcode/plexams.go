@@ -97,6 +97,11 @@ type ExamWithRegs struct {
 	ConnectErrors []string                          `json:"connectErrors"`
 }
 
+type ExamerInPlan struct {
+	MainExamer   string `json:"mainExamer"`
+	MainExamerID int    `json:"mainExamerID"`
+}
+
 type FK07Program struct {
 	Name string `json:"name"`
 }

@@ -179,7 +179,7 @@ func (db *DB) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {
 	}
 
 	names := make([]string, 0, len(examerMap))
-	for name, _ := range examerMap {
+	for name := range examerMap {
 		names = append(names, name)
 	}
 	sort.Strings(names)

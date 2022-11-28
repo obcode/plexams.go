@@ -65,6 +65,10 @@ func (p *Plexams) AddExamGroupToSlot(ctx context.Context, dayNumber int, timeNum
 	return p.dbClient.AddExamGroupToSlot(ctx, dayNumber, timeNumber, examGroupCode)
 }
 
+func (p *Plexams) RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool, error) {
+	return p.dbClient.RmExamGroupFromSlot(ctx, examGroupCode)
+}
+
 func (p *Plexams) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model.ExamGroup, error) {
 	return p.dbClient.ExamGroupsInSlot(ctx, day, time)
 }

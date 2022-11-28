@@ -37,6 +37,19 @@ func (db *DB) AddExamGroupToSlot(ctx context.Context, dayNumber int, timeNumber 
 	return true, nil
 }
 
+func (db *DB) RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+
+	_, err := collection.DeleteMany(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
+	if err != nil {
+		log.Error().Err(err).Int("examGroupCode", examGroupCode).
+			Msg("cannot rm exam group from plan")
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (db *DB) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model.ExamGroup, error) {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
 

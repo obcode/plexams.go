@@ -21,4 +21,5 @@ type Mutation {
   online(ancode: Int!): Boolean!
   # Plan
   addExamGroupToSlot(day: Int!, time: Int!, examGroupCode: Int!): Boolean!
+  rmExamGroupFromSlot(examGroupCode: Int!): Boolean!
 }

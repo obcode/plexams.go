@@ -95,6 +95,11 @@ func (r *mutationResolver) AddExamGroupToSlot(ctx context.Context, day int, time
 	return r.plexams.AddExamGroupToSlot(ctx, day, time, examGroupCode)
 }
 
+// RmExamGroupFromSlot is the resolver for the rmExamGroupFromSlot field.
+func (r *mutationResolver) RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool, error) {
+	return r.plexams.RmExamGroupFromSlot(ctx, examGroupCode)
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 

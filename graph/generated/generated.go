@@ -150,23 +150,24 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddAdditionalExam  func(childComplexity int, exam model.AdditionalExamInput) int
-		AddExamGroupToSlot func(childComplexity int, day int, time int, examGroupCode int) int
-		AddNta             func(childComplexity int, input model.NTAInput) int
-		AddZpaExamToPlan   func(childComplexity int, ancode int, unknown bool) int
-		ExahmRooms         func(childComplexity int, ancode int) int
-		ExcludeDays        func(childComplexity int, ancode int, days []string) int
-		Lab                func(childComplexity int, ancode int) int
-		NotPlannedByMe     func(childComplexity int, ancode int) int
-		Online             func(childComplexity int, ancode int) int
-		PlacesWithSockets  func(childComplexity int, ancode int) int
-		PossibleDays       func(childComplexity int, ancode int, days []string) int
-		PrepareExams       func(childComplexity int, input []*model.PrimussExamInput) int
-		RemovePrimussExam  func(childComplexity int, input *model.PrimussExamInput) int
-		RmZpaExamFromPlan  func(childComplexity int, ancode int, unknown bool) int
-		SameSlot           func(childComplexity int, ancode int, ancodes []int) int
-		SetSemester        func(childComplexity int, input string) int
-		ZpaExamsToPlan     func(childComplexity int, input []int) int
+		AddAdditionalExam   func(childComplexity int, exam model.AdditionalExamInput) int
+		AddExamGroupToSlot  func(childComplexity int, day int, time int, examGroupCode int) int
+		AddNta              func(childComplexity int, input model.NTAInput) int
+		AddZpaExamToPlan    func(childComplexity int, ancode int, unknown bool) int
+		ExahmRooms          func(childComplexity int, ancode int) int
+		ExcludeDays         func(childComplexity int, ancode int, days []string) int
+		Lab                 func(childComplexity int, ancode int) int
+		NotPlannedByMe      func(childComplexity int, ancode int) int
+		Online              func(childComplexity int, ancode int) int
+		PlacesWithSockets   func(childComplexity int, ancode int) int
+		PossibleDays        func(childComplexity int, ancode int, days []string) int
+		PrepareExams        func(childComplexity int, input []*model.PrimussExamInput) int
+		RemovePrimussExam   func(childComplexity int, input *model.PrimussExamInput) int
+		RmExamGroupFromSlot func(childComplexity int, examGroupCode int) int
+		RmZpaExamFromPlan   func(childComplexity int, ancode int, unknown bool) int
+		SameSlot            func(childComplexity int, ancode int, ancodes []int) int
+		SetSemester         func(childComplexity int, input string) int
+		ZpaExamsToPlan      func(childComplexity int, input []int) int
 	}
 
 	NTA struct {
@@ -417,6 +418,7 @@ type MutationResolver interface {
 	ExahmRooms(ctx context.Context, ancode int) (bool, error)
 	Online(ctx context.Context, ancode int) (bool, error)
 	AddExamGroupToSlot(ctx context.Context, day int, time int, examGroupCode int) (bool, error)
+	RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool, error)
 }
 type PrimussExamResolver interface {
 	StudentRegs(ctx context.Context, obj *model.PrimussExam) ([]*model.StudentReg, error)
@@ -1043,6 +1045,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemovePrimussExam(childComplexity, args["input"].(*model.PrimussExamInput)), true
+
+	case "Mutation.rmExamGroupFromSlot":
+		if e.complexity.Mutation.RmExamGroupFromSlot == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_rmExamGroupFromSlot_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RmExamGroupFromSlot(childComplexity, args["examGroupCode"].(int)), true
 
 	case "Mutation.rmZpaExamFromPlan":
 		if e.complexity.Mutation.RmZpaExamFromPlan == nil {
@@ -2332,6 +2346,7 @@ type ExamToPlan {
   online(ancode: Int!): Boolean!
   # Plan
   addExamGroupToSlot(day: Int!, time: Int!, examGroupCode: Int!): Boolean!
+  rmExamGroupFromSlot(examGroupCode: Int!): Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../nta.graphqls", Input: `type NTAExam {
@@ -2895,6 +2910,21 @@ func (ec *executionContext) field_Mutation_removePrimussExam_args(ctx context.Co
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_rmExamGroupFromSlot_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["examGroupCode"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examGroupCode"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["examGroupCode"] = arg0
 	return args, nil
 }
 
@@ -6993,6 +7023,61 @@ func (ec *executionContext) fieldContext_Mutation_addExamGroupToSlot(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addExamGroupToSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_rmExamGroupFromSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_rmExamGroupFromSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RmExamGroupFromSlot(rctx, fc.Args["examGroupCode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_rmExamGroupFromSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_rmExamGroupFromSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -17189,6 +17274,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addExamGroupToSlot(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "rmExamGroupFromSlot":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_rmExamGroupFromSlot(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {

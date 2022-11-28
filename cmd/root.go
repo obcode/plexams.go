@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/obcode/plexams.go/graph"
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -20,7 +21,11 @@ var (
 		Use:   "plexams.go",
 		Short: "Planning exams.",
 		Long:  `Planing exams.`,
-	}
+		Run: func(cmd *cobra.Command, args []string) {
+			plexams := initPlexamsConfig()
+			plexams.PrintWorkflow()
+			graph.StartServer(plexams, viper.GetString("server.port"))
+		}}
 )
 
 func Execute() {

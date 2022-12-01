@@ -210,3 +210,36 @@ func (db *DB) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {
 
 	return examer, nil
 }
+
+func (db *DB) PlanAncodeEntries(ctx context.Context) ([]*model.PlanAncodeEntry, error) {
+	examGroups, err := db.ExamGroups(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get exam groups")
+	}
+
+	examGroupMap := make(map[int]*model.ExamGroup)
+	for _, examGroup := range examGroups {
+		examGroupMap[examGroup.ExamGroupCode] = examGroup
+	}
+
+	planEntries, err := db.PlanEntries(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get plan entries")
+	}
+
+	planAncodeEntries := make([]*model.PlanAncodeEntry, 0)
+	for _, planEntry := range planEntries {
+		examGroup, ok := examGroupMap[planEntry.ExamGroupCode]
+		if !ok {
+			log.Error().Int("exam group code", planEntry.ExamGroupCode).Msg("exam group not found")
+		}
+		for _, exam := range examGroup.Exams {
+			planAncodeEntries = append(planAncodeEntries, &model.PlanAncodeEntry{
+				DayNumber:  planEntry.DayNumber,
+				SlotNumber: planEntry.SlotNumber,
+				Ancode:     exam.Exam.Ancode,
+			})
+		}
+	}
+	return planAncodeEntries, nil
+}

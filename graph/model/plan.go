@@ -5,3 +5,9 @@ type PlanEntry struct {
 	SlotNumber    int `json:"slotNumber"`
 	ExamGroupCode int `json:"examGroupCode"`
 }
+
+type PlanAncodeEntry struct {
+	DayNumber  int `json:"dayNumber"`
+	SlotNumber int `json:"slotNumber"`
+	Ancode     int `json:"ancode"`
+}

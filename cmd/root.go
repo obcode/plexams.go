@@ -17,6 +17,7 @@ import (
 var (
 	dbURI    string
 	semester string
+	Verbose  bool
 	rootCmd  = &cobra.Command{
 		Use:   "plexams.go",
 		Short: "Planning exams.",
@@ -25,7 +26,22 @@ var (
 			plexams := initPlexamsConfig()
 			plexams.PrintWorkflow()
 			graph.StartServer(plexams, viper.GetString("server.port"))
-		}}
+		},
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+			output := zerolog.ConsoleWriter{Out: os.Stdout}
+			if Verbose {
+				output.FormatLevel = func(i interface{}) string {
+					return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+				}
+				zerolog.SetGlobalLevel(zerolog.DebugLevel)
+			} else {
+				zerolog.SetGlobalLevel(zerolog.InfoLevel)
+			}
+			log.Logger = zerolog.New(output).With().Caller().Timestamp().Logger()
+		},
+	}
 )
 
 func Execute() {
@@ -42,20 +58,8 @@ func init() {
 		"override db.uri from config file")
 	rootCmd.PersistentFlags().StringVar(&semester, "semester", "",
 		"override semester from config file")
-
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-
-	// if *debug {
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-
-	output := zerolog.ConsoleWriter{Out: os.Stdout}
-	output.FormatLevel = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
-	}
-	log.Logger = zerolog.New(output).With().Caller().Timestamp().Logger()
-	// }
+	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false,
+		"verbose output")
 }
 
 func initConfig() {

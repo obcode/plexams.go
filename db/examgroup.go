@@ -109,3 +109,23 @@ func (db *DB) ExamGroups(ctx context.Context) ([]*model.ExamGroup, error) {
 
 	return examGroups, nil
 }
+
+func (db *DB) GetAncodesPlannedPerProgram(ctx context.Context) (map[int][]string, error) {
+	connectedExams, err := db.GetConnectedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get connected exams")
+		return nil, err
+	}
+
+	ancodesAndPrograms := make(map[int][]string)
+
+	for _, connectedExam := range connectedExams {
+		programs := make([]string, 0, len(connectedExam.PrimussExams))
+		for _, primussExam := range connectedExam.PrimussExams {
+			programs = append(programs, primussExam.Program)
+		}
+		ancodesAndPrograms[connectedExam.ZpaExam.AnCode] = programs
+	}
+
+	return ancodesAndPrograms, nil
+}

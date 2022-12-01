@@ -78,6 +78,11 @@ func (p *Plexams) prepareAllStudentRegs() (
 		return
 	}
 
+	ancodesPlannedPerProgram, err := p.dbClient.GetAncodesPlannedPerProgram(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get ancodes planned per program")
+	}
+
 	for _, program := range programs {
 		var studentRegsPerAncodeForProgram map[int][]*model.StudentReg
 		studentRegsPerAncodeForProgram, err = p.dbClient.GetPrimussStudentRegsPerAncode(ctx, program)
@@ -87,6 +92,19 @@ func (p *Plexams) prepareAllStudentRegs() (
 		}
 
 		for ancode, studentRegs := range studentRegsPerAncodeForProgram {
+			programsForAncode := ancodesPlannedPerProgram[ancode]
+			programPlanned := false
+
+			for _, programForAncode := range programsForAncode {
+				if programForAncode == program {
+					programPlanned = true
+					break
+				}
+			}
+
+			if !programPlanned {
+				continue
+			}
 			// per ancodes
 			regs, ok := studentRegsPerAncode[ancode]
 			if !ok {

@@ -201,3 +201,34 @@ func (p *Plexams) AncodesInPlan(ctx context.Context) ([]int, error) {
 func (p *Plexams) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {
 	return p.dbClient.ExamerInPlan(ctx)
 }
+
+func (p *Plexams) SlotForAncode(ctx context.Context, ancode int) (*model.Slot, error) {
+	examGroup, err := p.GetExamGroupForAncode(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam group for ancode")
+	}
+
+	if examGroup == nil {
+		return nil, nil
+	}
+
+	return p.SlotForExamGroup(ctx, examGroup.ExamGroupCode)
+}
+
+func (p *Plexams) SlotForExamGroup(ctx context.Context, examGroupCode int) (*model.Slot, error) {
+	planEntry, err := p.dbClient.PlanEntryForExamGroup(ctx, examGroupCode)
+	if err != nil {
+		log.Error().Err(err).Int("exam group code", examGroupCode).Msg("cannot get plan entry for exam group")
+	}
+	if planEntry == nil {
+		return nil, nil
+	}
+
+	for _, slot := range p.semesterConfig.Slots {
+		if planEntry.DayNumber == slot.DayNumber && planEntry.SlotNumber == slot.SlotNumber {
+			return slot, nil
+		}
+	}
+
+	return nil, fmt.Errorf("slot for exam group #%d not found", examGroupCode)
+}

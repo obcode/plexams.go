@@ -13,15 +13,47 @@ var (
 		Use:   "validate",
 		Short: "validate [subcommand]",
 		Long: `Manipulate the validate.
-	conflicts --- check conflicts for each student`,
+	all         --- guess what :-)
+	conflicts   --- check conflicts for each student
+	constraints --- check if constraints hold`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
+			case "all":
+				for {
+
+					err := plexams.ValidateConflicts()
+					if err != nil {
+						os.Exit(1)
+					}
+					err = plexams.ValidateConstraints()
+					if err != nil {
+						os.Exit(1)
+					}
+					if Sleep == 0 {
+						break
+					}
+					time.Sleep(time.Duration(Sleep) * time.Second)
+				}
+
 			case "conflicts":
 				for {
 
 					err := plexams.ValidateConflicts()
+					if err != nil {
+						os.Exit(1)
+					}
+					if Sleep == 0 {
+						break
+					}
+					time.Sleep(time.Duration(Sleep) * time.Second)
+				}
+
+			case "constraints":
+				for {
+
+					err := plexams.ValidateConstraints()
 					if err != nil {
 						os.Exit(1)
 					}

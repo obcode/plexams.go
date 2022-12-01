@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"time"
 
 	"github.com/gookit/color"
 	"github.com/obcode/plexams.go/graph/model"
@@ -10,7 +11,7 @@ import (
 
 func (p *Plexams) ValidateConflicts() error {
 	ctx := context.Background()
-	color.Green.Println("validating plan - checking conflicts")
+	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating conflicts   --- ")
 
 	planAncodeEntries, err := p.dbClient.PlanAncodeEntries(ctx)
 	if err != nil {
@@ -84,4 +85,56 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 			}
 		}
 	}
+}
+
+func (p *Plexams) ValidateConstraints() error {
+	ctx := context.Background()
+	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating constraints   --- ")
+
+	constraints, err := p.Constraints(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get constraints")
+	}
+
+	for _, constraint := range constraints {
+		slot, err := p.SlotForAncode(ctx, constraint.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", constraint.Ancode).Msg("cannot get slot for ancode")
+		}
+
+		if slot == nil {
+			continue
+		}
+
+		if constraint.FixedDay != nil {
+			color.Red.Println("FIXME: FixedDay")
+		}
+
+		if constraint.FixedTime != nil {
+			color.Red.Println("FIXME: FixedTime")
+		}
+
+		for _, day := range constraint.ExcludeDays {
+			if day.Equal(time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)) {
+				color.Red.Printf("Exam #%d planned on excluded day %s\n", constraint.Ancode, day.Format("02.01.06"))
+			}
+		}
+
+		if len(constraint.PossibleDays) > 0 {
+			possibleDaysOk := false
+			var dayPlanned *time.Time
+			for _, day := range constraint.PossibleDays {
+				if day.Equal(time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)) {
+					possibleDaysOk = true
+					dayPlanned = day
+					break
+				}
+			}
+			if !possibleDaysOk {
+				color.Red.Printf("Exam #%d planned on day %s which is not a possible day\n", constraint.Ancode, dayPlanned.Format("02.01.06"))
+			}
+		}
+	}
+
+	return nil
 }

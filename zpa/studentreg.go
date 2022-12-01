@@ -14,3 +14,7 @@ func (zpa *ZPA) StudentReg2ZPAStudentReg(studreg *model.StudentReg) *model.ZPASt
 func (zpa *ZPA) PostStudentRegsToZPA(studentRegs []*model.ZPAStudentReg) (string, []byte, error) {
 	return zpa.post("application", studentRegs)
 }
+
+func (zpa *ZPA) DeleteStudentRegsFromZPA(ancodes []*model.ZPAAncodes) (string, []byte, error) {
+	return zpa.post("delete_applications", ancodes)
+}

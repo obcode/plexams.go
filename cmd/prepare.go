@@ -17,7 +17,7 @@ var (
 	connected-exams --- prepare connected exams                    --- step 1
 	connect-exam ancode program   --- connect an unconnected exam  --- step 1,5
 	studentregs     --- regs per exam & regs per student           --- step 2
-	nta             --- find NTAs                                  --- step 3
+	nta             --- find NTAs for semester                     --- step 3
 	exams-with-regs --- exams from connected-exams and studentregs --- step 4
 	exam-groups     --- group of exams in the same slot            --- step 5
 	partition       --- generate partition of groups               --- step 6`,

@@ -56,6 +56,24 @@ func (db *DB) ExamGroup(ctx context.Context, examGroupCode int) (*model.ExamGrou
 	return &examGroup, nil
 }
 
+func (db *DB) GetExamGroupForAncode(ctx context.Context, ancode int) (*model.ExamGroup, error) {
+	examGroups, err := db.ExamGroups(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get exam groups")
+		return nil, err
+	}
+
+	for _, group := range examGroups {
+		for _, exam := range group.Exams {
+			if exam.Exam.Ancode == ancode {
+				return group, nil
+			}
+		}
+	}
+
+	return nil, nil
+}
+
 func (db *DB) ExamGroups(ctx context.Context) ([]*model.ExamGroup, error) {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamGroups)
 

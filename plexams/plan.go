@@ -11,6 +11,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int) (bool, error) {
+	examGroup, err := p.GetExamGroupForAncode(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam group for ancode")
+	}
+
+	return p.AddExamGroupToSlot(ctx, dayNumber, timeNumber, examGroup.ExamGroupCode)
+}
+
+func (p *Plexams) GetExamGroupForAncode(ctx context.Context, ancode int) (*model.ExamGroup, error) {
+	return p.dbClient.GetExamGroupForAncode(ctx, ancode)
+}
+
 func (p *Plexams) AddExamGroupToSlot(ctx context.Context, dayNumber int, timeNumber int, examGroupCode int) (bool, error) {
 	// check if slot exists
 	ok := false

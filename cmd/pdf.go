@@ -15,7 +15,9 @@ var (
 		Long: `Generate various PDFs.
 	exams-to-plan    --- ZPA exams which will be in the plan
 	same-module-name --- print exam which should be in same slot
-	constraints      --- print constraints`,
+	constraints      --- print constraints
+	draft-muc.dai    --- draft plan for muc.dai exams
+	draft-fk08       --- draft plan for fk08 exams`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -46,6 +48,26 @@ var (
 				}
 				fmt.Printf("generating %s\n", Outfile)
 				err := plexams.ConstraintsPDF(context.Background(), Outfile)
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "draft-muc.dai":
+				if len(Outfile) == 0 {
+					Outfile = "draft-muc.dai.pdf"
+				}
+				fmt.Printf("generating %s\n", Outfile)
+				err := plexams.DraftMucDaiPDF(context.Background(), Outfile)
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "draft-fk08":
+				if len(Outfile) == 0 {
+					Outfile = "draft-fk08.pdf"
+				}
+				fmt.Printf("generating %s\n", Outfile)
+				err := plexams.DraftFk08PDF(context.Background(), Outfile)
 				if err != nil {
 					os.Exit(1)
 				}

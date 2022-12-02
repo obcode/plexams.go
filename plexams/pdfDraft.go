@@ -1,0 +1,190 @@
+package plexams
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/johnfercher/maroto/pkg/color"
+	"github.com/johnfercher/maroto/pkg/consts"
+	"github.com/johnfercher/maroto/pkg/pdf"
+	"github.com/johnfercher/maroto/pkg/props"
+	"github.com/rs/zerolog/log"
+)
+
+func (p *Plexams) DraftMucDaiPDF(ctx context.Context, outfile string) error {
+	m := pdf.NewMaroto(consts.Portrait, consts.A4)
+	m.SetPageMargins(10, 15, 10)
+
+	m.RegisterFooter(func() {
+		m.Row(20, func() {
+			m.Col(12, func() {
+				m.Text(fmt.Sprintf("Stand: %s Uhr, generiert mit https://github.com/obcode/plexams.go",
+					time.Now().Format("02.01.06, 15:04")), props.Text{
+					Top:   13,
+					Style: consts.BoldItalic,
+					Size:  8,
+					Align: consts.Left,
+				})
+			})
+		})
+	})
+
+	m.Row(6, func() {
+		m.Col(12, func() {
+			m.Text(
+				fmt.Sprintf("Vorläufiger Planungsstand MUC.DAI-Prüfungen der FK07 im %s", p.semesterFull()), props.Text{
+					Top:   3,
+					Size:  12,
+					Style: consts.Bold,
+					Align: consts.Center,
+				})
+		})
+	})
+	m.Row(6, func() {
+		m.Col(12, func() {
+			m.Text(
+				fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email), props.Text{
+					Top:   3,
+					Size:  12,
+					Style: consts.Normal,
+					Align: consts.Center,
+				})
+		})
+	})
+	m.Row(15, func() {
+		m.Col(12, func() {
+			m.Text(
+				"--- zur Abstimmung ---", props.Text{
+					Top:   3,
+					Size:  12,
+					Style: consts.Normal,
+					Align: consts.Center,
+				})
+		})
+	})
+
+	p.tableForProgram(ctx, "DE", "Digital Engineering (DE)", m)
+	p.tableForProgram(ctx, "ID", "Informatik und Design (ID)", m)
+	p.tableForProgram(ctx, "GS", "Geodata Science (GS)", m)
+
+	err := m.OutputFileAndClose(outfile)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not save PDF")
+		return err
+	}
+	return nil
+}
+
+func (p *Plexams) DraftFk08PDF(ctx context.Context, outfile string) error {
+	m := pdf.NewMaroto(consts.Portrait, consts.A4)
+	m.SetPageMargins(10, 15, 10)
+
+	m.RegisterFooter(func() {
+		m.Row(20, func() {
+			m.Col(12, func() {
+				m.Text(fmt.Sprintf("Stand: %s Uhr, generiert mit https://github.com/obcode/plexams.go",
+					time.Now().Format("02.01.06, 15:04")), props.Text{
+					Top:   13,
+					Style: consts.BoldItalic,
+					Size:  8,
+					Align: consts.Left,
+				})
+			})
+		})
+	})
+
+	m.Row(6, func() {
+		m.Col(12, func() {
+			m.Text(
+				fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()), props.Text{
+					Top:   3,
+					Size:  12,
+					Style: consts.Bold,
+					Align: consts.Center,
+				})
+		})
+	})
+	m.Row(6, func() {
+		m.Col(12, func() {
+			m.Text(
+				fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email), props.Text{
+					Top:   3,
+					Size:  12,
+					Style: consts.Normal,
+					Align: consts.Center,
+				})
+		})
+	})
+	m.Row(15, func() {
+		m.Col(12, func() {
+			m.Text(
+				"--- zur Abstimmung ---", props.Text{
+					Top:   3,
+					Size:  12,
+					Style: consts.Normal,
+					Align: consts.Center,
+				})
+		})
+	})
+
+	p.tableForProgram(ctx, "GD", "Angewandte Geodäsie und Geoinformatik (GD)", m)
+	p.tableForProgram(ctx, "GN", "Geoinformatik und Navigation (GN)", m)
+
+	err := m.OutputFileAndClose(outfile)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not save PDF")
+		return err
+	}
+	return nil
+}
+
+func (p *Plexams) tableForProgram(ctx context.Context, program, programLong string, m pdf.Maroto) {
+	header := []string{"AnCode", "Modul", "Prüfer:in", "Termin"}
+
+	m.Row(18, func() {
+		m.Col(12, func() {
+			m.Text(
+				programLong, props.Text{
+					Top:   10,
+					Size:  12,
+					Style: consts.Bold,
+				})
+		})
+	})
+
+	contents := make([][]string, 0)
+
+	exams, err := p.PlannedExamsForProgram(ctx, program)
+	if err != nil {
+		log.Error().Err(err).Msg("error while getting exams")
+	}
+	for _, exam := range exams {
+		contents = append(contents,
+			[]string{strconv.Itoa(exam.Ancode), exam.Module, exam.MainExamer,
+				exam.DateTime.Format("02.01.06, 15:04 Uhr")})
+	}
+
+	grayColor := color.Color{
+		Red:   211,
+		Green: 211,
+		Blue:  211,
+	}
+
+	m.TableList(header, contents, props.TableList{
+		HeaderProp: props.TableListContent{
+			Size:      11,
+			GridSizes: []uint{1, 5, 2, 4},
+		},
+		ContentProp: props.TableListContent{
+			Size:      11,
+			GridSizes: []uint{1, 5, 2, 4},
+		},
+		Align:                consts.Left,
+		AlternatedBackground: &grayColor,
+		HeaderContentSpace:   1,
+		Line:                 false,
+	})
+
+}

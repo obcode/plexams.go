@@ -232,3 +232,42 @@ func (p *Plexams) SlotForExamGroup(ctx context.Context, examGroupCode int) (*mod
 
 	return nil, fmt.Errorf("slot for exam group #%d not found", examGroupCode)
 }
+
+func (p *Plexams) PlannedExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExamWithNta, error) {
+	examGroups, err := p.ExamGroupsInSlot(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day number", day).Int("slot number", time).Msg("cannot get exam group for slot")
+	}
+	if examGroups == nil {
+		return nil, nil
+	}
+
+	ntasWithRegsByTeacher, err := p.NtasWithRegsByTeacher(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get ntas with regs")
+		return nil, err
+	}
+
+	ancodeNTAMap := make(map[int][]*model.NTAWithRegs)
+	for _, ntaWithRegByTeacher := range ntasWithRegsByTeacher {
+		for _, ntaWithRegsByExam := range ntaWithRegByTeacher.Exams {
+			ancodeNTAMap[ntaWithRegsByExam.Exam.AnCode] = ntaWithRegsByExam.Ntas
+		}
+	}
+
+	plannedExams := make([]*model.PlannedExamWithNta, 0)
+	for _, examGroup := range examGroups {
+		for _, exam := range examGroup.Exams {
+			ntas, ok := ancodeNTAMap[exam.Exam.Ancode]
+			if !ok {
+				ntas = nil
+			}
+			plannedExams = append(plannedExams, &model.PlannedExamWithNta{
+				Exam:        exam.Exam,
+				Constraints: exam.Constraints,
+				Nta:         ntas,
+			})
+		}
+	}
+	return plannedExams, nil
+}

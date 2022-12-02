@@ -50,4 +50,6 @@ type Query {
   allProgramsInPlan: [String!]
   ancodesInPlan: [Int!]
   examerInPlan: [ExamerInPlan!]
+  # PlannedExamsWithNTA
+  plannedExamsInSlot(day: Int!, time: Int!): [PlannedExamWithNTA!]
 }

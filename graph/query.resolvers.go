@@ -220,6 +220,11 @@ func (r *queryResolver) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan
 	return r.plexams.ExamerInPlan(ctx)
 }
 
+// PlannedExamsInSlot is the resolver for the plannedExamsInSlot field.
+func (r *queryResolver) PlannedExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExamWithNta, error) {
+	return r.plexams.PlannedExamsInSlot(ctx, day, time)
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 

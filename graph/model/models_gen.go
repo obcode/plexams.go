@@ -137,6 +137,12 @@ type Plan struct {
 	Slots          []*SlotWithExamGroups `json:"slots"`
 }
 
+type PlannedExamWithNta struct {
+	Exam        *ExamWithRegs  `json:"exam"`
+	Constraints *Constraints   `json:"constraints"`
+	Nta         []*NTAWithRegs `json:"nta"`
+}
+
 type PrimussExamByProgram struct {
 	Program string         `json:"program"`
 	Exams   []*PrimussExam `json:"exams"`

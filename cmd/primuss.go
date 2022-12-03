@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/gookit/color"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +15,8 @@ var primussCmd = &cobra.Command{
 	Use:   "primuss",
 	Short: "primuss [subcommand]",
 	Long: `Handle primuss data.
-	fix-ancode program from to --- fix ancode in primuss data (exam and studentregs)`,
+	fix-ancode program from to         --- fix ancode in primuss data (exam and studentregs)
+	rm-studentreg program ancode mtknr --- remove a student registration`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		plexams := initPlexamsConfig()
@@ -106,6 +108,29 @@ var primussCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("error while trying to log the change: %v", err)
 			}
+
+		case "rm-studentreg":
+			if len(args) < 4 {
+				log.Fatal("need program, ancode and mtknr")
+			}
+			program := args[1]
+			ancode, err := strconv.Atoi(args[2])
+			if err != nil {
+				log.Fatalf("cannot convert %s to int\n", args[2])
+			}
+			mtknr := args[3]
+
+			fmt.Printf("removing student reg %s from %s/%d\n", mtknr, program, ancode)
+			ctx := context.Background()
+
+			deleteCount, err := plexams.RemoveStudentReg(ctx, program, ancode, mtknr)
+			if err != nil {
+				log.Fatalf("cannot remove student reg: %v", err)
+			}
+
+			fmt.Printf("deleted %d document", deleteCount)
+
+			color.Green.Println("\n>>> please re-run `plexams.go prepare studentregs`")
 
 		default:
 			fmt.Println("primuss called with unkown sub command")

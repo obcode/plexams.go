@@ -268,3 +268,43 @@ func (db *DB) GetRegsWithErrors(ctx context.Context) ([]*model.RegWithError, err
 
 	return regWithErrors, nil
 }
+
+func (db *DB) RemoveStudentReg(ctx context.Context, program string, ancode int, mtknr string) (int, error) {
+	collection := db.getCollection(program, StudentRegs)
+
+	filter := bson.M{
+		"$and": []bson.M{
+			{"AnCode": ancode},
+			{"MTKNR": mtknr},
+		},
+	}
+
+	res, err := collection.DeleteOne(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Str("program", program).Int("ancode", ancode).Str("mtknr", mtknr).
+			Msg("error while trying to delete")
+		return int(res.DeletedCount), err
+	}
+
+	collection = db.getCollection(program, Counts)
+
+	filterUpdate := bson.D{{Key: "AnCo", Value: ancode}}
+	update := bson.D{{Key: "$inc", Value: bson.D{{Key: "Sum", Value: -1}}}}
+
+	result, err := collection.UpdateOne(ctx, filterUpdate, update)
+
+	if err != nil {
+		log.Error().Err(err).
+			Str("program", program).Int("ancode", ancode).
+			Msg("error while trying to change sum in count.")
+		return int(result.MatchedCount), err
+	}
+
+	if result.MatchedCount == 0 {
+		log.Debug().
+			Str("program", program).Int("from", ancode).
+			Msg("no count of student regs updated while trying to change sum.")
+	}
+
+	return int(res.DeletedCount), nil
+}

@@ -87,6 +87,9 @@ func (p *Plexams) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*m
 }
 
 func (p *Plexams) AllowedSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
+	if p.dbClient.ExamGroupIsLocked(ctx, examGroupCode) {
+		return []*model.Slot{}, nil
+	}
 	examGroup, err := p.ExamGroup(ctx, examGroupCode)
 	if err != nil {
 		log.Error().Err(err).Int("examGroupCode", examGroupCode).Msg("exam group does not exist")
@@ -116,6 +119,9 @@ OUTER:
 }
 
 func (p *Plexams) AwkwardSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
+	if p.dbClient.ExamGroupIsLocked(ctx, examGroupCode) {
+		return []*model.Slot{}, nil
+	}
 	examGroup, err := p.ExamGroup(ctx, examGroupCode)
 	if err != nil {
 		log.Error().Err(err).Int("examGroupCode", examGroupCode).Msg("exam group does not exist")
@@ -270,4 +276,8 @@ func (p *Plexams) PlannedExamsInSlot(ctx context.Context, day int, time int) ([]
 		}
 	}
 	return plannedExams, nil
+}
+
+func (p *Plexams) LockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, error) {
+	return p.dbClient.LockExamGroup(ctx, examGroupCode)
 }

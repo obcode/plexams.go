@@ -3,9 +3,10 @@ package model
 import "time"
 
 type PlanEntry struct {
-	DayNumber     int `json:"dayNumber"`
-	SlotNumber    int `json:"slotNumber"`
-	ExamGroupCode int `json:"examGroupCode"`
+	DayNumber     int  `json:"dayNumber"`
+	SlotNumber    int  `json:"slotNumber"`
+	ExamGroupCode int  `json:"examGroupCode"`
+	Locked        bool `json:"locked"`
 }
 
 type PlanAncodeEntry struct {

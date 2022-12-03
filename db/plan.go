@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -13,6 +14,10 @@ import (
 var collectionNamePlan = "plan"
 
 func (db *DB) AddExamGroupToSlot(ctx context.Context, dayNumber int, timeNumber int, examGroupCode int) (bool, error) {
+	if db.ExamGroupIsLocked(ctx, examGroupCode) {
+		return false, fmt.Errorf("exam group %d is locked", examGroupCode)
+	}
+
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
 
 	_, err := collection.DeleteMany(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
@@ -38,6 +43,10 @@ func (db *DB) AddExamGroupToSlot(ctx context.Context, dayNumber int, timeNumber 
 }
 
 func (db *DB) RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool, error) {
+	if db.ExamGroupIsLocked(ctx, examGroupCode) {
+		return false, fmt.Errorf("exam group %d is locked", examGroupCode)
+	}
+
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
 
 	_, err := collection.DeleteMany(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
@@ -242,4 +251,31 @@ func (db *DB) PlanAncodeEntries(ctx context.Context) ([]*model.PlanAncodeEntry, 
 		}
 	}
 	return planAncodeEntries, nil
+}
+
+func (db *DB) LockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, error) {
+	_, err := db.PlanEntryForExamGroup(ctx, examGroupCode)
+	if err != nil {
+		log.Error().Err(err).Int("exam group code", examGroupCode).
+			Msg("cannot find plan entry")
+		return nil, err
+	}
+
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+
+	filter := bson.D{{Key: "examgroupcode", Value: examGroupCode}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "locked", Value: true}}}}
+
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		log.Error().Err(err).Int("examgroupcode", examGroupCode).
+			Msg("cannot lock exam group to slot")
+		return nil, err
+	}
+	return db.PlanEntryForExamGroup(ctx, examGroupCode)
+}
+
+func (db *DB) ExamGroupIsLocked(ctx context.Context, examGroupCode int) bool {
+	p, err := db.PlanEntryForExamGroup(ctx, examGroupCode)
+	return err == nil && p != nil && p.Locked
 }

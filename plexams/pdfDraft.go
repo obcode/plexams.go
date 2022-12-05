@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/johnfercher/maroto/pkg/color"
@@ -11,6 +12,16 @@ import (
 	"github.com/johnfercher/maroto/pkg/pdf"
 	"github.com/johnfercher/maroto/pkg/props"
 	"github.com/rs/zerolog/log"
+)
+
+var r = strings.NewReplacer(
+	"Mon", "Mo",
+	"Tue", "Di",
+	"Wed", "Mi",
+	"Thu", "Do",
+	"Fri", "Fr",
+	"Sat", "Sa",
+	"Sun", "So",
 )
 
 func (p *Plexams) DraftMucDaiPDF(ctx context.Context, outfile string) error {
@@ -140,6 +151,71 @@ func (p *Plexams) DraftFk08PDF(ctx context.Context, outfile string) error {
 	return nil
 }
 
+func (p *Plexams) DraftFk10PDF(ctx context.Context, outfile string) error {
+	m := pdf.NewMaroto(consts.Portrait, consts.A4)
+	m.SetPageMargins(10, 15, 10)
+
+	m.RegisterFooter(func() {
+		m.Row(20, func() {
+			m.Col(12, func() {
+				m.Text(fmt.Sprintf("Stand: %s Uhr, generiert mit https://github.com/obcode/plexams.go",
+					time.Now().Format("02.01.06, 15:04")), props.Text{
+					Top:   13,
+					Style: consts.BoldItalic,
+					Size:  8,
+					Align: consts.Left,
+				})
+			})
+		})
+	})
+
+	m.Row(6, func() {
+		m.Col(12, func() {
+			m.Text(
+				fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()), props.Text{
+					Top:   3,
+					Size:  12,
+					Style: consts.Bold,
+					Align: consts.Center,
+				})
+		})
+	})
+	m.Row(6, func() {
+		m.Col(12, func() {
+			m.Text(
+				fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email), props.Text{
+					Top:   3,
+					Size:  12,
+					Style: consts.Normal,
+					Align: consts.Center,
+				})
+		})
+	})
+	m.Row(15, func() {
+		m.Col(12, func() {
+			m.Text(
+				"--- zur Abstimmung ---", props.Text{
+					Top:   3,
+					Size:  12,
+					Style: consts.Normal,
+					Align: consts.Center,
+				})
+		})
+	})
+
+	p.tableForProgram(ctx, "IB", "BA - Wirtschaftsinformatik (IB)", m)
+	p.tableForProgram(ctx, "IN", "MA - Wirtschaftsinformatik (IN)", m)
+	p.tableForProgram(ctx, "WD", "BA - Wirtschaftsinformatik - Digitales Management (WD)", m)
+	p.tableForProgram(ctx, "WT", "BA - Wirtschaftsinformatik - Informationstechnologie (WT)", m)
+
+	err := m.OutputFileAndClose(outfile)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not save PDF")
+		return err
+	}
+	return nil
+}
+
 func (p *Plexams) tableForProgram(ctx context.Context, program, programLong string, m pdf.Maroto) {
 	header := []string{"AnCode", "Modul", "Prüfer:in", "Termin"}
 
@@ -163,7 +239,7 @@ func (p *Plexams) tableForProgram(ctx context.Context, program, programLong stri
 	for _, exam := range exams {
 		contents = append(contents,
 			[]string{strconv.Itoa(exam.Ancode), exam.Module, exam.MainExamer,
-				exam.DateTime.Format("02.01.06, 15:04 Uhr")})
+				r.Replace(exam.DateTime.Format("Mon. 02.01.06, 15:04 Uhr"))})
 	}
 
 	grayColor := color.Color{

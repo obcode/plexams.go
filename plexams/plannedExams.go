@@ -18,6 +18,16 @@ func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string) ([
 	plannedExams := make([]*model.PlannedExam, 0)
 
 	for _, connectedExam := range connectedExams {
+		constraints, _ := p.ConstraintForAncode(ctx, connectedExam.ZpaExam.AnCode)
+		if constraints != nil && constraints.NotPlannedByMe {
+			// if notPlannedByMe, _ := p.NotPlannedByMe(ctx, connectedExam.ZpaExam.AnCode); notPlannedByMe {
+			log.Debug().Int("ancode", connectedExam.ZpaExam.AnCode).
+				Str("module", connectedExam.ZpaExam.Module).
+				Str("main examer", connectedExam.ZpaExam.MainExamer).
+				Msg("exam not planned by me")
+			continue
+		}
+
 		var plannedExam *model.PlannedExam
 		for _, primussExam := range connectedExam.PrimussExams {
 			if primussExam.Program == program {

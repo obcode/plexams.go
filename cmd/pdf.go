@@ -17,7 +17,8 @@ var (
 	same-module-name --- print exam which should be in same slot
 	constraints      --- print constraints
 	draft-muc.dai    --- draft plan for muc.dai exams
-	draft-fk08       --- draft plan for fk08 exams`,
+	draft-fk08       --- draft plan for fk08 exams
+	draft-fk10       --- draft plan for fk10 exams`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -68,6 +69,16 @@ var (
 				}
 				fmt.Printf("generating %s\n", Outfile)
 				err := plexams.DraftFk08PDF(context.Background(), Outfile)
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "draft-fk10":
+				if len(Outfile) == 0 {
+					Outfile = "draft-fk10.pdf"
+				}
+				fmt.Printf("generating %s\n", Outfile)
+				err := plexams.DraftFk10PDF(context.Background(), Outfile)
 				if err != nil {
 					os.Exit(1)
 				}

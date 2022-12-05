@@ -271,7 +271,7 @@ func (db *DB) GetConstraintsForAncode(ctx context.Context, ancode int) (*model.C
 	var constraint model.Constraints
 	res := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
 	if res.Err() != nil {
-		log.Error().Err(res.Err()).Int("ancode", ancode).Msg("no constraint found")
+		log.Debug().Err(res.Err()).Int("ancode", ancode).Msg("no constraint found")
 		return nil, nil // no constraint available
 	}
 	err := res.Decode(&constraint)

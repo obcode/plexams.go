@@ -112,7 +112,12 @@ OUTER:
 				}
 			}
 		}
-		allowedSlots = append(allowedSlots, slot)
+
+		allowedSlots = append(allowedSlots, &model.Slot{
+			DayNumber:  slot.DayNumber,
+			SlotNumber: slot.SlotNumber,
+			Starttime:  p.getSlotTime(slot.DayNumber, slot.SlotNumber),
+		})
 	}
 
 	return allowedSlots, nil

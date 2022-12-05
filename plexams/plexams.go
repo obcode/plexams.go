@@ -211,6 +211,15 @@ func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {
 	return p.semesterConfig
 }
 
+func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
+	for _, slot := range p.semesterConfig.Slots {
+		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
+			return slot.Starttime
+		}
+	}
+	return time.Date(0, 0, 0, 0, 0, 0, 0, nil)
+}
+
 func (p *Plexams) PrintSemester() {
 	color.Style{color.FgCyan, color.BgYellow, color.OpBold}.Printf(" ---   Planning Semester: %s   --- ", p.semester)
 	color.Println()

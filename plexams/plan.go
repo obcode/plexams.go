@@ -278,6 +278,26 @@ func (p *Plexams) PlannedExamsInSlot(ctx context.Context, day int, time int) ([]
 	return plannedExams, nil
 }
 
-func (p *Plexams) LockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, error) {
-	return p.dbClient.LockExamGroup(ctx, examGroupCode)
+func (p *Plexams) LockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, *model.ExamGroup, error) {
+	planEntry, err := p.dbClient.LockExamGroup(ctx, examGroupCode)
+	if err != nil {
+		return nil, nil, err
+	}
+	examGroup, err := p.dbClient.ExamGroup(ctx, examGroupCode)
+	if err != nil {
+		return planEntry, nil, err
+	}
+	return planEntry, examGroup, nil
+}
+
+func (p *Plexams) UnlockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, *model.ExamGroup, error) {
+	planEntry, err := p.dbClient.UnlockExamGroup(ctx, examGroupCode)
+	if err != nil {
+		return nil, nil, err
+	}
+	examGroup, err := p.dbClient.ExamGroup(ctx, examGroupCode)
+	if err != nil {
+		return planEntry, nil, err
+	}
+	return planEntry, examGroup, nil
 }

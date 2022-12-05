@@ -275,6 +275,28 @@ func (db *DB) LockExamGroup(ctx context.Context, examGroupCode int) (*model.Plan
 	return db.PlanEntryForExamGroup(ctx, examGroupCode)
 }
 
+func (db *DB) UnlockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, error) {
+	_, err := db.PlanEntryForExamGroup(ctx, examGroupCode)
+	if err != nil {
+		log.Error().Err(err).Int("exam group code", examGroupCode).
+			Msg("cannot find plan entry")
+		return nil, err
+	}
+
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+
+	filter := bson.D{{Key: "examgroupcode", Value: examGroupCode}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "locked", Value: false}}}}
+
+	_, err = collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		log.Error().Err(err).Int("examgroupcode", examGroupCode).
+			Msg("cannot unlock exam group")
+		return nil, err
+	}
+	return db.PlanEntryForExamGroup(ctx, examGroupCode)
+}
+
 func (db *DB) ExamGroupIsLocked(ctx context.Context, examGroupCode int) bool {
 	p, err := db.PlanEntryForExamGroup(ctx, examGroupCode)
 	return err == nil && p != nil && p.Locked

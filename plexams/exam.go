@@ -124,6 +124,31 @@ func (p *Plexams) PrepareConnectedExams() error {
 	return nil
 }
 
+func (p *Plexams) PrepareConnectedExam(ancode int) error {
+	ctx := context.Background()
+
+	allPrograms, err := p.dbClient.GetPrograms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get programs")
+		return err
+	}
+
+	exam, err := p.prepareConnectedExam(ctx, ancode, allPrograms)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).
+			Msg("cannot connected exam")
+		return err
+	}
+
+	err = p.dbClient.SaveConnectedExam(ctx, exam)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot save connected exam")
+		return err
+	}
+
+	return nil
+}
+
 func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamInput) (bool, error) {
 	if p.dbClient.ExamsAlreadyPrepared(ctx) {
 		oks := true

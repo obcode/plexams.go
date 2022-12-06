@@ -11,6 +11,35 @@ import (
 
 const collectionNameExamGroups = "exam_groups"
 
+func (db *DB) GetNextExamGroupCode(ctx context.Context) (int, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamGroups)
+
+	filter := bson.D{}
+	opts := options.Find().SetSort(bson.D{{Key: "examgroupcode", Value: -1}}).SetLimit(1)
+
+	cur, err := collection.Find(ctx, filter, opts)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot find the highest exam group code")
+	}
+
+	if cur.Next(ctx) {
+		value := cur.Current.Lookup("examgroupcode").AsInt32()
+		err = cur.Close(ctx)
+		if err != nil {
+			log.Error().Err(err).Msg("cannot close the cursor")
+		}
+		return int(value) + 1, nil
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameExamGroups).Msg("Cursor returned error")
+		return -1, err
+	}
+
+	return -1, nil
+
+}
+
 func (db *DB) SaveExamGroups(ctx context.Context, exams []*model.ExamGroup) error {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamGroups)
 

@@ -20,13 +20,32 @@ var (
 	nta             --- find NTAs for semester                     --- step 3
 	exams-with-regs --- exams from connected-exams and studentregs --- step 4
 	exam-groups     --- group of exams in the same slot            --- step 5
-	partition       --- generate partition of groups               --- step 6`,
+	partition       --- generate partition of groups               --- step 6
+	
+	Add exam after planning has started:
+
+	connected-exam  --- prepare a connected exam for ancode
+	exam-group      --- group of exams out of ancodes`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
 			case "connected-exams":
 				err := plexams.PrepareConnectedExams()
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "connected-exam":
+				if len(args) < 2 {
+					log.Fatal("need ancode")
+				}
+				ancode, err := strconv.Atoi(args[1])
+				if err != nil {
+					fmt.Printf("cannot use %s as ancode", args[1])
+					os.Exit(1)
+				}
+				err = plexams.PrepareConnectedExam(ancode)
 				if err != nil {
 					os.Exit(1)
 				}
@@ -60,7 +79,26 @@ var (
 				}
 
 			case "exam-groups":
-				err := plexams.PrepareExamsGroups()
+				err := plexams.PrepareExamGroups()
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "exam-group":
+				if len(args) < 2 {
+					log.Fatal("need ancode(s)")
+				}
+				ancodes := make([]int, 0, len(args)-1)
+				for _, arg := range args[1:] {
+					ancode, err := strconv.Atoi(arg)
+					if err != nil {
+						fmt.Printf("cannot use %s as ancode", args[1])
+						os.Exit(1)
+					}
+					ancodes = append(ancodes, ancode)
+				}
+
+				err := plexams.PrepareExamGroup(ancodes)
 				if err != nil {
 					os.Exit(1)
 				}

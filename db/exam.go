@@ -88,6 +88,20 @@ func (db *DB) AddExam(ctx context.Context, exam *model.Exam) error {
 	return result.Err()
 }
 
+func (db *DB) SaveConnectedExam(ctx context.Context, exam *model.ConnectedExam) error {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
+
+	_, err := collection.InsertOne(ctx, exam)
+	if err != nil {
+		log.Error().Err(err).
+			Str("collectionName", collectionNameConnectedExams).
+			Msg("cannot insert exams")
+		return err
+	}
+
+	return nil
+}
+
 func (db *DB) SaveConnectedExams(ctx context.Context, exams []*model.ConnectedExam) error {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
 

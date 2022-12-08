@@ -83,6 +83,16 @@ var (
 					os.Exit(1)
 				}
 
+			case "draft-fs":
+				if len(Outfile) == 0 {
+					Outfile = "draft-fs.pdf"
+				}
+				fmt.Printf("generating %s\n", Outfile)
+				err := plexams.DraftFS(context.Background(), Outfile)
+				if err != nil {
+					os.Exit(1)
+				}
+
 			default:
 				fmt.Println("pdf called with unkown sub command")
 			}

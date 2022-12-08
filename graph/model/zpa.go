@@ -51,3 +51,13 @@ type RegWithError struct {
 	Registration *ZPAStudentReg      `json:"registration"`
 	Error        *ZPAStudentRegError `json:"error"`
 }
+
+type ZPAExamPlan struct {
+	Semester             string `json:"semester"`
+	AnCode               int    `json:"anCode" bson:"ancode"`
+	Date                 string `json:"date"` // "19.07.2022"
+	Time                 string `json:"time"` // "14:30"
+	StudentCount         int    `json:"total_number"`
+	ReserveInvigilatorID int    `json:"reserveInvigilator_id"`
+	Rooms                []int  `json:"rooms"` // TODO: RoomType
+}

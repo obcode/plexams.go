@@ -3,10 +3,12 @@ package plexams
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWithError, error) {
@@ -74,7 +76,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 		}
 
 		for i, e := range zpaStudentRegErrors {
-			if !noError(e) {
+			if !noZPAStudRegError(e) {
 				regsWithErrors = append(regsWithErrors, &model.RegWithError{
 					Registration: zpaStudentRegs[from+i],
 					Error:        e,
@@ -92,10 +94,73 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 	return len(zpaStudentRegs) - len(regsWithErrors), regsWithErrors, nil
 }
 
-func noError(zpaStudentRegError *model.ZPAStudentRegError) bool {
+func noZPAStudRegError(zpaStudentRegError *model.ZPAStudentRegError) bool {
 	return len(zpaStudentRegError.Semester) == 0 &&
 		len(zpaStudentRegError.AnCode) == 0 &&
 		len(zpaStudentRegError.Exam) == 0 &&
 		len(zpaStudentRegError.Mtknr) == 0 &&
 		len(zpaStudentRegError.Program) == 0
+}
+
+func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilators bool) ([]*model.ZPAExamPlan, error) {
+	if err := p.SetZPA(); err != nil {
+		return nil, err
+	}
+
+	examGroups, err := p.ExamGroups(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get exam groups")
+		return nil, err
+	}
+
+	doNotPublish := viper.GetIntSlice("donotpublish")
+	for _, ancodeNotToPublish := range doNotPublish {
+		fmt.Printf("do not publish: %d\n", ancodeNotToPublish)
+	}
+
+	exams := make([]*model.ZPAExamPlan, 0)
+OUTER:
+	for _, examGroup := range examGroups {
+		for _, exam := range examGroup.Exams {
+			// do not include exams not planned by me
+			if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+				continue
+			}
+			// import from other departments will sometimes be only published there
+			for _, ancodeNotToPublish := range doNotPublish {
+				if exam.Exam.Ancode == ancodeNotToPublish {
+					continue OUTER
+				}
+			}
+			//
+			slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get slot for ancode")
+			}
+			timeForAncode := p.getSlotTime(slot.DayNumber, slot.SlotNumber)
+			studentCount := 0
+			for _, studentRegs := range exam.Exam.StudentRegs {
+				studentCount += len(studentRegs.StudentRegs)
+			}
+
+			exams = append(exams, &model.ZPAExamPlan{
+				Semester:     p.semester,
+				AnCode:       exam.Exam.Ancode,
+				Date:         timeForAncode.Format("02.01.2006"),
+				Time:         timeForAncode.Format("15:04"),
+				StudentCount: studentCount,
+			})
+		}
+	}
+
+	// post to ZPA
+	status, body, err := p.zpa.client.PostExams(exams)
+	if err != nil {
+		log.Error().Err(err).Msg("error while posting exams on zpa")
+	}
+
+	log.Info().Str("status", status).Msg("exams posted to zpa")
+	fmt.Println(string(body))
+
+	return exams, err
 }

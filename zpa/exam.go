@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 )
 
 func (zpa *ZPA) GetExams() []*model.ZPAExam {
@@ -18,4 +19,9 @@ func (zpa *ZPA) getExams() error {
 		return err
 	}
 	return nil
+}
+
+func (zpa *ZPA) PostExams(exams []*model.ZPAExamPlan) (string, []byte, error) {
+	log.Debug().Int("count", len(exams)).Msg("posting exams to zpa")
+	return zpa.post("exam_plan", exams)
 }

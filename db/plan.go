@@ -301,3 +301,19 @@ func (db *DB) ExamGroupIsLocked(ctx context.Context, examGroupCode int) bool {
 	p, err := db.PlanEntryForExamGroup(ctx, examGroupCode)
 	return err == nil && p != nil && p.Locked
 }
+
+func (db *DB) LockPlan(ctx context.Context) error {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+
+	res, err := collection.UpdateMany(ctx, bson.D{},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "locked", Value: true}}}})
+
+	if err != nil {
+		log.Error().Err(err).Msg("error while trying to lock the plan")
+		return err
+	}
+
+	log.Debug().Int64("count", res.ModifiedCount).Msg("locked exam groups")
+
+	return nil
+}

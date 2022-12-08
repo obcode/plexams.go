@@ -93,6 +93,13 @@ var (
 					}
 				}
 
+			case "lock":
+				err := plexams.LockPlan(context.Background())
+				if err != nil {
+					log.Fatalf("error %v", err)
+					os.Exit(1)
+				}
+
 			default:
 				fmt.Println("plan called with unkown sub command")
 			}

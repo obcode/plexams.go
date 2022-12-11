@@ -153,6 +153,16 @@ type PrimussExamInput struct {
 	Program string `json:"program"`
 }
 
+type Room struct {
+	Name             string `json:"name"`
+	Seats            int    `json:"seats"`
+	Handicap         bool   `json:"handicap"`
+	Lab              bool   `json:"lab"`
+	PlacesWithSocket bool   `json:"placesWithSocket"`
+	NeedsRequest     bool   `json:"needsRequest"`
+	Exahm            bool   `json:"exahm"`
+}
+
 type RoomConstraints struct {
 	PlacesWithSocket bool `json:"placesWithSocket"`
 	Lab              bool `json:"lab"`
@@ -180,6 +190,12 @@ type SlotWithExamGroups struct {
 	DayNumber  int          `json:"dayNumber"`
 	SlotNumber int          `json:"slotNumber"`
 	ExamGroups []*ExamGroup `json:"examGroups"`
+}
+
+type SlotWithRooms struct {
+	DayNumber  int     `json:"dayNumber"`
+	SlotNumber int     `json:"slotNumber"`
+	Rooms      []*Room `json:"rooms"`
 }
 
 type Starttime struct {

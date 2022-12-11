@@ -6,9 +6,8 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-const collectionNameNTAs = "nta"
 
 func (db *DB) AddNta(ctx context.Context, nta *model.NTA) (*model.NTA, error) {
 	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
@@ -24,31 +23,22 @@ func (db *DB) AddNta(ctx context.Context, nta *model.NTA) (*model.NTA, error) {
 
 func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
-	ntas := make([]*model.NTA, 0)
 
-	cur, err := collection.Find(ctx, bson.M{})
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "name", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
-		log.Error().Err(err).Str("collection", "nta").Msg("MongoDB Find")
-		return ntas, err
+		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("MongoDB Find")
+		return nil, err
 	}
 	defer cur.Close(ctx)
 
-	for cur.Next(ctx) {
-		var nta model.NTA
-
-		err := cur.Decode(&nta)
-		if err != nil {
-			log.Error().Err(err).Str("collection", "nta").Interface("cur", cur).
-				Msg("Cannot decode to nta")
-			return ntas, err
-		}
-
-		ntas = append(ntas, &nta)
-	}
-
-	if err := cur.Err(); err != nil {
-		log.Error().Err(err).Str("collection", "nta").Msg("Cursor returned error")
-		return ntas, err
+	ntas := make([]*model.NTA, 0)
+	err = cur.All(ctx, &ntas)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("Cannot decode to rooms")
+		return nil, err
 	}
 
 	return ntas, nil
@@ -56,31 +46,22 @@ func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 
 func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameNTAs)
-	ntas := make([]*model.NTAWithRegs, 0)
 
-	cur, err := collection.Find(ctx, bson.M{})
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "nta.name", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
 		log.Error().Err(err).Str("collection", "nta").Msg("MongoDB Find")
-		return ntas, err
+		return nil, err
 	}
 	defer cur.Close(ctx)
 
-	for cur.Next(ctx) {
-		var nta model.NTAWithRegs
-
-		err := cur.Decode(&nta)
-		if err != nil {
-			log.Error().Err(err).Str("collection", "nta").Interface("cur", cur).
-				Msg("Cannot decode to nta")
-			return ntas, err
-		}
-
-		ntas = append(ntas, &nta)
-	}
-
-	if err := cur.Err(); err != nil {
-		log.Error().Err(err).Str("collection", "nta").Msg("Cursor returned error")
-		return ntas, err
+	ntas := make([]*model.NTAWithRegs, 0)
+	err = cur.All(ctx, &ntas)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("Cannot decode to rooms")
+		return nil, err
 	}
 
 	return ntas, nil
@@ -124,7 +105,7 @@ func (db *DB) SaveSemesterNTAs(ctx context.Context, ntaWithRegs []*model.NTAWith
 	if err != nil {
 		log.Error().Err(err).
 			Str("collectionName", collectionNameNTAs).
-			Msg("cannot insert exams")
+			Msg("cannot insert ntas")
 		return err
 	}
 

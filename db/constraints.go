@@ -11,8 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const collectionConstraints = "constraints"
-
 func (db *DB) NotPlannedByMe(ctx context.Context, ancode int) (bool, error) {
 	constraint, err := db.GetConstraintsForAncode(ctx, ancode)
 	if err != nil {
@@ -298,6 +296,7 @@ func (db *DB) GetConstraints(ctx context.Context) ([]*model.Constraints, error) 
 	}
 	defer cur.Close(ctx)
 
+	// TODO: replace all cur.Next with cur.All
 	for cur.Next(ctx) {
 		var constraint model.Constraints
 

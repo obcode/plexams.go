@@ -25,7 +25,12 @@ var (
 	Add exam after planning has started:
 
 	connected-exam  --- prepare a connected exam for ancode
-	exam-group      --- group of exams out of ancodes`,
+	exam-group      --- group of exams out of ancodes
+	
+	For planning rooms:
+
+	rooms           --- prepare rooms which are allowed to use 
+	`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -111,6 +116,12 @@ var (
 
 			case "nta":
 				err := plexams.PrepareNta()
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "rooms":
+				err := plexams.PrepareRooms()
 				if err != nil {
 					os.Exit(1)
 				}

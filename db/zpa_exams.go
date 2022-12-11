@@ -10,12 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const (
-	collectionAll       = "zpaexams"
-	collectionToPlan    = "zpaexams-to-plan"
-	collectionNotToPlan = "zpaexams-not-to-plan"
-)
-
 func (db *DB) GetZPAExamsToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
 	ancodes, err := db.getZpaAnCodesFromCollection(ctx, collectionToPlan)
 	if err != nil {

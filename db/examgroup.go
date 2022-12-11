@@ -9,8 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const collectionNameExamGroups = "exam_groups"
-
 func (db *DB) GetNextExamGroupCode(ctx context.Context) (int, error) {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamGroups)
 

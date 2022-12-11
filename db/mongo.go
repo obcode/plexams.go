@@ -9,12 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-const (
-	collectionNameAdditionalExams = "additional_exams"
-	collectionNameConnectedExams  = "connected_exams"
-	collectionNameExamsWithRegs   = "exams_with_regs"
-)
-
 type DB struct {
 	Client   *mongo.Client
 	semester string

@@ -11,8 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var collectionNamePlan = "plan"
-
 func (db *DB) AddExamGroupToSlot(ctx context.Context, dayNumber int, timeNumber int, examGroupCode int) (bool, error) {
 	if db.ExamGroupIsLocked(ctx, examGroupCode) {
 		return false, fmt.Errorf("exam group %d is locked", examGroupCode)

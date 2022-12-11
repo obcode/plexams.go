@@ -1,0 +1,15 @@
+type Room {
+  name: String!
+  seats: Int!
+  handicap: Boolean!
+  lab: Boolean!
+  placesWithSocket: Boolean!
+  needsRequest: Boolean!
+  exahm: Boolean!
+}
+
+type SlotWithRooms {
+  dayNumber: Int!
+  slotNumber: Int!
+  rooms: [Room!]!
+}

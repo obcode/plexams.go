@@ -8,13 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	collectionStudentRegsPerAncodePlanned  = "studentregs_per_ancode_planned"
-	collectionStudentRegsPerAncodeAll      = "studentregs_per_ancode_all"
-	collectionStudentRegsPerStudentPlanned = "studentregs_per_student_planned"
-	collectionStudentRegsPerStudentAll     = "studentregs_per_student_all"
-)
-
 func (db *DB) SaveStudentRegsPerAncode(ctx context.Context, studentRegsPerAncode map[int]map[string][]*model.StudentReg, all bool) error {
 	ancodes := make([]int, 0, len(studentRegsPerAncode))
 	for ancode := range studentRegsPerAncode {

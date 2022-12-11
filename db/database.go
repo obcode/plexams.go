@@ -10,8 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var collectionNameSemesterConfig = "semester_config"
-
 func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
 	dbs, err := db.Client.ListDatabaseNames(context.Background(),
 		bson.D{primitive.E{

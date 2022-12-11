@@ -2,26 +2,11 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
-
-type PrimussType string
-
-const (
-	StudentRegs PrimussType = "studentregs"
-	Exams       PrimussType = "exams"
-	Counts      PrimussType = "count"
-	Conflicts   PrimussType = "conflicts"
-)
-
-func (db *DB) getCollection(program string, primussType PrimussType) *mongo.Collection {
-	return db.Client.Database(databaseName(db.semester)).Collection(fmt.Sprintf("%s_%s", primussType, program))
-}
 
 func (db *DB) GetPrograms(ctx context.Context) ([]string, error) {
 	collectionNames, err := db.Client.Database(databaseName(db.semester)).ListCollectionNames(ctx,

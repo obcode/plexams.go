@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gookit/color"
@@ -137,4 +138,16 @@ func (p *Plexams) ValidateConstraints() error {
 	}
 
 	return nil
+}
+
+func (p *Plexams) ValidateRooms() error {
+	// TODO: check if rooms are allowed in slot
+
+	// TODO: check if room constraints of exams are met
+
+	// TODO: check rooms for NTAs
+	// - enough time between usage
+	// - needsRoomAlone okay
+
+	return fmt.Errorf("not implemented yet")
 }

@@ -11,12 +11,14 @@ import (
 var (
 	validateCmd = &cobra.Command{
 		Use:   "validate",
-		Short: "validate [subcommand]",
+		Short: "validate [subcommand] [-s <seconds>]",
 		Long: `Validate the plan.
 	all         --- guess what :-)
 	conflicts   --- check conflicts for each student
 	constraints --- check if constraints hold
-	rooms       --- check room constraints`,
+	rooms       --- check room constraints
+	
+	-s <seconds> --- sleep <seconds> and validate again`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()

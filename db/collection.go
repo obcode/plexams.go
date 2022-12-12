@@ -7,6 +7,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type CollectionName string
+
 const (
 	collectionNameSemesterConfig  = "semester_config"
 	collectionConstraints         = "constraints"
@@ -43,5 +45,5 @@ func (db *DB) getCollection(program string, primussType PrimussType) *mongo.Coll
 }
 
 func (db *DB) getCollectionSemester(ctx context.Context) *mongo.Collection {
-	return db.Client.Database(databaseName(db.semester)).Collection(ctx.Value("collectionName").(string))
+	return db.Client.Database(databaseName(db.semester)).Collection(ctx.Value(CollectionName("collectionName")).(string))
 }

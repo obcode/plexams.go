@@ -7,6 +7,8 @@ import (
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/gookit/color"
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -373,10 +375,12 @@ OUTER:
 		examsInterface = append(examsInterface, exam)
 	}
 
-	err = p.dbClient.Save(context.WithValue(ctx, "collectionName", "exams_in_plan"), examsInterface)
+	err = p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "exams_in_plan"), examsInterface)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot save exams in plan")
 	}
+
+	color.Green.Printf("inserted %d exams\n", len(exams))
 
 	return nil
 }

@@ -52,6 +52,8 @@ type Query {
   examerInPlan: [ExamerInPlan!]
   # PlannedExamsWithNTA
   plannedExamsInSlot(day: Int!, time: Int!): [PlannedExamWithNTA!]
+  examsInPlan: [ExamInPlan!]
+  examsInSlot(day: Int!, time: Int!): [ExamInPlan!]
   # Rooms
   rooms: [Room!]!
   roomsWithConstraints(
@@ -60,4 +62,5 @@ type Query {
     placesWithSocket: Boolean!
     exahm: Boolean
   ): [Room!]!
+  roomsForSlot(day: Int!, time: Int!): [Room!]!
 }

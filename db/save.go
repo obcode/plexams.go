@@ -7,7 +7,7 @@ import (
 )
 
 func (db *DB) DropAndSave(ctx context.Context, objects []interface{}) error {
-	collection := db.getCollectionSemester(ctx)
+	collection := db.getCollectionSemesterFromContext(ctx)
 
 	err := collection.Drop(ctx)
 	if err != nil {
@@ -29,7 +29,7 @@ func (db *DB) DropAndSave(ctx context.Context, objects []interface{}) error {
 }
 
 func (db *DB) Save(ctx context.Context, objects []interface{}) error {
-	collection := db.getCollectionSemester(ctx)
+	collection := db.getCollectionSemesterFromContext(ctx)
 
 	_, err := collection.InsertMany(ctx, objects)
 	if err != nil {

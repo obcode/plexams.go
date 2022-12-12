@@ -176,6 +176,22 @@ type RoomConstraints struct {
 	ExahmRooms       bool `json:"exahmRooms"`
 }
 
+type RoomForExam struct {
+	Ancode       int   `json:"ancode"`
+	Room         *Room `json:"room"`
+	SeatsPlanned int   `json:"seatsPlanned"`
+	Duration     int   `json:"duration"`
+	Handicap     bool  `json:"handicap"`
+}
+
+type RoomForExamInput struct {
+	Ancode       int    `json:"ancode"`
+	RoomName     string `json:"roomName"`
+	SeatsPlanned int    `json:"seatsPlanned"`
+	Duration     int    `json:"duration"`
+	Handicap     bool   `json:"handicap"`
+}
+
 type Semester struct {
 	ID string `json:"id"`
 }

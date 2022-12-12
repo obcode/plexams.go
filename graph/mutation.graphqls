@@ -22,4 +22,6 @@ type Mutation {
   # Plan
   addExamGroupToSlot(day: Int!, time: Int!, examGroupCode: Int!): Boolean!
   rmExamGroupFromSlot(examGroupCode: Int!): Boolean!
+  # Rooms
+  addRoomToExam(input: RoomForExamInput!): Boolean!
 }

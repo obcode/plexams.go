@@ -13,3 +13,19 @@ type SlotWithRooms {
   slotNumber: Int!
   rooms: [Room!]!
 }
+
+type RoomForExam {
+  ancode: Int!
+  room: Room!
+  seatsPlanned: Int!
+  duration: Int!
+  handicap: Boolean!
+}
+
+input RoomForExamInput {
+  ancode: Int!
+  roomName: String!
+  seatsPlanned: Int!
+  duration: Int!
+  handicap: Boolean!
+}

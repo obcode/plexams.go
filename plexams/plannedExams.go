@@ -68,3 +68,7 @@ func (p *Plexams) getTimeForSlot(dayNumber, slotNumber int) *time.Time {
 	}
 	return nil
 }
+
+func (p *Plexams) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.ExamInPlan, error) {
+	return p.dbClient.ExamsInSlot(ctx, day, time)
+}

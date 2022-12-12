@@ -337,7 +337,7 @@ func (p *Plexams) PreparePlannedExams() error {
 
 	doNotPublish := viper.GetIntSlice("donotpublish")
 	for _, ancodeNotToPublish := range doNotPublish {
-		fmt.Printf("do not publish: %d\n", ancodeNotToPublish)
+		color.Yellow.Printf("do not publish: %d\n", ancodeNotToPublish)
 	}
 
 	exams := make([]*model.ExamInPlan, 0)

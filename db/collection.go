@@ -28,6 +28,8 @@ const (
 	collectionToPlan    = "zpaexams-to-plan"
 	collectionNotToPlan = "zpaexams-not-to-plan"
 
+	collectionExamsInPlan = "exams_in_plan"
+
 	collectionRooms = "rooms"
 )
 
@@ -44,6 +46,10 @@ func (db *DB) getCollection(program string, primussType PrimussType) *mongo.Coll
 	return db.Client.Database(databaseName(db.semester)).Collection(fmt.Sprintf("%s_%s", primussType, program))
 }
 
-func (db *DB) getCollectionSemester(ctx context.Context) *mongo.Collection {
+func (db *DB) getCollectionSemester(collectionName string) *mongo.Collection {
+	return db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+}
+
+func (db *DB) getCollectionSemesterFromContext(ctx context.Context) *mongo.Collection {
 	return db.Client.Database(databaseName(db.semester)).Collection(ctx.Value(CollectionName("collectionName")).(string))
 }

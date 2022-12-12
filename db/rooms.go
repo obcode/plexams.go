@@ -63,3 +63,25 @@ func (db *DB) SaveRooms(ctx context.Context, slotsWithRooms []*model.SlotWithRoo
 
 	return nil
 }
+
+func (db *DB) RoomsForSlot(ctx context.Context, day int, time int) ([]*model.Room, error) {
+	collection := db.getCollectionSemester(collectionRooms)
+
+	filter := bson.M{
+		"$and": []bson.M{
+			{"daynumber": day},
+			{"slotnumber": time},
+		},
+	}
+
+	res := collection.FindOne(ctx, filter)
+	var slotWithRooms model.SlotWithRooms
+
+	err := res.Decode(&slotWithRooms)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRooms).Msg("Cannot decode to rooms")
+		return nil, err
+	}
+
+	return slotWithRooms.Rooms, nil
+}

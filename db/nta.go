@@ -37,7 +37,7 @@ func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	ntas := make([]*model.NTA, 0)
 	err = cur.All(ctx, &ntas)
 	if err != nil {
-		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("Cannot decode to rooms")
+		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("Cannot decode to ntas")
 		return nil, err
 	}
 

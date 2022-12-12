@@ -68,3 +68,12 @@ func (p *Plexams) PrepareRooms() error {
 func (p *Plexams) Rooms(ctx context.Context) ([]*model.Room, error) {
 	return p.dbClient.Rooms(ctx)
 }
+
+func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) ([]*model.Room, error) {
+	return p.dbClient.RoomsForSlot(ctx, day, time)
+}
+
+func (p *Plexams) AddRoomToExam(ctx context.Context, input model.RoomForExamInput) (bool, error) {
+
+	return false, nil
+}

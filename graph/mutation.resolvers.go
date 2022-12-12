@@ -101,6 +101,11 @@ func (r *mutationResolver) RmExamGroupFromSlot(ctx context.Context, examGroupCod
 	return r.plexams.RmExamGroupFromSlot(ctx, examGroupCode)
 }
 
+// AddRoomToExam is the resolver for the addRoomToExam field.
+func (r *mutationResolver) AddRoomToExam(ctx context.Context, input model.RoomForExamInput) (bool, error) {
+	return r.plexams.AddRoomToExam(ctx, input)
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 

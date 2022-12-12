@@ -61,9 +61,3 @@ type ExamerInPlan {
   mainExamer: String!
   mainExamerID: Int!
 }
-
-type PlannedExamWithNTA {
-  exam: ExamWithRegs!
-  constraints: Constraints
-  nta: [NTAWithRegs!]
-}

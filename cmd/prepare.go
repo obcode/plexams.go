@@ -26,9 +26,10 @@ var (
 
 	connected-exam  --- prepare a connected exam for ancode
 	exam-group      --- group of exams out of ancodes
-	
+
 	For planning rooms:
 
+	exams-in-plan   --- split exam-groups into exams
 	rooms           --- prepare rooms which are allowed to use 
 	`,
 		Args: cobra.MinimumNArgs(1),
@@ -116,6 +117,12 @@ var (
 
 			case "nta":
 				err := plexams.PrepareNta()
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "exams-in-plan":
+				err := plexams.PreparePlannedExams()
 				if err != nil {
 					os.Exit(1)
 				}

@@ -9,6 +9,7 @@ import (
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int) (bool, error) {
@@ -309,4 +310,73 @@ func (p *Plexams) UnlockExamGroup(ctx context.Context, examGroupCode int) (*mode
 
 func (p *Plexams) LockPlan(ctx context.Context) error {
 	return p.dbClient.LockPlan(ctx)
+}
+
+func (p *Plexams) PreparePlannedExams() error {
+	ctx := context.Background()
+	examGroups, err := p.ExamGroups(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get exam groups")
+		return err
+	}
+
+	ntas, err := p.NtasWithRegsByTeacher(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get ntas")
+		return err
+	}
+
+	ntasMap := make(map[int][]*model.NTAWithRegs)
+	for _, ntaWithRegByTeacher := range ntas {
+		for _, ntantaWithRegByExam := range ntaWithRegByTeacher.Exams {
+			ntasMap[ntantaWithRegByExam.Exam.AnCode] = ntantaWithRegByExam.Ntas
+		}
+	}
+
+	doNotPublish := viper.GetIntSlice("donotpublish")
+	for _, ancodeNotToPublish := range doNotPublish {
+		fmt.Printf("do not publish: %d\n", ancodeNotToPublish)
+	}
+
+	exams := make([]*model.ExamInPlan, 0)
+OUTER:
+	for _, examGroup := range examGroups {
+		for _, exam := range examGroup.Exams {
+			// do not include exams not planned by me
+			if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+				continue
+			}
+			// import from other departments will sometimes be only published there
+			for _, ancodeNotToPublish := range doNotPublish {
+				if exam.Exam.Ancode == ancodeNotToPublish {
+					continue OUTER
+				}
+			}
+			//
+			slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get slot for ancode")
+			}
+			slot.Starttime = p.getSlotTime(slot.DayNumber, slot.SlotNumber)
+
+			exams = append(exams, &model.ExamInPlan{
+				Exam:        exam.Exam,
+				Constraints: exam.Constraints,
+				Nta:         ntasMap[exam.Exam.Ancode],
+				Slot:        slot,
+			})
+		}
+	}
+
+	examsInterface := make([]interface{}, 0, len(exams))
+	for _, exam := range exams {
+		examsInterface = append(examsInterface, exam)
+	}
+
+	err = p.dbClient.Save(context.WithValue(ctx, "collectionName", "exams_in_plan"), examsInterface)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot save exams in plan")
+	}
+
+	return nil
 }

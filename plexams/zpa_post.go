@@ -102,6 +102,7 @@ func noZPAStudRegError(zpaStudentRegError *model.ZPAStudentRegError) bool {
 		len(zpaStudentRegError.Program) == 0
 }
 
+// TODO: rewrite with planned exams
 func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilators bool) ([]*model.ZPAExamPlan, error) {
 	if err := p.SetZPA(); err != nil {
 		return nil, err

@@ -83,6 +83,13 @@ type ExamGroupInfo struct {
 	MaxDurationNta *int                 `json:"maxDurationNTA"`
 }
 
+type ExamInPlan struct {
+	Exam        *ExamWithRegs  `json:"exam"`
+	Constraints *Constraints   `json:"constraints"`
+	Nta         []*NTAWithRegs `json:"nta"`
+	Slot        *Slot          `json:"slot"`
+}
+
 type ExamToPlan struct {
 	Exam        *ExamWithRegs `json:"exam"`
 	Constraints *Constraints  `json:"constraints"`

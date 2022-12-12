@@ -48,3 +48,16 @@ type ExamToPlan {
   exam: ExamWithRegs!
   constraints: Constraints
 }
+
+type PlannedExamWithNTA {
+  exam: ExamWithRegs!
+  constraints: Constraints
+  nta: [NTAWithRegs!]
+}
+
+type ExamInPlan {
+  exam: ExamWithRegs!
+  constraints: Constraints
+  nta: [NTAWithRegs!]
+  slot: Slot
+}

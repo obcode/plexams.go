@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -39,4 +40,8 @@ const (
 
 func (db *DB) getCollection(program string, primussType PrimussType) *mongo.Collection {
 	return db.Client.Database(databaseName(db.semester)).Collection(fmt.Sprintf("%s_%s", primussType, program))
+}
+
+func (db *DB) getCollectionSemester(ctx context.Context) *mongo.Collection {
+	return db.Client.Database(databaseName(db.semester)).Collection(ctx.Value("collectionName").(string))
 }

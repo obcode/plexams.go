@@ -24,6 +24,8 @@ type RoomForExam {
 
 input RoomForExamInput {
   ancode: Int!
+  day: Int!
+  time: Int!
   roomName: String!
   seatsPlanned: Int!
   duration: Int!

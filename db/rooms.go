@@ -85,3 +85,27 @@ func (db *DB) RoomsForSlot(ctx context.Context, day int, time int) ([]*model.Roo
 
 	return slotWithRooms.Rooms, nil
 }
+
+func (db *DB) RoomPlannedInSlot(ctx context.Context, roomName string, day int, time int) ([]*model.RoomForExam, error) {
+	collection := db.getCollectionSemester(collectionRooms)
+
+	filter := bson.M{
+		"$and": []bson.M{
+			{"room.roomName": roomName},
+			{"daynumber": day},
+			{"slotnumber": time},
+		},
+	}
+
+	cur, err := collection.Find(ctx, filter)
+
+	roomeForExam := make([]*model.RoomForExam, 0)
+
+	err = cur.All(ctx, &roomeForExam)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRooms).Msg("Cannot decode to rooms for exams")
+		return nil, err
+	}
+
+	return roomeForExam, nil
+}

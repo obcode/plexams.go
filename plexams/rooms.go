@@ -74,6 +74,40 @@ func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) ([]*model
 }
 
 func (p *Plexams) AddRoomToExam(ctx context.Context, input model.RoomForExamInput) (bool, error) {
+	// room allowed and enough seats in slot?
+	// room, err := p.getRoom(ctx, input.RoomName, input.Day, input.Time, input.SeatsPlanned)
+	// if err != nil {
+	// 	log.Error().Err(err).Str("room", input.RoomName).Int("day", input.Day).Int("time", input.Time).
+	// 		Msg("cannot get room")
+	// 	return false, err
+	// }
 
 	return false, nil
+}
+
+func (p *Plexams) getRoom(ctx context.Context, roomName string, day, time, seatsNeeded int) (*model.Room, error) {
+	roomsForSlot, err := p.RoomsForSlot(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get rooms for slot")
+		return nil, err
+	}
+	var room *model.Room
+	for _, roomForSlot := range roomsForSlot {
+		if roomName == roomForSlot.Name {
+			room = roomForSlot
+			break
+		}
+	}
+	if room == nil {
+		return nil, fmt.Errorf("room %s for slot (%d,%d) not allowed", roomName, day, time)
+	}
+
+	return nil, nil
+}
+
+func (p *Plexams) getPlannedRoom(ctx context.Context, roomName string, day, time, seatsNeeded int) ([]*model.Room, error) {
+	// rooms, err := p.dbClient.RoomPlannedInSlot(ctx, roomName, day, time)
+	// TODO: calculate the remaining seats? or in getRoom
+
+	return nil, nil
 }

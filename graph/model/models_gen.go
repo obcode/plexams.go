@@ -186,6 +186,8 @@ type RoomForExam struct {
 
 type RoomForExamInput struct {
 	Ancode       int    `json:"ancode"`
+	Day          int    `json:"day"`
+	Time         int    `json:"time"`
 	RoomName     string `json:"roomName"`
 	SeatsPlanned int    `json:"seatsPlanned"`
 	Duration     int    `json:"duration"`

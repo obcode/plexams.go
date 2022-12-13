@@ -2901,6 +2901,8 @@ type RoomForExam {
 
 input RoomForExamInput {
   ancode: Int!
+  day: Int!
+  time: Int!
   roomName: String!
   seatsPlanned: Int!
   duration: Int!
@@ -18402,7 +18404,7 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"ancode", "roomName", "seatsPlanned", "duration", "handicap"}
+	fieldsInOrder := [...]string{"ancode", "day", "time", "roomName", "seatsPlanned", "duration", "handicap"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18414,6 +18416,22 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
 			it.Ancode, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "day":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+			it.Day, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "time":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("time"))
+			it.Time, err = ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
 				return it, err
 			}

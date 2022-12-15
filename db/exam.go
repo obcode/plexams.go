@@ -271,3 +271,25 @@ func (db *DB) ExamsWithRegs(ctx context.Context) ([]*model.ExamWithRegs, error) 
 
 	return exams, nil
 }
+
+func (db *DB) ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error) {
+	collection := db.getCollectionSemester(collectionExamsInPlan)
+
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "slot.starttime", Value: 1}, {Key: "exam.ancode", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.M{}, findOptions)
+	if err != nil {
+		log.Error().Err(err).Msg("error while trying to find exams in plan")
+	}
+
+	exams := make([]*model.ExamInPlan, 0)
+
+	err = cur.All(ctx, &exams)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRooms).Msg("Cannot decode to rooms for exams")
+		return nil, err
+	}
+
+	return exams, nil
+}

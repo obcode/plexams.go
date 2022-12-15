@@ -229,7 +229,7 @@ func (r *queryResolver) PlannedExamsInSlot(ctx context.Context, day int, time in
 
 // ExamsInPlan is the resolver for the examsInPlan field.
 func (r *queryResolver) ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error) {
-	panic(fmt.Errorf("not implemented: ExamsInPlan - examsInPlan"))
+	return r.plexams.ExamsInPlan(ctx)
 }
 
 // ExamsInSlot is the resolver for the examsInSlot field.

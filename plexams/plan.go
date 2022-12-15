@@ -384,3 +384,7 @@ OUTER:
 
 	return nil
 }
+
+func (p *Plexams) ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error) {
+	return p.dbClient.ExamsInPlan(ctx)
+}

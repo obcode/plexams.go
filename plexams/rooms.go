@@ -74,15 +74,28 @@ func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) ([]*model
 }
 
 func (p *Plexams) AddRoomToExam(ctx context.Context, input model.RoomForExamInput) (bool, error) {
-	// room allowed and enough seats in slot?
-	// room, err := p.getRoom(ctx, input.RoomName, input.Day, input.Time, input.SeatsPlanned)
-	// if err != nil {
-	// 	log.Error().Err(err).Str("room", input.RoomName).Int("day", input.Day).Int("time", input.Time).
-	// 		Msg("cannot get room")
-	// 	return false, err
-	// }
+	room, err := p.getRoom(ctx, input.RoomName, input.Day, input.Time, input.SeatsPlanned)
+	if err != nil {
+		log.Error().Err(err).Str("room", input.RoomName).Int("day", input.Day).Int("time", input.Time).
+			Msg("cannot get room")
+		return false, err
+	}
 
-	return false, nil
+	err = p.dbClient.AddRoomToExam(ctx, &model.RoomForExam{
+		Ancode:       input.Ancode,
+		Room:         room,
+		SeatsPlanned: input.SeatsPlanned,
+		Duration:     input.Duration,
+		Handicap:     input.Handicap,
+		Mktnrs:       input.Mktnrs,
+	})
+	if err != nil {
+		log.Error().Err(err).Str("room", input.RoomName).Int("day", input.Day).Int("time", input.Time).
+			Msg("cannot save room to db")
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (p *Plexams) getRoom(ctx context.Context, roomName string, day, time, seatsNeeded int) (*model.Room, error) {
@@ -102,12 +115,89 @@ func (p *Plexams) getRoom(ctx context.Context, roomName string, day, time, seats
 		return nil, fmt.Errorf("room %s for slot (%d,%d) not allowed", roomName, day, time)
 	}
 
-	return nil, nil
+	roomAlreadyPlanned, err := p.dbClient.RoomPlannedInSlot(ctx, roomName, day, time)
+	if err != nil {
+		log.Error().Err(err).Str("room name", roomName).Int("day", day).Int("time", time).
+			Msg("cannot get plannedrooms for slot")
+		return nil, err
+	}
+
+	seatsUsedAlready := 0
+	for _, roomInUse := range roomAlreadyPlanned {
+		seatsUsedAlready += roomInUse.SeatsPlanned
+	}
+
+	if room.Seats-seatsUsedAlready < seatsNeeded {
+		log.Debug().Str("room name", roomName).Int("day", day).Int("time", time).
+			Msg("not enough seats left")
+		return nil, fmt.Errorf("not enough seats left")
+	}
+
+	return room, nil
 }
 
-func (p *Plexams) getPlannedRoom(ctx context.Context, roomName string, day, time, seatsNeeded int) ([]*model.Room, error) {
-	// rooms, err := p.dbClient.RoomPlannedInSlot(ctx, roomName, day, time)
-	// TODO: calculate the remaining seats? or in getRoom
+func (p *Plexams) PrepareRoomForExams() error {
+	type exam struct {
+		ancode int
+		regs   int
+		ntas   []*model.NTAWithRegs
+	}
 
-	return nil, nil
+	insertSorted := func(exams []exam, examToInsert exam) []exam {
+		i := 0
+		for _, exam := range exams {
+			if exam.regs < examToInsert.regs {
+				break
+			}
+			i++
+		}
+		if i >= len(exams) {
+			return append(exams, examToInsert)
+		}
+		return append(append(exams[:i], examToInsert), exams[i:]...)
+	}
+
+	ctx := context.Background()
+	for _, slot := range p.semesterConfig.Slots {
+		// get exams
+		examsInPlan, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		if err != nil {
+			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+				Msg("error while trying to find exams in slot")
+			return err
+		}
+
+		exams := make([]exam, 0, len(examsInPlan))
+		for _, examInPlan := range examsInPlan {
+			ntas := examInPlan.Nta
+			regs := 0
+			for _, registrations := range examInPlan.Exam.StudentRegs {
+				regs += len(registrations.StudentRegs)
+			}
+			regs -= len(ntas)
+
+			exams = insertSorted(exams, exam{
+				ancode: examInPlan.Exam.Ancode,
+				regs:   regs,
+				ntas:   ntas,
+			})
+		}
+
+		// get rooms
+		// rooms, err := p.RoomsForSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		// if err != nil {
+		// 	log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+		// 		Msg("error while trying to get rooms for slot")
+		// 	return err
+		// }
+
+		// for {
+		// 	// find exam with most seats needed
+
+		// 	// find biggest room
+		// }
+
+	}
+
+	return nil
 }

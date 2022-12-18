@@ -133,6 +133,12 @@ var (
 					os.Exit(1)
 				}
 
+			case "room-for-exams":
+				err := plexams.PrepareRoomForExams()
+				if err != nil {
+					os.Exit(1)
+				}
+
 			default:
 				fmt.Println("prepare called with unkown sub command")
 			}

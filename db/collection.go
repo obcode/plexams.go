@@ -30,8 +30,9 @@ const (
 
 	collectionExamsInPlan = "exams_in_plan"
 
-	collectionRooms        = "rooms"
-	collectionRoomsPlanned = "rooms_planned"
+	collectionRooms         = "rooms"
+	collectionRoomsPlanned  = "rooms_planned"
+	collectionRoomsForExams = "rooms_for_exams"
 )
 
 type PrimussType string

@@ -98,14 +98,29 @@ func (db *DB) RoomPlannedInSlot(ctx context.Context, roomName string, day int, t
 	}
 
 	cur, err := collection.Find(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Msg("error while trying to find rooms planned in slot")
+	}
 
-	roomeForExam := make([]*model.RoomForExam, 0)
+	roomForExam := make([]*model.RoomForExam, 0)
 
-	err = cur.All(ctx, &roomeForExam)
+	err = cur.All(ctx, &roomForExam)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionRooms).Msg("Cannot decode to rooms for exams")
 		return nil, err
 	}
 
-	return roomeForExam, nil
+	return roomForExam, nil
+}
+
+func (db *DB) AddRoomToExam(ctx context.Context, room *model.RoomForExam) error {
+	collection := db.getCollectionSemester(collectionRoomsForExams)
+
+	_, err := collection.InsertOne(ctx, room)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRoomsForExams).Msg("cannot insert room into collection")
+		return err
+	}
+
+	return nil
 }

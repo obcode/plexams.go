@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (p *Plexams) PrepareRooms() error {
+func (p *Plexams) PrepareRoomsForSemester() error {
 	globalRooms, err := p.dbClient.GlobalRooms(context.Background())
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get global rooms")

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -92,129 +93,215 @@ func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) ([]*model
 }
 
 func (p *Plexams) AddRoomToExam(ctx context.Context, input model.RoomForExamInput) (bool, error) {
-	room, err := p.getRoom(ctx, input.RoomName, input.Day, input.Time, input.SeatsPlanned)
-	if err != nil {
-		log.Error().Err(err).Str("room", input.RoomName).Int("day", input.Day).Int("time", input.Time).
-			Msg("cannot get room")
-		return false, err
-	}
+	// room, err := p.getRoom(ctx, input.RoomName, input.Day, input.Time, input.SeatsPlanned)
+	// if err != nil {
+	// 	log.Error().Err(err).Str("room", input.RoomName).Int("day", input.Day).Int("time", input.Time).
+	// 		Msg("cannot get room")
+	// 	return false, err
+	// }
 
-	err = p.dbClient.AddRoomToExam(ctx, &model.RoomForExam{
-		Ancode:       input.Ancode,
-		Room:         room,
-		SeatsPlanned: input.SeatsPlanned,
-		Duration:     input.Duration,
-		Handicap:     input.Handicap,
-		Mktnrs:       input.Mktnrs,
-	})
-	if err != nil {
-		log.Error().Err(err).Str("room", input.RoomName).Int("day", input.Day).Int("time", input.Time).
-			Msg("cannot save room to db")
-		return false, err
-	}
+	// err = p.dbClient.AddRoomToExam(ctx, &model.RoomForExam{
+	// 	Ancode:       input.Ancode,
+	// 	Room:         room,
+	// 	SeatsPlanned: input.SeatsPlanned,
+	// 	Duration:     input.Duration,
+	// 	Handicap:     input.Handicap,
+	// 	Mktnrs:       input.Mktnrs,
+	// })
+	// if err != nil {
+	// 	log.Error().Err(err).Str("room", input.RoomName).Int("day", input.Day).Int("time", input.Time).
+	// 		Msg("cannot save room to db")
+	// 	return false, err
+	// }
 
-	return true, nil
+	// FIXME
+
+	return false, nil
 }
 
-func (p *Plexams) getRoom(ctx context.Context, roomName string, day, time, seatsNeeded int) (*model.Room, error) {
-	roomsForSlot, err := p.RoomsForSlot(ctx, day, time)
-	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get rooms for slot")
-		return nil, err
-	}
-	var room *model.Room
-	for _, roomForSlot := range roomsForSlot {
-		if roomName == roomForSlot.Name {
-			room = roomForSlot
-			break
-		}
-	}
-	if room == nil {
-		return nil, fmt.Errorf("room %s for slot (%d,%d) not allowed", roomName, day, time)
-	}
+// func (p *Plexams) getRoom(ctx context.Context, roomName string, day, time, seatsNeeded int) (*model.Room, error) {
+// 	roomsForSlot, err := p.RoomsForSlot(ctx, day, time)
+// 	if err != nil {
+// 		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get rooms for slot")
+// 		return nil, err
+// 	}
+// 	var room *model.Room
+// 	for _, roomForSlot := range roomsForSlot {
+// 		if roomName == roomForSlot.Name {
+// 			room = roomForSlot
+// 			break
+// 		}
+// 	}
+// 	if room == nil {
+// 		return nil, fmt.Errorf("room %s for slot (%d,%d) not allowed", roomName, day, time)
+// 	}
 
-	roomAlreadyPlanned, err := p.dbClient.RoomPlannedInSlot(ctx, roomName, day, time)
-	if err != nil {
-		log.Error().Err(err).Str("room name", roomName).Int("day", day).Int("time", time).
-			Msg("cannot get plannedrooms for slot")
-		return nil, err
-	}
+// 	roomAlreadyPlanned, err := p.dbClient.RoomPlannedInSlot(ctx, roomName, day, time)
+// 	if err != nil {
+// 		log.Error().Err(err).Str("room name", roomName).Int("day", day).Int("time", time).
+// 			Msg("cannot get plannedrooms for slot")
+// 		return nil, err
+// 	}
 
-	seatsUsedAlready := 0
-	for _, roomInUse := range roomAlreadyPlanned {
-		seatsUsedAlready += roomInUse.SeatsPlanned
-	}
+// 	seatsUsedAlready := 0
+// 	for _, roomInUse := range roomAlreadyPlanned {
+// 		seatsUsedAlready += roomInUse.SeatsPlanned
+// 	}
 
-	if room.Seats-seatsUsedAlready < seatsNeeded {
-		log.Debug().Str("room name", roomName).Int("day", day).Int("time", time).
-			Msg("not enough seats left")
-		return nil, fmt.Errorf("not enough seats left")
-	}
+// 	if room.Seats-seatsUsedAlready < seatsNeeded {
+// 		log.Debug().Str("room name", roomName).Int("day", day).Int("time", time).
+// 			Msg("not enough seats left")
+// 		return nil, fmt.Errorf("not enough seats left")
+// 	}
 
-	return room, nil
-}
+// 	return room, nil
+// }
 
 func (p *Plexams) PrepareRoomForExams() error {
-	type exam struct {
-		ancode int
-		regs   int
-		ntas   []*model.NTAWithRegs
-	}
-
-	insertSorted := func(exams []exam, examToInsert exam) []exam {
-		i := 0
-		for _, exam := range exams {
-			if exam.regs < examToInsert.regs {
-				break
-			}
-			i++
-		}
-		if i >= len(exams) {
-			return append(exams, examToInsert)
-		}
-		return append(append(exams[:i], examToInsert), exams[i:]...)
-	}
-
 	ctx := context.Background()
+
+	examRooms := make([]interface{}, 0)
+
 	for _, slot := range p.semesterConfig.Slots {
 		// get exams
 		examsInPlan, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+
 		if err != nil {
 			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
 				Msg("error while trying to find exams in slot")
 			return err
 		}
 
-		exams := make([]exam, 0, len(examsInPlan))
+		type examWithRegsAndRooms struct {
+			exam       *model.ExamInPlan
+			normalRegs []*model.StudentReg
+			ntaRegs    []*model.NTAWithRegs
+			rooms      []*model.RoomForExam
+		}
+
+		exams := make([]*examWithRegsAndRooms, 0, len(examsInPlan))
 		for _, examInPlan := range examsInPlan {
 			ntas := examInPlan.Nta
-			regs := 0
-			for _, registrations := range examInPlan.Exam.StudentRegs {
-				regs += len(registrations.StudentRegs)
+			isNTA := func(studReg *model.StudentReg) bool {
+				for _, nta := range ntas {
+					if studReg.Mtknr == nta.Nta.Mtknr {
+						return true
+					}
+				}
+				return false
 			}
-			regs -= len(ntas)
+			regs := make([]*model.StudentReg, 0)
+			for _, registrations := range examInPlan.Exam.StudentRegs {
+				for _, studReg := range registrations.StudentRegs {
+					if !isNTA(studReg) {
+						regs = append(regs, studReg)
+					}
+				}
+			}
 
-			exams = insertSorted(exams, exam{
-				ancode: examInPlan.Exam.Ancode,
-				regs:   regs,
-				ntas:   ntas,
+			exams = append(exams, &examWithRegsAndRooms{
+				exam:       examInPlan,
+				normalRegs: regs,
+				ntaRegs:    ntas,
+				rooms:      make([]*model.RoomForExam, 0),
 			})
 		}
 
 		// get rooms
-		// rooms, err := p.RoomsForSlot(ctx, slot.DayNumber, slot.SlotNumber)
-		// if err != nil {
-		// 	log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
-		// 		Msg("error while trying to get rooms for slot")
-		// 	return err
-		// }
+		rooms, err := p.RoomsForSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		if err != nil {
+			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+				Msg("error while trying to get rooms for slot")
+			return err
+		}
 
-		// for {
-		// 	// find exam with most seats needed
+		// normal rooms
+		for {
+			if len(exams) == 0 {
+				break
+			}
 
-		// 	// find biggest room
-		// }
+			sort.Slice(exams, func(i, j int) bool {
+				return len(exams[i].normalRegs) > len(exams[j].normalRegs)
+			})
 
+			if len(exams[0].normalRegs) == 0 {
+				break
+			}
+
+			// TODO: use exahm first, then lab, than placeswithsockets and then all other
+			exam := exams[0]
+			exams = exams[1:]
+
+			var room *model.Room
+			if exam.exam.Constraints != nil && exam.exam.Constraints.RoomConstraints != nil {
+				if exam.exam.Constraints.RoomConstraints.ExahmRooms {
+					for i := 0; i < len(rooms); i++ {
+						if rooms[i].Exahm {
+							room = rooms[i]
+							rooms = append(rooms[:i], rooms[i+1:]...)
+							break
+						}
+					}
+				} else if exam.exam.Constraints.RoomConstraints.Lab {
+					for i := 0; i < len(rooms); i++ {
+						if rooms[i].Lab {
+							room = rooms[i]
+							rooms = append(rooms[:i], rooms[i+1:]...)
+							break
+						}
+					}
+				} else if exam.exam.Constraints.RoomConstraints.PlacesWithSocket {
+					for i := 0; i < len(rooms); i++ {
+						if rooms[i].PlacesWithSocket {
+							room = rooms[i]
+							rooms = append(rooms[:i], rooms[i+1:]...)
+							break
+						}
+					}
+				} else {
+					room = rooms[0]
+					rooms = rooms[1:]
+				}
+			} else {
+				room = rooms[0]
+				rooms = rooms[1:]
+			}
+
+			if room == nil {
+				log.Error().Int("ancode", exam.exam.Exam.Ancode).
+					Msg("no room found for exam")
+				return fmt.Errorf("no room found for exam")
+			}
+
+			studentCountInRoom := room.Seats
+			if studentCountInRoom > len(exam.normalRegs) {
+				studentCountInRoom = len(exam.normalRegs)
+			}
+
+			studentsInRoom := exam.normalRegs[:studentCountInRoom]
+			exam.normalRegs = exam.normalRegs[studentCountInRoom:]
+
+			examRoom := model.RoomForExam{
+				Ancode:       exam.exam.Exam.Ancode,
+				Room:         room,
+				SeatsPlanned: len(studentsInRoom),
+				Duration:     exam.exam.Exam.ZpaExam.Duration,
+				Handicap:     false,
+				Students:     studentsInRoom,
+			}
+
+			exam.rooms = append(exam.rooms, &examRoom)
+			examRooms = append(examRooms, &examRoom)
+
+			exams = append(exams, exam)
+		}
+	}
+
+	err := p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "rooms_for_exams"), examRooms)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot save rooms for exams")
+		return err
 	}
 
 	return nil

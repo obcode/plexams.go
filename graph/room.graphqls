@@ -21,7 +21,7 @@ type RoomForExam {
   seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!
-  mktnrs: [String!]
+  students: [StudentReg!]!
 }
 
 input RoomForExamInput {

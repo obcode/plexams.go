@@ -177,12 +177,12 @@ type RoomConstraints struct {
 }
 
 type RoomForExam struct {
-	Ancode       int      `json:"ancode"`
-	Room         *Room    `json:"room"`
-	SeatsPlanned int      `json:"seatsPlanned"`
-	Duration     int      `json:"duration"`
-	Handicap     bool     `json:"handicap"`
-	Mktnrs       []string `json:"mktnrs"`
+	Ancode       int           `json:"ancode"`
+	Room         *Room         `json:"room"`
+	SeatsPlanned int           `json:"seatsPlanned"`
+	Duration     int           `json:"duration"`
+	Handicap     bool          `json:"handicap"`
+	Students     []*StudentReg `json:"students"`
 }
 
 type RoomForExamInput struct {

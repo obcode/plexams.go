@@ -133,7 +133,7 @@ var (
 					os.Exit(1)
 				}
 
-			case "room-for-exams":
+			case "rooms-for-exams":
 				err := plexams.PrepareRoomForExams()
 				if err != nil {
 					os.Exit(1)

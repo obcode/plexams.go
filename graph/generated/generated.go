@@ -316,9 +316,9 @@ type ComplexityRoot struct {
 		Ancode       func(childComplexity int) int
 		Duration     func(childComplexity int) int
 		Handicap     func(childComplexity int) int
-		Mktnrs       func(childComplexity int) int
 		Room         func(childComplexity int) int
 		SeatsPlanned func(childComplexity int) int
+		Students     func(childComplexity int) int
 	}
 
 	Semester struct {
@@ -1985,13 +1985,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RoomForExam.Handicap(childComplexity), true
 
-	case "RoomForExam.mktnrs":
-		if e.complexity.RoomForExam.Mktnrs == nil {
-			break
-		}
-
-		return e.complexity.RoomForExam.Mktnrs(childComplexity), true
-
 	case "RoomForExam.room":
 		if e.complexity.RoomForExam.Room == nil {
 			break
@@ -2005,6 +1998,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RoomForExam.SeatsPlanned(childComplexity), true
+
+	case "RoomForExam.students":
+		if e.complexity.RoomForExam.Students == nil {
+			break
+		}
+
+		return e.complexity.RoomForExam.Students(childComplexity), true
 
 	case "Semester.id":
 		if e.complexity.Semester.ID == nil {
@@ -2914,7 +2914,7 @@ type RoomForExam {
   seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!
-  mktnrs: [String!]
+  students: [StudentReg!]!
 }
 
 input RoomForExamInput {
@@ -13289,8 +13289,8 @@ func (ec *executionContext) fieldContext_RoomForExam_handicap(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _RoomForExam_mktnrs(ctx context.Context, field graphql.CollectedField, obj *model.RoomForExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RoomForExam_mktnrs(ctx, field)
+func (ec *executionContext) _RoomForExam_students(ctx context.Context, field graphql.CollectedField, obj *model.RoomForExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomForExam_students(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13303,28 +13303,45 @@ func (ec *executionContext) _RoomForExam_mktnrs(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Mktnrs, nil
+		return obj.Students, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.([]string)
+	res := resTmp.([]*model.StudentReg)
 	fc.Result = res
-	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNStudentReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RoomForExam_mktnrs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RoomForExam_students(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RoomForExam",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "mtknr":
+				return ec.fieldContext_StudentReg_mtknr(ctx, field)
+			case "ancode":
+				return ec.fieldContext_StudentReg_ancode(ctx, field)
+			case "program":
+				return ec.fieldContext_StudentReg_program(ctx, field)
+			case "group":
+				return ec.fieldContext_StudentReg_group(ctx, field)
+			case "name":
+				return ec.fieldContext_StudentReg_name(ctx, field)
+			case "presence":
+				return ec.fieldContext_StudentReg_presence(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type StudentReg", field.Name)
 		},
 	}
 	return fc, nil
@@ -21222,10 +21239,13 @@ func (ec *executionContext) _RoomForExam(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "mktnrs":
+		case "students":
 
-			out.Values[i] = ec._RoomForExam_mktnrs(ctx, field, obj)
+			out.Values[i] = ec._RoomForExam_students(ctx, field, obj)
 
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

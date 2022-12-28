@@ -12,6 +12,7 @@ type SlotWithRooms {
   dayNumber: Int!
   slotNumber: Int!
   rooms: [Room!]!
+  ntaRooms: [Room!]!
 }
 
 type RoomForExam {

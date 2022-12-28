@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -55,14 +56,31 @@ func (p *Plexams) PrepareRooms() error {
 
 	slotsWithRooms := make([]*model.SlotWithRooms, 0, len(roomsForSlots))
 	for slot, rooms := range roomsForSlots {
+		normalRooms, ntaRooms := splitRooms(rooms)
 		slotsWithRooms = append(slotsWithRooms, &model.SlotWithRooms{
 			DayNumber:  slot / 10,
 			SlotNumber: slot % 10,
-			Rooms:      rooms,
+			Rooms:      normalRooms,
+			NtaRooms:   ntaRooms,
 		})
 	}
 
 	return p.dbClient.SaveRooms(context.Background(), slotsWithRooms)
+}
+
+func splitRooms(rooms []*model.Room) ([]*model.Room, []*model.Room) {
+	normalRooms := make([]*model.Room, 0)
+	ntaRooms := make([]*model.Room, 0)
+	for _, room := range rooms {
+		if room.Handicap {
+			ntaRooms = append(ntaRooms, room)
+		} else {
+			normalRooms = append(normalRooms, room)
+		}
+	}
+	sort.Slice(normalRooms, func(i, j int) bool { return normalRooms[i].Seats > normalRooms[j].Seats })
+	sort.Slice(ntaRooms, func(i, j int) bool { return ntaRooms[i].Seats < ntaRooms[j].Seats })
+	return normalRooms, ntaRooms
 }
 
 func (p *Plexams) Rooms(ctx context.Context) ([]*model.Room, error) {

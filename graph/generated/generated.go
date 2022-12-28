@@ -346,6 +346,7 @@ type ComplexityRoot struct {
 
 	SlotWithRooms struct {
 		DayNumber  func(childComplexity int) int
+		NtaRooms   func(childComplexity int) int
 		Rooms      func(childComplexity int) int
 		SlotNumber func(childComplexity int) int
 	}
@@ -2089,6 +2090,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SlotWithRooms.DayNumber(childComplexity), true
 
+	case "SlotWithRooms.ntaRooms":
+		if e.complexity.SlotWithRooms.NtaRooms == nil {
+			break
+		}
+
+		return e.complexity.SlotWithRooms.NtaRooms(childComplexity), true
+
 	case "SlotWithRooms.rooms":
 		if e.complexity.SlotWithRooms.Rooms == nil {
 			break
@@ -2897,6 +2905,7 @@ type SlotWithRooms {
   dayNumber: Int!
   slotNumber: Int!
   rooms: [Room!]!
+  ntaRooms: [Room!]!
 }
 
 type RoomForExam {
@@ -2905,7 +2914,7 @@ type RoomForExam {
   seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!
-  mktnrs: [String!]!
+  mktnrs: [String!]
 }
 
 input RoomForExamInput {
@@ -2916,7 +2925,7 @@ input RoomForExamInput {
   seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!
-  mktnrs: [String!]!
+  mktnrs: [String!]
 }
 `, BuiltIn: false},
 	{Name: "../schema.graphqls", Input: `type Semester {
@@ -13301,14 +13310,11 @@ func (ec *executionContext) _RoomForExam_mktnrs(ctx context.Context, field graph
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.([]string)
 	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RoomForExam_mktnrs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -13950,6 +13956,66 @@ func (ec *executionContext) _SlotWithRooms_rooms(ctx context.Context, field grap
 }
 
 func (ec *executionContext) fieldContext_SlotWithRooms_rooms(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SlotWithRooms",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Room_name(ctx, field)
+			case "seats":
+				return ec.fieldContext_Room_seats(ctx, field)
+			case "handicap":
+				return ec.fieldContext_Room_handicap(ctx, field)
+			case "lab":
+				return ec.fieldContext_Room_lab(ctx, field)
+			case "placesWithSocket":
+				return ec.fieldContext_Room_placesWithSocket(ctx, field)
+			case "needsRequest":
+				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "exahm":
+				return ec.fieldContext_Room_exahm(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SlotWithRooms_ntaRooms(ctx context.Context, field graphql.CollectedField, obj *model.SlotWithRooms) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SlotWithRooms_ntaRooms(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NtaRooms, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Room)
+	fc.Result = res
+	return ec.marshalNRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SlotWithRooms_ntaRooms(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SlotWithRooms",
 		Field:      field,
@@ -18525,7 +18591,7 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mktnrs"))
-			it.Mktnrs, err = ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			it.Mktnrs, err = ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -21160,9 +21226,6 @@ func (ec *executionContext) _RoomForExam(ctx context.Context, sel ast.SelectionS
 
 			out.Values[i] = ec._RoomForExam_mktnrs(ctx, field, obj)
 
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -21356,6 +21419,13 @@ func (ec *executionContext) _SlotWithRooms(ctx context.Context, sel ast.Selectio
 		case "rooms":
 
 			out.Values[i] = ec._SlotWithRooms_rooms(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "ntaRooms":
+
+			out.Values[i] = ec._SlotWithRooms_ntaRooms(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++

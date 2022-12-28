@@ -223,6 +223,7 @@ type SlotWithRooms struct {
 	DayNumber  int     `json:"dayNumber"`
 	SlotNumber int     `json:"slotNumber"`
 	Rooms      []*Room `json:"rooms"`
+	NtaRooms   []*Room `json:"ntaRooms"`
 }
 
 type Starttime struct {

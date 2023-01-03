@@ -16,6 +16,7 @@ var (
 		Short: "plan [subcommand]",
 		Long: `Manipulate the plan.
 	move-to ancode day slot    --- move [ancode] to [day number] [slot number]
+	change-room ancode oldroom newroom    --- change room for [ancode] from [oldroom] to [newroom]
 	lock-examgroup groupcode   --- lock exam group to slot
 	unlock-examgroup groupcode --- unlock / allow moving
 	lock                       --- lock the whole plan`,
@@ -45,6 +46,25 @@ var (
 				}
 				if success {
 					fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
+				}
+
+			case "change-room":
+				if len(args) < 4 {
+					log.Fatal("need ancode, old room and new room names")
+				}
+				ancode, err := strconv.Atoi(args[1])
+				if err != nil {
+					log.Fatalf("cannot convert %s to int", args[1])
+				}
+				oldRoom := args[2]
+				newRoom := args[2]
+
+				success, err := plexams.ChangeRoom(context.Background(), ancode, oldRoom, newRoom)
+				if err != nil {
+					os.Exit(1)
+				}
+				if success {
+					fmt.Printf("successfully moved exam %d from %s to %s\n", ancode, oldRoom, newRoom)
 				}
 
 			case "lock-examgroup":

@@ -64,7 +64,7 @@ func (db *DB) SaveRooms(ctx context.Context, slotsWithRooms []*model.SlotWithRoo
 	return nil
 }
 
-func (db *DB) RoomsForSlot(ctx context.Context, day int, time int) ([]*model.Room, error) {
+func (db *DB) RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error) {
 	collection := db.getCollectionSemester(collectionRooms)
 
 	filter := bson.M{
@@ -79,11 +79,13 @@ func (db *DB) RoomsForSlot(ctx context.Context, day int, time int) ([]*model.Roo
 
 	err := res.Decode(&slotWithRooms)
 	if err != nil {
-		log.Error().Err(err).Str("collection", collectionRooms).Msg("Cannot decode to rooms")
+		log.Error().Err(err).Str("collection", collectionRooms).
+			Int("daynumber", day).Int("slotnumber", time).
+			Msg("Cannot decode to slot with rooms")
 		return nil, err
 	}
 
-	return slotWithRooms.Rooms, nil
+	return &slotWithRooms, nil
 }
 
 func (db *DB) RoomPlannedInSlot(ctx context.Context, roomName string, day int, time int) ([]*model.RoomForExam, error) {
@@ -100,17 +102,18 @@ func (db *DB) RoomPlannedInSlot(ctx context.Context, roomName string, day int, t
 	cur, err := collection.Find(ctx, filter)
 	if err != nil {
 		log.Error().Err(err).Msg("error while trying to find rooms planned in slot")
+		return nil, err
 	}
 
-	roomForExam := make([]*model.RoomForExam, 0)
+	roomsForExam := make([]*model.RoomForExam, 0)
 
-	err = cur.All(ctx, &roomForExam)
+	err = cur.All(ctx, &roomsForExam)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionRooms).Msg("Cannot decode to rooms for exams")
 		return nil, err
 	}
 
-	return roomForExam, nil
+	return roomsForExam, nil
 }
 
 func (db *DB) AddRoomToExam(ctx context.Context, room *model.RoomForExam) error {
@@ -123,4 +126,31 @@ func (db *DB) AddRoomToExam(ctx context.Context, room *model.RoomForExam) error 
 	}
 
 	return nil
+}
+
+func (db *DB) RoomsForAncode(ctx context.Context, ancode int) ([]*model.RoomForExam, error) {
+	collection := db.getCollectionSemester(collectionRoomsForExams)
+
+	cur, err := collection.Find(ctx, bson.D{{Key: "ancode", Value: ancode}})
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRooms).Int("ancode", ancode).
+			Msg("error while trying to find rooms for ancode")
+		return nil, err
+	}
+
+	roomsForExam := make([]*model.RoomForExam, 0)
+
+	err = cur.All(ctx, &roomsForExam)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRooms).Int("ancode", ancode).
+			Msg("Cannot decode to rooms for exams")
+		return nil, err
+	}
+
+	return roomsForExam, nil
+}
+
+func (db *DB) ChangeRoom(ctx context.Context, ancode int, oldRoom, newRoom *model.Room) (bool, error) {
+	// TODO: Implement db.ChangeRoom
+	return false, nil
 }

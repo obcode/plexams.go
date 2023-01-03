@@ -237,6 +237,11 @@ func (r *queryResolver) ExamsInSlot(ctx context.Context, day int, time int) ([]*
 	return r.plexams.ExamsInSlot(ctx, day, time)
 }
 
+// ExamsInSlotWithRooms is the resolver for the examsInSlotWithRooms field.
+func (r *queryResolver) ExamsInSlotWithRooms(ctx context.Context, day int, time int) ([]*model.ExamWithRegsAndRooms, error) {
+	return r.plexams.ExamsInSlotWithRooms(ctx, day, time)
+}
+
 // Rooms is the resolver for the rooms field.
 func (r *queryResolver) Rooms(ctx context.Context) ([]*model.Room, error) {
 	return r.plexams.Rooms(ctx)
@@ -248,7 +253,7 @@ func (r *queryResolver) RoomsWithConstraints(ctx context.Context, handicap bool,
 }
 
 // RoomsForSlot is the resolver for the roomsForSlot field.
-func (r *queryResolver) RoomsForSlot(ctx context.Context, day int, time int) ([]*model.Room, error) {
+func (r *queryResolver) RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error) {
 	return r.plexams.RoomsForSlot(ctx, day, time)
 }
 

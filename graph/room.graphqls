@@ -11,7 +11,9 @@ type Room {
 type SlotWithRooms {
   dayNumber: Int!
   slotNumber: Int!
-  rooms: [Room!]!
+  normalRooms: [Room!]!
+  exahmRooms: [Room!]!
+  labRooms: [Room!]!
   ntaRooms: [Room!]!
 }
 
@@ -21,6 +23,7 @@ type RoomForExam {
   seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!
+  reserve: Boolean!
   students: [StudentReg!]!
 }
 

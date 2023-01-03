@@ -140,7 +140,9 @@ func (p *Plexams) ValidateConstraints() error {
 	return nil
 }
 
-func (p *Plexams) ValidateRooms() error {
+func (p *Plexams) ValidateRoomsPerSlot() error {
+	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating rooms per slot   --- ")
+
 	// TODO: check if rooms are allowed in slot
 
 	// TODO: check if room constraints of exams are met
@@ -148,6 +150,12 @@ func (p *Plexams) ValidateRooms() error {
 	// TODO: check rooms for NTAs
 	// - enough time between usage
 	// - needsRoomAlone okay
+
+	return fmt.Errorf("not implemented yet")
+}
+
+func (p *Plexams) ValidateRoomsPerExam() error {
+	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating rooms per slot   --- ")
 
 	return fmt.Errorf("not implemented yet")
 }

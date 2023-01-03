@@ -29,8 +29,9 @@ var (
 
 	For planning rooms:
 
-	exams-in-plan   --- split exam-groups into exams
-	rooms           --- prepare rooms which are allowed to use 
+	exams-in-plan      --- split exam-groups into exams
+	rooms-for-semester --- prepare rooms which are allowed to use
+	rooms-for-exams    --- rooms for exams
 	`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {

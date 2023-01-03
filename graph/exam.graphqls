@@ -61,3 +61,10 @@ type ExamInPlan {
   nta: [NTAWithRegs!]
   slot: Slot
 }
+
+type ExamWithRegsAndRooms {
+  exam: ExamInPlan!
+  normalRegs: [StudentReg!]!
+  ntaRegs: [NTAWithRegs!]!
+  rooms: [RoomForExam!]!
+}

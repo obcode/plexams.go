@@ -388,3 +388,32 @@ OUTER:
 func (p *Plexams) ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error) {
 	return p.dbClient.ExamsInPlan(ctx)
 }
+
+func (p *Plexams) ExamsInSlotWithRooms(ctx context.Context, day int, time int) ([]*model.ExamWithRegsAndRooms, error) {
+	examsInSlot, err := p.ExamsInSlot(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).
+			Msg("cannot get exams in slot")
+		return nil, err
+	}
+
+	examsInSlotWithRooms := make([]*model.ExamWithRegsAndRooms, 0, len(examsInSlot))
+	for _, exam := range examsInSlot {
+		rooms, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("day", day).Int("time", time).Int("ancode", exam.Exam.Ancode).
+				Msg("cannot get rooms for ancode")
+			return nil, err
+		}
+
+		examsInSlotWithRooms = append(examsInSlotWithRooms, &model.ExamWithRegsAndRooms{
+			Exam:       exam,
+			NormalRegs: []*model.StudentReg{},
+			NtaRegs:    []*model.NTAWithRegs{},
+			Rooms:      rooms,
+		})
+
+	}
+
+	return examsInSlotWithRooms, nil
+}

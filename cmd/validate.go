@@ -27,7 +27,8 @@ var (
 				validate([]func() error{
 					plexams.ValidateConflicts,
 					plexams.ValidateConstraints,
-					plexams.ValidateRooms,
+					plexams.ValidateRoomsPerSlot,
+					plexams.ValidateRoomsPerExam,
 				})
 
 			case "conflicts":
@@ -37,7 +38,7 @@ var (
 				validate([]func() error{plexams.ValidateConstraints})
 
 			case "rooms":
-				validate([]func() error{plexams.ValidateRooms})
+				validate([]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam})
 
 			default:
 				fmt.Println("validate called with unkown sub command")

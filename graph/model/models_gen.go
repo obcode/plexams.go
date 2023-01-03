@@ -104,6 +104,13 @@ type ExamWithRegs struct {
 	ConnectErrors []string                          `json:"connectErrors"`
 }
 
+type ExamWithRegsAndRooms struct {
+	Exam       *ExamInPlan    `json:"exam"`
+	NormalRegs []*StudentReg  `json:"normalRegs"`
+	NtaRegs    []*NTAWithRegs `json:"ntaRegs"`
+	Rooms      []*RoomForExam `json:"rooms"`
+}
+
 type ExamerInPlan struct {
 	MainExamer   string `json:"mainExamer"`
 	MainExamerID int    `json:"mainExamerID"`
@@ -182,6 +189,7 @@ type RoomForExam struct {
 	SeatsPlanned int           `json:"seatsPlanned"`
 	Duration     int           `json:"duration"`
 	Handicap     bool          `json:"handicap"`
+	Reserve      bool          `json:"reserve"`
 	Students     []*StudentReg `json:"students"`
 }
 
@@ -220,10 +228,12 @@ type SlotWithExamGroups struct {
 }
 
 type SlotWithRooms struct {
-	DayNumber  int     `json:"dayNumber"`
-	SlotNumber int     `json:"slotNumber"`
-	Rooms      []*Room `json:"rooms"`
-	NtaRooms   []*Room `json:"ntaRooms"`
+	DayNumber   int     `json:"dayNumber"`
+	SlotNumber  int     `json:"slotNumber"`
+	NormalRooms []*Room `json:"normalRooms"`
+	ExahmRooms  []*Room `json:"exahmRooms"`
+	LabRooms    []*Room `json:"labRooms"`
+	NtaRooms    []*Room `json:"ntaRooms"`
 }
 
 type Starttime struct {

@@ -150,6 +150,27 @@ func (db *DB) RoomsForAncode(ctx context.Context, ancode int) ([]*model.RoomForE
 	return roomsForExam, nil
 }
 
+func (db *DB) RoomsPlannedInSlot(ctx context.Context, day, time int) ([]*model.RoomForExam, error) {
+	exams, err := db.ExamsInSlot(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).Msg("error while getting exams in slot")
+		return nil, err
+	}
+
+	rooms := make([]*model.RoomForExam, 0)
+	for _, exam := range exams {
+		roomsForAncode, err := db.RoomsForAncode(ctx, exam.Exam.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("error while getting rooms for ancode")
+			return nil, err
+		}
+
+		rooms = append(rooms, roomsForAncode...)
+	}
+
+	return rooms, nil
+}
+
 func (db *DB) ChangeRoom(ctx context.Context, ancode int, oldRoom, newRoom *model.Room) (bool, error) {
 	// TODO: Implement db.ChangeRoom
 	return false, nil

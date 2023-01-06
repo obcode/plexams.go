@@ -64,4 +64,5 @@ type Query {
     exahm: Boolean
   ): [Room!]!
   roomsForSlot(day: Int!, time: Int!): SlotWithRooms
+  plannedRoomNames: [String!]
 }

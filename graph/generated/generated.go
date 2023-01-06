@@ -276,6 +276,7 @@ type ComplexityRoot struct {
 		NtasWithRegs                  func(childComplexity int) int
 		NtasWithRegsByTeacher         func(childComplexity int) int
 		PlannedExamsInSlot            func(childComplexity int, day int, time int) int
+		PlannedRoomNames              func(childComplexity int) int
 		PrimussExam                   func(childComplexity int, program string, ancode int) int
 		PrimussExams                  func(childComplexity int) int
 		PrimussExamsForAnCode         func(childComplexity int, ancode int) int
@@ -532,6 +533,7 @@ type QueryResolver interface {
 	Rooms(ctx context.Context) ([]*model.Room, error)
 	RoomsWithConstraints(ctx context.Context, handicap bool, lab bool, placesWithSocket bool, exahm *bool) ([]*model.Room, error)
 	RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error)
+	PlannedRoomNames(ctx context.Context) ([]string, error)
 }
 
 type executableSchema struct {
@@ -1739,6 +1741,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.PlannedExamsInSlot(childComplexity, args["day"].(int), args["time"].(int)), true
+
+	case "Query.plannedRoomNames":
+		if e.complexity.Query.PlannedRoomNames == nil {
+			break
+		}
+
+		return e.complexity.Query.PlannedRoomNames(childComplexity), true
 
 	case "Query.primussExam":
 		if e.complexity.Query.PrimussExam == nil {
@@ -2970,6 +2979,7 @@ type ConnectedExam {
     exahm: Boolean
   ): [Room!]!
   roomsForSlot(day: Int!, time: Int!): SlotWithRooms
+  plannedRoomNames: [String!]
 }
 `, BuiltIn: false},
 	{Name: "../room.graphqls", Input: `type Room {
@@ -12763,6 +12773,47 @@ func (ec *executionContext) fieldContext_Query_roomsForSlot(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_plannedRoomNames(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_plannedRoomNames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PlannedRoomNames(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_plannedRoomNames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query___type(ctx, field)
 	if err != nil {
@@ -21631,6 +21682,26 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_roomsForSlot(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "plannedRoomNames":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_plannedRoomNames(ctx, field)
 				return res
 			}
 

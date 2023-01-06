@@ -434,3 +434,7 @@ func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRo
 
 	return p.dbClient.ChangeRoom(ctx, ancode, oldRoom, newRoom)
 }
+
+func (p *Plexams) PlannedRoomNames(ctx context.Context) ([]string, error) {
+	return p.dbClient.PlannedRoomNames(ctx)
+}

@@ -175,3 +175,23 @@ func (db *DB) ChangeRoom(ctx context.Context, ancode int, oldRoom, newRoom *mode
 	// TODO: Implement db.ChangeRoom
 	return false, nil
 }
+
+func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {
+	collection := db.getCollectionSemester(collectionRoomsForExams)
+
+	rawNames, err := collection.Distinct(ctx, "room.name", bson.D{})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot find distinct room names")
+	}
+
+	names := make([]string, 0, len(rawNames))
+	for _, rawName := range rawNames {
+		name, ok := rawName.(string)
+		if !ok {
+			log.Debug().Interface("raw name", rawName).Msg("cannot convert to string")
+		}
+		names = append(names, name)
+	}
+
+	return names, nil
+}

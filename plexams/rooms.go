@@ -6,6 +6,7 @@ import (
 	"math"
 	"sort"
 
+	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -437,4 +438,21 @@ func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRo
 
 func (p *Plexams) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	return p.dbClient.PlannedRoomNames(ctx)
+}
+
+func (p *Plexams) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
+	exams, err := p.ExamsInSlotWithRooms(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get exams in slot")
+	}
+
+	roomNamesSet := set.NewSet[string]()
+	for _, exam := range exams {
+		for _, room := range exam.Rooms {
+			roomNamesSet.Add(room.RoomName)
+		}
+	}
+	roomNames := roomNamesSet.ToSlice()
+	sort.Strings(roomNames)
+	return roomNames, nil
 }

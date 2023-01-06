@@ -179,7 +179,7 @@ func (db *DB) ChangeRoom(ctx context.Context, ancode int, oldRoom, newRoom *mode
 func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	collection := db.getCollectionSemester(collectionRoomsForExams)
 
-	rawNames, err := collection.Distinct(ctx, "room.name", bson.D{})
+	rawNames, err := collection.Distinct(ctx, "roomname", bson.D{})
 	if err != nil {
 		log.Error().Err(err).Msg("cannot find distinct room names")
 	}

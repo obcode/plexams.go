@@ -262,6 +262,11 @@ func (r *queryResolver) PlannedRoomNames(ctx context.Context) ([]string, error) 
 	return r.plexams.PlannedRoomNames(ctx)
 }
 
+// PlannedRoomNamesInSlot is the resolver for the plannedRoomNamesInSlot field.
+func (r *queryResolver) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
+	return r.plexams.PlannedRoomNamesInSlot(ctx, day, time)
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 

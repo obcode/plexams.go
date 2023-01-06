@@ -183,16 +183,6 @@ type RoomConstraints struct {
 	ExahmRooms       bool `json:"exahmRooms"`
 }
 
-type RoomForExam struct {
-	Ancode       int           `json:"ancode"`
-	Room         *Room         `json:"room"`
-	SeatsPlanned int           `json:"seatsPlanned"`
-	Duration     int           `json:"duration"`
-	Handicap     bool          `json:"handicap"`
-	Reserve      bool          `json:"reserve"`
-	Students     []*StudentReg `json:"students"`
-}
-
 type RoomForExamInput struct {
 	Ancode       int      `json:"ancode"`
 	Day          int      `json:"day"`

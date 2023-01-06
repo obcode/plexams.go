@@ -40,6 +40,7 @@ type ResolverRoot interface {
 	Mutation() MutationResolver
 	PrimussExam() PrimussExamResolver
 	Query() QueryResolver
+	RoomForExam() RoomForExamResolver
 }
 
 type DirectiveRoot struct {
@@ -534,6 +535,9 @@ type QueryResolver interface {
 	RoomsWithConstraints(ctx context.Context, handicap bool, lab bool, placesWithSocket bool, exahm *bool) ([]*model.Room, error)
 	RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error)
 	PlannedRoomNames(ctx context.Context) ([]string, error)
+}
+type RoomForExamResolver interface {
+	Room(ctx context.Context, obj *model.RoomForExam) (*model.Room, error)
 }
 
 type executableSchema struct {
@@ -3003,7 +3007,7 @@ type SlotWithRooms {
 
 type RoomForExam {
   ancode: Int!
-  room: Room!
+  room: Room
   seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!
@@ -13549,29 +13553,26 @@ func (ec *executionContext) _RoomForExam_room(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Room, nil
+		return ec.resolvers.RoomForExam().Room(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.Room)
 	fc.Result = res
-	return ec.marshalNRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoom(ctx, field.Selections, res)
+	return ec.marshalORoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoom(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RoomForExam_room(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RoomForExam",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "name":
@@ -21897,49 +21898,59 @@ func (ec *executionContext) _RoomForExam(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._RoomForExam_ancode(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "room":
+			field := field
 
-			out.Values[i] = ec._RoomForExam_room(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RoomForExam_room(ctx, field, obj)
+				return res
 			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		case "seatsPlanned":
 
 			out.Values[i] = ec._RoomForExam_seatsPlanned(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "duration":
 
 			out.Values[i] = ec._RoomForExam_duration(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "handicap":
 
 			out.Values[i] = ec._RoomForExam_handicap(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "reserve":
 
 			out.Values[i] = ec._RoomForExam_reserve(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "students":
 
 			out.Values[i] = ec._RoomForExam_students(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -25946,6 +25957,13 @@ func (ec *executionContext) unmarshalOPrimussExamInput2ᚖgithubᚗcomᚋobcode�
 	}
 	res, err := ec.unmarshalInputPrimussExamInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoom(ctx context.Context, sel ast.SelectionSet, v *model.Room) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Room(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalORoomConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomConstraints(ctx context.Context, sel ast.SelectionSet, v *model.RoomConstraints) graphql.Marshaler {

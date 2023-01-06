@@ -296,7 +296,7 @@ func (p *Plexams) PrepareRoomForExams() error {
 
 			examRoom := model.RoomForExam{
 				Ancode:       exam.Exam.Exam.Ancode,
-				Room:         room,
+				RoomName:     room.Name,
 				SeatsPlanned: len(studentsInRoom),
 				Duration:     exam.Exam.Exam.ZpaExam.Duration,
 				Handicap:     false,
@@ -325,7 +325,7 @@ func (p *Plexams) PrepareRoomForExams() error {
 				if nta.Nta.NeedsRoomAlone {
 					examRooms = append(examRooms, &model.RoomForExam{
 						Ancode:       exam.Exam.Exam.Ancode,
-						Room:         ntaRooms[0],
+						RoomName:     ntaRooms[0].Name,
 						SeatsPlanned: 1,
 						Duration:     ntaDuration,
 						Handicap:     true,
@@ -341,10 +341,10 @@ func (p *Plexams) PrepareRoomForExams() error {
 				} else {
 					// find room with a seat left
 					for _, room := range exam.Rooms {
-						if room.SeatsPlanned < room.Room.Seats {
+						if room.SeatsPlanned < p.GetRoomInfo(room.RoomName).Seats {
 							examRooms = append(examRooms, &model.RoomForExam{
 								Ancode:       exam.Exam.Exam.Ancode,
-								Room:         room.Room,
+								RoomName:     room.RoomName,
 								SeatsPlanned: 1,
 								Duration:     ntaDuration,
 								Handicap:     true,
@@ -382,9 +382,9 @@ func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRo
 
 	var oldRoom *model.Room
 	for _, room := range roomsForAncode {
-		if room.Room.Name == oldRoomName {
+		if room.RoomName == oldRoomName {
 			log.Debug().Msg("old room found")
-			oldRoom = room.Room
+			oldRoom = p.GetRoomInfo(room.RoomName)
 		}
 	}
 	if oldRoom == nil {

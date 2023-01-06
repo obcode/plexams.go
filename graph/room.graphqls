@@ -19,7 +19,7 @@ type SlotWithRooms {
 
 type RoomForExam {
   ancode: Int!
-  room: Room!
+  room: Room
   seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!

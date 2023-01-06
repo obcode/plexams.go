@@ -172,19 +172,19 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 						allowedRooms.NtaRooms...)...)...)
 
 		for _, plannedRoom := range plannedRooms {
-			if plannedRoom.Room.Name == "ONLINE" || plannedRoom.Room.Name == "No Room" {
+			if plannedRoom.RoomName == "ONLINE" || plannedRoom.RoomName == "No Room" {
 				break
 			}
 
 			isAllowed := false
 			for _, allowedRoom := range allAllowedRooms {
-				if allowedRoom.Name == plannedRoom.Room.Name {
+				if allowedRoom.Name == plannedRoom.RoomName {
 					isAllowed = true
 					break
 				}
 			}
 			if !isAllowed {
-				color.Red.Printf("Room %s is not allowed in slot (%d,%d)\n", plannedRoom.Room.Name, slot.DayNumber, slot.SlotNumber)
+				color.Red.Printf("Room %s is not allowed in slot (%d,%d)\n", plannedRoom.RoomName, slot.DayNumber, slot.SlotNumber)
 			}
 		}
 
@@ -196,11 +196,11 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 		seats := make(map[string]roomSeats)
 
 		for _, plannedRoom := range plannedRooms {
-			entry, ok := seats[plannedRoom.Room.Name]
+			entry, ok := seats[plannedRoom.RoomName]
 			if !ok {
-				seats[plannedRoom.Room.Name] = roomSeats{seatsPlanned: plannedRoom.SeatsPlanned, seats: plannedRoom.Room.Seats}
+				seats[plannedRoom.RoomName] = roomSeats{seatsPlanned: plannedRoom.SeatsPlanned, seats: p.GetRoomInfo(plannedRoom.RoomName).Seats}
 			} else {
-				seats[plannedRoom.Room.Name] = roomSeats{seatsPlanned: plannedRoom.SeatsPlanned + entry.seatsPlanned, seats: plannedRoom.Room.Seats}
+				seats[plannedRoom.RoomName] = roomSeats{seatsPlanned: plannedRoom.SeatsPlanned + entry.seatsPlanned, seats: p.GetRoomInfo(plannedRoom.RoomName).Seats}
 			}
 		}
 
@@ -240,7 +240,7 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 
 		allStudentsInRooms := make([]*model.StudentReg, 0)
 		for _, room := range rooms {
-			if room.Room.Name != "No Room" {
+			if room.RoomName != "No Room" {
 				allStudentsInRooms = append(allStudentsInRooms, room.Students...)
 			}
 		}
@@ -264,27 +264,27 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 		if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil {
 			if exam.Constraints.RoomConstraints.ExahmRooms {
 				for _, room := range rooms {
-					if !room.Room.Exahm {
+					if !p.GetRoomInfo(room.RoomName).Exahm {
 						color.Red.Printf("Is not Exahm-Room %s for exam %d. %s: %s in slot (%d,%d)\n",
-							room.Room.Name, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
+							room.RoomName, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
 							exam.Slot.DayNumber, exam.Slot.SlotNumber)
 					}
 				}
 			}
 			if exam.Constraints.RoomConstraints.Lab {
 				for _, room := range rooms {
-					if !room.Room.Lab {
+					if !p.GetRoomInfo(room.RoomName).Lab {
 						color.Red.Printf("Is not Lab %s for exam %d. %s: %s in slot (%d,%d)\n",
-							room.Room.Name, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
+							room.RoomName, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
 							exam.Slot.DayNumber, exam.Slot.SlotNumber)
 					}
 				}
 			}
 			if exam.Constraints.RoomConstraints.PlacesWithSocket {
 				for _, room := range rooms {
-					if !room.Room.PlacesWithSocket && !room.Room.Lab {
+					if !p.GetRoomInfo(room.RoomName).PlacesWithSocket && !p.GetRoomInfo(room.RoomName).Lab {
 						color.Red.Printf("Is not Room with sockets %s for exam %d. %s: %s in slot (%d,%d)\n",
-							room.Room.Name, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
+							room.RoomName, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
 							exam.Slot.DayNumber, exam.Slot.SlotNumber)
 					}
 				}
@@ -317,11 +317,11 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 						}
 					}
 					for _, room := range plannedRooms {
-						if room.Room.Name == roomForNta.Room.Name {
+						if room.RoomName == roomForNta.RoomName {
 							for _, student := range room.Students {
 								if student.Mtknr != nta.Nta.Mtknr {
 									color.Red.Printf("NTA %s has room %s not alone for exam %d. %s: %s in slot (%d,%d)\n",
-										nta.Nta.Name, room.Room.Name, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
+										nta.Nta.Name, room.RoomName, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
 										exam.Slot.DayNumber, exam.Slot.SlotNumber)
 								}
 							}

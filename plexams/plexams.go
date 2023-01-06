@@ -23,6 +23,7 @@ type Plexams struct {
 	planer         *Planer
 	email          *Email
 	semesterConfig *model.SemesterConfig
+	roomInfo       map[string]*model.Room
 }
 
 type ZPA struct {
@@ -87,6 +88,8 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 	if err != nil {
 		log.Error().Err(err).Msg("cannot save semester config")
 	}
+
+	plexams.setRoomInfo()
 
 	return &plexams, nil
 }
@@ -223,4 +226,30 @@ func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
 func (p *Plexams) PrintSemester() {
 	color.Style{color.FgCyan, color.BgYellow, color.OpBold}.Printf(" ---   Planning Semester: %s   --- ", p.semester)
 	color.Println()
+}
+
+func (p *Plexams) setRoomInfo() {
+	rooms, err := p.dbClient.GlobalRooms(context.Background())
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get global rooms")
+	}
+	roomMap := make(map[string]*model.Room)
+	for _, room := range rooms {
+		roomMap[room.Name] = room
+	}
+
+	p.roomInfo = roomMap
+}
+
+func (p *Plexams) GetRoomInfo(roomName string) *model.Room {
+	return p.roomInfo[roomName]
+}
+
+func (p *Plexams) Room(ctx context.Context, roomForExam *model.RoomForExam) (*model.Room, error) {
+	room := p.GetRoomInfo(roomForExam.RoomName)
+	if room == nil {
+		log.Error().Str("room name", roomForExam.RoomName).Msg("cannot find room in global rooms")
+	}
+
+	return room, nil
 }

@@ -55,7 +55,7 @@ func validate(funcs []func() error) {
 		if Clear {
 			c := exec.Command("clear")
 			c.Stdout = os.Stdout
-			c.Run()
+			c.Run() // nolint
 		}
 		for _, f := range funcs {
 			err := f()

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -46,10 +47,16 @@ var (
 		},
 	}
 	Sleep int
+	Clear bool
 )
 
 func validate(funcs []func() error) {
 	for {
+		if Clear {
+			c := exec.Command("clear")
+			c.Stdout = os.Stdout
+			c.Run()
+		}
 		for _, f := range funcs {
 			err := f()
 			if err != nil {
@@ -67,4 +74,5 @@ func validate(funcs []func() error) {
 func init() {
 	rootCmd.AddCommand(validateCmd)
 	validateCmd.Flags().IntVarP(&Sleep, "sleep", "s", 0, "sleep [s] seconds and validate again")
+	validateCmd.Flags().BoolVarP(&Clear, "clear", "c", false, "clear screen before output")
 }

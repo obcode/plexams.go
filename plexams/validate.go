@@ -260,7 +260,7 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 			}
 		}
 
-		// TODO: check if room constraints of exams are met
+		// check if room constraints of exams are met
 		if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil {
 			if exam.Constraints.RoomConstraints.ExahmRooms {
 				for _, room := range rooms {
@@ -291,9 +291,9 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 			}
 		}
 
-		// TODO: check rooms for NTAs
-		// - enough time between usage
+		// check rooms for NTAs
 		// - needsRoomAlone okay
+		// - TODO: enough time between usage
 
 		if exam.Nta != nil {
 			plannedRooms, err := p.dbClient.RoomsPlannedInSlot(ctx, exam.Slot.DayNumber, exam.Slot.SlotNumber)
@@ -316,6 +316,7 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 							}
 						}
 					}
+				OUTER:
 					for _, room := range plannedRooms {
 						if room.RoomName == roomForNta.RoomName {
 							for _, student := range room.Students {
@@ -323,6 +324,7 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 									color.Red.Printf("NTA %s has room %s not alone for exam %d. %s: %s in slot (%d,%d)\n",
 										nta.Nta.Name, room.RoomName, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
 										exam.Slot.DayNumber, exam.Slot.SlotNumber)
+									break OUTER
 								}
 							}
 						}

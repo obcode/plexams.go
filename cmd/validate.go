@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"time"
@@ -18,6 +19,7 @@ var (
 	conflicts   --- check conflicts for each student
 	constraints --- check if constraints hold
 	rooms       --- check room constraints
+	zpa         --- check if the plan on ZPA is the same here
 	
 	-s <seconds> --- sleep <seconds> and validate again`,
 		Args: cobra.MinimumNArgs(1),
@@ -40,6 +42,12 @@ var (
 
 			case "rooms":
 				validate([]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam})
+
+			case "zpa":
+				err := plexams.ValidateZPA(false, false)
+				if err != nil {
+					log.Fatal(err)
+				}
 
 			default:
 				fmt.Println("validate called with unkown sub command")

@@ -15,8 +15,9 @@ var (
 		Use:   "zpa",
 		Short: "zpa to/from db",
 		Long: `Fetch from zpa and post to zpa.
-	teacher --- fetch teacher
-	exams --- fetch exams
+	teacher     --- fetch teacher
+	exams       --- fetch exams
+	invigs      --- fetch invigilator requirements
 	studentregs --- post student registrations to zpa
 	upload-plan --- upload the exam list`,
 		Args: cobra.MinimumNArgs(1),
@@ -42,6 +43,13 @@ var (
 				for _, exam := range exams {
 					fmt.Printf("%3d. %s (%s)\n", exam.AnCode, exam.Module, exam.MainExamer)
 				}
+
+			case "invigs":
+				invigs, err := plexams.GetSupervisorRequirements(context.Background())
+				if err != nil {
+					log.Fatal().Err(err).Msg("cannot get imvigilator requirements")
+				}
+				fmt.Printf("fetched %d invigilator requirements", len(invigs))
 
 			case "studentregs":
 				count, regsWithErrors, err := plexams.PostStudentRegsToZPA(context.Background())

@@ -3,6 +3,8 @@ package zpa
 import (
 	"fmt"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type SupervisorRequirements struct {
@@ -19,6 +21,11 @@ type SupervisorRequirements struct {
 }
 
 func (zpa *ZPA) GetSupervisorRequirements() []*SupervisorRequirements {
+	err := zpa.getSupervisorRequirements()
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get supervisor requirements")
+		return nil
+	}
 	return zpa.supervisorRequirements
 }
 

@@ -2,9 +2,12 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
 )
 
@@ -226,4 +229,26 @@ func (p *Plexams) AddZpaExamToPlan(ctx context.Context, ancode int, unknown bool
 
 func (p *Plexams) RmZpaExamFromPlan(ctx context.Context, ancode int, unknown bool) (bool, error) {
 	return p.dbClient.RmZpaExamFromPlan(ctx, ancode, unknown)
+}
+
+func (p *Plexams) GetSupervisorRequirements(ctx context.Context) ([]*zpa.SupervisorRequirements, error) {
+	if err := p.SetZPA(); err != nil {
+		return nil, err
+	}
+	supervisorRequirements := p.zpa.client.GetSupervisorRequirements()
+	if supervisorRequirements == nil {
+		return nil, fmt.Errorf("cannot get supervisor requirements")
+	}
+
+	reqInterface := make([]interface{}, 0, len(supervisorRequirements))
+	for _, req := range supervisorRequirements {
+		reqInterface = append(reqInterface, req)
+	}
+
+	err := p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "invigilator_requirements"), reqInterface)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot save invigilator requirements")
+		return supervisorRequirements, err
+	}
+	return supervisorRequirements, nil
 }

@@ -138,12 +138,38 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilato
 			studentCount += len(studentRegs.StudentRegs)
 		}
 
+		var rooms []*model.ZPAExamPlanRoom
+		if withRooms {
+			roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for ancode")
+			} else {
+				if len(roomsForAncode) > 0 {
+					rooms = make([]*model.ZPAExamPlanRoom, 0, len(roomsForAncode))
+					for _, roomForAncode := range roomsForAncode {
+						if roomForAncode.RoomName == "No Room" {
+							continue
+						}
+						rooms = append(rooms, &model.ZPAExamPlanRoom{
+							RoomName:     roomForAncode.RoomName,
+							Duration:     roomForAncode.Duration,
+							IsReserve:    roomForAncode.Reserve,
+							StudentCount: roomForAncode.SeatsPlanned,
+							IsHandicap:   roomForAncode.Handicap,
+						})
+					}
+				}
+			}
+		}
+
 		exams = append(exams, &model.ZPAExamPlan{
-			Semester:     p.semester,
-			AnCode:       exam.Exam.Ancode,
-			Date:         timeForAncode.Format("02.01.2006"),
-			Time:         timeForAncode.Format("15:04"),
-			StudentCount: studentCount,
+			Semester:             p.semester,
+			AnCode:               exam.Exam.Ancode,
+			Date:                 timeForAncode.Format("02.01.2006"),
+			Time:                 timeForAncode.Format("15:04"),
+			StudentCount:         studentCount,
+			ReserveInvigilatorID: 0,
+			Rooms:                rooms,
 		})
 	}
 

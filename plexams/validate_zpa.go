@@ -2,22 +2,17 @@ package plexams
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gookit/color"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) ValidateZPA(withRooms, withInvigilators bool) error {
+func (p *Plexams) ValidateZPADateTimes() error {
 	if err := p.SetZPA(); err != nil {
 		return err
 	}
 
-	if withInvigilators {
-		withRooms = true
-	}
-
-	// check only times
 	exams := p.zpa.client.GetExams()
 	examsMap := make(map[int]*model.ZPAExam)
 
@@ -68,14 +63,60 @@ func (p *Plexams) ValidateZPA(withRooms, withInvigilators bool) error {
 		color.Green.Printf("all %d not planned exams in zpa without date/time\n", len(examsMap))
 	}
 
-	if withRooms {
-		plannedExamsFromZPA, err := p.zpa.client.GetPlannedExams()
+	return nil
+}
+
+func (p *Plexams) ValidateZPARooms() error {
+	plannedExamsFromZPA, err := p.zpa.client.GetPlannedExams()
+	if err != nil {
+		return err
+	}
+
+	plannedExams, err := p.ExamsInPlan(context.Background())
+	if err != nil {
+		return err
+	}
+
+	problems := 0
+
+	// check if plexams data is on zpa
+	for _, plannedExam := range plannedExams {
+		roomsForAncode, err := p.dbClient.RoomsForAncode(context.Background(), plannedExam.Exam.Ancode)
 		if err != nil {
-			return err
+			log.Error().Err(err).Int("ancode", plannedExam.Exam.Ancode).Msg("cannot get planned rooms for ancode")
+		}
+		for _, room := range roomsForAncode {
+			if room.RoomName == "No Room" {
+				continue
+			}
+			found := false
+			for _, zpaExam := range plannedExamsFromZPA {
+				if room.Ancode == zpaExam.Ancode &&
+					room.RoomName == zpaExam.RoomName &&
+					room.Duration == zpaExam.Duration &&
+					room.Handicap == zpaExam.IsHandicap &&
+					room.Reserve == zpaExam.IsReserve &&
+					room.SeatsPlanned == zpaExam.Number {
+					found = true
+					break
+				}
+			}
+			if !found {
+				problems++
+				color.Red.Printf("room not found in ZPA\n   %+v\n", room)
+			}
 		}
 
-		fmt.Printf("%+v\n", plannedExamsFromZPA)
 	}
+
+	if problems == 0 {
+		color.Green.Println("all rooms planned found in zpa")
+	}
+
+	// TODO: check if zpa data is in plexams
+	// for _, zpaExam := range plannedExamsFromZPA {
+
+	// }
 
 	return nil
 }

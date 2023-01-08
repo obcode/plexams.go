@@ -22,6 +22,8 @@ type ZPAExam struct {
 	MainExamerID   int      `json:"main_examer_id"`
 	ExamType       string   `json:"exam_type"`
 	ExamTypeFull   string   `json:"full_name"`
+	Date           string   `json:"date"`
+	Starttime      string   `json:"start_time"`
 	Duration       int      `json:"duration"`
 	IsRepeaterExam bool     `json:"is_repeater_exam"`
 	Groups         []string `json:"groups"`
@@ -53,11 +55,20 @@ type RegWithError struct {
 }
 
 type ZPAExamPlan struct {
-	Semester             string `json:"semester"`
-	AnCode               int    `json:"anCode" bson:"ancode"`
-	Date                 string `json:"date"` // "19.07.2022"
-	Time                 string `json:"time"` // "14:30"
-	StudentCount         int    `json:"total_number"`
-	ReserveInvigilatorID int    `json:"reserveInvigilator_id"`
-	Rooms                []int  `json:"rooms"` // TODO: RoomType
+	Semester             string             `json:"semester"`
+	AnCode               int                `json:"anCode" bson:"ancode"`
+	Date                 string             `json:"date"` // "19.07.2022"
+	Time                 string             `json:"time"` // "14:30"
+	StudentCount         int                `json:"total_number"`
+	ReserveInvigilatorID int                `json:"reserveInvigilator_id"`
+	Rooms                []*ZPAExamPlanRoom `json:"rooms"`
+}
+
+type ZPAExamPlanRoom struct {
+	RoomName      string `json:"room_name"`
+	InvigilatorID int    `json:"invigilator_id"`
+	Duration      int    `json:"duration"`
+	IsReserve     bool   `json:"reserveRoom"`
+	StudentCount  int    `json:"numberStudents"`
+	IsHandicap    bool   `json:"handicapCompensation"`
 }

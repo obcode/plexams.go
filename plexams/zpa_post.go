@@ -102,13 +102,12 @@ func noZPAStudRegError(zpaStudentRegError *model.ZPAStudentRegError) bool {
 		len(zpaStudentRegError.Program) == 0
 }
 
-// TODO: rewrite with planned exams
 func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilators bool) ([]*model.ZPAExamPlan, error) {
 	if err := p.SetZPA(); err != nil {
 		return nil, err
 	}
 
-	examGroups, err := p.ExamGroups(ctx)
+	examsInPlan, err := p.ExamsInPlan(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get exam groups")
 		return nil, err
@@ -120,38 +119,32 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilato
 	}
 
 	exams := make([]*model.ZPAExamPlan, 0)
-OUTER:
-	for _, examGroup := range examGroups {
-		for _, exam := range examGroup.Exams {
-			// do not include exams not planned by me
-			if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+	for _, exam := range examsInPlan {
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+		for _, ancodeNotToPublish := range doNotPublish {
+			if exam.Exam.Ancode == ancodeNotToPublish {
 				continue
 			}
-			// import from other departments will sometimes be only published there
-			for _, ancodeNotToPublish := range doNotPublish {
-				if exam.Exam.Ancode == ancodeNotToPublish {
-					continue OUTER
-				}
-			}
-			//
-			slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
-			if err != nil {
-				log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get slot for ancode")
-			}
-			timeForAncode := p.getSlotTime(slot.DayNumber, slot.SlotNumber)
-			studentCount := 0
-			for _, studentRegs := range exam.Exam.StudentRegs {
-				studentCount += len(studentRegs.StudentRegs)
-			}
-
-			exams = append(exams, &model.ZPAExamPlan{
-				Semester:     p.semester,
-				AnCode:       exam.Exam.Ancode,
-				Date:         timeForAncode.Format("02.01.2006"),
-				Time:         timeForAncode.Format("15:04"),
-				StudentCount: studentCount,
-			})
 		}
+		slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get slot for ancode")
+		}
+		timeForAncode := p.getSlotTime(slot.DayNumber, slot.SlotNumber)
+		studentCount := 0
+		for _, studentRegs := range exam.Exam.StudentRegs {
+			studentCount += len(studentRegs.StudentRegs)
+		}
+
+		exams = append(exams, &model.ZPAExamPlan{
+			Semester:     p.semester,
+			AnCode:       exam.Exam.Ancode,
+			Date:         timeForAncode.Format("02.01.2006"),
+			Time:         timeForAncode.Format("15:04"),
+			StudentCount: studentCount,
+		})
 	}
 
 	// post to ZPA

@@ -62,8 +62,11 @@ var (
 				// TODO: --rooms --invigilators
 				if len(jsonOutputFile) == 0 {
 					jsonOutputFile = "plan.json"
+					if withRooms {
+						jsonOutputFile = "planWithRooms.json"
+					}
 				}
-				examsPosted, err := plexams.UploadPlan(context.Background(), false, false)
+				examsPosted, err := plexams.UploadPlan(context.Background(), withRooms, false)
 				if err != nil {
 					log.Fatal().Err(err).Msg("cannot upload plan")
 				}
@@ -85,9 +88,11 @@ var (
 		},
 	}
 	jsonOutputFile string
+	withRooms      bool
 )
 
 func init() {
 	rootCmd.AddCommand(zpaCmd)
 	zpaCmd.Flags().StringVarP(&jsonOutputFile, "out", "o", "", "output (json) file")
+	zpaCmd.Flags().BoolVarP(&withRooms, "rooms", "r", false, "upload with planned rooms")
 }

@@ -267,6 +267,11 @@ func (r *queryResolver) PlannedRoomNamesInSlot(ctx context.Context, day int, tim
 	return r.plexams.PlannedRoomNamesInSlot(ctx, day, time)
 }
 
+// InvigilatorsWithReq is the resolver for the invigilatorsWithReq field.
+func (r *queryResolver) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error) {
+	return r.plexams.InvigilatorsWithReq(ctx)
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 

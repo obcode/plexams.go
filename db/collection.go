@@ -33,6 +33,8 @@ const (
 	collectionRooms         = "rooms"
 	collectionRoomsPlanned  = "rooms_planned"
 	collectionRoomsForExams = "rooms_for_exams"
+
+	collectionInvigilatorRequirements = "invigilator_requirements"
 )
 
 type PrimussType string

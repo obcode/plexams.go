@@ -11,13 +11,13 @@ type SupervisorRequirements struct {
 	Invigilator            string   `json:"invigilator"`
 	InvigilatorID          int      `json:"invigilator_id"`
 	ExcludedDates          []string `json:"excluded_dates"`
-	PartTime               float32  `json:"part_time"`
+	PartTime               float64  `json:"part_time"`
 	OralExamsContribution  int      `json:"oral_exams_contribution"`
 	LivecodingContribution int      `json:"livecoding_contribution"`
 	MasterContribution     int      `json:"master_contribution"`
-	FreeSemester           float32  `json:"free_semester"`
-	OvertimeLastSemester   float32  `json:"overtime_last_semester"`
-	OvertimeThisSemester   float32  `json:"overtime_this_semester"`
+	FreeSemester           float64  `json:"free_semester"`
+	OvertimeLastSemester   float64  `json:"overtime_last_semester"`
+	OvertimeThisSemester   float64  `json:"overtime_this_semester"`
 }
 
 func (zpa *ZPA) GetSupervisorRequirements() []*SupervisorRequirements {

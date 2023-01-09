@@ -66,4 +66,6 @@ type Query {
   roomsForSlot(day: Int!, time: Int!): SlotWithRooms
   plannedRoomNames: [String!]
   plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
+  # Invigilators
+  invigilatorsWithReq: [Invigilator!]!
 }

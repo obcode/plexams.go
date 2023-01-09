@@ -44,3 +44,33 @@ type ZPAExamWithConstraints {
   zpaExam: ZPAExam!
   constraints: Constraints # == nil if no constraint
 }
+
+type Teacher {
+  shortname: String!
+  fullname: String!
+  isProf: Boolean!
+  isLBA: Boolean!
+  isProfHC: Boolean!
+  isStaff: Boolean!
+  lastSemester: String!
+  fk: String!
+  id: Int!
+  email: String!
+}
+
+type Invigilator {
+  teacher: Teacher!
+  requirements: InvigilatorRequirements
+}
+
+type InvigilatorRequirements {
+  excludedDates: [Time!]!
+  examDateTimes: [Time!]!
+  partTime: Float!
+  oralExamsContribution: Int!
+  liveCodingContribution: Int!
+  masterContribution: Int!
+  freeSemester: Float!
+  overtimeLastSemester: Float!
+  overtimeThisSemester: Float!
+}

@@ -49,7 +49,7 @@ var (
 				if err != nil {
 					log.Fatal().Err(err).Msg("cannot get imvigilator requirements")
 				}
-				fmt.Printf("fetched %d invigilator requirements", len(invigs))
+				fmt.Printf("fetched %d invigilator requirements\n", len(invigs))
 
 			case "studentregs":
 				count, regsWithErrors, err := plexams.PostStudentRegsToZPA(context.Background())

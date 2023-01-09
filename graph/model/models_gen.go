@@ -120,6 +120,23 @@ type FK07Program struct {
 	Name string `json:"name"`
 }
 
+type Invigilator struct {
+	Teacher      *Teacher                 `json:"teacher"`
+	Requirements *InvigilatorRequirements `json:"requirements"`
+}
+
+type InvigilatorRequirements struct {
+	ExcludedDates          []*time.Time `json:"excludedDates"`
+	ExamDateTimes          []*time.Time `json:"examDateTimes"`
+	PartTime               float64      `json:"partTime"`
+	OralExamsContribution  int          `json:"oralExamsContribution"`
+	LiveCodingContribution int          `json:"liveCodingContribution"`
+	MasterContribution     int          `json:"masterContribution"`
+	FreeSemester           float64      `json:"freeSemester"`
+	OvertimeLastSemester   float64      `json:"overtimeLastSemester"`
+	OvertimeThisSemester   float64      `json:"overtimeThisSemester"`
+}
+
 type NTAInput struct {
 	Name                 string `json:"name"`
 	Mtknr                string `json:"mtknr"`

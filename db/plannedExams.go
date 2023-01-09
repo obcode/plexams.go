@@ -33,3 +33,25 @@ func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.Exam
 
 	return exams, nil
 }
+
+func (db *DB) PlannedExamsByMainExamer(ctx context.Context, examerID int) ([]*model.ExamInPlan, error) {
+	collection := db.getCollectionSemester(collectionExamsInPlan)
+
+	filter := bson.D{{Key: "exam.zpaexam.mainexamerid", Value: examerID}}
+
+	cur, err := collection.Find(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("MongoDB Find")
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	exams := make([]*model.ExamInPlan, 0)
+	err = cur.All(ctx, &exams)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("Cannot decode to exams")
+		return nil, err
+	}
+
+	return exams, nil
+}

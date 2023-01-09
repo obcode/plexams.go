@@ -1,0 +1,5 @@
+type Invigilation {
+  roomName: String
+  invigilatorID: Int!
+  slot: Slot!
+}

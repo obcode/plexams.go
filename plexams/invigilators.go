@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -83,4 +84,69 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 	}
 
 	return invigilators, nil
+}
+
+func (p *Plexams) PrepareSelfInvigilation() error {
+	ctx := context.Background()
+	invigilators, err := p.InvigilatorsWithReq(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invigilators")
+		return err
+	}
+
+	invigilatorMap := make(map[int]*model.Invigilator)
+	for _, invigilator := range invigilators {
+		invigilatorMap[invigilator.Teacher.ID] = invigilator
+	}
+
+	// invigilations := make([]*model.Invigilation, 0)
+	for _, slot := range p.semesterConfig.Slots {
+		examsInSlot, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		if err != nil {
+			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+				Msg("cannot get exams in slot")
+			continue
+		}
+		examerWithExams := make(map[int][]*model.ExamInPlan)
+		for _, exam := range examsInSlot {
+			if _, ok := invigilatorMap[exam.Exam.ZpaExam.MainExamerID]; !ok {
+				log.Debug().Str("name", exam.Exam.ZpaExam.MainExamer).Msg("ist keine Aufsicht")
+				continue
+			}
+			exams, ok := examerWithExams[exam.Exam.ZpaExam.MainExamerID]
+			if !ok {
+				examerWithExams[exam.Exam.ZpaExam.MainExamerID] = []*model.ExamInPlan{exam}
+			} else {
+				examerWithExams[exam.Exam.ZpaExam.MainExamerID] = append(exams, exam)
+			}
+		}
+
+		for examer, exams := range examerWithExams {
+			roomNames := set.NewSet[string]()
+			for _, exam := range exams {
+				rooms, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
+
+				if err != nil {
+					log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for ancode")
+				} else {
+					for _, room := range rooms {
+						roomNames.Add(room.RoomName)
+					}
+				}
+			}
+
+			if roomNames.Cardinality() == 1 {
+				log.Debug().Int("examerid", examer).Interface("room", roomNames).Interface("slot", slot).
+					Msg("found self invigilation")
+				// invigilation := model.Invigilation{
+				// 	RoomName:      &roomNames.ToSlice()[0],
+				// 	InvigilatorID: examer,
+				// 	Slot:          slot,
+				// }
+				// invigilations = append(invigilations, &invigilation)
+			}
+		}
+
+	}
+	return nil
 }

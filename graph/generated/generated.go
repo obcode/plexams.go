@@ -164,6 +164,12 @@ type ComplexityRoot struct {
 		Name func(childComplexity int) int
 	}
 
+	Invigilation struct {
+		InvigilatorID func(childComplexity int) int
+		RoomName      func(childComplexity int) int
+		Slot          func(childComplexity int) int
+	}
+
 	Invigilator struct {
 		Requirements func(childComplexity int) int
 		Teacher      func(childComplexity int) int
@@ -1037,6 +1043,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FK07Program.Name(childComplexity), true
+
+	case "Invigilation.invigilatorID":
+		if e.complexity.Invigilation.InvigilatorID == nil {
+			break
+		}
+
+		return e.complexity.Invigilation.InvigilatorID(childComplexity), true
+
+	case "Invigilation.roomName":
+		if e.complexity.Invigilation.RoomName == nil {
+			break
+		}
+
+		return e.complexity.Invigilation.RoomName(childComplexity), true
+
+	case "Invigilation.slot":
+		if e.complexity.Invigilation.Slot == nil {
+			break
+		}
+
+		return e.complexity.Invigilation.Slot(childComplexity), true
 
 	case "Invigilator.requirements":
 		if e.complexity.Invigilator.Requirements == nil {
@@ -2840,6 +2867,12 @@ type ExamWithRegsAndRooms {
   normalRegs: [StudentReg!]!
   ntaRegs: [NTAWithRegs!]!
   rooms: [RoomForExam!]!
+}
+`, BuiltIn: false},
+	{Name: "../invigilation.graphqls", Input: `type Invigilation {
+  roomName: String
+  invigilatorID: Int!
+  slot: Slot!
 }
 `, BuiltIn: false},
 	{Name: "../mutation.graphqls", Input: `type Mutation {
@@ -7249,6 +7282,143 @@ func (ec *executionContext) fieldContext_FK07Program_name(ctx context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Invigilation_roomName(ctx context.Context, field graphql.CollectedField, obj *model.Invigilation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Invigilation_roomName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Invigilation_roomName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Invigilation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Invigilation_invigilatorID(ctx context.Context, field graphql.CollectedField, obj *model.Invigilation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Invigilation_invigilatorID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InvigilatorID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Invigilation_invigilatorID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Invigilation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Invigilation_slot(ctx context.Context, field graphql.CollectedField, obj *model.Invigilation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Invigilation_slot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Slot)
+	fc.Result = res
+	return ec.marshalNSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlot(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Invigilation_slot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Invigilation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_Slot_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_Slot_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_Slot_starttime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Slot", field.Name)
 		},
 	}
 	return fc, nil
@@ -20765,6 +20935,45 @@ func (ec *executionContext) _FK07Program(ctx context.Context, sel ast.SelectionS
 		case "name":
 
 			out.Values[i] = ec._FK07Program_name(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var invigilationImplementors = []string{"Invigilation"}
+
+func (ec *executionContext) _Invigilation(ctx context.Context, sel ast.SelectionSet, obj *model.Invigilation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, invigilationImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Invigilation")
+		case "roomName":
+
+			out.Values[i] = ec._Invigilation_roomName(ctx, field, obj)
+
+		case "invigilatorID":
+
+			out.Values[i] = ec._Invigilation_invigilatorID(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "slot":
+
+			out.Values[i] = ec._Invigilation_slot(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++

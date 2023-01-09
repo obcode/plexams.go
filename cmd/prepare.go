@@ -32,6 +32,8 @@ var (
 	exams-in-plan      --- split exam-groups into exams
 	rooms-for-semester --- prepare rooms which are allowed to use
 	rooms-for-exams    --- rooms for exams
+
+	invigilate-self    --- set main examer as invigilator if possible
 	`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -136,6 +138,12 @@ var (
 
 			case "rooms-for-exams":
 				err := plexams.PrepareRoomForExams()
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "invigilate-self":
+				err := plexams.PrepareSelfInvigilation()
 				if err != nil {
 					os.Exit(1)
 				}

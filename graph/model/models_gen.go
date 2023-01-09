@@ -120,6 +120,12 @@ type FK07Program struct {
 	Name string `json:"name"`
 }
 
+type Invigilation struct {
+	RoomName      *string `json:"roomName"`
+	InvigilatorID int     `json:"invigilatorID"`
+	Slot          *Slot   `json:"slot"`
+}
+
 type Invigilator struct {
 	Teacher      *Teacher                 `json:"teacher"`
 	Requirements *InvigilatorRequirements `json:"requirements"`

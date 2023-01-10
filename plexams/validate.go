@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/gookit/color"
@@ -197,6 +198,12 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 
 		for _, plannedRoom := range plannedRooms {
 			entry, ok := seats[plannedRoom.RoomName]
+
+			// TODO: Remove this hack
+			if strings.HasPrefix(plannedRoom.RoomName, "ONLINE") {
+				continue
+			}
+
 			if !ok {
 				seats[plannedRoom.RoomName] = roomSeats{seatsPlanned: plannedRoom.SeatsPlanned, seats: p.GetRoomInfo(plannedRoom.RoomName).Seats}
 			} else {

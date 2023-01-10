@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gookit/color"
 	"github.com/obcode/plexams.go/graph/model"
@@ -92,11 +93,11 @@ func (p *Plexams) ValidateZPARooms() error {
 			found := false
 			for _, zpaExam := range plannedExamsFromZPA {
 				if room.Ancode == zpaExam.Ancode &&
-					room.RoomName == zpaExam.RoomName &&
+					roomNameOK(room.RoomName, zpaExam.RoomName) &&
 					room.Duration == zpaExam.Duration &&
 					room.Handicap == zpaExam.IsHandicap &&
 					room.Reserve == zpaExam.IsReserve &&
-					room.SeatsPlanned == zpaExam.Number {
+					(room.SeatsPlanned == zpaExam.Number || zpaExam.RoomName == "ONLINE") {
 					found = true
 					break
 				}
@@ -119,4 +120,9 @@ func (p *Plexams) ValidateZPARooms() error {
 	// }
 
 	return nil
+}
+
+func roomNameOK(roomPlexams, roomZPA string) bool {
+	return roomPlexams == roomZPA ||
+		(strings.HasPrefix(roomPlexams, "ONLINE") && roomZPA == "ONLINE")
 }

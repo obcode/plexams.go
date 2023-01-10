@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
@@ -150,8 +151,13 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilato
 						if roomForAncode.RoomName == "No Room" {
 							continue
 						}
+						roomName := roomForAncode.RoomName
+						if strings.HasPrefix(roomName, "ONLINE") {
+							roomName = "ONLINE"
+						}
+
 						rooms = append(rooms, &model.ZPAExamPlanRoom{
-							RoomName:     roomForAncode.RoomName,
+							RoomName:     roomName,
 							Duration:     roomForAncode.Duration,
 							IsReserve:    roomForAncode.Reserve,
 							StudentCount: roomForAncode.SeatsPlanned,

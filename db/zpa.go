@@ -37,6 +37,7 @@ func (db *DB) GetInvigilators(ctx context.Context) ([]*model.Teacher, error) {
 func isInvigilator(teacher model.Teacher, semester string) bool {
 	return teacher.IsProf &&
 		!teacher.IsProfHC &&
+		!teacher.IsLBA &&
 		teacher.FK == "FK07" &&
 		strings.Compare(semester, teacher.LastSemester) <= 0
 }

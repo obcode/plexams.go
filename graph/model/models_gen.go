@@ -145,6 +145,14 @@ type InvigilatorRequirements struct {
 	OvertimeThisSemester   float64      `json:"overtimeThisSemester"`
 }
 
+type InvigilatorTodos struct {
+	SumExamRooms          int `json:"sumExamRooms"`
+	SumReserve            int `json:"sumReserve"`
+	SumOtherContributions int `json:"sumOtherContributions"`
+	InvigilatorCount      int `json:"invigilatorCount"`
+	TodoPerInvigilator    int `json:"todoPerInvigilator"`
+}
+
 type NTAInput struct {
 	Name                 string `json:"name"`
 	Mtknr                string `json:"mtknr"`

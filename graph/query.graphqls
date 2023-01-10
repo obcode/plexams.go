@@ -68,4 +68,5 @@ type Query {
   plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
   # Invigilators
   invigilatorsWithReq: [Invigilator!]!
+  invigilatorTodos: InvigilatorTodos
 }

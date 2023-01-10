@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -100,12 +101,80 @@ func (p *Plexams) datesToDay(dates []*time.Time) []int {
 	return days
 }
 
+func (p *Plexams) InvigilatorTodos(ctx context.Context) (*model.InvigilatorTodos, error) {
+	selfInvigilations, err := p.GetSelfInvigilations(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get self invigilations")
+	}
+
+	todos := model.InvigilatorTodos{
+		SumExamRooms:          0,
+		SumReserve:            0,
+		SumOtherContributions: 0,
+		InvigilatorCount:      0,
+		TodoPerInvigilator:    0,
+	}
+
+	for _, slot := range p.semesterConfig.Slots {
+		roomsInSlot, err := p.PlannedRoomsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		if err != nil {
+			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+				Msg("cannot get rooms for slot")
+		} else {
+			if len(roomsInSlot) == 0 {
+				continue
+			}
+			roomMap := make(map[string]int)
+		OUTER:
+			for _, room := range roomsInSlot {
+				for _, selfInvigilation := range selfInvigilations {
+					if selfInvigilation.Slot.DayNumber == slot.DayNumber &&
+						selfInvigilation.Slot.SlotNumber == slot.SlotNumber &&
+						*selfInvigilation.RoomName == room.RoomName {
+						log.Debug().Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Str("room", room.RoomName).
+							Msg("found self invigilation")
+						continue OUTER
+					}
+				}
+				maxDuration, ok := roomMap[room.RoomName]
+				if !ok || maxDuration < room.Duration {
+					roomMap[room.RoomName] = room.Duration
+				}
+			}
+
+			for _, maxDuration := range roomMap {
+				todos.SumExamRooms += maxDuration
+			}
+			todos.SumReserve += 60 // FIXME: Maybe some other time? half of max duration in slot?
+		}
+	}
+
+	reqs, err := p.InvigilatorsWithReq(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invigilators with regs")
+	}
+
+	for _, invigilator := range reqs {
+		todos.SumOtherContributions += invigilator.Requirements.OralExamsContribution +
+			invigilator.Requirements.LiveCodingContribution +
+			invigilator.Requirements.MasterContribution
+	}
+
+	todos.InvigilatorCount = len(reqs)
+	todos.TodoPerInvigilator = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+todos.SumOtherContributions) / float64(len(reqs))))
+
+	return &todos, nil
+}
+
 func (p *Plexams) PrepareSelfInvigilation() error {
-	ctx := context.Background()
+	return nil
+}
+
+func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
 	invigilators, err := p.InvigilatorsWithReq(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get invigilators")
-		return err
+		return nil, err
 	}
 
 	invigilatorMap := make(map[int]*model.Invigilator)
@@ -113,7 +182,7 @@ func (p *Plexams) PrepareSelfInvigilation() error {
 		invigilatorMap[invigilator.Teacher.ID] = invigilator
 	}
 
-	// invigilations := make([]*model.Invigilation, 0)
+	invigilations := make([]*model.Invigilation, 0)
 	for _, slot := range p.semesterConfig.Slots {
 		examsInSlot, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
 		if err != nil {
@@ -152,15 +221,15 @@ func (p *Plexams) PrepareSelfInvigilation() error {
 			if roomNames.Cardinality() == 1 {
 				log.Debug().Int("examerid", examer).Interface("room", roomNames).Interface("slot", slot).
 					Msg("found self invigilation")
-				// invigilation := model.Invigilation{
-				// 	RoomName:      &roomNames.ToSlice()[0],
-				// 	InvigilatorID: examer,
-				// 	Slot:          slot,
-				// }
-				// invigilations = append(invigilations, &invigilation)
+				invigilation := model.Invigilation{
+					RoomName:      &roomNames.ToSlice()[0],
+					InvigilatorID: examer,
+					Slot:          slot,
+				}
+				invigilations = append(invigilations, &invigilation)
 			}
 		}
 
 	}
-	return nil
+	return invigilations, nil
 }

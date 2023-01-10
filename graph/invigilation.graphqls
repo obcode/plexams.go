@@ -3,3 +3,11 @@ type Invigilation {
   invigilatorID: Int!
   slot: Slot!
 }
+
+type InvigilatorTodos {
+  sumExamRooms: Int! # without self invigilations
+  sumReserve: Int!
+  sumOtherContributions: Int!
+  invigilatorCount: Int!
+  todoPerInvigilator: Int!
+}

@@ -440,6 +440,20 @@ func (p *Plexams) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	return p.dbClient.PlannedRoomNames(ctx)
 }
 
+func (p *Plexams) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.RoomForExam, error) {
+	exams, err := p.ExamsInSlotWithRooms(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get exams in slot")
+	}
+
+	rooms := make([]*model.RoomForExam, 0)
+	for _, exam := range exams {
+		rooms = append(rooms, exam.Rooms...)
+	}
+
+	return rooms, nil
+}
+
 func (p *Plexams) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
 	exams, err := p.ExamsInSlotWithRooms(ctx, day, time)
 	if err != nil {

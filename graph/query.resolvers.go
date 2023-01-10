@@ -272,6 +272,11 @@ func (r *queryResolver) InvigilatorsWithReq(ctx context.Context) ([]*model.Invig
 	return r.plexams.InvigilatorsWithReq(ctx)
 }
 
+// InvigilatorTodos is the resolver for the invigilatorTodos field.
+func (r *queryResolver) InvigilatorTodos(ctx context.Context) (*model.InvigilatorTodos, error) {
+	return r.plexams.InvigilatorTodos(ctx)
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 

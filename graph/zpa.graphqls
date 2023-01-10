@@ -65,7 +65,9 @@ type Invigilator {
 
 type InvigilatorRequirements {
   excludedDates: [Time!]!
+  excludedDays: [Int!]!
   examDateTimes: [Time!]!
+  examDays: [Int!]!
   partTime: Float!
   oralExamsContribution: Int!
   liveCodingContribution: Int!

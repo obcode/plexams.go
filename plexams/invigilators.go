@@ -66,7 +66,9 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 
 			invigReqs = &model.InvigilatorRequirements{
 				ExcludedDates:          excludedDates,
+				ExcludedDays:           p.datesToDay(excludedDates),
 				ExamDateTimes:          examDateTimes,
+				ExamDays:               p.datesToDay(examDateTimes),
 				PartTime:               reqs.PartTime,
 				OralExamsContribution:  reqs.OralExamsContribution,
 				LiveCodingContribution: reqs.LivecodingContribution,
@@ -84,6 +86,18 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 	}
 
 	return invigilators, nil
+}
+
+func (p *Plexams) datesToDay(dates []*time.Time) []int {
+	days := make([]int, 0, len(dates))
+	for _, date := range dates {
+		for _, day := range p.semesterConfig.Days {
+			if day.Date.Month() == date.Month() && day.Date.Day() == date.Day() {
+				days = append(days, day.Number)
+			}
+		}
+	}
+	return days
 }
 
 func (p *Plexams) PrepareSelfInvigilation() error {

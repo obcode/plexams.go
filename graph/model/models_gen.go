@@ -133,7 +133,9 @@ type Invigilator struct {
 
 type InvigilatorRequirements struct {
 	ExcludedDates          []*time.Time `json:"excludedDates"`
+	ExcludedDays           []int        `json:"excludedDays"`
 	ExamDateTimes          []*time.Time `json:"examDateTimes"`
+	ExamDays               []int        `json:"examDays"`
 	PartTime               float64      `json:"partTime"`
 	OralExamsContribution  int          `json:"oralExamsContribution"`
 	LiveCodingContribution int          `json:"liveCodingContribution"`

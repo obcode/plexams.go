@@ -177,7 +177,9 @@ type ComplexityRoot struct {
 
 	InvigilatorRequirements struct {
 		ExamDateTimes          func(childComplexity int) int
+		ExamDays               func(childComplexity int) int
 		ExcludedDates          func(childComplexity int) int
+		ExcludedDays           func(childComplexity int) int
 		FreeSemester           func(childComplexity int) int
 		LiveCodingContribution func(childComplexity int) int
 		MasterContribution     func(childComplexity int) int
@@ -1086,12 +1088,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.InvigilatorRequirements.ExamDateTimes(childComplexity), true
 
+	case "InvigilatorRequirements.examDays":
+		if e.complexity.InvigilatorRequirements.ExamDays == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorRequirements.ExamDays(childComplexity), true
+
 	case "InvigilatorRequirements.excludedDates":
 		if e.complexity.InvigilatorRequirements.ExcludedDates == nil {
 			break
 		}
 
 		return e.complexity.InvigilatorRequirements.ExcludedDates(childComplexity), true
+
+	case "InvigilatorRequirements.excludedDays":
+		if e.complexity.InvigilatorRequirements.ExcludedDays == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorRequirements.ExcludedDays(childComplexity), true
 
 	case "InvigilatorRequirements.freeSemester":
 		if e.complexity.InvigilatorRequirements.FreeSemester == nil {
@@ -3285,7 +3301,9 @@ type Invigilator {
 
 type InvigilatorRequirements {
   excludedDates: [Time!]!
+  excludedDays: [Int!]!
   examDateTimes: [Time!]!
+  examDays: [Int!]!
   partTime: Float!
   oralExamsContribution: Int!
   liveCodingContribution: Int!
@@ -7528,8 +7546,12 @@ func (ec *executionContext) fieldContext_Invigilator_requirements(ctx context.Co
 			switch field.Name {
 			case "excludedDates":
 				return ec.fieldContext_InvigilatorRequirements_excludedDates(ctx, field)
+			case "excludedDays":
+				return ec.fieldContext_InvigilatorRequirements_excludedDays(ctx, field)
 			case "examDateTimes":
 				return ec.fieldContext_InvigilatorRequirements_examDateTimes(ctx, field)
+			case "examDays":
+				return ec.fieldContext_InvigilatorRequirements_examDays(ctx, field)
 			case "partTime":
 				return ec.fieldContext_InvigilatorRequirements_partTime(ctx, field)
 			case "oralExamsContribution":
@@ -7595,6 +7617,50 @@ func (ec *executionContext) fieldContext_InvigilatorRequirements_excludedDates(c
 	return fc, nil
 }
 
+func (ec *executionContext) _InvigilatorRequirements_excludedDays(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorRequirements) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorRequirements_excludedDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExcludedDays, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorRequirements_excludedDays(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorRequirements",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _InvigilatorRequirements_examDateTimes(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorRequirements) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_InvigilatorRequirements_examDateTimes(ctx, field)
 	if err != nil {
@@ -7634,6 +7700,50 @@ func (ec *executionContext) fieldContext_InvigilatorRequirements_examDateTimes(c
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorRequirements_examDays(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorRequirements) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorRequirements_examDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamDays, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorRequirements_examDays(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorRequirements",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21038,9 +21148,23 @@ func (ec *executionContext) _InvigilatorRequirements(ctx context.Context, sel as
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "excludedDays":
+
+			out.Values[i] = ec._InvigilatorRequirements_excludedDays(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "examDateTimes":
 
 			out.Values[i] = ec._InvigilatorRequirements_examDateTimes(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "examDays":
+
+			out.Values[i] = ec._InvigilatorRequirements_examDays(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++

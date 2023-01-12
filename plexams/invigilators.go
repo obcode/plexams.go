@@ -161,7 +161,32 @@ func (p *Plexams) InvigilatorTodos(ctx context.Context) (*model.InvigilatorTodos
 	}
 
 	todos.InvigilatorCount = len(reqs)
-	todos.TodoPerInvigilator = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+todos.SumOtherContributions) / float64(len(reqs))))
+	adjustedInvigilatorCount := 0.0
+
+	for _, invigilator := range reqs {
+		count := 1.0 * invigilator.Requirements.PartTime
+
+		if invigilator.Requirements.OvertimeThisSemester != 0 {
+			count *= invigilator.Requirements.OvertimeThisSemester
+		}
+
+		if invigilator.Requirements.FreeSemester == 0.5 {
+			count *= 0.5
+		}
+
+		// TODO: Move me to InvigilatorsWithReq
+		if invigilator.Requirements.FreeSemester == 1.0 ||
+			invigilator.Requirements.OvertimeLastSemester != 0 && invigilator.Requirements.FreeSemester == 0.5 {
+			count = 0.0
+		}
+
+		log.Debug().Str("name", invigilator.Teacher.Shortname).Float64("faktor", count).
+			Msg("Faktor für Aufsichten")
+
+		adjustedInvigilatorCount += count
+	}
+
+	todos.TodoPerInvigilator = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+todos.SumOtherContributions) / adjustedInvigilatorCount))
 
 	return &todos, nil
 }

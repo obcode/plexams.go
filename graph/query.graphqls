@@ -69,4 +69,5 @@ type Query {
   # Invigilators
   invigilatorsWithReq: [Invigilator!]!
   invigilatorTodos: InvigilatorTodos
+  roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
 }

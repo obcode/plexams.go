@@ -293,3 +293,40 @@ func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilati
 	log.Debug().Int("count", len(invigilations)).Msg("found self invigilations")
 	return invigilations, nil
 }
+
+func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error) {
+	rooms, err := p.PlannedRoomsInSlot(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).
+			Msg("cannot get rooms for slot")
+		return nil, err
+	}
+	slot := &model.InvigilationSlot{
+		Reserve:               nil,
+		RoomsWithInvigilators: []*model.RoomWithInvigilator{},
+	}
+
+	roomMap := make(map[string][]*model.RoomForExam)
+
+	for _, room := range rooms {
+		roomsForExam, ok := roomMap[room.RoomName]
+		if !ok {
+			roomsForExam = make([]*model.RoomForExam, 0, 1)
+		}
+		roomMap[room.RoomName] = append(roomsForExam, room)
+	}
+
+	for name, roomsForExam := range roomMap {
+		invigilator, err := p.dbClient.GetInvigilatorForRoom(ctx, name, day, time)
+		if err != nil {
+			log.Error().Err(err).Int("day", day).Int("slot", time).Str("room", name).
+				Msg("cannot get invigilator for rooms in slot")
+		}
+		slot.RoomsWithInvigilators = append(slot.RoomsWithInvigilators, &model.RoomWithInvigilator{
+			Name:        name,
+			Rooms:       roomsForExam,
+			Invigilator: invigilator,
+		})
+	}
+	return slot, nil
+}

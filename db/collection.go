@@ -35,6 +35,7 @@ const (
 	collectionRoomsForExams = "rooms_for_exams"
 
 	collectionInvigilatorRequirements = "invigilator_requirements"
+	collectionSelfInvigilations       = "invigilations_self"
 )
 
 type PrimussType string

@@ -15,3 +15,14 @@ type InvigilatorTodos {
   todoPerInvigilator: Int!
   todoPerInvigilatorOvertimeCutted: Int!
 }
+
+type InvigilationSlot {
+  reserve: Teacher
+  roomsWithInvigilators: [RoomWithInvigilator!]!
+}
+
+type RoomWithInvigilator {
+  name: String!
+  rooms: [RoomForExam!]!
+  invigilator: Teacher
+}

@@ -128,6 +128,11 @@ type Invigilation struct {
 	IsSelfInvigilation bool    `json:"isSelfInvigilation"`
 }
 
+type InvigilationSlot struct {
+	Reserve               *Teacher               `json:"reserve"`
+	RoomsWithInvigilators []*RoomWithInvigilator `json:"roomsWithInvigilators"`
+}
+
 type Invigilator struct {
 	Teacher      *Teacher                 `json:"teacher"`
 	Requirements *InvigilatorRequirements `json:"requirements"`
@@ -229,6 +234,12 @@ type RoomForExamInput struct {
 	Duration     int      `json:"duration"`
 	Handicap     bool     `json:"handicap"`
 	Mktnrs       []string `json:"mktnrs"`
+}
+
+type RoomWithInvigilator struct {
+	Name        string         `json:"name"`
+	Rooms       []*RoomForExam `json:"rooms"`
+	Invigilator *Teacher       `json:"invigilator"`
 }
 
 type Semester struct {

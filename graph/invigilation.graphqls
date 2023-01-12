@@ -2,12 +2,16 @@ type Invigilation {
   roomName: String
   invigilatorID: Int!
   slot: Slot!
+  isReserve: Boolean!
+  isSelfInvigilation: Boolean!
 }
 
 type InvigilatorTodos {
   sumExamRooms: Int! # without self invigilations
   sumReserve: Int!
   sumOtherContributions: Int!
+  sumOtherContributionsOvertimeCutted: Int!
   invigilatorCount: Int!
   todoPerInvigilator: Int!
+  todoPerInvigilatorOvertimeCutted: Int!
 }

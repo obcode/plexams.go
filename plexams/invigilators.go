@@ -7,6 +7,7 @@ import (
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -107,13 +108,7 @@ func (p *Plexams) InvigilatorTodos(ctx context.Context) (*model.InvigilatorTodos
 		log.Error().Err(err).Msg("cannot get self invigilations")
 	}
 
-	todos := model.InvigilatorTodos{
-		SumExamRooms:          0,
-		SumReserve:            0,
-		SumOtherContributions: 0,
-		InvigilatorCount:      0,
-		TodoPerInvigilator:    0,
-	}
+	todos := model.InvigilatorTodos{}
 
 	for _, slot := range p.semesterConfig.Slots {
 		roomsInSlot, err := p.PlannedRoomsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
@@ -188,11 +183,38 @@ func (p *Plexams) InvigilatorTodos(ctx context.Context) (*model.InvigilatorTodos
 
 	todos.TodoPerInvigilator = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+todos.SumOtherContributions) / adjustedInvigilatorCount))
 
+	sumOtherContributionsOvertimeCutted := 0
+	for _, invigilator := range reqs {
+		if otherContributions := invigilator.Requirements.OralExamsContribution +
+			invigilator.Requirements.LiveCodingContribution +
+			invigilator.Requirements.MasterContribution; otherContributions > todos.TodoPerInvigilator {
+			sumOtherContributionsOvertimeCutted += todos.TodoPerInvigilator
+		} else {
+			sumOtherContributionsOvertimeCutted += otherContributions
+		}
+	}
+	todos.SumOtherContributionsOvertimeCutted = sumOtherContributionsOvertimeCutted
+	todos.TodoPerInvigilatorOvertimeCutted = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+sumOtherContributionsOvertimeCutted) / adjustedInvigilatorCount))
+
 	return &todos, nil
 }
 
 func (p *Plexams) PrepareSelfInvigilation() error {
-	return nil
+	ctx := context.Background()
+	selfInvigilations, err := p.GetSelfInvigilations(ctx)
+	if err != nil {
+		return err
+	}
+
+	toSave := make([]interface{}, 0, len(selfInvigilations))
+	for _, invig := range selfInvigilations {
+		log.Debug().Interface("invigilation", invig).Msg("adding invigilation to slice")
+		toSave = append(toSave, invig)
+	}
+
+	log.Debug().Interface("ivigilations", toSave).Msg("saving invigilations")
+
+	return p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "invigilations_self"), toSave)
 }
 
 func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
@@ -216,10 +238,20 @@ func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilati
 			continue
 		}
 		examerWithExams := make(map[int][]*model.ExamInPlan)
+	OUTER:
 		for _, exam := range examsInSlot {
-			if _, ok := invigilatorMap[exam.Exam.ZpaExam.MainExamerID]; !ok {
+			invigilator, ok := invigilatorMap[exam.Exam.ZpaExam.MainExamerID]
+
+			if !ok {
 				log.Debug().Str("name", exam.Exam.ZpaExam.MainExamer).Msg("ist keine Aufsicht")
 				continue
+			}
+			for _, day := range invigilator.Requirements.ExcludedDays {
+				if day == exam.Slot.DayNumber {
+					log.Debug().Str("name", exam.Exam.ZpaExam.MainExamer).Interface("slot", exam.Slot).
+						Msg("Tag ist gesperrt für Aufsicht")
+					continue OUTER
+				}
 			}
 			exams, ok := examerWithExams[exam.Exam.ZpaExam.MainExamerID]
 			if !ok {
@@ -247,14 +279,17 @@ func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilati
 				log.Debug().Int("examerid", examer).Interface("room", roomNames).Interface("slot", slot).
 					Msg("found self invigilation")
 				invigilation := model.Invigilation{
-					RoomName:      &roomNames.ToSlice()[0],
-					InvigilatorID: examer,
-					Slot:          slot,
+					RoomName:           &roomNames.ToSlice()[0],
+					InvigilatorID:      examer,
+					Slot:               slot,
+					IsReserve:          false,
+					IsSelfInvigilation: true,
 				}
 				invigilations = append(invigilations, &invigilation)
 			}
 		}
 
 	}
+	log.Debug().Int("count", len(invigilations)).Msg("found self invigilations")
 	return invigilations, nil
 }

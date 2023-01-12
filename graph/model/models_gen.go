@@ -121,9 +121,11 @@ type FK07Program struct {
 }
 
 type Invigilation struct {
-	RoomName      *string `json:"roomName"`
-	InvigilatorID int     `json:"invigilatorID"`
-	Slot          *Slot   `json:"slot"`
+	RoomName           *string `json:"roomName"`
+	InvigilatorID      int     `json:"invigilatorID"`
+	Slot               *Slot   `json:"slot"`
+	IsReserve          bool    `json:"isReserve"`
+	IsSelfInvigilation bool    `json:"isSelfInvigilation"`
 }
 
 type Invigilator struct {
@@ -146,11 +148,13 @@ type InvigilatorRequirements struct {
 }
 
 type InvigilatorTodos struct {
-	SumExamRooms          int `json:"sumExamRooms"`
-	SumReserve            int `json:"sumReserve"`
-	SumOtherContributions int `json:"sumOtherContributions"`
-	InvigilatorCount      int `json:"invigilatorCount"`
-	TodoPerInvigilator    int `json:"todoPerInvigilator"`
+	SumExamRooms                        int `json:"sumExamRooms"`
+	SumReserve                          int `json:"sumReserve"`
+	SumOtherContributions               int `json:"sumOtherContributions"`
+	SumOtherContributionsOvertimeCutted int `json:"sumOtherContributionsOvertimeCutted"`
+	InvigilatorCount                    int `json:"invigilatorCount"`
+	TodoPerInvigilator                  int `json:"todoPerInvigilator"`
+	TodoPerInvigilatorOvertimeCutted    int `json:"todoPerInvigilatorOvertimeCutted"`
 }
 
 type NTAInput struct {

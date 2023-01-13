@@ -35,6 +35,7 @@ const (
 	collectionRoomsForExams = "rooms_for_exams"
 
 	collectionInvigilatorRequirements = "invigilator_requirements"
+	collectionOtherInvigilations      = "invigilations_other"
 	collectionSelfInvigilations       = "invigilations_self"
 )
 

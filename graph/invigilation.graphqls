@@ -1,5 +1,6 @@
 type Invigilation {
   roomName: String
+  duration: Int!
   invigilatorID: Int!
   slot: Slot!
   isReserve: Boolean!
@@ -54,6 +55,7 @@ type InvigilatorTodos {
   doingMinutes: Int!
   enough: Boolean!
   invigilationDays: [Int!]
+  invigilations: [Invigilation!]
 }
 
 type RoomWithInvigilator {

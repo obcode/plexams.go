@@ -20,6 +20,8 @@ var (
 	constraints --- check if constraints hold
 	rooms       --- check room constraints
 	zpa         --- check if the plan on ZPA is the same here
+	invigilations [reqs]
+
 	
 	-s <seconds> --- sleep <seconds> and validate again`,
 		Args: cobra.MinimumNArgs(1),
@@ -52,6 +54,18 @@ var (
 					err := plexams.ValidateZPARooms()
 					if err != nil {
 						log.Fatal(err)
+					}
+				}
+
+			case "invigilations":
+				if len(args) == 1 {
+					validate([]func() error{
+						plexams.ValidateInvigilatorRequirements,
+					})
+				} else {
+					switch args[1] {
+					case "reqs":
+						validate([]func() error{plexams.ValidateInvigilatorRequirements})
 					}
 				}
 

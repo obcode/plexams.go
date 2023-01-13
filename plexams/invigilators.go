@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -209,11 +210,30 @@ func (p *Plexams) InvigilationTodos(ctx context.Context) (*model.InvigilationTod
 			enough = true
 		}
 
+		invigilationsForInvigilator, err := p.dbClient.InvigilationsForInvigilator(ctx, invigilator.Teacher.ID)
+		if err != nil {
+			log.Error().Err(err).Str("invigilator", invigilator.Teacher.Shortname).
+				Msg("cannot get invigilations")
+		}
+
+		invigilationSet := set.NewSet[int]()
+		doingMinutes := 0
+
+		for _, invigilation := range invigilationsForInvigilator {
+			invigilationSet.Add(invigilation.Slot.DayNumber)
+			if !invigilation.IsSelfInvigilation {
+				doingMinutes += invigilation.Duration
+			}
+		}
+		invigilationDays := invigilationSet.ToSlice()
+		sort.Ints(invigilationDays)
+
 		invigilator.Todos = &model.InvigilatorTodos{
 			TotalMinutes:     totalMinutes,
-			DoingMinutes:     0,
+			DoingMinutes:     doingMinutes,
 			Enough:           enough,
-			InvigilationDays: []int{},
+			InvigilationDays: invigilationDays,
+			Invigilations:    invigilationsForInvigilator,
 		}
 	}
 
@@ -346,6 +366,7 @@ func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilati
 					Msg("found self invigilation")
 				invigilation := model.Invigilation{
 					RoomName:           &roomNames.ToSlice()[0],
+					Duration:           0, // FIXME: ?? self-invigilation does not count
 					InvigilatorID:      examer,
 					Slot:               slot,
 					IsReserve:          false,
@@ -367,8 +388,16 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 			Msg("cannot get rooms for slot")
 		return nil, err
 	}
+
+	reserve, err := p.dbClient.ReserveForSlot(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).
+			Msg("cannot get reserve for slot")
+		return nil, err
+	}
+
 	slot := &model.InvigilationSlot{
-		Reserve:               nil,
+		Reserve:               reserve,
 		RoomsWithInvigilators: []*model.RoomWithInvigilator{},
 	}
 

@@ -122,6 +122,7 @@ type FK07Program struct {
 
 type Invigilation struct {
 	RoomName           *string `json:"roomName"`
+	Duration           int     `json:"duration"`
 	InvigilatorID      int     `json:"invigilatorID"`
 	Slot               *Slot   `json:"slot"`
 	IsReserve          bool    `json:"isReserve"`
@@ -167,10 +168,11 @@ type InvigilatorRequirements struct {
 }
 
 type InvigilatorTodos struct {
-	TotalMinutes     int   `json:"totalMinutes"`
-	DoingMinutes     int   `json:"doingMinutes"`
-	Enough           bool  `json:"enough"`
-	InvigilationDays []int `json:"invigilationDays"`
+	TotalMinutes     int             `json:"totalMinutes"`
+	DoingMinutes     int             `json:"doingMinutes"`
+	Enough           bool            `json:"enough"`
+	InvigilationDays []int           `json:"invigilationDays"`
+	Invigilations    []*Invigilation `json:"invigilations"`
 }
 
 type InvigilatorsForDay struct {

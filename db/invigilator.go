@@ -57,7 +57,5 @@ func (db *DB) GetInvigilatorForRoom(ctx context.Context, name string, day, time 
 		return nil, err
 	}
 
-	log.Debug().Msg("found one...")
-
 	return db.GetTeacher(ctx, invigilation.InvigilatorID)
 }

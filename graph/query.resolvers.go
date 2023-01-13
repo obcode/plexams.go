@@ -287,6 +287,11 @@ func (r *queryResolver) InvigilatorsForDay(ctx context.Context, day int) (*model
 	return r.plexams.InvigilatorsForDay(ctx, day)
 }
 
+// DayOkForInvigilator is the resolver for the dayOkForInvigilator field.
+func (r *queryResolver) DayOkForInvigilator(ctx context.Context, day int, invigilatorID int) (*bool, error) {
+	panic(fmt.Errorf("not implemented: DayOkForInvigilator - dayOkForInvigilator"))
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 

@@ -66,6 +66,24 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 				}
 			}
 
+			factor := 1.0 * reqs.PartTime
+
+			if reqs.OvertimeThisSemester != 0 {
+				factor *= reqs.OvertimeThisSemester
+			}
+
+			if reqs.FreeSemester == 0.5 {
+				factor *= 0.5
+			}
+
+			if reqs.FreeSemester == 1.0 ||
+				reqs.OvertimeLastSemester != 0 && reqs.FreeSemester == 0.5 {
+				factor = 0.0
+			}
+
+			log.Debug().Str("name", teacher.Shortname).Float64("faktor", factor).
+				Msg("Faktor für Aufsichten")
+
 			invigReqs = &model.InvigilatorRequirements{
 				ExcludedDates:          excludedDates,
 				ExcludedDays:           p.datesToDay(excludedDates),
@@ -78,6 +96,8 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 				FreeSemester:           reqs.FreeSemester,
 				OvertimeLastSemester:   reqs.OvertimeLastSemester,
 				OvertimeThisSemester:   reqs.OvertimeThisSemester,
+				AllContributions:       reqs.OralExamsContribution + reqs.LivecodingContribution + reqs.MasterContribution,
+				Factor:                 factor,
 			}
 		}
 
@@ -102,13 +122,13 @@ func (p *Plexams) datesToDay(dates []*time.Time) []int {
 	return days
 }
 
-func (p *Plexams) InvigilatorTodos(ctx context.Context) (*model.InvigilatorTodos, error) {
+func (p *Plexams) InvigilationTodos(ctx context.Context) (*model.InvigilationTodos, error) {
 	selfInvigilations, err := p.GetSelfInvigilations(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get self invigilations")
 	}
 
-	todos := model.InvigilatorTodos{}
+	todos := model.InvigilationTodos{}
 
 	for _, slot := range p.semesterConfig.Slots {
 		roomsInSlot, err := p.PlannedRoomsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
@@ -149,36 +169,18 @@ func (p *Plexams) InvigilatorTodos(ctx context.Context) (*model.InvigilatorTodos
 		log.Error().Err(err).Msg("cannot get invigilators with regs")
 	}
 
+	todos.Invigilators = reqs
+
 	for _, invigilator := range reqs {
-		todos.SumOtherContributions += invigilator.Requirements.OralExamsContribution +
-			invigilator.Requirements.LiveCodingContribution +
-			invigilator.Requirements.MasterContribution
+		todos.SumOtherContributions += invigilator.Requirements.AllContributions
 	}
 
 	todos.InvigilatorCount = len(reqs)
 	adjustedInvigilatorCount := 0.0
 
 	for _, invigilator := range reqs {
-		count := 1.0 * invigilator.Requirements.PartTime
 
-		if invigilator.Requirements.OvertimeThisSemester != 0 {
-			count *= invigilator.Requirements.OvertimeThisSemester
-		}
-
-		if invigilator.Requirements.FreeSemester == 0.5 {
-			count *= 0.5
-		}
-
-		// TODO: Move me to InvigilatorsWithReq
-		if invigilator.Requirements.FreeSemester == 1.0 ||
-			invigilator.Requirements.OvertimeLastSemester != 0 && invigilator.Requirements.FreeSemester == 0.5 {
-			count = 0.0
-		}
-
-		log.Debug().Str("name", invigilator.Teacher.Shortname).Float64("faktor", count).
-			Msg("Faktor für Aufsichten")
-
-		adjustedInvigilatorCount += count
+		adjustedInvigilatorCount += invigilator.Requirements.Factor
 	}
 
 	todos.TodoPerInvigilator = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+todos.SumOtherContributions) / adjustedInvigilatorCount))
@@ -196,7 +198,71 @@ func (p *Plexams) InvigilatorTodos(ctx context.Context) (*model.InvigilatorTodos
 	todos.SumOtherContributionsOvertimeCutted = sumOtherContributionsOvertimeCutted
 	todos.TodoPerInvigilatorOvertimeCutted = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+sumOtherContributionsOvertimeCutted) / adjustedInvigilatorCount))
 
+	for _, invigilator := range todos.Invigilators {
+
+		enough := false
+		totalMinutes := int(float64(todos.TodoPerInvigilatorOvertimeCutted)*invigilator.Requirements.Factor) -
+			invigilator.Requirements.AllContributions
+
+		if totalMinutes < 0 {
+			totalMinutes = 0
+			enough = true
+		}
+
+		invigilator.Todos = &model.InvigilatorTodos{
+			TotalMinutes:     totalMinutes,
+			DoingMinutes:     0,
+			Enough:           enough,
+			InvigilationDays: []int{},
+		}
+	}
+
 	return &todos, nil
+}
+
+func (p *Plexams) InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error) {
+	invigilationTodos, err := p.InvigilationTodos(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invigilation todos")
+		return nil, err
+	}
+
+	want := make([]*model.Invigilator, 0)
+	can := make([]*model.Invigilator, 0)
+
+	for _, invigilator := range invigilationTodos.Invigilators {
+		wantDay, canDay := dayOkForInvigilator(day, invigilator)
+		if wantDay {
+			want = append(want, invigilator)
+		} else if canDay {
+			can = append(can, invigilator)
+		}
+	}
+
+	return &model.InvigilatorsForDay{
+		Want: want,
+		Can:  can,
+	}, nil
+}
+
+func dayOkForInvigilator(day int, invigilator *model.Invigilator) (wantDay, canDay bool) {
+	// day in exlude days?
+	for _, excludedDay := range invigilator.Requirements.ExcludedDays {
+		if day == excludedDay {
+			return false, false
+		}
+	}
+	for _, examDay := range invigilator.Requirements.ExamDays {
+		if day == examDay {
+			return true, true
+		}
+	}
+	for _, invigilationDay := range invigilator.Todos.InvigilationDays {
+		if day == invigilationDay {
+			return true, true
+		}
+	}
+	return false, true
 }
 
 func (p *Plexams) PrepareSelfInvigilation() error {
@@ -322,10 +388,33 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 			log.Error().Err(err).Int("day", day).Int("slot", time).Str("room", name).
 				Msg("cannot get invigilator for rooms in slot")
 		}
+
+		roomAndExams := make([]*model.RoomAndExam, 0)
+		maxDuration := 0
+		studentCount := 0
+		for _, roomForExam := range roomsForExam {
+			exam, err := p.dbClient.GetZpaExamByAncode(ctx, roomForExam.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", roomForExam.Ancode).
+					Msg("cannot get zpa exam")
+				return nil, err
+			}
+			roomAndExams = append(roomAndExams, &model.RoomAndExam{
+				Room: roomForExam,
+				Exam: exam,
+			})
+			if roomForExam.Duration > maxDuration {
+				maxDuration = roomForExam.Duration
+			}
+			studentCount += roomForExam.SeatsPlanned
+		}
+
 		slot.RoomsWithInvigilators = append(slot.RoomsWithInvigilators, &model.RoomWithInvigilator{
-			Name:        name,
-			Rooms:       roomsForExam,
-			Invigilator: invigilator,
+			Name:         name,
+			MaxDuration:  maxDuration,
+			StudentCount: studentCount,
+			RoomAndExams: roomAndExams,
+			Invigilator:  invigilator,
 		})
 	}
 	return slot, nil

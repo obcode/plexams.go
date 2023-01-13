@@ -6,7 +6,7 @@ type Invigilation {
   isSelfInvigilation: Boolean!
 }
 
-type InvigilatorTodos {
+type InvigilationTodos {
   sumExamRooms: Int! # without self invigilations
   sumReserve: Int!
   sumOtherContributions: Int!
@@ -14,6 +14,7 @@ type InvigilatorTodos {
   invigilatorCount: Int!
   todoPerInvigilator: Int!
   todoPerInvigilatorOvertimeCutted: Int!
+  invigilators: [Invigilator!]!
 }
 
 type InvigilationSlot {
@@ -21,8 +22,44 @@ type InvigilationSlot {
   roomsWithInvigilators: [RoomWithInvigilator!]!
 }
 
+type InvigilatorsForDay {
+  want: [Invigilator!]!
+  can: [Invigilator!]!
+}
+
+type Invigilator {
+  teacher: Teacher!
+  requirements: InvigilatorRequirements
+  todos: InvigilatorTodos
+}
+
+type InvigilatorRequirements {
+  excludedDates: [Time!]!
+  excludedDays: [Int!]!
+  examDateTimes: [Time!]!
+  examDays: [Int!]!
+  partTime: Float!
+  oralExamsContribution: Int!
+  liveCodingContribution: Int!
+  masterContribution: Int!
+  freeSemester: Float!
+  overtimeLastSemester: Float!
+  overtimeThisSemester: Float!
+  allContributions: Int!
+  factor: Float!
+}
+
+type InvigilatorTodos {
+  totalMinutes: Int!
+  doingMinutes: Int!
+  enough: Boolean!
+  invigilationDays: [Int!]
+}
+
 type RoomWithInvigilator {
   name: String!
-  rooms: [RoomForExam!]!
+  maxDuration: Int!
+  studentCount: Int!
+  roomAndExams: [RoomAndExam!]!
   invigilator: Teacher
 }

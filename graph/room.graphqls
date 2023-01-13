@@ -37,3 +37,8 @@ input RoomForExamInput {
   handicap: Boolean!
   mktnrs: [String!]
 }
+
+type RoomAndExam {
+  room: RoomForExam!
+  exam: ZPAExam!
+}

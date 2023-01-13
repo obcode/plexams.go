@@ -57,22 +57,3 @@ type Teacher {
   id: Int!
   email: String!
 }
-
-type Invigilator {
-  teacher: Teacher!
-  requirements: InvigilatorRequirements
-}
-
-type InvigilatorRequirements {
-  excludedDates: [Time!]!
-  excludedDays: [Int!]!
-  examDateTimes: [Time!]!
-  examDays: [Int!]!
-  partTime: Float!
-  oralExamsContribution: Int!
-  liveCodingContribution: Int!
-  masterContribution: Int!
-  freeSemester: Float!
-  overtimeLastSemester: Float!
-  overtimeThisSemester: Float!
-}

@@ -133,9 +133,21 @@ type InvigilationSlot struct {
 	RoomsWithInvigilators []*RoomWithInvigilator `json:"roomsWithInvigilators"`
 }
 
+type InvigilationTodos struct {
+	SumExamRooms                        int            `json:"sumExamRooms"`
+	SumReserve                          int            `json:"sumReserve"`
+	SumOtherContributions               int            `json:"sumOtherContributions"`
+	SumOtherContributionsOvertimeCutted int            `json:"sumOtherContributionsOvertimeCutted"`
+	InvigilatorCount                    int            `json:"invigilatorCount"`
+	TodoPerInvigilator                  int            `json:"todoPerInvigilator"`
+	TodoPerInvigilatorOvertimeCutted    int            `json:"todoPerInvigilatorOvertimeCutted"`
+	Invigilators                        []*Invigilator `json:"invigilators"`
+}
+
 type Invigilator struct {
 	Teacher      *Teacher                 `json:"teacher"`
 	Requirements *InvigilatorRequirements `json:"requirements"`
+	Todos        *InvigilatorTodos        `json:"todos"`
 }
 
 type InvigilatorRequirements struct {
@@ -150,16 +162,20 @@ type InvigilatorRequirements struct {
 	FreeSemester           float64      `json:"freeSemester"`
 	OvertimeLastSemester   float64      `json:"overtimeLastSemester"`
 	OvertimeThisSemester   float64      `json:"overtimeThisSemester"`
+	AllContributions       int          `json:"allContributions"`
+	Factor                 float64      `json:"factor"`
 }
 
 type InvigilatorTodos struct {
-	SumExamRooms                        int `json:"sumExamRooms"`
-	SumReserve                          int `json:"sumReserve"`
-	SumOtherContributions               int `json:"sumOtherContributions"`
-	SumOtherContributionsOvertimeCutted int `json:"sumOtherContributionsOvertimeCutted"`
-	InvigilatorCount                    int `json:"invigilatorCount"`
-	TodoPerInvigilator                  int `json:"todoPerInvigilator"`
-	TodoPerInvigilatorOvertimeCutted    int `json:"todoPerInvigilatorOvertimeCutted"`
+	TotalMinutes     int   `json:"totalMinutes"`
+	DoingMinutes     int   `json:"doingMinutes"`
+	Enough           bool  `json:"enough"`
+	InvigilationDays []int `json:"invigilationDays"`
+}
+
+type InvigilatorsForDay struct {
+	Want []*Invigilator `json:"want"`
+	Can  []*Invigilator `json:"can"`
 }
 
 type NTAInput struct {
@@ -219,6 +235,11 @@ type Room struct {
 	Exahm            bool   `json:"exahm"`
 }
 
+type RoomAndExam struct {
+	Room *RoomForExam `json:"room"`
+	Exam *ZPAExam     `json:"exam"`
+}
+
 type RoomConstraints struct {
 	PlacesWithSocket bool `json:"placesWithSocket"`
 	Lab              bool `json:"lab"`
@@ -237,9 +258,11 @@ type RoomForExamInput struct {
 }
 
 type RoomWithInvigilator struct {
-	Name        string         `json:"name"`
-	Rooms       []*RoomForExam `json:"rooms"`
-	Invigilator *Teacher       `json:"invigilator"`
+	Name         string         `json:"name"`
+	MaxDuration  int            `json:"maxDuration"`
+	StudentCount int            `json:"studentCount"`
+	RoomAndExams []*RoomAndExam `json:"roomAndExams"`
+	Invigilator  *Teacher       `json:"invigilator"`
 }
 
 type Semester struct {

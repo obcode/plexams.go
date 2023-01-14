@@ -27,6 +27,18 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 			}
 		}
 
+		// nur ein Raum oder Reserve
+		invigilationSlots := set.NewSet[int]() // day * 10 + slot
+		for _, invigilation := range invigilator.Todos.Invigilations {
+			combinedNumber := invigilation.Slot.DayNumber*10 + invigilation.Slot.SlotNumber
+			if invigilationSlots.Contains(combinedNumber) {
+				color.Red.Printf("%s has more than one invigilation in slot (%d,%d)\n", invigilator.Teacher.Shortname,
+					invigilation.Slot.DayNumber, invigilation.Slot.SlotNumber)
+			}
+			invigilationSlots.Add(combinedNumber)
+
+		}
+
 		// wenn gleichzeitig Prüfung, dann nur self-invigilation
 		exams, err := p.dbClient.PlannedExamsByMainExamer(ctx, invigilator.Teacher.ID)
 		if err != nil {
@@ -61,6 +73,66 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 			}
 		}
 
+	}
+
+	return nil
+}
+
+func (p *Plexams) ValidateInvigilatorSlots() error {
+	ctx := context.Background()
+	// count rooms and reserves without and print number
+	roomWithoutInvigilator := 0
+	slotWithoutReserve := 0
+
+	// all rooms and reserve max one invigilator
+	for _, slot := range p.semesterConfig.Slots {
+		rooms, err := p.PlannedRoomNamesInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		if err != nil {
+			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Msg("cannot get rooms for")
+		}
+		if len(rooms) == 0 {
+			continue
+		}
+		invigilations, err := p.dbClient.GetInvigilationInSlot(ctx, "reserve", slot.DayNumber, slot.SlotNumber)
+		if err != nil {
+			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Msg("cannot get reserve invigilator")
+		}
+		if len(invigilations) == 0 {
+			slotWithoutReserve += 1
+		} else if len(invigilations) > 1 {
+			color.Red.Printf("more than one reserve invigilator in slot (%d,%d): ", slot.DayNumber, slot.SlotNumber)
+			for _, invigilation := range invigilations {
+				color.Red.Printf("%d, ", invigilation.InvigilatorID)
+			}
+		}
+
+		for _, room := range rooms {
+			if room == "No Room" {
+				continue
+			}
+			invigilations, err := p.dbClient.GetInvigilationInSlot(ctx, room, slot.DayNumber, slot.SlotNumber)
+			if err != nil {
+				log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Str("room", room).
+					Msg("cannot get reserve invigilator")
+			}
+			if len(invigilations) == 0 {
+				roomWithoutInvigilator += 1
+			} else if len(invigilations) > 1 {
+				color.Red.Printf("more than one invigilator for room %s in slot (%d,%d): ", room,
+					slot.DayNumber, slot.SlotNumber)
+				for _, invigilation := range invigilations {
+					color.Red.Printf("%d, ", invigilation.InvigilatorID)
+				}
+			}
+		}
+
+	}
+
+	if roomWithoutInvigilator > 0 {
+		color.Red.Printf("%d rooms without invigilator\n", roomWithoutInvigilator)
+	}
+	if slotWithoutReserve > 0 {
+		color.Red.Printf("%d slots without reserve\n", slotWithoutReserve)
 	}
 
 	return nil

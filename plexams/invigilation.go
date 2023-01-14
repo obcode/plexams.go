@@ -8,7 +8,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) AddReserveInvigilation(ctx context.Context, day, slot, invigilatorID int) error {
+func (p *Plexams) GetInvigilatorInSlot(ctx context.Context, roomname string, day, time int) (*model.Teacher, error) {
+	return p.dbClient.GetInvigilatorInSlot(ctx, roomname, day, time)
+}
+
+func (p *Plexams) AddInvigilation(ctx context.Context, room string, day, slot, invigilatorID int) error {
 	invigilator, err := p.GetInvigilator(ctx, invigilatorID)
 	if err != nil {
 		return err
@@ -19,14 +23,14 @@ func (p *Plexams) AddReserveInvigilation(ctx context.Context, day, slot, invigil
 		return err
 	}
 	if len(examsInSlot) == 0 {
-		return fmt.Errorf("need no reserve in slot without exams")
+		return fmt.Errorf("need no invigilation in slot without exams")
 	}
 
 	// check constraints
 	// excluded day
 	for _, excludedDay := range invigilator.Requirements.ExcludedDays {
 		if day == excludedDay {
-			return fmt.Errorf("cannot add reserve on excluded day for %s", invigilator.Teacher.Shortname)
+			return fmt.Errorf("cannot add invigilation on excluded day for %s", invigilator.Teacher.Shortname)
 		}
 	}
 	// no exam in same slot
@@ -36,11 +40,11 @@ func (p *Plexams) AddReserveInvigilation(ctx context.Context, day, slot, invigil
 	}
 	for _, exam := range exams {
 		if exam.Slot.DayNumber == day && exam.Slot.SlotNumber == slot {
-			return fmt.Errorf("cannot add reserve, %s has own exam in slot", invigilator.Teacher.Shortname)
+			return fmt.Errorf("cannot add invigilation, %s has own exam in slot", invigilator.Teacher.Shortname)
 		}
 	}
 	// add to DB
-	return p.dbClient.AddReserveInvigilation(context.Background(), day, slot, invigilatorID)
+	return p.dbClient.AddInvigilation(context.Background(), room, day, slot, invigilatorID)
 }
 
 func (p *Plexams) GetInvigilator(ctx context.Context, invigilatorID int) (*model.Invigilator, error) {

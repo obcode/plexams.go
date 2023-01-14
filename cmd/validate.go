@@ -20,7 +20,7 @@ var (
 	constraints --- check if constraints hold
 	rooms       --- check room constraints
 	zpa         --- check if the plan on ZPA is the same here
-	invigilations [reqs]
+	invigilations [reqs|slots]
 
 	
 	-s <seconds> --- sleep <seconds> and validate again`,
@@ -61,11 +61,15 @@ var (
 				if len(args) == 1 {
 					validate([]func() error{
 						plexams.ValidateInvigilatorRequirements,
+						plexams.ValidateInvigilatorSlots,
 					})
 				} else {
 					switch args[1] {
 					case "reqs":
 						validate([]func() error{plexams.ValidateInvigilatorRequirements})
+
+					case "slots":
+						validate([]func() error{plexams.ValidateInvigilatorSlots})
 					}
 				}
 

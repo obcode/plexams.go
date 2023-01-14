@@ -29,7 +29,22 @@ func (db *DB) GetInvigilatorRequirements(ctx context.Context, teacherID int) (*z
 }
 
 func (db *DB) GetInvigilatorForRoom(ctx context.Context, name string, day, time int) (*model.Teacher, error) {
-	collection := db.getCollectionSemester(collectionSelfInvigilations)
+	self, err := db.getInvigilatorForRoom(ctx, collectionSelfInvigilations, name, day, time)
+	if err != nil {
+		return nil, err
+	}
+	if self != nil {
+		return self, nil
+	}
+	other, err := db.getInvigilatorForRoom(ctx, collectionOtherInvigilations, name, day, time)
+	if err != nil {
+		return nil, err
+	}
+	return other, nil
+}
+
+func (db *DB) getInvigilatorForRoom(ctx context.Context, collectionName, name string, day, time int) (*model.Teacher, error) {
+	collection := db.getCollectionSemester(collectionName)
 
 	filter := bson.M{
 		"$and": []bson.M{

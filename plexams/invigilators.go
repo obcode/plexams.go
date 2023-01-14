@@ -389,7 +389,7 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 		return nil, err
 	}
 
-	reserve, err := p.dbClient.ReserveForSlot(ctx, day, time)
+	reserve, err := p.dbClient.GetInvigilatorInSlot(ctx, "reserve", day, time)
 	if err != nil {
 		log.Error().Err(err).Int("day", day).Int("time", time).
 			Msg("cannot get reserve for slot")

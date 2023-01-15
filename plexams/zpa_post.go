@@ -103,7 +103,7 @@ func noZPAStudRegError(zpaStudentRegError *model.ZPAStudentRegError) bool {
 		len(zpaStudentRegError.Program) == 0
 }
 
-func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilators bool) ([]*model.ZPAExamPlan, error) {
+func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, upload bool) ([]*model.ZPAExamPlan, error) {
 	if err := p.SetZPA(); err != nil {
 		return nil, err
 	}
@@ -140,6 +140,17 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilato
 		}
 
 		var rooms []*model.ZPAExamPlanRoom
+		reserveInvigilatorID := 0
+		if withInvigilators {
+			invigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", slot.DayNumber, slot.SlotNumber)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).
+					Msg("cannot get reserve invigilator for slot")
+				return nil, err
+			}
+			reserveInvigilatorID = invigilator.ID
+		}
+
 		if withRooms {
 			roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
 			if err != nil {
@@ -151,17 +162,30 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilato
 						if roomForAncode.RoomName == "No Room" {
 							continue
 						}
+
+						invigilatorID := 0
+						if withInvigilators {
+							invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, slot.DayNumber, slot.SlotNumber)
+							if err != nil {
+								log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Str("room", roomForAncode.RoomName).
+									Msg("cannot get invigilator for room")
+								return nil, err
+							}
+							invigilatorID = invigilator.ID
+						}
+
 						roomName := roomForAncode.RoomName
 						if strings.HasPrefix(roomName, "ONLINE") {
 							roomName = "ONLINE"
 						}
 
 						rooms = append(rooms, &model.ZPAExamPlanRoom{
-							RoomName:     roomName,
-							Duration:     roomForAncode.Duration,
-							IsReserve:    roomForAncode.Reserve,
-							StudentCount: roomForAncode.SeatsPlanned,
-							IsHandicap:   roomForAncode.Handicap,
+							RoomName:      roomName,
+							InvigilatorID: invigilatorID,
+							Duration:      roomForAncode.Duration,
+							IsReserve:     roomForAncode.Reserve,
+							StudentCount:  roomForAncode.SeatsPlanned,
+							IsHandicap:    roomForAncode.Handicap,
 						})
 					}
 				}
@@ -174,19 +198,23 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms bool, withInvigilato
 			Date:                 timeForAncode.Format("02.01.2006"),
 			Time:                 timeForAncode.Format("15:04"),
 			StudentCount:         studentCount,
-			ReserveInvigilatorID: 0,
+			ReserveInvigilatorID: reserveInvigilatorID,
 			Rooms:                rooms,
 		})
 	}
 
-	// post to ZPA
-	status, body, err := p.zpa.client.PostExams(exams)
-	if err != nil {
-		log.Error().Err(err).Msg("error while posting exams on zpa")
-	}
+	if upload {
+		// post to ZPA
+		status, body, err := p.zpa.client.PostExams(exams)
+		if err != nil {
+			log.Error().Err(err).Msg("error while posting exams on zpa")
+		}
 
-	log.Info().Str("status", status).Msg("exams posted to zpa")
-	fmt.Println(string(body))
+		log.Info().Str("status", status).Msg("exams posted to zpa")
+		fmt.Println(string(body))
+	} else {
+		log.Info().Msg("not uploaded to zpa")
+	}
 
 	return exams, err
 }

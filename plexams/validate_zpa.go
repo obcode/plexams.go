@@ -122,6 +122,73 @@ func (p *Plexams) ValidateZPARooms() error {
 	return nil
 }
 
+func (p *Plexams) ValidateZPAInvigilators() error {
+	ctx := context.Background()
+	plannedExamsFromZPA, err := p.zpa.client.GetPlannedExams()
+	if err != nil {
+		return err
+	}
+
+	plannedExams, err := p.ExamsInPlan(ctx)
+	if err != nil {
+		return err
+	}
+
+	problems := 0
+
+	// check if plexams data is on zpa
+	for _, plannedExam := range plannedExams {
+		roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, plannedExam.Exam.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", plannedExam.Exam.Ancode).Msg("cannot get planned rooms for ancode")
+			problems++
+		}
+		reserveInvigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", plannedExam.Slot.DayNumber, plannedExam.Slot.SlotNumber)
+		if err != nil {
+			log.Error().Err(err).Int("day", plannedExam.Slot.DayNumber).Int("slot", plannedExam.Slot.SlotNumber).
+				Msg("cannot get reserve invigilator for slot")
+			problems++
+		}
+		for _, room := range roomsForAncode {
+			if room.RoomName == "No Room" {
+				continue
+			}
+			invigilator, err := p.GetInvigilatorInSlot(ctx, room.RoomName, plannedExam.Slot.DayNumber, plannedExam.Slot.SlotNumber)
+			if err != nil {
+				log.Error().Err(err).Int("day", plannedExam.Slot.DayNumber).Int("slot", plannedExam.Slot.SlotNumber).
+					Msg("cannot get reserve invigilator for slot")
+				problems++
+			}
+			found := false
+			for _, zpaExam := range plannedExamsFromZPA {
+				if room.Ancode == zpaExam.Ancode &&
+					roomNameOK(room.RoomName, zpaExam.RoomName) &&
+					zpaExam.ReserveSupervisor == reserveInvigilator.Shortname &&
+					zpaExam.Supervisor == invigilator.Shortname {
+					found = true
+					break
+				}
+			}
+			if !found {
+				problems++
+				color.Red.Printf("supervisor or reserve supervisor not found in ZPA\n   %+v\n", room)
+			}
+		}
+
+	}
+
+	if problems == 0 {
+		color.Green.Println("all invigilators planned found in zpa")
+	}
+
+	// TODO: check if zpa data is in plexams
+	// for _, zpaExam := range plannedExamsFromZPA {
+
+	// }
+
+	return nil
+}
+
 func roomNameOK(roomPlexams, roomZPA string) bool {
 	return roomPlexams == roomZPA ||
 		(strings.HasPrefix(roomPlexams, "ONLINE") && roomZPA == "ONLINE")

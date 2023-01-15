@@ -46,12 +46,21 @@ var (
 				validate([]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam})
 
 			case "zpa":
+				fmt.Println("validating zpa dates and times")
 				err := plexams.ValidateZPADateTimes()
 				if err != nil {
 					log.Fatal(err)
 				}
-				if Rooms {
+				if Rooms || Invigilators {
+					fmt.Println("validating zpa rooms")
 					err := plexams.ValidateZPARooms()
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+				if Invigilators {
+					fmt.Println("validating zpa invigilators")
+					err := plexams.ValidateZPAInvigilators()
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -78,9 +87,10 @@ var (
 			}
 		},
 	}
-	Sleep int
-	Clear bool
-	Rooms bool
+	Sleep        int
+	Clear        bool
+	Rooms        bool
+	Invigilators bool
 )
 
 func validate(funcs []func() error) {
@@ -109,4 +119,5 @@ func init() {
 	validateCmd.Flags().IntVarP(&Sleep, "sleep", "s", 0, "sleep [s] seconds and validate again")
 	validateCmd.Flags().BoolVarP(&Clear, "clear", "c", false, "clear screen before output")
 	validateCmd.Flags().BoolVarP(&Rooms, "room", "r", false, "validate zpa rooms")
+	validateCmd.Flags().BoolVarP(&Invigilators, "invigilators", "i", false, "validate zpa invigilators")
 }

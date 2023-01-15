@@ -59,14 +59,28 @@ var (
 				fmt.Printf("%d successfully imported, %d errors\n", count, len(regsWithErrors))
 
 			case "upload-plan":
-				// TODO: --rooms --invigilators
 				if len(jsonOutputFile) == 0 {
 					jsonOutputFile = "plan.json"
 					if withRooms {
 						jsonOutputFile = "planWithRooms.json"
 					}
+					if withInvigilators {
+						jsonOutputFile = "planWithInvigilators.json"
+					}
 				}
-				examsPosted, err := plexams.UploadPlan(context.Background(), withRooms, false)
+				if withInvigilators {
+					withRooms = true
+				}
+				upload := !dryrun
+				if upload {
+					upload = confirm("really upload to zpa?", 1)
+				}
+
+				if upload {
+					fmt.Println("ok, uploading to zpa")
+				}
+
+				examsPosted, err := plexams.UploadPlan(context.Background(), withRooms, withInvigilators, upload)
 				if err != nil {
 					log.Fatal().Err(err).Msg("cannot upload plan")
 				}
@@ -79,7 +93,7 @@ var (
 				if err != nil {
 					log.Error().Err(err).Msg("cannot write exams to file")
 				} else {
-					fmt.Printf("successfully uploaded, saved copy to %s\n", jsonOutputFile)
+					fmt.Printf(" saved copy to %s\n", jsonOutputFile)
 				}
 
 			default:
@@ -87,12 +101,16 @@ var (
 			}
 		},
 	}
-	jsonOutputFile string
-	withRooms      bool
+	jsonOutputFile   string
+	withRooms        bool
+	withInvigilators bool
+	dryrun           bool
 )
 
 func init() {
 	rootCmd.AddCommand(zpaCmd)
 	zpaCmd.Flags().StringVarP(&jsonOutputFile, "out", "o", "", "output (json) file")
 	zpaCmd.Flags().BoolVarP(&withRooms, "rooms", "r", false, "upload with planned rooms")
+	zpaCmd.Flags().BoolVarP(&withInvigilators, "invigilators", "i", false, "upload with planned invigilators (implies rooms)")
+	zpaCmd.Flags().BoolVarP(&withInvigilators, "dryrun", "d", false, "do not upload to zpa")
 }

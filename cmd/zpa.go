@@ -59,6 +59,9 @@ var (
 				fmt.Printf("%d successfully imported, %d errors\n", count, len(regsWithErrors))
 
 			case "upload-plan":
+
+				// TODO: immer gleich validieren
+				// TODO: Wenn mehrere NTAs im gleichen Raum mit gleicher Zeit wird der Raum im ZPA nur einmal angezeigt => Räume zusammenfassen
 				if len(jsonOutputFile) == 0 {
 					jsonOutputFile = "plan.json"
 					if withRooms {

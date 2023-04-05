@@ -18,6 +18,7 @@ type Mutation {
   placesWithSockets(ancode: Int!): Boolean!
   lab(ancode: Int!): Boolean!
   exahmRooms(ancode: Int!): Boolean!
+  seb(ancode: Int!): Boolean!
   online(ancode: Int!): Boolean!
   # Plan
   addExamGroupToSlot(day: Int!, time: Int!, examGroupCode: Int!): Boolean!

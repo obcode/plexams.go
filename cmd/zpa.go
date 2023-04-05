@@ -100,7 +100,7 @@ var (
 				}
 
 			default:
-				fmt.Println("zpa called with unkown sub command")
+				fmt.Println("zpa called with unknown sub command")
 			}
 		},
 	}

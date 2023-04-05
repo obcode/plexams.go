@@ -149,7 +149,7 @@ var (
 				}
 
 			default:
-				fmt.Println("prepare called with unkown sub command")
+				fmt.Println("prepare called with unknown sub command")
 			}
 		},
 	}

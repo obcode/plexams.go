@@ -30,8 +30,8 @@ type AnCode struct {
 }
 
 type ConflictPerProgram struct {
-	Program  string      `json:"program"`
-	Conflics []*Conflict `json:"conflics"`
+	Program   string      `json:"program"`
+	Conflicts []*Conflict `json:"conflicts"`
 }
 
 type ConnectedExam struct {
@@ -235,6 +235,7 @@ type Room struct {
 	PlacesWithSocket bool   `json:"placesWithSocket"`
 	NeedsRequest     bool   `json:"needsRequest"`
 	Exahm            bool   `json:"exahm"`
+	Seb              bool   `json:"seb"`
 }
 
 type RoomAndExam struct {
@@ -246,6 +247,7 @@ type RoomConstraints struct {
 	PlacesWithSocket bool `json:"placesWithSocket"`
 	Lab              bool `json:"lab"`
 	ExahmRooms       bool `json:"exahmRooms"`
+	Seb              bool `json:"seb"`
 }
 
 type RoomForExamInput struct {

@@ -319,14 +319,17 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 			}
 
 			if constraints.RoomConstraints != nil {
+				if constraints.RoomConstraints.Seb {
+					contents = append(contents, []string{"", "", "", "", "", "SafeExamBrowser"})
+				}
 				if constraints.RoomConstraints.ExahmRooms {
-					contents = append(contents, []string{"", "", "", "", "", "benötigt EXaHM-Raum"})
+					contents = append(contents, []string{"", "", "", "", "", "EXaHM"})
 				}
 				if constraints.RoomConstraints.Lab {
-					contents = append(contents, []string{"", "", "", "", "", "benötigt Labor"})
+					contents = append(contents, []string{"", "", "", "", "", "Labor"})
 				}
 				if constraints.RoomConstraints.PlacesWithSocket {
-					contents = append(contents, []string{"", "", "", "", "", "benötigt Steckdosen an den Sitzplätzen"})
+					contents = append(contents, []string{"", "", "", "", "", "Steckdosen an den Sitzplätzen"})
 				}
 			}
 

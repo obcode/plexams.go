@@ -133,7 +133,7 @@ var primussCmd = &cobra.Command{
 			color.Green.Println("\n>>> please re-run `plexams.go prepare studentregs`")
 
 		default:
-			fmt.Println("primuss called with unkown sub command")
+			fmt.Println("primuss called with unknown sub command")
 		}
 	},
 }

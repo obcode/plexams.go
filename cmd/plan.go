@@ -121,7 +121,7 @@ var (
 				}
 
 			default:
-				fmt.Println("plan called with unkown sub command")
+				fmt.Println("plan called with unknown sub command")
 			}
 		},
 	}

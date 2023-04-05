@@ -83,7 +83,7 @@ var (
 				}
 
 			default:
-				fmt.Println("validate called with unkown sub command")
+				fmt.Println("validate called with unknown sub command")
 			}
 		},
 	}

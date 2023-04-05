@@ -94,7 +94,7 @@ var (
 				}
 
 			default:
-				fmt.Println("pdf called with unkown sub command")
+				fmt.Println("pdf called with unknown sub command")
 			}
 		},
 	}

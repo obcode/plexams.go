@@ -263,6 +263,37 @@ func (db *DB) ExahmRooms(ctx context.Context, ancode int) (bool, error) {
 	return true, nil
 }
 
+func (db *DB) SafeExamBrowser(ctx context.Context, ancode int) (bool, error) {
+	constraint, err := db.GetConstraintsForAncode(ctx, ancode)
+	if err != nil {
+		return false, err
+	}
+	update := false
+	if constraint == nil {
+		constraint = &model.Constraints{Ancode: ancode}
+	} else {
+		update = true
+	}
+
+	if constraint.RoomConstraints == nil {
+		constraint.RoomConstraints = &model.RoomConstraints{}
+	}
+
+	constraint.RoomConstraints.Seb = true
+
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	if update {
+		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
+	} else {
+		_, err = collection.InsertOne(ctx, constraint)
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (db *DB) GetConstraintsForAncode(ctx context.Context, ancode int) (*model.Constraints, error) {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
 

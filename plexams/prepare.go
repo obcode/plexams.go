@@ -180,8 +180,8 @@ func (p *Plexams) PrepareExamsWithRegs() error {
 					Msg("cannot get conflicts")
 			}
 			conflicts = append(conflicts, &model.ConflictPerProgram{
-				Program:  studRegs.Program,
-				Conflics: conflictsProgAncode.Conflicts,
+				Program:   studRegs.Program,
+				Conflicts: conflictsProgAncode.Conflicts,
 			})
 		}
 

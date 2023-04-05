@@ -211,7 +211,7 @@ func (p *Plexams) prepareExamGroup(examGroupCode int, ancodesToGroup, ancodesToP
 	programs = removeDuplicates(programs)
 	sort.Strings(programs)
 
-	// TODO: if excludeDays and possibleDays, do they still work togehter?
+	// TODO: if excludeDays and possibleDays, do they still work together?
 	// TODO: if fixedDay || fixedTime => does excludeDays and possibleDays hold?
 	// TODO: only calculate possibleSlots?
 
@@ -254,7 +254,7 @@ func calculateExamGroupConflicts(groups []*model.ExamGroup) {
 		conflictsMap := make(map[int]int) // examGroupCode -> count
 		for _, examToPlan := range group.Exams {
 			for _, conflictsProgram := range examToPlan.Exam.Conflicts {
-				for _, conflicts := range conflictsProgram.Conflics {
+				for _, conflicts := range conflictsProgram.Conflicts {
 					conflictGroup := groupCode[conflicts.AnCode]
 					count, ok := conflictsMap[conflictGroup]
 					if !ok {

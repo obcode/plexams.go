@@ -67,8 +67,8 @@ type ComplexityRoot struct {
 	}
 
 	ConflictPerProgram struct {
-		Conflics func(childComplexity int) int
-		Program  func(childComplexity int) int
+		Conflicts func(childComplexity int) int
+		Program   func(childComplexity int) int
 	}
 
 	Conflicts struct {
@@ -242,6 +242,7 @@ type ComplexityRoot struct {
 		RmExamGroupFromSlot func(childComplexity int, examGroupCode int) int
 		RmZpaExamFromPlan   func(childComplexity int, ancode int, unknown bool) int
 		SameSlot            func(childComplexity int, ancode int, ancodes []int) int
+		Seb                 func(childComplexity int, ancode int) int
 		SetSemester         func(childComplexity int, input string) int
 		ZpaExamsToPlan      func(childComplexity int, input []int) int
 	}
@@ -380,6 +381,7 @@ type ComplexityRoot struct {
 		NeedsRequest     func(childComplexity int) int
 		PlacesWithSocket func(childComplexity int) int
 		Seats            func(childComplexity int) int
+		Seb              func(childComplexity int) int
 	}
 
 	RoomAndExam struct {
@@ -391,6 +393,7 @@ type ComplexityRoot struct {
 		ExahmRooms       func(childComplexity int) int
 		Lab              func(childComplexity int) int
 		PlacesWithSocket func(childComplexity int) int
+		Seb              func(childComplexity int) int
 	}
 
 	RoomForExam struct {
@@ -554,6 +557,7 @@ type MutationResolver interface {
 	PlacesWithSockets(ctx context.Context, ancode int) (bool, error)
 	Lab(ctx context.Context, ancode int) (bool, error)
 	ExahmRooms(ctx context.Context, ancode int) (bool, error)
+	Seb(ctx context.Context, ancode int) (bool, error)
 	Online(ctx context.Context, ancode int) (bool, error)
 	AddExamGroupToSlot(ctx context.Context, day int, time int, examGroupCode int) (bool, error)
 	RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool, error)
@@ -710,12 +714,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Conflict.NumberOfStuds(childComplexity), true
 
-	case "ConflictPerProgram.conflics":
-		if e.complexity.ConflictPerProgram.Conflics == nil {
+	case "ConflictPerProgram.conflicts":
+		if e.complexity.ConflictPerProgram.Conflicts == nil {
 			break
 		}
 
-		return e.complexity.ConflictPerProgram.Conflics(childComplexity), true
+		return e.complexity.ConflictPerProgram.Conflicts(childComplexity), true
 
 	case "ConflictPerProgram.program":
 		if e.complexity.ConflictPerProgram.Program == nil {
@@ -1579,6 +1583,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.SameSlot(childComplexity, args["ancode"].(int), args["ancodes"].([]int)), true
 
+	case "Mutation.seb":
+		if e.complexity.Mutation.Seb == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_seb_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.Seb(childComplexity, args["ancode"].(int)), true
+
 	case "Mutation.setSemester":
 		if e.complexity.Mutation.SetSemester == nil {
 			break
@@ -2428,6 +2444,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Room.Seats(childComplexity), true
 
+	case "Room.seb":
+		if e.complexity.Room.Seb == nil {
+			break
+		}
+
+		return e.complexity.Room.Seb(childComplexity), true
+
 	case "RoomAndExam.exam":
 		if e.complexity.RoomAndExam.Exam == nil {
 			break
@@ -2462,6 +2485,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RoomConstraints.PlacesWithSocket(childComplexity), true
+
+	case "RoomConstraints.seb":
+		if e.complexity.RoomConstraints.Seb == nil {
+			break
+		}
+
+		return e.complexity.RoomConstraints.Seb(childComplexity), true
 
 	case "RoomForExam.ancode":
 		if e.complexity.RoomForExam.Ancode == nil {
@@ -3167,6 +3197,7 @@ type RoomConstraints {
   placesWithSocket: Boolean!
   lab: Boolean!
   exahmRooms: Boolean!
+  seb: Boolean!
 }
 
 type ExamToPlan {
@@ -3282,6 +3313,7 @@ type RoomWithInvigilator {
   placesWithSockets(ancode: Int!): Boolean!
   lab(ancode: Int!): Boolean!
   exahmRooms(ancode: Int!): Boolean!
+  seb(ancode: Int!): Boolean!
   online(ancode: Int!): Boolean!
   # Plan
   addExamGroupToSlot(day: Int!, time: Int!, examGroupCode: Int!): Boolean!
@@ -3444,7 +3476,7 @@ type Conflict {
 
 type ConflictPerProgram {
   program: String!
-  conflics: [Conflict!]!
+  conflicts: [Conflict!]!
 }
 
 type ConnectedExam {
@@ -3538,6 +3570,7 @@ type ConnectedExam {
   placesWithSocket: Boolean!
   needsRequest: Boolean!
   exahm: Boolean!
+  seb: Boolean!
 }
 
 type SlotWithRooms {
@@ -3996,6 +4029,21 @@ func (ec *executionContext) field_Mutation_sameSlot_args(ctx context.Context, ra
 		}
 	}
 	args["ancodes"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_seb_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["ancode"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["ancode"] = arg0
 	return args, nil
 }
 
@@ -5049,8 +5097,8 @@ func (ec *executionContext) fieldContext_ConflictPerProgram_program(ctx context.
 	return fc, nil
 }
 
-func (ec *executionContext) _ConflictPerProgram_conflics(ctx context.Context, field graphql.CollectedField, obj *model.ConflictPerProgram) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ConflictPerProgram_conflics(ctx, field)
+func (ec *executionContext) _ConflictPerProgram_conflicts(ctx context.Context, field graphql.CollectedField, obj *model.ConflictPerProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConflictPerProgram_conflicts(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -5063,7 +5111,7 @@ func (ec *executionContext) _ConflictPerProgram_conflics(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Conflics, nil
+		return obj.Conflicts, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5080,7 +5128,7 @@ func (ec *executionContext) _ConflictPerProgram_conflics(ctx context.Context, fi
 	return ec.marshalNConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ConflictPerProgram_conflics(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ConflictPerProgram_conflicts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ConflictPerProgram",
 		Field:      field,
@@ -5896,6 +5944,8 @@ func (ec *executionContext) fieldContext_Constraints_roomConstraints(ctx context
 				return ec.fieldContext_RoomConstraints_lab(ctx, field)
 			case "exahmRooms":
 				return ec.fieldContext_RoomConstraints_exahmRooms(ctx, field)
+			case "seb":
+				return ec.fieldContext_RoomConstraints_seb(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RoomConstraints", field.Name)
 		},
@@ -7322,8 +7372,8 @@ func (ec *executionContext) fieldContext_ExamWithRegs_conflicts(ctx context.Cont
 			switch field.Name {
 			case "program":
 				return ec.fieldContext_ConflictPerProgram_program(ctx, field)
-			case "conflics":
-				return ec.fieldContext_ConflictPerProgram_conflics(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_ConflictPerProgram_conflicts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ConflictPerProgram", field.Name)
 		},
@@ -10438,6 +10488,61 @@ func (ec *executionContext) fieldContext_Mutation_exahmRooms(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_exahmRooms_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_seb(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_seb(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Seb(rctx, fc.Args["ancode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_seb(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_seb_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -15109,6 +15214,8 @@ func (ec *executionContext) fieldContext_Query_rooms(ctx context.Context, field 
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -15169,6 +15276,8 @@ func (ec *executionContext) fieldContext_Query_roomsWithConstraints(ctx context.
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -16170,6 +16279,50 @@ func (ec *executionContext) fieldContext_Room_exahm(ctx context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _Room_seb(ctx context.Context, field graphql.CollectedField, obj *model.Room) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Room_seb(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seb, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Room_seb(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Room",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RoomAndExam_room(ctx context.Context, field graphql.CollectedField, obj *model.RoomAndExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoomAndExam_room(ctx, field)
 	if err != nil {
@@ -16430,6 +16583,50 @@ func (ec *executionContext) fieldContext_RoomConstraints_exahmRooms(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _RoomConstraints_seb(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomConstraints_seb(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seb, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomConstraints_seb(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RoomForExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.RoomForExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoomForExam_ancode(ctx, field)
 	if err != nil {
@@ -16524,6 +16721,8 @@ func (ec *executionContext) fieldContext_RoomForExam_room(ctx context.Context, f
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -17657,6 +17856,8 @@ func (ec *executionContext) fieldContext_SlotWithRooms_normalRooms(ctx context.C
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -17717,6 +17918,8 @@ func (ec *executionContext) fieldContext_SlotWithRooms_exahmRooms(ctx context.Co
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -17777,6 +17980,8 @@ func (ec *executionContext) fieldContext_SlotWithRooms_labRooms(ctx context.Cont
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -17837,6 +18042,8 @@ func (ec *executionContext) fieldContext_SlotWithRooms_ntaRooms(ctx context.Cont
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -22559,9 +22766,9 @@ func (ec *executionContext) _ConflictPerProgram(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "conflics":
+		case "conflicts":
 
-			out.Values[i] = ec._ConflictPerProgram_conflics(ctx, field, obj)
+			out.Values[i] = ec._ConflictPerProgram_conflicts(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -23725,6 +23932,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_exahmRooms(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "seb":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_seb(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -25535,6 +25751,13 @@ func (ec *executionContext) _Room(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "seb":
+
+			out.Values[i] = ec._Room_seb(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -25608,6 +25831,13 @@ func (ec *executionContext) _RoomConstraints(ctx context.Context, sel ast.Select
 		case "exahmRooms":
 
 			out.Values[i] = ec._RoomConstraints_exahmRooms(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "seb":
+
+			out.Values[i] = ec._RoomConstraints_seb(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++

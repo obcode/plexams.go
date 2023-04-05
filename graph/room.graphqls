@@ -6,6 +6,7 @@ type Room {
   placesWithSocket: Boolean!
   needsRequest: Boolean!
   exahm: Boolean!
+  seb: Boolean!
 }
 
 type SlotWithRooms {

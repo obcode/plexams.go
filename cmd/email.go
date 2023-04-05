@@ -24,7 +24,7 @@ nta --- send emails to teachers about nta.`,
 					log.Fatalf("got error: %v\n", err)
 				}
 			default:
-				fmt.Println("email called with unkown sub command")
+				fmt.Println("email called with unknown sub command")
 			}
 		},
 	}

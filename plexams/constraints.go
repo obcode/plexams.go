@@ -74,6 +74,10 @@ func (p *Plexams) ExahmRooms(ctx context.Context, ancode int) (bool, error) {
 	return p.dbClient.ExahmRooms(ctx, ancode)
 }
 
+func (p *Plexams) SafeExamBrowser(ctx context.Context, ancode int) (bool, error) {
+	return p.dbClient.SafeExamBrowser(ctx, ancode)
+}
+
 func (p *Plexams) PlacesWithSockets(ctx context.Context, ancode int) (bool, error) {
 	return p.dbClient.PlacesWithSockets(ctx, ancode)
 }

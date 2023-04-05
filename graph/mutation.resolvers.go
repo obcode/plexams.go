@@ -86,6 +86,11 @@ func (r *mutationResolver) ExahmRooms(ctx context.Context, ancode int) (bool, er
 	return r.plexams.ExahmRooms(ctx, ancode)
 }
 
+// Seb is the resolver for the seb field.
+func (r *mutationResolver) Seb(ctx context.Context, ancode int) (bool, error) {
+	return r.plexams.SafeExamBrowser(ctx, ancode)
+}
+
 // Online is the resolver for the online field.
 func (r *mutationResolver) Online(ctx context.Context, ancode int) (bool, error) {
 	return r.plexams.Online(ctx, ancode)

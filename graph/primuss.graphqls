@@ -42,7 +42,7 @@ type Conflict {
 
 type ConflictPerProgram {
   program: String!
-  conflics: [Conflict!]!
+  conflicts: [Conflict!]!
 }
 
 type ConnectedExam {

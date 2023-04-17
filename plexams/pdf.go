@@ -306,6 +306,19 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 				contents = append(contents, []string{"", "", "", "", "", fmt.Sprintf("Nicht am %s", dayString)})
 			}
 
+			if constraints.PossibleDays != nil && len(constraints.PossibleDays) > 0 {
+				dayString := ""
+				for i, day := range constraints.PossibleDays {
+					if i == 0 {
+						dayString = day.Local().Format("02.01.06")
+					} else {
+						dayString = fmt.Sprintf("%s, %s", dayString, day.Local().Format("02.01.06"))
+					}
+				}
+
+				contents = append(contents, []string{"", "", "", "", "", fmt.Sprintf("Möglich am %s", dayString)})
+			}
+
 			if constraints.SameSlot != nil && len(constraints.SameSlot) > 0 {
 				for _, sameSlotAncode := range constraints.SameSlot {
 					otherExam, err := p.GetZpaExamByAncode(ctx, sameSlotAncode)

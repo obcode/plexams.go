@@ -256,7 +256,7 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 	m.Row(12, func() {
 		m.Col(12, func() {
 			m.Text(
-				`Beachten Sie dabei, dass es zwingend notwendig ist Prüfungen eines Moduls in verschiedenen Zügen zeitgleich einzuplanen. Für alle Prüfungen, die hier nicht enthalten sind, sind mir keine Einschränkungen für die Planung bekannt.`, props.Text{
+				`Für alle Prüfungen, die hier nicht enthalten sind, sind mir keine Einschränkungen für die Planung bekannt.`, props.Text{
 					Style: consts.Normal,
 					Align: consts.Center,
 				})

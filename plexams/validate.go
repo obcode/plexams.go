@@ -10,6 +10,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// TODO: Validate if all NTAs have MTKNR
+
 func (p *Plexams) ValidateConflicts() error {
 	ctx := context.Background()
 	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating conflicts   --- ")

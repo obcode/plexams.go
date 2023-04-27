@@ -12,7 +12,7 @@ var (
 	infoCmd = &cobra.Command{
 		Use:   "info [subcommand]",
 		Short: "get info",
-		Long: `Gent info.
+		Long: `Get info.
 goslots --- info about slots for GO/GN.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {

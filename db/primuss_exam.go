@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (db *DB) GetPrimussExamsForAncode(ctx context.Context, ancode int) ([]*model.PrimussExam, error) {
@@ -105,7 +106,10 @@ func (db *DB) getPrimussExams(ctx context.Context, program string) ([]*model.Pri
 
 	exams := make([]*model.PrimussExam, 0)
 
-	cur, err := collection.Find(ctx, bson.M{})
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "AnCode", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("MongoDB Find")
 		return exams, err

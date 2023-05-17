@@ -140,8 +140,9 @@ func (p *Plexams) DraftFk08PDF(ctx context.Context, outfile string) error {
 		})
 	})
 
-	p.tableForProgram(ctx, "GD", "Angewandte Geodäsie und Geoinformatik (GD)", m)
 	p.tableForProgram(ctx, "GN", "Geoinformatik und Navigation (GN)", m)
+	p.tableForProgram(ctx, "GS", "Geodata Science (GS)", m)
+	// p.tableForProgram(ctx, "GD", "Angewandte Geodäsie und Geoinformatik (GD)", m)
 
 	err := m.OutputFileAndClose(outfile)
 	if err != nil {

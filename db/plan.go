@@ -300,6 +300,21 @@ func (db *DB) ExamGroupIsLocked(ctx context.Context, examGroupCode int) bool {
 	return err == nil && p != nil && p.Locked
 }
 
+func (db *DB) RemoveUnlockedExamGroupsFromPlan(ctx context.Context) (int, error) {
+	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+
+	res, err := collection.DeleteMany(ctx, bson.D{{Key: "locked", Value: false}})
+
+	if err != nil {
+		log.Error().Err(err).Msg("error while trying to delete all unlocked exam groups from the plan")
+		return 0, err
+	}
+
+	log.Debug().Int64("count", res.DeletedCount).Msg("deleted exam groups")
+
+	return int(res.DeletedCount), nil
+}
+
 func (db *DB) LockPlan(ctx context.Context) error {
 	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
 

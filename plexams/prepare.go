@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -110,6 +111,10 @@ func (p *Plexams) prepareAllStudentRegs() (
 			if !ok {
 				regs = make(map[string][]*model.StudentReg)
 			}
+
+			sort.Slice(studentRegs, func(i, j int) bool {
+				return studentRegs[i].Name < studentRegs[j].Name
+			})
 			regs[program] = studentRegs
 			studentRegsPerAncode[ancode] = regs
 
@@ -120,6 +125,9 @@ func (p *Plexams) prepareAllStudentRegs() (
 					regs = make([]*model.StudentReg, 0)
 				}
 				regs = append(regs, studentReg)
+				sort.Slice(regs, func(i, j int) bool {
+					return regs[i].AnCode < regs[j].AnCode
+				})
 				studentRegsPerStudent[studentReg.Mtknr] = regs
 			}
 		}

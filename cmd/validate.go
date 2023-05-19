@@ -30,14 +30,14 @@ var (
 			switch args[0] {
 			case "all":
 				validate([]func() error{
-					plexams.ValidateConflicts,
+					func() error { return plexams.ValidateConflicts(OnlyPlannedByMe) },
 					plexams.ValidateConstraints,
 					plexams.ValidateRoomsPerSlot,
 					plexams.ValidateRoomsPerExam,
 				})
 
 			case "conflicts":
-				validate([]func() error{plexams.ValidateConflicts})
+				validate([]func() error{func() error { return plexams.ValidateConflicts(OnlyPlannedByMe) }})
 
 			case "constraints":
 				validate([]func() error{plexams.ValidateConstraints})
@@ -87,10 +87,11 @@ var (
 			}
 		},
 	}
-	Sleep        int
-	Clear        bool
-	Rooms        bool
-	Invigilators bool
+	Sleep           int
+	Clear           bool
+	Rooms           bool
+	Invigilators    bool
+	OnlyPlannedByMe bool
 )
 
 func validate(funcs []func() error) {
@@ -120,4 +121,5 @@ func init() {
 	validateCmd.Flags().BoolVarP(&Clear, "clear", "c", false, "clear screen before output")
 	validateCmd.Flags().BoolVarP(&Rooms, "room", "r", false, "validate zpa rooms")
 	validateCmd.Flags().BoolVarP(&Invigilators, "invigilators", "i", false, "validate zpa invigilators")
+	validateCmd.Flags().BoolVarP(&OnlyPlannedByMe, "onlyplannedbyme", "o", false, "check no conflicts if both exams are not planned by me")
 }

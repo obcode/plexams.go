@@ -19,6 +19,7 @@ var (
 	change-room ancode oldroom newroom    --- change room for [ancode] from [oldroom] to [newroom]
 	lock-examgroup groupcode   --- lock exam group to slot
 	unlock-examgroup groupcode --- unlock / allow moving
+	remove-unlocked            --- remove all unlocked exam groups from the plan
 	lock                       --- lock the whole plan`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -112,6 +113,14 @@ var (
 							exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module)
 					}
 				}
+
+			case "remove-unlocked":
+				count, err := plexams.RemoveUnlockedExamGroupsFromPlan(context.Background())
+				if err != nil {
+					log.Fatalf("error %v", err)
+					os.Exit(1)
+				}
+				fmt.Printf("successfully deleted %d unlocked exam groups from the plan\n", count)
 
 			case "lock":
 				err := plexams.LockPlan(context.Background())

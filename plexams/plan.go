@@ -310,6 +310,10 @@ func (p *Plexams) UnlockExamGroup(ctx context.Context, examGroupCode int) (*mode
 	return planEntry, examGroup, nil
 }
 
+func (p *Plexams) RemoveUnlockedExamGroupsFromPlan(ctx context.Context) (int, error) {
+	return p.dbClient.RemoveUnlockedExamGroupsFromPlan(ctx)
+}
+
 func (p *Plexams) LockPlan(ctx context.Context) error {
 	return p.dbClient.LockPlan(ctx)
 }

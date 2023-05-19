@@ -15,7 +15,7 @@ func (db *DB) GetPrograms(ctx context.Context) ([]string, error) {
 			Key: "name",
 			Value: bson.D{
 				primitive.E{Key: "$regex",
-					Value: primitive.Regex{Pattern: "exams_"},
+					Value: primitive.Regex{Pattern: "exams_..$"},
 				},
 			},
 		}})

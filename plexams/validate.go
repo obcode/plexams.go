@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	set "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/color"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -12,7 +13,7 @@ import (
 
 // TODO: Validate if all NTAs have MTKNR
 
-func (p *Plexams) ValidateConflicts() error {
+func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool) error {
 	ctx := context.Background()
 	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating conflicts   --- ")
 
@@ -22,6 +23,18 @@ func (p *Plexams) ValidateConflicts() error {
 		return err
 	}
 
+	planAncodeEntriesNotPlannedByMe := set.NewSet[int]()
+	for _, entry := range planAncodeEntries {
+		constraints, err := p.dbClient.GetConstraintsForAncode(ctx, entry.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", entry.Ancode).Msg("cannot get constraints for ancode")
+			return err
+		}
+		if constraints != nil && constraints.NotPlannedByMe {
+			planAncodeEntriesNotPlannedByMe.Add(entry.Ancode)
+		}
+	}
+
 	studentRegs, err := p.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get student registries per student")
@@ -29,12 +42,12 @@ func (p *Plexams) ValidateConflicts() error {
 	}
 
 	for _, studentReg := range studentRegs {
-		validateStudentReg(studentReg, planAncodeEntries)
+		validateStudentReg(studentReg, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe)
 	}
 	return nil
 }
 
-func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntries []*model.PlanAncodeEntry) {
+func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntries []*model.PlanAncodeEntry, planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool) {
 	log.Debug().Str("name", studentReg.Student.Name).Str("mtknr", studentReg.Student.Mtknr).Msg("checking regs for student")
 
 	planAncodeEntriesForStudent := make([]*model.PlanAncodeEntry, 0)
@@ -57,6 +70,13 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 			if p[i].DayNumber == p[j].DayNumber &&
 				p[i].SlotNumber == p[j].SlotNumber &&
 				p[i].Ancode == p[j].Ancode {
+				continue
+			}
+			if onlyPlannedByMe &&
+				planAncodeEntriesNotPlannedByMe.Contains(p[i].Ancode) &&
+				planAncodeEntriesNotPlannedByMe.Contains(p[j].Ancode) {
+				log.Debug().Int("ancode1", p[i].Ancode).Int("ancode2", p[j].Ancode).
+					Msg("both ancodes not planned by me")
 				continue
 			}
 			// same slot

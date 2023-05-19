@@ -19,7 +19,7 @@ var (
 	studentregs     --- regs per exam & regs per student           --- step 2
 	nta             --- find NTAs for semester                     --- step 3
 	exams-with-regs --- exams from connected-exams and studentregs --- step 4
-	exam-groups     --- group of exams in the same slot            --- step 5
+	exam-groups     --- group of exams in the same slot            --- step 5 -- according to constraints?
 	partition       --- generate partition of groups               --- step 6
 	
 	Add exam after planning has started:

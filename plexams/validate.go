@@ -13,7 +13,10 @@ import (
 
 // TODO: Validate if all NTAs have MTKNR
 
+var count = 0
+
 func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool) error {
+	count = 0
 	ctx := context.Background()
 	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating conflicts   --- ")
 
@@ -82,7 +85,8 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 			// same slot
 			if p[i].DayNumber == p[j].DayNumber &&
 				p[i].SlotNumber == p[j].SlotNumber {
-				color.Red.Printf("Same slot: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n",
+				count++
+				color.Red.Printf("%3d. Same slot: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n", count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
 					studentReg.Student.Name, studentReg.Student.Program, studentReg.Student.Mtknr,
@@ -92,7 +96,8 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 			if p[i].DayNumber == p[j].DayNumber &&
 				(p[i].SlotNumber+1 == p[j].SlotNumber ||
 					p[i].SlotNumber-1 == p[j].SlotNumber) {
-				color.Red.Printf("Adjacent slots: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n",
+				count++
+				color.Red.Printf("%3d. Adjacent slots: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n", count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
 					studentReg.Student.Name, studentReg.Student.Program, studentReg.Student.Mtknr,
@@ -100,7 +105,8 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 			} else
 			// same day
 			if p[i].DayNumber == p[j].DayNumber {
-				color.Yellow.Printf("Same day: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n",
+				count++
+				color.Yellow.Printf("%3d. Same day: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n", count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
 					studentReg.Student.Name, studentReg.Student.Program, studentReg.Student.Mtknr,

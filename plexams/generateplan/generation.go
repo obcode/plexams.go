@@ -118,9 +118,9 @@ func (algorithm *Algorithm) evaluatePlan(plan *Plan) float64 {
 		}
 
 		// TODO: Think about
-		// if studentsPerSlot > CapasityStudent && examsPerSlot > 1 {
-		// 	sValue += (studentsPerSlot - CapasityStudent) / examsPerSlot
-		// }
+		if studentsPerSlot > algorithm.config.CapacityStudent && examsPerSlot > 1 {
+			sValue += (studentsPerSlot - algorithm.config.CapacityStudent) / examsPerSlot
+		}
 
 		for _, conflict := range exam1.examGroup.ExamGroupInfo.Conflicts {
 			exam2, ok := examsMap[conflict.ExamGroupCode]

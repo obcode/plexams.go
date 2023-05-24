@@ -15,6 +15,7 @@ type AlgorithmConfig struct {
 	Recombination       Recombination
 	SelectivePressure   float64 // = 1.3 // only for ranked_based_selection
 	NoImprovement       int
+	CapacityStudent     int
 }
 
 type Algorithm struct {
@@ -49,6 +50,7 @@ func InitalizeAlgorithm(semesterConfig *model.SemesterConfig, examGroups []*mode
 			Recombination:       rec,
 			SelectivePressure:   sp,
 			NoImprovement:       100,
+			CapacityStudent:     60,
 		},
 		validation: &Validation{
 			sameDay:             5,

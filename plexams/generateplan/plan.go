@@ -4,6 +4,7 @@ import (
 	"math/rand"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 )
 
 type Exam struct {
@@ -51,6 +52,10 @@ func (plan *Plan) validate() bool {
 					if exam1.examGroup.ExamGroupCode != exam2.examGroup.ExamGroupCode {
 						if exam1.day == exam2.day {
 							if exam1.slot-exam2.slot == 1 || exam1.slot == exam2.slot {
+								log.Debug().
+									Int("exam group 1", exam1.examGroup.ExamGroupCode).Int("day1", exam1.day).Int("slot1", exam1.slot).
+									Int("exam group 2", exam2.examGroup.ExamGroupCode).Int("day2", exam2.day).Int("slot2", exam2.slot).
+									Msg("plan is not valid")
 								return false
 							}
 						}

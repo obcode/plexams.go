@@ -18,7 +18,8 @@ var (
 	constraints      --- print constraints
 	draft-muc.dai    --- draft plan for muc.dai exams
 	draft-fk08       --- draft plan for fk08 exams
-	draft-fk10       --- draft plan for fk10 exams`,
+	draft-fk10       --- draft plan for fk10 exams
+	draft-fs         --- draft plan for fs`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()

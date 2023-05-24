@@ -18,6 +18,7 @@ const (
 	collectionNameExamsWithRegs   = "exams_with_regs"
 	collectionNameNTAs            = "nta"
 	collectionNamePlan            = "plan"
+	collectionNamePlanBackup      = "plan_backup"
 
 	collectionStudentRegsPerAncodePlanned  = "studentregs_per_ancode_planned"
 	collectionStudentRegsPerAncodeAll      = "studentregs_per_ancode_all"

@@ -330,3 +330,50 @@ func (db *DB) LockPlan(ctx context.Context) error {
 
 	return nil
 }
+
+func (db *DB) SavePlanEntries(ctx context.Context, planEntries []*model.PlanEntry) error {
+	log.Debug().Msg("saving plan entries to plan")
+	return db.savePlanEntries(ctx, planEntries, false)
+}
+
+func (db *DB) SavePlanEntriesToBackup(ctx context.Context, planEntries []*model.PlanEntry) error {
+	log.Debug().Msg("saving plan entries to backup plan")
+	return db.savePlanEntries(ctx, planEntries, true)
+}
+
+func (db *DB) savePlanEntries(ctx context.Context, planEntries []*model.PlanEntry, backup bool) error {
+	var collection *mongo.Collection
+	if backup {
+		collection = db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlanBackup)
+		err := collection.Drop(ctx)
+		if err != nil {
+			log.Error().Err(err).Msg("cannot drop backup collection")
+		}
+	} else {
+		collection = db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	}
+
+	entries := make([]interface{}, 0, len(planEntries))
+	for _, entry := range planEntries {
+		entries = append(entries, entry)
+	}
+
+	res, err := collection.InsertMany(ctx, entries)
+	if err != nil {
+		log.Error().Err(err).Bool("backup", backup).Msg("cannot insert entries to plan")
+		return err
+	}
+
+	log.Debug().Bool("backup", backup).Int("count", len(res.InsertedIDs)).Msg("inserted entries to plan")
+	return nil
+}
+
+func (db *DB) BackupPlan(ctx context.Context) error {
+	planEntries, err := db.PlanEntries(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get plan entries")
+		return err
+	}
+
+	return db.SavePlanEntriesToBackup(ctx, planEntries)
+}

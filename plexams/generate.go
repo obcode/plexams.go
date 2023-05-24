@@ -10,6 +10,12 @@ import (
 
 func (p *Plexams) GeneratePlan(ctx context.Context) error {
 
+	err := p.dbClient.BackupPlan(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot backup existing plan")
+		return err
+	}
+
 	// plan only not yet planned exam groups
 	allExamGroups, err := p.dbClient.ExamGroups(ctx)
 	if err != nil {
@@ -57,6 +63,8 @@ func (p *Plexams) GeneratePlan(ctx context.Context) error {
 		return err
 	}
 
+	newPlanEntries := make([]*model.PlanEntry, 0)
+
 	for _, entry := range plan {
 		planEntry, err := p.dbClient.PlanEntryForExamGroup(ctx, entry.ExamGroupCode)
 		if err != nil {
@@ -72,10 +80,10 @@ func (p *Plexams) GeneratePlan(ctx context.Context) error {
 			}
 
 		} else {
-			// TODO: push into db
-			log.Debug().Interface("entry", entry).Msg("found slot for exam group")
+			newPlanEntries = append(newPlanEntries, entry)
+			log.Debug().Interface("planentry", entry).Msg("generated new entry")
 		}
 	}
 
-	return nil
+	return p.dbClient.SavePlanEntries(ctx, newPlanEntries)
 }

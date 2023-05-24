@@ -20,71 +20,69 @@ var (
 	constraints --- check if constraints hold
 	rooms       --- check room constraints
 	zpa         --- check if the plan on ZPA is the same here
-	invigilations [reqs|slots]
+	invigilator-reqs
+	invigilator-slots
 
-	
 	-s <seconds> --- sleep <seconds> and validate again`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
-			switch args[0] {
-			case "all":
-				validate([]func() error{
-					func() error { return plexams.ValidateConflicts(OnlyPlannedByMe) },
-					plexams.ValidateConstraints,
-					plexams.ValidateRoomsPerSlot,
-					plexams.ValidateRoomsPerExam,
-				})
 
-			case "conflicts":
-				validate([]func() error{func() error { return plexams.ValidateConflicts(OnlyPlannedByMe) }})
+			validations := make([]func() error, 0)
+			for _, arg := range args {
+				switch arg {
+				case "all":
+					validations = append(validations, []func() error{
+						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe) },
+						plexams.ValidateConstraints,
+						plexams.ValidateRoomsPerSlot,
+						plexams.ValidateRoomsPerExam,
+					}...)
 
-			case "constraints":
-				validate([]func() error{plexams.ValidateConstraints})
+				case "conflicts":
+					validations = append(validations,
+						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe) },
+					)
 
-			case "rooms":
-				validate([]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam})
+				case "constraints":
+					validations = append(validations, plexams.ValidateConstraints)
 
-			case "zpa":
-				fmt.Println("validating zpa dates and times")
-				err := plexams.ValidateZPADateTimes()
-				if err != nil {
-					log.Fatal(err)
-				}
-				if Rooms || Invigilators {
-					fmt.Println("validating zpa rooms")
-					err := plexams.ValidateZPARooms()
+				case "rooms":
+					validations = append(validations,
+						[]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam}...)
+
+				case "zpa":
+					fmt.Println("validating zpa dates and times")
+					err := plexams.ValidateZPADateTimes()
 					if err != nil {
 						log.Fatal(err)
 					}
-				}
-				if Invigilators {
-					fmt.Println("validating zpa invigilators")
-					err := plexams.ValidateZPAInvigilators()
-					if err != nil {
-						log.Fatal(err)
+					if Rooms || Invigilators {
+						fmt.Println("validating zpa rooms")
+						err := plexams.ValidateZPARooms()
+						if err != nil {
+							log.Fatal(err)
+						}
 					}
-				}
-
-			case "invigilations":
-				if len(args) == 1 {
-					validate([]func() error{
-						plexams.ValidateInvigilatorRequirements,
-						plexams.ValidateInvigilatorSlots,
-					})
-				} else {
-					switch args[1] {
-					case "reqs":
-						validate([]func() error{plexams.ValidateInvigilatorRequirements})
-
-					case "slots":
-						validate([]func() error{plexams.ValidateInvigilatorSlots})
+					if Invigilators {
+						fmt.Println("validating zpa invigilators")
+						err := plexams.ValidateZPAInvigilators()
+						if err != nil {
+							log.Fatal(err)
+						}
 					}
-				}
 
-			default:
-				fmt.Println("validate called with unknown sub command")
+				case "invigilator-reqs":
+					validations = append(validations, plexams.ValidateInvigilatorRequirements)
+
+				case "invigilator-slots":
+					validations = append(validations, plexams.ValidateInvigilatorSlots)
+
+				default:
+					fmt.Println("validate called with unknown sub command")
+				}
 			}
+			validate(validations)
 		},
 	}
 	Sleep           int

@@ -15,7 +15,7 @@ import (
 
 var count = 0
 
-func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool) error {
+func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 	count = 0
 	ctx := context.Background()
 	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating conflicts   --- ")
@@ -45,12 +45,13 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool) error {
 	}
 
 	for _, studentReg := range studentRegs {
-		validateStudentReg(studentReg, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe)
+		validateStudentReg(studentReg, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe, ancode)
 	}
 	return nil
 }
 
-func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntries []*model.PlanAncodeEntry, planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool) {
+func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntries []*model.PlanAncodeEntry,
+	planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool, ancode int) {
 	log.Debug().Str("name", studentReg.Student.Name).Str("mtknr", studentReg.Student.Mtknr).Msg("checking regs for student")
 
 	planAncodeEntriesForStudent := make([]*model.PlanAncodeEntry, 0)
@@ -82,6 +83,10 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 					Msg("both ancodes not planned by me")
 				continue
 			}
+			if ancode != 0 && p[i].Ancode != ancode && p[j].Ancode != ancode {
+				continue
+			}
+
 			// same slot
 			if p[i].DayNumber == p[j].DayNumber &&
 				p[i].SlotNumber == p[j].SlotNumber {

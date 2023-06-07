@@ -33,7 +33,7 @@ var (
 				switch arg {
 				case "all":
 					validations = append(validations, []func() error{
-						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe) },
+						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe, Ancode) },
 						plexams.ValidateConstraints,
 						plexams.ValidateRoomsPerSlot,
 						plexams.ValidateRoomsPerExam,
@@ -41,7 +41,7 @@ var (
 
 				case "conflicts":
 					validations = append(validations,
-						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe) },
+						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe, Ancode) },
 					)
 
 				case "constraints":
@@ -86,6 +86,7 @@ var (
 		},
 	}
 	Sleep           int
+	Ancode          int
 	Clear           bool
 	Rooms           bool
 	Invigilators    bool
@@ -116,6 +117,7 @@ func validate(funcs []func() error) {
 func init() {
 	rootCmd.AddCommand(validateCmd)
 	validateCmd.Flags().IntVarP(&Sleep, "sleep", "s", 0, "sleep [s] seconds and validate again")
+	validateCmd.Flags().IntVarP(&Ancode, "ancode", "a", 0, "show only constraints for given ancode")
 	validateCmd.Flags().BoolVarP(&Clear, "clear", "c", false, "clear screen before output")
 	validateCmd.Flags().BoolVarP(&Rooms, "room", "r", false, "validate zpa rooms")
 	validateCmd.Flags().BoolVarP(&Invigilators, "invigilators", "i", false, "validate zpa invigilators")

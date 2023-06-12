@@ -33,7 +33,37 @@ func (p *Plexams) GetTeachers(ctx context.Context, fromZpa *bool) ([]*model.Teac
 	}
 }
 
-func (p *Plexams) GetInvigilators(ctx context.Context) ([]*model.Teacher, error) {
+func (p *Plexams) GetInvigilators(ctx context.Context) ([]*model.ZPAInvigilator, error) {
+	justInvigilators, err := p.dbClient.GetInvigilators(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invigilators")
+		return nil, err
+	}
+
+	supervisorReqs, err := p.GetSupervisorRequirements(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get supervisor requirements")
+		return nil, err
+	}
+
+	invigilators := make([]*model.ZPAInvigilator, 0, len(justInvigilators))
+	for _, invig := range justInvigilators {
+		invigilator := model.ZPAInvigilator{
+			Teacher: invig,
+		}
+		for _, req := range supervisorReqs {
+			if req.InvigilatorID == invig.ID {
+				invigilator.HasSubmittedRequirements = true
+				break
+			}
+		}
+		invigilators = append(invigilators, &invigilator)
+	}
+
+	return invigilators, nil
+}
+
+func (p *Plexams) getInvigilators(ctx context.Context) ([]*model.Teacher, error) {
 	return p.dbClient.GetInvigilators(ctx)
 }
 

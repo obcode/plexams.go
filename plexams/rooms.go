@@ -22,6 +22,9 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 
 	roomsForSlots := make(map[int][]*model.Room)
 	for _, room := range globalRooms {
+		if room.Name == "No Room" {
+			continue
+		}
 		roomConstraints := viper.Get(fmt.Sprintf("roomConstraints.%s", room.Name))
 		if roomConstraints == nil {
 			fmt.Printf("%s: no constraints found\n", room.Name)
@@ -251,6 +254,11 @@ func (p *Plexams) PrepareRoomForExams() error {
 							room = slotWithRooms.ExahmRooms[0]
 							slotWithRooms.ExahmRooms = slotWithRooms.ExahmRooms[1:]
 						}
+					} else if exam.Exam.Constraints.RoomConstraints.Seb {
+						if len(slotWithRooms.ExahmRooms) > 0 {
+							room = slotWithRooms.ExahmRooms[0]
+							slotWithRooms.ExahmRooms = slotWithRooms.ExahmRooms[1:]
+						}
 					} else if exam.Exam.Constraints.RoomConstraints.Lab {
 						if len(slotWithRooms.LabRooms) > 0 {
 							room = slotWithRooms.LabRooms[0]
@@ -264,6 +272,9 @@ func (p *Plexams) PrepareRoomForExams() error {
 								break
 							}
 						}
+					} else {
+						room = slotWithRooms.NormalRooms[0]
+						slotWithRooms.NormalRooms = slotWithRooms.NormalRooms[1:]
 					}
 				} else {
 					room = slotWithRooms.NormalRooms[0]

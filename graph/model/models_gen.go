@@ -44,13 +44,13 @@ type ConnectedExam struct {
 type Constraints struct {
 	Ancode          int              `json:"ancode"`
 	NotPlannedByMe  bool             `json:"notPlannedByMe"`
-	ExcludeDays     []*time.Time     `json:"excludeDays"`
-	PossibleDays    []*time.Time     `json:"possibleDays"`
-	FixedDay        *time.Time       `json:"fixedDay"`
-	FixedTime       *time.Time       `json:"fixedTime"`
-	SameSlot        []int            `json:"sameSlot"`
+	ExcludeDays     []*time.Time     `json:"excludeDays,omitempty"`
+	PossibleDays    []*time.Time     `json:"possibleDays,omitempty"`
+	FixedDay        *time.Time       `json:"fixedDay,omitempty"`
+	FixedTime       *time.Time       `json:"fixedTime,omitempty"`
+	SameSlot        []int            `json:"sameSlot,omitempty"`
 	Online          bool             `json:"online"`
-	RoomConstraints *RoomConstraints `json:"roomConstraints"`
+	RoomConstraints *RoomConstraints `json:"roomConstraints,omitempty"`
 }
 
 type ExamDay struct {
@@ -61,7 +61,7 @@ type ExamDay struct {
 type ExamGroup struct {
 	ExamGroupCode int            `json:"examGroupCode"`
 	Exams         []*ExamToPlan  `json:"exams"`
-	ExamGroupInfo *ExamGroupInfo `json:"examGroupInfo"`
+	ExamGroupInfo *ExamGroupInfo `json:"examGroupInfo,omitempty"`
 }
 
 type ExamGroupConflict struct {
@@ -71,28 +71,28 @@ type ExamGroupConflict struct {
 
 type ExamGroupInfo struct {
 	NotPlannedByMe bool                 `json:"notPlannedByMe"`
-	ExcludeDays    []int                `json:"excludeDays"`
-	PossibleDays   []int                `json:"possibleDays"`
-	FixedDay       *int                 `json:"fixedDay"`
-	FixedSlot      *Slot                `json:"fixedSlot"`
-	PossibleSlots  []*Slot              `json:"possibleSlots"`
-	Conflicts      []*ExamGroupConflict `json:"conflicts"`
+	ExcludeDays    []int                `json:"excludeDays,omitempty"`
+	PossibleDays   []int                `json:"possibleDays,omitempty"`
+	FixedDay       *int                 `json:"fixedDay,omitempty"`
+	FixedSlot      *Slot                `json:"fixedSlot,omitempty"`
+	PossibleSlots  []*Slot              `json:"possibleSlots,omitempty"`
+	Conflicts      []*ExamGroupConflict `json:"conflicts,omitempty"`
 	StudentRegs    int                  `json:"studentRegs"`
 	Programs       []string             `json:"programs"`
 	MaxDuration    int                  `json:"maxDuration"`
-	MaxDurationNta *int                 `json:"maxDurationNTA"`
+	MaxDurationNta *int                 `json:"maxDurationNTA,omitempty"`
 }
 
 type ExamInPlan struct {
 	Exam        *ExamWithRegs  `json:"exam"`
-	Constraints *Constraints   `json:"constraints"`
-	Nta         []*NTAWithRegs `json:"nta"`
-	Slot        *Slot          `json:"slot"`
+	Constraints *Constraints   `json:"constraints,omitempty"`
+	Nta         []*NTAWithRegs `json:"nta,omitempty"`
+	Slot        *Slot          `json:"slot,omitempty"`
 }
 
 type ExamToPlan struct {
 	Exam        *ExamWithRegs `json:"exam"`
-	Constraints *Constraints  `json:"constraints"`
+	Constraints *Constraints  `json:"constraints,omitempty"`
 }
 
 type ExamWithRegs struct {
@@ -121,7 +121,7 @@ type FK07Program struct {
 }
 
 type Invigilation struct {
-	RoomName           *string `json:"roomName"`
+	RoomName           *string `json:"roomName,omitempty"`
 	Duration           int     `json:"duration"`
 	InvigilatorID      int     `json:"invigilatorID"`
 	Slot               *Slot   `json:"slot"`
@@ -130,7 +130,7 @@ type Invigilation struct {
 }
 
 type InvigilationSlot struct {
-	Reserve               *Teacher               `json:"reserve"`
+	Reserve               *Teacher               `json:"reserve,omitempty"`
 	RoomsWithInvigilators []*RoomWithInvigilator `json:"roomsWithInvigilators"`
 }
 
@@ -147,8 +147,8 @@ type InvigilationTodos struct {
 
 type Invigilator struct {
 	Teacher      *Teacher                 `json:"teacher"`
-	Requirements *InvigilatorRequirements `json:"requirements"`
-	Todos        *InvigilatorTodos        `json:"todos"`
+	Requirements *InvigilatorRequirements `json:"requirements,omitempty"`
+	Todos        *InvigilatorTodos        `json:"todos,omitempty"`
 }
 
 type InvigilatorRequirements struct {
@@ -171,8 +171,8 @@ type InvigilatorTodos struct {
 	TotalMinutes     int             `json:"totalMinutes"`
 	DoingMinutes     int             `json:"doingMinutes"`
 	Enough           bool            `json:"enough"`
-	InvigilationDays []int           `json:"invigilationDays"`
-	Invigilations    []*Invigilation `json:"invigilations"`
+	InvigilationDays []int           `json:"invigilationDays,omitempty"`
+	Invigilations    []*Invigilation `json:"invigilations,omitempty"`
 }
 
 type InvigilatorsForDay struct {
@@ -193,28 +193,28 @@ type NTAInput struct {
 
 type NTAWithRegs struct {
 	Nta  *NTA                   `json:"nta"`
-	Regs *StudentRegsPerStudent `json:"regs"`
+	Regs *StudentRegsPerStudent `json:"regs,omitempty"`
 }
 
 type NTAWithRegsByExam struct {
 	Exam *ZPAExam       `json:"exam"`
-	Ntas []*NTAWithRegs `json:"ntas"`
+	Ntas []*NTAWithRegs `json:"ntas,omitempty"`
 }
 
 type NTAWithRegsByExamAndTeacher struct {
 	Teacher *Teacher             `json:"teacher"`
-	Exams   []*NTAWithRegsByExam `json:"exams"`
+	Exams   []*NTAWithRegsByExam `json:"exams,omitempty"`
 }
 
 type Plan struct {
-	SemesterConfig *SemesterConfig       `json:"semesterConfig"`
-	Slots          []*SlotWithExamGroups `json:"slots"`
+	SemesterConfig *SemesterConfig       `json:"semesterConfig,omitempty"`
+	Slots          []*SlotWithExamGroups `json:"slots,omitempty"`
 }
 
 type PlannedExamWithNta struct {
 	Exam        *ExamWithRegs  `json:"exam"`
-	Constraints *Constraints   `json:"constraints"`
-	Nta         []*NTAWithRegs `json:"nta"`
+	Constraints *Constraints   `json:"constraints,omitempty"`
+	Nta         []*NTAWithRegs `json:"nta,omitempty"`
 }
 
 type PrimussExamByProgram struct {
@@ -258,7 +258,7 @@ type RoomForExamInput struct {
 	SeatsPlanned int      `json:"seatsPlanned"`
 	Duration     int      `json:"duration"`
 	Handicap     bool     `json:"handicap"`
-	Mktnrs       []string `json:"mktnrs"`
+	Mktnrs       []string `json:"mktnrs,omitempty"`
 }
 
 type RoomWithInvigilator struct {
@@ -266,7 +266,7 @@ type RoomWithInvigilator struct {
 	MaxDuration  int            `json:"maxDuration"`
 	StudentCount int            `json:"studentCount"`
 	RoomAndExams []*RoomAndExam `json:"roomAndExams"`
-	Invigilator  *Teacher       `json:"invigilator"`
+	Invigilator  *Teacher       `json:"invigilator,omitempty"`
 }
 
 type Semester struct {
@@ -277,7 +277,7 @@ type SemesterConfig struct {
 	Days       []*ExamDay   `json:"days"`
 	Starttimes []*Starttime `json:"starttimes"`
 	Slots      []*Slot      `json:"slots"`
-	GoSlots    [][]int      `json:"goSlots"`
+	GoSlots    [][]int      `json:"goSlots,omitempty"`
 }
 
 type Slot struct {
@@ -289,7 +289,7 @@ type Slot struct {
 type SlotWithExamGroups struct {
 	DayNumber  int          `json:"dayNumber"`
 	SlotNumber int          `json:"slotNumber"`
-	ExamGroups []*ExamGroup `json:"examGroups"`
+	ExamGroups []*ExamGroup `json:"examGroups,omitempty"`
 }
 
 type SlotWithRooms struct {
@@ -330,10 +330,15 @@ type StudentRegsPerStudent struct {
 
 type ZPAExamWithConstraints struct {
 	ZpaExam     *ZPAExam     `json:"zpaExam"`
-	Constraints *Constraints `json:"constraints"`
+	Constraints *Constraints `json:"constraints,omitempty"`
 }
 
 type ZPAExamsForType struct {
 	Type  string     `json:"type"`
 	Exams []*ZPAExam `json:"exams"`
+}
+
+type ZPAInvigilator struct {
+	Teacher                  *Teacher `json:"teacher"`
+	HasSubmittedRequirements bool     `json:"hasSubmittedRequirements"`
 }

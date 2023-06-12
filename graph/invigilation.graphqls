@@ -28,6 +28,11 @@ type InvigilatorsForDay {
   can: [Invigilator!]!
 }
 
+type ZPAInvigilator {
+  teacher: Teacher!
+  hasSubmittedRequirements: Boolean!
+}
+
 type Invigilator {
   teacher: Teacher!
   requirements: InvigilatorRequirements

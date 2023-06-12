@@ -13,7 +13,8 @@ var (
 		Use:   "info [subcommand]",
 		Short: "get info",
 		Long: `Get info.
-goslots --- info about slots for GO/GN.`,
+goslots --- info about slots for GO/GN
+stats --- get statistics.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			p := initPlexamsConfig()
@@ -23,8 +24,13 @@ goslots --- info about slots for GO/GN.`,
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
+			case "stats":
+				err := p.PrintStatistics()
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
 			default:
-				fmt.Println("email called with unknown sub command")
+				fmt.Println("info called with unknown sub command")
 			}
 		},
 	}

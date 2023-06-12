@@ -526,6 +526,11 @@ type ComplexityRoot struct {
 		Type  func(childComplexity int) int
 	}
 
+	ZPAInvigilator struct {
+		HasSubmittedRequirements func(childComplexity int) int
+		Teacher                  func(childComplexity int) int
+	}
+
 	ZPAStudentReg struct {
 		AnCode  func(childComplexity int) int
 		Mtknr   func(childComplexity int) int
@@ -575,7 +580,7 @@ type QueryResolver interface {
 	SemesterConfig(ctx context.Context) (*model.SemesterConfig, error)
 	Teacher(ctx context.Context, id int) (*model.Teacher, error)
 	Teachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error)
-	Invigilators(ctx context.Context) ([]*model.Teacher, error)
+	Invigilators(ctx context.Context) ([]*model.ZPAInvigilator, error)
 	Fk07programs(ctx context.Context) ([]*model.FK07Program, error)
 	ZpaExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAExam, error)
 	ZpaExamsByType(ctx context.Context) ([]*model.ZPAExamsForType, error)
@@ -3025,6 +3030,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ZPAExamsForType.Type(childComplexity), true
 
+	case "ZPAInvigilator.hasSubmittedRequirements":
+		if e.complexity.ZPAInvigilator.HasSubmittedRequirements == nil {
+			break
+		}
+
+		return e.complexity.ZPAInvigilator.HasSubmittedRequirements(childComplexity), true
+
+	case "ZPAInvigilator.teacher":
+		if e.complexity.ZPAInvigilator.Teacher == nil {
+			break
+		}
+
+		return e.complexity.ZPAInvigilator.Teacher(childComplexity), true
+
 	case "ZPAStudentReg.ancode":
 		if e.complexity.ZPAStudentReg.AnCode == nil {
 			break
@@ -3253,6 +3272,11 @@ type InvigilationSlot {
 type InvigilatorsForDay {
   want: [Invigilator!]!
   can: [Invigilator!]!
+}
+
+type ZPAInvigilator {
+  teacher: Teacher!
+  hasSubmittedRequirements: Boolean!
 }
 
 type Invigilator {
@@ -3495,7 +3519,7 @@ type ConnectedExam {
   # ZPA
   teacher(id: Int!): Teacher
   teachers(fromZPA: Boolean): [Teacher!]!
-  invigilators: [Teacher!]!
+  invigilators: [ZPAInvigilator!]!
   fk07programs: [FK07Program!]!
   zpaExams(fromZPA: Boolean): [ZPAExam!]!
   zpaExamsByType: [ZPAExamsForType!]!
@@ -12913,9 +12937,9 @@ func (ec *executionContext) _Query_invigilators(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.Teacher)
+	res := resTmp.([]*model.ZPAInvigilator)
 	fc.Result = res
-	return ec.marshalNTeacher2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacherᚄ(ctx, field.Selections, res)
+	return ec.marshalNZPAInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAInvigilatorᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_invigilators(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -12926,28 +12950,12 @@ func (ec *executionContext) fieldContext_Query_invigilators(ctx context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "shortname":
-				return ec.fieldContext_Teacher_shortname(ctx, field)
-			case "fullname":
-				return ec.fieldContext_Teacher_fullname(ctx, field)
-			case "isProf":
-				return ec.fieldContext_Teacher_isProf(ctx, field)
-			case "isLBA":
-				return ec.fieldContext_Teacher_isLBA(ctx, field)
-			case "isProfHC":
-				return ec.fieldContext_Teacher_isProfHC(ctx, field)
-			case "isStaff":
-				return ec.fieldContext_Teacher_isStaff(ctx, field)
-			case "lastSemester":
-				return ec.fieldContext_Teacher_lastSemester(ctx, field)
-			case "fk":
-				return ec.fieldContext_Teacher_fk(ctx, field)
-			case "id":
-				return ec.fieldContext_Teacher_id(ctx, field)
-			case "email":
-				return ec.fieldContext_Teacher_email(ctx, field)
+			case "teacher":
+				return ec.fieldContext_ZPAInvigilator_teacher(ctx, field)
+			case "hasSubmittedRequirements":
+				return ec.fieldContext_ZPAInvigilator_hasSubmittedRequirements(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ZPAInvigilator", field.Name)
 		},
 	}
 	return fc, nil
@@ -20211,6 +20219,116 @@ func (ec *executionContext) fieldContext_ZPAExamsForType_exams(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ZPAInvigilator_teacher(ctx context.Context, field graphql.CollectedField, obj *model.ZPAInvigilator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAInvigilator_teacher(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Teacher, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Teacher)
+	fc.Result = res
+	return ec.marshalNTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAInvigilator_teacher(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAInvigilator",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "shortname":
+				return ec.fieldContext_Teacher_shortname(ctx, field)
+			case "fullname":
+				return ec.fieldContext_Teacher_fullname(ctx, field)
+			case "isProf":
+				return ec.fieldContext_Teacher_isProf(ctx, field)
+			case "isLBA":
+				return ec.fieldContext_Teacher_isLBA(ctx, field)
+			case "isProfHC":
+				return ec.fieldContext_Teacher_isProfHC(ctx, field)
+			case "isStaff":
+				return ec.fieldContext_Teacher_isStaff(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_Teacher_lastSemester(ctx, field)
+			case "fk":
+				return ec.fieldContext_Teacher_fk(ctx, field)
+			case "id":
+				return ec.fieldContext_Teacher_id(ctx, field)
+			case "email":
+				return ec.fieldContext_Teacher_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAInvigilator_hasSubmittedRequirements(ctx context.Context, field graphql.CollectedField, obj *model.ZPAInvigilator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAInvigilator_hasSubmittedRequirements(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasSubmittedRequirements, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAInvigilator_hasSubmittedRequirements(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAInvigilator",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ZPAStudentReg_ancode(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentReg) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ZPAStudentReg_ancode(ctx, field)
 	if err != nil {
@@ -26758,6 +26876,41 @@ func (ec *executionContext) _ZPAExamsForType(ctx context.Context, sel ast.Select
 	return out
 }
 
+var zPAInvigilatorImplementors = []string{"ZPAInvigilator"}
+
+func (ec *executionContext) _ZPAInvigilator(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAInvigilator) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, zPAInvigilatorImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ZPAInvigilator")
+		case "teacher":
+
+			out.Values[i] = ec._ZPAInvigilator_teacher(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "hasSubmittedRequirements":
+
+			out.Values[i] = ec._ZPAInvigilator_hasSubmittedRequirements(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var zPAStudentRegImplementors = []string{"ZPAStudentReg"}
 
 func (ec *executionContext) _ZPAStudentReg(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAStudentReg) graphql.Marshaler {
@@ -29009,6 +29162,60 @@ func (ec *executionContext) marshalNZPAExamsForType2ᚖgithubᚗcomᚋobcodeᚋp
 		return graphql.Null
 	}
 	return ec._ZPAExamsForType(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNZPAInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAInvigilatorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ZPAInvigilator) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNZPAInvigilator2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAInvigilator(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNZPAInvigilator2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAInvigilator(ctx context.Context, sel ast.SelectionSet, v *model.ZPAInvigilator) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ZPAInvigilator(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNZPAStudentReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentReg(ctx context.Context, sel ast.SelectionSet, v *model.ZPAStudentReg) graphql.Marshaler {

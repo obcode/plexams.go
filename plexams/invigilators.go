@@ -15,7 +15,7 @@ import (
 )
 
 func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error) {
-	teachers, err := p.GetInvigilators(ctx)
+	teachers, err := p.getInvigilators(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get teachers")
 		return nil, err
@@ -173,27 +173,32 @@ func (p *Plexams) InvigilationTodos(ctx context.Context) (*model.InvigilationTod
 	todos.Invigilators = reqs
 
 	for _, invigilator := range reqs {
-		todos.SumOtherContributions += invigilator.Requirements.AllContributions
+		if invigilator.Requirements != nil {
+			todos.SumOtherContributions += invigilator.Requirements.AllContributions
+		}
 	}
 
 	todos.InvigilatorCount = len(reqs)
 	adjustedInvigilatorCount := 0.0
 
 	for _, invigilator := range reqs {
-
-		adjustedInvigilatorCount += invigilator.Requirements.Factor
+		if invigilator.Requirements != nil {
+			adjustedInvigilatorCount += invigilator.Requirements.Factor
+		}
 	}
 
 	todos.TodoPerInvigilator = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+todos.SumOtherContributions) / adjustedInvigilatorCount))
 
 	sumOtherContributionsOvertimeCutted := 0
 	for _, invigilator := range reqs {
-		if otherContributions := invigilator.Requirements.OralExamsContribution +
-			invigilator.Requirements.LiveCodingContribution +
-			invigilator.Requirements.MasterContribution; otherContributions > todos.TodoPerInvigilator {
-			sumOtherContributionsOvertimeCutted += todos.TodoPerInvigilator
-		} else {
-			sumOtherContributionsOvertimeCutted += otherContributions
+		if invigilator.Requirements != nil {
+			if otherContributions := invigilator.Requirements.OralExamsContribution +
+				invigilator.Requirements.LiveCodingContribution +
+				invigilator.Requirements.MasterContribution; otherContributions > todos.TodoPerInvigilator {
+				sumOtherContributionsOvertimeCutted += todos.TodoPerInvigilator
+			} else {
+				sumOtherContributionsOvertimeCutted += otherContributions
+			}
 		}
 	}
 	todos.SumOtherContributionsOvertimeCutted = sumOtherContributionsOvertimeCutted
@@ -202,12 +207,18 @@ func (p *Plexams) InvigilationTodos(ctx context.Context) (*model.InvigilationTod
 	for _, invigilator := range todos.Invigilators {
 
 		enough := false
-		totalMinutes := int(float64(todos.TodoPerInvigilatorOvertimeCutted)*invigilator.Requirements.Factor) -
-			invigilator.Requirements.AllContributions
+		totalMinutes := todos.TodoPerInvigilatorOvertimeCutted
+		if invigilator.Requirements != nil {
+			totalMinutes = int(float64(totalMinutes) * invigilator.Requirements.Factor)
+		}
 
-		if totalMinutes < 0 {
-			totalMinutes = 0
-			enough = true
+		if invigilator.Requirements != nil {
+			totalMinutes -= invigilator.Requirements.AllContributions
+
+			if totalMinutes < 0 {
+				totalMinutes = 0
+				enough = true
+			}
 		}
 
 		invigilationsForInvigilator, err := p.dbClient.InvigilationsForInvigilator(ctx, invigilator.Teacher.ID)
@@ -305,10 +316,12 @@ func (p *Plexams) PrepareSelfInvigilation() error {
 
 func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
 	invigilators, err := p.InvigilatorsWithReq(ctx)
-	if err != nil {
+	if err != nil || invigilators == nil {
 		log.Error().Err(err).Msg("cannot get invigilators")
 		return nil, err
 	}
+
+	log.Debug().Interface("invigilators", invigilators).Msg("got invigilators")
 
 	invigilatorMap := make(map[int]*model.Invigilator)
 	for _, invigilator := range invigilators {
@@ -332,11 +345,13 @@ func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilati
 				log.Debug().Str("name", exam.Exam.ZpaExam.MainExamer).Msg("ist keine Aufsicht")
 				continue
 			}
-			for _, day := range invigilator.Requirements.ExcludedDays {
-				if day == exam.Slot.DayNumber {
-					log.Debug().Str("name", exam.Exam.ZpaExam.MainExamer).Interface("slot", exam.Slot).
-						Msg("Tag ist gesperrt für Aufsicht")
-					continue OUTER
+			if invigilator.Requirements != nil {
+				for _, day := range invigilator.Requirements.ExcludedDays {
+					if day == exam.Slot.DayNumber {
+						log.Debug().Str("name", exam.Exam.ZpaExam.MainExamer).Interface("slot", exam.Slot).
+							Msg("Tag ist gesperrt für Aufsicht")
+						continue OUTER
+					}
 				}
 			}
 			exams, ok := examerWithExams[exam.Exam.ZpaExam.MainExamerID]

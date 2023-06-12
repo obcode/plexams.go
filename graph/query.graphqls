@@ -7,7 +7,7 @@ type Query {
   # ZPA
   teacher(id: Int!): Teacher
   teachers(fromZPA: Boolean): [Teacher!]!
-  invigilators: [Teacher!]!
+  invigilators: [ZPAInvigilator!]!
   fk07programs: [FK07Program!]!
   zpaExams(fromZPA: Boolean): [ZPAExam!]!
   zpaExamsByType: [ZPAExamsForType!]!

@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"math"
 	"strings"
 	"time"
 
@@ -367,6 +368,28 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 									break OUTER
 								}
 							}
+						}
+					}
+				} else /* do not need room alone */ {
+					var roomForNta *model.RoomForExam
+					for _, room := range plannedRooms {
+						for _, student := range room.Students {
+							if student.Mtknr == nta.Nta.Mtknr {
+								roomForNta = room
+								break
+							}
+						}
+					}
+					if roomForNta == nil {
+						color.Red.Printf("NTA %s has no room for exam %d. %s: %s in slot (%d,%d)\n",
+							nta.Nta.Name, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
+							exam.Slot.DayNumber, exam.Slot.SlotNumber)
+					} else {
+						ntaDuration := int(math.Ceil(float64((exam.Exam.ZpaExam.Duration * (100 + nta.Nta.DeltaDurationPercent))) / 100))
+						if roomForNta.Duration != ntaDuration {
+							color.Red.Printf("NTA %s has room %s without correct duration %d for exam %d. %s: %s in slot (%d,%d): found %d\n",
+								nta.Nta.Name, roomForNta.RoomName, ntaDuration, exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module,
+								exam.Slot.DayNumber, exam.Slot.SlotNumber, roomForNta.Duration)
 						}
 					}
 				}

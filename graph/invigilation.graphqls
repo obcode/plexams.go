@@ -53,6 +53,7 @@ type InvigilatorRequirements {
   overtimeThisSemester: Float!
   allContributions: Int!
   factor: Float!
+  onlyInSlots: [Slot!]!
 }
 
 type InvigilatorTodos {

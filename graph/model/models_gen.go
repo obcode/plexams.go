@@ -165,6 +165,7 @@ type InvigilatorRequirements struct {
 	OvertimeThisSemester   float64      `json:"overtimeThisSemester"`
 	AllContributions       int          `json:"allContributions"`
 	Factor                 float64      `json:"factor"`
+	OnlyInSlots            []*Slot      `json:"onlyInSlots"`
 }
 
 type InvigilatorTodos struct {

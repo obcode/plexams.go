@@ -205,6 +205,7 @@ type ComplexityRoot struct {
 		FreeSemester           func(childComplexity int) int
 		LiveCodingContribution func(childComplexity int) int
 		MasterContribution     func(childComplexity int) int
+		OnlyInSlots            func(childComplexity int) int
 		OralExamsContribution  func(childComplexity int) int
 		OvertimeLastSemester   func(childComplexity int) int
 		OvertimeThisSemester   func(childComplexity int) int
@@ -1306,6 +1307,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.InvigilatorRequirements.MasterContribution(childComplexity), true
+
+	case "InvigilatorRequirements.onlyInSlots":
+		if e.complexity.InvigilatorRequirements.OnlyInSlots == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorRequirements.OnlyInSlots(childComplexity), true
 
 	case "InvigilatorRequirements.oralExamsContribution":
 		if e.complexity.InvigilatorRequirements.OralExamsContribution == nil {
@@ -3336,6 +3344,7 @@ type InvigilatorRequirements {
   overtimeThisSemester: Float!
   allContributions: Int!
   factor: Float!
+  onlyInSlots: [Slot!]!
 }
 
 type InvigilatorTodos {
@@ -8716,6 +8725,8 @@ func (ec *executionContext) fieldContext_Invigilator_requirements(ctx context.Co
 				return ec.fieldContext_InvigilatorRequirements_allContributions(ctx, field)
 			case "factor":
 				return ec.fieldContext_InvigilatorRequirements_factor(ctx, field)
+			case "onlyInSlots":
+				return ec.fieldContext_InvigilatorRequirements_onlyInSlots(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type InvigilatorRequirements", field.Name)
 		},
@@ -9343,6 +9354,58 @@ func (ec *executionContext) fieldContext_InvigilatorRequirements_factor(ctx cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorRequirements_onlyInSlots(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorRequirements) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorRequirements_onlyInSlots(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OnlyInSlots, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Slot)
+	fc.Result = res
+	return ec.marshalNSlot2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorRequirements_onlyInSlots(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorRequirements",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_Slot_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_Slot_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_Slot_starttime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Slot", field.Name)
 		},
 	}
 	return fc, nil
@@ -23941,6 +24004,11 @@ func (ec *executionContext) _InvigilatorRequirements(ctx context.Context, sel as
 			}
 		case "factor":
 			out.Values[i] = ec._InvigilatorRequirements_factor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "onlyInSlots":
+			out.Values[i] = ec._InvigilatorRequirements_onlyInSlots(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

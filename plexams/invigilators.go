@@ -39,11 +39,27 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 		var invigReqs *model.InvigilatorRequirements
 		if reqs != nil {
 			invigilatorConstraints := viper.Get(fmt.Sprintf("invigilatorConstraints.%d", teacher.ID))
+			var onlyInSlots []*model.Slot
 			if invigilatorConstraints != nil {
 				excludedDates := viper.GetStringSlice(fmt.Sprintf("invigilatorConstraints.%d.excludedDates", teacher.ID))
 				if len(excludedDates) > 0 {
 					log.Debug().Interface("excludedDates", excludedDates).Str("name", teacher.Shortname).Msg("found in config")
 					reqs.ExcludedDates = append(reqs.ExcludedDates, excludedDates...)
+				}
+
+				onlyInSlotsCfg := viper.Get(fmt.Sprintf("invigilatorConstraints.%d.onlyInSlots", teacher.ID))
+				if onlyInSlotsCfg != nil {
+					slotsSlice := onlyInSlotsCfg.([]interface{})
+					onlyInSlots = make([]*model.Slot, 0, len(slotsSlice))
+					for _, slot := range slotsSlice {
+						slotSlice := slot.([]interface{})
+						onlyInSlots = append(onlyInSlots, &model.Slot{
+							DayNumber:  slotSlice[0].(int),
+							SlotNumber: slotSlice[1].(int),
+							Starttime:  time.Time{},
+						})
+					}
+					log.Debug().Interface("slots", onlyInSlots).Str("name", teacher.Shortname).Msg("onlyInSlots found")
 				}
 			}
 
@@ -99,6 +115,7 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 				OvertimeThisSemester:   reqs.OvertimeThisSemester,
 				AllContributions:       reqs.OralExamsContribution + reqs.LivecodingContribution + reqs.MasterContribution,
 				Factor:                 factor,
+				OnlyInSlots:            onlyInSlots,
 			}
 		}
 

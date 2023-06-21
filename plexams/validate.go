@@ -400,3 +400,88 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 
 	return nil
 }
+
+func (p *Plexams) ValidateRoomsTimeDistance() error {
+	ctx := context.Background()
+	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating time distance of planned rooms   --- ")
+
+	for _, day := range p.semesterConfig.Days {
+		log.Debug().Interface("day", day).Msg("checking day")
+		for i := range p.semesterConfig.Starttimes {
+			if i == len(p.semesterConfig.Days)-1 {
+				continue
+			}
+			slot1, slot2 := i+1, i+2
+			log.Debug().Int("slot 1", slot1).Int("slot 2", slot2).Msg("checking slot")
+
+			plannedRoomsSlot1, err := p.dbClient.RoomsPlannedInSlot(ctx, day.Number, slot1)
+			if err != nil {
+				log.Error().Err(err).
+					Int("day", day.Number).
+					Int("time", slot1).
+					Msg("error while getting rooms planned in slot")
+				return err
+			}
+
+			rooms1 := make(map[string]int)
+			for _, room := range plannedRoomsSlot1 {
+				duration, ok := rooms1[room.RoomName]
+				if !ok {
+					rooms1[room.RoomName] = room.Duration
+				} else {
+					if duration < room.Duration {
+						rooms1[room.RoomName] = room.Duration
+					}
+				}
+			}
+
+			plannedRoomsSlot2, err := p.dbClient.RoomsPlannedInSlot(ctx, day.Number, slot2)
+			if err != nil {
+				log.Error().Err(err).
+					Int("day", day.Number).
+					Int("time", slot2).
+					Msg("error while getting rooms planned in slot")
+				return err
+			}
+
+			rooms2 := set.NewSet[string]()
+			for _, room := range plannedRoomsSlot2 {
+				rooms2.Add(room.RoomName)
+			}
+
+			for roomName, maxDuration := range rooms1 {
+				if rooms2.Contains(roomName) {
+					start, err := time.Parse("15:04", p.semesterConfig.Starttimes[i].Start)
+					if err != nil {
+						log.Error().Err(err).Str("starttime", p.semesterConfig.Starttimes[i].Start).Msg("cannot parse starttime")
+						return err
+					}
+					endSlot1 := start.Add(time.Duration(maxDuration) * time.Minute)
+
+					startSlot2, err := time.Parse("15:04", p.semesterConfig.Starttimes[i+1].Start)
+					if err != nil {
+						log.Error().Err(err).Str("starttime", p.semesterConfig.Starttimes[i].Start).Msg("cannot parse starttime")
+						return err
+					}
+					log.Debug().Str("room", roomName).Int("max duration", maxDuration).
+						Str("starttime slot 1", p.semesterConfig.Starttimes[i].Start).
+						Str("endtime slot 1", endSlot1.Format("15:04")).
+						Str("starttime slot 2", startSlot2.Format("15:04")).
+						Msg("checking")
+
+					diff := 20 * time.Minute
+
+					if startSlot2.Before(endSlot1.Add(diff)) {
+						color.Red.Printf("Not enough time in room %s between slot (%d, %d) ends %s and slot (%d,%d) begins %s\n",
+							roomName, day.Number, slot1, endSlot1.Format("15:04"), day.Number, slot2, startSlot2.Format("15:04"))
+					}
+
+				}
+			}
+
+		}
+
+	}
+
+	return nil
+}

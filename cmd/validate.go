@@ -49,7 +49,7 @@ var (
 
 				case "rooms":
 					validations = append(validations,
-						[]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam}...)
+						[]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam, plexams.ValidateRoomsTimeDistance}...)
 
 				case "zpa":
 					fmt.Println("validating zpa dates and times")

@@ -22,7 +22,7 @@ reserve    [daynumber] [slotnumber] [invigilator ID] --- add reserve for slot (d
 			plexams := initPlexamsConfig()
 			ctx := context.Background()
 			if len(args) < 4 {
-				fmt.Println("need day number, slot nunbers, and the invigilators id")
+				fmt.Println("need day number, slot numbers, and the invigilators id")
 				os.Exit(1)
 			}
 

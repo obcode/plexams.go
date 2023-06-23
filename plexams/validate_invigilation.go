@@ -2,6 +2,8 @@ package plexams
 
 import (
 	"context"
+	"fmt"
+	"sort"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/color"
@@ -9,6 +11,9 @@ import (
 )
 
 func (p *Plexams) ValidateInvigilatorRequirements() error {
+	color.Style{color.FgRed, color.BgGreen, color.OpBold}.
+		Printf(" ---   validating invigilator requirements  --- \n")
+
 	ctx := context.Background()
 	invigilationTodos, err := p.InvigilationTodos(ctx)
 	if err != nil {
@@ -28,17 +33,19 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 		}
 
 		// onlySlotsOk
-		for _, invigilation := range invigilator.Todos.Invigilations {
-			slotOk := false
-			for _, slot := range invigilator.Requirements.OnlyInSlots {
-				if invigilation.Slot.DayNumber == slot.DayNumber && invigilation.Slot.SlotNumber == slot.SlotNumber {
-					slotOk = true
-					break
+		if invigilator.Requirements.OnlyInSlots != nil && len(invigilator.Requirements.OnlyInSlots) > 0 {
+			for _, invigilation := range invigilator.Todos.Invigilations {
+				slotOk := false
+				for _, slot := range invigilator.Requirements.OnlyInSlots {
+					if invigilation.Slot.DayNumber == slot.DayNumber && invigilation.Slot.SlotNumber == slot.SlotNumber {
+						slotOk = true
+						break
+					}
 				}
-			}
-			if !slotOk {
-				color.Red.Printf("%s has invigilation in not allowed slot [%d,%d]\n", invigilator.Teacher.Shortname,
-					invigilation.Slot.DayNumber, invigilation.Slot.SlotNumber)
+				if !slotOk {
+					color.Red.Printf("%s has invigilation in not allowed slot [%d,%d]\n", invigilator.Teacher.Shortname,
+						invigilation.Slot.DayNumber, invigilation.Slot.SlotNumber)
+				}
 			}
 		}
 
@@ -78,9 +85,9 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 					if err != nil {
 						log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for exam")
 					} else {
-						if rooms.Cardinality() != 1 {
-							color.Red.Printf("%s has invigilation during own exam with more than one room: %d. %s in slot (%d,%d)\n", invigilator.Teacher.Shortname,
-								exam.Constraints.Ancode, exam.Exam.ZpaExam.Module, exam.Slot.DayNumber, exam.Slot.SlotNumber)
+						if rooms.Cardinality() > 1 {
+							color.Red.Printf("%s has invigilation during own exam with more than one room: %d. %s in slot (%d,%d): found rooms %v\n", invigilator.Teacher.Shortname,
+								exam.Constraints.Ancode, exam.Exam.ZpaExam.Module, exam.Slot.DayNumber, exam.Slot.SlotNumber, rooms)
 						}
 					}
 
@@ -94,10 +101,13 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 }
 
 func (p *Plexams) ValidateInvigilatorSlots() error {
+	color.Style{color.FgRed, color.BgGreen, color.OpBold}.
+		Printf(" ---   validating invigilator for all slots  --- \n")
+
 	ctx := context.Background()
 	// count rooms and reserves without and print number
-	roomWithoutInvigilator := 0
-	slotWithoutReserve := 0
+	roomWithoutInvigilatorDay := make(map[int]int)
+	slotWithoutReserveDay := make(map[int]int)
 
 	// all rooms and reserve max one invigilator
 	for _, slot := range p.semesterConfig.Slots {
@@ -112,8 +122,9 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 		if err != nil {
 			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Msg("cannot get reserve invigilator")
 		}
+
 		if len(invigilations) == 0 {
-			slotWithoutReserve += 1
+			slotWithoutReserveDay[slot.DayNumber]++
 		} else if len(invigilations) > 1 {
 			color.Red.Printf("more than one reserve invigilator in slot (%d,%d): ", slot.DayNumber, slot.SlotNumber)
 			for _, invigilation := range invigilations {
@@ -131,23 +142,47 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 					Msg("cannot get reserve invigilator")
 			}
 			if len(invigilations) == 0 {
-				roomWithoutInvigilator += 1
+				roomWithoutInvigilatorDay[slot.DayNumber]++
 			} else if len(invigilations) > 1 {
 				color.Red.Printf("more than one invigilator for room %s in slot (%d,%d): ", room,
 					slot.DayNumber, slot.SlotNumber)
 				for _, invigilation := range invigilations {
 					color.Red.Printf("%d, ", invigilation.InvigilatorID)
 				}
+				fmt.Println()
 			}
 		}
-
 	}
 
-	if roomWithoutInvigilator > 0 {
-		color.Red.Printf("%d rooms without invigilator\n", roomWithoutInvigilator)
-	}
-	if slotWithoutReserve > 0 {
-		color.Red.Printf("%d slots without reserve\n", slotWithoutReserve)
+	if len(roomWithoutInvigilatorDay) > 0 || len(slotWithoutReserveDay) > 0 {
+		keySet := set.NewSet[int]()
+		for k := range roomWithoutInvigilatorDay {
+			keySet.Add(k)
+		}
+		for k := range slotWithoutReserveDay {
+			keySet.Add(k)
+		}
+		keys := keySet.ToSlice()
+
+		sort.Ints(keys)
+
+		for _, day := range keys {
+			roomsWithoutInvig := roomWithoutInvigilatorDay[day]
+			slotsWithoutReserve := slotWithoutReserveDay[day]
+
+			if roomsWithoutInvig+slotsWithoutReserve > 0 {
+				color.Red.Printf("Day %2d: %2d open invigilations, ", day, roomsWithoutInvig+slotsWithoutReserve)
+				if roomsWithoutInvig > 0 {
+					color.Red.Printf("%2d rooms without invigilator", roomsWithoutInvig)
+				} else {
+					fmt.Print("                            ")
+				}
+				if slotsWithoutReserve > 0 {
+					color.Red.Printf(", %2d slots without reserve", slotsWithoutReserve)
+				}
+				fmt.Println()
+			}
+		}
 	}
 
 	return nil

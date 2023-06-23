@@ -443,7 +443,14 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 		roomMap[room.RoomName] = append(roomsForExam, room)
 	}
 
-	for name, roomsForExam := range roomMap {
+	keys := make([]string, 0, len(roomMap))
+	for k := range roomMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, name := range keys {
+		roomsForExam := roomMap[name]
 		invigilator, err := p.dbClient.GetInvigilatorForRoom(ctx, name, day, time)
 		if err != nil {
 			log.Error().Err(err).Int("day", day).Int("slot", time).Str("room", name).

@@ -37,6 +37,7 @@ var (
 						plexams.ValidateConstraints,
 						plexams.ValidateRoomsPerSlot,
 						plexams.ValidateRoomsPerExam,
+						plexams.ValidateRoomsTimeDistance,
 					}...)
 
 				case "conflicts":

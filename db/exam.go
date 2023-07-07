@@ -282,6 +282,7 @@ func (db *DB) ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error) {
 	if err != nil {
 		log.Error().Err(err).Msg("error while trying to find exams in plan")
 	}
+	defer cur.Close(ctx)
 
 	exams := make([]*model.ExamInPlan, 0)
 

@@ -3,7 +3,7 @@ module github.com/obcode/plexams.go
 go 1.20
 
 require (
-	github.com/99designs/gqlgen v0.17.33
+	github.com/99designs/gqlgen v0.17.34
 	github.com/deckarep/golang-set/v2 v2.3.0
 	github.com/go-chi/chi v1.5.4
 	github.com/gookit/color v1.5.3
@@ -14,8 +14,8 @@ require (
 	github.com/rs/zerolog v1.29.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
-	github.com/vektah/gqlparser/v2 v2.5.3
-	go.mongodb.org/mongo-driver v1.11.7
+	github.com/vektah/gqlparser/v2 v2.5.6
+	go.mongodb.org/mongo-driver v1.12.0
 )
 
 require (
@@ -37,7 +37,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/montanaflynn/stats v0.6.6 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ruudk/golang-pdf417 v0.0.0-20201230142125-a7e3863a1245 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
@@ -47,8 +46,8 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/urfave/cli/v2 v2.25.5 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
-	github.com/xdg-go/scram v1.1.1 // indirect
-	github.com/xdg-go/stringprep v1.0.3 // indirect
+	github.com/xdg-go/scram v1.1.2 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect

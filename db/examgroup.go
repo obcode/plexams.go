@@ -21,7 +21,7 @@ func (db *DB) GetNextExamGroupCode(ctx context.Context) (int, error) {
 	}
 
 	if cur.Next(ctx) {
-		value := cur.Current.Lookup("examgroupcode").AsInt32()
+		value := cur.Current.Lookup("examgroupcode").AsInt64()
 		err = cur.Close(ctx)
 		if err != nil {
 			log.Error().Err(err).Msg("cannot close the cursor")

@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
@@ -61,4 +62,53 @@ func (p *Plexams) GetStudentRegsForAncode(ancode int) (*model.StudentRegsForAnco
 		Exam:        zpaExam,
 		StudentRegs: studentRegs,
 	}, nil
+}
+
+func (p *Plexams) GetExamsForStudent(name string) error {
+	ctx := context.Background()
+	students, err := p.dbClient.StudentRegsPerStudentPlanned(ctx)
+	if err != nil {
+		return err
+	}
+	var student *model.StudentRegsPerStudent
+	for _, studentInDB := range students {
+		if strings.HasPrefix(studentInDB.Student.Name, name) {
+			student = studentInDB
+			break
+		}
+	}
+	if student == nil {
+		return fmt.Errorf("NTA with name=%s not found", name)
+	}
+	log.Debug().Str("name", student.Student.Name).Msg("found student")
+
+	for _, ancode := range student.Ancodes {
+		exam, err := p.dbClient.GetZpaExamByAncode(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get zpa exam")
+		}
+
+		constraints, err := p.ConstraintForAncode(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get constraints")
+		}
+		if constraints != nil && constraints.NotPlannedByMe {
+			log.Debug().Int("ancode", ancode).Str("examer", exam.MainExamer).Str("module", exam.Module).Msg("exam not planned by me")
+			continue
+		}
+		log.Debug().Int("ancode", ancode).Str("examer", exam.MainExamer).Str("module", exam.Module).Msg("found exam")
+
+		fmt.Printf("%d. %s: %s\n", ancode, exam.MainExamer, exam.Module)
+
+		roomsForExam, err := p.dbClient.RoomsForAncode(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get rooms")
+		}
+		for _, room := range roomsForExam {
+			fmt.Printf("    - Raum %s\n", room.RoomName)
+		}
+
+	}
+
+	return nil
 }

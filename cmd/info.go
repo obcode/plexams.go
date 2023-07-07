@@ -16,11 +16,12 @@ var (
 		Use:   "info [subcommand]",
 		Short: "get info",
 		Long: `Get info.
-goslots       --- info about slots for GO/GN
-request-rooms --- which rooms to request
-stats         --- get statistics
-student-regs ancode --- get student-reqs for ancode
-rooms-for-nta name --- get planned rooms for student.`,
+goslots                --- info about slots for GO/GN
+request-rooms          --- which rooms to request
+stats                  --- get statistics
+student-regs ancode    --- get student-reqs for ancode
+rooms-for-nta name     --- get planned rooms for student
+exams-for-student name --- get exams for student.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			p := initPlexamsConfig()
@@ -80,6 +81,15 @@ rooms-for-nta name --- get planned rooms for student.`,
 					log.Fatal("need name")
 				}
 				err := p.GetRoomsForNTA(args[1])
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			case "exams-for-student":
+				if len(args) < 2 {
+					log.Fatal("need name")
+				}
+				err := p.GetExamsForStudent(args[1])
 				if err != nil {
 					fmt.Println(err)
 					return

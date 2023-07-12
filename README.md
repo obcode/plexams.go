@@ -15,5 +15,6 @@ erDiagram
         int ancode
         bool toPlan
     }
-    zpaexams ||--|| zpaexamsToPlan: references
+    zpaexams ||--|| zpaexamsToPlan: planOrNot
+    constraints |o--|| zpaexams: hasConstraint
 ```

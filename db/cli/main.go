@@ -16,7 +16,15 @@ func main() {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 
-	client, _ := db.NewDB(viper.GetString("db.uri"), viper.GetString("semester"))
+	dbName := viper.GetString("db.database")
+	var databaseName *string
+	if dbName == "" {
+		databaseName = nil
+	} else {
+		databaseName = &dbName
+	}
+
+	client, _ := db.NewDB(viper.GetString("db.uri"), viper.GetString("semester"), databaseName)
 
 	semester, _ := client.AllSemesterNames()
 

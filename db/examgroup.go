@@ -10,7 +10,7 @@ import (
 )
 
 func (db *DB) GetNextExamGroupCode(ctx context.Context) (int, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamGroups)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameExamGroups)
 
 	filter := bson.D{}
 	opts := options.Find().SetSort(bson.D{{Key: "examgroupcode", Value: -1}}).SetLimit(1)
@@ -39,7 +39,7 @@ func (db *DB) GetNextExamGroupCode(ctx context.Context) (int, error) {
 }
 
 func (db *DB) SaveExamGroups(ctx context.Context, exams []*model.ExamGroup) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamGroups)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameExamGroups)
 
 	err := collection.Drop(ctx)
 	if err != nil {
@@ -66,7 +66,7 @@ func (db *DB) SaveExamGroups(ctx context.Context, exams []*model.ExamGroup) erro
 }
 
 func (db *DB) ExamGroup(ctx context.Context, examGroupCode int) (*model.ExamGroup, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamGroups)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameExamGroups)
 
 	res := collection.FindOne(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
 	if res.Err() != nil {
@@ -102,7 +102,7 @@ func (db *DB) GetExamGroupForAncode(ctx context.Context, ancode int) (*model.Exa
 }
 
 func (db *DB) ExamGroups(ctx context.Context) ([]*model.ExamGroup, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamGroups)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameExamGroups)
 
 	examGroups := make([]*model.ExamGroup, 0)
 

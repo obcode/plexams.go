@@ -53,7 +53,15 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 	if dbUri == "" {
 		log.Info().Msg("starting without DB!")
 	} else {
-		client, err = db.NewDB(dbUri, semester)
+		dbName := viper.GetString("db.database")
+		var databaseName *string
+		if dbName == "" {
+			databaseName = nil
+		} else {
+			databaseName = &dbName
+		}
+
+		client, err = db.NewDB(dbUri, semester, databaseName)
 
 		if err != nil {
 			panic(fmt.Errorf("fatal cannot create mongo client: %w", err))

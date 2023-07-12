@@ -230,7 +230,7 @@ type ComplexityRoot struct {
 		AddExamGroupToSlot  func(childComplexity int, day int, time int, examGroupCode int) int
 		AddNta              func(childComplexity int, input model.NTAInput) int
 		AddRoomToExam       func(childComplexity int, input model.RoomForExamInput) int
-		AddZpaExamToPlan    func(childComplexity int, ancode int, unknown bool) int
+		AddZpaExamToPlan    func(childComplexity int, ancode int) int
 		ExahmRooms          func(childComplexity int, ancode int) int
 		ExcludeDays         func(childComplexity int, ancode int, days []string) int
 		Lab                 func(childComplexity int, ancode int) int
@@ -241,7 +241,7 @@ type ComplexityRoot struct {
 		PrepareExams        func(childComplexity int, input []*model.PrimussExamInput) int
 		RemovePrimussExam   func(childComplexity int, input *model.PrimussExamInput) int
 		RmExamGroupFromSlot func(childComplexity int, examGroupCode int) int
-		RmZpaExamFromPlan   func(childComplexity int, ancode int, unknown bool) int
+		RmZpaExamFromPlan   func(childComplexity int, ancode int) int
 		SameSlot            func(childComplexity int, ancode int, ancodes []int) int
 		Seb                 func(childComplexity int, ancode int) int
 		SetSemester         func(childComplexity int, input string) int
@@ -550,8 +550,8 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	SetSemester(ctx context.Context, input string) (*model.Semester, error)
 	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
-	AddZpaExamToPlan(ctx context.Context, ancode int, unknown bool) (bool, error)
-	RmZpaExamFromPlan(ctx context.Context, ancode int, unknown bool) (bool, error)
+	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
+	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
 	AddAdditionalExam(ctx context.Context, exam model.AdditionalExamInput) (bool, error)
 	RemovePrimussExam(ctx context.Context, input *model.PrimussExamInput) (bool, error)
 	PrepareExams(ctx context.Context, input []*model.PrimussExamInput) (bool, error)
@@ -1450,7 +1450,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.AddZpaExamToPlan(childComplexity, args["ancode"].(int), args["unknown"].(bool)), true
+		return e.complexity.Mutation.AddZpaExamToPlan(childComplexity, args["ancode"].(int)), true
 
 	case "Mutation.exahmRooms":
 		if e.complexity.Mutation.ExahmRooms == nil {
@@ -1582,7 +1582,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RmZpaExamFromPlan(childComplexity, args["ancode"].(int), args["unknown"].(bool)), true
+		return e.complexity.Mutation.RmZpaExamFromPlan(childComplexity, args["ancode"].(int)), true
 
 	case "Mutation.sameSlot":
 		if e.complexity.Mutation.SameSlot == nil {
@@ -3367,8 +3367,8 @@ type RoomWithInvigilator {
   setSemester(input: String!): Semester!
   # Prepare ZPA-Exams
   zpaExamsToPlan(input: [Int!]!): [ZPAExam!]!
-  addZpaExamToPlan(ancode: Int!, unknown: Boolean!): Boolean!
-  rmZpaExamFromPlan(ancode: Int!, unknown: Boolean!): Boolean!
+  addZpaExamToPlan(ancode: Int!): Boolean!
+  rmZpaExamFromPlan(ancode: Int!): Boolean!
   # Additional Exams
   addAdditionalExam(exam: AdditionalExamInput!): Boolean!
   # Primuss
@@ -3874,15 +3874,6 @@ func (ec *executionContext) field_Mutation_addZpaExamToPlan_args(ctx context.Con
 		}
 	}
 	args["ancode"] = arg0
-	var arg1 bool
-	if tmp, ok := rawArgs["unknown"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unknown"))
-		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["unknown"] = arg1
 	return args, nil
 }
 
@@ -4066,15 +4057,6 @@ func (ec *executionContext) field_Mutation_rmZpaExamFromPlan_args(ctx context.Co
 		}
 	}
 	args["ancode"] = arg0
-	var arg1 bool
-	if tmp, ok := rawArgs["unknown"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unknown"))
-		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["unknown"] = arg1
 	return args, nil
 }
 
@@ -9895,7 +9877,7 @@ func (ec *executionContext) _Mutation_addZpaExamToPlan(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddZpaExamToPlan(rctx, fc.Args["ancode"].(int), fc.Args["unknown"].(bool))
+		return ec.resolvers.Mutation().AddZpaExamToPlan(rctx, fc.Args["ancode"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9950,7 +9932,7 @@ func (ec *executionContext) _Mutation_rmZpaExamFromPlan(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RmZpaExamFromPlan(rctx, fc.Args["ancode"].(int), fc.Args["unknown"].(bool))
+		return ec.resolvers.Mutation().RmZpaExamFromPlan(rctx, fc.Args["ancode"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

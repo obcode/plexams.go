@@ -38,7 +38,7 @@ func (db *DB) Rooms(ctx context.Context) ([]*model.Room, error) {
 }
 
 func (db *DB) SaveRooms(ctx context.Context, slotsWithRooms []*model.SlotWithRooms) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionRooms)
+	collection := db.Client.Database(db.databaseName).Collection(collectionRooms)
 
 	err := collection.Drop(ctx)
 	if err != nil {

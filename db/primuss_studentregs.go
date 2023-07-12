@@ -213,7 +213,7 @@ func (db *DB) ChangeAncodeInStudentRegsCount(ctx context.Context, program string
 
 func (db *DB) SetRegsWithErrors(ctx context.Context, regsWithErrors []*model.RegWithError) error {
 	collectionName := "errors-zpa-studentregs"
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+	collection := db.Client.Database(db.databaseName).Collection(collectionName)
 
 	err := collection.Drop(ctx)
 	if err != nil {
@@ -238,7 +238,7 @@ func (db *DB) SetRegsWithErrors(ctx context.Context, regsWithErrors []*model.Reg
 
 func (db *DB) GetRegsWithErrors(ctx context.Context) ([]*model.RegWithError, error) {
 	collectionName := "errors-zpa-studentregs"
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+	collection := db.Client.Database(db.databaseName).Collection(collectionName)
 
 	regWithErrors := make([]*model.RegWithError, 0)
 

@@ -9,7 +9,7 @@ import (
 )
 
 func (db *DB) Log(ctx context.Context, subj, msg string) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection("log")
+	collection := db.Client.Database(db.databaseName).Collection("log")
 
 	doc := bson.D{
 		{Key: "created", Value: time.Now()},

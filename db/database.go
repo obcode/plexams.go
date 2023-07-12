@@ -41,7 +41,7 @@ func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
 }
 
 func (db *DB) SaveSemesterConfig(ctx context.Context, semesterConfig *model.SemesterConfig) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameSemesterConfig)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameSemesterConfig)
 
 	err := collection.Drop(ctx)
 	if err != nil {

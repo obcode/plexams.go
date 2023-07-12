@@ -25,9 +25,8 @@ const (
 	collectionStudentRegsPerStudentPlanned = "studentregs_per_student_planned"
 	collectionStudentRegsPerStudentAll     = "studentregs_per_student_all"
 
-	collectionAll       = "zpaexams"
-	collectionToPlan    = "zpaexams-to-plan"
-	collectionNotToPlan = "zpaexams-not-to-plan"
+	collectionAll    = "zpaexams"
+	collectionToPlan = "zpaexamsToPlan"
 
 	collectionExamsInPlan = "exams_in_plan"
 
@@ -50,13 +49,13 @@ const (
 )
 
 func (db *DB) getCollection(program string, primussType PrimussType) *mongo.Collection {
-	return db.Client.Database(databaseName(db.semester)).Collection(fmt.Sprintf("%s_%s", primussType, program))
+	return db.Client.Database(db.databaseName).Collection(fmt.Sprintf("%s_%s", primussType, program))
 }
 
 func (db *DB) getCollectionSemester(collectionName string) *mongo.Collection {
-	return db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+	return db.Client.Database(db.databaseName).Collection(collectionName)
 }
 
 func (db *DB) getCollectionSemesterFromContext(ctx context.Context) *mongo.Collection {
-	return db.Client.Database(databaseName(db.semester)).Collection(ctx.Value(CollectionName("collectionName")).(string))
+	return db.Client.Database(db.databaseName).Collection(ctx.Value(CollectionName("collectionName")).(string))
 }

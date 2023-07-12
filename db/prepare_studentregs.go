@@ -44,7 +44,7 @@ func (db *DB) SaveStudentRegsPerAncode(ctx context.Context, studentRegsPerAncode
 		collectionName = collectionStudentRegsPerAncodeAll
 	}
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+	collection := db.Client.Database(db.databaseName).Collection(collectionName)
 
 	err := collection.Drop(ctx)
 	if err != nil {
@@ -90,7 +90,7 @@ func (db *DB) SaveStudentRegsPerStudent(ctx context.Context, studentRegsPerStude
 		collectionName = collectionStudentRegsPerStudentAll
 	}
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+	collection := db.Client.Database(db.databaseName).Collection(collectionName)
 
 	err := collection.Drop(ctx)
 	if err != nil {

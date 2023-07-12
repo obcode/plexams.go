@@ -23,16 +23,16 @@ func (p *Plexams) PrepareStudentRegs() error {
 	}
 
 	studentRegsPerAncodePlanned := make(map[int]map[string][]*model.StudentReg)
-	for _, ancode := range ancodes {
-		studentRegsPerAncodePlanned[ancode.Ancode] = studentRegsPerAncode[ancode.Ancode]
+	for _, ancode := range (*ancodes).ToSlice() {
+		studentRegsPerAncodePlanned[ancode] = studentRegsPerAncode[ancode]
 	}
 
 	studentRegsPerStudentPlanned := make(map[string][]*model.StudentReg, 0)
 	for mtknr, studentRegs := range studentRegsPerStudent {
 		studentRegsPlanned := make([]*model.StudentReg, 0)
 		for _, studentReg := range studentRegs {
-			for _, ancode := range ancodes {
-				if ancode.Ancode == studentReg.AnCode {
+			for _, ancode := range (*ancodes).ToSlice() {
+				if ancode == studentReg.AnCode {
 					studentRegsPlanned = append(studentRegsPlanned, studentReg)
 					break
 				}

@@ -3,22 +3,17 @@
 
 # plexams.go
 
-Rewrite of obcode/plexams in Go
+- Import aus ZPA -- daher nicht verändern!
+  - teachers
+  - zpaexams
 
-## Config `plexams.yaml`
-
-## Run GraphQL server
-
-```
-plexams.go server
-```
-
-## Fetch from ZPA
-
-```
-plexams.go zpa teacher
-```
-
-```
-plexams.go zpa exams
+```mermaid
+erDiagram
+    teachers
+    zpaexams
+    zpaexamsToPlan {
+        int ancode
+        bool toPlan
+    }
+    zpaexams ||--|| zpaexamsToPlan: references
 ```

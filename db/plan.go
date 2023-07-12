@@ -16,7 +16,7 @@ func (db *DB) AddExamGroupToSlot(ctx context.Context, dayNumber int, timeNumber 
 		return false, fmt.Errorf("exam group %d is locked", examGroupCode)
 	}
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	_, err := collection.DeleteMany(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
 	if err != nil {
@@ -45,7 +45,7 @@ func (db *DB) RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool,
 		return false, fmt.Errorf("exam group %d is locked", examGroupCode)
 	}
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	_, err := collection.DeleteMany(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
 	if err != nil {
@@ -58,7 +58,7 @@ func (db *DB) RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool,
 }
 
 func (db *DB) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model.ExamGroup, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	filter := bson.M{
 		"$and": []bson.M{
@@ -106,7 +106,7 @@ func (db *DB) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model
 }
 
 func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	cur, err := collection.Find(ctx, bson.M{})
 	if err != nil {
@@ -133,7 +133,7 @@ func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 }
 
 func (db *DB) PlanEntryForExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	res := collection.FindOne(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
 	if res.Err() != nil {
@@ -259,7 +259,7 @@ func (db *DB) LockExamGroup(ctx context.Context, examGroupCode int) (*model.Plan
 		return nil, err
 	}
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	filter := bson.D{{Key: "examgroupcode", Value: examGroupCode}}
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: "locked", Value: true}}}}
@@ -281,7 +281,7 @@ func (db *DB) UnlockExamGroup(ctx context.Context, examGroupCode int) (*model.Pl
 		return nil, err
 	}
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	filter := bson.D{{Key: "examgroupcode", Value: examGroupCode}}
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: "locked", Value: false}}}}
@@ -301,7 +301,7 @@ func (db *DB) ExamGroupIsLocked(ctx context.Context, examGroupCode int) bool {
 }
 
 func (db *DB) RemoveUnlockedExamGroupsFromPlan(ctx context.Context) (int, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	res, err := collection.DeleteMany(ctx, bson.D{{Key: "locked", Value: false}})
 
@@ -316,7 +316,7 @@ func (db *DB) RemoveUnlockedExamGroupsFromPlan(ctx context.Context) (int, error)
 }
 
 func (db *DB) LockPlan(ctx context.Context) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	res, err := collection.UpdateMany(ctx, bson.D{},
 		bson.D{{Key: "$set", Value: bson.D{{Key: "locked", Value: true}}}})
@@ -344,13 +344,13 @@ func (db *DB) SavePlanEntriesToBackup(ctx context.Context, planEntries []*model.
 func (db *DB) savePlanEntries(ctx context.Context, planEntries []*model.PlanEntry, backup bool) error {
 	var collection *mongo.Collection
 	if backup {
-		collection = db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlanBackup)
+		collection = db.Client.Database(db.databaseName).Collection(collectionNamePlanBackup)
 		err := collection.Drop(ctx)
 		if err != nil {
 			log.Error().Err(err).Msg("cannot drop backup collection")
 		}
 	} else {
-		collection = db.Client.Database(databaseName(db.semester)).Collection(collectionNamePlan)
+		collection = db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 	}
 
 	entries := make([]interface{}, 0, len(planEntries))

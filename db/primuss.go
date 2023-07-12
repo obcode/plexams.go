@@ -10,7 +10,7 @@ import (
 )
 
 func (db *DB) GetPrograms(ctx context.Context) ([]string, error) {
-	collectionNames, err := db.Client.Database(databaseName(db.semester)).ListCollectionNames(ctx,
+	collectionNames, err := db.Client.Database(db.databaseName).ListCollectionNames(ctx,
 		bson.D{primitive.E{
 			Key: "name",
 			Value: bson.D{

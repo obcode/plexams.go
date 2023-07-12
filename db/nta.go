@@ -45,7 +45,7 @@ func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 }
 
 func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameNTAs)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
 
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{Key: "nta.name", Value: 1}})
@@ -68,7 +68,7 @@ func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
 }
 
 func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameNTAs)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
 
 	var nta model.NTAWithRegs
 	res := collection.FindOne(ctx, bson.D{{Key: "nta.mtknr", Value: mtknr}})
@@ -86,7 +86,7 @@ func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
 }
 
 func (db *DB) SaveSemesterNTAs(ctx context.Context, ntaWithRegs []*model.NTAWithRegs) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameNTAs)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
 
 	err := collection.Drop(ctx)
 	if err != nil {

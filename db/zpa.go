@@ -11,7 +11,7 @@ import (
 )
 
 func (db *DB) GetTeacher(ctx context.Context, id int) (*model.Teacher, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection("teachers")
+	collection := db.Client.Database(db.databaseName).Collection("teachers")
 
 	var teacher model.Teacher
 
@@ -43,7 +43,7 @@ func isInvigilator(teacher model.Teacher, semester string) bool {
 }
 
 func (db *DB) getTeachers(ctx context.Context, predicate func(model.Teacher) bool) ([]*model.Teacher, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection("teachers")
+	collection := db.Client.Database(db.databaseName).Collection("teachers")
 
 	teachers := make([]*model.Teacher, 0)
 
@@ -78,7 +78,7 @@ func (db *DB) getTeachers(ctx context.Context, predicate func(model.Teacher) boo
 }
 
 func (db *DB) CacheTeachers(teachers []*model.Teacher, semester string) error {
-	collection := db.Client.Database(databaseName(semester)).Collection("teachers")
+	collection := db.Client.Database(db.databaseName).Collection("teachers")
 
 	teachersIntf := make([]interface{}, 0, len(teachers))
 

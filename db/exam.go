@@ -12,7 +12,7 @@ import (
 )
 
 func (db *DB) AddAdditionalExam(ctx context.Context, exam model.AdditionalExamInput) (bool, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameAdditionalExams)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameAdditionalExams)
 	_, err := collection.InsertOne(ctx, exam)
 	if err != nil {
 		return false, err
@@ -22,7 +22,7 @@ func (db *DB) AddAdditionalExam(ctx context.Context, exam model.AdditionalExamIn
 }
 
 func (db *DB) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameAdditionalExams)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameAdditionalExams)
 
 	exams := make([]*model.AdditionalExam, 0)
 
@@ -58,7 +58,7 @@ func (db *DB) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, err
 }
 
 func (db *DB) ExamsAlreadyPrepared(ctx context.Context) bool {
-	collection := db.Client.Database(databaseName(db.semester)).Collection("exams")
+	collection := db.Client.Database(db.databaseName).Collection("exams")
 
 	docsCount, err := collection.CountDocuments(ctx, bson.D{})
 	if err != nil {
@@ -69,7 +69,7 @@ func (db *DB) ExamsAlreadyPrepared(ctx context.Context) bool {
 }
 
 func (db *DB) AddExam(ctx context.Context, exam *model.Exam) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection("exams")
+	collection := db.Client.Database(db.databaseName).Collection("exams")
 
 	result := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: exam.AnCode}})
 	if result.Err() == nil {
@@ -89,7 +89,7 @@ func (db *DB) AddExam(ctx context.Context, exam *model.Exam) error {
 }
 
 func (db *DB) SaveConnectedExam(ctx context.Context, exam *model.ConnectedExam) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameConnectedExams)
 
 	_, err := collection.InsertOne(ctx, exam)
 	if err != nil {
@@ -103,7 +103,7 @@ func (db *DB) SaveConnectedExam(ctx context.Context, exam *model.ConnectedExam) 
 }
 
 func (db *DB) SaveConnectedExams(ctx context.Context, exams []*model.ConnectedExam) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameConnectedExams)
 
 	err := collection.Drop(ctx)
 	if err != nil {
@@ -130,7 +130,7 @@ func (db *DB) SaveConnectedExams(ctx context.Context, exams []*model.ConnectedEx
 }
 
 func (db *DB) ReplaceConnectedExam(ctx context.Context, exam *model.ConnectedExam) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameConnectedExams)
 
 	_, err := collection.ReplaceOne(ctx, bson.D{{Key: "zpaexam.ancode", Value: exam.ZpaExam.AnCode}}, exam)
 	if err != nil {
@@ -142,7 +142,7 @@ func (db *DB) ReplaceConnectedExam(ctx context.Context, exam *model.ConnectedExa
 }
 
 func (db *DB) GetConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameConnectedExams)
 
 	var result model.ConnectedExam
 	err := collection.FindOne(ctx, bson.D{{Key: "zpaexam.ancode", Value: ancode}}).Decode(&result)
@@ -156,7 +156,7 @@ func (db *DB) GetConnectedExam(ctx context.Context, ancode int) (*model.Connecte
 }
 
 func (db *DB) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameConnectedExams)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameConnectedExams)
 
 	exams := make([]*model.ConnectedExam, 0)
 
@@ -192,7 +192,7 @@ func (db *DB) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, er
 }
 
 func (db *DB) SaveExamsWithRegs(ctx context.Context, exams []*model.ExamWithRegs) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamsWithRegs)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameExamsWithRegs)
 
 	err := collection.Drop(ctx)
 	if err != nil {
@@ -219,7 +219,7 @@ func (db *DB) SaveExamsWithRegs(ctx context.Context, exams []*model.ExamWithRegs
 }
 
 func (db *DB) ExamWithRegs(ctx context.Context, ancode int) (*model.ExamWithRegs, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamsWithRegs)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameExamsWithRegs)
 
 	res := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
 	if res.Err() != nil {
@@ -237,7 +237,7 @@ func (db *DB) ExamWithRegs(ctx context.Context, ancode int) (*model.ExamWithRegs
 }
 
 func (db *DB) ExamsWithRegs(ctx context.Context) ([]*model.ExamWithRegs, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameExamsWithRegs)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameExamsWithRegs)
 
 	exams := make([]*model.ExamWithRegs, 0)
 

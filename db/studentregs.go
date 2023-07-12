@@ -9,7 +9,7 @@ import (
 )
 
 func (db *DB) GetStudentRegsPerAncodePlanned(ctx context.Context) ([]*model.StudentRegsPerAncode, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionStudentRegsPerAncodePlanned)
+	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerAncodePlanned)
 
 	studentRegs := make([]*model.StudentRegsPerAncode, 0)
 
@@ -42,7 +42,7 @@ func (db *DB) GetStudentRegsPerAncodePlanned(ctx context.Context) ([]*model.Stud
 }
 
 func (db *DB) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.StudentRegsPerStudent, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionStudentRegsPerStudentPlanned)
+	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned)
 
 	cur, err := collection.Find(ctx, bson.M{})
 	if err != nil {
@@ -64,7 +64,7 @@ func (db *DB) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.Studen
 }
 
 func (db *DB) StudentRegsPerStudentAll(ctx context.Context) ([]*model.StudentRegsPerStudent, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionStudentRegsPerStudentAll)
+	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentAll)
 
 	cur, err := collection.Find(ctx, bson.M{})
 	if err != nil {

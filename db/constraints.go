@@ -26,7 +26,7 @@ func (db *DB) NotPlannedByMe(ctx context.Context, ancode int) (bool, error) {
 
 	constraint.NotPlannedByMe = true
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 	if update {
 		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
 	} else {
@@ -54,7 +54,7 @@ func (db *DB) Online(ctx context.Context, ancode int) (bool, error) {
 
 	constraint.Online = true
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 	if update {
 		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
 	} else {
@@ -82,7 +82,7 @@ func (db *DB) ExcludeDays(ctx context.Context, ancode int, days []*time.Time) (b
 
 	constraint.ExcludeDays = days
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 
 	if update {
 		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
@@ -111,7 +111,7 @@ func (db *DB) PossibleDays(ctx context.Context, ancode int, days []*time.Time) (
 
 	constraint.PossibleDays = days
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 
 	if update {
 		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
@@ -157,7 +157,7 @@ func (db *DB) SameSlot(ctx context.Context, ancode int, ancodes []int) (bool, er
 	sort.Ints(list)
 	constraint.SameSlot = list
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 	if update {
 		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
 	} else {
@@ -188,7 +188,7 @@ func (db *DB) PlacesWithSockets(ctx context.Context, ancode int) (bool, error) {
 
 	constraint.RoomConstraints.PlacesWithSocket = true
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 	if update {
 		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
 	} else {
@@ -219,7 +219,7 @@ func (db *DB) Lab(ctx context.Context, ancode int) (bool, error) {
 
 	constraint.RoomConstraints.Lab = true
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 	if update {
 		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
 	} else {
@@ -250,7 +250,7 @@ func (db *DB) ExahmRooms(ctx context.Context, ancode int) (bool, error) {
 
 	constraint.RoomConstraints.ExahmRooms = true
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 	if update {
 		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
 	} else {
@@ -281,7 +281,7 @@ func (db *DB) SafeExamBrowser(ctx context.Context, ancode int) (bool, error) {
 
 	constraint.RoomConstraints.Seb = true
 
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 	if update {
 		_, err = collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraint)
 	} else {
@@ -295,7 +295,7 @@ func (db *DB) SafeExamBrowser(ctx context.Context, ancode int) (bool, error) {
 }
 
 func (db *DB) GetConstraintsForAncode(ctx context.Context, ancode int) (*model.Constraints, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 
 	var constraint model.Constraints
 	res := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
@@ -313,7 +313,7 @@ func (db *DB) GetConstraintsForAncode(ctx context.Context, ancode int) (*model.C
 }
 
 func (db *DB) GetConstraints(ctx context.Context) ([]*model.Constraints, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionConstraints)
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 
 	constraints := make([]*model.Constraints, 0)
 

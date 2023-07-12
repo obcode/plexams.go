@@ -180,15 +180,9 @@ func (p *Plexams) ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPA
 		}
 	}
 
-	err = p.dbClient.SetZPAExamsToPlan(ctx, examsToPlan)
+	err = p.dbClient.SetZPAExamsToPlan(ctx, examsToPlan, examsNotToPlan)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot set zpa exams to plan")
-		return nil, err
-	}
-
-	err = p.dbClient.SetZPAExamsNotToPlan(ctx, examsNotToPlan)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot set zpa exams not to plan")
 		return nil, err
 	}
 
@@ -253,12 +247,12 @@ func (p *Plexams) ZpaExamsPlaningStatusUnknown(ctx context.Context) ([]*model.ZP
 	return statusUnknown, nil
 }
 
-func (p *Plexams) AddZpaExamToPlan(ctx context.Context, ancode int, unknown bool) (bool, error) {
-	return p.dbClient.AddZpaExamToPlan(ctx, ancode, unknown)
+func (p *Plexams) AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error) {
+	return p.dbClient.AddZpaExamToPlan(ctx, ancode)
 }
 
-func (p *Plexams) RmZpaExamFromPlan(ctx context.Context, ancode int, unknown bool) (bool, error) {
-	return p.dbClient.RmZpaExamFromPlan(ctx, ancode, unknown)
+func (p *Plexams) RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error) {
+	return p.dbClient.RmZpaExamFromPlan(ctx, ancode)
 }
 
 func (p *Plexams) GetSupervisorRequirements(ctx context.Context) ([]*zpa.SupervisorRequirements, error) {

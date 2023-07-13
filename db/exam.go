@@ -102,6 +102,18 @@ func (db *DB) SaveConnectedExam(ctx context.Context, exam *model.ConnectedExam) 
 	return nil
 }
 
+type PrimussExam struct {
+	Ancode  int    `bson:"ancode"`
+	Program string `bson:"program"`
+}
+
+type ConnectedExam struct {
+	ZpaExam           int            `bson:"zpaExamAncode"`
+	PrimussExams      []*PrimussExam `bson:"primussExamsAncodes"`
+	OtherPrimussExams []*PrimussExam `bson:"otherPrimussExamsAncodes"`
+	Errors            []string       `bson:"errors"`
+}
+
 func (db *DB) SaveConnectedExams(ctx context.Context, exams []*model.ConnectedExam) error {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameConnectedExams)
 
@@ -115,7 +127,34 @@ func (db *DB) SaveConnectedExams(ctx context.Context, exams []*model.ConnectedEx
 
 	examsToInsert := make([]interface{}, 0, len(exams))
 	for _, exam := range exams {
-		examsToInsert = append(examsToInsert, exam)
+		var primussExamsAncodes []*PrimussExam
+		if exam.PrimussExams != nil && len(exam.PrimussExams) > 0 {
+			primussExamsAncodes = make([]*PrimussExam, 0, len(exam.PrimussExams))
+			for _, primussExam := range exam.PrimussExams {
+				primussExamsAncodes = append(primussExamsAncodes, &PrimussExam{
+					Ancode:  primussExam.AnCode,
+					Program: primussExam.Program,
+				})
+			}
+		}
+
+		var otherPrimussExamsAncodes []*PrimussExam
+		if exam.OtherPrimussExams != nil && len(exam.OtherPrimussExams) > 0 {
+			otherPrimussExamsAncodes = make([]*PrimussExam, 0, len(exam.OtherPrimussExams))
+			for _, otherPrimussExam := range exam.OtherPrimussExams {
+				otherPrimussExamsAncodes = append(otherPrimussExamsAncodes, &PrimussExam{
+					Ancode:  otherPrimussExam.AnCode,
+					Program: otherPrimussExam.Program,
+				})
+			}
+		}
+
+		examsToInsert = append(examsToInsert, &ConnectedExam{
+			ZpaExam:           exam.ZpaExam.AnCode,
+			PrimussExams:      primussExamsAncodes,
+			OtherPrimussExams: otherPrimussExamsAncodes,
+			Errors:            exam.Errors,
+		})
 	}
 
 	_, err = collection.InsertMany(ctx, examsToInsert)
@@ -158,37 +197,30 @@ func (db *DB) GetConnectedExam(ctx context.Context, ancode int) (*model.Connecte
 func (db *DB) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameConnectedExams)
 
-	exams := make([]*model.ConnectedExam, 0)
+	exams := make([]*ConnectedExam, 0)
 
 	findOptions := options.Find()
-	findOptions.SetSort(bson.D{{Key: "zpaexam.ancode", Value: 1}})
+	findOptions.SetSort(bson.D{{Key: "zpaExamAncode", Value: 1}})
 
 	cur, err := collection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameConnectedExams).Msg("MongoDB Find")
-		return exams, err
+		return nil, err
 	}
 	defer cur.Close(ctx)
 
-	for cur.Next(ctx) {
-		var exam model.ConnectedExam
-
-		err := cur.Decode(&exam)
-		if err != nil {
-			log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameConnectedExams).Interface("cur", cur).
-				Msg("Cannot decode to additional exam")
-			return exams, err
-		}
-
-		exams = append(exams, &exam)
-	}
+	err = cur.All(ctx, &exams)
 
 	if err := cur.Err(); err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameConnectedExams).Msg("Cursor returned error")
-		return exams, err
+		return nil, err
 	}
 
 	return exams, nil
+}
+
+func (db *DB) connectedExamToModelConnectedExam(ctx context.Context, exam *ConnectedExam) *model.ConnectedExam {
+
 }
 
 func (db *DB) SaveExamsWithRegs(ctx context.Context, exams []*model.ExamWithRegs) error {

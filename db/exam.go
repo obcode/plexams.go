@@ -211,16 +211,60 @@ func (db *DB) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, er
 
 	err = cur.All(ctx, &exams)
 
-	if err := cur.Err(); err != nil {
+	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameConnectedExams).Msg("Cursor returned error")
 		return nil, err
 	}
 
-	return exams, nil
+	if exams == nil {
+		return nil, nil
+	}
+
+	connectedExams := make([]*model.ConnectedExam, 0, len(exams))
+	for _, exam := range exams {
+		connectedExam, err := db.connectedExamToModelConnectedExam(ctx, exam)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.ZpaExam).Msg("cannot get connected exam")
+		}
+		connectedExams = append(connectedExams, connectedExam)
+	}
+
+	return connectedExams, nil
 }
 
-func (db *DB) connectedExamToModelConnectedExam(ctx context.Context, exam *ConnectedExam) *model.ConnectedExam {
+func (db *DB) connectedExamToModelConnectedExam(ctx context.Context, exam *ConnectedExam) (*model.ConnectedExam, error) {
+	zpaExam, err := db.GetZpaExamByAncode(ctx, exam.ZpaExam)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", exam.ZpaExam).Msg("cannot get zpa exam")
+		return nil, err
+	}
 
+	var primussExams []*model.PrimussExam
+	for _, exam := range exam.PrimussExams {
+		primussExam, err := db.GetPrimussExam(ctx, exam.Program, exam.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.Ancode).Str("program", exam.Program).Msg("cannot get primuss exam")
+			return nil, err
+		}
+		primussExams = append(primussExams, primussExam)
+	}
+
+	var otherPrimussExams []*model.PrimussExam
+	for _, exam := range exam.OtherPrimussExams {
+		primussExam, err := db.GetPrimussExam(ctx, exam.Program, exam.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.Ancode).Str("program", exam.Program).Msg("cannot get primuss exam")
+			return nil, err
+		}
+		otherPrimussExams = append(otherPrimussExams, primussExam)
+	}
+
+	return &model.ConnectedExam{
+		ZpaExam:           zpaExam,
+		PrimussExams:      primussExams,
+		OtherPrimussExams: otherPrimussExams,
+		Errors:            exam.Errors,
+	}, nil
 }
 
 func (db *DB) SaveExamsWithRegs(ctx context.Context, exams []*model.ExamWithRegs) error {

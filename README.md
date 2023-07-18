@@ -17,7 +17,8 @@ erDiagram
     }
     zpaexams ||--|| zpaexamsToPlan: planOrNot
     constraints |o--|| zpaexams: hasConstraint
-    zpaexams |o--o{ exams_XY: connectedExam
+    zpaexams |o--o{ exams_primuss: connectedExam
+    additionalExam |o--o{ exams_primuss: connectedAdditionalExam
 ```
 
     conflicts_XY

@@ -116,20 +116,9 @@ func (db *DB) getPrimussExams(ctx context.Context, program string) ([]*model.Pri
 	}
 	defer cur.Close(ctx)
 
-	for cur.Next(ctx) {
-		var exam model.PrimussExam
+	err = cur.All(ctx, &exams)
 
-		err := cur.Decode(&exam)
-		if err != nil {
-			log.Error().Err(err).Str("semester", db.semester).Str("program", program).Interface("cur", cur).
-				Msg("Cannot decode to exam")
-			return exams, err
-		}
-
-		exams = append(exams, &exam)
-	}
-
-	if err := cur.Err(); err != nil {
+	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("Cursor returned error")
 		return exams, err
 	}

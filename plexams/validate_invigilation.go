@@ -100,6 +100,7 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 	return nil
 }
 
+// TODO: NTA- und Reserve-Aufsicht (wenn NTA) nicht im folgenden Slot einteilen!
 func (p *Plexams) ValidateInvigilatorSlots() error {
 	color.Style{color.FgRed, color.BgGreen, color.OpBold}.
 		Printf(" ---   validating invigilator for all slots  --- \n")

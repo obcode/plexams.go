@@ -53,6 +53,20 @@ type Constraints struct {
 	RoomConstraints *RoomConstraints `json:"roomConstraints,omitempty"`
 }
 
+type Exam struct {
+	Ancode        int                               `json:"ancode"`
+	ZpaExam       *ZPAExam                          `json:"zpaExam,omitempty"`
+	ExternalExam  *ExternalExam                     `json:"externalExam,omitempty"`
+	PrimussExams  []*PrimussExam                    `json:"primussExams"`
+	StudentRegs   []*StudentRegsPerAncodeAndProgram `json:"studentRegs"`
+	Conflicts     []*ConflictPerProgram             `json:"conflicts"`
+	ConnectErrors []string                          `json:"connectErrors"`
+	Constraints   *Constraints                      `json:"constraints,omitempty"`
+	Nta           []*NTAWithRegs                    `json:"nta,omitempty"`
+	Slot          *Slot                             `json:"slot,omitempty"`
+	Rooms         []*RoomForExam                    `json:"rooms,omitempty"`
+}
+
 type ExamDay struct {
 	Number int       `json:"number"`
 	Date   time.Time `json:"date"`
@@ -114,6 +128,11 @@ type ExamWithRegsAndRooms struct {
 type ExamerInPlan struct {
 	MainExamer   string `json:"mainExamer"`
 	MainExamerID int    `json:"mainExamerID"`
+}
+
+type ExternalExam struct {
+	Ancode  int    `json:"ancode"`
+	Program string `json:"program"`
 }
 
 type FK07Program struct {

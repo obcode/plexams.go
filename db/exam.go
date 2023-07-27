@@ -2,12 +2,10 @@ package db
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -68,25 +66,25 @@ func (db *DB) ExamsAlreadyPrepared(ctx context.Context) bool {
 	return docsCount != 0
 }
 
-func (db *DB) AddExam(ctx context.Context, exam *model.Exam) error {
-	collection := db.Client.Database(db.databaseName).Collection("exams")
+// func (db *DB) AddExam(ctx context.Context, exam *model.Exam) error {
+// 	collection := db.Client.Database(db.databaseName).Collection("exams")
 
-	result := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: exam.AnCode}})
-	if result.Err() == nil {
-		log.Error().Int("ancode", exam.AnCode).Msg("cannot add exam, exam with ancode already in db")
-		return fmt.Errorf("cannot add exam, exam with ancode %d already in db", exam.AnCode)
-	}
+// 	result := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: exam.AnCode}})
+// 	if result.Err() == nil {
+// 		log.Error().Int("ancode", exam.AnCode).Msg("cannot add exam, exam with ancode already in db")
+// 		return fmt.Errorf("cannot add exam, exam with ancode %d already in db", exam.AnCode)
+// 	}
 
-	if result.Err() == mongo.ErrNoDocuments {
-		_, err := collection.InsertOne(ctx, exam)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
+// 	if result.Err() == mongo.ErrNoDocuments {
+// 		_, err := collection.InsertOne(ctx, exam)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	}
 
-	return result.Err()
-}
+// 	return result.Err()
+// }
 
 func (db *DB) SaveExamsWithRegs(ctx context.Context, exams []*model.ExamWithRegs) error {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameExamsWithRegs)

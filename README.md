@@ -7,6 +7,8 @@
   - teachers
   - zpaexams
 
+## Datenmodell
+
 ```mermaid
 erDiagram
     teachers
@@ -18,10 +20,17 @@ erDiagram
     zpaexams ||--|| zpaexamsToPlan: planOrNot
     constraints |o--|| zpaexams: hasConstraint
     zpaexams |o--o{ exams_primuss: connectedExam
-    additionalExam |o--o{ exams_primuss: connectedAdditionalExam
+    externalExams {
+        int ancode
+        string program
+    }
 ```
+
+    additionalExam |o--o{ exams_primuss: connectedAdditionalExam
 
     conflicts_XY
     count_XY
     exams_XY
     studentregs_XY
+
+## Ablauf

@@ -41,11 +41,6 @@ func (r *mutationResolver) RemovePrimussExam(ctx context.Context, input *model.P
 	return r.plexams.RemovePrimussExam(ctx, input)
 }
 
-// PrepareExams is the resolver for the prepareExams field.
-func (r *mutationResolver) PrepareExams(ctx context.Context, input []*model.PrimussExamInput) (bool, error) {
-	return r.plexams.PrepareExams(ctx, input)
-}
-
 // AddNta is the resolver for the addNTA field.
 func (r *mutationResolver) AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error) {
 	return r.plexams.AddNta(ctx, input)

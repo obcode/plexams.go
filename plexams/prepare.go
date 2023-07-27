@@ -149,8 +149,8 @@ func (p *Plexams) PrepareExamsWithRegs() error {
 	}
 
 	connectedExams := make(map[int]*model.ConnectedExam)
-	for _, connecconnectedExam := range connectedExamsSlice {
-		connectedExams[connecconnectedExam.ZpaExam.AnCode] = connecconnectedExam
+	for _, connectedExam := range connectedExamsSlice {
+		connectedExams[connectedExam.ZpaExam.AnCode] = connectedExam
 	}
 
 	studentRegsSlice, err := p.GetStudentRegsPerAncodePlanned(ctx)

@@ -1,3 +1,4 @@
+# TODO: remove me
 input AdditionalExamInput {
   ancode: Int!
   module: String!
@@ -7,6 +8,7 @@ input AdditionalExamInput {
   groups: [String!]!
 }
 
+# TODO: remove me
 type AdditionalExam {
   ancode: Int!
   module: String!
@@ -17,6 +19,7 @@ type AdditionalExam {
   groups: [String!]!
 }
 
+# TODO: remove me
 type ExamWithRegs {
   ancode: Int!
   zpaExam: ZPAExam!
@@ -45,17 +48,20 @@ type RoomConstraints {
   seb: Boolean!
 }
 
+# TODO: remove me
 type ExamToPlan {
   exam: ExamWithRegs!
   constraints: Constraints
 }
 
+# TODO: remove me
 type PlannedExamWithNTA {
   exam: ExamWithRegs!
   constraints: Constraints
   nta: [NTAWithRegs!]
 }
 
+# TODO: remove me
 type ExamInPlan {
   exam: ExamWithRegs!
   constraints: Constraints
@@ -63,9 +69,29 @@ type ExamInPlan {
   slot: Slot
 }
 
+# TODO: remove me
 type ExamWithRegsAndRooms {
   exam: ExamInPlan!
   normalRegs: [StudentReg!]!
   ntaRegs: [NTAWithRegs!]!
   rooms: [RoomForExam!]!
+}
+
+type ExternalExam {
+  ancode: Int!
+  program: String!
+}
+
+type Exam {
+  ancode: Int!
+  zpaExam: ZPAExam
+  externalExam: ExternalExam
+  primussExams: [PrimussExam!]!
+  studentRegs: [StudentRegsPerAncodeAndProgram!]!
+  conflicts: [ConflictPerProgram!]!
+  connectErrors: [String!]!
+  constraints: Constraints
+  nta: [NTAWithRegs!]
+  slot: Slot
+  rooms: [RoomForExam!]
 }

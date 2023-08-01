@@ -324,22 +324,27 @@ func (p *Plexams) RemovePrimussExam(ctx context.Context, input *model.PrimussExa
 // 	}, nil
 // }
 
+// Deprecated: Remove me
 func (p *Plexams) ExamWithRegs(ctx context.Context, ancode int) (*model.ExamWithRegs, error) {
 	return p.dbClient.ExamWithRegs(ctx, ancode)
 }
 
+// Deprecated: Remove me
 func (p *Plexams) ExamsWithRegs(ctx context.Context) ([]*model.ExamWithRegs, error) {
 	return p.dbClient.ExamsWithRegs(ctx)
 }
 
+// Deprecated: Remove me
 func (p *Plexams) ExamGroup(ctx context.Context, examGroupCode int) (*model.ExamGroup, error) {
 	return p.dbClient.ExamGroup(ctx, examGroupCode)
 }
 
+// FIXME: Remove me
 func (p *Plexams) ExamGroups(ctx context.Context) ([]*model.ExamGroup, error) {
 	return p.dbClient.ExamGroups(ctx)
 }
 
+// Deprecated: Remove me
 func (p *Plexams) ConflictingGroupCodes(ctx context.Context, examGroupCode int) ([]*model.ExamGroupConflict, error) {
 	examGroup, err := p.ExamGroup(ctx, examGroupCode)
 	if err != nil {

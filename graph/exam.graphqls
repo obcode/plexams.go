@@ -1,4 +1,9 @@
-# TODO: remove me
+extend type Query {
+  exams: [Exam!]!
+  exam(ancode: Int!): Exam
+}
+
+# Deprecated: remove me
 input AdditionalExamInput {
   ancode: Int!
   module: String!
@@ -8,7 +13,7 @@ input AdditionalExamInput {
   groups: [String!]!
 }
 
-# TODO: remove me
+# Deprecated: remove me
 type AdditionalExam {
   ancode: Int!
   module: String!
@@ -19,7 +24,7 @@ type AdditionalExam {
   groups: [String!]!
 }
 
-# TODO: remove me
+# Deprecated: remove me
 type ExamWithRegs {
   ancode: Int!
   zpaExam: ZPAExam!
@@ -48,20 +53,20 @@ type RoomConstraints {
   seb: Boolean!
 }
 
-# TODO: remove me
+# Deprecated: remove me
 type ExamToPlan {
   exam: ExamWithRegs!
   constraints: Constraints
 }
 
-# TODO: remove me
+# Deprecated: remove me
 type PlannedExamWithNTA {
   exam: ExamWithRegs!
   constraints: Constraints
   nta: [NTAWithRegs!]
 }
 
-# TODO: remove me
+# Deprecated: remove me
 type ExamInPlan {
   exam: ExamWithRegs!
   constraints: Constraints
@@ -69,7 +74,7 @@ type ExamInPlan {
   slot: Slot
 }
 
-# TODO: remove me
+# Deprecated: remove me
 type ExamWithRegsAndRooms {
   exam: ExamInPlan!
   normalRegs: [StudentReg!]!

@@ -5,18 +5,7 @@ type Query {
   semester: Semester!
   semesterConfig: SemesterConfig!
   # ZPA
-  teacher(id: Int!): Teacher
-  teachers(fromZPA: Boolean): [Teacher!]!
-  invigilators: [ZPAInvigilator!]!
-  fk07programs: [FK07Program!]!
-  zpaExams(fromZPA: Boolean): [ZPAExam!]!
-  zpaExamsByType: [ZPAExamsForType!]!
-  zpaExamsToPlan: [ZPAExam!]!
-  zpaExamsNotToPlan: [ZPAExam!]!
-  zpaExamsPlaningStatusUnknown: [ZPAExam!]!
-  zpaExam(ancode: Int!): ZPAExam
-  zpaAnCodes: [AnCode]
-  studentRegsImportErrors: [RegWithError!]!
+
   # Additional Exams
   additionalExams: [AdditionalExam!]!
   # Primuss

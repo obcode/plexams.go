@@ -24,6 +24,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
+			// TODO: wenn schon in der DB vorhanden, Änderungen anzeigen
 			case "teacher":
 				t := true
 				teachers, err := plexams.GetTeachers(context.Background(), &t)
@@ -34,6 +35,7 @@ var (
 					fmt.Printf("%3d. %s\n", i+1, teacher.Fullname)
 				}
 
+			// TODO: wenn schon in der DB vorhanden, Änderungen anzeigen
 			case "exams":
 				t := true
 				exams, err := plexams.GetZPAExams(context.Background(), &t)
@@ -44,6 +46,7 @@ var (
 					fmt.Printf("%3d. %s (%s)\n", exam.AnCode, exam.Module, exam.MainExamer)
 				}
 
+			// TODO: wenn schon in der DB vorhanden, Änderungen anzeigen
 			case "invigs":
 				invigs, err := plexams.GetSupervisorRequirements(context.Background())
 				if err != nil {

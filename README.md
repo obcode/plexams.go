@@ -34,3 +34,63 @@ erDiagram
     studentregs_XY
 
 ## Ablauf
+
+1. Prüfungen aus dem ZPA importieren (bei Änderungen erneut):
+
+   ```
+   plexams.go zpa exams
+   ```
+
+2. Dozierende aus dem ZPA importieren (bei Änderungen erneut):
+
+   ```
+   plexams.go zpa teacher
+   ```
+
+3. Prüfungen in `plexams.gui` auswählen, die geplant werden müssen.
+4. (optional) zusätzliche Prüfungen einfügen, die beachtet werden müssen.
+5. Besonderheiten (`constraints`) bei Prüfungen einpflegen.
+6. Primuss-Daten per `Makefile` importieren.
+7. Zuordnung ZPA <-> Primuss:
+
+   ```
+   plexams.go prepare connected-exams
+   ```
+
+   Kontrollieren in `plexams.gui`.
+
+8. Evtl. Primuss-Anmeldungen korrigieren
+
+   ```
+   plexams.go primuss fix-ancode <program> <old-ancode> <new-ancode>
+   ```
+
+   und erneut zuordnen lassen (siehe 7.) oder zusätzlich zuordnen (siehe 9.)
+
+9. Evtl. mit
+
+   ```
+   plexams.go prepare connect-exam  <ancode> <program>
+   ```
+
+   ein zusätzliches connecten
+
+10. Primuss-Anmeldungen ins ZPA importieren
+
+    ```
+    plexams.go zpa studentregs
+    ```
+
+11. Zuordnung ZPA-Prüfungen zu Primuss-Anmeldungen fixieren.
+12. Nachteilsausgleiche bei Prüfer:innen per E-Mail melden/nachfragen
+
+    ```
+    plexams.go email nta -r
+    ```
+
+bis hier
+
+13. MUC.DAI-Planung an Prüfungsplaner FK03 (DE), FK08 (GS), FK12 (ID)
+14. Vorläufigen Plan ins ZPA und an Fachschaft
+15. Plan im ZPA veröffentlichen
+16. E-Mail Anforderungen an die Aufsichtenplanung

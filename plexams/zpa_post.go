@@ -72,7 +72,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 		zpaStudentRegErrors := make([]*model.ZPAStudentRegError, 0)
 		err = json.Unmarshal(body, &zpaStudentRegErrors)
 		if err != nil {
-			log.Error().Err(err).Msg("error while unmarshalling errors from ZPA")
+			log.Error().Err(err).Interface("zpa-errors", zpaStudentRegErrors).Msg("error while unmarshalling errors from ZPA")
 			return 0, nil, err
 		}
 

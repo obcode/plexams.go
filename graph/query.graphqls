@@ -4,8 +4,6 @@ type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
   semesterConfig: SemesterConfig!
-  # ZPA
-
   # Additional Exams
   additionalExams: [AdditionalExam!]!
   # Primuss
@@ -13,9 +11,7 @@ type Query {
   primussExam(program: String!, ancode: Int!): PrimussExam!
   primussExamsForAnCode(ancode: Int!): [PrimussExam!]
   studentRegsForProgram(program: String!): [StudentReg!]
-  # Exams connected
-  connectedExam(ancode: Int!): ConnectedExam
-  connectedExams: [ConnectedExam!]!
+
   # exam with regs
   examWithRegs(ancode: Int!): ExamWithRegs
   examsWithRegs: [ExamWithRegs!]

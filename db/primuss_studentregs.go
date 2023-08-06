@@ -7,15 +7,31 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (db *DB) GetPrimussStudentRegsForProgrammAncode(ctx context.Context, program string, ancode int) ([]*model.StudentReg, error) {
-	studentRegs, err := db.GetPrimussStudentRegsPerAncode(ctx, program)
+	collection := db.getCollection(program, StudentRegs)
+
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "name", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.D{{Key: "AnCode", Value: ancode}}, findOptions)
 	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Str("program", program).Msg("MongoDB Find (studentregs)")
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	var studentRegs []*model.StudentReg
+
+	err = cur.All(ctx, &studentRegs)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Str("program", program).Msg("cannot decode to studentregs")
 		return nil, err
 	}
 
-	return studentRegs[ancode], nil
+	return studentRegs, nil
 }
 
 func (db *DB) GetPrimussStudentRegsPerAncode(ctx context.Context, program string) (map[int][]*model.StudentReg, error) {

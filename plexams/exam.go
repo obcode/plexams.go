@@ -149,6 +149,64 @@ func (p *Plexams) PrepareConnectedExam(ancode int) error {
 	return nil
 }
 
+func (p *Plexams) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
+	connectedExam, err := p.GetConnectedExam(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get connected exam")
+		return nil, err
+	}
+	// TODO: maybe external exam?
+
+	studentRegs := make([]*model.StudentRegsPerAncodeAndProgram, 0, len(connectedExam.PrimussExams))
+	// TODO: only conflicts of planned primussExams?
+	conflicts := make([]*model.ConflictsPerProgramAncode, 0, len(connectedExam.PrimussExams))
+
+	for _, primussExam := range connectedExam.PrimussExams {
+		studentRegsProgram, err := p.dbClient.GetPrimussStudentRegsForProgrammAncode(ctx, primussExam.Program, primussExam.AnCode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", primussExam.AnCode).Str("program", primussExam.Program).Msg("cannot get studentregs")
+			return nil, err
+		}
+		studentRegs = append(studentRegs, &model.StudentRegsPerAncodeAndProgram{
+			Program:     primussExam.Program,
+			Ancode:      primussExam.AnCode,
+			StudentRegs: studentRegsProgram,
+		})
+
+		conflictsProgram, err := p.dbClient.GetPrimussConflictsForAncode(ctx, primussExam.Program, primussExam.AnCode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", primussExam.AnCode).Str("program", primussExam.Program).Msg("cannot get studentregs")
+			return nil, err
+		}
+		conflicts = append(conflicts, &model.ConflictsPerProgramAncode{
+			Program:   primussExam.Program,
+			Ancode:    primussExam.AnCode,
+			Conflicts: conflictsProgram,
+		})
+	}
+
+	constraints, err := p.ConstraintForAncode(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get constraints for ancode")
+	}
+
+	// TODO: Maybe make plausibility checks?
+
+	return &model.Exam{
+		Ancode:        ancode,
+		ZpaExam:       connectedExam.ZpaExam,
+		ExternalExam:  nil,
+		PrimussExams:  connectedExam.PrimussExams,
+		StudentRegs:   studentRegs,
+		Conflicts:     conflicts,
+		ConnectErrors: connectedExam.Errors,
+		Constraints:   constraints,
+		Nta:           nil,
+		Slot:          nil,
+		Rooms:         nil,
+	}, nil
+}
+
 // func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamInput) (bool, error) {
 // 	if p.dbClient.ExamsAlreadyPrepared(ctx) {
 // 		oks := true

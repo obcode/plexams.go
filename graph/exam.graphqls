@@ -1,6 +1,9 @@
 extend type Query {
-  exams: [Exam!]!
+  connectedExam(ancode: Int!): ConnectedExam
+  connectedExams: [ConnectedExam!]!
+
   exam(ancode: Int!): Exam
+  exams: [Exam!]!
 }
 
 # Deprecated: remove me
@@ -87,13 +90,20 @@ type ExternalExam {
   program: String!
 }
 
+type ConnectedExam {
+  zpaExam: ZPAExam!
+  primussExams: [PrimussExam!]!
+  otherPrimussExams: [PrimussExam!]!
+  errors: [String!]!
+}
+
 type Exam {
   ancode: Int!
   zpaExam: ZPAExam
   externalExam: ExternalExam
   primussExams: [PrimussExam!]!
   studentRegs: [StudentRegsPerAncodeAndProgram!]!
-  conflicts: [ConflictPerProgram!]!
+  conflicts: [ConflictsPerProgramAncode!]!
   connectErrors: [String!]!
   constraints: Constraints
   nta: [NTAWithRegs!]

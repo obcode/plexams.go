@@ -45,9 +45,8 @@ type ConflictPerProgram {
   conflicts: [Conflict!]!
 }
 
-type ConnectedExam {
-  zpaExam: ZPAExam!
-  primussExams: [PrimussExam!]!
-  otherPrimussExams: [PrimussExam!]!
-  errors: [String!]!
+type ConflictsPerProgramAncode {
+  program: String!
+  ancode: Int!
+  conflicts: Conflicts
 }

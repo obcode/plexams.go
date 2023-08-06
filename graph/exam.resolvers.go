@@ -11,12 +11,22 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// Exams is the resolver for the exams field.
-func (r *queryResolver) Exams(ctx context.Context) ([]*model.Exam, error) {
-	panic(fmt.Errorf("not implemented: Exams - exams"))
+// ConnectedExam is the resolver for the connectedExam field.
+func (r *queryResolver) ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error) {
+	return r.plexams.GetConnectedExam(ctx, ancode)
+}
+
+// ConnectedExams is the resolver for the connectedExams field.
+func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
+	return r.plexams.GetConnectedExams(ctx)
 }
 
 // Exam is the resolver for the exam field.
 func (r *queryResolver) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
-	panic(fmt.Errorf("not implemented: Exam - exam"))
+	return r.plexams.Exam(ctx, ancode)
+}
+
+// Exams is the resolver for the exams field.
+func (r *queryResolver) Exams(ctx context.Context) ([]*model.Exam, error) {
+	panic(fmt.Errorf("not implemented: Exams - exams"))
 }

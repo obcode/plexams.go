@@ -34,6 +34,12 @@ type ConflictPerProgram struct {
 	Conflicts []*Conflict `json:"conflicts"`
 }
 
+type ConflictsPerProgramAncode struct {
+	Program   string     `json:"program"`
+	Ancode    int        `json:"ancode"`
+	Conflicts *Conflicts `json:"conflicts,omitempty"`
+}
+
 type ConnectedExam struct {
 	ZpaExam           *ZPAExam       `json:"zpaExam"`
 	PrimussExams      []*PrimussExam `json:"primussExams"`
@@ -59,7 +65,7 @@ type Exam struct {
 	ExternalExam  *ExternalExam                     `json:"externalExam,omitempty"`
 	PrimussExams  []*PrimussExam                    `json:"primussExams"`
 	StudentRegs   []*StudentRegsPerAncodeAndProgram `json:"studentRegs"`
-	Conflicts     []*ConflictPerProgram             `json:"conflicts"`
+	Conflicts     []*ConflictsPerProgramAncode      `json:"conflicts"`
 	ConnectErrors []string                          `json:"connectErrors"`
 	Constraints   *Constraints                      `json:"constraints,omitempty"`
 	Nta           []*NTAWithRegs                    `json:"nta,omitempty"`
@@ -340,6 +346,7 @@ type StudentRegsPerAncode struct {
 
 type StudentRegsPerAncodeAndProgram struct {
 	Program     string        `json:"program"`
+	Ancode      int           `json:"ancode"`
 	StudentRegs []*StudentReg `json:"studentRegs"`
 }
 

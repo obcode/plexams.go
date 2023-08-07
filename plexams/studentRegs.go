@@ -112,3 +112,11 @@ func (p *Plexams) GetExamsForStudent(name string) error {
 
 	return nil
 }
+
+func (p *Plexams) StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error) {
+	return p.dbClient.StudentByMtknr(ctx, mtknr)
+}
+
+func (p *Plexams) StudentsByName(ctx context.Context, regex string) ([]*model.Student, error) {
+	return p.dbClient.StudentsByName(ctx, regex)
+}

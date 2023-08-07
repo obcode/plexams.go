@@ -337,6 +337,8 @@ type Student struct {
 	Program string `json:"program"`
 	Group   string `json:"group"`
 	Name    string `json:"name"`
+	Regs    []int  `json:"regs"`
+	Nta     *NTA   `json:"nta,omitempty"`
 }
 
 type StudentRegsPerAncode struct {

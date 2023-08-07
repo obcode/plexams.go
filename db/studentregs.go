@@ -2,10 +2,13 @@ package db
 
 import (
 	"context"
+	"sort"
 
+	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func (db *DB) GetStudentRegsPerAncodePlanned(ctx context.Context) ([]*model.StudentRegsPerAncode, error) {
@@ -83,4 +86,124 @@ func (db *DB) StudentRegsPerStudentAll(ctx context.Context) ([]*model.StudentReg
 	}
 
 	return studentRegs, nil
+}
+
+func (db *DB) StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error) {
+	collectionNames, err := db.studentRegsCollectionNames(ctx)
+
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get student regs collections")
+		return nil, err
+	}
+
+	var student *model.Student
+
+	for _, collectionName := range collectionNames {
+		log.Debug().Str("collection", collectionName).Str("mtkntr", mtknr).
+			Msg("searching for student in collection")
+
+		collection := db.Client.Database(db.databaseName).Collection(collectionName)
+
+		cur, err := collection.Find(ctx, bson.D{{Key: "MTKNR", Value: mtknr}})
+		if err != nil {
+			log.Error().Err(err).Str("collection", collectionName).Str("mtkntr", mtknr).
+				Msg("error while searching for student in collection")
+		}
+		defer cur.Close(ctx)
+
+		var results []*model.StudentReg
+
+		err = cur.All(ctx, &results)
+		if err != nil {
+			log.Error().Err(err).Str("collection", collectionName).Str("mtkntr", mtknr).
+				Msg("error while decoding student from collection")
+		}
+
+		if len(results) > 0 {
+			log.Debug().Interface("regs", results).Str("collection", collectionName).Str("mtkntr", mtknr).
+				Msg("found regs for student")
+
+			if student != nil {
+				log.Error().Str("collection", collectionName).Str("mtkntr", mtknr).
+					Msg("found student in more than one programs")
+
+			}
+
+			regs := make([]int, 0, len(results))
+
+			for _, res := range results {
+				regs = append(regs, res.AnCode)
+			}
+
+			sort.Ints(regs)
+
+			student = &model.Student{
+				Mtknr:   mtknr,
+				Program: results[0].Program,
+				Group:   results[0].Group,
+				Name:    results[0].Name,
+				Regs:    regs,
+				Nta:     nil,
+			}
+
+		}
+
+	}
+
+	return student, nil
+}
+
+func (db *DB) StudentsByName(ctx context.Context, regex string) ([]*model.Student, error) {
+	collectionNames, err := db.studentRegsCollectionNames(ctx)
+
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get student regs collections")
+		return nil, err
+	}
+
+	studentMtknrs := set.NewSet[string]()
+
+	for _, collectionName := range collectionNames {
+		collection := db.Client.Database(db.databaseName).Collection(collectionName)
+
+		cur, err := collection.Find(ctx, bson.D{{Key: "name", Value: bson.D{
+			primitive.E{Key: "$regex",
+				Value: primitive.Regex{Pattern: regex},
+			}}}})
+		if err != nil {
+			log.Error().Err(err).Str("collection", collectionName).Str("regex", regex).
+				Msg("error while searching for student in collection")
+		}
+		defer cur.Close(ctx)
+
+		for cur.Next(ctx) {
+			mtknr := cur.Current.Lookup("MTKNR").StringValue()
+			studentMtknrs.Add(mtknr)
+		}
+	}
+
+	students := make([]*model.Student, 0, studentMtknrs.Cardinality())
+
+	for _, mtknr := range studentMtknrs.ToSlice() {
+		student, err := db.StudentByMtknr(ctx, mtknr)
+		if err != nil {
+			log.Error().Err(err).Str("mtknr", mtknr).Msg("error while trying to get student")
+		} else {
+			students = append(students, student)
+		}
+	}
+
+	return students, nil
+}
+
+func (db *DB) studentRegsCollectionNames(ctx context.Context) ([]string, error) {
+	return db.Client.Database(db.databaseName).ListCollectionNames(ctx,
+		bson.D{primitive.E{
+			Key: "name",
+			Value: bson.D{
+				primitive.E{Key: "$regex",
+					Value: primitive.Regex{Pattern: "studentregs_..$"},
+				},
+			},
+		}})
 }

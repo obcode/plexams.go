@@ -64,7 +64,7 @@ func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return ntas, nil
 }
 
-// Deprecated: remove me
+// // Deprecated: remove me
 func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
 
@@ -88,7 +88,7 @@ func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
 	return ntas, nil
 }
 
-// Deprecated: remove me
+// // Deprecated: remove me
 func (db *DB) NtaWithRegs(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
 
@@ -107,7 +107,7 @@ func (db *DB) NtaWithRegs(ctx context.Context, mtknr string) (*model.NTAWithRegs
 	return &nta, nil
 }
 
-// Deprecated: remove me
+// // Deprecated: remove me
 func (db *DB) SaveSemesterNTAs(ctx context.Context, ntaWithRegs []*model.NTAWithRegs) error {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
 

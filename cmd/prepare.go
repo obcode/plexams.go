@@ -16,6 +16,9 @@ var (
 		Long: `Prepare collections.
 	connected-exams --- prepare connected exams                    --- step 1
 	connect-exam ancode program   --- connect an unconnected exam  --- step 1,5
+	cached-exam ancode
+
+
 	studentregs     --- regs per exam & regs per student           --- step 2
 	nta             --- find NTAs for semester                     --- step 3
 	exams-with-regs --- exams from connected-exams and studentregs --- step 4

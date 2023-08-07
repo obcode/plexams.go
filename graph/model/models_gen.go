@@ -60,17 +60,18 @@ type Constraints struct {
 }
 
 type Exam struct {
-	Ancode        int                               `json:"ancode"`
-	ZpaExam       *ZPAExam                          `json:"zpaExam,omitempty"`
-	ExternalExam  *ExternalExam                     `json:"externalExam,omitempty"`
-	PrimussExams  []*PrimussExam                    `json:"primussExams"`
-	StudentRegs   []*StudentRegsPerAncodeAndProgram `json:"studentRegs"`
-	Conflicts     []*ConflictsPerProgramAncode      `json:"conflicts"`
-	ConnectErrors []string                          `json:"connectErrors"`
-	Constraints   *Constraints                      `json:"constraints,omitempty"`
-	Nta           []*NTAWithRegs                    `json:"nta,omitempty"`
-	Slot          *Slot                             `json:"slot,omitempty"`
-	Rooms         []*RoomForExam                    `json:"rooms,omitempty"`
+	Ancode          int                               `json:"ancode"`
+	ZpaExam         *ZPAExam                          `json:"zpaExam,omitempty"`
+	ExternalExam    *ExternalExam                     `json:"externalExam,omitempty"`
+	PrimussExams    []*PrimussExam                    `json:"primussExams"`
+	StudentRegs     []*StudentRegsPerAncodeAndProgram `json:"studentRegs"`
+	Conflicts       []*ConflictsPerProgramAncode      `json:"conflicts"`
+	ConnectErrors   []string                          `json:"connectErrors"`
+	Constraints     *Constraints                      `json:"constraints,omitempty"`
+	RegularStudents []*Student                        `json:"regularStudents,omitempty"`
+	NtaStudents     []*Student                        `json:"ntaStudents,omitempty"`
+	Slot            *Slot                             `json:"slot,omitempty"`
+	Rooms           []*RoomForExam                    `json:"rooms,omitempty"`
 }
 
 type ExamDay struct {

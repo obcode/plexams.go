@@ -88,7 +88,7 @@ func (db *DB) StudentRegsPerStudentAll(ctx context.Context) ([]*model.StudentReg
 	return studentRegs, nil
 }
 
-func (db *DB) StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error) {
+func (db *DB) StudentByMtknr(ctx context.Context, mtknr string, ntas map[string]*model.NTA) (*model.Student, error) {
 	collectionNames, err := db.studentRegsCollectionNames(ctx)
 
 	if err != nil {
@@ -123,13 +123,20 @@ func (db *DB) StudentByMtknr(ctx context.Context, mtknr string) (*model.Student,
 			log.Debug().Interface("regs", results).Str("collection", collectionName).Str("mtkntr", mtknr).
 				Msg("found regs for student")
 
-			if student != nil {
+			var regs []int
+
+			if student != nil && (student.Program != results[0].Program ||
+				student.Group != results[0].Group ||
+				student.Name != results[0].Name) {
 				log.Error().Str("collection", collectionName).Str("mtkntr", mtknr).
 					Msg("found student in more than one programs")
-
 			}
 
-			regs := make([]int, 0, len(results))
+			if student != nil {
+				regs = student.Regs
+			} else {
+				regs = make([]int, 0, len(results))
+			}
 
 			for _, res := range results {
 				regs = append(regs, res.AnCode)
@@ -137,13 +144,24 @@ func (db *DB) StudentByMtknr(ctx context.Context, mtknr string) (*model.Student,
 
 			sort.Ints(regs)
 
+			var nta *model.NTA
+
+			if ntas == nil {
+				nta, err = db.Nta(ctx, mtknr)
+				if err != nil {
+					log.Error().Err(err).Str("mtknr", mtknr).Msg("error while checking nta")
+				}
+			} else {
+				nta = ntas[mtknr]
+			}
+
 			student = &model.Student{
 				Mtknr:   mtknr,
 				Program: results[0].Program,
 				Group:   results[0].Group,
 				Name:    results[0].Name,
 				Regs:    regs,
-				Nta:     nil,
+				Nta:     nta,
 			}
 
 		}
@@ -185,7 +203,7 @@ func (db *DB) StudentsByName(ctx context.Context, regex string) ([]*model.Studen
 	students := make([]*model.Student, 0, studentMtknrs.Cardinality())
 
 	for _, mtknr := range studentMtknrs.ToSlice() {
-		student, err := db.StudentByMtknr(ctx, mtknr)
+		student, err := db.StudentByMtknr(ctx, mtknr, nil)
 		if err != nil {
 			log.Error().Err(err).Str("mtknr", mtknr).Msg("error while trying to get student")
 		} else {

@@ -104,17 +104,18 @@ type ComplexityRoot struct {
 	}
 
 	Exam struct {
-		Ancode        func(childComplexity int) int
-		Conflicts     func(childComplexity int) int
-		ConnectErrors func(childComplexity int) int
-		Constraints   func(childComplexity int) int
-		ExternalExam  func(childComplexity int) int
-		Nta           func(childComplexity int) int
-		PrimussExams  func(childComplexity int) int
-		Rooms         func(childComplexity int) int
-		Slot          func(childComplexity int) int
-		StudentRegs   func(childComplexity int) int
-		ZpaExam       func(childComplexity int) int
+		Ancode          func(childComplexity int) int
+		Conflicts       func(childComplexity int) int
+		ConnectErrors   func(childComplexity int) int
+		Constraints     func(childComplexity int) int
+		ExternalExam    func(childComplexity int) int
+		NtaStudents     func(childComplexity int) int
+		PrimussExams    func(childComplexity int) int
+		RegularStudents func(childComplexity int) int
+		Rooms           func(childComplexity int) int
+		Slot            func(childComplexity int) int
+		StudentRegs     func(childComplexity int) int
+		ZpaExam         func(childComplexity int) int
 	}
 
 	ExamDay struct {
@@ -943,12 +944,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Exam.ExternalExam(childComplexity), true
 
-	case "Exam.nta":
-		if e.complexity.Exam.Nta == nil {
+	case "Exam.ntaStudents":
+		if e.complexity.Exam.NtaStudents == nil {
 			break
 		}
 
-		return e.complexity.Exam.Nta(childComplexity), true
+		return e.complexity.Exam.NtaStudents(childComplexity), true
 
 	case "Exam.primussExams":
 		if e.complexity.Exam.PrimussExams == nil {
@@ -956,6 +957,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Exam.PrimussExams(childComplexity), true
+
+	case "Exam.regularStudents":
+		if e.complexity.Exam.RegularStudents == nil {
+			break
+		}
+
+		return e.complexity.Exam.RegularStudents(childComplexity), true
 
 	case "Exam.rooms":
 		if e.complexity.Exam.Rooms == nil {
@@ -3523,7 +3531,8 @@ type Exam {
   conflicts: [ConflictsPerProgramAncode!]!
   connectErrors: [String!]!
   constraints: Constraints
-  nta: [NTAWithRegs!]
+  regularStudents: [Student!]
+  ntaStudents: [Student!]
   slot: Slot
   rooms: [RoomForExam!]
 }
@@ -6848,8 +6857,8 @@ func (ec *executionContext) fieldContext_Exam_constraints(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Exam_nta(ctx context.Context, field graphql.CollectedField, obj *model.Exam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Exam_nta(ctx, field)
+func (ec *executionContext) _Exam_regularStudents(ctx context.Context, field graphql.CollectedField, obj *model.Exam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Exam_regularStudents(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6862,7 +6871,7 @@ func (ec *executionContext) _Exam_nta(ctx context.Context, field graphql.Collect
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Nta, nil
+		return obj.RegularStudents, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6871,12 +6880,12 @@ func (ec *executionContext) _Exam_nta(ctx context.Context, field graphql.Collect
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*model.NTAWithRegs)
+	res := resTmp.([]*model.Student)
 	fc.Result = res
-	return ec.marshalONTAWithRegs2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsᚄ(ctx, field.Selections, res)
+	return ec.marshalOStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Exam_nta(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Exam_regularStudents(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Exam",
 		Field:      field,
@@ -6884,12 +6893,75 @@ func (ec *executionContext) fieldContext_Exam_nta(ctx context.Context, field gra
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "nta":
-				return ec.fieldContext_NTAWithRegs_nta(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_Student_mtknr(ctx, field)
+			case "program":
+				return ec.fieldContext_Student_program(ctx, field)
+			case "group":
+				return ec.fieldContext_Student_group(ctx, field)
+			case "name":
+				return ec.fieldContext_Student_name(ctx, field)
 			case "regs":
-				return ec.fieldContext_NTAWithRegs_regs(ctx, field)
+				return ec.fieldContext_Student_regs(ctx, field)
+			case "nta":
+				return ec.fieldContext_Student_nta(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type NTAWithRegs", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Student", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Exam_ntaStudents(ctx context.Context, field graphql.CollectedField, obj *model.Exam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Exam_ntaStudents(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NtaStudents, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Student)
+	fc.Result = res
+	return ec.marshalOStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Exam_ntaStudents(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Exam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mtknr":
+				return ec.fieldContext_Student_mtknr(ctx, field)
+			case "program":
+				return ec.fieldContext_Student_program(ctx, field)
+			case "group":
+				return ec.fieldContext_Student_group(ctx, field)
+			case "name":
+				return ec.fieldContext_Student_name(ctx, field)
+			case "regs":
+				return ec.fieldContext_Student_regs(ctx, field)
+			case "nta":
+				return ec.fieldContext_Student_nta(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Student", field.Name)
 		},
 	}
 	return fc, nil
@@ -16154,8 +16226,10 @@ func (ec *executionContext) fieldContext_Query_exam(ctx context.Context, field g
 				return ec.fieldContext_Exam_connectErrors(ctx, field)
 			case "constraints":
 				return ec.fieldContext_Exam_constraints(ctx, field)
-			case "nta":
-				return ec.fieldContext_Exam_nta(ctx, field)
+			case "regularStudents":
+				return ec.fieldContext_Exam_regularStudents(ctx, field)
+			case "ntaStudents":
+				return ec.fieldContext_Exam_ntaStudents(ctx, field)
 			case "slot":
 				return ec.fieldContext_Exam_slot(ctx, field)
 			case "rooms":
@@ -16233,8 +16307,10 @@ func (ec *executionContext) fieldContext_Query_exams(ctx context.Context, field 
 				return ec.fieldContext_Exam_connectErrors(ctx, field)
 			case "constraints":
 				return ec.fieldContext_Exam_constraints(ctx, field)
-			case "nta":
-				return ec.fieldContext_Exam_nta(ctx, field)
+			case "regularStudents":
+				return ec.fieldContext_Exam_regularStudents(ctx, field)
+			case "ntaStudents":
+				return ec.fieldContext_Exam_ntaStudents(ctx, field)
 			case "slot":
 				return ec.fieldContext_Exam_slot(ctx, field)
 			case "rooms":
@@ -24757,8 +24833,10 @@ func (ec *executionContext) _Exam(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "constraints":
 			out.Values[i] = ec._Exam_constraints(ctx, field, obj)
-		case "nta":
-			out.Values[i] = ec._Exam_nta(ctx, field, obj)
+		case "regularStudents":
+			out.Values[i] = ec._Exam_regularStudents(ctx, field, obj)
+		case "ntaStudents":
+			out.Values[i] = ec._Exam_ntaStudents(ctx, field, obj)
 		case "slot":
 			out.Values[i] = ec._Exam_slot(ctx, field, obj)
 		case "rooms":

@@ -106,7 +106,8 @@ type Exam {
   conflicts: [ConflictsPerProgramAncode!]!
   connectErrors: [String!]!
   constraints: Constraints
-  nta: [NTAWithRegs!]
+  regularStudents: [Student!]
+  ntaStudents: [Student!]
   slot: Slot
   rooms: [RoomForExam!]
 }

@@ -21,7 +21,7 @@ func (p *Plexams) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error
 }
 
 func (p *Plexams) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
-	return p.dbClient.Nta(ctx, mtknr)
+	return p.dbClient.NtaWithRegs(ctx, mtknr)
 }
 
 func (p *Plexams) PrepareNta() error {

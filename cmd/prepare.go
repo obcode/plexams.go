@@ -75,13 +75,13 @@ var (
 					os.Exit(1)
 				}
 
-			case "studentregs":
+			case "studentregs": // Deprecated: no longer needed
 				err := plexams.PrepareStudentRegs()
 				if err != nil {
 					os.Exit(1)
 				}
 
-			case "exams-with-regs":
+			case "exams-with-regs": // Deprecated: no longer needed
 				err := plexams.PrepareExamsWithRegs()
 				if err != nil {
 					os.Exit(1)
@@ -118,7 +118,7 @@ var (
 					os.Exit(1)
 				}
 
-			case "nta":
+			case "nta": // Deprecated: no longer needed?
 				err := plexams.PrepareNta()
 				if err != nil {
 					os.Exit(1)

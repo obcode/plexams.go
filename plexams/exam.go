@@ -190,20 +190,26 @@ func (p *Plexams) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get constraints for ancode")
 	}
 
+	regularStuds, ntaStuds, err := p.StudentsFromStudentRegs(ctx, studentRegs)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get students from student regs")
+	}
+
 	// TODO: Maybe make plausibility checks?
 
 	return &model.Exam{
-		Ancode:        ancode,
-		ZpaExam:       connectedExam.ZpaExam,
-		ExternalExam:  nil,
-		PrimussExams:  connectedExam.PrimussExams,
-		StudentRegs:   studentRegs,
-		Conflicts:     conflicts,
-		ConnectErrors: connectedExam.Errors,
-		Constraints:   constraints,
-		Nta:           nil,
-		Slot:          nil,
-		Rooms:         nil,
+		Ancode:          ancode,
+		ZpaExam:         connectedExam.ZpaExam,
+		ExternalExam:    nil,
+		PrimussExams:    connectedExam.PrimussExams,
+		StudentRegs:     studentRegs,
+		Conflicts:       conflicts,
+		ConnectErrors:   connectedExam.Errors,
+		Constraints:     constraints,
+		RegularStudents: regularStuds,
+		NtaStudents:     ntaStuds,
+		Slot:            nil,
+		Rooms:           nil,
 	}, nil
 }
 

@@ -12,7 +12,7 @@ import (
 
 // StudentByMtknr is the resolver for the studentByMtknr field.
 func (r *queryResolver) StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error) {
-	return r.plexams.StudentByMtknr(ctx, mtknr)
+	return r.plexams.StudentByMtknr(ctx, mtknr, nil)
 }
 
 // StudentsByName is the resolver for the studentsByName field.

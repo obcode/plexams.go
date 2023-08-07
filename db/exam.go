@@ -6,8 +6,34 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+func (db *DB) CacheExam(ctx context.Context, exam *model.Exam) error {
+	collection := db.Client.Database(db.databaseName).Collection(collectionCachedExams)
+
+	res, err := collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: exam.Ancode}}, exam, options.Replace().SetUpsert(true))
+
+	log.Debug().Interface("res", res).Msg("replaced")
+
+	return err
+}
+
+func (db *DB) CachedExam(ctx context.Context, ancode int) (*model.Exam, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionCachedExams)
+
+	res := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
+	if res.Err() == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+
+	var exam model.Exam
+
+	err := res.Decode(&exam)
+
+	return &exam, err
+}
 
 func (db *DB) AddAdditionalExam(ctx context.Context, exam model.AdditionalExamInput) (bool, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameAdditionalExams)

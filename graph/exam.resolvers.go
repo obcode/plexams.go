@@ -23,7 +23,11 @@ func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedE
 
 // Exam is the resolver for the exam field.
 func (r *queryResolver) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
-	return r.plexams.Exam(ctx, ancode)
+	exam, err := r.plexams.CachedExam(ctx, ancode)
+	if err != nil || exam == nil {
+		return r.plexams.Exam(ctx, ancode)
+	}
+	return exam, err
 }
 
 // Exams is the resolver for the exams field.

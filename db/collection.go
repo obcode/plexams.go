@@ -30,6 +30,8 @@ const (
 
 	collectionExamsInPlan = "exams_in_plan"
 
+	collectionCachedExams = "cached_exams"
+
 	collectionRooms         = "rooms"
 	collectionRoomsPlanned  = "rooms_planned"
 	collectionRoomsForExams = "rooms_for_exams"

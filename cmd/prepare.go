@@ -78,6 +78,21 @@ var (
 					os.Exit(1)
 				}
 
+			case "cached-exam":
+				if len(args) < 2 {
+					log.Fatal("need ancode")
+				}
+				ancode, err := strconv.Atoi(args[1])
+				if err != nil {
+					fmt.Printf("cannot use %s as ancode", args[1])
+					os.Exit(1)
+				}
+
+				err = plexams.CacheExam(ancode)
+				if err != nil {
+					os.Exit(1)
+				}
+
 			case "studentregs": // Deprecated: no longer needed
 				err := plexams.PrepareStudentRegs()
 				if err != nil {

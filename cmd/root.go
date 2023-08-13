@@ -110,7 +110,7 @@ func initPlexamsConfig() *plexams.Plexams {
 		panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
 	}
 
-	plexams.PrintSemester()
+	plexams.PrintInfo()
 	return plexams
 }
 

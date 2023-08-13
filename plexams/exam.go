@@ -195,6 +195,13 @@ func (p *Plexams) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
 		log.Error().Err(err).Msg("cannot get students from student regs")
 	}
 
+	for _, nta := range ntaStuds {
+		err := p.dbClient.SetCurrentSemesterOnNTA(ctx, nta.Mtknr)
+		if err != nil {
+			log.Error().Err(err).Interface("nta", nta).Msg("cannot set current semester on nta")
+		}
+	}
+
 	// TODO: Maybe make plausibility checks?
 
 	return &model.Exam{
@@ -211,24 +218,6 @@ func (p *Plexams) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
 		Slot:            nil,
 		Rooms:           nil,
 	}, nil
-}
-
-func (p *Plexams) CacheExam(ancode int) error {
-	ctx := context.Background()
-	exam, err := p.Exam(ctx, ancode)
-	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("error while getting exam")
-		return err
-	}
-	if exam.ZpaExam != nil {
-		log.Debug().Int("ancode", exam.Ancode).Str("module", exam.ZpaExam.Module).Str("examer", exam.ZpaExam.MainExamer).
-			Msg("caching exam")
-	}
-	return p.dbClient.CacheExam(ctx, exam)
-}
-
-func (p *Plexams) CachedExam(ctx context.Context, ancode int) (*model.Exam, error) {
-	return p.dbClient.CachedExam(ctx, ancode)
 }
 
 // func (p *Plexams) PrepareExams(ctx context.Context, inputs []*model.PrimussExamInput) (bool, error) {

@@ -133,7 +133,7 @@ func (db *DB) SaveSemesterNTAs(ctx context.Context, ntaWithRegs []*model.NTAWith
 	}
 
 	for _, nta := range ntaWithRegs {
-		err := db.setCurrentSemesterOnNTA(ctx, nta.Nta.Mtknr)
+		err := db.SetCurrentSemesterOnNTA(ctx, nta.Nta.Mtknr)
 		if err != nil {
 			return err
 		}
@@ -143,7 +143,7 @@ func (db *DB) SaveSemesterNTAs(ctx context.Context, ntaWithRegs []*model.NTAWith
 }
 
 // TODO: when to call?
-func (db *DB) setCurrentSemesterOnNTA(ctx context.Context, mtknr string) error {
+func (db *DB) SetCurrentSemesterOnNTA(ctx context.Context, mtknr string) error {
 	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
 
 	filter := bson.D{{Key: "mtknr", Value: mtknr}}

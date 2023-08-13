@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gookit/color"
+	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/zpa"
@@ -231,9 +231,8 @@ func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
 	return time.Date(0, 0, 0, 0, 0, 0, 0, nil)
 }
 
-func (p *Plexams) PrintSemester() {
-	color.Style{color.FgCyan, color.BgYellow, color.OpBold}.Printf(" ---   Planning Semester: %s   --- ", p.semester)
-	color.Println()
+func (p *Plexams) PrintInfo() {
+	fmt.Println(aurora.Sprintf(aurora.Magenta(" ---   Planning Semester: %s   --- \n"), p.semester))
 }
 
 func (p *Plexams) setRoomInfo() {

@@ -35,6 +35,15 @@ erDiagram
 
 ## Ablauf
 
+```mermaid
+flowchart TD
+    ZPA_Exams --> Connected_Exams
+    Primuss_Exams --> Connected_Exams
+    Connected_Exams --> Exams/Cached_Exams
+    Primuss_StudentRegs/Conflicts --> Exams/Cached_Exams
+    NTAs --> Exams/Cached_Exams
+```
+
 1. Prüfungen aus dem ZPA importieren (bei Änderungen erneut):
 
    ```

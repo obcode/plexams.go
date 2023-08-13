@@ -6,7 +6,6 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
 )
@@ -32,5 +31,5 @@ func (r *queryResolver) Exam(ctx context.Context, ancode int) (*model.Exam, erro
 
 // Exams is the resolver for the exams field.
 func (r *queryResolver) Exams(ctx context.Context) ([]*model.Exam, error) {
-	panic(fmt.Errorf("not implemented: Exams - exams"))
+	return r.plexams.CachedExams(ctx)
 }

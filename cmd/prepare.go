@@ -16,7 +16,6 @@ var (
 		Long: `Prepare collections.
 	connected-exams --- prepare connected exams                    --- step 1
 	connect-exam ancode program   --- connect an unconnected exam  --- step 1,5
-	cached-exam ancode
 
 
 	studentregs     --- regs per exam & regs per student           --- step 2
@@ -74,21 +73,6 @@ var (
 				program := args[2]
 
 				err = plexams.ConnectExam(ancode, program)
-				if err != nil {
-					os.Exit(1)
-				}
-
-			case "cached-exam":
-				if len(args) < 2 {
-					log.Fatal("need ancode")
-				}
-				ancode, err := strconv.Atoi(args[1])
-				if err != nil {
-					fmt.Printf("cannot use %s as ancode", args[1])
-					os.Exit(1)
-				}
-
-				err = plexams.CacheExam(ancode)
 				if err != nil {
 					os.Exit(1)
 				}

@@ -9,6 +9,7 @@ import (
 	"net/smtp"
 	"net/textproto"
 
+	// TODO: Ersetzen durch github.com/wneessen/go-mail
 	"github.com/jordan-wright/email"
 	"github.com/rs/zerolog/log"
 )

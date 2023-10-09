@@ -64,7 +64,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 		client, err = db.NewDB(dbUri, semester, databaseName)
 
 		if err != nil {
-			panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
+			log.Fatal().Err(err).Msg("cannot connect to plexams.db")
 		}
 	}
 

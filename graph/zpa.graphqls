@@ -25,6 +25,12 @@ type ZPAExam {
   duration: Int!
   isRepeaterExam: Boolean!
   groups: [String!]!
+  primussAncodes: [ZPAPrimussAncodes!]!
+}
+
+type ZPAPrimussAncodes {
+  program: String!
+  ancode: Int!
 }
 
 type ZPAExamsForType {

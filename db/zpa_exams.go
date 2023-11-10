@@ -141,7 +141,11 @@ func (db *DB) RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error) {
 func (db *DB) addZpaExamToPlanOrNot(ctx context.Context, ancode int, toPlan bool) (bool, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionToPlan)
 
-	res, err := collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, ExamToPlanType{Ancode: ancode, ToPlan: toPlan})
+	replaceOptions := options.Replace()
+	replaceOptions.SetUpsert(true)
+
+	res, err := collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}},
+		ExamToPlanType{Ancode: ancode, ToPlan: toPlan}, replaceOptions)
 
 	log.Debug().Interface("res", res).Msg("changing exam to plan value")
 

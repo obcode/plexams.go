@@ -43,7 +43,7 @@ var (
 					log.Fatal().Err(err).Msg("cannot get teachers")
 				}
 				for _, exam := range exams {
-					fmt.Printf("%3d. %s (%s)\n", exam.AnCode, exam.Module, exam.MainExamer)
+					fmt.Printf("%3d. %s (%s): %v\n", exam.AnCode, exam.Module, exam.MainExamer, exam.PrimussAncodes)
 				}
 
 			// TODO: wenn schon in der DB vorhanden, Änderungen anzeigen

@@ -545,6 +545,7 @@ type ComplexityRoot struct {
 		MainExamer     func(childComplexity int) int
 		MainExamerID   func(childComplexity int) int
 		Module         func(childComplexity int) int
+		PrimussAncodes func(childComplexity int) int
 		Semester       func(childComplexity int) int
 		ZpaID          func(childComplexity int) int
 	}
@@ -562,6 +563,11 @@ type ComplexityRoot struct {
 	ZPAInvigilator struct {
 		HasSubmittedRequirements func(childComplexity int) int
 		Teacher                  func(childComplexity int) int
+	}
+
+	ZPAPrimussAncodes struct {
+		Ancode  func(childComplexity int) int
+		Program func(childComplexity int) int
 	}
 
 	ZPAStudentReg struct {
@@ -3202,6 +3208,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ZPAExam.Module(childComplexity), true
 
+	case "ZPAExam.primussAncodes":
+		if e.complexity.ZPAExam.PrimussAncodes == nil {
+			break
+		}
+
+		return e.complexity.ZPAExam.PrimussAncodes(childComplexity), true
+
 	case "ZPAExam.semester":
 		if e.complexity.ZPAExam.Semester == nil {
 			break
@@ -3257,6 +3270,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ZPAInvigilator.Teacher(childComplexity), true
+
+	case "ZPAPrimussAncodes.ancode":
+		if e.complexity.ZPAPrimussAncodes.Ancode == nil {
+			break
+		}
+
+		return e.complexity.ZPAPrimussAncodes.Ancode(childComplexity), true
+
+	case "ZPAPrimussAncodes.program":
+		if e.complexity.ZPAPrimussAncodes.Program == nil {
+			break
+		}
+
+		return e.complexity.ZPAPrimussAncodes.Program(childComplexity), true
 
 	case "ZPAStudentReg.ancode":
 		if e.complexity.ZPAStudentReg.AnCode == nil {
@@ -3984,6 +4011,12 @@ type ZPAExam {
   duration: Int!
   isRepeaterExam: Boolean!
   groups: [String!]!
+  primussAncodes: [ZPAPrimussAncodes!]!
+}
+
+type ZPAPrimussAncodes {
+  program: String!
+  ancode: Int!
 }
 
 type ZPAExamsForType {
@@ -5867,6 +5900,8 @@ func (ec *executionContext) fieldContext_ConnectedExam_zpaExam(ctx context.Conte
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -6532,6 +6567,8 @@ func (ec *executionContext) fieldContext_Exam_zpaExam(ctx context.Context, field
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -8332,6 +8369,8 @@ func (ec *executionContext) fieldContext_ExamWithRegs_zpaExam(ctx context.Contex
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -11003,6 +11042,8 @@ func (ec *executionContext) fieldContext_Mutation_zpaExamsToPlan(ctx context.Con
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -12775,6 +12816,8 @@ func (ec *executionContext) fieldContext_NTAWithRegsByExam_exam(ctx context.Cont
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -16764,6 +16807,8 @@ func (ec *executionContext) fieldContext_Query_zpaExams(ctx context.Context, fie
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -16893,6 +16938,8 @@ func (ec *executionContext) fieldContext_Query_zpaExamsToPlan(ctx context.Contex
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -16961,6 +17008,8 @@ func (ec *executionContext) fieldContext_Query_zpaExamsNotToPlan(ctx context.Con
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -17029,6 +17078,8 @@ func (ec *executionContext) fieldContext_Query_zpaExamsPlaningStatusUnknown(ctx 
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -17094,6 +17145,8 @@ func (ec *executionContext) fieldContext_Query_zpaExam(ctx context.Context, fiel
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -17917,6 +17970,8 @@ func (ec *executionContext) fieldContext_RoomAndExam_exam(ctx context.Context, f
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -21600,6 +21655,56 @@ func (ec *executionContext) fieldContext_ZPAExam_groups(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _ZPAExam_primussAncodes(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrimussAncodes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.ZPAPrimussAncodes)
+	fc.Result = res
+	return ec.marshalNZPAPrimussAncodes2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAPrimussAncodesᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAExam_primussAncodes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "program":
+				return ec.fieldContext_ZPAPrimussAncodes_program(ctx, field)
+			case "ancode":
+				return ec.fieldContext_ZPAPrimussAncodes_ancode(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAPrimussAncodes", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ZPAExamWithConstraints_zpaExam(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExamWithConstraints) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ZPAExamWithConstraints_zpaExam(ctx, field)
 	if err != nil {
@@ -21661,6 +21766,8 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_zpaExam(ctx cont
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -21834,6 +21941,8 @@ func (ec *executionContext) fieldContext_ZPAExamsForType_exams(ctx context.Conte
 				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
 			case "groups":
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -21946,6 +22055,94 @@ func (ec *executionContext) fieldContext_ZPAInvigilator_hasSubmittedRequirements
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAPrimussAncodes_program(ctx context.Context, field graphql.CollectedField, obj *model.ZPAPrimussAncodes) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAPrimussAncodes_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAPrimussAncodes_program(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAPrimussAncodes",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAPrimussAncodes_ancode(ctx context.Context, field graphql.CollectedField, obj *model.ZPAPrimussAncodes) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAPrimussAncodes_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAPrimussAncodes_ancode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAPrimussAncodes",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -28895,6 +29092,11 @@ func (ec *executionContext) _ZPAExam(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "primussAncodes":
+			out.Values[i] = ec._ZPAExam_primussAncodes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -29021,6 +29223,50 @@ func (ec *executionContext) _ZPAInvigilator(ctx context.Context, sel ast.Selecti
 			}
 		case "hasSubmittedRequirements":
 			out.Values[i] = ec._ZPAInvigilator_hasSubmittedRequirements(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var zPAPrimussAncodesImplementors = []string{"ZPAPrimussAncodes"}
+
+func (ec *executionContext) _ZPAPrimussAncodes(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAPrimussAncodes) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, zPAPrimussAncodesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ZPAPrimussAncodes")
+		case "program":
+			out.Values[i] = ec._ZPAPrimussAncodes_program(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ancode":
+			out.Values[i] = ec._ZPAPrimussAncodes_ancode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -31456,6 +31702,54 @@ func (ec *executionContext) marshalNZPAInvigilator2ᚖgithubᚗcomᚋobcodeᚋpl
 		return graphql.Null
 	}
 	return ec._ZPAInvigilator(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNZPAPrimussAncodes2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAPrimussAncodes(ctx context.Context, sel ast.SelectionSet, v model.ZPAPrimussAncodes) graphql.Marshaler {
+	return ec._ZPAPrimussAncodes(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNZPAPrimussAncodes2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAPrimussAncodesᚄ(ctx context.Context, sel ast.SelectionSet, v []model.ZPAPrimussAncodes) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNZPAPrimussAncodes2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAPrimussAncodes(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNZPAStudentReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentReg(ctx context.Context, sel ast.SelectionSet, v *model.ZPAStudentReg) graphql.Marshaler {

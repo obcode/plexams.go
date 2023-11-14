@@ -35,6 +35,11 @@ type ZPAPrimussAncodes struct {
 	Ancode  int    `json:"ancode"`
 }
 
+type AddedPrimussAncode struct {
+	Ancode        int               `json:"ancode"`
+	PrimussAncode ZPAPrimussAncodes `json:"primuss_ancodes"`
+}
+
 type ZPAStudentReg struct {
 	Semester string `json:"semester"`
 	AnCode   int    `json:"anCode" bson:"ancode"`

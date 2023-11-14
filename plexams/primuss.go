@@ -41,3 +41,7 @@ func (p *Plexams) StudentRegsImportErrors(ctx context.Context) ([]*model.RegWith
 func (p *Plexams) GetConflicts(ctx context.Context, exam *model.PrimussExam) (*model.Conflicts, error) {
 	return p.dbClient.GetPrimussConflictsForAncode(ctx, exam.Program, exam.AnCode)
 }
+
+func (p *Plexams) AddAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) error {
+	return p.dbClient.AddAncode(ctx, zpaAncode, program, primussAncode)
+}

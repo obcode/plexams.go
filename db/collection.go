@@ -28,6 +28,8 @@ const (
 	collectionAll    = "zpaexams"
 	collectionToPlan = "zpaexamsToPlan"
 
+	collectionPrimussAncodes = "primuss_ancodes"
+
 	collectionExamsInPlan = "exams_in_plan"
 
 	collectionCachedExams = "cached_exams"

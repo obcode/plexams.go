@@ -5,8 +5,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (db *DB) GetPrograms(ctx context.Context) ([]string, error) {
@@ -29,4 +32,59 @@ func (db *DB) GetPrograms(ctx context.Context) ([]string, error) {
 	sort.Strings(programs)
 
 	return programs, err
+}
+
+func (db *DB) AddAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) error {
+	collection := db.Client.Database(db.databaseName).Collection(collectionPrimussAncodes)
+
+	opts := options.Replace().SetUpsert(true)
+
+	_, err := collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: zpaAncode}},
+		model.AddedPrimussAncode{
+			Ancode: zpaAncode,
+			PrimussAncode: model.ZPAPrimussAncodes{
+				Program: program,
+				Ancode:  primussAncode,
+			},
+		}, opts)
+
+	if err != nil {
+		log.Error().Err(err).Int("zpaAncode", zpaAncode).Str("program", program).Int("primussAncode", primussAncode).
+			Msg("cannot add primuss ancode for zpa ancode")
+		return err
+	}
+	return nil
+}
+
+func (db *DB) GetAddedAncodes(ctx context.Context) (map[int][]*model.ZPAPrimussAncodes, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionPrimussAncodes)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get added ancodes")
+		return nil, err
+	}
+
+	var addedAncodes []*model.AddedPrimussAncode
+	err = cur.All(ctx, addedAncodes)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot decode added ancodes")
+		return nil, err
+	}
+
+	addedAcodesMap := make(map[int][]*model.ZPAPrimussAncodes)
+	for _, addedAncode := range addedAncodes {
+		addedAncodeEntries, ok := addedAcodesMap[addedAncode.Ancode]
+		if !ok {
+			addedAncodeEntries = make([]*model.ZPAPrimussAncodes, 0, 1)
+		}
+		addedAcodesMap[addedAncode.Ancode] = append(addedAncodeEntries, &addedAncode.PrimussAncode)
+	}
+
+	return addedAcodesMap, nil
+}
+
+func (db *DB) GetAddedAncodesForAncode(ctx context.Context, ancode int) ([]*model.ZPAPrimussAncodes, error) {
+	// IMPLEMENT ME
+	return nil, nil
 }

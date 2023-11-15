@@ -49,6 +49,9 @@ var primussCmd = &cobra.Command{
 			}
 
 			err = plexams.AddAncode(ctx, ancode, program, primussAncode)
+			if err != nil {
+				log.Fatalf("cannot add ancode")
+			}
 
 		case "fix-ancode":
 			if len(args) < 4 {

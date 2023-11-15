@@ -39,7 +39,7 @@ func (db *DB) AddAncode(ctx context.Context, zpaAncode int, program string, prim
 
 	opts := options.Replace().SetUpsert(true)
 
-	_, err := collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: zpaAncode}},
+	_, err := collection.ReplaceOne(ctx, bson.M{"ancode": zpaAncode, "primussancode.program": program},
 		model.AddedPrimussAncode{
 			Ancode: zpaAncode,
 			PrimussAncode: model.ZPAPrimussAncodes{
@@ -56,7 +56,7 @@ func (db *DB) AddAncode(ctx context.Context, zpaAncode int, program string, prim
 	return nil
 }
 
-func (db *DB) GetAddedAncodes(ctx context.Context) (map[int][]*model.ZPAPrimussAncodes, error) {
+func (db *DB) GetAddedAncodes(ctx context.Context) (map[int][]model.ZPAPrimussAncodes, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionPrimussAncodes)
 
 	cur, err := collection.Find(ctx, bson.M{})
@@ -65,20 +65,20 @@ func (db *DB) GetAddedAncodes(ctx context.Context) (map[int][]*model.ZPAPrimussA
 		return nil, err
 	}
 
-	var addedAncodes []*model.AddedPrimussAncode
-	err = cur.All(ctx, addedAncodes)
+	var addedAncodes []model.AddedPrimussAncode
+	err = cur.All(ctx, &addedAncodes)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot decode added ancodes")
 		return nil, err
 	}
 
-	addedAcodesMap := make(map[int][]*model.ZPAPrimussAncodes)
+	addedAcodesMap := make(map[int][]model.ZPAPrimussAncodes)
 	for _, addedAncode := range addedAncodes {
 		addedAncodeEntries, ok := addedAcodesMap[addedAncode.Ancode]
 		if !ok {
-			addedAncodeEntries = make([]*model.ZPAPrimussAncodes, 0, 1)
+			addedAncodeEntries = make([]model.ZPAPrimussAncodes, 0, 1)
 		}
-		addedAcodesMap[addedAncode.Ancode] = append(addedAncodeEntries, &addedAncode.PrimussAncode)
+		addedAcodesMap[addedAncode.Ancode] = append(addedAncodeEntries, addedAncode.PrimussAncode)
 	}
 
 	return addedAcodesMap, nil

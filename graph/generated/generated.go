@@ -182,8 +182,11 @@ type ComplexityRoot struct {
 	}
 
 	ExternalExam struct {
-		Ancode  func(childComplexity int) int
-		Program func(childComplexity int) int
+		Ancode     func(childComplexity int) int
+		Duration   func(childComplexity int) int
+		MainExamer func(childComplexity int) int
+		Module     func(childComplexity int) int
+		Program    func(childComplexity int) int
 	}
 
 	FK07Program struct {
@@ -1257,6 +1260,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ExternalExam.Ancode(childComplexity), true
+
+	case "ExternalExam.duration":
+		if e.complexity.ExternalExam.Duration == nil {
+			break
+		}
+
+		return e.complexity.ExternalExam.Duration(childComplexity), true
+
+	case "ExternalExam.mainExamer":
+		if e.complexity.ExternalExam.MainExamer == nil {
+			break
+		}
+
+		return e.complexity.ExternalExam.MainExamer(childComplexity), true
+
+	case "ExternalExam.module":
+		if e.complexity.ExternalExam.Module == nil {
+			break
+		}
+
+		return e.complexity.ExternalExam.Module(childComplexity), true
 
 	case "ExternalExam.program":
 		if e.complexity.ExternalExam.Program == nil {
@@ -3540,6 +3564,9 @@ type ExamWithRegsAndRooms {
 type ExternalExam {
   ancode: Int!
   program: String!
+  module: String!
+  mainExamer: String!
+  duration: Int!
 }
 
 type ConnectedExam {
@@ -3548,6 +3575,16 @@ type ConnectedExam {
   otherPrimussExams: [PrimussExam!]!
   errors: [String!]!
 }
+
+# type ExamToPlan {
+#   ancode: Int!
+#   zpaExam: ZPAExam!
+#   primussExams: [PrimussExam!]!
+#   studentRegs: [StudentRegsPerAncodeAndProgram!]!
+#   conflicts: [ConflictsPerProgramAncode!]!
+#   connectErrors: [String!]!
+#   constraints: Constraints
+# }
 
 type Exam {
   ancode: Int!
@@ -6616,6 +6653,12 @@ func (ec *executionContext) fieldContext_Exam_externalExam(ctx context.Context, 
 				return ec.fieldContext_ExternalExam_ancode(ctx, field)
 			case "program":
 				return ec.fieldContext_ExternalExam_program(ctx, field)
+			case "module":
+				return ec.fieldContext_ExternalExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_ExternalExam_mainExamer(ctx, field)
+			case "duration":
+				return ec.fieldContext_ExternalExam_duration(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExternalExam", field.Name)
 		},
@@ -8979,6 +9022,138 @@ func (ec *executionContext) fieldContext_ExternalExam_program(ctx context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExternalExam_module(ctx context.Context, field graphql.CollectedField, obj *model.ExternalExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalExam_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExternalExam_module(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExternalExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExternalExam_mainExamer(ctx context.Context, field graphql.CollectedField, obj *model.ExternalExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalExam_mainExamer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MainExamer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExternalExam_mainExamer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExternalExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExternalExam_duration(ctx context.Context, field graphql.CollectedField, obj *model.ExternalExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExternalExam_duration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Duration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExternalExam_duration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExternalExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -25529,6 +25704,21 @@ func (ec *executionContext) _ExternalExam(ctx context.Context, sel ast.Selection
 			}
 		case "program":
 			out.Values[i] = ec._ExternalExam_program(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._ExternalExam_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mainExamer":
+			out.Values[i] = ec._ExternalExam_mainExamer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "duration":
+			out.Values[i] = ec._ExternalExam_duration(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

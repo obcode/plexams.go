@@ -138,8 +138,11 @@ type ExamerInPlan struct {
 }
 
 type ExternalExam struct {
-	Ancode  int    `json:"ancode"`
-	Program string `json:"program"`
+	Ancode     int    `json:"ancode"`
+	Program    string `json:"program"`
+	Module     string `json:"module"`
+	MainExamer string `json:"mainExamer"`
+	Duration   int    `json:"duration"`
 }
 
 type FK07Program struct {

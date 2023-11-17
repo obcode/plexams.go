@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Deprecated: rm me
 func (db *DB) AddAdditionalExam(ctx context.Context, exam model.AdditionalExamInput) (bool, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameAdditionalExams)
 	_, err := collection.InsertOne(ctx, exam)
@@ -19,6 +20,7 @@ func (db *DB) AddAdditionalExam(ctx context.Context, exam model.AdditionalExamIn
 	return true, nil
 }
 
+// Deprecated: rm me
 func (db *DB) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameAdditionalExams)
 

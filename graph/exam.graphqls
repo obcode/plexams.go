@@ -88,6 +88,9 @@ type ExamWithRegsAndRooms {
 type ExternalExam {
   ancode: Int!
   program: String!
+  module: String!
+  mainExamer: String!
+  duration: Int!
 }
 
 type ConnectedExam {
@@ -96,6 +99,16 @@ type ConnectedExam {
   otherPrimussExams: [PrimussExam!]!
   errors: [String!]!
 }
+
+# type ExamToPlan {
+#   ancode: Int!
+#   zpaExam: ZPAExam!
+#   primussExams: [PrimussExam!]!
+#   studentRegs: [StudentRegsPerAncodeAndProgram!]!
+#   conflicts: [ConflictsPerProgramAncode!]!
+#   connectErrors: [String!]!
+#   constraints: Constraints
+# }
 
 type Exam {
   ancode: Int!

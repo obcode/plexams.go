@@ -14,6 +14,7 @@ const (
 	collectionConstraints         = "constraints"
 	collectionNameExamGroups      = "exam_groups"
 	collectionNameAdditionalExams = "additional_exams"
+	collectionNameExternalExams   = "external_exams"
 	collectionNameConnectedExams  = "connected_exams"
 	collectionNameExamsWithRegs   = "exams_with_regs"
 	collectionNameNTAs            = "nta"

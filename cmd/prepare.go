@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -17,12 +18,15 @@ var (
 	connected-exams --- prepare connected exams                    --- step 1
 	connect-exam ancode program   --- connect an unconnected exam  --- step 1,5
 
+	add-external-exam program ancode duration --- add an external exam
 
-	studentregs     --- regs per exam & regs per student           --- step 2
+	exams-to-plan --- generate exams from connected-exams and primuss-data --- step 2
+
+	# studentregs     --- regs per exam & regs per student           --- step 2
 	nta             --- find NTAs for semester                     --- step 3
-	exams-with-regs --- exams from connected-exams and studentregs --- step 4
+	# exams-with-regs --- exams from connected-exams and studentregs --- step 4
 	exam-groups     --- group of exams in the same slot            --- step 5 -- according to constraints?
-	partition       --- generate partition of groups               --- step 6
+	# partition       --- generate partition of groups               --- step 6
 	
 	Add exam after planning has started:
 
@@ -41,6 +45,39 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
+			case "add-external-exam":
+				if len(args) < 4 {
+					log.Fatal("need program, ancode, and duration")
+				}
+				program := args[1]
+				ancode, err := strconv.Atoi(args[2])
+				if err != nil {
+					fmt.Printf("cannot use %s as ancode", args[1])
+					os.Exit(1)
+				}
+				duration, err := strconv.Atoi(args[3])
+				if err != nil {
+					fmt.Printf("cannot use %s as duration", args[1])
+					os.Exit(1)
+				}
+
+				ctx := context.Background()
+
+				primussExam, err := plexams.GetPrimussExam(ctx, program, ancode)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				if !confirm(fmt.Sprintf("add external exam %s/%d. %s (%s)?",
+					primussExam.Program, primussExam.AnCode, primussExam.Module, primussExam.MainExamer), 10) {
+					os.Exit(0)
+				}
+
+				err = plexams.AddExternalExam(ctx, primussExam, duration)
+				if err != nil {
+					os.Exit(1)
+				}
+
 			case "connected-exams":
 				err := plexams.PrepareConnectedExams()
 				if err != nil {
@@ -77,17 +114,23 @@ var (
 					os.Exit(1)
 				}
 
-			case "studentregs": // Deprecated: no longer needed
-				err := plexams.PrepareStudentRegs()
-				if err != nil {
-					os.Exit(1)
-				}
+			// case "studentregs": // Deprecated: no longer needed
+			// 	err := plexams.PrepareStudentRegs()
+			// 	if err != nil {
+			// 		os.Exit(1)
+			// 	}
 
-			case "exams-with-regs": // Deprecated: no longer needed
-				err := plexams.PrepareExamsWithRegs()
-				if err != nil {
-					os.Exit(1)
-				}
+			// case "exams-with-regs": // Deprecated: no longer needed
+			// 	err := plexams.PrepareExamsWithRegs()
+			// 	if err != nil {
+			// 		os.Exit(1)
+			// 	}
+
+			// case "exams-to-plan":
+			// 	err := plexams.PrepareExamsToPlan()
+			// 	if err != nil {
+			// 		os.Exit(1)
+			// 	}
 
 			case "exam-groups":
 				err := plexams.PrepareExamGroups()

@@ -84,7 +84,26 @@ func (db *DB) GetAddedAncodes(ctx context.Context) (map[int][]model.ZPAPrimussAn
 	return addedAcodesMap, nil
 }
 
-func (db *DB) GetAddedAncodesForAncode(ctx context.Context, ancode int) ([]*model.ZPAPrimussAncodes, error) {
-	// IMPLEMENT ME
-	return nil, nil
+func (db *DB) GetAddedAncodesForAncode(ctx context.Context, ancode int) ([]model.ZPAPrimussAncodes, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionPrimussAncodes)
+
+	cur, err := collection.Find(ctx, bson.D{{Key: "ancode", Value: ancode}})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get added ancodes")
+		return nil, err
+	}
+
+	var addedAncodes []model.AddedPrimussAncode
+	err = cur.All(ctx, &addedAncodes)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot decode added ancodes")
+		return nil, err
+	}
+
+	added := make([]model.ZPAPrimussAncodes, 0, len(addedAncodes))
+	for _, addedAncode := range addedAncodes {
+		added = append(added, addedAncode.PrimussAncode)
+	}
+
+	return added, nil
 }

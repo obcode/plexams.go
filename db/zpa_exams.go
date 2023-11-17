@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -26,6 +27,12 @@ func (db *DB) GetZPAExams(ctx context.Context) ([]*model.ZPAExam, error) {
 	}
 	defer cur.Close(ctx)
 
+	addedAncodes, err := db.GetAddedAncodes(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get added ancodes")
+		return nil, err
+	}
+
 	for cur.Next(ctx) {
 		var exam model.ZPAExam
 
@@ -34,6 +41,19 @@ func (db *DB) GetZPAExams(ctx context.Context) ([]*model.ZPAExam, error) {
 			log.Error().Err(err).Str("semester", db.semester).Str("collection", "zpaexams").Interface("cur", cur).
 				Msg("Cannot decode to exam")
 			return exams, err
+		}
+
+		db.cleanupPrimussAncodes(&exam)
+		addedAncodesForAncode, ok := addedAncodes[exam.AnCode]
+
+		if ok {
+			err := db.addAddedAncodesToExam(ctx, &exam, addedAncodesForAncode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", exam.AnCode).
+					Interface("added ancodes", addedAncodesForAncode).
+					Msg("error when trying to add added ancodes to exam")
+				return nil, err
+			}
 		}
 
 		exams = append(exams, &exam)
@@ -56,6 +76,22 @@ func (db *DB) GetZpaExamByAncode(ctx context.Context, ancode int) (*model.ZPAExa
 		log.Error().Err(err).Str("semester", db.semester).
 			Int("ancode", ancode).Msg("cannot find ZPA exam")
 		return nil, err
+	}
+
+	db.cleanupPrimussAncodes(&result)
+	addedAncodes, err := db.GetAddedAncodesForAncode(ctx, result.AnCode)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).
+			Int("ancode", ancode).Msg("cannot get added ancodes")
+		return nil, err
+	}
+	if addedAncodes != nil {
+		err := db.addAddedAncodesToExam(ctx, &result, addedAncodes)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).
+				Int("ancode", ancode).Msg("cannot add added ancodes")
+			return nil, err
+		}
 	}
 
 	return &result, nil
@@ -198,39 +234,21 @@ func (db *DB) getZPAExamsPlannedOrNot(ctx context.Context, toPlan *bool) ([]*mod
 
 	exams := make([]*model.ZPAExam, 0, (*ancodeSet).Cardinality())
 
-	// add added ancodes
 	for _, zpaExam := range zpaExams {
 		if (*ancodeSet).Contains(zpaExam.AnCode) {
+			db.cleanupPrimussAncodes(zpaExam)
 			addedAncodesForAncode, ok := addedAncodes[zpaExam.AnCode]
-			if ok {
 
-				rmNewAncodes := make([]model.ZPAPrimussAncodes, 0, len(zpaExam.PrimussAncodes))
-			OUTER:
-				for _, ancode := range zpaExam.PrimussAncodes {
-					for _, newAncode := range addedAncodesForAncode {
-						if ancode.Program == newAncode.Program {
-							break OUTER
-						}
-					}
-					rmNewAncodes = append(rmNewAncodes, ancode)
+			if ok {
+				err := db.addAddedAncodesToExam(ctx, zpaExam, addedAncodesForAncode)
+				if err != nil {
+					log.Error().Err(err).Int("ancode", zpaExam.AnCode).
+						Interface("added ancodes", addedAncodesForAncode).
+						Msg("error when trying to add added ancodes to exam")
+					return nil, err
 				}
-				zpaExam.PrimussAncodes = append(rmNewAncodes, addedAncodesForAncode...)
 			}
-			// add dummy ancodes if no ancode for group is present
-		OUTER2:
-			for _, group := range zpaExam.Groups {
-				groupShort := group[:2]
-				for _, ancodes := range zpaExam.PrimussAncodes {
-					if ancodes.Program == groupShort {
-						break OUTER2
-					}
-				}
-				zpaExam.PrimussAncodes = append(zpaExam.PrimussAncodes,
-					model.ZPAPrimussAncodes{
-						Program: groupShort,
-						Ancode:  -1,
-					})
-			}
+
 			exams = append(exams, zpaExam)
 		}
 	}
@@ -283,4 +301,101 @@ func (db *DB) getZpaAncodesPlannedOrNot(ctx context.Context, toPlan *bool) (*set
 	}
 
 	return &resultSet, nil
+}
+
+func (db *DB) cleanupPrimussAncodes(zpaExam *model.ZPAExam) {
+	programs := set.NewSet[string]()
+
+	ancodesMap := make(map[string]int)
+	for _, group := range zpaExam.Groups {
+		ancodesMap[group[:2]] = -1
+		programs.Add(group[:2])
+	}
+
+	for _, primussAncode := range zpaExam.PrimussAncodes {
+		if programs.Contains(primussAncode.Program) {
+			ancodesMap[primussAncode.Program] = primussAncode.Ancode
+		}
+	}
+
+	programSlice := programs.ToSlice()
+	sort.Strings(programSlice)
+
+	newPrimussAncodes := make([]model.ZPAPrimussAncodes, 0, len(ancodesMap))
+
+	for _, program := range programSlice {
+		newPrimussAncodes = append(newPrimussAncodes, model.ZPAPrimussAncodes{
+			Program: program,
+			Ancode:  ancodesMap[program],
+		})
+	}
+
+	zpaExam.PrimussAncodes = newPrimussAncodes
+}
+
+func (db *DB) addAddedAncodesToExam(ctx context.Context, zpaExam *model.ZPAExam, addedAncodesForAncode []model.ZPAPrimussAncodes) error {
+	if addedAncodesForAncode == nil {
+		var err error
+		addedAncodesForAncode, err = db.GetAddedAncodesForAncode(ctx, zpaExam.AnCode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", zpaExam.AnCode).Msg("cannot get added ancodes")
+			return err
+		}
+		if len(addedAncodesForAncode) == 0 {
+			return nil
+		}
+	}
+
+	allPrimussAncodes := append(zpaExam.PrimussAncodes, addedAncodesForAncode...)
+
+	ancodesMap := make(map[string]int)
+	programs := set.NewSet[string]()
+	for _, primussAncode := range allPrimussAncodes {
+		ancodesMap[primussAncode.Program] = primussAncode.Ancode
+		programs.Add(primussAncode.Program)
+	}
+
+	programSlice := programs.ToSlice()
+	sort.Strings(programSlice)
+
+	newPrimussAncodes := make([]model.ZPAPrimussAncodes, 0, len(ancodesMap))
+
+	for _, program := range programSlice {
+		newPrimussAncodes = append(newPrimussAncodes, model.ZPAPrimussAncodes{
+			Program: program,
+			Ancode:  ancodesMap[program],
+		})
+	}
+
+	zpaExam.PrimussAncodes = newPrimussAncodes
+
+	// 	rmNewAncodes := make([]model.ZPAPrimussAncodes, 0, len(zpaExam.PrimussAncodes))
+	// OUTER:
+	// 	for _, ancode := range zpaExam.PrimussAncodes {
+	// 		for _, newAncode := range addedAncodesForAncode {
+	// 			if ancode.Program == newAncode.Program {
+	// 				break OUTER
+	// 			}
+	// 		}
+	// 		rmNewAncodes = append(rmNewAncodes, ancode)
+	// 	}
+	// 	zpaExam.PrimussAncodes = append(rmNewAncodes, addedAncodesForAncode...)
+
+	// 	// add dummy ancodes if no ancode for group is present
+	// OUTER2:
+	// 	for _, group := range zpaExam.Groups {
+	// 		groupShort := group[:2]
+	// 		for _, ancodes := range zpaExam.PrimussAncodes {
+	// 			if ancodes.Program == groupShort {
+	// 				break OUTER2
+	// 			}
+	// 		}
+	// 		zpaExam.PrimussAncodes = append(zpaExam.PrimussAncodes,
+	// 			model.ZPAPrimussAncodes{
+	// 				Program: groupShort,
+	// 				Ancode:  -1,
+	// 			})
+	// 	}
+
+	return nil
 }

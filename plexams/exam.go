@@ -22,62 +22,104 @@ func (p *Plexams) prepareConnectedExam(ctx context.Context, ancode int, allProgr
 		return nil, err
 	}
 
-	allKeys := make(map[string]bool)
-	programs := []string{}
-	for _, group := range zpaExam.Groups {
-		program := group[:2]
-		if _, value := allKeys[program]; !value {
-			allKeys[program] = true
-			programs = append(programs, program)
-		}
-	}
+	// allKeys := make(map[string]bool)
+	// programs := []string{}
+	// for _, group := range zpaExam.Groups {
+	// 	program := group[:2]
+	// 	if _, value := allKeys[program]; !value {
+	// 		allKeys[program] = true
+	// 		programs = append(programs, program)
+	// 	}
+	// }
 
 	primussExams := make([]*model.PrimussExam, 0)
 	var errors []string
 
-	for _, program := range programs {
-		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
+	// Replace with primuss ancodes
+	for _, primussAncode := range zpaExam.PrimussAncodes {
+		primussExam, err := p.GetPrimussExam(ctx, primussAncode.Program, primussAncode.Ancode)
 		if err != nil {
 			if errors == nil {
 				errors = make([]string, 0)
 			}
-			errors = append(errors, fmt.Sprintf("%s/%d not found", program, ancode))
+			errors = append(errors, fmt.Sprintf("%s/%d not found", primussAncode.Program, primussAncode.Ancode))
 		} else {
 			primussExams = append(primussExams, primussExam)
 		}
 	}
 
-	otherPrograms := make([]string, 0, len(allPrograms)-len(programs))
-OUTER:
-	for _, aP := range allPrograms {
-		for _, p := range programs {
-			if aP == p {
-				continue OUTER
-			}
-		}
-		otherPrograms = append(otherPrograms, aP)
-	}
+	// FIXME: I do not need other programs?
+	// 	otherPrograms := make([]string, 0, len(allPrograms)-len(programs))
+	// OUTER:
+	// 	for _, aP := range allPrograms {
+	// 		for _, p := range programs {
+	// 			if aP == p {
+	// 				continue OUTER
+	// 			}
+	// 		}
+	// 		otherPrograms = append(otherPrograms, aP)
+	// 	}
 
-	var otherPrimussExams []*model.PrimussExam
+	// 	var otherPrimussExams []*model.PrimussExam
 
-	for _, program := range otherPrograms {
-		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
-		if err == nil {
-			if otherPrimussExams == nil {
-				otherPrimussExams = make([]*model.PrimussExam, 0)
-			}
-			if errors == nil {
-				errors = make([]string, 0)
-			}
-			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, ancode, primussExam.MainExamer, primussExam.Module))
-			otherPrimussExams = append(otherPrimussExams, primussExam)
-		}
-	}
+	// 	for _, program := range otherPrograms {
+	// 		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
+	// 		if err == nil {
+	// 			if otherPrimussExams == nil {
+	// 				otherPrimussExams = make([]*model.PrimussExam, 0)
+	// 			}
+	// 			if errors == nil {
+	// 				errors = make([]string, 0)
+	// 			}
+	// 			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, ancode, primussExam.MainExamer, primussExam.Module))
+	// 			otherPrimussExams = append(otherPrimussExams, primussExam)
+	// 		}
+	// 	}
+
+	// Old version:
+	// 	for _, program := range programs {
+	// 		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
+	// 		if err != nil {
+	// 			if errors == nil {
+	// 				errors = make([]string, 0)
+	// 			}
+	// 			errors = append(errors, fmt.Sprintf("%s/%d not found", program, ancode))
+	// 		} else {
+	// 			primussExams = append(primussExams, primussExam)
+	// 		}
+	// 	}
+
+	// 	otherPrograms := make([]string, 0, len(allPrograms)-len(programs))
+	// OUTER:
+	// 	for _, aP := range allPrograms {
+	// 		for _, p := range programs {
+	// 			if aP == p {
+	// 				continue OUTER
+	// 			}
+	// 		}
+	// 		otherPrograms = append(otherPrograms, aP)
+	// 	}
+
+	// 	var otherPrimussExams []*model.PrimussExam
+
+	// 	for _, program := range otherPrograms {
+	// 		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
+	// 		if err == nil {
+	// 			if otherPrimussExams == nil {
+	// 				otherPrimussExams = make([]*model.PrimussExam, 0)
+	// 			}
+	// 			if errors == nil {
+	// 				errors = make([]string, 0)
+	// 			}
+	// 			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, ancode, primussExam.MainExamer, primussExam.Module))
+	// 			otherPrimussExams = append(otherPrimussExams, primussExam)
+	// 		}
+	// 	}
 
 	return &model.ConnectedExam{
 		ZpaExam:           zpaExam,
 		PrimussExams:      primussExams,
-		OtherPrimussExams: otherPrimussExams,
+		OtherPrimussExams: nil, // otherPrimussExams,
 		Errors:            errors,
 	}, nil
 }

@@ -8,10 +8,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Deprecated: rm me
 func (p *Plexams) AddAdditionalExam(ctx context.Context, exam model.AdditionalExamInput) (bool, error) {
 	return p.dbClient.AddAdditionalExam(ctx, exam)
 }
 
+// Deprecated: rm me
 func (p *Plexams) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error) {
 	return p.dbClient.AdditionalExams(ctx)
 }

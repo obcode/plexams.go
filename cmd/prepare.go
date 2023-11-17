@@ -20,7 +20,7 @@ var (
 
 	add-external-exam program ancode duration --- add an external exam
 
-	exams-to-plan --- generate exams from connected-exams and primuss-data --- step 2
+	exams-to-plan --- generate exams from connected-exams, external-exams and primuss-data --- step 2
 
 	# studentregs     --- regs per exam & regs per student           --- step 2
 	nta             --- find NTAs for semester                     --- step 3

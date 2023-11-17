@@ -33,48 +33,41 @@ func (p *Plexams) prepareConnectedExam(ctx context.Context, ancode int, allProgr
 	// }
 
 	primussExams := make([]*model.PrimussExam, 0)
-	var errors []string
+	errors := make([]string, 0)
 
 	// Replace with primuss ancodes
 	for _, primussAncode := range zpaExam.PrimussAncodes {
 		primussExam, err := p.GetPrimussExam(ctx, primussAncode.Program, primussAncode.Ancode)
 		if err != nil {
-			if errors == nil {
-				errors = make([]string, 0)
-			}
 			errors = append(errors, fmt.Sprintf("%s/%d not found", primussAncode.Program, primussAncode.Ancode))
 		} else {
 			primussExams = append(primussExams, primussExam)
 		}
 	}
 
-	// FIXME: I do not need other programs?
-	// 	otherPrograms := make([]string, 0, len(allPrograms)-len(programs))
-	// OUTER:
-	// 	for _, aP := range allPrograms {
-	// 		for _, p := range programs {
-	// 			if aP == p {
-	// 				continue OUTER
-	// 			}
-	// 		}
-	// 		otherPrograms = append(otherPrograms, aP)
-	// 	}
+	otherPrograms := make([]string, 0, len(allPrograms)-len(zpaExam.PrimussAncodes))
+OUTER:
+	for _, aP := range allPrograms {
+		for _, p := range zpaExam.PrimussAncodes {
+			if aP == p.Program {
+				continue OUTER
+			}
+		}
+		otherPrograms = append(otherPrograms, aP)
+	}
 
-	// 	var otherPrimussExams []*model.PrimussExam
+	var otherPrimussExams []*model.PrimussExam
 
-	// 	for _, program := range otherPrograms {
-	// 		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
-	// 		if err == nil {
-	// 			if otherPrimussExams == nil {
-	// 				otherPrimussExams = make([]*model.PrimussExam, 0)
-	// 			}
-	// 			if errors == nil {
-	// 				errors = make([]string, 0)
-	// 			}
-	// 			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, ancode, primussExam.MainExamer, primussExam.Module))
-	// 			otherPrimussExams = append(otherPrimussExams, primussExam)
-	// 		}
-	// 	}
+	for _, program := range otherPrograms {
+		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
+		if err == nil {
+			if otherPrimussExams == nil {
+				otherPrimussExams = make([]*model.PrimussExam, 0)
+			}
+			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, ancode, primussExam.MainExamer, primussExam.Module))
+			otherPrimussExams = append(otherPrimussExams, primussExam)
+		}
+	}
 
 	// Old version:
 	// 	for _, program := range programs {
@@ -119,7 +112,7 @@ func (p *Plexams) prepareConnectedExam(ctx context.Context, ancode int, allProgr
 	return &model.ConnectedExam{
 		ZpaExam:           zpaExam,
 		PrimussExams:      primussExams,
-		OtherPrimussExams: nil, // otherPrimussExams,
+		OtherPrimussExams: otherPrimussExams,
 		Errors:            errors,
 	}, nil
 }

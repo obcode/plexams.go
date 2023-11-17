@@ -22,16 +22,6 @@ func (p *Plexams) prepareConnectedExam(ctx context.Context, ancode int, allProgr
 		return nil, err
 	}
 
-	// allKeys := make(map[string]bool)
-	// programs := []string{}
-	// for _, group := range zpaExam.Groups {
-	// 	program := group[:2]
-	// 	if _, value := allKeys[program]; !value {
-	// 		allKeys[program] = true
-	// 		programs = append(programs, program)
-	// 	}
-	// }
-
 	primussExams := make([]*model.PrimussExam, 0)
 	errors := make([]string, 0)
 
@@ -68,46 +58,6 @@ OUTER:
 			otherPrimussExams = append(otherPrimussExams, primussExam)
 		}
 	}
-
-	// Old version:
-	// 	for _, program := range programs {
-	// 		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
-	// 		if err != nil {
-	// 			if errors == nil {
-	// 				errors = make([]string, 0)
-	// 			}
-	// 			errors = append(errors, fmt.Sprintf("%s/%d not found", program, ancode))
-	// 		} else {
-	// 			primussExams = append(primussExams, primussExam)
-	// 		}
-	// 	}
-
-	// 	otherPrograms := make([]string, 0, len(allPrograms)-len(programs))
-	// OUTER:
-	// 	for _, aP := range allPrograms {
-	// 		for _, p := range programs {
-	// 			if aP == p {
-	// 				continue OUTER
-	// 			}
-	// 		}
-	// 		otherPrograms = append(otherPrograms, aP)
-	// 	}
-
-	// 	var otherPrimussExams []*model.PrimussExam
-
-	// 	for _, program := range otherPrograms {
-	// 		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
-	// 		if err == nil {
-	// 			if otherPrimussExams == nil {
-	// 				otherPrimussExams = make([]*model.PrimussExam, 0)
-	// 			}
-	// 			if errors == nil {
-	// 				errors = make([]string, 0)
-	// 			}
-	// 			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, ancode, primussExam.MainExamer, primussExam.Module))
-	// 			otherPrimussExams = append(otherPrimussExams, primussExam)
-	// 		}
-	// 	}
 
 	return &model.ConnectedExam{
 		ZpaExam:           zpaExam,

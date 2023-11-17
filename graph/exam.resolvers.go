@@ -20,6 +20,11 @@ func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedE
 	return r.plexams.GetConnectedExams(ctx)
 }
 
+// ExternalExams is the resolver for the externalExams field.
+func (r *queryResolver) ExternalExams(ctx context.Context) ([]*model.ExternalExam, error) {
+	return r.plexams.ExternalExams(ctx)
+}
+
 // Exam is the resolver for the exam field.
 func (r *queryResolver) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
 	exam, err := r.plexams.CachedExam(ctx, ancode)

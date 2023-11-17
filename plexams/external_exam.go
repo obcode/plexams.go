@@ -15,3 +15,7 @@ func (p *Plexams) AddExternalExam(ctx context.Context, primussExam *model.Primus
 		Duration:   duration,
 	})
 }
+
+func (p *Plexams) ExternalExams(ctx context.Context) ([]*model.ExternalExam, error) {
+	return p.dbClient.ExternalExams(ctx)
+}

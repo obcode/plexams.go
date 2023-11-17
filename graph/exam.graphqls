@@ -2,6 +2,8 @@ extend type Query {
   connectedExam(ancode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
 
+  externalExams: [ExternalExam!]!
+
   exam(ancode: Int!): Exam
   exams: [Exam!]!
 }

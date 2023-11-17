@@ -362,6 +362,7 @@ type ComplexityRoot struct {
 		ExamsInSlot                   func(childComplexity int, day int, time int) int
 		ExamsInSlotWithRooms          func(childComplexity int, day int, time int) int
 		ExamsWithRegs                 func(childComplexity int) int
+		ExternalExams                 func(childComplexity int) int
 		Fk07programs                  func(childComplexity int) int
 		InvigilatorTodos              func(childComplexity int) int
 		Invigilators                  func(childComplexity int) int
@@ -658,6 +659,7 @@ type QueryResolver interface {
 	DayOkForInvigilator(ctx context.Context, day int, invigilatorID int) (*bool, error)
 	ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
+	ExternalExams(ctx context.Context) ([]*model.ExternalExam, error)
 	Exam(ctx context.Context, ancode int) (*model.Exam, error)
 	Exams(ctx context.Context) ([]*model.Exam, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
@@ -2270,6 +2272,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.ExamsWithRegs(childComplexity), true
 
+	case "Query.externalExams":
+		if e.complexity.Query.ExternalExams == nil {
+			break
+		}
+
+		return e.complexity.Query.ExternalExams(childComplexity), true
+
 	case "Query.fk07programs":
 		if e.complexity.Query.Fk07programs == nil {
 			break
@@ -3477,6 +3486,8 @@ var sources = []*ast.Source{
 	{Name: "../exam.graphqls", Input: `extend type Query {
   connectedExam(ancode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
+
+  externalExams: [ExternalExam!]!
 
   exam(ancode: Int!): Exam
   exams: [Exam!]!
@@ -16392,6 +16403,62 @@ func (ec *executionContext) fieldContext_Query_connectedExams(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_externalExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_externalExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExternalExams(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ExternalExam)
+	fc.Result = res
+	return ec.marshalNExternalExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExternalExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_externalExams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_ExternalExam_ancode(ctx, field)
+			case "program":
+				return ec.fieldContext_ExternalExam_program(ctx, field)
+			case "module":
+				return ec.fieldContext_ExternalExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_ExternalExam_mainExamer(ctx, field)
+			case "duration":
+				return ec.fieldContext_ExternalExam_duration(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExternalExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_exam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_exam(ctx, field)
 	if err != nil {
@@ -27792,6 +27859,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "externalExams":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_externalExams(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "exam":
 			field := field
 
@@ -30485,6 +30574,60 @@ func (ec *executionContext) marshalNExamerInPlan2ᚖgithubᚗcomᚋobcodeᚋplex
 		return graphql.Null
 	}
 	return ec._ExamerInPlan(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExternalExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExternalExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExternalExam) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNExternalExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExternalExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNExternalExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExternalExam(ctx context.Context, sel ast.SelectionSet, v *model.ExternalExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExternalExam(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNFK07Program2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐFK07Programᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FK07Program) graphql.Marshaler {

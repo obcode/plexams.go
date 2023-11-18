@@ -59,6 +59,13 @@ type Constraints struct {
 	RoomConstraints *RoomConstraints `json:"roomConstraints,omitempty"`
 }
 
+type EnhancedPrimussExam struct {
+	Exam        *PrimussExam  `json:"exam"`
+	StudentRegs []*StudentReg `json:"studentRegs"`
+	Conflicts   []*Conflict   `json:"conflicts"`
+	Ntas        []*NTA        `json:"ntas"`
+}
+
 type Exam struct {
 	Ancode          int                               `json:"ancode"`
 	ZpaExam         *ZPAExam                          `json:"zpaExam,omitempty"`
@@ -147,6 +154,14 @@ type ExternalExam struct {
 
 type FK07Program struct {
 	Name string `json:"name"`
+}
+
+type GeneratedExam struct {
+	Ancode       int                    `json:"ancode"`
+	ZpaExam      *ZPAExam               `json:"zpaExam"`
+	PrimussExams []*EnhancedPrimussExam `json:"primussExams"`
+	Constraints  *Constraints           `json:"constraints,omitempty"`
+	Conflicts    []*ZPAConflict         `json:"conflicts"`
 }
 
 type Invigilation struct {
@@ -245,6 +260,11 @@ type PlannedExamWithNta struct {
 	Exam        *ExamWithRegs  `json:"exam"`
 	Constraints *Constraints   `json:"constraints,omitempty"`
 	Nta         []*NTAWithRegs `json:"nta,omitempty"`
+}
+
+type PrimussExamAncode struct {
+	Ancode  int    `json:"ancode"`
+	Program string `json:"program"`
 }
 
 type PrimussExamByProgram struct {
@@ -359,6 +379,12 @@ type StudentRegsPerAncodeAndProgram struct {
 type StudentRegsPerStudent struct {
 	Student *Student `json:"student"`
 	Ancodes []int    `json:"ancodes"`
+}
+
+type ZPAConflict struct {
+	Ancode         int                  `json:"ancode"`
+	NumberOfStuds  int                  `json:"numberOfStuds"`
+	PrimussAncodes []*PrimussExamAncode `json:"primussAncodes"`
 }
 
 type ZPAExamWithConstraints struct {

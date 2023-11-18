@@ -33,7 +33,8 @@ const (
 
 	collectionExamsInPlan = "exams_in_plan"
 
-	collectionCachedExams = "cached_exams"
+	collectionCachedExams    = "cached_exams"
+	collectionGeneratedExams = "generated_exams"
 
 	collectionRooms         = "rooms"
 	collectionRoomsPlanned  = "rooms_planned"

@@ -5,8 +5,18 @@ type PrimussExam {
   program: String!
   examType: String!
   presence: String!
+}
+
+type EnhancedPrimussExam {
+  exam: PrimussExam!
   studentRegs: [StudentReg!]!
-  conflicts: Conflicts!
+  conflicts: [Conflict!]!
+  ntas: [NTA!]!
+}
+
+type PrimussExamAncode {
+  ancode: Int!
+  program: String!
 }
 
 input PrimussExamInput {

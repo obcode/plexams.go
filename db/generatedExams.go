@@ -1,0 +1,32 @@
+package db
+
+import (
+	"context"
+
+	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
+)
+
+func (db *DB) CacheGeneratedExams(ctx context.Context, exams []*model.GeneratedExam) error {
+	collection := db.Client.Database(db.databaseName).Collection(collectionGeneratedExams)
+
+	err := collection.Drop(ctx)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionGeneratedExams).Msg("cannot drop collection")
+		return err
+	}
+
+	examsIntf := make([]interface{}, 0, len(exams))
+	for _, exam := range exams {
+		examsIntf = append(examsIntf, exam)
+	}
+
+	res, err := collection.InsertMany(ctx, examsIntf)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionGeneratedExams).Msg("cannot insert generated exams")
+		return err
+	}
+
+	log.Debug().Int("count", len(res.InsertedIDs)).Msg("successfully inserted generated exams")
+	return nil
+}

@@ -4,6 +4,8 @@ extend type Query {
 
   externalExams: [ExternalExam!]!
 
+  generatedExams: [GeneratedExam!]!
+
   exam(ancode: Int!): Exam
   exams: [Exam!]!
 }
@@ -102,15 +104,19 @@ type ConnectedExam {
   errors: [String!]!
 }
 
-# type ExamToPlan {
-#   ancode: Int!
-#   zpaExam: ZPAExam!
-#   primussExams: [PrimussExam!]!
-#   studentRegs: [StudentRegsPerAncodeAndProgram!]!
-#   conflicts: [ConflictsPerProgramAncode!]!
-#   connectErrors: [String!]!
-#   constraints: Constraints
-# }
+type GeneratedExam {
+  ancode: Int!
+  zpaExam: ZPAExam!
+  primussExams: [EnhancedPrimussExam!]!
+  constraints: Constraints
+  conflicts: [ZPAConflict!]!
+}
+
+type ZPAConflict {
+  ancode: Int!
+  numberOfStuds: Int!
+  primussAncodes: [PrimussExamAncode!]!
+}
 
 type Exam {
   ancode: Int!

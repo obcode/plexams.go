@@ -20,7 +20,7 @@ var (
 
 	add-external-exam program ancode duration --- add an external exam
 
-	exams-to-plan --- generate exams from connected-exams, external-exams and primuss-data --- step 2
+	generated-exams --- generate exams from connected-exams, external-exams and primuss-data --- step 2
 
 	# studentregs     --- regs per exam & regs per student           --- step 2
 	nta             --- find NTAs for semester                     --- step 3
@@ -126,11 +126,11 @@ var (
 			// 		os.Exit(1)
 			// 	}
 
-			// case "exams-to-plan":
-			// 	err := plexams.PrepareExamsToPlan()
-			// 	if err != nil {
-			// 		os.Exit(1)
-			// 	}
+			case "generated-exams":
+				err := plexams.PrepareGeneratedExams()
+				if err != nil {
+					os.Exit(1)
+				}
 
 			case "exam-groups":
 				err := plexams.PrepareExamGroups()

@@ -2,11 +2,13 @@ package plexams
 
 import (
 	"context"
-	"fmt"
 	"sort"
+	"time"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
+	"github.com/theckman/yacspin"
 )
 
 func (p *Plexams) PrepareGeneratedExams() error {
@@ -30,8 +32,6 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		return err
 	}
 
-	fmt.Printf("%d NTAs = %v\n", len(ntas), ntas)
-
 	ntaMap := make(map[string]*model.NTA)
 	for _, nta := range ntas {
 		ntaMap[nta.Mtknr] = nta
@@ -48,37 +48,37 @@ func (p *Plexams) PrepareGeneratedExams() error {
 	exams := make([]*model.GeneratedExam, 0, len(connectedExams))
 
 	for _, connectedExam := range connectedExams {
-		// TODO: remove me
-		if connectedExam.ZpaExam.AnCode != 390 {
-			continue
+		// // TODO: remove me
+		// if connectedExam.ZpaExam.AnCode != 390 && connectedExam.ZpaExam.AnCode != 393 && connectedExam.ZpaExam.AnCode != 440 {
+		// 	continue
+		// }
+
+		cfg := yacspin.Config{
+			Frequency: 100 * time.Millisecond,
+			CharSet:   yacspin.CharSets[69],
+			Suffix: aurora.Sprintf(aurora.Cyan(" generating exam %d. %s (%s)"),
+				aurora.Yellow(connectedExam.ZpaExam.AnCode),
+				aurora.Magenta(connectedExam.ZpaExam.Module),
+				aurora.Magenta(connectedExam.ZpaExam.MainExamer),
+			),
+			SuffixAutoColon:   true,
+			StopCharacter:     "✓",
+			StopColors:        []string{"fgGreen"},
+			StopFailMessage:   "error",
+			StopFailCharacter: "✗",
+			StopFailColors:    []string{"fgRed"},
 		}
 
-		// cfg := yacspin.Config{
-		// 	Frequency: 100 * time.Millisecond,
-		// 	CharSet:   yacspin.CharSets[69],
-		// 	Suffix: aurora.Sprintf(aurora.Cyan(" generating exam %d. %s (%s)"),
-		// 		aurora.Yellow(connectedExam.ZpaExam.AnCode),
-		// 		aurora.Magenta(connectedExam.ZpaExam.Module),
-		// 		aurora.Magenta(connectedExam.ZpaExam.MainExamer),
-		// 	),
-		// 	SuffixAutoColon:   true,
-		// 	StopCharacter:     "✓",
-		// 	StopColors:        []string{"fgGreen"},
-		// 	StopFailMessage:   "error",
-		// 	StopFailCharacter: "✗",
-		// 	StopFailColors:    []string{"fgRed"},
-		// }
+		spinner, err := yacspin.New(cfg)
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot create spinner")
+		}
+		err = spinner.Start()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot start spinner")
+		}
 
-		// spinner, err := yacspin.New(cfg)
-		// if err != nil {
-		// 	log.Debug().Err(err).Msg("cannot create spinner")
-		// }
-		// err = spinner.Start()
-		// if err != nil {
-		// 	log.Debug().Err(err).Msg("cannot start spinner")
-		// }
-
-		// spinner.Message("getting primuss exams")
+		spinner.Message("getting primuss exams")
 
 		enhancedPrimussExams := make([]*model.EnhancedPrimussExam, 0, len(connectedExam.PrimussExams))
 		for _, primussExam := range connectedExam.PrimussExams {
@@ -92,7 +92,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 			enhancedPrimussExams = append(enhancedPrimussExams, enhanced)
 		}
 
-		// spinner.Message("recalculating conflicts")
+		spinner.Message("recalculating conflicts")
 
 		conflictsMap := make(map[int]*model.ZPAConflict)
 		for _, enhanced := range enhancedPrimussExams {
@@ -145,10 +145,10 @@ func (p *Plexams) PrepareGeneratedExams() error {
 			Conflicts:    conflicts,
 		})
 
-		// err = spinner.Stop()
-		// if err != nil {
-		// 	log.Debug().Err(err).Msg("cannot stop spinner")
-		// }
+		err = spinner.Stop()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
 	}
 
 	// TODO: External Exams with student regs, ...
@@ -186,6 +186,11 @@ func (p *Plexams) primussToEnhanced(ctx context.Context, exam *model.PrimussExam
 		}
 	}
 
+	if len(studentRegs) > 0 && !p.dbClient.CheckStudentRegsCount(ctx, exam.Program, exam.AnCode, len(studentRegs)) {
+		log.Error().Err(err).Str("program", exam.Program).Int("ancode", exam.AnCode).Int("count", len(studentRegs)).
+			Msg("student reg count does not match")
+	}
+
 	return &model.EnhancedPrimussExam{
 		Exam:        exam,
 		StudentRegs: studentRegs,
@@ -214,4 +219,8 @@ func primussAncodesToZpaAncodes(exams []*model.ConnectedExam, externalExams []*m
 	// TODO: add external exams
 
 	return ancodesMap
+}
+
+func (p *Plexams) GetGeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error) {
+	return p.dbClient.GetGeneratedExams(ctx)
 }

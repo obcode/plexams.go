@@ -66,7 +66,7 @@ func (db *DB) GetPrimussStudentRegsPerAncode(ctx context.Context, program string
 	}
 
 	for k, v := range studentRegs {
-		if !db.checkStudentRegsCount(ctx, program, k, len(v)) {
+		if !db.CheckStudentRegsCount(ctx, program, k, len(v)) {
 			return nil, fmt.Errorf("problem with studentregs, ancode = %d, #studentregs = %d", k, len(v))
 		}
 	}
@@ -183,7 +183,7 @@ type Count struct {
 	Sum    int `bson:"Sum"`
 }
 
-func (db *DB) checkStudentRegsCount(ctx context.Context, program string, ancode, studentRegsCount int) bool {
+func (db *DB) CheckStudentRegsCount(ctx context.Context, program string, ancode, studentRegsCount int) bool {
 	// log.Debug().Str("collectionName", collectionName).Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).
 	// 	Msg("checking count")
 	collection := db.getCollection(program, Counts)

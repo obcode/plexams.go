@@ -5,6 +5,7 @@ import (
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (db *DB) CacheGeneratedExams(ctx context.Context, exams []*model.GeneratedExam) error {
@@ -29,4 +30,25 @@ func (db *DB) CacheGeneratedExams(ctx context.Context, exams []*model.GeneratedE
 
 	log.Debug().Int("count", len(res.InsertedIDs)).Msg("successfully inserted generated exams")
 	return nil
+}
+
+func (db *DB) GetGeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionGeneratedExams)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get generated exams")
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	exams := make([]*model.GeneratedExam, 0)
+
+	err = cur.All(ctx, &exams)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot decode generated exams")
+		return nil, err
+	}
+
+	return exams, nil
 }

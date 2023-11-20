@@ -55,7 +55,7 @@ func (p *Plexams) SendTestMail() error {
 }
 
 func (p *Plexams) SendGeneratedExamMails(ctx context.Context, run bool) error {
-	generatedExams, err := p.GetGeneratedExams(ctx)
+	generatedExams, err := p.GeneratedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get generated exams")
 		return err

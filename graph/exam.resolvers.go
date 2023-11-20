@@ -6,7 +6,6 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
 )
@@ -28,7 +27,12 @@ func (r *queryResolver) ExternalExams(ctx context.Context) ([]*model.ExternalExa
 
 // GeneratedExams is the resolver for the generatedExams field.
 func (r *queryResolver) GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error) {
-	panic(fmt.Errorf("not implemented: GeneratedExams - generatedExams"))
+	return r.plexams.GeneratedExams(ctx)
+}
+
+// GeneratedExam is the resolver for the generatedExam field.
+func (r *queryResolver) GeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error) {
+	return r.plexams.GeneratedExam(ctx, ancode)
 }
 
 // Exam is the resolver for the exam field.

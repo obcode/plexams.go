@@ -263,8 +263,9 @@ type PlannedExamWithNta struct {
 }
 
 type PrimussExamAncode struct {
-	Ancode  int    `json:"ancode"`
-	Program string `json:"program"`
+	Ancode        int    `json:"ancode"`
+	Program       string `json:"program"`
+	NumberOfStuds int    `json:"numberOfStuds"`
 }
 
 type PrimussExamByProgram struct {

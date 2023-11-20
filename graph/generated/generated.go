@@ -346,8 +346,9 @@ type ComplexityRoot struct {
 	}
 
 	PrimussExamAncode struct {
-		Ancode  func(childComplexity int) int
-		Program func(childComplexity int) int
+		Ancode        func(childComplexity int) int
+		NumberOfStuds func(childComplexity int) int
+		Program       func(childComplexity int) int
 	}
 
 	PrimussExamByProgram struct {
@@ -381,6 +382,7 @@ type ComplexityRoot struct {
 		ExamsWithRegs                 func(childComplexity int) int
 		ExternalExams                 func(childComplexity int) int
 		Fk07programs                  func(childComplexity int) int
+		GeneratedExam                 func(childComplexity int, ancode int) int
 		GeneratedExams                func(childComplexity int) int
 		InvigilatorTodos              func(childComplexity int) int
 		Invigilators                  func(childComplexity int) int
@@ -681,6 +683,7 @@ type QueryResolver interface {
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
 	ExternalExams(ctx context.Context) ([]*model.ExternalExam, error)
 	GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error)
+	GeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error)
 	Exam(ctx context.Context, ancode int) (*model.Exam, error)
 	Exams(ctx context.Context) ([]*model.Exam, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
@@ -2114,6 +2117,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PrimussExamAncode.Ancode(childComplexity), true
 
+	case "PrimussExamAncode.numberOfStuds":
+		if e.complexity.PrimussExamAncode.NumberOfStuds == nil {
+			break
+		}
+
+		return e.complexity.PrimussExamAncode.NumberOfStuds(childComplexity), true
+
 	case "PrimussExamAncode.program":
 		if e.complexity.PrimussExamAncode.Program == nil {
 			break
@@ -2369,6 +2379,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Fk07programs(childComplexity), true
+
+	case "Query.generatedExam":
+		if e.complexity.Query.GeneratedExam == nil {
+			break
+		}
+
+		args, err := ec.field_Query_generatedExam_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GeneratedExam(childComplexity, args["ancode"].(int)), true
 
 	case "Query.generatedExams":
 		if e.complexity.Query.GeneratedExams == nil {
@@ -3602,6 +3624,7 @@ var sources = []*ast.Source{
   externalExams: [ExternalExam!]!
 
   generatedExams: [GeneratedExam!]!
+  generatedExam(ancode: Int!): GeneratedExam
 
   exam(ancode: Int!): Exam
   exams: [Exam!]!
@@ -3962,6 +3985,7 @@ type EnhancedPrimussExam {
 type PrimussExamAncode {
   ancode: Int!
   program: String!
+  numberOfStuds: Int!
 }
 
 input PrimussExamInput {
@@ -4807,6 +4831,21 @@ func (ec *executionContext) field_Query_examsInSlot_args(ctx context.Context, ra
 		}
 	}
 	args["time"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_generatedExam_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["ancode"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["ancode"] = arg0
 	return args, nil
 }
 
@@ -14414,6 +14453,50 @@ func (ec *executionContext) fieldContext_PrimussExamAncode_program(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _PrimussExamAncode_numberOfStuds(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExamAncode) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrimussExamAncode_numberOfStuds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NumberOfStuds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrimussExamAncode_numberOfStuds(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrimussExamAncode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrimussExamByProgram_program(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExamByProgram) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrimussExamByProgram_program(ctx, field)
 	if err != nil {
@@ -17100,6 +17183,70 @@ func (ec *executionContext) fieldContext_Query_generatedExams(ctx context.Contex
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GeneratedExam", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_generatedExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_generatedExam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GeneratedExam(rctx, fc.Args["ancode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.GeneratedExam)
+	fc.Result = res
+	return ec.marshalOGeneratedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_generatedExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_GeneratedExam_ancode(ctx, field)
+			case "zpaExam":
+				return ec.fieldContext_GeneratedExam_zpaExam(ctx, field)
+			case "primussExams":
+				return ec.fieldContext_GeneratedExam_primussExams(ctx, field)
+			case "constraints":
+				return ec.fieldContext_GeneratedExam_constraints(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_GeneratedExam_conflicts(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneratedExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_generatedExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -22189,6 +22336,8 @@ func (ec *executionContext) fieldContext_ZPAConflict_primussAncodes(ctx context.
 				return ec.fieldContext_PrimussExamAncode_ancode(ctx, field)
 			case "program":
 				return ec.fieldContext_PrimussExamAncode_program(ctx, field)
+			case "numberOfStuds":
+				return ec.fieldContext_PrimussExamAncode_numberOfStuds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PrimussExamAncode", field.Name)
 		},
@@ -27763,6 +27912,11 @@ func (ec *executionContext) _PrimussExamAncode(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "numberOfStuds":
+			out.Values[i] = ec._PrimussExamAncode_numberOfStuds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -28759,6 +28913,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "generatedExam":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_generatedExam(ctx, field)
 				return res
 			}
 
@@ -34039,6 +34212,13 @@ func (ec *executionContext) marshalOExternalExam2ᚖgithubᚗcomᚋobcodeᚋplex
 		return graphql.Null
 	}
 	return ec._ExternalExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOGeneratedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExam(ctx context.Context, sel ast.SelectionSet, v *model.GeneratedExam) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._GeneratedExam(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOInt2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {

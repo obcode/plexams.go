@@ -5,6 +5,7 @@ extend type Query {
   externalExams: [ExternalExam!]!
 
   generatedExams: [GeneratedExam!]!
+  generatedExam(ancode: Int!): GeneratedExam
 
   exam(ancode: Int!): Exam
   exams: [Exam!]!

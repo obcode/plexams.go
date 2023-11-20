@@ -108,8 +108,9 @@ func (p *Plexams) PrepareGeneratedExams() error {
 							Ancode:        zpaAncode,
 							NumberOfStuds: zpaConflict.NumberOfStuds + primussConflict.NumberOfStuds,
 							PrimussAncodes: append(zpaConflict.PrimussAncodes, &model.PrimussExamAncode{
-								Ancode:  primussConflict.AnCode,
-								Program: enhanced.Exam.Program,
+								Ancode:        primussConflict.AnCode,
+								Program:       enhanced.Exam.Program,
+								NumberOfStuds: primussConflict.NumberOfStuds,
 							}),
 						}
 					} else {
@@ -117,8 +118,9 @@ func (p *Plexams) PrepareGeneratedExams() error {
 							Ancode:        zpaAncode,
 							NumberOfStuds: primussConflict.NumberOfStuds,
 							PrimussAncodes: []*model.PrimussExamAncode{{
-								Ancode:  primussConflict.AnCode,
-								Program: enhanced.Exam.Program,
+								Ancode:        primussConflict.AnCode,
+								Program:       enhanced.Exam.Program,
+								NumberOfStuds: primussConflict.NumberOfStuds,
 							}},
 						}
 					}
@@ -156,11 +158,6 @@ func (p *Plexams) PrepareGeneratedExams() error {
 
 	return p.dbClient.CacheGeneratedExams(ctx, exams)
 }
-
-// func (p *Plexams) generateFromConnectedExam(ctx context.Context, connectedExam *model.ConnectedExam) (*model.GeneratedExam, error) {
-
-// 	return generatedExam, nil
-// }
 
 func (p *Plexams) primussToEnhanced(ctx context.Context, exam *model.PrimussExam, ntaMap map[string]*model.NTA) (*model.EnhancedPrimussExam, error) {
 	studentRegs, err := p.GetStudentRegs(ctx, exam)
@@ -221,6 +218,11 @@ func primussAncodesToZpaAncodes(exams []*model.ConnectedExam, externalExams []*m
 	return ancodesMap
 }
 
-func (p *Plexams) GetGeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error) {
+func (p *Plexams) GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error) {
 	return p.dbClient.GetGeneratedExams(ctx)
+}
+
+// GeneratedExam is the resolver for the generatedExam field.
+func (p *Plexams) GeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error) {
+	return p.dbClient.GetGeneratedExam(ctx, ancode)
 }

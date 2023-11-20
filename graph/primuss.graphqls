@@ -17,6 +17,7 @@ type EnhancedPrimussExam {
 type PrimussExamAncode {
   ancode: Int!
   program: String!
+  numberOfStuds: Int!
 }
 
 input PrimussExamInput {

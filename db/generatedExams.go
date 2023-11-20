@@ -52,3 +52,23 @@ func (db *DB) GetGeneratedExams(ctx context.Context) ([]*model.GeneratedExam, er
 
 	return exams, nil
 }
+
+func (db *DB) GetGeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionGeneratedExams)
+
+	res := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
+	if res.Err() != nil {
+		log.Error().Err(res.Err()).Int("ancode", ancode).Msg("cannot get generated exam")
+		return nil, res.Err()
+	}
+
+	var exam *model.GeneratedExam
+
+	err := res.Decode(&exam)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
+		return nil, err
+	}
+
+	return exam, nil
+}

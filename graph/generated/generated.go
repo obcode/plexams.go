@@ -200,11 +200,12 @@ type ComplexityRoot struct {
 	}
 
 	GeneratedExam struct {
-		Ancode       func(childComplexity int) int
-		Conflicts    func(childComplexity int) int
-		Constraints  func(childComplexity int) int
-		PrimussExams func(childComplexity int) int
-		ZpaExam      func(childComplexity int) int
+		Ancode           func(childComplexity int) int
+		Conflicts        func(childComplexity int) int
+		Constraints      func(childComplexity int) int
+		PrimussExams     func(childComplexity int) int
+		StudentRegsCount func(childComplexity int) int
+		ZpaExam          func(childComplexity int) int
 	}
 
 	Invigilation struct {
@@ -271,6 +272,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddAdditionalExam   func(childComplexity int, exam model.AdditionalExamInput) int
 		AddExamGroupToSlot  func(childComplexity int, day int, time int, examGroupCode int) int
+		AddExamToSlot       func(childComplexity int, day int, time int, ancode int) int
 		AddNta              func(childComplexity int, input model.NTAInput) int
 		AddRoomToExam       func(childComplexity int, input model.RoomForExamInput) int
 		AddZpaExamToPlan    func(childComplexity int, ancode int) int
@@ -282,6 +284,7 @@ type ComplexityRoot struct {
 		PlacesWithSockets   func(childComplexity int, ancode int) int
 		PossibleDays        func(childComplexity int, ancode int, days []string) int
 		RemovePrimussExam   func(childComplexity int, input *model.PrimussExamInput) int
+		RmExamFromSlot      func(childComplexity int, ancode int) int
 		RmExamGroupFromSlot func(childComplexity int, examGroupCode int) int
 		RmZpaExamFromPlan   func(childComplexity int, ancode int) int
 		SameSlot            func(childComplexity int, ancode int, ancodes []int) int
@@ -380,6 +383,7 @@ type ComplexityRoot struct {
 		ExamsInSlot                   func(childComplexity int, day int, time int) int
 		ExamsInSlotWithRooms          func(childComplexity int, day int, time int) int
 		ExamsWithRegs                 func(childComplexity int) int
+		ExamsWithoutSlot              func(childComplexity int) int
 		ExternalExams                 func(childComplexity int) int
 		Fk07programs                  func(childComplexity int) int
 		GeneratedExam                 func(childComplexity int, ancode int) int
@@ -635,6 +639,8 @@ type MutationResolver interface {
 	AddExamGroupToSlot(ctx context.Context, day int, time int, examGroupCode int) (bool, error)
 	RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool, error)
 	AddRoomToExam(ctx context.Context, input model.RoomForExamInput) (bool, error)
+	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
+	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
 }
 type QueryResolver interface {
 	Workflow(ctx context.Context) ([]*model.Step, error)
@@ -686,6 +692,7 @@ type QueryResolver interface {
 	GeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error)
 	Exam(ctx context.Context, ancode int) (*model.Exam, error)
 	Exams(ctx context.Context) ([]*model.Exam, error)
+	ExamsWithoutSlot(ctx context.Context) ([]*model.GeneratedExam, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
 	Teacher(ctx context.Context, id int) (*model.Teacher, error)
@@ -1378,6 +1385,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GeneratedExam.PrimussExams(childComplexity), true
 
+	case "GeneratedExam.studentRegsCount":
+		if e.complexity.GeneratedExam.StudentRegsCount == nil {
+			break
+		}
+
+		return e.complexity.GeneratedExam.StudentRegsCount(childComplexity), true
+
 	case "GeneratedExam.zpaExam":
 		if e.complexity.GeneratedExam.ZpaExam == nil {
 			break
@@ -1689,6 +1703,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddExamGroupToSlot(childComplexity, args["day"].(int), args["time"].(int), args["examGroupCode"].(int)), true
 
+	case "Mutation.addExamToSlot":
+		if e.complexity.Mutation.AddExamToSlot == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addExamToSlot_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddExamToSlot(childComplexity, args["day"].(int), args["time"].(int), args["ancode"].(int)), true
+
 	case "Mutation.addNTA":
 		if e.complexity.Mutation.AddNta == nil {
 			break
@@ -1820,6 +1846,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemovePrimussExam(childComplexity, args["input"].(*model.PrimussExamInput)), true
+
+	case "Mutation.rmExamFromSlot":
+		if e.complexity.Mutation.RmExamFromSlot == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_rmExamFromSlot_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RmExamFromSlot(childComplexity, args["ancode"].(int)), true
 
 	case "Mutation.rmExamGroupFromSlot":
 		if e.complexity.Mutation.RmExamGroupFromSlot == nil {
@@ -2365,6 +2403,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.ExamsWithRegs(childComplexity), true
+
+	case "Query.examsWithoutSlot":
+		if e.complexity.Query.ExamsWithoutSlot == nil {
+			break
+		}
+
+		return e.complexity.Query.ExamsWithoutSlot(childComplexity), true
 
 	case "Query.externalExams":
 		if e.complexity.Query.ExternalExams == nil {
@@ -3730,6 +3775,7 @@ type GeneratedExam {
   primussExams: [EnhancedPrimussExam!]!
   constraints: Constraints
   conflicts: [ZPAConflict!]!
+  studentRegsCount: Int!
 }
 
 type ZPAConflict {
@@ -3902,7 +3948,16 @@ type NTAWithRegsByExam {
   ntas: [NTAWithRegs!]
 }
 `, BuiltIn: false},
-	{Name: "../plan.graphqls", Input: `type SemesterConfig {
+	{Name: "../plan.graphqls", Input: `extend type Query {
+  examsWithoutSlot: [GeneratedExam!]!
+}
+
+extend type Mutation {
+  addExamToSlot(day: Int!, time: Int!, ancode: Int!): Boolean!
+  rmExamFromSlot(ancode: Int!): Boolean!
+}
+
+type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
   slots: [Slot!]!
@@ -4059,6 +4114,7 @@ type ConflictsPerProgramAncode {
   ntasWithRegs: [NTAWithRegs!]
   ntasWithRegsByTeacher: [NTAWithRegsByExamAndTeacher!]
   nta(mtknr: String!): NTAWithRegs
+
   # Plan
   allowedSlots(examGroupCode: Int!): [Slot!]
   awkwardSlots(examGroupCode: Int!): [Slot!]! # slots before or after a conflict
@@ -4321,6 +4377,39 @@ func (ec *executionContext) field_Mutation_addExamGroupToSlot_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_addExamToSlot_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["day"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["day"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["time"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("time"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["time"] = arg1
+	var arg2 int
+	if tmp, ok := rawArgs["ancode"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+		arg2, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["ancode"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_addNTA_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -4501,6 +4590,21 @@ func (ec *executionContext) field_Mutation_removePrimussExam_args(ctx context.Co
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_rmExamFromSlot_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["ancode"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["ancode"] = arg0
 	return args, nil
 }
 
@@ -9878,6 +9982,50 @@ func (ec *executionContext) fieldContext_GeneratedExam_conflicts(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _GeneratedExam_studentRegsCount(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedExam_studentRegsCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentRegsCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedExam_studentRegsCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Invigilation_roomName(ctx context.Context, field graphql.CollectedField, obj *model.Invigilation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Invigilation_roomName(ctx, field)
 	if err != nil {
@@ -12863,6 +13011,116 @@ func (ec *executionContext) fieldContext_Mutation_addRoomToExam(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addRoomToExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addExamToSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addExamToSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddExamToSlot(rctx, fc.Args["day"].(int), fc.Args["time"].(int), fc.Args["ancode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addExamToSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addExamToSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_rmExamFromSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_rmExamFromSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RmExamFromSlot(rctx, fc.Args["ancode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_rmExamFromSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_rmExamFromSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -17180,6 +17438,8 @@ func (ec *executionContext) fieldContext_Query_generatedExams(ctx context.Contex
 				return ec.fieldContext_GeneratedExam_constraints(ctx, field)
 			case "conflicts":
 				return ec.fieldContext_GeneratedExam_conflicts(ctx, field)
+			case "studentRegsCount":
+				return ec.fieldContext_GeneratedExam_studentRegsCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GeneratedExam", field.Name)
 		},
@@ -17233,6 +17493,8 @@ func (ec *executionContext) fieldContext_Query_generatedExam(ctx context.Context
 				return ec.fieldContext_GeneratedExam_constraints(ctx, field)
 			case "conflicts":
 				return ec.fieldContext_GeneratedExam_conflicts(ctx, field)
+			case "studentRegsCount":
+				return ec.fieldContext_GeneratedExam_studentRegsCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GeneratedExam", field.Name)
 		},
@@ -17394,6 +17656,64 @@ func (ec *executionContext) fieldContext_Query_exams(ctx context.Context, field 
 				return ec.fieldContext_Exam_rooms(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Exam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_examsWithoutSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_examsWithoutSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExamsWithoutSlot(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.GeneratedExam)
+	fc.Result = res
+	return ec.marshalNGeneratedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_examsWithoutSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_GeneratedExam_ancode(ctx, field)
+			case "zpaExam":
+				return ec.fieldContext_GeneratedExam_zpaExam(ctx, field)
+			case "primussExams":
+				return ec.fieldContext_GeneratedExam_primussExams(ctx, field)
+			case "constraints":
+				return ec.fieldContext_GeneratedExam_constraints(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_GeneratedExam_conflicts(ctx, field)
+			case "studentRegsCount":
+				return ec.fieldContext_GeneratedExam_studentRegsCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneratedExam", field.Name)
 		},
 	}
 	return fc, nil
@@ -26870,6 +27190,11 @@ func (ec *executionContext) _GeneratedExam(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "studentRegsCount":
+			out.Values[i] = ec._GeneratedExam_studentRegsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -27461,6 +27786,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "addRoomToExam":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addRoomToExam(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addExamToSlot":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addExamToSlot(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rmExamFromSlot":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_rmExamFromSlot(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -28970,6 +29309,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_exams(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "examsWithoutSlot":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_examsWithoutSlot(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

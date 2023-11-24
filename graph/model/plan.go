@@ -10,9 +10,10 @@ type PlanEntry struct {
 }
 
 type PlanAncodeEntry struct {
-	DayNumber  int `json:"dayNumber"`
-	SlotNumber int `json:"slotNumber"`
-	Ancode     int `json:"ancode"`
+	DayNumber  int  `json:"dayNumber"`
+	SlotNumber int  `json:"slotNumber"`
+	Ancode     int  `json:"ancode"`
+	Locked     bool `json:"locked"`
 }
 
 type PlannedExam struct {

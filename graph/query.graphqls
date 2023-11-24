@@ -27,6 +27,7 @@ type Query {
   ntasWithRegs: [NTAWithRegs!]
   ntasWithRegsByTeacher: [NTAWithRegsByExamAndTeacher!]
   nta(mtknr: String!): NTAWithRegs
+
   # Plan
   allowedSlots(examGroupCode: Int!): [Slot!]
   awkwardSlots(examGroupCode: Int!): [Slot!]! # slots before or after a conflict

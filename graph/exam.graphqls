@@ -111,6 +111,7 @@ type GeneratedExam {
   primussExams: [EnhancedPrimussExam!]!
   constraints: Constraints
   conflicts: [ZPAConflict!]!
+  studentRegsCount: Int!
 }
 
 type ZPAConflict {

@@ -1,3 +1,12 @@
+extend type Query {
+  examsWithoutSlot: [GeneratedExam!]!
+}
+
+extend type Mutation {
+  addExamToSlot(day: Int!, time: Int!, ancode: Int!): Boolean!
+  rmExamFromSlot(ancode: Int!): Boolean!
+}
+
 type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!

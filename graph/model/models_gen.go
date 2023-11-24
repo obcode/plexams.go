@@ -157,11 +157,12 @@ type FK07Program struct {
 }
 
 type GeneratedExam struct {
-	Ancode       int                    `json:"ancode"`
-	ZpaExam      *ZPAExam               `json:"zpaExam"`
-	PrimussExams []*EnhancedPrimussExam `json:"primussExams"`
-	Constraints  *Constraints           `json:"constraints,omitempty"`
-	Conflicts    []*ZPAConflict         `json:"conflicts"`
+	Ancode           int                    `json:"ancode"`
+	ZpaExam          *ZPAExam               `json:"zpaExam"`
+	PrimussExams     []*EnhancedPrimussExam `json:"primussExams"`
+	Constraints      *Constraints           `json:"constraints,omitempty"`
+	Conflicts        []*ZPAConflict         `json:"conflicts"`
+	StudentRegsCount int                    `json:"studentRegsCount"`
 }
 
 type Invigilation struct {

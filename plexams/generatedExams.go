@@ -79,7 +79,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		}
 
 		spinner.Message("getting primuss exams")
-
+		studentRegsCount := 0
 		enhancedPrimussExams := make([]*model.EnhancedPrimussExam, 0, len(connectedExam.PrimussExams))
 		for _, primussExam := range connectedExam.PrimussExams {
 			enhanced, err := p.primussToEnhanced(ctx, primussExam, ntaMap)
@@ -89,6 +89,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 				return err
 			}
 
+			studentRegsCount += len(enhanced.StudentRegs)
 			enhancedPrimussExams = append(enhancedPrimussExams, enhanced)
 		}
 
@@ -140,11 +141,12 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		}
 
 		exams = append(exams, &model.GeneratedExam{
-			Ancode:       connectedExam.ZpaExam.AnCode,
-			ZpaExam:      connectedExam.ZpaExam,
-			PrimussExams: enhancedPrimussExams,
-			Constraints:  constraints[connectedExam.ZpaExam.AnCode],
-			Conflicts:    conflicts,
+			Ancode:           connectedExam.ZpaExam.AnCode,
+			ZpaExam:          connectedExam.ZpaExam,
+			PrimussExams:     enhancedPrimussExams,
+			Constraints:      constraints[connectedExam.ZpaExam.AnCode],
+			Conflicts:        conflicts,
+			StudentRegsCount: studentRegsCount,
 		})
 
 		err = spinner.Stop()

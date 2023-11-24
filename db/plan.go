@@ -105,6 +105,7 @@ func (db *DB) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model
 	return examGroups, nil
 }
 
+// Deprecated: rm me
 func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
@@ -127,6 +128,25 @@ func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 		}
 
 		planEntries = append(planEntries, &planEntry)
+	}
+
+	return planEntries, nil
+}
+
+func (db *DB) PlannedAncodes(ctx context.Context) ([]*model.PlanAncodeEntry, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("cannot get plan ancode entries")
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	planEntries := make([]*model.PlanAncodeEntry, 0)
+	err = cur.All(ctx, &planEntries)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("cannot decode plan ancode entries")
+		return nil, err
 	}
 
 	return planEntries, nil

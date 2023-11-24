@@ -22,8 +22,9 @@ var (
 
 	generated-exams --- generate exams from connected-exams, external-exams and primuss-data --- step 2
 
-	# studentregs     --- regs per exam & regs per student           --- step 2
+	studentregs     --- regs per exam & regs per student           --- step 2
 	nta             --- find NTAs for semester                     --- step 3
+
 	# exams-with-regs --- exams from connected-exams and studentregs --- step 4
 	exam-groups     --- group of exams in the same slot            --- step 5 -- according to constraints?
 	# partition       --- generate partition of groups               --- step 6
@@ -114,11 +115,11 @@ var (
 					os.Exit(1)
 				}
 
-			// case "studentregs": // Deprecated: no longer needed
-			// 	err := plexams.PrepareStudentRegs()
-			// 	if err != nil {
-			// 		os.Exit(1)
-			// 	}
+			case "studentregs":
+				err := plexams.PrepareStudentRegs()
+				if err != nil {
+					os.Exit(1)
+				}
 
 			// case "exams-with-regs": // Deprecated: no longer needed
 			// 	err := plexams.PrepareExamsWithRegs()
@@ -132,11 +133,17 @@ var (
 					os.Exit(1)
 				}
 
-			case "exam-groups":
-				err := plexams.PrepareExamGroups()
+			case "exam-group-numbers":
+				err := plexams.PrepareExamGroupNumbers()
 				if err != nil {
 					os.Exit(1)
 				}
+
+			// case "exam-groups":
+			// 	err := plexams.PrepareExamGroups()
+			// 	if err != nil {
+			// 		os.Exit(1)
+			// 	}
 
 			case "exam-group":
 				if len(args) < 2 {

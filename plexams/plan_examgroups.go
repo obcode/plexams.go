@@ -162,6 +162,7 @@ func (p *Plexams) AwkwardSlots(ctx context.Context, examGroupCode int) ([]*model
 	return awkwardSlots, nil
 }
 
+// Deprecated: rm me
 func (p *Plexams) ExamGroupsWithoutSlot(ctx context.Context) ([]*model.ExamGroup, error) {
 	examGroupsWithoutSlots := make([]*model.ExamGroup, 0)
 

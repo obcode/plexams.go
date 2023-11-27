@@ -66,9 +66,9 @@ func (p *Plexams) GeneratePlan(ctx context.Context) error {
 	newPlanEntries := make([]*model.PlanEntry, 0)
 
 	for _, entry := range plan {
-		planEntry, err := p.dbClient.PlanEntryForExamGroup(ctx, entry.ExamGroupCode)
+		planEntry, err := p.dbClient.PlanEntryForExamGroup(ctx, entry.Ancode)
 		if err != nil {
-			log.Error().Err(err).Int("examgroupcode", entry.ExamGroupCode).Msg("cannot get plan entry for exam group code")
+			log.Error().Err(err).Int("examgroupcode", entry.Ancode).Msg("cannot get plan entry for exam group code")
 			return err
 		}
 		// if entry is already in plan, day and slot should be the same

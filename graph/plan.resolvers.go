@@ -21,6 +21,21 @@ func (r *mutationResolver) RmExamFromSlot(ctx context.Context, ancode int) (bool
 	panic(fmt.Errorf("not implemented: RmExamFromSlot - rmExamFromSlot"))
 }
 
+// AllProgramsInPlan is the resolver for the allProgramsInPlan field.
+func (r *queryResolver) AllProgramsInPlan(ctx context.Context) ([]string, error) {
+	return r.plexams.AllProgramsInPlan(ctx)
+}
+
+// AncodesInPlan is the resolver for the ancodesInPlan field.
+func (r *queryResolver) AncodesInPlan(ctx context.Context) ([]int, error) {
+	return r.plexams.AncodesInPlan(ctx)
+}
+
+// ExamerNamesInPlan is the resolver for the examerNamesInPlan field.
+func (r *queryResolver) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {
+	return r.plexams.ExamerInPlan(ctx)
+}
+
 // ExamsWithoutSlot is the resolver for the examsWithoutSlot field.
 func (r *queryResolver) ExamsWithoutSlot(ctx context.Context) ([]*model.GeneratedExam, error) {
 	return r.plexams.ExamsWithoutSlot(ctx)

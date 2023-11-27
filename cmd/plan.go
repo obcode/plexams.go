@@ -43,6 +43,7 @@ var (
 				}
 				success, err := plexams.AddExamToSlot(context.Background(), ancode, day, slot)
 				if err != nil {
+					fmt.Printf("error: %v\n", err)
 					os.Exit(1)
 				}
 				if success {
@@ -82,7 +83,7 @@ var (
 				}
 				if planEntry != nil {
 					fmt.Printf("successfully locked exam group %d to slot (%d,%d)\n",
-						planEntry.ExamGroupCode, planEntry.DayNumber, planEntry.SlotNumber)
+						planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
 				}
 				if examGroup != nil {
 					for _, exam := range examGroup.Exams {
@@ -105,7 +106,7 @@ var (
 				}
 				if planEntry != nil {
 					fmt.Printf("successfully unlocked exam group %d to slot (%d,%d)\n",
-						planEntry.ExamGroupCode, planEntry.DayNumber, planEntry.SlotNumber)
+						planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
 				}
 				if examGroup != nil {
 					for _, exam := range examGroup.Exams {

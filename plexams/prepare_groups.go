@@ -47,19 +47,7 @@ func (p *Plexams) initPrepareExamGroups(ctx context.Context) (ancodesToPlan []in
 	return
 }
 
-// Group with one ancode => group number == ancoce
-// Group with more ancodes => group number == smallest ancode number
-func (p *Plexams) PrepareExamGroupNumbers() error {
-	// ctx := context.Background()
-	// generatedExams, err := p.dbClient.GetGeneratedExams(ctx)
-	// if err != nil {
-	// 	log.Error().Err(err).Msg("cannot get generated exams")
-	// 	return err
-	// }
-
-	return nil
-}
-
+// Deprecated: no more exam groups
 func (p *Plexams) PrepareExamGroups() error {
 	ctx := context.Background()
 	ancodes, examsWithRegs, constraints, err := p.initPrepareExamGroups(ctx)

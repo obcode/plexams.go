@@ -1,4 +1,7 @@
 extend type Query {
+  allProgramsInPlan: [String!]
+  ancodesInPlan: [Int!]
+  examerInPlan: [ExamerInPlan!]
   examsWithoutSlot: [GeneratedExam!]!
 }
 

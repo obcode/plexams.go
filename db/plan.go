@@ -11,46 +11,46 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (db *DB) AddExamGroupToSlot(ctx context.Context, dayNumber int, timeNumber int, examGroupCode int) (bool, error) {
-	if db.ExamGroupIsLocked(ctx, examGroupCode) {
-		return false, fmt.Errorf("exam group %d is locked", examGroupCode)
+func (db *DB) AddExamToSlot(ctx context.Context, dayNumber int, timeNumber int, ancode int) (bool, error) {
+	if db.ExamGroupIsLocked(ctx, ancode) {
+		return false, fmt.Errorf("exam %d is locked", ancode)
 	}
 
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	_, err := collection.DeleteMany(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
+	_, err := collection.DeleteMany(ctx, bson.D{{Key: "ancode", Value: ancode}})
 	if err != nil {
-		log.Error().Err(err).Int("day", dayNumber).Int("time", timeNumber).Int("examGroupCode", examGroupCode).
-			Msg("cannot rm exam group from plan")
+		log.Error().Err(err).Int("day", dayNumber).Int("time", timeNumber).Int("ancode", ancode).
+			Msg("cannot rm exam from plan")
 		return false, err
 	}
 
 	_, err = collection.InsertOne(ctx, &model.PlanEntry{
-		DayNumber:     dayNumber,
-		SlotNumber:    timeNumber,
-		ExamGroupCode: examGroupCode,
+		DayNumber:  dayNumber,
+		SlotNumber: timeNumber,
+		Ancode:     ancode,
 	})
 
 	if err != nil {
-		log.Error().Err(err).Int("day", dayNumber).Int("time", timeNumber).Int("examGroupCode", examGroupCode).
-			Msg("cannot add exam group to slot")
+		log.Error().Err(err).Int("day", dayNumber).Int("time", timeNumber).Int("ancode", ancode).
+			Msg("cannot add exam to slot")
 		return false, err
 	}
 
 	return true, nil
 }
 
-func (db *DB) RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool, error) {
-	if db.ExamGroupIsLocked(ctx, examGroupCode) {
-		return false, fmt.Errorf("exam group %d is locked", examGroupCode)
+func (db *DB) RmExamGroupFromSlot(ctx context.Context, ancode int) (bool, error) {
+	if db.ExamGroupIsLocked(ctx, ancode) {
+		return false, fmt.Errorf("exam %d is locked", ancode)
 	}
 
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	_, err := collection.DeleteMany(ctx, bson.D{{Key: "examgroupcode", Value: examGroupCode}})
+	_, err := collection.DeleteMany(ctx, bson.D{{Key: "ancode", Value: ancode}})
 	if err != nil {
-		log.Error().Err(err).Int("examGroupCode", examGroupCode).
-			Msg("cannot rm exam group from plan")
+		log.Error().Err(err).Int("ancode", ancode).
+			Msg("cannot rm exam from plan")
 		return false, err
 	}
 
@@ -94,9 +94,9 @@ func (db *DB) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model
 
 	examGroups := make([]*model.ExamGroup, 0, len(planEntries))
 	for _, planEntry := range planEntries {
-		examGroup, err := db.ExamGroup(ctx, planEntry.ExamGroupCode)
+		examGroup, err := db.ExamGroup(ctx, planEntry.Ancode)
 		if err != nil {
-			log.Error().Err(err).Int("examGroupCode", planEntry.ExamGroupCode).Msg("cannot get exam group")
+			log.Error().Err(err).Int("examGroupCode", planEntry.Ancode).Msg("cannot get exam group")
 			return examGroups, err
 		}
 		examGroups = append(examGroups, examGroup)
@@ -176,17 +176,15 @@ func (db *DB) PlanEntryForExamGroup(ctx context.Context, examGroupCode int) (*mo
 }
 
 func (db *DB) AncodesInPlan(ctx context.Context) ([]int, error) {
-	examGroups, err := db.ExamGroups(ctx)
+	exams, err := db.GetGeneratedExams(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get exam groups")
+		log.Error().Err(err).Msg("cannot get exams")
 	}
 
-	ancodes := make([]int, 0)
+	ancodes := make([]int, 0, len(exams))
 
-	for _, group := range examGroups {
-		for _, exam := range group.Exams {
-			ancodes = append(ancodes, exam.Exam.Ancode)
-		}
+	for _, exam := range exams {
+		ancodes = append(ancodes, exam.Ancode)
 	}
 
 	sort.Ints(ancodes)
@@ -194,27 +192,26 @@ func (db *DB) AncodesInPlan(ctx context.Context) ([]int, error) {
 }
 
 func (db *DB) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {
-	examGroups, err := db.ExamGroups(ctx)
+	exams, err := db.GetGeneratedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get exam groups")
 	}
 
 	examerMap := make(map[string][]int)
-	for _, group := range examGroups {
-	EXAMLOOP:
-		for _, exam := range group.Exams {
-			examer, ok := examerMap[exam.Exam.ZpaExam.MainExamer]
-			if !ok {
-				examerMap[exam.Exam.ZpaExam.MainExamer] = []int{exam.Exam.ZpaExam.MainExamerID}
-			} else {
-				for _, examerID := range examer {
-					if examerID == exam.Exam.ZpaExam.MainExamerID {
-						continue EXAMLOOP
-					}
+
+EXAMLOOP:
+	for _, exam := range exams {
+		examer, ok := examerMap[exam.ZpaExam.MainExamer]
+		if !ok {
+			examerMap[exam.ZpaExam.MainExamer] = []int{exam.ZpaExam.MainExamerID}
+		} else {
+			for _, examerID := range examer {
+				if examerID == exam.ZpaExam.MainExamerID {
+					continue EXAMLOOP
 				}
-				examer = append(examer, exam.Exam.ZpaExam.MainExamerID)
-				examerMap[exam.Exam.ZpaExam.MainExamer] = examer
 			}
+			examer = append(examer, exam.ZpaExam.MainExamerID)
+			examerMap[exam.ZpaExam.MainExamer] = examer
 		}
 	}
 
@@ -256,9 +253,9 @@ func (db *DB) PlanAncodeEntries(ctx context.Context) ([]*model.PlanAncodeEntry, 
 
 	planAncodeEntries := make([]*model.PlanAncodeEntry, 0)
 	for _, planEntry := range planEntries {
-		examGroup, ok := examGroupMap[planEntry.ExamGroupCode]
+		examGroup, ok := examGroupMap[planEntry.Ancode]
 		if !ok {
-			log.Error().Int("exam group code", planEntry.ExamGroupCode).Msg("exam group not found")
+			log.Error().Int("exam group code", planEntry.Ancode).Msg("exam group not found")
 		}
 		for _, exam := range examGroup.Exams {
 			planAncodeEntries = append(planAncodeEntries, &model.PlanAncodeEntry{

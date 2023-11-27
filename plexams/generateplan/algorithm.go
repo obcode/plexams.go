@@ -87,7 +87,7 @@ func (algorithm *Algorithm) NRuns(n int) ([]*model.PlanEntry, error) {
 	var exportPlan []*model.PlanEntry
 	for _, exam := range plan.exams {
 		exportPlan = append(exportPlan,
-			&model.PlanEntry{DayNumber: exam.day, SlotNumber: exam.slot, ExamGroupCode: exam.examGroup.ExamGroupCode, Locked: false})
+			&model.PlanEntry{DayNumber: exam.day, SlotNumber: exam.slot, Ancode: exam.examGroup.ExamGroupCode, Locked: false})
 	}
 	return exportPlan, nil
 }

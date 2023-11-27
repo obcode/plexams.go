@@ -26,7 +26,7 @@ var (
 	nta             --- find NTAs for semester                     --- step 3
 
 	# exams-with-regs --- exams from connected-exams and studentregs --- step 4
-	exam-groups     --- group of exams in the same slot            --- step 5 -- according to constraints?
+	# exam-groups     --- group of exams in the same slot            --- step 5 -- according to constraints?
 	# partition       --- generate partition of groups               --- step 6
 	
 	Add exam after planning has started:
@@ -129,12 +129,6 @@ var (
 
 			case "generated-exams":
 				err := plexams.PrepareGeneratedExams()
-				if err != nil {
-					os.Exit(1)
-				}
-
-			case "exam-group-numbers":
-				err := plexams.PrepareExamGroupNumbers()
 				if err != nil {
 					os.Exit(1)
 				}

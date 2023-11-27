@@ -35,6 +35,11 @@ func (r *queryResolver) GeneratedExam(ctx context.Context, ancode int) (*model.G
 	return r.plexams.GeneratedExam(ctx, ancode)
 }
 
+// ConflictingAncodes is the resolver for the conflictingAncodes field.
+func (r *queryResolver) ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error) {
+	return r.plexams.ConflictingAncodes(ctx, ancode)
+}
+
 // Exam is the resolver for the exam field.
 func (r *queryResolver) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
 	exam, err := r.plexams.CachedExam(ctx, ancode)

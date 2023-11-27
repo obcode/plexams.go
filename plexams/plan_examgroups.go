@@ -14,14 +14,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int) (bool, error) {
-	examGroup, err := p.GetExamGroupForAncode(ctx, ancode)
-	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam group for ancode")
-	}
+// func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int) (bool, error) {
+// 	examGroup, err := p.GetExamGroupForAncode(ctx, ancode)
+// 	if err != nil {
+// 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam group for ancode")
+// 	}
 
-	return p.AddExamGroupToSlot(ctx, dayNumber, timeNumber, examGroup.ExamGroupCode)
-}
+// 	return p.AddExamGroupToSlot(ctx, dayNumber, timeNumber, examGroup.ExamGroupCode)
+// }
 
 func (p *Plexams) GetExamGroupForAncode(ctx context.Context, ancode int) (*model.ExamGroup, error) {
 	return p.dbClient.GetExamGroupForAncode(ctx, ancode)
@@ -78,7 +78,7 @@ func (p *Plexams) AddExamGroupToSlot(ctx context.Context, dayNumber int, timeNum
 			dayNumber, timeNumber, examGroupCode)
 	}
 
-	return p.dbClient.AddExamGroupToSlot(ctx, dayNumber, timeNumber, examGroupCode)
+	return p.dbClient.AddExamToSlot(ctx, dayNumber, timeNumber, examGroupCode)
 }
 
 func (p *Plexams) RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (bool, error) {
@@ -89,42 +89,42 @@ func (p *Plexams) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*m
 	return p.dbClient.ExamGroupsInSlot(ctx, day, time)
 }
 
-func (p *Plexams) AllowedSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
-	if p.dbClient.ExamGroupIsLocked(ctx, examGroupCode) {
-		return []*model.Slot{}, nil
-	}
-	examGroup, err := p.ExamGroup(ctx, examGroupCode)
-	if err != nil {
-		log.Error().Err(err).Int("examGroupCode", examGroupCode).Msg("exam group does not exist")
-	}
+// func (p *Plexams) AllowedSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
+// 	if p.dbClient.ExamGroupIsLocked(ctx, examGroupCode) {
+// 		return []*model.Slot{}, nil
+// 	}
+// 	examGroup, err := p.ExamGroup(ctx, examGroupCode)
+// 	if err != nil {
+// 		log.Error().Err(err).Int("examGroupCode", examGroupCode).Msg("exam group does not exist")
+// 	}
 
-	allowedSlots := make([]*model.Slot, 0)
-OUTER:
-	for _, slot := range examGroup.ExamGroupInfo.PossibleSlots {
-		// get ExamGroups for slot and check Conflicts
-		examGroups, err := p.ExamGroupsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
-		if err != nil {
-			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
-				Msg("cannot get exam groups in slot")
-			return nil, err
-		}
-		for _, otherExamGroup := range examGroups {
-			for _, conflict := range examGroup.ExamGroupInfo.Conflicts {
-				if otherExamGroup.ExamGroupCode == conflict.ExamGroupCode {
-					continue OUTER
-				}
-			}
-		}
+// 	allowedSlots := make([]*model.Slot, 0)
+// OUTER:
+// 	for _, slot := range examGroup.ExamGroupInfo.PossibleSlots {
+// 		// get ExamGroups for slot and check Conflicts
+// 		examGroups, err := p.ExamGroupsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+// 		if err != nil {
+// 			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+// 				Msg("cannot get exam groups in slot")
+// 			return nil, err
+// 		}
+// 		for _, otherExamGroup := range examGroups {
+// 			for _, conflict := range examGroup.ExamGroupInfo.Conflicts {
+// 				if otherExamGroup.ExamGroupCode == conflict.ExamGroupCode {
+// 					continue OUTER
+// 				}
+// 			}
+// 		}
 
-		allowedSlots = append(allowedSlots, &model.Slot{
-			DayNumber:  slot.DayNumber,
-			SlotNumber: slot.SlotNumber,
-			Starttime:  p.getSlotTime(slot.DayNumber, slot.SlotNumber),
-		})
-	}
+// 		allowedSlots = append(allowedSlots, &model.Slot{
+// 			DayNumber:  slot.DayNumber,
+// 			SlotNumber: slot.SlotNumber,
+// 			Starttime:  p.getSlotTime(slot.DayNumber, slot.SlotNumber),
+// 		})
+// 	}
 
-	return allowedSlots, nil
-}
+// 	return allowedSlots, nil
+// }
 
 func (p *Plexams) AwkwardSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
 	if p.dbClient.ExamGroupIsLocked(ctx, examGroupCode) {
@@ -179,7 +179,7 @@ func (p *Plexams) ExamGroupsWithoutSlot(ctx context.Context) ([]*model.ExamGroup
 OUTER:
 	for _, examGroup := range examGroups {
 		for _, planEntry := range planEntries {
-			if examGroup.ExamGroupCode == planEntry.ExamGroupCode {
+			if examGroup.ExamGroupCode == planEntry.Ancode {
 				continue OUTER
 			}
 		}
@@ -190,16 +190,16 @@ OUTER:
 }
 
 func (p *Plexams) AllProgramsInPlan(ctx context.Context) ([]string, error) {
-	examGroups, err := p.ExamGroups(ctx)
+	exams, err := p.GeneratedExams(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get exam groups")
+		log.Error().Err(err).Msg("cannot get exams")
 	}
 
 	programSet := set.NewSet[string]()
 
-	for _, group := range examGroups {
-		for _, program := range group.ExamGroupInfo.Programs {
-			programSet.Add(program)
+	for _, exam := range exams {
+		for _, primussExam := range exam.PrimussExams {
+			programSet.Add(primussExam.Exam.Program)
 		}
 	}
 
@@ -207,10 +207,6 @@ func (p *Plexams) AllProgramsInPlan(ctx context.Context) ([]string, error) {
 	sort.Strings(allPrograms)
 
 	return allPrograms, nil
-}
-
-func (p *Plexams) AncodesInPlan(ctx context.Context) ([]int, error) {
-	return p.dbClient.AncodesInPlan(ctx)
 }
 
 func (p *Plexams) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {

@@ -411,6 +411,7 @@ type ComplexityRoot struct {
 		StudentByMtknr                func(childComplexity int, mtknr string) int
 		StudentRegsForProgram         func(childComplexity int, program string) int
 		StudentRegsImportErrors       func(childComplexity int) int
+		Students                      func(childComplexity int) int
 		StudentsByName                func(childComplexity int, regex string) int
 		Teacher                       func(childComplexity int, id int) int
 		Teachers                      func(childComplexity int, fromZpa *bool) int
@@ -693,6 +694,7 @@ type QueryResolver interface {
 	AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
+	Students(ctx context.Context) ([]*model.Student, error)
 	Teacher(ctx context.Context, id int) (*model.Teacher, error)
 	Teachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error)
 	Invigilators(ctx context.Context) ([]*model.ZPAInvigilator, error)
@@ -2653,6 +2655,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.StudentRegsImportErrors(childComplexity), true
 
+	case "Query.students":
+		if e.complexity.Query.Students == nil {
+			break
+		}
+
+		return e.complexity.Query.Students(childComplexity), true
+
 	case "Query.studentsByName":
 		if e.complexity.Query.StudentsByName == nil {
 			break
@@ -4196,7 +4205,8 @@ type AnCode {
 `, BuiltIn: false},
 	{Name: "../studentregs.graphqls", Input: `extend type Query {
   studentByMtknr(mtknr: String!): Student
-  studentsByName(regex: String!): [Student!]
+  studentsByName(regex: String!): [Student!]!
+  students: [Student!]!
 }
 
 type StudentRegsPerStudent {
@@ -17727,11 +17737,14 @@ func (ec *executionContext) _Query_studentsByName(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.([]*model.Student)
 	fc.Result = res
-	return ec.marshalOStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentᚄ(ctx, field.Selections, res)
+	return ec.marshalNStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_studentsByName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -17768,6 +17781,64 @@ func (ec *executionContext) fieldContext_Query_studentsByName(ctx context.Contex
 	if fc.Args, err = ec.field_Query_studentsByName_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_students(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_students(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Students(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Student)
+	fc.Result = res
+	return ec.marshalNStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_students(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mtknr":
+				return ec.fieldContext_Student_mtknr(ctx, field)
+			case "program":
+				return ec.fieldContext_Student_program(ctx, field)
+			case "group":
+				return ec.fieldContext_Student_group(ctx, field)
+			case "name":
+				return ec.fieldContext_Student_name(ctx, field)
+			case "regs":
+				return ec.fieldContext_Student_regs(ctx, field)
+			case "nta":
+				return ec.fieldContext_Student_nta(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Student", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -29274,6 +29345,31 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_studentsByName(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "students":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_students(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -33125,6 +33221,50 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	for i := range v {
 		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
 	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Student) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNStudent2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudent(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
 
 	for _, e := range ret {
 		if e == graphql.Null {

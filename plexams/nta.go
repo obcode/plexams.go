@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/obcode/plexams.go/graph/model"
-	"github.com/rs/zerolog/log"
 )
 
 func (p *Plexams) AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error) {
@@ -23,41 +22,42 @@ func (p *Plexams) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, er
 	return p.dbClient.NtaWithRegs(ctx, mtknr)
 }
 
+// Deprecated: rm me
 func (p *Plexams) PrepareNta() error {
-	ctx := context.Background()
-	// get NTAs
-	ntas, err := p.Ntas(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get NTAs")
-		return err
-	}
+	// ctx := context.Background()
+	// // get NTAs
+	// ntas, err := p.Ntas(ctx)
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("cannot get NTAs")
+	// 	return err
+	// }
 
-	// get StudentRegs
-	studentRegs, err := p.StudentRegsPerStudentPlanned(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get student regs")
-		return err
-	}
+	// // get StudentRegs
+	// studentRegs, err := p.StudentRegsPerStudentPlanned(ctx)
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("cannot get student regs")
+	// 	return err
+	// }
 
-	// merge
-	ntaWithRegs := make([]*model.NTAWithRegs, 0)
-	for _, nta := range ntas {
-		for _, studentReg := range studentRegs {
-			if nta.Mtknr == studentReg.Student.Mtknr {
-				ntaWithRegs = append(ntaWithRegs, &model.NTAWithRegs{
-					Nta:  nta,
-					Regs: studentReg,
-				})
-				break
-			}
-		}
-	}
+	// // merge
+	// ntaWithRegs := make([]*model.NTAWithRegs, 0)
+	// for _, nta := range ntas {
+	// 	for _, studentReg := range studentRegs {
+	// 		if nta.Mtknr == studentReg.Student.Mtknr {
+	// 			ntaWithRegs = append(ntaWithRegs, &model.NTAWithRegs{
+	// 				Nta:  nta,
+	// 				Regs: studentReg,
+	// 			})
+	// 			break
+	// 		}
+	// 	}
+	// }
 
-	err = p.dbClient.SaveSemesterNTAs(ctx, ntaWithRegs)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot save ntas for semester")
-		return err
-	}
+	// err = p.dbClient.SaveSemesterNTAs(ctx, ntaWithRegs)
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("cannot save ntas for semester")
+	// 	return err
+	// }
 
 	return nil
 }

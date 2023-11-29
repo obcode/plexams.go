@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (db *DB) GetStudentRegsPerAncodePlanned(ctx context.Context) ([]*model.StudentRegsPerAncode, error) {
@@ -44,17 +45,20 @@ func (db *DB) GetStudentRegsPerAncodePlanned(ctx context.Context) ([]*model.Stud
 	return studentRegs, nil
 }
 
-func (db *DB) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.StudentRegsPerStudent, error) {
+func (db *DB) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.Student, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned)
 
-	cur, err := collection.Find(ctx, bson.M{})
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "name", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Msg("MongoDB Find")
 		return nil, err
 	}
 	defer cur.Close(ctx)
 
-	studentRegs := make([]*model.StudentRegsPerStudent, 0)
+	studentRegs := make([]*model.Student, 0)
 
 	err = cur.All(ctx, &studentRegs)
 	if err != nil {

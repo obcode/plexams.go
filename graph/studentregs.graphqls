@@ -1,6 +1,7 @@
 extend type Query {
   studentByMtknr(mtknr: String!): Student
-  studentsByName(regex: String!): [Student!]
+  studentsByName(regex: String!): [Student!]!
+  students: [Student!]!
 }
 
 type StudentRegsPerStudent {

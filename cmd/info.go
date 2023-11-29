@@ -89,7 +89,8 @@ exams-for-student name --- get exams for student.`,
 				if len(args) < 2 {
 					log.Fatal("need name")
 				}
-				err := p.GetExamsForStudent(args[1])
+				// FIXME
+				err := p.GetExamsForStudent(args[1]) // nolint
 				if err != nil {
 					fmt.Println(err)
 					return

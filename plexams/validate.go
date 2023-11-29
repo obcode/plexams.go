@@ -37,24 +37,24 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 		}
 	}
 
-	studentRegs, err := p.StudentRegsPerStudentPlanned(ctx)
+	students, err := p.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get student registries per student")
 		return err
 	}
 
-	for _, studentReg := range studentRegs {
-		validateStudentReg(studentReg, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe, ancode)
+	for _, student := range students {
+		validateStudentReg(student, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe, ancode)
 	}
 	return nil
 }
 
-func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntries []*model.PlanAncodeEntry,
+func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanAncodeEntry,
 	planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool, ancode int) {
-	log.Debug().Str("name", studentReg.Student.Name).Str("mtknr", studentReg.Student.Mtknr).Msg("checking regs for student")
+	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("checking regs for student")
 
 	planAncodeEntriesForStudent := make([]*model.PlanAncodeEntry, 0)
-	for _, ancode := range studentReg.Ancodes {
+	for _, ancode := range student.Regs {
 		for _, planEntry := range planAncodeEntries {
 			if ancode == planEntry.Ancode {
 				planAncodeEntriesForStudent = append(planAncodeEntriesForStudent, planEntry)
@@ -63,11 +63,11 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 	}
 
 	if len(planAncodeEntriesForStudent) == 0 {
-		log.Debug().Str("name", studentReg.Student.Name).Str("mtknr", studentReg.Student.Mtknr).Msg("no exam for student in plan")
+		log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("no exam for student in plan")
 		return
 	}
 
-	log.Debug().Str("name", studentReg.Student.Name).Str("mtknr", studentReg.Student.Mtknr).
+	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).
 		Int("count", len(planAncodeEntriesForStudent)).
 		Msg("found exams for student in plan")
 
@@ -97,7 +97,7 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 				color.Red.Printf("%3d. Same slot: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n", count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
-					studentReg.Student.Name, studentReg.Student.Program, studentReg.Student.Mtknr,
+					student.Name, student.Program, student.Mtknr,
 				)
 			} else
 			// adjacent slots
@@ -108,7 +108,7 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 				color.Red.Printf("%3d. Adjacent slots: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n", count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
-					studentReg.Student.Name, studentReg.Student.Program, studentReg.Student.Mtknr,
+					student.Name, student.Program, student.Mtknr,
 				)
 			} else
 			// same day
@@ -117,7 +117,7 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 				color.Yellow.Printf("%3d. Same day: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n", count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
-					studentReg.Student.Name, studentReg.Student.Program, studentReg.Student.Mtknr,
+					student.Name, student.Program, student.Mtknr,
 				)
 			}
 		}

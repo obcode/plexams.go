@@ -19,7 +19,7 @@ plan --- generate the plan.`,
 			plexams := initPlexamsConfig()
 			switch args[0] {
 			case "plan":
-				err := plexams.GeneratePlan(context.Background())
+				err := plexams.GeneratePlan(context.Background()) // nolint
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

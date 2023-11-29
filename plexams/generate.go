@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Deprecated: rm me
 func (p *Plexams) GeneratePlan(ctx context.Context) error {
 
 	err := p.dbClient.BackupPlan(ctx)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/color"
@@ -122,41 +121,41 @@ func (p *Plexams) RmExamGroupFromSlot(ctx context.Context, examGroupCode int) (b
 // 	return allowedSlots, nil
 // }
 
-func (p *Plexams) AwkwardSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
-	if p.dbClient.ExamGroupIsLocked(ctx, examGroupCode) {
-		return []*model.Slot{}, nil
-	}
-	examGroup, err := p.ExamGroup(ctx, examGroupCode)
-	if err != nil {
-		log.Error().Err(err).Int("examGroupCode", examGroupCode).Msg("exam group does not exist")
-	}
+// func (p *Plexams) AwkwardSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
+// 	if p.dbClient.ExamGroupIsLocked(ctx, examGroupCode) {
+// 		return []*model.Slot{}, nil
+// 	}
+// 	examGroup, err := p.ExamGroup(ctx, examGroupCode)
+// 	if err != nil {
+// 		log.Error().Err(err).Int("examGroupCode", examGroupCode).Msg("exam group does not exist")
+// 	}
 
-	awkwardSlots := make([]*model.Slot, 0)
-	for _, conflict := range examGroup.ExamGroupInfo.Conflicts {
-		planEntry, err := p.dbClient.PlanEntryForExamGroup(ctx, conflict.ExamGroupCode)
-		if err != nil {
-			log.Error().Err(err).Int("examGroupCode", conflict.ExamGroupCode).Msg("error while trying to get plan entry")
-			continue
-		}
+// 	awkwardSlots := make([]*model.Slot, 0)
+// 	for _, conflict := range examGroup.ExamGroupInfo.Conflicts {
+// 		planEntry, err := p.dbClient.PlanEntryForExamGroup(ctx, conflict.ExamGroupCode)
+// 		if err != nil {
+// 			log.Error().Err(err).Int("examGroupCode", conflict.ExamGroupCode).Msg("error while trying to get plan entry")
+// 			continue
+// 		}
 
-		if planEntry != nil {
-			awkwardSlots = append(awkwardSlots,
-				&model.Slot{
-					DayNumber:  planEntry.DayNumber,
-					SlotNumber: planEntry.SlotNumber - 1,
-					Starttime:  time.Time{},
-				},
-				&model.Slot{
-					DayNumber:  planEntry.DayNumber,
-					SlotNumber: planEntry.SlotNumber + 1,
-					Starttime:  time.Time{},
-				},
-			)
-		}
-	}
+// 		if planEntry != nil {
+// 			awkwardSlots = append(awkwardSlots,
+// 				&model.Slot{
+// 					DayNumber:  planEntry.DayNumber,
+// 					SlotNumber: planEntry.SlotNumber - 1,
+// 					Starttime:  time.Time{},
+// 				},
+// 				&model.Slot{
+// 					DayNumber:  planEntry.DayNumber,
+// 					SlotNumber: planEntry.SlotNumber + 1,
+// 					Starttime:  time.Time{},
+// 				},
+// 			)
+// 		}
+// 	}
 
-	return awkwardSlots, nil
-}
+// 	return awkwardSlots, nil
+// }
 
 // Deprecated: rm me
 func (p *Plexams) ExamGroupsWithoutSlot(ctx context.Context) ([]*model.ExamGroup, error) {
@@ -209,19 +208,21 @@ func (p *Plexams) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, erro
 	return p.dbClient.ExamerInPlan(ctx)
 }
 
-func (p *Plexams) SlotForAncode(ctx context.Context, ancode int) (*model.Slot, error) {
-	examGroup, err := p.GetExamGroupForAncode(ctx, ancode)
-	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam group for ancode")
-	}
+// // Deprecated: rm me
+// func (p *Plexams) SlotForAncode(ctx context.Context, ancode int) (*model.Slot, error) {
+// 	examGroup, err := p.GetExamGroupForAncode(ctx, ancode)
+// 	if err != nil {
+// 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam group for ancode")
+// 	}
 
-	if examGroup == nil {
-		return nil, nil
-	}
+// 	if examGroup == nil {
+// 		return nil, nil
+// 	}
 
-	return p.SlotForExamGroup(ctx, examGroup.ExamGroupCode)
-}
+// 	return p.SlotForExamGroup(ctx, examGroup.ExamGroupCode)
+// }
 
+// Deprecated: rm me
 func (p *Plexams) SlotForExamGroup(ctx context.Context, examGroupCode int) (*model.Slot, error) {
 	planEntry, err := p.dbClient.PlanEntryForExamGroup(ctx, examGroupCode)
 	if err != nil {
@@ -305,10 +306,6 @@ func (p *Plexams) UnlockExamGroup(ctx context.Context, examGroupCode int) (*mode
 
 func (p *Plexams) RemoveUnlockedExamGroupsFromPlan(ctx context.Context) (int, error) {
 	return p.dbClient.RemoveUnlockedExamGroupsFromPlan(ctx)
-}
-
-func (p *Plexams) LockPlan(ctx context.Context) error {
-	return p.dbClient.LockPlan(ctx)
 }
 
 func (p *Plexams) PreparePlannedExams() error {

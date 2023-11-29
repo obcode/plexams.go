@@ -139,36 +139,36 @@ var (
 			// 		os.Exit(1)
 			// 	}
 
-			case "exam-group":
-				if len(args) < 2 {
-					log.Fatal("need ancode(s)")
-				}
-				ancodes := make([]int, 0, len(args)-1)
-				for _, arg := range args[1:] {
-					ancode, err := strconv.Atoi(arg)
-					if err != nil {
-						fmt.Printf("cannot use %s as ancode", args[1])
-						os.Exit(1)
-					}
-					ancodes = append(ancodes, ancode)
-				}
+			// case "exam-group":
+			// 	if len(args) < 2 {
+			// 		log.Fatal("need ancode(s)")
+			// 	}
+			// 	ancodes := make([]int, 0, len(args)-1)
+			// 	for _, arg := range args[1:] {
+			// 		ancode, err := strconv.Atoi(arg)
+			// 		if err != nil {
+			// 			fmt.Printf("cannot use %s as ancode", args[1])
+			// 			os.Exit(1)
+			// 		}
+			// 		ancodes = append(ancodes, ancode)
+			// 	}
 
-				err := plexams.PrepareExamGroup(ancodes)
-				if err != nil {
-					os.Exit(1)
-				}
+			// 	err := plexams.PrepareExamGroup(ancodes)
+			// 	if err != nil {
+			// 		os.Exit(1)
+			// 	}
 
-			case "partition":
-				err := plexams.PartitionGroups()
-				if err != nil {
-					os.Exit(1)
-				}
+			// case "partition":
+			// 	err := plexams.PartitionGroups()
+			// 	if err != nil {
+			// 		os.Exit(1)
+			// 	}
 
-			case "nta": // Deprecated: no longer needed?
-				err := plexams.PrepareNta()
-				if err != nil {
-					os.Exit(1)
-				}
+			// case "nta": // Deprecated: part of generate exams
+			// 	err := plexams.PrepareNta()
+			// 	if err != nil {
+			// 		os.Exit(1)
+			// 	}
 
 			case "exams-in-plan":
 				err := plexams.PreparePlannedExams()

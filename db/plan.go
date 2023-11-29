@@ -57,7 +57,7 @@ func (db *DB) RmExamGroupFromSlot(ctx context.Context, ancode int) (bool, error)
 	return true, nil
 }
 
-func (db *DB) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model.ExamGroup, error) {
+func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.GeneratedExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	filter := bson.M{
@@ -74,35 +74,25 @@ func (db *DB) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model
 	defer cur.Close(ctx)
 
 	planEntries := make([]*model.PlanEntry, 0)
-	for cur.Next(ctx) {
-		var planEntry model.PlanEntry
 
-		err := cur.Decode(&planEntry)
-		if err != nil {
-			log.Error().Err(err).Str("collection", collectionNamePlan).Interface("cur", cur).
-				Msg("Cannot decode to nta")
-			return nil, err
-		}
-
-		planEntries = append(planEntries, &planEntry)
-	}
-
-	if err := cur.Err(); err != nil {
-		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("Cursor returned error")
+	err = cur.All(ctx, &planEntries)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNamePlan).Interface("cur", cur).
+			Msg("Cannot decode to nta")
 		return nil, err
 	}
 
-	examGroups := make([]*model.ExamGroup, 0, len(planEntries))
+	exams := make([]*model.GeneratedExam, 0, len(planEntries))
 	for _, planEntry := range planEntries {
-		examGroup, err := db.ExamGroup(ctx, planEntry.Ancode)
+		exam, err := db.GetGeneratedExam(ctx, planEntry.Ancode)
 		if err != nil {
-			log.Error().Err(err).Int("examGroupCode", planEntry.Ancode).Msg("cannot get exam group")
-			return examGroups, err
+			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
+			return nil, err
 		}
-		examGroups = append(examGroups, examGroup)
+		exams = append(exams, exam)
 	}
 
-	return examGroups, nil
+	return exams, nil
 }
 
 // Deprecated: rm me
@@ -152,6 +142,30 @@ func (db *DB) PlannedAncodes(ctx context.Context) ([]*model.PlanAncodeEntry, err
 	return planEntries, nil
 }
 
+func (db *DB) PlanEntry(ctx context.Context, ancode int) (*model.PlanAncodeEntry, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
+
+	res := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
+	if res.Err() != nil {
+		if res.Err() == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		log.Error().Err(res.Err()).Str("collection", collectionNamePlan).Msg("MongoDB Find")
+		return nil, res.Err()
+	}
+	var entry model.PlanAncodeEntry
+
+	err := res.Decode(&entry)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNamePlan).
+			Msg("Cannot decode to plan entry")
+		return nil, err
+	}
+
+	return &entry, nil
+}
+
+// Deprecated: rm me
 func (db *DB) PlanEntryForExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
@@ -235,6 +249,7 @@ EXAMLOOP:
 	return examer, nil
 }
 
+// Deprecated: rm me
 func (db *DB) PlanAncodeEntries(ctx context.Context) ([]*model.PlanAncodeEntry, error) {
 	examGroups, err := db.ExamGroups(ctx)
 	if err != nil {
@@ -312,6 +327,12 @@ func (db *DB) UnlockExamGroup(ctx context.Context, examGroupCode int) (*model.Pl
 	return db.PlanEntryForExamGroup(ctx, examGroupCode)
 }
 
+func (db *DB) ExamIsLocked(ctx context.Context, ancode int) bool {
+	p, err := db.PlanEntry(ctx, ancode)
+	return err == nil && p != nil && p.Locked
+}
+
+// Deprecated: rm me
 func (db *DB) ExamGroupIsLocked(ctx context.Context, examGroupCode int) bool {
 	p, err := db.PlanEntryForExamGroup(ctx, examGroupCode)
 	return err == nil && p != nil && p.Locked

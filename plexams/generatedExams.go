@@ -99,6 +99,9 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		conflictsMap := make(map[int]*model.ZPAConflict)
 		for _, enhanced := range enhancedPrimussExams {
 			for _, primussConflict := range enhanced.Conflicts {
+				if primussConflict.AnCode == enhanced.Exam.AnCode {
+					continue
+				}
 				zpaAncode, ok := ancodesMap[PrimussAncode{
 					Program: enhanced.Exam.Program,
 					Ancode:  primussConflict.AnCode,

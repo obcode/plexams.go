@@ -2,7 +2,12 @@ extend type Query {
   allProgramsInPlan: [String!]
   ancodesInPlan: [Int!]
   examerInPlan: [ExamerInPlan!]
+
+  examsInSlot(day: Int!, time: Int!): [GeneratedExam!]
   examsWithoutSlot: [GeneratedExam!]!
+
+  allowedSlots(ancode: Int!): [Slot!]
+  awkwardSlots(ancode: Int!): [Slot!]! # slots before or after a conflict
 }
 
 extend type Mutation {

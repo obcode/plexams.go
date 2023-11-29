@@ -64,18 +64,23 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 	return p.dbClient.AddExamToSlot(ctx, dayNumber, timeNumber, ancode)
 }
 
+// FIXME: Allowed Slots
 func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
-	return nil, nil
 
-	// 	if p.dbClient.ExamIsLocked(ctx, ancode) {
-	// 		return []*model.Slot{}, nil
-	// 	}
-	// 	exam, err := p.GeneratedExam(ctx, ancode)
-	// 	if err != nil {
-	// 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist")
-	// 	}
+	if p.dbClient.ExamIsLocked(ctx, ancode) {
+		return []*model.Slot{}, nil
+	}
+	// exam, err := p.GeneratedExam(ctx, ancode)
+	// if err != nil {
+	// 	log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist")
+	// }
 
-	// 	allowedSlots := make([]*model.Slot, 0)
+	// // TODO: calculate possible slots from constraints
+	// allSlots := p.semesterConfig.Slots
+
+	// TODO: recalculate from conflicts
+
+	// allowedSlots := make([]*model.Slot, 0)
 	// OUTER:
 	// 	for _, slot := range exam.Constraints.PossibleSlots {
 	// 		// get ExamGroups for slot and check Conflicts
@@ -101,6 +106,8 @@ func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 	// 	}
 
 	// return allowedSlots, nil
+	return nil, nil
+
 }
 
 func (p *Plexams) ExamsWithoutSlot(ctx context.Context) ([]*model.GeneratedExam, error) {
@@ -155,4 +162,12 @@ OUTER:
 
 func (p *Plexams) AncodesInPlan(ctx context.Context) ([]int, error) {
 	return p.dbClient.AncodesInPlan(ctx)
+}
+
+func (p *Plexams) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.ExamInPlan, error) {
+	return p.dbClient.ExamsInSlot(ctx, day, time)
+}
+
+func (p *Plexams) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.GeneratedExam, error) {
+	return p.dbClient.GetExamsInSlot(ctx, day, time)
 }

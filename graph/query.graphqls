@@ -22,21 +22,16 @@ type Query {
   examGroups: [ExamGroup!]!
   examGroup(examGroupCode: Int!): ExamGroup
   # NTAs
-  ntas: [NTA!]
-  ntasWithRegs: [NTAWithRegs!]
   ntasWithRegsByTeacher: [NTAWithRegsByExamAndTeacher!]
   nta(mtknr: String!): NTAWithRegs
 
   # Plan
-  allowedSlots(examGroupCode: Int!): [Slot!]
-  awkwardSlots(examGroupCode: Int!): [Slot!]! # slots before or after a conflict
-  examGroupsInSlot(day: Int!, time: Int!): [ExamGroup!]
   examGroupsWithoutSlot: [ExamGroup!]
 
   # PlannedExamsWithNTA
   plannedExamsInSlot(day: Int!, time: Int!): [PlannedExamWithNTA!]
   examsInPlan: [ExamInPlan!]
-  examsInSlot(day: Int!, time: Int!): [ExamInPlan!]
+  # examsInSlot(day: Int!, time: Int!): [ExamInPlan!]
   # Rooms
   examsInSlotWithRooms(day: Int!, time: Int!): [ExamWithRegsAndRooms!]
   rooms: [Room!]!

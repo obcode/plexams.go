@@ -64,21 +64,20 @@ func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return ntas, nil
 }
 
-// // Deprecated: remove me
-func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
-	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
+func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned)
 
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{Key: "nta.name", Value: 1}})
 
-	cur, err := collection.Find(ctx, bson.M{}, findOptions)
+	cur, err := collection.Find(ctx, bson.D{{Key: "nta", Value: bson.D{{Key: "$ne", Value: nil}}}}, findOptions)
 	if err != nil {
 		log.Error().Err(err).Str("collection", "nta").Msg("MongoDB Find")
 		return nil, err
 	}
 	defer cur.Close(ctx)
 
-	ntas := make([]*model.NTAWithRegs, 0)
+	ntas := make([]*model.Student, 0)
 	err = cur.All(ctx, &ntas)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("Cannot decode to rooms")

@@ -92,16 +92,6 @@ func (r *queryResolver) ExamGroup(ctx context.Context, examGroupCode int) (*mode
 	return r.plexams.ExamGroup(ctx, examGroupCode)
 }
 
-// Ntas is the resolver for the ntas field.
-func (r *queryResolver) Ntas(ctx context.Context) ([]*model.NTA, error) {
-	return r.plexams.Ntas(ctx)
-}
-
-// NtasWithRegs is the resolver for the ntasWithRegs field.
-func (r *queryResolver) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
-	return r.plexams.NtasWithRegs(ctx)
-}
-
 // NtasWithRegsByTeacher is the resolver for the ntasWithRegsByTeacher field.
 func (r *queryResolver) NtasWithRegsByTeacher(ctx context.Context) ([]*model.NTAWithRegsByExamAndTeacher, error) {
 	return r.plexams.NtasWithRegsByTeacher(ctx)
@@ -112,21 +102,6 @@ func (r *queryResolver) Nta(ctx context.Context, mtknr string) (*model.NTAWithRe
 	return r.plexams.Nta(ctx, mtknr)
 }
 
-// AllowedSlots is the resolver for the allowedSlots field.
-func (r *queryResolver) AllowedSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
-	return r.plexams.AllowedSlots(ctx, examGroupCode)
-}
-
-// AwkwardSlots is the resolver for the awkwardSlots field.
-func (r *queryResolver) AwkwardSlots(ctx context.Context, examGroupCode int) ([]*model.Slot, error) {
-	return r.plexams.AwkwardSlots(ctx, examGroupCode)
-}
-
-// ExamGroupsInSlot is the resolver for the examGroupsInSlot field.
-func (r *queryResolver) ExamGroupsInSlot(ctx context.Context, day int, time int) ([]*model.ExamGroup, error) {
-	return r.plexams.ExamGroupsInSlot(ctx, day, time)
-}
-
 // ExamGroupsWithoutSlot is the resolver for the examGroupsWithoutSlot field.
 func (r *queryResolver) ExamGroupsWithoutSlot(ctx context.Context) ([]*model.ExamGroup, error) {
 	return r.plexams.ExamGroupsWithoutSlot(ctx)
@@ -134,17 +109,12 @@ func (r *queryResolver) ExamGroupsWithoutSlot(ctx context.Context) ([]*model.Exa
 
 // PlannedExamsInSlot is the resolver for the plannedExamsInSlot field.
 func (r *queryResolver) PlannedExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExamWithNta, error) {
-	return r.plexams.PlannedExamsInSlot(ctx, day, time)
+	return nil, nil
 }
 
 // ExamsInPlan is the resolver for the examsInPlan field.
 func (r *queryResolver) ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error) {
 	return r.plexams.ExamsInPlan(ctx)
-}
-
-// ExamsInSlot is the resolver for the examsInSlot field.
-func (r *queryResolver) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.ExamInPlan, error) {
-	return r.plexams.ExamsInSlot(ctx, day, time)
 }
 
 // ExamsInSlotWithRooms is the resolver for the examsInSlotWithRooms field.

@@ -1,3 +1,8 @@
+extend type Query {
+  ntas: [NTA!]
+  ntasWithRegs: [Student!]
+}
+
 type NTAExam {
   semester: String!
   ancode: String!

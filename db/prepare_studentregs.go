@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Deprecated: rm me part of generated exams
 func (db *DB) SaveStudentRegsPerAncode(ctx context.Context, studentRegsPerAncode map[int]map[string][]*model.StudentReg, all bool) error {
 	ancodes := make([]int, 0, len(studentRegsPerAncode))
 	for ancode := range studentRegsPerAncode {
@@ -63,6 +64,7 @@ func (db *DB) SaveStudentRegsPerAncode(ctx context.Context, studentRegsPerAncode
 	return nil
 }
 
+// Deprecated: rm me
 func (db *DB) SaveStudentRegsPerStudent(ctx context.Context, studentRegsPerStudent map[string][]*model.StudentReg, all bool) error {
 	studentRegsSlice := make([]interface{}, 0)
 
@@ -72,6 +74,8 @@ func (db *DB) SaveStudentRegsPerStudent(ctx context.Context, studentRegsPerStude
 			for _, reg := range regs {
 				ancodes = append(ancodes, reg.AnCode)
 			}
+
+			sort.Ints(ancodes)
 
 			studentRegsSlice = append(studentRegsSlice, &model.StudentRegsPerStudent{
 				Student: &model.Student{
@@ -102,6 +106,26 @@ func (db *DB) SaveStudentRegsPerStudent(ctx context.Context, studentRegsPerStude
 	_, err = collection.InsertMany(ctx, studentRegsSlice)
 	if err != nil {
 		log.Error().Err(err).Str("collectionName", collectionName).
+			Msg("error while trying to insert")
+		return err
+	}
+
+	return nil
+}
+
+func (db *DB) SaveStudentRegs(ctx context.Context, studentRegs []interface{}) error {
+	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned)
+
+	err := collection.Drop(ctx)
+	if err != nil {
+		log.Error().Err(err).Str("collectionName", collectionStudentRegsPerStudentPlanned).
+			Msg("error while trying to drop the collection")
+		return err
+	}
+
+	_, err = collection.InsertMany(ctx, studentRegs)
+	if err != nil {
+		log.Error().Err(err).Str("collectionName", collectionStudentRegsPerStudentPlanned).
 			Msg("error while trying to insert")
 		return err
 	}

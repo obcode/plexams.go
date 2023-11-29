@@ -19,7 +19,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 	ctx := context.Background()
 	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating conflicts   --- ")
 
-	planAncodeEntries, err := p.dbClient.PlanAncodeEntries(ctx)
+	planAncodeEntries, err := p.dbClient.PlannedAncodes(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get plan entries")
 		return err
@@ -66,6 +66,10 @@ func validateStudentReg(studentReg *model.StudentRegsPerStudent, planAncodeEntri
 		log.Debug().Str("name", studentReg.Student.Name).Str("mtknr", studentReg.Student.Mtknr).Msg("no exam for student in plan")
 		return
 	}
+
+	log.Debug().Str("name", studentReg.Student.Name).Str("mtknr", studentReg.Student.Mtknr).
+		Int("count", len(planAncodeEntriesForStudent)).
+		Msg("found exams for student in plan")
 
 	p := planAncodeEntriesForStudent
 	for i := 0; i < len(planAncodeEntriesForStudent); i++ {

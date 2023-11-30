@@ -49,11 +49,11 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 	return nil
 }
 
-func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanAncodeEntry,
+func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanEntry,
 	planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool, ancode int) {
 	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("checking regs for student")
 
-	planAncodeEntriesForStudent := make([]*model.PlanAncodeEntry, 0)
+	planAncodeEntriesForStudent := make([]*model.PlanEntry, 0)
 	for _, ancode := range student.Regs {
 		for _, planEntry := range planAncodeEntries {
 			if ancode == planEntry.Ancode {

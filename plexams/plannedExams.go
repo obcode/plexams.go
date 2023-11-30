@@ -31,11 +31,11 @@ func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string) ([
 		var plannedExam *model.PlannedExam
 		for _, primussExam := range connectedExam.PrimussExams {
 			if primussExam.Program == program {
-				plannedExam = &model.PlannedExam{
-					Ancode:     connectedExam.ZpaExam.AnCode,
-					Module:     connectedExam.ZpaExam.Module,
-					MainExamer: connectedExam.ZpaExam.MainExamer,
-					DateTime:   nil,
+				plannedExam = &model.PlannedExam{ // FIXME: new planned exam
+					Ancode: connectedExam.ZpaExam.AnCode,
+					// Module:     connectedExam.ZpaExam.Module,
+					// MainExamer: connectedExam.ZpaExam.MainExamer,
+					// DateTime:   nil,
 				}
 			}
 		}
@@ -52,7 +52,7 @@ func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string) ([
 			return nil, err
 		}
 		if slot != nil {
-			plannedExam.DateTime = p.getTimeForSlot(slot.DayNumber, slot.SlotNumber)
+			// plannedExam.DateTime = p.getTimeForSlot(slot.DayNumber, slot.SlotNumber) // FIXME: new planned exam
 		}
 		plannedExams = append(plannedExams, plannedExam)
 	}

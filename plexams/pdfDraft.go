@@ -239,8 +239,8 @@ func (p *Plexams) tableForProgram(ctx context.Context, program, programLong stri
 	}
 	for _, exam := range exams {
 		contents = append(contents,
-			[]string{strconv.Itoa(exam.Ancode), exam.Module, exam.MainExamer,
-				r.Replace(exam.DateTime.Format("Mon. 02.01.06, 15:04 Uhr"))})
+			[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+				r.Replace(exam.PlanEntry.Starttime.Format("Mon. 02.01.06, 15:04 Uhr"))})
 	}
 
 	grayColor := color.Color{

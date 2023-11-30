@@ -122,6 +122,16 @@ type ZPAConflict {
   primussAncodes: [PrimussExamAncode!]!
 }
 
+type PlannedExam {
+  ancode: Int!
+  zpaExam: ZPAExam!
+  primussExams: [EnhancedPrimussExam!]!
+  constraints: Constraints
+  conflicts: [ZPAConflict!]!
+  studentRegsCount: Int!
+  planEntry: PlanEntry
+}
+
 type Exam {
   ancode: Int!
   zpaExam: ZPAExam

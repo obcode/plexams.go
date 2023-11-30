@@ -257,6 +257,24 @@ type Plan struct {
 	Slots          []*SlotWithExamGroups `json:"slots,omitempty"`
 }
 
+type PlanEntry struct {
+	DayNumber  int       `json:"dayNumber"`
+	SlotNumber int       `json:"slotNumber"`
+	Starttime  time.Time `json:"starttime"`
+	Ancode     int       `json:"ancode"`
+	Locked     bool      `json:"locked"`
+}
+
+type PlannedExam struct {
+	Ancode           int                    `json:"ancode"`
+	ZpaExam          *ZPAExam               `json:"zpaExam"`
+	PrimussExams     []*EnhancedPrimussExam `json:"primussExams"`
+	Constraints      *Constraints           `json:"constraints,omitempty"`
+	Conflicts        []*ZPAConflict         `json:"conflicts"`
+	StudentRegsCount int                    `json:"studentRegsCount"`
+	PlanEntry        *PlanEntry             `json:"planEntry,omitempty"`
+}
+
 type PlannedExamWithNta struct {
 	Exam        *ExamWithRegs  `json:"exam"`
 	Constraints *Constraints   `json:"constraints,omitempty"`

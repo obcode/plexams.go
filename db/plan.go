@@ -123,7 +123,7 @@ func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 	return planEntries, nil
 }
 
-func (db *DB) PlannedAncodes(ctx context.Context) ([]*model.PlanAncodeEntry, error) {
+func (db *DB) PlannedAncodes(ctx context.Context) ([]*model.PlanEntry, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 	cur, err := collection.Find(ctx, bson.M{})
 	if err != nil {
@@ -132,7 +132,7 @@ func (db *DB) PlannedAncodes(ctx context.Context) ([]*model.PlanAncodeEntry, err
 	}
 	defer cur.Close(ctx)
 
-	planEntries := make([]*model.PlanAncodeEntry, 0)
+	planEntries := make([]*model.PlanEntry, 0)
 	err = cur.All(ctx, &planEntries)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("cannot decode plan ancode entries")
@@ -142,7 +142,7 @@ func (db *DB) PlannedAncodes(ctx context.Context) ([]*model.PlanAncodeEntry, err
 	return planEntries, nil
 }
 
-func (db *DB) PlanEntry(ctx context.Context, ancode int) (*model.PlanAncodeEntry, error) {
+func (db *DB) PlanEntry(ctx context.Context, ancode int) (*model.PlanEntry, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	res := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
@@ -153,7 +153,7 @@ func (db *DB) PlanEntry(ctx context.Context, ancode int) (*model.PlanAncodeEntry
 		log.Error().Err(res.Err()).Str("collection", collectionNamePlan).Msg("MongoDB Find")
 		return nil, res.Err()
 	}
-	var entry model.PlanAncodeEntry
+	var entry model.PlanEntry
 
 	err := res.Decode(&entry)
 	if err != nil {
@@ -250,7 +250,7 @@ EXAMLOOP:
 }
 
 // Deprecated: rm me
-func (db *DB) PlanAncodeEntries(ctx context.Context) ([]*model.PlanAncodeEntry, error) {
+func (db *DB) PlanAncodeEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 	examGroups, err := db.ExamGroups(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get exam groups")
@@ -266,14 +266,14 @@ func (db *DB) PlanAncodeEntries(ctx context.Context) ([]*model.PlanAncodeEntry, 
 		log.Error().Err(err).Msg("cannot get plan entries")
 	}
 
-	planAncodeEntries := make([]*model.PlanAncodeEntry, 0)
+	planAncodeEntries := make([]*model.PlanEntry, 0)
 	for _, planEntry := range planEntries {
 		examGroup, ok := examGroupMap[planEntry.Ancode]
 		if !ok {
 			log.Error().Int("exam group code", planEntry.Ancode).Msg("exam group not found")
 		}
 		for _, exam := range examGroup.Exams {
-			planAncodeEntries = append(planAncodeEntries, &model.PlanAncodeEntry{
+			planAncodeEntries = append(planAncodeEntries, &model.PlanEntry{
 				DayNumber:  planEntry.DayNumber,
 				SlotNumber: planEntry.SlotNumber,
 				Ancode:     exam.Exam.Ancode,

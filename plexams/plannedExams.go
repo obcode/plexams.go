@@ -46,20 +46,22 @@ func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string) ([
 
 		log.Debug().Int("ancode", plannedExam.Ancode).Msg("found connected exam")
 
-		slot, err := p.SlotForAncode(ctx, plannedExam.Ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", plannedExam.Ancode).Msg("cannot get slot for ancode")
-			return nil, err
-		}
-		if slot != nil {
-			// plannedExam.DateTime = p.getTimeForSlot(slot.DayNumber, slot.SlotNumber) // FIXME: new planned exam
-		}
+		// slot, err := p.SlotForAncode(ctx, plannedExam.Ancode)
+		// if err != nil {
+		// 	log.Error().Err(err).Int("ancode", plannedExam.Ancode).Msg("cannot get slot for ancode")
+		// 	return nil, err
+		// }
+		// if slot != nil {
+		// 	// plannedExam.DateTime = p.getTimeForSlot(slot.DayNumber, slot.SlotNumber) // FIXME: new planned exam
+		// }
 		plannedExams = append(plannedExams, plannedExam)
 	}
 
 	return plannedExams, nil
 }
 
+// TODO: needed?
+// nolint
 func (p *Plexams) getTimeForSlot(dayNumber, slotNumber int) *time.Time {
 	for _, slot := range p.semesterConfig.Slots {
 		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {

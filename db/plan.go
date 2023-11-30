@@ -11,28 +11,24 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (db *DB) AddExamToSlot(ctx context.Context, dayNumber int, timeNumber int, ancode int) (bool, error) {
-	if db.ExamGroupIsLocked(ctx, ancode) {
-		return false, fmt.Errorf("exam %d is locked", ancode)
+func (db *DB) AddExamToSlot(ctx context.Context, planEntry *model.PlanEntry) (bool, error) {
+	if db.ExamGroupIsLocked(ctx, planEntry.Ancode) {
+		return false, fmt.Errorf("exam %d is locked", planEntry.Ancode)
 	}
 
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	_, err := collection.DeleteMany(ctx, bson.D{{Key: "ancode", Value: ancode}})
+	_, err := collection.DeleteMany(ctx, bson.D{{Key: "ancode", Value: planEntry.Ancode}})
 	if err != nil {
-		log.Error().Err(err).Int("day", dayNumber).Int("time", timeNumber).Int("ancode", ancode).
+		log.Error().Err(err).Int("day", planEntry.DayNumber).Int("time", planEntry.SlotNumber).Int("ancode", planEntry.Ancode).
 			Msg("cannot rm exam from plan")
 		return false, err
 	}
 
-	_, err = collection.InsertOne(ctx, &model.PlanEntry{
-		DayNumber:  dayNumber,
-		SlotNumber: timeNumber,
-		Ancode:     ancode,
-	})
+	_, err = collection.InsertOne(ctx, planEntry)
 
 	if err != nil {
-		log.Error().Err(err).Int("day", dayNumber).Int("time", timeNumber).Int("ancode", ancode).
+		log.Error().Err(err).Int("day", planEntry.DayNumber).Int("time", planEntry.SlotNumber).Int("ancode", planEntry.Ancode).
 			Msg("cannot add exam to slot")
 		return false, err
 	}

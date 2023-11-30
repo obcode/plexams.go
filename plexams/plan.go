@@ -63,7 +63,11 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 	// 		dayNumber, timeNumber, ancode)
 	// }
 
-	return p.dbClient.AddExamToSlot(ctx, dayNumber, timeNumber, ancode)
+	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
+		DayNumber:  dayNumber,
+		SlotNumber: timeNumber,
+		Ancode:     ancode,
+	})
 }
 
 func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {

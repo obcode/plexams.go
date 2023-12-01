@@ -8,56 +8,91 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string) ([]*model.PlannedExam, error) {
-	connectedExams, err := p.GetConnectedExams(ctx)
+func (p *Plexams) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
+	return p.dbClient.PlanEntries(ctx)
+}
+
+func (p *Plexams) PlannedExam(ctx context.Context, ancode int) (*model.PlannedExam, error) {
+	exam, err := p.GeneratedExam(ctx, ancode)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get connected exams")
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
 		return nil, err
 	}
 
-	plannedExams := make([]*model.PlannedExam, 0)
+	planEntry, err := p.dbClient.PlanEntry(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get planEntry for ancode")
+		return nil, err
+	}
 
-	for _, connectedExam := range connectedExams {
-		constraints, _ := p.ConstraintForAncode(ctx, connectedExam.ZpaExam.AnCode)
-		if constraints != nil && constraints.NotPlannedByMe {
-			// if notPlannedByMe, _ := p.NotPlannedByMe(ctx, connectedExam.ZpaExam.AnCode); notPlannedByMe {
-			log.Debug().Int("ancode", connectedExam.ZpaExam.AnCode).
-				Str("module", connectedExam.ZpaExam.Module).
-				Str("main examer", connectedExam.ZpaExam.MainExamer).
-				Msg("exam not planned by me")
-			continue
-		}
+	return &model.PlannedExam{
+		Ancode:           exam.Ancode,
+		ZpaExam:          exam.ZpaExam,
+		PrimussExams:     exam.PrimussExams,
+		Constraints:      exam.Constraints,
+		Conflicts:        exam.Conflicts,
+		StudentRegsCount: exam.StudentRegsCount,
+		PlanEntry:        planEntry,
+	}, err
+}
 
-		var plannedExam *model.PlannedExam
-		for _, primussExam := range connectedExam.PrimussExams {
-			if primussExam.Program == program {
-				plannedExam = &model.PlannedExam{ // FIXME: new planned exam
-					Ancode: connectedExam.ZpaExam.AnCode,
-					// Module:     connectedExam.ZpaExam.Module,
-					// MainExamer: connectedExam.ZpaExam.MainExamer,
-					// DateTime:   nil,
-				}
-			}
-		}
+func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error) {
+	exams, err := p.GeneratedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get generated exams")
+		return nil, err
+	}
 
-		if plannedExam == nil {
-			continue
-		}
+	planEntries, err := p.dbClient.PlanEntries(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planEntries")
+		return nil, err
+	}
 
-		log.Debug().Int("ancode", plannedExam.Ancode).Msg("found connected exam")
+	planEntryMap := make(map[int]*model.PlanEntry)
+	for _, planEntry := range planEntries {
+		planEntryMap[planEntry.Ancode] = planEntry
+	}
 
-		// slot, err := p.SlotForAncode(ctx, plannedExam.Ancode)
-		// if err != nil {
-		// 	log.Error().Err(err).Int("ancode", plannedExam.Ancode).Msg("cannot get slot for ancode")
-		// 	return nil, err
-		// }
-		// if slot != nil {
-		// 	// plannedExam.DateTime = p.getTimeForSlot(slot.DayNumber, slot.SlotNumber) // FIXME: new planned exam
-		// }
-		plannedExams = append(plannedExams, plannedExam)
+	plannedExams := make([]*model.PlannedExam, 0, len(exams))
+
+	for _, exam := range exams {
+		plannedExams = append(plannedExams,
+			&model.PlannedExam{
+				Ancode:           exam.Ancode,
+				ZpaExam:          exam.ZpaExam,
+				PrimussExams:     exam.PrimussExams,
+				Constraints:      exam.Constraints,
+				Conflicts:        exam.Conflicts,
+				StudentRegsCount: exam.StudentRegsCount,
+				PlanEntry:        planEntryMap[exam.Ancode],
+			})
 	}
 
 	return plannedExams, nil
+}
+
+func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string, onlyPlannedByMe bool) ([]*model.PlannedExam, error) {
+	plannedExams, err := p.PlannedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planned exams")
+		return nil, err
+	}
+
+	plannedExamsForProgram := make([]*model.PlannedExam, 0)
+	for _, plannedExam := range plannedExams {
+		if onlyPlannedByMe && plannedExam.Constraints != nil && plannedExam.Constraints.NotPlannedByMe {
+			continue
+		}
+		for _, primussExam := range plannedExam.PrimussExams {
+			if primussExam.Exam.Program == program {
+				plannedExamsForProgram = append(plannedExamsForProgram, plannedExam)
+				break
+			}
+		}
+	}
+
+	return plannedExamsForProgram, nil
 }
 
 // TODO: needed?

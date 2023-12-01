@@ -1,3 +1,7 @@
+extend type Query {
+  primussExams: [PrimussExamByProgram]
+}
+
 type PrimussExam {
   ancode: Int!
   module: String!
@@ -14,6 +18,21 @@ type EnhancedPrimussExam {
   ntas: [NTA!]!
 }
 
+type PrimussExamWithCount {
+  ancode: Int!
+  module: String!
+  mainExamer: String!
+  program: String!
+  examType: String!
+  presence: String!
+  studentRegsCount: Int!
+}
+
+type PrimussExamByProgram {
+  program: String!
+  exams: [PrimussExamWithCount!]!
+}
+
 type PrimussExamAncode {
   ancode: Int!
   program: String!
@@ -23,11 +42,6 @@ type PrimussExamAncode {
 input PrimussExamInput {
   ancode: Int!
   program: String!
-}
-
-type PrimussExamByProgram {
-  program: String!
-  exams: [PrimussExam!]!
 }
 
 type StudentReg {

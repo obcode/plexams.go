@@ -2,20 +2,30 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/gookit/color"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 // TODO: Validate if all NTAs have MTKNR
 
-var count = 0
+var (
+	count               = 0
+	knownConflictsCount = 0
+)
+
+type KnownConflict struct {
+	Mtknr, Ancode1, Ancode2 string
+}
 
 func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 	count = 0
+	knownConflictsCount = 0
 	ctx := context.Background()
 	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating conflicts   --- ")
 
@@ -43,14 +53,36 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 		return err
 	}
 
-	for _, student := range students {
-		validateStudentReg(student, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe, ancode)
+	knownConflicts := set.NewSet[KnownConflict]()
+
+	knownConflictsConf := viper.Get("knownConflicts.studentRegs")
+	if knownConflictsConf != nil {
+		knownConflictsSlice := knownConflictsConf.([]interface{})
+		for _, knownConflict := range knownConflictsSlice {
+			knownConflictSlice := knownConflict.([]interface{})
+			knownConflicts.Add(KnownConflict{
+				Mtknr:   knownConflictSlice[0].(string),
+				Ancode1: knownConflictSlice[1].(string),
+				Ancode2: knownConflictSlice[2].(string),
+			})
+		}
 	}
+
+	log.Debug().Int("count", knownConflicts.Cardinality()).Interface("conflicts", knownConflicts).Msg("found known conflicts")
+
+	for _, student := range students {
+		validateStudentReg(student, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe, knownConflicts, ancode)
+	}
+
+	if knownConflictsCount > 0 {
+		color.Green.Printf("%d known conflicts found\n", knownConflictsCount)
+	}
+
 	return nil
 }
 
 func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanEntry,
-	planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool, ancode int) {
+	planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool, knownConflicts set.Set[KnownConflict], ancode int) {
 	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("checking regs for student")
 
 	planAncodeEntriesForStudent := make([]*model.PlanEntry, 0)
@@ -79,6 +111,15 @@ func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanE
 				p[i].Ancode == p[j].Ancode {
 				continue
 			}
+			if knownConflicts.Contains(KnownConflict{
+				Mtknr:   student.Mtknr,
+				Ancode1: fmt.Sprint(p[i].Ancode),
+				Ancode2: fmt.Sprint(p[j].Ancode),
+			}) {
+				// fmt.Printf("found known conflict: [%s, %d, %d]\n", student.Mtknr, p[i].Ancode, p[j].Ancode)
+				knownConflictsCount++
+				continue
+			}
 			if onlyPlannedByMe &&
 				planAncodeEntriesNotPlannedByMe.Contains(p[i].Ancode) &&
 				planAncodeEntriesNotPlannedByMe.Contains(p[j].Ancode) {
@@ -94,7 +135,8 @@ func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanE
 			if p[i].DayNumber == p[j].DayNumber &&
 				p[i].SlotNumber == p[j].SlotNumber {
 				count++
-				color.Red.Printf("%3d. Same slot: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n", count,
+				color.Red.Printf("    - [\"%s\", \"%d\", \"%d\"] # %3d. Same slot: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n",
+					student.Mtknr, p[i].Ancode, p[j].Ancode, count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
 					student.Name, student.Program, student.Mtknr,
@@ -105,7 +147,8 @@ func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanE
 				(p[i].SlotNumber+1 == p[j].SlotNumber ||
 					p[i].SlotNumber-1 == p[j].SlotNumber) {
 				count++
-				color.Red.Printf("%3d. Adjacent slots: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n", count,
+				color.Red.Printf("    - [\"%s\", \"%d\", \"%d\"] # %3d. Adjacent slots: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n",
+					student.Mtknr, p[i].Ancode, p[j].Ancode, count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
 					student.Name, student.Program, student.Mtknr,
@@ -133,6 +176,11 @@ func (p *Plexams) ValidateConstraints() error {
 		log.Error().Err(err).Msg("cannot get constraints")
 	}
 
+	constraintsMap := make(map[int]*model.Constraints)
+	for _, constraint := range constraints {
+		constraintsMap[constraint.Ancode] = constraint
+	}
+
 	for _, constraint := range constraints {
 		slot, err := p.SlotForAncode(ctx, constraint.Ancode)
 		if err != nil {
@@ -143,12 +191,43 @@ func (p *Plexams) ValidateConstraints() error {
 			continue
 		}
 
+		// if len(constraint.SameSlot) > 0 {
+		for _, otherAncode := range constraint.SameSlot {
+			log.Debug().Int("ancode", constraint.Ancode).Int("other ancode", otherAncode).Msg("checking same slot")
+			otherSlot, err := p.SlotForAncode(ctx, otherAncode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", otherAncode).Msg("cannot get slot for other ancode")
+			}
+
+			if otherSlot == nil {
+				otherConstraint, ok := constraintsMap[otherAncode]
+				if ok && otherConstraint.NotPlannedByMe {
+					continue
+				}
+
+				color.Red.Printf("Exams %d and %d must be in the same slot, are %v and %v\n", constraint.Ancode, otherAncode, slot, otherSlot)
+				continue
+			}
+
+			if *slot != *otherSlot {
+				color.Red.Printf("Exams %d and %d must be in the same slot, are %v and %v\n", constraint.Ancode, otherAncode, slot, otherSlot)
+			}
+		}
+		// }
+
 		if constraint.FixedDay != nil {
 			color.Red.Println("FIXME: FixedDay")
 		}
 
 		if constraint.FixedTime != nil {
-			color.Red.Println("FIXME: FixedTime")
+			log.Debug().Int("ancode", constraint.Ancode).Msg("checking fixed time")
+			fixed := constraint.FixedTime
+			if fixed.Day() != slot.Starttime.Day() ||
+				fixed.Month() != slot.Starttime.Month() ||
+				fixed.Local().Hour() != slot.Starttime.Local().Hour() ||
+				fixed.Minute() != slot.Starttime.Minute() {
+				color.Red.Printf("Exams %d has fixed slot %s, is %s\n", constraint.Ancode, fixed.Format("02.01.06 15:04"), constraint.FixedTime.Format("02.01.06 15:04"))
+			}
 		}
 
 		for _, day := range constraint.ExcludeDays {
@@ -171,6 +250,7 @@ func (p *Plexams) ValidateConstraints() error {
 				color.Red.Printf("Exam #%d planned on day %s which is not a possible day\n", constraint.Ancode, dayPlanned.Format("02.01.06"))
 			}
 		}
+
 	}
 
 	return nil

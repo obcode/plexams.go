@@ -282,28 +282,28 @@ func (p *Plexams) SlotForExamGroup(ctx context.Context, examGroupCode int) (*mod
 // 	return plannedExams, nil
 // }
 
-func (p *Plexams) LockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, *model.ExamGroup, error) {
-	planEntry, err := p.dbClient.LockExamGroup(ctx, examGroupCode)
+func (p *Plexams) LockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.GeneratedExam, error) {
+	planEntry, err := p.dbClient.LockExam(ctx, ancode)
 	if err != nil {
 		return nil, nil, err
 	}
-	examGroup, err := p.dbClient.ExamGroup(ctx, examGroupCode)
+	exam, err := p.dbClient.GetGeneratedExam(ctx, ancode)
 	if err != nil {
 		return planEntry, nil, err
 	}
-	return planEntry, examGroup, nil
+	return planEntry, exam, nil
 }
 
-func (p *Plexams) UnlockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, *model.ExamGroup, error) {
-	planEntry, err := p.dbClient.UnlockExamGroup(ctx, examGroupCode)
+func (p *Plexams) UnlockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.GeneratedExam, error) {
+	planEntry, err := p.dbClient.UnlockExam(ctx, ancode)
 	if err != nil {
 		return nil, nil, err
 	}
-	examGroup, err := p.dbClient.ExamGroup(ctx, examGroupCode)
+	exam, err := p.dbClient.GetGeneratedExam(ctx, ancode)
 	if err != nil {
 		return planEntry, nil, err
 	}
-	return planEntry, examGroup, nil
+	return planEntry, exam, nil
 }
 
 func (p *Plexams) RemoveUnlockedExamGroupsFromPlan(ctx context.Context) (int, error) {

@@ -16,6 +16,7 @@ var (
 		Use:   "info [subcommand]",
 		Short: "get info",
 		Long: `Get info.
+samename               --- exams with same module name
 goslots                --- info about slots for GO/GN
 request-rooms          --- which rooms to request
 stats                  --- get statistics
@@ -26,6 +27,8 @@ exams-for-student name --- get exams for student.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			p := initPlexamsConfig()
 			switch args[0] {
+			case "samename":
+				p.PrintSameName()
 			case "goslots":
 				err := plexams.PrintGOSlots(p.GetSemesterConfig().Slots, p.GetGoSlots())
 				if err != nil {

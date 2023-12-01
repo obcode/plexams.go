@@ -12,28 +12,19 @@ import (
 )
 
 func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int) (bool, error) {
-	// check if slot exists
-	ok := false
-	for _, day := range p.semesterConfig.Days {
-		if day.Number == dayNumber {
-			ok = true
+	var slot *model.Slot
+
+	for _, s := range p.semesterConfig.Slots {
+		if s.DayNumber == dayNumber && s.SlotNumber == timeNumber {
+			slot = s
 			break
 		}
 	}
-	if !ok {
-		log.Error().Int("day", dayNumber).Msg("day does not exists")
-		return false, fmt.Errorf("day %d does not exist", dayNumber)
-	}
-	ok = false
-	for _, time := range p.semesterConfig.Starttimes {
-		if time.Number == timeNumber {
-			ok = true
-			break
-		}
-	}
-	if !ok {
-		log.Error().Int("time", timeNumber).Msg("time does not exists")
-		return false, fmt.Errorf("time %d does not exist", timeNumber)
+
+	if slot == nil {
+		err := fmt.Errorf("slot (%d,%d) does not exist", dayNumber, timeNumber)
+		log.Error().Err(err).Int("day", dayNumber).Int("slot", timeNumber).Msg("slot does not exist")
+		return false, err
 	}
 
 	// check if exam with ancode exists
@@ -43,30 +34,31 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 		return false, err
 	}
 
-	// TODO: check if slot is allowed
-	// allowedSlots, err := p.AllowedSlots(ctx, ancode)
-	// if err != nil {
-	// 	log.Error().Err(err).Int("ancode", ancode).Msg("cannot get allowed slots")
-	// }
-	// slotIsAllowed := false
+	allowedSlots, err := p.AllowedSlots(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get allowed slots")
+	}
+	slotIsAllowed := false
 
-	// for _, slot := range allowedSlots {
-	// 	if slot.DayNumber == dayNumber && slot.SlotNumber == timeNumber {
-	// 		slotIsAllowed = true
-	// 		break
-	// 	}
-	// }
-	// if !slotIsAllowed {
-	// 	log.Debug().Int("day", dayNumber).Int("time", timeNumber).Int("ancode", ancode).
-	// 		Msg("slot is not allowed")
-	// 	return false, fmt.Errorf("slot (%d,%d) is not allowed for exam group %d",
-	// 		dayNumber, timeNumber, ancode)
-	// }
+	for _, slot := range allowedSlots {
+		if slot.DayNumber == dayNumber && slot.SlotNumber == timeNumber {
+			slotIsAllowed = true
+			break
+		}
+	}
+	if !slotIsAllowed {
+		log.Debug().Int("day", dayNumber).Int("time", timeNumber).Int("ancode", ancode).
+			Msg("slot is not allowed")
+		return false, fmt.Errorf("slot (%d,%d) is not allowed for exam %d",
+			dayNumber, timeNumber, ancode)
+	}
 
 	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
-		DayNumber:  dayNumber,
-		SlotNumber: timeNumber,
+		DayNumber:  slot.DayNumber,
+		SlotNumber: slot.SlotNumber,
+		Starttime:  slot.Starttime,
 		Ancode:     ancode,
+		Locked:     false,
 	})
 }
 
@@ -213,7 +205,7 @@ func removeSlotsForDay(allSlots []*model.Slot, day *time.Time) []*model.Slot {
 	return slots
 }
 
-func (p *Plexams) ExamsWithoutSlot(ctx context.Context) ([]*model.GeneratedExam, error) {
+func (p *Plexams) ExamsWithoutSlot(ctx context.Context) ([]*model.PlannedExam, error) {
 	exams, err := p.dbClient.GetGeneratedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get generated exams")
@@ -226,7 +218,7 @@ func (p *Plexams) ExamsWithoutSlot(ctx context.Context) ([]*model.GeneratedExam,
 		return nil, err
 	}
 
-	examsWithotSlots := make([]*model.GeneratedExam, 0)
+	examsWithotSlots := make([]*model.PlannedExam, 0)
 
 OUTER:
 	for _, exam := range exams {
@@ -235,15 +227,23 @@ OUTER:
 				continue OUTER
 			}
 		}
-		examsWithotSlots = append(examsWithotSlots, exam)
+		examsWithotSlots = append(examsWithotSlots, &model.PlannedExam{
+			Ancode:           exam.Ancode,
+			ZpaExam:          exam.ZpaExam,
+			PrimussExams:     exam.PrimussExams,
+			Constraints:      exam.Constraints,
+			Conflicts:        exam.Conflicts,
+			StudentRegsCount: exam.StudentRegsCount,
+			PlanEntry:        nil,
+		})
 	}
 
 	// sort by student regs
-	examsMap := make(map[int][]*model.GeneratedExam)
+	examsMap := make(map[int][]*model.PlannedExam)
 	for _, exam := range examsWithotSlots {
 		exams, ok := examsMap[exam.StudentRegsCount]
 		if !ok {
-			exams = make([]*model.GeneratedExam, 0, 1)
+			exams = make([]*model.PlannedExam, 0, 1)
 		}
 		examsMap[exam.StudentRegsCount] = append(exams, exam)
 	}
@@ -255,7 +255,7 @@ OUTER:
 
 	sort.Sort(sort.Reverse(sort.IntSlice(keys)))
 
-	examsWithotSlotsSorted := make([]*model.GeneratedExam, 0, len(examsWithotSlots))
+	examsWithotSlotsSorted := make([]*model.PlannedExam, 0, len(examsWithotSlots))
 	for _, key := range keys {
 		examsWithotSlotsSorted = append(examsWithotSlotsSorted, examsMap[key]...)
 	}
@@ -271,7 +271,7 @@ func (p *Plexams) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.
 	return p.dbClient.ExamsInSlot(ctx, day, time)
 }
 
-func (p *Plexams) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.GeneratedExam, error) {
+func (p *Plexams) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
 	return p.dbClient.GetExamsInSlot(ctx, day, time)
 }
 

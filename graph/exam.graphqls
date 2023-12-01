@@ -7,6 +7,9 @@ extend type Query {
   generatedExams: [GeneratedExam!]!
   generatedExam(ancode: Int!): GeneratedExam
 
+  plannedExams: [PlannedExam!]!
+  plannedExam(ancode: Int!): PlannedExam
+
   conflictingAncodes(ancode: Int!): [Conflict!]
 
   exam(ancode: Int!): Exam

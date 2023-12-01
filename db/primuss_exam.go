@@ -90,11 +90,31 @@ func (db *DB) GetPrimussExams(ctx context.Context) ([]*model.PrimussExamByProgra
 	for _, program := range programs {
 		exams, err := db.getPrimussExams(ctx, program)
 		if err != nil {
-			return primussExams, err
+			return nil, err
 		}
+
+		examsWithCount := make([]*model.PrimussExamWithCount, 0, len(exams))
+		for _, exam := range exams {
+			sum, err := db.GetStudentRegsCount(ctx, program, exam.AnCode)
+			if err != nil {
+				log.Error().Err(err).Str("program", program).Int("ancode", exam.AnCode).
+					Msg("cannot get student regs sum")
+			}
+
+			examsWithCount = append(examsWithCount, &model.PrimussExamWithCount{
+				Ancode:           exam.AnCode,
+				Module:           exam.Module,
+				MainExamer:       exam.MainExamer,
+				Program:          exam.Program,
+				ExamType:         exam.ExamType,
+				Presence:         exam.Presence,
+				StudentRegsCount: sum,
+			})
+		}
+
 		primussExams = append(primussExams, &model.PrimussExamByProgram{
 			Program: program,
-			Exams:   exams,
+			Exams:   examsWithCount,
 		})
 	}
 

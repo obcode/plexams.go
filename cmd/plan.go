@@ -17,8 +17,8 @@ var (
 		Long: `Manipulate the plan.
 	move-to ancode day slot    --- move [ancode] to [day number] [slot number]
 	change-room ancode oldroom newroom    --- change room for [ancode] from [oldroom] to [newroom]
-	lock-examgroup groupcode   --- lock exam group to slot
-	unlock-examgroup groupcode --- unlock / allow moving
+	lock-exam ancode   --- lock exam to slot
+	unlock-exam ancode --- unlock / allow moving
 	remove-unlocked            --- remove all unlocked exam groups from the plan
 	lock                       --- lock the whole plan`,
 		Args: cobra.MinimumNArgs(1),
@@ -50,6 +50,24 @@ var (
 					fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
 				}
 
+			case "fixslotsindb":
+				planEntries, err := plexams.PlanEntries(context.TODO())
+				if err != nil {
+					log.Fatal("cannot get plan entries")
+				}
+
+				for i, planEntry := range planEntries {
+					fmt.Printf("%2d. fixing %v", i+1, planEntry)
+					success, err := plexams.AddExamToSlot(context.Background(), planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
+					if err != nil {
+						fmt.Printf("error: %v\n", err)
+						os.Exit(1)
+					}
+					if success {
+						fmt.Println(" ... success")
+					}
+				}
+
 			case "change-room":
 				if len(args) < 4 {
 					log.Fatal("need ancode, old room and new room names")
@@ -69,50 +87,38 @@ var (
 					fmt.Printf("successfully moved exam %d from %s to %s\n", ancode, oldRoom, newRoom)
 				}
 
-			case "lock-examgroup":
+			case "lock-exam":
 				if len(args) < 2 {
-					log.Fatal("need exam group code")
+					log.Fatal("need ancode")
 				}
-				examGroupCode, err := strconv.Atoi(args[1])
+				ancode, err := strconv.Atoi(args[1])
 				if err != nil {
 					log.Fatalf("cannot convert %s to int", args[1])
 				}
-				planEntry, examGroup, err := plexams.LockExamGroup(context.Background(), examGroupCode)
+				planEntry, exam, err := plexams.LockExam(context.Background(), ancode)
 				if err != nil {
 					os.Exit(1)
 				}
-				if planEntry != nil {
-					fmt.Printf("successfully locked exam group %d to slot (%d,%d)\n",
-						planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
-				}
-				if examGroup != nil {
-					for _, exam := range examGroup.Exams {
-						fmt.Printf("  - %d. %s, %s\n",
-							exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module)
-					}
+				if planEntry != nil && exam != nil {
+					fmt.Printf("successfully locked exam %d. %s, %s to slot (%d,%d)\n",
+						exam.Ancode, exam.ZpaExam.MainExamer, exam.ZpaExam.Module, planEntry.DayNumber, planEntry.SlotNumber)
 				}
 
-			case "unlock-examgroup":
+			case "unlock-exam":
 				if len(args) < 2 {
-					log.Fatal("need exam group code")
+					log.Fatal("need ancode")
 				}
-				examGroupCode, err := strconv.Atoi(args[1])
+				ancode, err := strconv.Atoi(args[1])
 				if err != nil {
 					log.Fatalf("cannot convert %s to int", args[1])
 				}
-				planEntry, examGroup, err := plexams.UnlockExamGroup(context.Background(), examGroupCode)
+				planEntry, exam, err := plexams.UnlockExam(context.Background(), ancode)
 				if err != nil {
 					os.Exit(1)
 				}
-				if planEntry != nil {
-					fmt.Printf("successfully unlocked exam group %d to slot (%d,%d)\n",
-						planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
-				}
-				if examGroup != nil {
-					for _, exam := range examGroup.Exams {
-						fmt.Printf("  - %d. %s, %s\n",
-							exam.Exam.Ancode, exam.Exam.ZpaExam.MainExamer, exam.Exam.ZpaExam.Module)
-					}
+				if planEntry != nil && exam != nil {
+					fmt.Printf("successfully unlocked exam %d. %s, %s from slot (%d,%d)\n",
+						exam.Ancode, exam.ZpaExam.MainExamer, exam.ZpaExam.Module, planEntry.DayNumber, planEntry.SlotNumber)
 				}
 
 			case "remove-unlocked":

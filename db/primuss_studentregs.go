@@ -7,6 +7,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -201,6 +202,25 @@ func (db *DB) CheckStudentRegsCount(ctx context.Context, program string, ancode,
 		return false
 	}
 	return true
+}
+
+func (db *DB) GetStudentRegsCount(ctx context.Context, program string, ancode int) (int, error) {
+	// log.Debug().Str("collectionName", collectionName).Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).
+	// 	Msg("checking count")
+	collection := db.getCollection(program, Counts)
+	var result Count
+	res := collection.FindOne(ctx, bson.D{{Key: "AnCo", Value: ancode}, {Key: "Sum", Value: bson.D{{Key: "$ne", Value: ""}}}})
+	if res.Err() == mongo.ErrNoDocuments {
+		return 0, nil
+	}
+	err := res.Decode(&result)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("program", program).
+			Int("ancode", ancode).Msg("error finding count")
+		return -1, err
+	}
+
+	return result.Sum, nil
 }
 
 func (db *DB) ChangeAncodeInStudentRegsCount(ctx context.Context, program string, ancode, newAncode int) error {

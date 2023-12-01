@@ -3,8 +3,8 @@ extend type Query {
   ancodesInPlan: [Int!]
   examerInPlan: [ExamerInPlan!]
 
-  examsInSlot(day: Int!, time: Int!): [GeneratedExam!]
-  examsWithoutSlot: [GeneratedExam!]!
+  examsInSlot(day: Int!, time: Int!): [PlannedExam!]
+  examsWithoutSlot: [PlannedExam!]!
 
   allowedSlots(ancode: Int!): [Slot!]
   awkwardSlots(ancode: Int!): [Slot!]! # slots before or after a conflict

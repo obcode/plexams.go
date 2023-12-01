@@ -233,14 +233,20 @@ func (p *Plexams) tableForProgram(ctx context.Context, program, programLong stri
 
 	contents := make([][]string, 0)
 
-	exams, err := p.PlannedExamsForProgram(ctx, program)
+	exams, err := p.PlannedExamsForProgram(ctx, program, true)
 	if err != nil {
 		log.Error().Err(err).Msg("error while getting exams")
 	}
 	for _, exam := range exams {
-		contents = append(contents,
-			[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-				r.Replace(exam.PlanEntry.Starttime.Format("Mon. 02.01.06, 15:04 Uhr"))})
+		if exam.PlanEntry == nil {
+			contents = append(contents,
+				[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+					"fehlt noch"})
+		} else {
+			contents = append(contents,
+				[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+					r.Replace(exam.PlanEntry.Starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr"))})
+		}
 	}
 
 	grayColor := color.Color{

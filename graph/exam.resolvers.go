@@ -35,6 +35,16 @@ func (r *queryResolver) GeneratedExam(ctx context.Context, ancode int) (*model.G
 	return r.plexams.GeneratedExam(ctx, ancode)
 }
 
+// PlannedExams is the resolver for the plannedExams field.
+func (r *queryResolver) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error) {
+	return r.plexams.PlannedExams(ctx)
+}
+
+// PlannedExam is the resolver for the plannedExam field.
+func (r *queryResolver) PlannedExam(ctx context.Context, ancode int) (*model.PlannedExam, error) {
+	return r.plexams.PlannedExam(ctx, ancode)
+}
+
 // ConflictingAncodes is the resolver for the conflictingAncodes field.
 func (r *queryResolver) ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error) {
 	return r.plexams.ConflictingAncodes(ctx, ancode)

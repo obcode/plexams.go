@@ -288,13 +288,23 @@ type PrimussExamAncode struct {
 }
 
 type PrimussExamByProgram struct {
-	Program string         `json:"program"`
-	Exams   []*PrimussExam `json:"exams"`
+	Program string                  `json:"program"`
+	Exams   []*PrimussExamWithCount `json:"exams"`
 }
 
 type PrimussExamInput struct {
 	Ancode  int    `json:"ancode"`
 	Program string `json:"program"`
+}
+
+type PrimussExamWithCount struct {
+	Ancode           int    `json:"ancode"`
+	Module           string `json:"module"`
+	MainExamer       string `json:"mainExamer"`
+	Program          string `json:"program"`
+	ExamType         string `json:"examType"`
+	Presence         string `json:"presence"`
+	StudentRegsCount int    `json:"studentRegsCount"`
 }
 
 type Room struct {

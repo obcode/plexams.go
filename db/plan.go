@@ -53,7 +53,7 @@ func (db *DB) RmExamGroupFromSlot(ctx context.Context, ancode int) (bool, error)
 	return true, nil
 }
 
-func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.GeneratedExam, error) {
+func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	filter := bson.M{
@@ -78,20 +78,27 @@ func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.G
 		return nil, err
 	}
 
-	exams := make([]*model.GeneratedExam, 0, len(planEntries))
+	exams := make([]*model.PlannedExam, 0, len(planEntries))
 	for _, planEntry := range planEntries {
 		exam, err := db.GetGeneratedExam(ctx, planEntry.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
 			return nil, err
 		}
-		exams = append(exams, exam)
+		exams = append(exams, &model.PlannedExam{
+			Ancode:           exam.Ancode,
+			ZpaExam:          exam.ZpaExam,
+			PrimussExams:     exam.PrimussExams,
+			Constraints:      exam.Constraints,
+			Conflicts:        exam.Conflicts,
+			StudentRegsCount: exam.StudentRegsCount,
+			PlanEntry:        planEntry,
+		})
 	}
 
 	return exams, nil
 }
 
-// Deprecated: rm me
 func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
@@ -103,17 +110,11 @@ func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 	defer cur.Close(ctx)
 
 	planEntries := make([]*model.PlanEntry, 0)
-	for cur.Next(ctx) {
-		var planEntry model.PlanEntry
-
-		err := cur.Decode(&planEntry)
-		if err != nil {
-			log.Error().Err(err).Str("collection", collectionNamePlan).Interface("cur", cur).
-				Msg("Cannot decode to plan entry")
-			return nil, err
-		}
-
-		planEntries = append(planEntries, &planEntry)
+	err = cur.All(ctx, &planEntries)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNamePlan).
+			Msg("Cannot decode to plan entries")
+		return nil, err
 	}
 
 	return planEntries, nil
@@ -279,48 +280,48 @@ func (db *DB) PlanAncodeEntries(ctx context.Context) ([]*model.PlanEntry, error)
 	return planAncodeEntries, nil
 }
 
-func (db *DB) LockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, error) {
-	_, err := db.PlanEntryForExamGroup(ctx, examGroupCode)
+func (db *DB) LockExam(ctx context.Context, ancode int) (*model.PlanEntry, error) {
+	_, err := db.PlanEntry(ctx, ancode)
 	if err != nil {
-		log.Error().Err(err).Int("exam group code", examGroupCode).
+		log.Error().Err(err).Int("ancodecode", ancode).
 			Msg("cannot find plan entry")
 		return nil, err
 	}
 
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	filter := bson.D{{Key: "examgroupcode", Value: examGroupCode}}
+	filter := bson.D{{Key: "ancode", Value: ancode}}
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: "locked", Value: true}}}}
 
 	_, err = collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		log.Error().Err(err).Int("examgroupcode", examGroupCode).
-			Msg("cannot lock exam group to slot")
+		log.Error().Err(err).Int("ancode", ancode).
+			Msg("cannot lock exam to slot")
 		return nil, err
 	}
-	return db.PlanEntryForExamGroup(ctx, examGroupCode)
+	return db.PlanEntry(ctx, ancode)
 }
 
-func (db *DB) UnlockExamGroup(ctx context.Context, examGroupCode int) (*model.PlanEntry, error) {
-	_, err := db.PlanEntryForExamGroup(ctx, examGroupCode)
+func (db *DB) UnlockExam(ctx context.Context, ancode int) (*model.PlanEntry, error) {
+	_, err := db.PlanEntry(ctx, ancode)
 	if err != nil {
-		log.Error().Err(err).Int("exam group code", examGroupCode).
+		log.Error().Err(err).Int("ancode", ancode).
 			Msg("cannot find plan entry")
 		return nil, err
 	}
 
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	filter := bson.D{{Key: "examgroupcode", Value: examGroupCode}}
+	filter := bson.D{{Key: "ancode", Value: ancode}}
 	update := bson.D{{Key: "$set", Value: bson.D{{Key: "locked", Value: false}}}}
 
 	_, err = collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		log.Error().Err(err).Int("examgroupcode", examGroupCode).
-			Msg("cannot unlock exam group")
+		log.Error().Err(err).Int("ancode", ancode).
+			Msg("cannot unlock exam ")
 		return nil, err
 	}
-	return db.PlanEntryForExamGroup(ctx, examGroupCode)
+	return db.PlanEntry(ctx, ancode)
 }
 
 func (db *DB) ExamIsLocked(ctx context.Context, ancode int) bool {

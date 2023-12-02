@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -22,7 +23,7 @@ request-rooms          --- which rooms to request
 stats                  --- get statistics
 student-regs ancode    --- get student-reqs for ancode
 rooms-for-nta name     --- get planned rooms for student
-exams-for-student name --- get exams for student.`,
+student name           --- get info for student.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			p := initPlexamsConfig()
@@ -88,15 +89,23 @@ exams-for-student name --- get exams for student.`,
 					fmt.Println(err)
 					return
 				}
-			case "exams-for-student":
+			case "student":
 				if len(args) < 2 {
 					log.Fatal("need name")
 				}
 				// FIXME
-				err := p.GetExamsForStudent(args[1]) // nolint
+				students, err := p.StudentsByName(context.TODO(), args[1]) // nolint
 				if err != nil {
 					fmt.Println(err)
 					return
+				}
+				for _, student := range students {
+					fmt.Printf("%s (%s, %s%s): regs %v", student.Name, student.Mtknr, student.Program, student.Group, student.Regs)
+					if student.Nta != nil {
+						fmt.Printf(", NTA: %s\n", student.Nta.Compensation)
+					} else {
+						fmt.Println()
+					}
 				}
 			default:
 				fmt.Println("info called with unknown sub command")

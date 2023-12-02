@@ -52,6 +52,8 @@ func (p *Plexams) PrepareStudentRegs() error {
 	studentRegsPerStudent := make(map[string][]*model.StudentReg)
 
 	for _, program := range programs {
+		// TODO: ancodes in MUC.DAI which are available in ZPA also, are still in student regs, but should not!
+		// maybe filter zpa codes for program!
 		studentRegs, err := p.dbClient.StudentRegsForProgram(ctx, program)
 		if err != nil {
 			log.Error().Err(err).Str("program", program).Msg("cannot get studentregs for program")

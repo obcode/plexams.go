@@ -157,7 +157,8 @@ func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanE
 			// same day
 			if p[i].DayNumber == p[j].DayNumber {
 				count++
-				color.Yellow.Printf("%3d. Same day: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n", count,
+				color.Yellow.Printf("    - [\"%s\", \"%d\", \"%d\"] # %3d. Same day: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)\n",
+					student.Mtknr, p[i].Ancode, p[j].Ancode, count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
 					student.Name, student.Program, student.Mtknr,

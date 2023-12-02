@@ -63,15 +63,6 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 }
 
 func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
-	if p.dbClient.ExamIsLocked(ctx, ancode) {
-		slot, err := p.SlotForAncode(ctx, ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", ancode).Msg("exam is locked, but got an error on getting slot")
-			return nil, err
-		}
-		return []*model.Slot{slot}, nil
-	}
-
 	exam, err := p.GeneratedExam(ctx, ancode)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist")

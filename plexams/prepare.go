@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -29,19 +30,30 @@ func (p *Plexams) PrepareStudentRegs() error {
 		Ancode  int    `json:"ancode,omitempty"`
 	}
 
-	plannedZpaAncodes := set.NewSet[int]()
+	plannedZpaAncodes := make(map[string]set.Set[int]) // program -> set of ancodes
 	primussAncodesToZpaAncodes := make(map[programmAndAncode]int)
 
 	for _, connectedExam := range connectedExams {
 		ancode := connectedExam.ZpaExam.AnCode
 
-		plannedZpaAncodes.Add(ancode)
-
 		for _, primussExam := range connectedExam.PrimussExams {
+			plannedZpaAncodesForProgram, ok := plannedZpaAncodes[primussExam.Program]
+			if !ok {
+				plannedZpaAncodesForProgram = set.NewSet[int]()
+			}
+			plannedZpaAncodesForProgram.Add(ancode)
+			plannedZpaAncodes[primussExam.Program] = plannedZpaAncodesForProgram
+
 			if primussExam.AnCode != ancode {
 				primussAncodesToZpaAncodes[programmAndAncode{primussExam.Program, primussExam.AnCode}] = ancode
 			}
 		}
+	}
+
+	// TODO: rm me
+	for program, ancodes := range plannedZpaAncodes {
+		fmt.Printf(">>> %s <<<\n", program)
+		fmt.Printf("   %v\n\n", ancodes)
 	}
 
 	for k, v := range primussAncodesToZpaAncodes {
@@ -52,8 +64,6 @@ func (p *Plexams) PrepareStudentRegs() error {
 	studentRegsPerStudent := make(map[string][]*model.StudentReg)
 
 	for _, program := range programs {
-		// TODO: ancodes in MUC.DAI which are available in ZPA also, are still in student regs, but should not!
-		// maybe filter zpa codes for program!
 		studentRegs, err := p.dbClient.StudentRegsForProgram(ctx, program)
 		if err != nil {
 			log.Error().Err(err).Str("program", program).Msg("cannot get studentregs for program")
@@ -68,7 +78,7 @@ func (p *Plexams) PrepareStudentRegs() error {
 				studentReg.AnCode = zpaAncode
 			}
 
-			if !plannedZpaAncodes.Contains(studentReg.AnCode) {
+			if !plannedZpaAncodes[program].Contains(studentReg.AnCode) {
 				continue
 			}
 

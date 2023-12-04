@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
@@ -108,7 +107,7 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		return nil, err
 	}
 
-	examsInPlan, err := p.ExamsInPlan(ctx)
+	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get exam groups")
 		return nil, err
@@ -120,84 +119,88 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 	}
 
 	exams := make([]*model.ZPAExamPlan, 0)
-	for _, exam := range examsInPlan {
+	for _, exam := range plannedExams {
+		if exam.PlanEntry == nil {
+			continue
+		}
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
 		}
 		for _, ancodeNotToPublish := range doNotPublish {
-			if exam.Exam.Ancode == ancodeNotToPublish {
+			if exam.ZpaExam.AnCode == ancodeNotToPublish {
 				continue
 			}
 		}
-		slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get slot for ancode")
-		}
-		timeForAncode := p.getSlotTime(slot.DayNumber, slot.SlotNumber)
-		studentCount := 0
-		for _, studentRegs := range exam.Exam.StudentRegs {
-			studentCount += len(studentRegs.StudentRegs)
-		}
+		// slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
+		// if err != nil {
+		// 	log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get slot for ancode")
+		// }
+		// timeForAncode := p.getSlotTime(slot.DayNumber, slot.SlotNumber)
+		// studentCount := 0
+		// for _, studentRegs := range exam.Exam.StudentRegs {
+		// 	studentCount += len(studentRegs.StudentRegs)
+		// }
 
+		// FIXME: with rooms -> zpa
 		var rooms []*model.ZPAExamPlanRoom
 		reserveInvigilatorID := 0
-		if withInvigilators {
-			invigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", slot.DayNumber, slot.SlotNumber)
-			if err != nil {
-				log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).
-					Msg("cannot get reserve invigilator for slot")
-				return nil, err
-			}
-			reserveInvigilatorID = invigilator.ID
-		}
+		// if withInvigilators {
+		// 	invigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", slot.DayNumber, slot.SlotNumber)
+		// 	if err != nil {
+		// 		log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).
+		// 			Msg("cannot get reserve invigilator for slot")
+		// 		return nil, err
+		// 	}
+		// 	reserveInvigilatorID = invigilator.ID
+		// }
 
-		if withRooms {
-			roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
-			if err != nil {
-				log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for ancode")
-			} else {
-				if len(roomsForAncode) > 0 {
-					rooms = make([]*model.ZPAExamPlanRoom, 0, len(roomsForAncode))
-					for _, roomForAncode := range roomsForAncode {
-						if roomForAncode.RoomName == "No Room" {
-							continue
-						}
+		// if withRooms {
+		// 	roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
+		// 	if err != nil {
+		// 		log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for ancode")
+		// 	} else {
+		// 		if len(roomsForAncode) > 0 {
+		// 			rooms = make([]*model.ZPAExamPlanRoom, 0, len(roomsForAncode))
+		// 			for _, roomForAncode := range roomsForAncode {
+		// 				if roomForAncode.RoomName == "No Room" {
+		// 					continue
+		// 				}
 
-						invigilatorID := 0
-						if withInvigilators {
-							invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, slot.DayNumber, slot.SlotNumber)
-							if err != nil {
-								log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Str("room", roomForAncode.RoomName).
-									Msg("cannot get invigilator for room")
-								return nil, err
-							}
-							invigilatorID = invigilator.ID
-						}
+		// 				invigilatorID := 0
+		// 				if withInvigilators {
+		// 					invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, slot.DayNumber, slot.SlotNumber)
+		// 					if err != nil {
+		// 						log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Str("room", roomForAncode.RoomName).
+		// 							Msg("cannot get invigilator for room")
+		// 						return nil, err
+		// 					}
+		// 					invigilatorID = invigilator.ID
+		// 				}
 
-						roomName := roomForAncode.RoomName
-						if strings.HasPrefix(roomName, "ONLINE") {
-							roomName = "ONLINE"
-						}
+		// 				roomName := roomForAncode.RoomName
+		// 				if strings.HasPrefix(roomName, "ONLINE") {
+		// 					roomName = "ONLINE"
+		// 				}
 
-						rooms = append(rooms, &model.ZPAExamPlanRoom{
-							RoomName:      roomName,
-							InvigilatorID: invigilatorID,
-							Duration:      roomForAncode.Duration,
-							IsReserve:     roomForAncode.Reserve,
-							StudentCount:  roomForAncode.SeatsPlanned,
-							IsHandicap:    roomForAncode.Handicap,
-						})
-					}
-				}
-			}
-		}
+		// 				rooms = append(rooms, &model.ZPAExamPlanRoom{
+		// 					RoomName:      roomName,
+		// 					InvigilatorID: invigilatorID,
+		// 					Duration:      roomForAncode.Duration,
+		// 					IsReserve:     roomForAncode.Reserve,
+		// 					StudentCount:  roomForAncode.SeatsPlanned,
+		// 					IsHandicap:    roomForAncode.Handicap,
+		// 				})
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		exams = append(exams, &model.ZPAExamPlan{
 			Semester:             p.semester,
-			AnCode:               exam.Exam.Ancode,
-			Date:                 timeForAncode.Format("02.01.2006"),
-			Time:                 timeForAncode.Format("15:04"),
-			StudentCount:         studentCount,
+			AnCode:               exam.ZpaExam.AnCode,
+			Date:                 exam.PlanEntry.Starttime.Local().Format("02.01.2006"),
+			Time:                 exam.PlanEntry.Starttime.Local().Format("15:04"),
+			StudentCount:         exam.StudentRegsCount,
 			ReserveInvigilatorID: reserveInvigilatorID,
 			Rooms:                rooms,
 		})

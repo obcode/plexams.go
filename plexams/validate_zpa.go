@@ -21,32 +21,49 @@ func (p *Plexams) ValidateZPADateTimes() error {
 		examsMap[exam.AnCode] = exam
 	}
 
-	plannedExams, err := p.ExamsInPlan(context.Background())
+	plannedExams, err := p.PlannedExams(context.Background())
 	if err != nil {
 		return err
 	}
 
 	problems := 0
+	notPlannedByMe := 0
 
 	for _, plannedExam := range plannedExams {
-		zpaExam := examsMap[plannedExam.Exam.Ancode]
-		delete(examsMap, plannedExam.Exam.Ancode)
+		zpaExam := examsMap[plannedExam.ZpaExam.AnCode]
+		delete(examsMap, plannedExam.ZpaExam.AnCode)
 
-		plannedExamDate := plannedExam.Slot.Starttime.Local().Format("2006-01-02")
-		plannedExamStarttime := plannedExam.Slot.Starttime.Local().Format("15:04:05")
+		shouldHaveNoTimeAndDate := false
+		if plannedExam.Constraints != nil && plannedExam.Constraints.NotPlannedByMe {
+			shouldHaveNoTimeAndDate = true
+			notPlannedByMe++
+		}
+
+		if zpaExam == nil {
+			log.Error().Int("ancode", plannedExam.ZpaExam.AnCode).Str("examer", plannedExam.ZpaExam.MainExamer).
+				Str("module", plannedExam.ZpaExam.Module).Msg("zpa exam not found")
+			continue
+		}
+
+		plannedExamDate := "-"
+		plannedExamStarttime := "-"
+		if !shouldHaveNoTimeAndDate && plannedExam.PlanEntry != nil {
+			plannedExamDate = plannedExam.PlanEntry.Starttime.Local().Format("2006-01-02")
+			plannedExamStarttime = plannedExam.PlanEntry.Starttime.Local().Format("15:04:05")
+		}
 
 		if zpaExam.Date != plannedExamDate ||
 			zpaExam.Starttime != plannedExamStarttime {
 			problems++
 			color.Red.Printf("wrong date for %d. %s: %s\nwant: %s %s\ngot:  %s %s\n",
-				plannedExam.Exam.Ancode, plannedExam.Exam.ZpaExam.MainExamer, plannedExam.Exam.ZpaExam.Module,
+				plannedExam.ZpaExam.AnCode, plannedExam.ZpaExam.MainExamer, plannedExam.ZpaExam.Module,
 				plannedExamDate, plannedExamStarttime,
 				zpaExam.Date, zpaExam.Starttime)
 		}
 	}
 
 	if problems == 0 {
-		color.Green.Printf("all %d planned exams in zpa with correct date/time\n", len(plannedExams))
+		color.Green.Printf("all %d planned exams in zpa with correct date/time (%d not planned by me)\n", len(plannedExams), notPlannedByMe)
 	}
 
 	problems = 0

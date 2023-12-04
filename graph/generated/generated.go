@@ -203,6 +203,8 @@ type ComplexityRoot struct {
 		Ancode           func(childComplexity int) int
 		Conflicts        func(childComplexity int) int
 		Constraints      func(childComplexity int) int
+		MaxDuration      func(childComplexity int) int
+		Ntas             func(childComplexity int) int
 		PrimussExams     func(childComplexity int) int
 		StudentRegsCount func(childComplexity int) int
 		ZpaExam          func(childComplexity int) int
@@ -345,6 +347,8 @@ type ComplexityRoot struct {
 		Ancode           func(childComplexity int) int
 		Conflicts        func(childComplexity int) int
 		Constraints      func(childComplexity int) int
+		MaxDuration      func(childComplexity int) int
+		Ntas             func(childComplexity int) int
 		PlanEntry        func(childComplexity int) int
 		PrimussExams     func(childComplexity int) int
 		StudentRegsCount func(childComplexity int) int
@@ -1410,6 +1414,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.GeneratedExam.Constraints(childComplexity), true
 
+	case "GeneratedExam.maxDuration":
+		if e.complexity.GeneratedExam.MaxDuration == nil {
+			break
+		}
+
+		return e.complexity.GeneratedExam.MaxDuration(childComplexity), true
+
+	case "GeneratedExam.ntas":
+		if e.complexity.GeneratedExam.Ntas == nil {
+			break
+		}
+
+		return e.complexity.GeneratedExam.Ntas(childComplexity), true
+
 	case "GeneratedExam.primussExams":
 		if e.complexity.GeneratedExam.PrimussExams == nil {
 			break
@@ -2172,6 +2190,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PlannedExam.Constraints(childComplexity), true
+
+	case "PlannedExam.maxDuration":
+		if e.complexity.PlannedExam.MaxDuration == nil {
+			break
+		}
+
+		return e.complexity.PlannedExam.MaxDuration(childComplexity), true
+
+	case "PlannedExam.ntas":
+		if e.complexity.PlannedExam.Ntas == nil {
+			break
+		}
+
+		return e.complexity.PlannedExam.Ntas(childComplexity), true
 
 	case "PlannedExam.planEntry":
 		if e.complexity.PlannedExam.PlanEntry == nil {
@@ -3960,6 +3992,8 @@ type GeneratedExam {
   constraints: Constraints
   conflicts: [ZPAConflict!]!
   studentRegsCount: Int!
+  ntas: [NTA!]!
+  maxDuration: Int!
 }
 
 type ZPAConflict {
@@ -3975,6 +4009,8 @@ type PlannedExam {
   constraints: Constraints
   conflicts: [ZPAConflict!]!
   studentRegsCount: Int!
+  ntas: [NTA!]!
+  maxDuration: Int!
   planEntry: PlanEntry
 }
 
@@ -10238,6 +10274,116 @@ func (ec *executionContext) fieldContext_GeneratedExam_studentRegsCount(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _GeneratedExam_ntas(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedExam_ntas(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ntas, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NTA)
+	fc.Result = res
+	return ec.marshalNNTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedExam_ntas(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_NTA_name(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_NTA_mtknr(ctx, field)
+			case "compensation":
+				return ec.fieldContext_NTA_compensation(ctx, field)
+			case "deltaDurationPercent":
+				return ec.fieldContext_NTA_deltaDurationPercent(ctx, field)
+			case "needsRoomAlone":
+				return ec.fieldContext_NTA_needsRoomAlone(ctx, field)
+			case "program":
+				return ec.fieldContext_NTA_program(ctx, field)
+			case "from":
+				return ec.fieldContext_NTA_from(ctx, field)
+			case "until":
+				return ec.fieldContext_NTA_until(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_NTA_lastSemester(ctx, field)
+			case "exams":
+				return ec.fieldContext_NTA_exams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneratedExam_maxDuration(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratedExam_maxDuration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxDuration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratedExam_maxDuration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Invigilation_roomName(ctx context.Context, field graphql.CollectedField, obj *model.Invigilation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Invigilation_roomName(ctx, field)
 	if err != nil {
@@ -14950,6 +15096,116 @@ func (ec *executionContext) fieldContext_PlannedExam_studentRegsCount(ctx contex
 	return fc, nil
 }
 
+func (ec *executionContext) _PlannedExam_ntas(ctx context.Context, field graphql.CollectedField, obj *model.PlannedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannedExam_ntas(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ntas, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NTA)
+	fc.Result = res
+	return ec.marshalNNTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlannedExam_ntas(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlannedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_NTA_name(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_NTA_mtknr(ctx, field)
+			case "compensation":
+				return ec.fieldContext_NTA_compensation(ctx, field)
+			case "deltaDurationPercent":
+				return ec.fieldContext_NTA_deltaDurationPercent(ctx, field)
+			case "needsRoomAlone":
+				return ec.fieldContext_NTA_needsRoomAlone(ctx, field)
+			case "program":
+				return ec.fieldContext_NTA_program(ctx, field)
+			case "from":
+				return ec.fieldContext_NTA_from(ctx, field)
+			case "until":
+				return ec.fieldContext_NTA_until(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_NTA_lastSemester(ctx, field)
+			case "exams":
+				return ec.fieldContext_NTA_exams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlannedExam_maxDuration(ctx context.Context, field graphql.CollectedField, obj *model.PlannedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannedExam_maxDuration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxDuration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlannedExam_maxDuration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlannedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PlannedExam_planEntry(ctx context.Context, field graphql.CollectedField, obj *model.PlannedExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PlannedExam_planEntry(ctx, field)
 	if err != nil {
@@ -17971,6 +18227,10 @@ func (ec *executionContext) fieldContext_Query_generatedExams(ctx context.Contex
 				return ec.fieldContext_GeneratedExam_conflicts(ctx, field)
 			case "studentRegsCount":
 				return ec.fieldContext_GeneratedExam_studentRegsCount(ctx, field)
+			case "ntas":
+				return ec.fieldContext_GeneratedExam_ntas(ctx, field)
+			case "maxDuration":
+				return ec.fieldContext_GeneratedExam_maxDuration(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GeneratedExam", field.Name)
 		},
@@ -18026,6 +18286,10 @@ func (ec *executionContext) fieldContext_Query_generatedExam(ctx context.Context
 				return ec.fieldContext_GeneratedExam_conflicts(ctx, field)
 			case "studentRegsCount":
 				return ec.fieldContext_GeneratedExam_studentRegsCount(ctx, field)
+			case "ntas":
+				return ec.fieldContext_GeneratedExam_ntas(ctx, field)
+			case "maxDuration":
+				return ec.fieldContext_GeneratedExam_maxDuration(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GeneratedExam", field.Name)
 		},
@@ -18095,6 +18359,10 @@ func (ec *executionContext) fieldContext_Query_plannedExams(ctx context.Context,
 				return ec.fieldContext_PlannedExam_conflicts(ctx, field)
 			case "studentRegsCount":
 				return ec.fieldContext_PlannedExam_studentRegsCount(ctx, field)
+			case "ntas":
+				return ec.fieldContext_PlannedExam_ntas(ctx, field)
+			case "maxDuration":
+				return ec.fieldContext_PlannedExam_maxDuration(ctx, field)
 			case "planEntry":
 				return ec.fieldContext_PlannedExam_planEntry(ctx, field)
 			}
@@ -18152,6 +18420,10 @@ func (ec *executionContext) fieldContext_Query_plannedExam(ctx context.Context, 
 				return ec.fieldContext_PlannedExam_conflicts(ctx, field)
 			case "studentRegsCount":
 				return ec.fieldContext_PlannedExam_studentRegsCount(ctx, field)
+			case "ntas":
+				return ec.fieldContext_PlannedExam_ntas(ctx, field)
+			case "maxDuration":
+				return ec.fieldContext_PlannedExam_maxDuration(ctx, field)
 			case "planEntry":
 				return ec.fieldContext_PlannedExam_planEntry(ctx, field)
 			}
@@ -18673,6 +18945,10 @@ func (ec *executionContext) fieldContext_Query_examsInSlot(ctx context.Context, 
 				return ec.fieldContext_PlannedExam_conflicts(ctx, field)
 			case "studentRegsCount":
 				return ec.fieldContext_PlannedExam_studentRegsCount(ctx, field)
+			case "ntas":
+				return ec.fieldContext_PlannedExam_ntas(ctx, field)
+			case "maxDuration":
+				return ec.fieldContext_PlannedExam_maxDuration(ctx, field)
 			case "planEntry":
 				return ec.fieldContext_PlannedExam_planEntry(ctx, field)
 			}
@@ -18744,6 +19020,10 @@ func (ec *executionContext) fieldContext_Query_examsWithoutSlot(ctx context.Cont
 				return ec.fieldContext_PlannedExam_conflicts(ctx, field)
 			case "studentRegsCount":
 				return ec.fieldContext_PlannedExam_studentRegsCount(ctx, field)
+			case "ntas":
+				return ec.fieldContext_PlannedExam_ntas(ctx, field)
+			case "maxDuration":
+				return ec.fieldContext_PlannedExam_maxDuration(ctx, field)
 			case "planEntry":
 				return ec.fieldContext_PlannedExam_planEntry(ctx, field)
 			}
@@ -28460,6 +28740,16 @@ func (ec *executionContext) _GeneratedExam(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "ntas":
+			out.Values[i] = ec._GeneratedExam_ntas(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxDuration":
+			out.Values[i] = ec._GeneratedExam_maxDuration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -29482,6 +29772,16 @@ func (ec *executionContext) _PlannedExam(ctx context.Context, sel ast.SelectionS
 			}
 		case "studentRegsCount":
 			out.Values[i] = ec._PlannedExam_studentRegsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ntas":
+			out.Values[i] = ec._PlannedExam_ntas(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxDuration":
+			out.Values[i] = ec._PlannedExam_maxDuration(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

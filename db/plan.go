@@ -92,6 +92,8 @@ func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.P
 			Constraints:      exam.Constraints,
 			Conflicts:        exam.Conflicts,
 			StudentRegsCount: exam.StudentRegsCount,
+			Ntas:             exam.Ntas,
+			MaxDuration:      exam.MaxDuration,
 			PlanEntry:        planEntry,
 		})
 	}

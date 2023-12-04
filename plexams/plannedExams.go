@@ -32,6 +32,8 @@ func (p *Plexams) PlannedExam(ctx context.Context, ancode int) (*model.PlannedEx
 		Constraints:      exam.Constraints,
 		Conflicts:        exam.Conflicts,
 		StudentRegsCount: exam.StudentRegsCount,
+		Ntas:             exam.Ntas,
+		MaxDuration:      exam.MaxDuration,
 		PlanEntry:        planEntry,
 	}, err
 }
@@ -65,6 +67,8 @@ func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error
 				Constraints:      exam.Constraints,
 				Conflicts:        exam.Conflicts,
 				StudentRegsCount: exam.StudentRegsCount,
+				Ntas:             exam.Ntas,
+				MaxDuration:      exam.MaxDuration,
 				PlanEntry:        planEntryMap[exam.Ancode],
 			})
 	}

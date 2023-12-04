@@ -163,6 +163,8 @@ type GeneratedExam struct {
 	Constraints      *Constraints           `json:"constraints,omitempty"`
 	Conflicts        []*ZPAConflict         `json:"conflicts"`
 	StudentRegsCount int                    `json:"studentRegsCount"`
+	Ntas             []*NTA                 `json:"ntas"`
+	MaxDuration      int                    `json:"maxDuration"`
 }
 
 type Invigilation struct {
@@ -272,6 +274,8 @@ type PlannedExam struct {
 	Constraints      *Constraints           `json:"constraints,omitempty"`
 	Conflicts        []*ZPAConflict         `json:"conflicts"`
 	StudentRegsCount int                    `json:"studentRegsCount"`
+	Ntas             []*NTA                 `json:"ntas"`
+	MaxDuration      int                    `json:"maxDuration"`
 	PlanEntry        *PlanEntry             `json:"planEntry,omitempty"`
 }
 

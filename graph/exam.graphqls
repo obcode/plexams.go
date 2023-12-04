@@ -117,6 +117,8 @@ type GeneratedExam {
   constraints: Constraints
   conflicts: [ZPAConflict!]!
   studentRegsCount: Int!
+  ntas: [NTA!]!
+  maxDuration: Int!
 }
 
 type ZPAConflict {
@@ -132,6 +134,8 @@ type PlannedExam {
   constraints: Constraints
   conflicts: [ZPAConflict!]!
   studentRegsCount: Int!
+  ntas: [NTA!]!
+  maxDuration: Int!
   planEntry: PlanEntry
 }
 

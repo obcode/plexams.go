@@ -29,14 +29,14 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		return err
 	}
 
-	ntas, err := p.Ntas(ctx)
+	allNtas, err := p.Ntas(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get ntas")
 		return err
 	}
 
 	ntaMap := make(map[string]*model.NTA)
-	for _, nta := range ntas {
+	for _, nta := range allNtas {
 		ntaMap[nta.Mtknr] = nta
 	}
 
@@ -83,6 +83,8 @@ func (p *Plexams) PrepareGeneratedExams() error {
 
 		spinner.Message("adding primuss data")
 		studentRegsCount := 0
+		ntas := make([]*model.NTA, 0)
+
 		enhancedPrimussExams := make([]*model.EnhancedPrimussExam, 0, len(connectedExam.PrimussExams))
 		for _, primussExam := range connectedExam.PrimussExams {
 			enhanced, err := p.primussToEnhanced(ctx, primussExam, ntaMap)
@@ -92,6 +94,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 				return err
 			}
 
+			ntas = append(ntas, enhanced.Ntas...)
 			studentRegsCount += len(enhanced.StudentRegs)
 			enhancedPrimussExams = append(enhancedPrimussExams, enhanced)
 		}
@@ -144,6 +147,15 @@ func (p *Plexams) PrepareGeneratedExams() error {
 			conflicts = append(conflicts, conflictsMap[key])
 		}
 
+		duration := connectedExam.ZpaExam.Duration
+		maxDuration := duration
+		for _, nta := range ntas {
+			ntaDuration := (duration * (100 + nta.DeltaDurationPercent)) / 100
+			if ntaDuration > maxDuration {
+				maxDuration = ntaDuration
+			}
+		}
+
 		exams = append(exams, &model.GeneratedExam{
 			Ancode:           connectedExam.ZpaExam.AnCode,
 			ZpaExam:          connectedExam.ZpaExam,
@@ -151,6 +163,8 @@ func (p *Plexams) PrepareGeneratedExams() error {
 			Constraints:      constraints[connectedExam.ZpaExam.AnCode],
 			Conflicts:        conflicts,
 			StudentRegsCount: studentRegsCount,
+			Ntas:             ntas,
+			MaxDuration:      maxDuration,
 		})
 
 		err = spinner.Stop()

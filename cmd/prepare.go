@@ -171,11 +171,11 @@ var (
 			// 		os.Exit(1)
 			// 	}
 
-			case "exams-in-plan":
-				err := plexams.PreparePlannedExams()
-				if err != nil {
-					os.Exit(1)
-				}
+			// case "exams-in-plan":
+			// 	err := plexams.PreparePlannedExams()
+			// 	if err != nil {
+			// 		os.Exit(1)
+			// 	}
 
 			case "rooms-for-semester":
 				err := plexams.PrepareRoomsForSemester()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/db"
@@ -13,6 +14,134 @@ import (
 	"github.com/spf13/viper"
 )
 
+type SlotNumber struct {
+	day, slot int
+}
+
+/*
+roomConstraints:
+  booked:
+    - date: 2024-01-22
+      from: "14:00"
+      until: "17:00"
+      rooms:
+        - T3.015
+        - T3.016
+        - T3.017
+        - T3.023
+*/
+
+type BookedEntry struct {
+	From  time.Time
+	Until time.Time
+	Rooms []string
+}
+
+func (p *Plexams) ExahmRoomsFromBooked() ([]BookedEntry, error) {
+	bookedInfo := viper.Get("roomconstraints.booked")
+
+	bookedInfoSlice, ok := bookedInfo.([]interface{})
+	if !ok {
+		log.Error().Interface("booked info", bookedInfo).Msg("cannot convert booked info to slice")
+		return nil, fmt.Errorf("cannot convert booked info to slice")
+	}
+
+	entries := make([]BookedEntry, 0, len(bookedInfoSlice))
+	for _, bookedEntry := range bookedInfoSlice {
+		entry, ok := bookedEntry.(map[string]interface{})
+		if !ok {
+			log.Error().Interface("booked entry", bookedEntry).Msg("cannot convert booked entry to map")
+			return nil, fmt.Errorf("cannot convert booked entry to map")
+		}
+
+		rawDate, ok := entry["date"].(time.Time)
+		if !ok {
+			log.Error().Interface("date entry", entry["date"]).Msg("cannot convert date entry to string")
+			return nil, fmt.Errorf("cannot convert date entry to string")
+		}
+		rawFrom, ok := entry["from"].(string)
+		if !ok {
+			log.Error().Interface("date entry", entry["from"]).Msg("cannot convert from entry to string")
+			return nil, fmt.Errorf("cannot convert from entry to string")
+		}
+		rawUntil, ok := entry["until"].(string)
+		if !ok {
+			log.Error().Interface("date entry", entry["until"]).Msg("cannot convert until entry to string")
+			return nil, fmt.Errorf("cannot convert until entry to string")
+		}
+
+		from, err := time.ParseInLocation("2006-01-02 15:04", fmt.Sprintf("%s %s", rawDate.Format("2006-01-02"), rawFrom), time.Local)
+		if err != nil {
+			log.Error().Err(err).Interface("date", rawDate).Str("time", rawFrom).Msg("cannot parse to time")
+			return nil, err
+		}
+		until, err := time.ParseInLocation("2006-01-02 15:04", fmt.Sprintf("%s %s", rawDate.Format("2006-01-02"), rawUntil), time.Local)
+		if err != nil {
+			log.Error().Err(err).Interface("date", rawDate).Str("time", rawFrom).Msg("cannot parse to time")
+			return nil, err
+		}
+
+		rawRooms, ok := entry["rooms"].([]interface{})
+		if !ok {
+			log.Error().Interface("rooms entry", entry["rooms"]).Msg("cannot convert rooms entry to []string")
+			return nil, fmt.Errorf("cannot convert rooms entry to []string")
+		}
+
+		rooms := make([]string, 0, len(rawRooms))
+		for _, rawRoom := range rawRooms {
+			room, ok := rawRoom.(string)
+			if !ok {
+				log.Error().Interface("room entry", rawRoom).Msg("cannot convert room entry to string")
+				return nil, fmt.Errorf("cannot convert room entry to string")
+			}
+			rooms = append(rooms, room)
+		}
+
+		entries = append(entries, BookedEntry{
+			From:  from,
+			Until: until,
+			Rooms: rooms,
+		})
+
+	}
+
+	return entries, nil
+}
+
+func (p *Plexams) SlotsWithRoomsFromBookedEntries(bookedEntries []BookedEntry) (map[SlotNumber][]*model.Room, error) {
+	globalRooms, err := p.dbClient.GlobalRooms(context.Background())
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get global rooms")
+		return nil, err
+	}
+
+	globalRoomsMap := make(map[string]*model.Room)
+	for _, room := range globalRooms {
+		globalRoomsMap[room.Name] = room
+	}
+
+	slotsWithRooms := make(map[SlotNumber][]*model.Room)
+
+	for _, slot := range p.semesterConfig.Slots {
+		for _, entry := range bookedEntries {
+			if entry.From.Before(slot.Starttime.Local()) && entry.Until.After(slot.Starttime.Local().Add(89*time.Minute)) {
+				rooms := make([]*model.Room, 0, len(entry.Rooms))
+				for _, roomName := range entry.Rooms {
+					room, ok := globalRoomsMap[roomName]
+					if !ok {
+						log.Error().Str("room name", roomName).Msg("room not found")
+						return nil, fmt.Errorf("room %s not found", roomName)
+					}
+					rooms = append(rooms, room)
+				}
+				slotsWithRooms[SlotNumber{slot.DayNumber, slot.SlotNumber}] = rooms
+			}
+		}
+	}
+
+	return slotsWithRooms, nil
+}
+
 func (p *Plexams) PrepareRoomsForSemester() error {
 	globalRooms, err := p.dbClient.GlobalRooms(context.Background())
 	if err != nil {
@@ -20,16 +149,16 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 		return err
 	}
 
-	roomsForSlots := make(map[int][]*model.Room)
+	roomsForSlots := make(map[SlotNumber][]*model.Room)
 	for _, room := range globalRooms {
-		if room.Name == "No Room" {
+		if room.Name == "No Room" || room.Exahm {
 			continue
 		}
 		roomConstraints := viper.Get(fmt.Sprintf("roomConstraints.%s", room.Name))
 		if roomConstraints == nil {
 			fmt.Printf("%s: no constraints found\n", room.Name)
 			for _, slot := range p.semesterConfig.Slots {
-				slotNumber := slot.DayNumber*10 + slot.SlotNumber
+				slotNumber := SlotNumber{slot.DayNumber, slot.SlotNumber}
 				slotEntry, ok := roomsForSlots[slotNumber]
 				if !ok {
 					slotEntry = []*model.Room{room}
@@ -45,7 +174,7 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 				allowedSlotsSlice := allowedSlots.([]interface{})
 				for _, allowedSlot := range allowedSlotsSlice {
 					allowedSlotSlice := allowedSlot.([]interface{})
-					slotNumber := allowedSlotSlice[0].(int)*10 + allowedSlotSlice[1].(int)
+					slotNumber := SlotNumber{allowedSlotSlice[0].(int), allowedSlotSlice[1].(int)}
 					slotEntry, ok := roomsForSlots[slotNumber]
 					if !ok {
 						slotEntry = []*model.Room{room}
@@ -60,12 +189,24 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 		}
 	}
 
+	bookedEntries, err := p.ExahmRoomsFromBooked()
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get exahm rooms from booked")
+		return err
+	}
+	bookedRoomsMap, err := p.SlotsWithRoomsFromBookedEntries(bookedEntries)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get booked rooms map from booked entries")
+		return err
+	}
+
 	slotsWithRooms := make([]*model.SlotWithRooms, 0, len(roomsForSlots))
 	for slot, rooms := range roomsForSlots {
-		normalRooms, exahmRooms, labRooms, ntaRooms := splitRooms(rooms)
+		normalRooms, _, labRooms, ntaRooms := splitRooms(rooms)
+		exahmRooms := bookedRoomsMap[slot]
 		slotsWithRooms = append(slotsWithRooms, &model.SlotWithRooms{
-			DayNumber:   slot / 10,
-			SlotNumber:  slot % 10,
+			DayNumber:   slot.day,
+			SlotNumber:  slot.slot,
 			NormalRooms: normalRooms,
 			ExahmRooms:  exahmRooms,
 			LabRooms:    labRooms,

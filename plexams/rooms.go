@@ -48,37 +48,16 @@ func (p *Plexams) ExahmRoomsFromBooked() ([]BookedEntry, error) {
 
 	entries := make([]BookedEntry, 0, len(bookedInfoSlice))
 	for _, bookedEntry := range bookedInfoSlice {
+		from, until, err := fromUntil(bookedEntry)
+		if err != nil {
+			log.Error().Err(err).Interface("entry", bookedEntry).Msg("cannot convert entry to time")
+			return nil, err
+		}
+
 		entry, ok := bookedEntry.(map[string]interface{})
 		if !ok {
 			log.Error().Interface("booked entry", bookedEntry).Msg("cannot convert booked entry to map")
 			return nil, fmt.Errorf("cannot convert booked entry to map")
-		}
-
-		rawDate, ok := entry["date"].(time.Time)
-		if !ok {
-			log.Error().Interface("date entry", entry["date"]).Msg("cannot convert date entry to string")
-			return nil, fmt.Errorf("cannot convert date entry to string")
-		}
-		rawFrom, ok := entry["from"].(string)
-		if !ok {
-			log.Error().Interface("date entry", entry["from"]).Msg("cannot convert from entry to string")
-			return nil, fmt.Errorf("cannot convert from entry to string")
-		}
-		rawUntil, ok := entry["until"].(string)
-		if !ok {
-			log.Error().Interface("date entry", entry["until"]).Msg("cannot convert until entry to string")
-			return nil, fmt.Errorf("cannot convert until entry to string")
-		}
-
-		from, err := time.ParseInLocation("2006-01-02 15:04", fmt.Sprintf("%s %s", rawDate.Format("2006-01-02"), rawFrom), time.Local)
-		if err != nil {
-			log.Error().Err(err).Interface("date", rawDate).Str("time", rawFrom).Msg("cannot parse to time")
-			return nil, err
-		}
-		until, err := time.ParseInLocation("2006-01-02 15:04", fmt.Sprintf("%s %s", rawDate.Format("2006-01-02"), rawUntil), time.Local)
-		if err != nil {
-			log.Error().Err(err).Interface("date", rawDate).Str("time", rawFrom).Msg("cannot parse to time")
-			return nil, err
 		}
 
 		rawRooms, ok := entry["rooms"].([]interface{})
@@ -168,13 +147,29 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 				roomsForSlots[slotNumber] = slotEntry
 			}
 		} else {
-			allowedSlots := viper.Get(fmt.Sprintf("roomConstraints.%s.allowedSlots", room.Name))
-			if allowedSlots != nil {
-				fmt.Printf("%s: allowed slots found\n", room.Name)
-				allowedSlotsSlice := allowedSlots.([]interface{})
-				for _, allowedSlot := range allowedSlotsSlice {
-					allowedSlotSlice := allowedSlot.([]interface{})
-					slotNumber := SlotNumber{allowedSlotSlice[0].(int), allowedSlotSlice[1].(int)}
+			//   R1.046:
+			//     reservations:
+			//       - date: 2024-01-24
+			//         from: 10:15
+			//         until: 12:15
+			//       - date: 2024-01-24
+			//         from: 14:15
+			//         until: 16:15
+			reservations := viper.Get(fmt.Sprintf("roomConstraints.%s.reservations", room.Name))
+			if reservations != nil {
+				fmt.Printf("%s: reservations found\n", room.Name)
+				reservationsSlice, ok := reservations.([]interface{})
+				if !ok {
+					log.Error().Interface("reservations", reservations).Msg("cannot convert reservations to slice")
+					return fmt.Errorf("cannot convert reservations to slice")
+				}
+				reservedSlots, err := p.reservations2Slots(reservationsSlice)
+				if err != nil {
+					log.Error().Err(err).Msg("cannot convert reservations to slots")
+					return err
+				}
+				for _, slot := range reservedSlots.ToSlice() {
+					slotNumber := SlotNumber{slot.day, slot.slot}
 					slotEntry, ok := roomsForSlots[slotNumber]
 					if !ok {
 						slotEntry = []*model.Room{room}
@@ -183,8 +178,6 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 					}
 					roomsForSlots[slotNumber] = slotEntry
 				}
-				// } else {
-				// TODO: forbiddenSlots := viper.Get(fmt.Sprintf("roomConstraints.%s.forbiddenSlots", room.Name))
 			}
 		}
 	}
@@ -215,6 +208,71 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 	}
 
 	return p.dbClient.SaveRooms(context.Background(), slotsWithRooms)
+}
+
+func (p *Plexams) reservations2Slots(reservations []interface{}) (set.Set[SlotNumber], error) {
+	slots := set.NewSet[SlotNumber]()
+	for _, reservation := range reservations {
+		from, until, err := fromUntil(reservation)
+		if err != nil {
+			log.Error().Err(err).Interface("reservation", reservation).Msg("cannot convert reservation to time")
+			return nil, err
+		}
+
+		fmt.Printf("    From: %v Until: %v\n", from, until)
+
+		for _, slot := range p.semesterConfig.Slots {
+			if (from.Before(slot.Starttime.Local()) || from.Equal(slot.Starttime.Local())) && until.After(slot.Starttime.Local().Add(89*time.Minute)) {
+				fmt.Printf("        ---> add (%d, %d)\n", slot.DayNumber, slot.SlotNumber)
+				slots.Add(SlotNumber{slot.DayNumber, slot.SlotNumber})
+			}
+		}
+	}
+	return slots, nil
+}
+
+func fromUntil(dateEntry interface{}) (from time.Time, until time.Time, err error) {
+	from = time.Now()
+	until = time.Now()
+
+	entry, ok := dateEntry.(map[string]interface{})
+	if !ok {
+		err = fmt.Errorf("cannot convert date entry to map")
+		log.Error().Interface("date entry", dateEntry).Msg("cannot convert date entry to map")
+		return
+	}
+
+	rawDate, ok := entry["date"].(time.Time)
+	if !ok {
+		err = fmt.Errorf("cannot convert date entry to string")
+		log.Error().Interface("date entry", entry["date"]).Msg("cannot convert date entry to string")
+		return
+	}
+	rawFrom, ok := entry["from"].(string)
+	if !ok {
+		err = fmt.Errorf("cannot convert from entry to string")
+		log.Error().Interface("date entry", entry["from"]).Msg("cannot convert from entry to string")
+		return
+	}
+	rawUntil, ok := entry["until"].(string)
+	if !ok {
+		err = fmt.Errorf("cannot convert until entry to string")
+		log.Error().Interface("date entry", entry["until"]).Msg("cannot convert until entry to string")
+		return
+	}
+
+	from, err = time.ParseInLocation("2006-01-02 15:04", fmt.Sprintf("%s %s", rawDate.Format("2006-01-02"), rawFrom), time.Local)
+	if err != nil {
+		log.Error().Err(err).Interface("date", rawDate).Str("time", rawFrom).Msg("cannot parse to time")
+		return
+	}
+	until, err = time.ParseInLocation("2006-01-02 15:04", fmt.Sprintf("%s %s", rawDate.Format("2006-01-02"), rawUntil), time.Local)
+	if err != nil {
+		log.Error().Err(err).Interface("date", rawDate).Str("time", rawFrom).Msg("cannot parse to time")
+		return
+	}
+
+	return
 }
 
 func splitRooms(rooms []*model.Room) ([]*model.Room, []*model.Room, []*model.Room, []*model.Room) {
@@ -313,6 +371,7 @@ func (p *Plexams) AddRoomToExam(ctx context.Context, input model.RoomForExamInpu
 // 	return room, nil
 // }
 
+// TODO: rewrite me.
 func (p *Plexams) PrepareRoomForExams() error {
 	ctx := context.Background()
 

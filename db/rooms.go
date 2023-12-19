@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (db *DB) GlobalRooms(ctx context.Context) ([]*model.Room, error) {
+func (db *DB) Rooms(ctx context.Context) ([]*model.Room, error) {
 	collection := db.Client.Database("plexams").Collection(collectionRooms)
 
 	findOptions := options.Find()
@@ -30,11 +30,6 @@ func (db *DB) GlobalRooms(ctx context.Context) ([]*model.Room, error) {
 	}
 
 	return rooms, nil
-}
-
-func (db *DB) Rooms(ctx context.Context) ([]*model.Room, error) {
-
-	return nil, nil
 }
 
 func (db *DB) SaveRooms(ctx context.Context, slotsWithRooms []*model.SlotWithRooms) error {

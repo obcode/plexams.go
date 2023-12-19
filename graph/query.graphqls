@@ -33,7 +33,7 @@ type Query {
   # examsInSlot(day: Int!, time: Int!): [ExamInPlan!]
   # Rooms
   examsInSlotWithRooms(day: Int!, time: Int!): [ExamWithRegsAndRooms!]
-  rooms: [Room!]!
+  # rooms: [Room!]!
   roomsWithConstraints(
     handicap: Boolean!
     lab: Boolean!

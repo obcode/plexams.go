@@ -88,7 +88,7 @@ func (p *Plexams) ExahmRoomsFromBooked() ([]BookedEntry, error) {
 }
 
 func (p *Plexams) SlotsWithRoomsFromBookedEntries(bookedEntries []BookedEntry) (map[SlotNumber][]*model.Room, error) {
-	globalRooms, err := p.dbClient.GlobalRooms(context.Background())
+	globalRooms, err := p.dbClient.Rooms(context.Background())
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get global rooms")
 		return nil, err
@@ -122,7 +122,7 @@ func (p *Plexams) SlotsWithRoomsFromBookedEntries(bookedEntries []BookedEntry) (
 }
 
 func (p *Plexams) PrepareRoomsForSemester() error {
-	globalRooms, err := p.dbClient.GlobalRooms(context.Background())
+	globalRooms, err := p.dbClient.Rooms(context.Background())
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get global rooms")
 		return err

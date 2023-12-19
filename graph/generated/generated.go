@@ -698,7 +698,6 @@ type QueryResolver interface {
 	PlannedExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExamWithNta, error)
 	ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error)
 	ExamsInSlotWithRooms(ctx context.Context, day int, time int) ([]*model.ExamWithRegsAndRooms, error)
-	Rooms(ctx context.Context) ([]*model.Room, error)
 	RoomsWithConstraints(ctx context.Context, handicap bool, lab bool, placesWithSocket bool, exahm *bool) ([]*model.Room, error)
 	RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error)
 	PlannedRoomNames(ctx context.Context) ([]string, error)
@@ -728,6 +727,7 @@ type QueryResolver interface {
 	AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
 	AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
 	PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error)
+	Rooms(ctx context.Context) ([]*model.Room, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
 	Students(ctx context.Context) ([]*model.Student, error)
@@ -4385,7 +4385,7 @@ type ConflictsPerProgramAncode {
   # examsInSlot(day: Int!, time: Int!): [ExamInPlan!]
   # Rooms
   examsInSlotWithRooms(day: Int!, time: Int!): [ExamWithRegsAndRooms!]
-  rooms: [Room!]!
+  # rooms: [Room!]!
   roomsWithConstraints(
     handicap: Boolean!
     lab: Boolean!
@@ -4403,7 +4403,11 @@ type ConflictsPerProgramAncode {
   dayOkForInvigilator(day: Int!, invigilatorID: Int!): Boolean
 }
 `, BuiltIn: false},
-	{Name: "../room.graphqls", Input: `type Room {
+	{Name: "../room.graphqls", Input: `extend type Query {
+  rooms: [Room!]!
+}
+
+type Room {
   name: String!
   seats: Int!
   handicap: Boolean!
@@ -17431,68 +17435,6 @@ func (ec *executionContext) fieldContext_Query_examsInSlotWithRooms(ctx context.
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_rooms(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_rooms(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Rooms(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.Room)
-	fc.Result = res
-	return ec.marshalNRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_rooms(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_Room_name(ctx, field)
-			case "seats":
-				return ec.fieldContext_Room_seats(ctx, field)
-			case "handicap":
-				return ec.fieldContext_Room_handicap(ctx, field)
-			case "lab":
-				return ec.fieldContext_Room_lab(ctx, field)
-			case "placesWithSocket":
-				return ec.fieldContext_Room_placesWithSocket(ctx, field)
-			case "needsRequest":
-				return ec.fieldContext_Room_needsRequest(ctx, field)
-			case "exahm":
-				return ec.fieldContext_Room_exahm(ctx, field)
-			case "seb":
-				return ec.fieldContext_Room_seb(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_roomsWithConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_roomsWithConstraints(ctx, field)
 	if err != nil {
@@ -19198,6 +19140,68 @@ func (ec *executionContext) fieldContext_Query_primussExams(ctx context.Context,
 				return ec.fieldContext_PrimussExamByProgram_exams(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PrimussExamByProgram", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_rooms(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_rooms(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Rooms(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Room)
+	fc.Result = res
+	return ec.marshalNRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_rooms(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Room_name(ctx, field)
+			case "seats":
+				return ec.fieldContext_Room_seats(ctx, field)
+			case "handicap":
+				return ec.fieldContext_Room_handicap(ctx, field)
+			case "lab":
+				return ec.fieldContext_Room_lab(ctx, field)
+			case "placesWithSocket":
+				return ec.fieldContext_Room_placesWithSocket(ctx, field)
+			case "needsRequest":
+				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "exahm":
+				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
 	}
 	return fc, nil
@@ -30521,28 +30525,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "rooms":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_rooms(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "roomsWithConstraints":
 			field := field
 
@@ -31112,6 +31094,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_primussExams(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "rooms":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_rooms(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 

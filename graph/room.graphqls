@@ -1,3 +1,7 @@
+extend type Query {
+  rooms: [Room!]!
+}
+
 type Room {
   name: String!
   seats: Int!

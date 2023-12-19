@@ -11,6 +11,11 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// Rooms is the resolver for the rooms field.
+func (r *queryResolver) Rooms(ctx context.Context) ([]*model.Room, error) {
+	return r.plexams.Rooms(ctx)
+}
+
 // Room is the resolver for the room field.
 func (r *roomForExamResolver) Room(ctx context.Context, obj *model.RoomForExam) (*model.Room, error) {
 	return r.plexams.Room(ctx, obj)

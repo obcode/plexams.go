@@ -236,7 +236,7 @@ func (p *Plexams) PrintInfo() {
 }
 
 func (p *Plexams) setRoomInfo() {
-	rooms, err := p.dbClient.GlobalRooms(context.Background())
+	rooms, err := p.dbClient.Rooms(context.Background())
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get global rooms")
 	}

@@ -117,11 +117,6 @@ func (r *queryResolver) ExamsInSlotWithRooms(ctx context.Context, day int, time 
 	return r.plexams.ExamsInSlotWithRooms(ctx, day, time)
 }
 
-// Rooms is the resolver for the rooms field.
-func (r *queryResolver) Rooms(ctx context.Context) ([]*model.Room, error) {
-	return r.plexams.Rooms(ctx)
-}
-
 // RoomsWithConstraints is the resolver for the roomsWithConstraints field.
 func (r *queryResolver) RoomsWithConstraints(ctx context.Context, handicap bool, lab bool, placesWithSocket bool, exahm *bool) ([]*model.Room, error) {
 	panic(fmt.Errorf("not implemented: RoomsWithConstraints - roomsWithConstraints"))

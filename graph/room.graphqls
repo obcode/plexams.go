@@ -23,6 +23,8 @@ type SlotWithRooms {
 }
 
 type PlannedRoom {
+  day: Int!
+  slot: Int!
   room: Room!
   ancode: Int!
   seatsPlanned: Int!
@@ -30,7 +32,6 @@ type PlannedRoom {
   handicap: Boolean!
   handicapRoomAlone: Boolean!
   reserve: Boolean!
-  studentCount: Int!
   ntas: [NTA!]
 }
 

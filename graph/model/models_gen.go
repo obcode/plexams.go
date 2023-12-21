@@ -286,6 +286,8 @@ type PlannedExamWithNta struct {
 }
 
 type PlannedRoom struct {
+	Day               int    `json:"day"`
+	Slot              int    `json:"slot"`
 	Room              *Room  `json:"room"`
 	Ancode            int    `json:"ancode"`
 	SeatsPlanned      int    `json:"seatsPlanned"`
@@ -293,7 +295,6 @@ type PlannedRoom struct {
 	Handicap          bool   `json:"handicap"`
 	HandicapRoomAlone bool   `json:"handicapRoomAlone"`
 	Reserve           bool   `json:"reserve"`
-	StudentCount      int    `json:"studentCount"`
 	Ntas              []*NTA `json:"ntas,omitempty"`
 }
 

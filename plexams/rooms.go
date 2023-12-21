@@ -388,6 +388,17 @@ func (p *Plexams) RoomsForNTAsWithRoomAlone() error {
 		return err
 	}
 
+	ntasMap := make(map[string]*model.Student)
+	type dayEntry struct {
+		slot   int
+		ancode int
+		mtknr  string
+	}
+	daysMap := make(map[int][]dayEntry)
+	examsMap := make(map[int]*model.PlannedExam)
+
+	plannedRooms := make([]*model.PlannedRoom, 0)
+
 	for _, nta := range ntas {
 		if !nta.Nta.NeedsRoomAlone {
 			continue
@@ -396,9 +407,9 @@ func (p *Plexams) RoomsForNTAsWithRoomAlone() error {
 		cfg := yacspin.Config{
 			Frequency: 100 * time.Millisecond,
 			CharSet:   yacspin.CharSets[69],
-			Suffix: aurora.Sprintf(aurora.Cyan(" finding rooms for %s with exams %v"),
+			Suffix: aurora.Sprintf(aurora.Cyan("finding exams for %s (%s)"),
 				aurora.Yellow(nta.Name),
-				aurora.Magenta(nta.Regs),
+				aurora.Green(nta.Mtknr),
 			),
 			SuffixAutoColon:   true,
 			StopCharacter:     "✓",
@@ -417,12 +428,149 @@ func (p *Plexams) RoomsForNTAsWithRoomAlone() error {
 			log.Debug().Err(err).Msg("cannot start spinner")
 		}
 
-		// TODO: finding rooms
+		ntasMap[nta.Mtknr] = nta
+
+		regsNew := make([]int, 0, len(nta.Regs))
+		for _, ancode := range nta.Regs {
+			exam, err := p.PlannedExam(ctx, ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam")
+				return err
+			}
+			if exam.Constraints == nil || !exam.Constraints.NotPlannedByMe {
+				examsMap[exam.Ancode] = exam
+				dayEntries, ok := daysMap[exam.PlanEntry.DayNumber]
+				if !ok {
+					dayEntries = make([]dayEntry, 0, 1)
+				}
+				daysMap[exam.PlanEntry.DayNumber] = append(dayEntries, dayEntry{
+					slot:   exam.PlanEntry.SlotNumber,
+					ancode: ancode,
+					mtknr:  nta.Mtknr,
+				})
+				regsNew = append(regsNew, ancode)
+			}
+		}
+
+		nta.Regs = regsNew
+
+		spinner.StopMessage(aurora.Sprintf(aurora.Cyan("found %v"),
+			aurora.Magenta(nta.Regs),
+		))
 
 		err = spinner.Stop()
 		if err != nil {
 			log.Debug().Err(err).Msg("cannot stop spinner")
 		}
+	}
+
+	days := make([]int, 0, len(daysMap))
+	for day := range daysMap {
+		days = append(days, day)
+	}
+	sort.Ints(days)
+
+	for _, day := range days {
+		entries := daysMap[day]
+		if len(entries) == 1 {
+			fmt.Printf("day %2d: only one room needed: %v", day, entries[0])
+			rooms, err := p.RoomsForSlot(ctx, day, entries[0].slot)
+			if err != nil {
+				log.Error().Err(err).Int("day", day).Int("slot", entries[0].slot).Msg("no rooms for slot found")
+			}
+			room := rooms.NtaRooms[0]
+			fmt.Printf(" -> using %s\n", room.Name)
+
+			exam := examsMap[entries[0].ancode]
+			nta := ntasMap[entries[0].mtknr]
+
+			ntaDuration := int(math.Ceil(float64(exam.ZpaExam.Duration*(100+nta.Nta.DeltaDurationPercent)) / 100))
+
+			plannedRooms = append(plannedRooms, &model.PlannedRoom{
+				Day:               day,
+				Slot:              entries[0].slot,
+				Room:              room,
+				Ancode:            entries[0].ancode,
+				SeatsPlanned:      1,
+				Duration:          ntaDuration,
+				Handicap:          true,
+				HandicapRoomAlone: true,
+				Reserve:           false,
+				Ntas:              []*model.NTA{nta.Nta},
+			})
+		} else {
+			fmt.Printf("day %2d: more than one room needed: %v\n", day, entries)
+			slotsMap := make(map[int][]dayEntry)
+			for _, entry := range entries {
+				slotEntries, ok := slotsMap[entry.slot]
+				if !ok {
+					slotEntries = make([]dayEntry, 0, 1)
+				}
+				slotsMap[entry.slot] = append(slotEntries, entry)
+			}
+
+			slots := make([]int, 0, len(slotsMap))
+			for slot := range slotsMap {
+				slots = append(slots, slot)
+			}
+			sort.Ints(slots)
+
+			prevSlot := -100
+			roomsInPrevSlot := set.NewSet[string]()
+			for _, slot := range slots {
+				roomsInSlot := set.NewSet[string]()
+				if prevSlot+1 < slot {
+					roomsInPrevSlot = set.NewSet[string]()
+				}
+
+				slotEntries := slotsMap[slot]
+				rooms, err := p.RoomsForSlot(ctx, day, slot)
+				if err != nil {
+					log.Error().Err(err).Int("day", day).Int("slot", slotEntries[0].slot).Msg("no rooms for slot found")
+				}
+
+				fmt.Printf("        %d entries in slot %d\n", len(slotEntries), slot)
+
+				for _, slotEntry := range slotEntries {
+					for _, room := range rooms.NtaRooms {
+						if roomsInPrevSlot.Contains(room.Name) || roomsInSlot.Contains(room.Name) {
+							continue
+						}
+						roomsInSlot.Add(room.Name)
+						fmt.Printf("        -> using %s for %v\n", room.Name, slotEntry)
+						exam := examsMap[slotEntry.ancode]
+						nta := ntasMap[slotEntry.mtknr]
+
+						ntaDuration := int(math.Ceil(float64(exam.ZpaExam.Duration*(100+nta.Nta.DeltaDurationPercent)) / 100))
+
+						plannedRooms = append(plannedRooms, &model.PlannedRoom{
+							Day:               day,
+							Slot:              slot,
+							Room:              room,
+							Ancode:            slotEntry.ancode,
+							SeatsPlanned:      1,
+							Duration:          ntaDuration,
+							Handicap:          true,
+							HandicapRoomAlone: true,
+							Reserve:           false,
+							Ntas:              []*model.NTA{nta.Nta},
+						})
+						break
+					}
+				}
+
+				prevSlot = slot
+				roomsInPrevSlot = roomsInSlot
+			}
+		}
+	}
+
+	for _, plannedRoom := range plannedRooms {
+		exam := examsMap[plannedRoom.Ancode]
+		fmt.Printf("[%d/%d] %d. %s (%s), Raum %s für %s (%d Minuten)\n", plannedRoom.Day, plannedRoom.Slot,
+			exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+			plannedRoom.Room.Name, plannedRoom.Ntas[0].Name, plannedRoom.Duration,
+		)
 	}
 	return nil
 }

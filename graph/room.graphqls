@@ -22,6 +22,19 @@ type SlotWithRooms {
   ntaRooms: [Room!]!
 }
 
+type PlannedRoom {
+  room: Room!
+  ancode: Int!
+  seatsPlanned: Int!
+  duration: Int!
+  handicap: Boolean!
+  handicapRoomAlone: Boolean!
+  reserve: Boolean!
+  studentCount: Int!
+  ntas: [NTA!]
+}
+
+# Deprecated: rm me
 type RoomForExam {
   ancode: Int!
   room: Room
@@ -32,6 +45,7 @@ type RoomForExam {
   students: [StudentReg!]!
 }
 
+# Deprecated: rm me
 input RoomForExamInput {
   ancode: Int!
   day: Int!
@@ -43,6 +57,7 @@ input RoomForExamInput {
   mktnrs: [String!]
 }
 
+# Deprecated: rm me
 type RoomAndExam {
   room: RoomForExam!
   exam: ZPAExam!

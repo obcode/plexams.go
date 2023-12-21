@@ -183,6 +183,12 @@ var (
 					os.Exit(1)
 				}
 
+			case "rooms-for-ntas":
+				err := plexams.RoomsForNTAsWithRoomAlone()
+				if err != nil {
+					os.Exit(1)
+				}
+
 			case "rooms-for-exams":
 				err := plexams.PrepareRoomForExams()
 				if err != nil {

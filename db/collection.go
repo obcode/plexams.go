@@ -31,13 +31,13 @@ const (
 
 	collectionPrimussAncodes = "primuss_ancodes"
 
-	collectionExamsInPlan = "exams_in_plan"
+	collectionExamsInPlan = "exams_in_plan" // Deprecated: rm me
 
-	collectionCachedExams    = "cached_exams"
+	collectionCachedExams    = "cached_exams" // ?
 	collectionGeneratedExams = "generated_exams"
 
-	collectionRooms         = "rooms"
-	collectionRoomsPlanned  = "rooms_planned"
+	collectionRooms = "rooms"
+	// collectionRoomsPlanned  = "rooms_planned"
 	collectionRoomsForExams = "rooms_for_exams"
 
 	collectionInvigilatorRequirements = "invigilator_requirements"

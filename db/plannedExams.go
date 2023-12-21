@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// Deprecated: rm me
 func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.ExamInPlan, error) {
 	collection := db.getCollectionSemester(collectionExamsInPlan)
 
@@ -34,6 +35,7 @@ func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.Exam
 	return exams, nil
 }
 
+// TODO: rewrite me
 func (db *DB) PlannedExamsByMainExamer(ctx context.Context, examerID int) ([]*model.ExamInPlan, error) {
 	collection := db.getCollectionSemester(collectionExamsInPlan)
 

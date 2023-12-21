@@ -263,6 +263,78 @@ func (p *Plexams) SendHandicapsMailToMainExamer(ctx context.Context, to []string
 	)
 }
 
+type NTAEmail struct {
+	NTA        *model.Student
+	Exams      []*model.PlannedExam
+	PlanerName string
+}
+
+func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, run bool) error {
+	ntas, err := p.NtasWithRegs(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get ntas")
+		return err
+	}
+	for _, nta := range ntas {
+		if !nta.Nta.NeedsRoomAlone {
+			continue
+		}
+
+		exams := make([]*model.PlannedExam, 0, len(nta.Regs))
+		for _, ancode := range nta.Regs {
+			exam, err := p.PlannedExam(ctx, ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam")
+				return err
+			}
+			if exam.Constraints == nil || !exam.Constraints.NotPlannedByMe {
+				exams = append(exams, exam)
+			}
+		}
+
+		err = p.SendHandicapsMailToStudent(ctx, []string{p.planer.Email}, &NTAEmail{
+			NTA:        nta,
+			Exams:      exams,
+			PlanerName: p.planer.Name,
+		})
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func (p *Plexams) SendHandicapsMailToStudent(ctx context.Context, to []string, handicapsEmail *NTAEmail) error {
+	log.Debug().Interface("to", to).Msg("sending email")
+
+	tmpl, err := template.ParseFiles("tmpl/handicapEmailRoomAlone.tmpl")
+	if err != nil {
+		return err
+	}
+	bufText := new(bytes.Buffer)
+	err = tmpl.Execute(bufText, handicapsEmail)
+	if err != nil {
+		return err
+	}
+
+	tmpl, err = template.ParseFiles("tmpl/handicapEmailRoomAloneHTML.tmpl")
+	if err != nil {
+		return err
+	}
+	bufHTML := new(bytes.Buffer)
+	err = tmpl.Execute(bufHTML, handicapsEmail)
+	if err != nil {
+		return err
+	}
+
+	return p.sendMail(to,
+		fmt.Sprintf("[Prüfungsplanung %s] Eigener Raum für Ihre Prüfung(en)", p.semester),
+		bufText.Bytes(),
+		bufHTML.Bytes(),
+	)
+}
+
 func (p *Plexams) sendMail(to []string, subject string, text []byte, html []byte) error {
 	e := &email.Email{
 		To:      to,

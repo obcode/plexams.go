@@ -8,10 +8,12 @@ import (
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"github.com/theckman/yacspin"
 )
 
 type SlotNumber struct {
@@ -135,7 +137,14 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 		}
 		roomConstraints := viper.Get(fmt.Sprintf("roomConstraints.%s", room.Name))
 		if roomConstraints == nil {
+
+			if room.NeedsRequest {
+				fmt.Printf("%s: no constraints found, but room needs request, ignoring room\n", room.Name)
+				continue
+			}
+
 			fmt.Printf("%s: no constraints found\n", room.Name)
+
 			for _, slot := range p.semesterConfig.Slots {
 				slotNumber := SlotNumber{slot.DayNumber, slot.SlotNumber}
 				slotEntry, ok := roomsForSlots[slotNumber]
@@ -370,6 +379,53 @@ func (p *Plexams) AddRoomToExam(ctx context.Context, input model.RoomForExamInpu
 
 // 	return room, nil
 // }
+
+func (p *Plexams) RoomsForNTAsWithRoomAlone() error {
+	ctx := context.Background()
+	ntas, err := p.NtasWithRegs(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get ntas")
+		return err
+	}
+
+	for _, nta := range ntas {
+		if !nta.Nta.NeedsRoomAlone {
+			continue
+		}
+
+		cfg := yacspin.Config{
+			Frequency: 100 * time.Millisecond,
+			CharSet:   yacspin.CharSets[69],
+			Suffix: aurora.Sprintf(aurora.Cyan(" finding rooms for %s with exams %v"),
+				aurora.Yellow(nta.Name),
+				aurora.Magenta(nta.Regs),
+			),
+			SuffixAutoColon:   true,
+			StopCharacter:     "✓",
+			StopColors:        []string{"fgGreen"},
+			StopFailMessage:   "error",
+			StopFailCharacter: "✗",
+			StopFailColors:    []string{"fgRed"},
+		}
+
+		spinner, err := yacspin.New(cfg)
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot create spinner")
+		}
+		err = spinner.Start()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot start spinner")
+		}
+
+		// TODO: finding rooms
+
+		err = spinner.Stop()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+	}
+	return nil
+}
 
 // TODO: rewrite me.
 func (p *Plexams) PrepareRoomForExams() error {

@@ -133,10 +133,10 @@ type ExamWithRegs struct {
 }
 
 type ExamWithRegsAndRooms struct {
-	Exam       *ExamInPlan    `json:"exam"`
-	NormalRegs []*StudentReg  `json:"normalRegs"`
-	NtaRegs    []*NTAWithRegs `json:"ntaRegs"`
-	Rooms      []*RoomForExam `json:"rooms"`
+	Exam            *PlannedExam   `json:"exam"`
+	NormalRegsMtknr []string       `json:"normalRegsMtknr"`
+	Ntas            []*NTA         `json:"ntas"`
+	Rooms           []*PlannedRoom `json:"rooms"`
 }
 
 type ExamerInPlan struct {
@@ -287,16 +287,16 @@ type PlannedExamWithNta struct {
 }
 
 type PlannedRoom struct {
-	Day               int     `json:"day"`
-	Slot              int     `json:"slot"`
-	RoomName          string  `json:"roomName"`
-	Ancode            int     `json:"ancode"`
-	SeatsPlanned      int     `json:"seatsPlanned"`
-	Duration          int     `json:"duration"`
-	Handicap          bool    `json:"handicap"`
-	HandicapRoomAlone bool    `json:"handicapRoomAlone"`
-	Reserve           bool    `json:"reserve"`
-	NtaMtknr          *string `json:"ntaMtknr,omitempty"`
+	Day               int      `json:"day"`
+	Slot              int      `json:"slot"`
+	RoomName          string   `json:"roomName"`
+	Ancode            int      `json:"ancode"`
+	Duration          int      `json:"duration"`
+	Handicap          bool     `json:"handicap"`
+	HandicapRoomAlone bool     `json:"handicapRoomAlone"`
+	Reserve           bool     `json:"reserve"`
+	StudentsInRoom    []string `json:"studentsInRoom"`
+	NtaMtknr          *string  `json:"ntaMtknr,omitempty"`
 }
 
 type PrimussExamAncode struct {

@@ -27,11 +27,11 @@ type PlannedRoom {
   slot: Int!
   roomName: String!
   ancode: Int!
-  seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!
   handicapRoomAlone: Boolean!
   reserve: Boolean!
+  studentsInRoom: [String!]!
   ntaMtknr: String
 }
 

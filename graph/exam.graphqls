@@ -87,12 +87,11 @@ type ExamInPlan {
   slot: Slot
 }
 
-# Deprecated: remove me
 type ExamWithRegsAndRooms {
-  exam: ExamInPlan!
-  normalRegs: [StudentReg!]!
-  ntaRegs: [NTAWithRegs!]!
-  rooms: [RoomForExam!]!
+  exam: PlannedExam!
+  normalRegsMtknr: [String!]!
+  ntas: [NTA!]!
+  rooms: [PlannedRoom!]!
 }
 
 type ExternalExam {

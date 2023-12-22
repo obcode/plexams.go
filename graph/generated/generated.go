@@ -298,6 +298,7 @@ type ComplexityRoot struct {
 	NTA struct {
 		Compensation         func(childComplexity int) int
 		DeltaDurationPercent func(childComplexity int) int
+		Email                func(childComplexity int) int
 		Exams                func(childComplexity int) int
 		From                 func(childComplexity int) int
 		LastSemester         func(childComplexity int) int
@@ -2007,6 +2008,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.NTA.DeltaDurationPercent(childComplexity), true
+
+	case "NTA.email":
+		if e.complexity.NTA.Email == nil {
+			break
+		}
+
+		return e.complexity.NTA.Email(childComplexity), true
 
 	case "NTA.exams":
 		if e.complexity.NTA.Exams == nil {
@@ -4229,6 +4237,7 @@ type NTAExam {
 
 type NTA {
   name: String!
+  email: String
   mtknr: String!
   compensation: String!
   deltaDurationPercent: Int!
@@ -4242,6 +4251,7 @@ type NTA {
 
 input NTAInput {
   name: String!
+  email: String
   mtknr: String!
   compensation: String!
   deltaDurationPercent: Int!
@@ -7334,6 +7344,8 @@ func (ec *executionContext) fieldContext_EnhancedPrimussExam_ntas(ctx context.Co
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_NTA_name(ctx, field)
+			case "email":
+				return ec.fieldContext_NTA_email(ctx, field)
 			case "mtknr":
 				return ec.fieldContext_NTA_mtknr(ctx, field)
 			case "compensation":
@@ -10418,6 +10430,8 @@ func (ec *executionContext) fieldContext_GeneratedExam_ntas(ctx context.Context,
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_NTA_name(ctx, field)
+			case "email":
+				return ec.fieldContext_NTA_email(ctx, field)
 			case "mtknr":
 				return ec.fieldContext_NTA_mtknr(ctx, field)
 			case "compensation":
@@ -12782,6 +12796,8 @@ func (ec *executionContext) fieldContext_Mutation_addNTA(ctx context.Context, fi
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_NTA_name(ctx, field)
+			case "email":
+				return ec.fieldContext_NTA_email(ctx, field)
 			case "mtknr":
 				return ec.fieldContext_NTA_mtknr(ctx, field)
 			case "compensation":
@@ -13632,6 +13648,47 @@ func (ec *executionContext) fieldContext_NTA_name(ctx context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _NTA_email(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_email(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Email, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_email(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _NTA_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_NTA_mtknr(ctx, field)
 	if err != nil {
@@ -14252,6 +14309,8 @@ func (ec *executionContext) fieldContext_NTAWithRegs_nta(ctx context.Context, fi
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_NTA_name(ctx, field)
+			case "email":
+				return ec.fieldContext_NTA_email(ctx, field)
 			case "mtknr":
 				return ec.fieldContext_NTA_mtknr(ctx, field)
 			case "compensation":
@@ -15240,6 +15299,8 @@ func (ec *executionContext) fieldContext_PlannedExam_ntas(ctx context.Context, f
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_NTA_name(ctx, field)
+			case "email":
+				return ec.fieldContext_NTA_email(ctx, field)
 			case "mtknr":
 				return ec.fieldContext_NTA_mtknr(ctx, field)
 			case "compensation":
@@ -19166,6 +19227,8 @@ func (ec *executionContext) fieldContext_Query_ntas(ctx context.Context, field g
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_NTA_name(ctx, field)
+			case "email":
+				return ec.fieldContext_NTA_email(ctx, field)
 			case "mtknr":
 				return ec.fieldContext_NTA_mtknr(ctx, field)
 			case "compensation":
@@ -23537,6 +23600,8 @@ func (ec *executionContext) fieldContext_Student_nta(ctx context.Context, field 
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_NTA_name(ctx, field)
+			case "email":
+				return ec.fieldContext_NTA_email(ctx, field)
 			case "mtknr":
 				return ec.fieldContext_NTA_mtknr(ctx, field)
 			case "compensation":
@@ -27933,7 +27998,7 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "mtknr", "compensation", "deltaDurationPercent", "needsRoomAlone", "program", "from", "until"}
+	fieldsInOrder := [...]string{"name", "email", "mtknr", "compensation", "deltaDurationPercent", "needsRoomAlone", "program", "from", "until"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -27949,6 +28014,15 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 				return it, err
 			}
 			it.Name = data
+		case "email":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Email = data
 		case "mtknr":
 			var err error
 
@@ -29938,6 +30012,8 @@ func (ec *executionContext) _NTA(ctx context.Context, sel ast.SelectionSet, obj 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "email":
+			out.Values[i] = ec._NTA_email(ctx, field, obj)
 		case "mtknr":
 			out.Values[i] = ec._NTA_mtknr(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

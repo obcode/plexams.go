@@ -64,6 +64,33 @@ func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return ntas, nil
 }
 
+func (db *DB) SetSemesterOnNTAs(ctx context.Context, studentRegs []interface{}) error {
+	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+
+	for _, regRaw := range studentRegs {
+		reg := regRaw.(*model.Student)
+		if reg.Nta == nil {
+			continue
+		}
+
+		res := collection.FindOneAndUpdate(ctx, bson.D{{Key: "mtknr", Value: reg.Mtknr}},
+			bson.M{"$set": bson.M{"lastSemester": db.semester}})
+
+		if res.Err() != nil {
+			if res.Err() == mongo.ErrNoDocuments {
+				log.Error().Err(res.Err()).Str("mtknr", reg.Mtknr).Msg("nta with mtknr not found")
+			} else {
+				log.Error().Err(res.Err()).Str("mtknr", reg.Mtknr).Msg("error when setting semester on nta")
+				return res.Err()
+			}
+		} else {
+			log.Debug().Str("mtknr", reg.Mtknr).Str("last semester", db.semester).Msg("last semester set on nta")
+		}
+	}
+
+	return nil
+}
+
 func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned)
 

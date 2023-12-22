@@ -229,14 +229,15 @@ type InvigilatorsForDay struct {
 }
 
 type NTAInput struct {
-	Name                 string `json:"name"`
-	Mtknr                string `json:"mtknr"`
-	Compensation         string `json:"compensation"`
-	DeltaDurationPercent int    `json:"deltaDurationPercent"`
-	NeedsRoomAlone       bool   `json:"needsRoomAlone"`
-	Program              string `json:"program"`
-	From                 string `json:"from"`
-	Until                string `json:"until"`
+	Name                 string  `json:"name"`
+	Email                *string `json:"email,omitempty"`
+	Mtknr                string  `json:"mtknr"`
+	Compensation         string  `json:"compensation"`
+	DeltaDurationPercent int     `json:"deltaDurationPercent"`
+	NeedsRoomAlone       bool    `json:"needsRoomAlone"`
+	Program              string  `json:"program"`
+	From                 string  `json:"from"`
+	Until                string  `json:"until"`
 }
 
 type NTAWithRegs struct {

@@ -124,6 +124,11 @@ func (p *Plexams) PrepareStudentRegs() error {
 		}
 	}
 
+	err = p.dbClient.SetSemesterOnNTAs(ctx, studentRegsSlice)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot set last semester on ntas")
+	}
+
 	return p.dbClient.SaveStudentRegs(ctx, studentRegsSlice)
 }
 

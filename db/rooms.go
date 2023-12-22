@@ -190,3 +190,30 @@ func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {
 
 	return names, nil
 }
+
+func (db *DB) ReplaceRoomsForNTA(ctx context.Context, plannedRooms []*model.PlannedRoom) error {
+	collection := db.getCollectionSemester(collectionRoomsPlanned)
+
+	for _, room := range plannedRooms {
+		log.Debug().Int("day", room.Day).Int("slot", room.Slot).Int("ancode", room.Ancode).
+			Msg("replacing room")
+
+		filter := bson.M{
+			"$and": []bson.M{
+				{"ancode": room.Ancode},
+				{"ntamtknr": room.NtaMtknr},
+			},
+		}
+		opts := options.Replace().SetUpsert(true)
+
+		_, err := collection.ReplaceOne(ctx, filter, room, opts)
+
+		if err != nil {
+			log.Error().Err(err).Int("day", room.Day).Int("slot", room.Slot).Int("ancode", room.Ancode).
+				Msg("cannot replace room")
+			return err
+		}
+	}
+
+	return nil
+}

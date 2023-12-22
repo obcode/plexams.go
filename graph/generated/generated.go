@@ -367,9 +367,9 @@ type ComplexityRoot struct {
 		Duration          func(childComplexity int) int
 		Handicap          func(childComplexity int) int
 		HandicapRoomAlone func(childComplexity int) int
-		Ntas              func(childComplexity int) int
+		NtaMtknr          func(childComplexity int) int
 		Reserve           func(childComplexity int) int
-		Room              func(childComplexity int) int
+		RoomName          func(childComplexity int) int
 		SeatsPlanned      func(childComplexity int) int
 		Slot              func(childComplexity int) int
 	}
@@ -2302,12 +2302,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PlannedRoom.HandicapRoomAlone(childComplexity), true
 
-	case "PlannedRoom.ntas":
-		if e.complexity.PlannedRoom.Ntas == nil {
+	case "PlannedRoom.ntaMtknr":
+		if e.complexity.PlannedRoom.NtaMtknr == nil {
 			break
 		}
 
-		return e.complexity.PlannedRoom.Ntas(childComplexity), true
+		return e.complexity.PlannedRoom.NtaMtknr(childComplexity), true
 
 	case "PlannedRoom.reserve":
 		if e.complexity.PlannedRoom.Reserve == nil {
@@ -2316,12 +2316,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PlannedRoom.Reserve(childComplexity), true
 
-	case "PlannedRoom.room":
-		if e.complexity.PlannedRoom.Room == nil {
+	case "PlannedRoom.roomName":
+		if e.complexity.PlannedRoom.RoomName == nil {
 			break
 		}
 
-		return e.complexity.PlannedRoom.Room(childComplexity), true
+		return e.complexity.PlannedRoom.RoomName(childComplexity), true
 
 	case "PlannedRoom.seatsPlanned":
 		if e.complexity.PlannedRoom.SeatsPlanned == nil {
@@ -4513,15 +4513,14 @@ type SlotWithRooms {
 type PlannedRoom {
   day: Int!
   slot: Int!
-  room: Room!
+  roomName: String!
   ancode: Int!
   seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!
   handicapRoomAlone: Boolean!
   reserve: Boolean!
-  # studentCount: Int!
-  ntas: [NTA!]
+  ntaMtknr: String
 }
 
 # Deprecated: rm me
@@ -15617,8 +15616,8 @@ func (ec *executionContext) fieldContext_PlannedRoom_slot(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _PlannedRoom_room(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PlannedRoom_room(ctx, field)
+func (ec *executionContext) _PlannedRoom_roomName(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannedRoom_roomName(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -15631,7 +15630,7 @@ func (ec *executionContext) _PlannedRoom_room(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Room, nil
+		return obj.RoomName, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15643,37 +15642,19 @@ func (ec *executionContext) _PlannedRoom_room(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.Room)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoom(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PlannedRoom_room(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PlannedRoom_roomName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PlannedRoom",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_Room_name(ctx, field)
-			case "seats":
-				return ec.fieldContext_Room_seats(ctx, field)
-			case "handicap":
-				return ec.fieldContext_Room_handicap(ctx, field)
-			case "lab":
-				return ec.fieldContext_Room_lab(ctx, field)
-			case "placesWithSocket":
-				return ec.fieldContext_Room_placesWithSocket(ctx, field)
-			case "needsRequest":
-				return ec.fieldContext_Room_needsRequest(ctx, field)
-			case "exahm":
-				return ec.fieldContext_Room_exahm(ctx, field)
-			case "seb":
-				return ec.fieldContext_Room_seb(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -15943,8 +15924,8 @@ func (ec *executionContext) fieldContext_PlannedRoom_reserve(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _PlannedRoom_ntas(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PlannedRoom_ntas(ctx, field)
+func (ec *executionContext) _PlannedRoom_ntaMtknr(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannedRoom_ntaMtknr(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -15957,7 +15938,7 @@ func (ec *executionContext) _PlannedRoom_ntas(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ntas, nil
+		return obj.NtaMtknr, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15966,41 +15947,19 @@ func (ec *executionContext) _PlannedRoom_ntas(ctx context.Context, field graphql
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*model.NTA)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalONTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PlannedRoom_ntas(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PlannedRoom_ntaMtknr(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PlannedRoom",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_NTA_name(ctx, field)
-			case "mtknr":
-				return ec.fieldContext_NTA_mtknr(ctx, field)
-			case "compensation":
-				return ec.fieldContext_NTA_compensation(ctx, field)
-			case "deltaDurationPercent":
-				return ec.fieldContext_NTA_deltaDurationPercent(ctx, field)
-			case "needsRoomAlone":
-				return ec.fieldContext_NTA_needsRoomAlone(ctx, field)
-			case "program":
-				return ec.fieldContext_NTA_program(ctx, field)
-			case "from":
-				return ec.fieldContext_NTA_from(ctx, field)
-			case "until":
-				return ec.fieldContext_NTA_until(ctx, field)
-			case "lastSemester":
-				return ec.fieldContext_NTA_lastSemester(ctx, field)
-			case "exams":
-				return ec.fieldContext_NTA_exams(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30455,8 +30414,8 @@ func (ec *executionContext) _PlannedRoom(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "room":
-			out.Values[i] = ec._PlannedRoom_room(ctx, field, obj)
+		case "roomName":
+			out.Values[i] = ec._PlannedRoom_roomName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -30490,8 +30449,8 @@ func (ec *executionContext) _PlannedRoom(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "ntas":
-			out.Values[i] = ec._PlannedRoom_ntas(ctx, field, obj)
+		case "ntaMtknr":
+			out.Values[i] = ec._PlannedRoom_ntaMtknr(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

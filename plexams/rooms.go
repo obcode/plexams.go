@@ -489,14 +489,14 @@ func (p *Plexams) RoomsForNTAsWithRoomAlone() error {
 			plannedRooms = append(plannedRooms, &model.PlannedRoom{
 				Day:               day,
 				Slot:              entries[0].slot,
-				Room:              room,
+				RoomName:          room.Name,
 				Ancode:            entries[0].ancode,
 				SeatsPlanned:      1,
 				Duration:          ntaDuration,
 				Handicap:          true,
 				HandicapRoomAlone: true,
 				Reserve:           false,
-				Ntas:              []*model.NTA{nta.Nta},
+				NtaMtknr:          &nta.Nta.Mtknr,
 			})
 		} else {
 			fmt.Printf("day %2d: more than one room needed: %v\n", day, entries)
@@ -546,14 +546,14 @@ func (p *Plexams) RoomsForNTAsWithRoomAlone() error {
 						plannedRooms = append(plannedRooms, &model.PlannedRoom{
 							Day:               day,
 							Slot:              slot,
-							Room:              room,
+							RoomName:          room.Name,
 							Ancode:            slotEntry.ancode,
 							SeatsPlanned:      1,
 							Duration:          ntaDuration,
 							Handicap:          true,
 							HandicapRoomAlone: true,
 							Reserve:           false,
-							Ntas:              []*model.NTA{nta.Nta},
+							NtaMtknr:          &nta.Nta.Mtknr,
 						})
 						break
 					}
@@ -567,12 +567,12 @@ func (p *Plexams) RoomsForNTAsWithRoomAlone() error {
 
 	for _, plannedRoom := range plannedRooms {
 		exam := examsMap[plannedRoom.Ancode]
-		fmt.Printf("[%d/%d] %d. %s (%s), Raum %s für %s (%d Minuten)\n", plannedRoom.Day, plannedRoom.Slot,
+		fmt.Printf("(%d/%d) %d. %s (%s), Raum %s für %s (%d Minuten)\n", plannedRoom.Day, plannedRoom.Slot,
 			exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-			plannedRoom.Room.Name, plannedRoom.Ntas[0].Name, plannedRoom.Duration,
+			plannedRoom.RoomName, ntasMap[*plannedRoom.NtaMtknr].Name, plannedRoom.Duration,
 		)
 	}
-	return nil
+	return p.dbClient.ReplaceRoomsForNTA(ctx, plannedRooms)
 }
 
 // TODO: rewrite me.

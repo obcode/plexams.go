@@ -25,14 +25,14 @@ type SlotWithRooms {
 type PlannedRoom {
   day: Int!
   slot: Int!
-  room: Room!
+  roomName: String!
   ancode: Int!
   seatsPlanned: Int!
   duration: Int!
   handicap: Boolean!
   handicapRoomAlone: Boolean!
   reserve: Boolean!
-  ntas: [NTA!]
+  ntaMtknr: String
 }
 
 # Deprecated: rm me

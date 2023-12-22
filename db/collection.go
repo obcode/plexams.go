@@ -36,9 +36,9 @@ const (
 	collectionCachedExams    = "cached_exams" // ?
 	collectionGeneratedExams = "generated_exams"
 
-	collectionRooms = "rooms"
-	// collectionRoomsPlanned  = "rooms_planned"
-	collectionRoomsForExams = "rooms_for_exams"
+	collectionRooms         = "rooms"
+	collectionRoomsPlanned  = "rooms_planned"
+	collectionRoomsForExams = "rooms_for_exams" // Deprecated: ?
 
 	collectionInvigilatorRequirements = "invigilator_requirements"
 	collectionOtherInvigilations      = "invigilations_other"

@@ -25,6 +25,12 @@ func (p *Plexams) PlannedExam(ctx context.Context, ancode int) (*model.PlannedEx
 		return nil, err
 	}
 
+	plannedRooms, err := p.dbClient.PlannedRoomsForAncode(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get planned rooms for ancode")
+		return nil, err
+	}
+
 	return &model.PlannedExam{
 		Ancode:           exam.Ancode,
 		ZpaExam:          exam.ZpaExam,
@@ -35,6 +41,7 @@ func (p *Plexams) PlannedExam(ctx context.Context, ancode int) (*model.PlannedEx
 		Ntas:             exam.Ntas,
 		MaxDuration:      exam.MaxDuration,
 		PlanEntry:        planEntry,
+		PlannedRooms:     plannedRooms,
 	}, err
 }
 

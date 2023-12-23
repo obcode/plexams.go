@@ -278,6 +278,7 @@ type PlannedExam struct {
 	Ntas             []*NTA                 `json:"ntas"`
 	MaxDuration      int                    `json:"maxDuration"`
 	PlanEntry        *PlanEntry             `json:"planEntry,omitempty"`
+	PlannedRooms     []*PlannedRoom         `json:"plannedRooms,omitempty"`
 }
 
 type PlannedExamWithNta struct {

@@ -85,6 +85,13 @@ func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.P
 			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
 			return nil, err
 		}
+
+		rooms, err := db.PlannedRoomsForAncode(ctx, planEntry.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get rooms")
+			return nil, err
+		}
+
 		exams = append(exams, &model.PlannedExam{
 			Ancode:           exam.Ancode,
 			ZpaExam:          exam.ZpaExam,
@@ -95,6 +102,7 @@ func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.P
 			Ntas:             exam.Ntas,
 			MaxDuration:      exam.MaxDuration,
 			PlanEntry:        planEntry,
+			PlannedRooms:     rooms,
 		})
 	}
 

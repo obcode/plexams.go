@@ -6,14 +6,54 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// Room is the resolver for the room field.
+func (r *enhancedPlannedRoomResolver) Room(ctx context.Context, obj *model.EnhancedPlannedRoom) (*model.Room, error) {
+	if obj == nil {
+		return nil, fmt.Errorf("error enhanced planned room not available")
+	}
+	return r.plexams.RoomFromName(ctx, obj.RoomName)
+}
+
+// Exam is the resolver for the exam field.
+func (r *enhancedPlannedRoomResolver) Exam(ctx context.Context, obj *model.EnhancedPlannedRoom) (*model.GeneratedExam, error) {
+	if obj == nil {
+		return nil, fmt.Errorf("error enhanced planned room not available")
+	}
+	return r.plexams.GeneratedExam(ctx, obj.Ancode)
+}
+
+// NtaInRoom is the resolver for the ntaInRoom field.
+func (r *enhancedPlannedRoomResolver) NtaInRoom(ctx context.Context, obj *model.EnhancedPlannedRoom) (*model.NTA, error) {
+	if obj == nil {
+		return nil, fmt.Errorf("error enhanced planned room not available")
+	}
+	return r.plexams.NtaByMtknr(ctx, *obj.NtaMtknr)
+}
+
 // Rooms is the resolver for the rooms field.
 func (r *queryResolver) Rooms(ctx context.Context) ([]*model.Room, error) {
 	return r.plexams.Rooms(ctx)
+}
+
+// PlannedRoomNames is the resolver for the plannedRoomNames field.
+func (r *queryResolver) PlannedRoomNames(ctx context.Context) ([]string, error) {
+	return r.plexams.PlannedRoomNames(ctx)
+}
+
+// PlannedRoomNamesInSlot is the resolver for the plannedRoomNamesInSlot field.
+func (r *queryResolver) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
+	return r.plexams.PlannedRoomNamesInSlot(ctx, day, time)
+}
+
+// PlannedRoomsInSlot is the resolver for the plannedRoomsInSlot field.
+func (r *queryResolver) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.EnhancedPlannedRoom, error) {
+	return r.plexams.PlannedRoomsInSlot(ctx, day, time)
 }
 
 // Room is the resolver for the room field.
@@ -21,7 +61,13 @@ func (r *roomForExamResolver) Room(ctx context.Context, obj *model.RoomForExam) 
 	return r.plexams.Room(ctx, obj)
 }
 
+// EnhancedPlannedRoom returns generated.EnhancedPlannedRoomResolver implementation.
+func (r *Resolver) EnhancedPlannedRoom() generated.EnhancedPlannedRoomResolver {
+	return &enhancedPlannedRoomResolver{r}
+}
+
 // RoomForExam returns generated.RoomForExamResolver implementation.
 func (r *Resolver) RoomForExam() generated.RoomForExamResolver { return &roomForExamResolver{r} }
 
+type enhancedPlannedRoomResolver struct{ *Resolver }
 type roomForExamResolver struct{ *Resolver }

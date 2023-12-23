@@ -960,34 +960,38 @@ func (p *Plexams) PlannedRoomNames(ctx context.Context) ([]string, error) {
 }
 
 // TODO: rewrite me
-func (p *Plexams) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.RoomForExam, error) {
-	// exams, err := p.ExamsInSlotWithRooms(ctx, day, time)
-	// if err != nil {
-	// 	log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get exams in slot")
-	// }
-
-	// rooms := make([]*model.RoomForExam, 0)
-	// for _, exam := range exams {
-	// 	rooms = append(rooms, exam.Rooms...)
-	// }
-
-	// return rooms, nil
-	return nil, nil
-}
-
-func (p *Plexams) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
-	exams, err := p.ExamsInSlotWithRooms(ctx, day, time)
+func (p *Plexams) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.EnhancedPlannedRoom, error) {
+	rooms, err := p.dbClient.PlannedRoomsInSlot(ctx, day, time)
 	if err != nil {
 		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get exams in slot")
 	}
 
-	roomNamesSet := set.NewSet[string]()
-	for _, exam := range exams {
-		for _, room := range exam.Rooms {
-			roomNamesSet.Add(room.RoomName)
-		}
+	return enhancePlannedRooms(rooms), nil
+}
+
+func enhancePlannedRooms(plannedRooms []*model.PlannedRoom) []*model.EnhancedPlannedRoom {
+	enhancedPlannedRooms := make([]*model.EnhancedPlannedRoom, 0, len(plannedRooms))
+	for _, room := range plannedRooms {
+		enhancedPlannedRooms = append(enhancedPlannedRooms, &model.EnhancedPlannedRoom{
+			Day:               room.Day,
+			Slot:              room.Ancode,
+			RoomName:          room.RoomName,
+			Ancode:            room.Ancode,
+			Duration:          room.Duration,
+			Handicap:          room.Handicap,
+			HandicapRoomAlone: room.HandicapRoomAlone,
+			Reserve:           room.Reserve,
+			StudentsInRoom:    room.StudentsInRoom,
+			NtaMtknr:          room.NtaMtknr,
+		})
 	}
-	roomNames := roomNamesSet.ToSlice()
-	sort.Strings(roomNames)
-	return roomNames, nil
+	return enhancedPlannedRooms
+}
+
+func (p *Plexams) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
+	return p.dbClient.PlannedRoomNamesInSlot(ctx, day, time)
+}
+
+func (p *Plexams) RoomFromName(ctx context.Context, roomName string) (*model.Room, error) {
+	return p.dbClient.RoomFromName(ctx, roomName)
 }

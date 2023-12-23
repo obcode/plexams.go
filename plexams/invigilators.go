@@ -413,77 +413,79 @@ func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilati
 	return invigilations, nil
 }
 
+// TODO: rewrite me
 func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error) {
-	rooms, err := p.PlannedRoomsInSlot(ctx, day, time)
-	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("time", time).
-			Msg("cannot get rooms for slot")
-		return nil, err
-	}
+	// rooms, err := p.PlannedRoomsInSlot(ctx, day, time)
+	// if err != nil {
+	// 	log.Error().Err(err).Int("day", day).Int("time", time).
+	// 		Msg("cannot get rooms for slot")
+	// 	return nil, err
+	// }
 
-	reserve, err := p.dbClient.GetInvigilatorInSlot(ctx, "reserve", day, time)
-	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("time", time).
-			Msg("cannot get reserve for slot")
-		return nil, err
-	}
+	// reserve, err := p.dbClient.GetInvigilatorInSlot(ctx, "reserve", day, time)
+	// if err != nil {
+	// 	log.Error().Err(err).Int("day", day).Int("time", time).
+	// 		Msg("cannot get reserve for slot")
+	// 	return nil, err
+	// }
 
-	slot := &model.InvigilationSlot{
-		Reserve:               reserve,
-		RoomsWithInvigilators: []*model.RoomWithInvigilator{},
-	}
+	// slot := &model.InvigilationSlot{
+	// 	Reserve:               reserve,
+	// 	RoomsWithInvigilators: []*model.RoomWithInvigilator{},
+	// }
 
-	roomMap := make(map[string][]*model.RoomForExam)
+	// roomMap := make(map[string][]*model.RoomForExam)
 
-	for _, room := range rooms {
-		roomsForExam, ok := roomMap[room.RoomName]
-		if !ok {
-			roomsForExam = make([]*model.RoomForExam, 0, 1)
-		}
-		roomMap[room.RoomName] = append(roomsForExam, room)
-	}
+	// for _, room := range rooms {
+	// 	roomsForExam, ok := roomMap[room.RoomName]
+	// 	if !ok {
+	// 		roomsForExam = make([]*model.RoomForExam, 0, 1)
+	// 	}
+	// 	roomMap[room.RoomName] = append(roomsForExam, room)
+	// }
 
-	keys := make([]string, 0, len(roomMap))
-	for k := range roomMap {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	// keys := make([]string, 0, len(roomMap))
+	// for k := range roomMap {
+	// 	keys = append(keys, k)
+	// }
+	// sort.Strings(keys)
 
-	for _, name := range keys {
-		roomsForExam := roomMap[name]
-		invigilator, err := p.dbClient.GetInvigilatorForRoom(ctx, name, day, time)
-		if err != nil {
-			log.Error().Err(err).Int("day", day).Int("slot", time).Str("room", name).
-				Msg("cannot get invigilator for rooms in slot")
-		}
+	// for _, name := range keys {
+	// 	roomsForExam := roomMap[name]
+	// 	invigilator, err := p.dbClient.GetInvigilatorForRoom(ctx, name, day, time)
+	// 	if err != nil {
+	// 		log.Error().Err(err).Int("day", day).Int("slot", time).Str("room", name).
+	// 			Msg("cannot get invigilator for rooms in slot")
+	// 	}
 
-		roomAndExams := make([]*model.RoomAndExam, 0)
-		maxDuration := 0
-		studentCount := 0
-		for _, roomForExam := range roomsForExam {
-			exam, err := p.dbClient.GetZpaExamByAncode(ctx, roomForExam.Ancode)
-			if err != nil {
-				log.Error().Err(err).Int("ancode", roomForExam.Ancode).
-					Msg("cannot get zpa exam")
-				return nil, err
-			}
-			roomAndExams = append(roomAndExams, &model.RoomAndExam{
-				Room: roomForExam,
-				Exam: exam,
-			})
-			if roomForExam.Duration > maxDuration {
-				maxDuration = roomForExam.Duration
-			}
-			studentCount += roomForExam.SeatsPlanned
-		}
+	// 	roomAndExams := make([]*model.RoomAndExam, 0)
+	// 	maxDuration := 0
+	// 	studentCount := 0
+	// 	for _, roomForExam := range roomsForExam {
+	// 		exam, err := p.dbClient.GetZpaExamByAncode(ctx, roomForExam.Ancode)
+	// 		if err != nil {
+	// 			log.Error().Err(err).Int("ancode", roomForExam.Ancode).
+	// 				Msg("cannot get zpa exam")
+	// 			return nil, err
+	// 		}
+	// 		roomAndExams = append(roomAndExams, &model.RoomAndExam{
+	// 			Room: roomForExam,
+	// 			Exam: exam,
+	// 		})
+	// 		if roomForExam.Duration > maxDuration {
+	// 			maxDuration = roomForExam.Duration
+	// 		}
+	// 		studentCount += roomForExam.SeatsPlanned
+	// 	}
 
-		slot.RoomsWithInvigilators = append(slot.RoomsWithInvigilators, &model.RoomWithInvigilator{
-			Name:         name,
-			MaxDuration:  maxDuration,
-			StudentCount: studentCount,
-			RoomAndExams: roomAndExams,
-			Invigilator:  invigilator,
-		})
-	}
-	return slot, nil
+	// 	slot.RoomsWithInvigilators = append(slot.RoomsWithInvigilators, &model.RoomWithInvigilator{
+	// 		Name:         name,
+	// 		MaxDuration:  maxDuration,
+	// 		StudentCount: studentCount,
+	// 		RoomAndExams: roomAndExams,
+	// 		Invigilator:  invigilator,
+	// 	})
+	// }
+	// return slot, nil
+	return nil, nil
 }

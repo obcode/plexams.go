@@ -2,12 +2,39 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+func (db *DB) RoomFromName(ctx context.Context, roomName string) (*model.Room, error) {
+	collection := db.Client.Database("plexams").Collection(collectionRooms)
+
+	res := collection.FindOne(ctx, bson.M{"name": roomName})
+	if res.Err() != nil {
+		if res.Err() == mongo.ErrNoDocuments {
+			return nil, fmt.Errorf("cannot find room %s", roomName)
+		}
+		log.Error().Err(res.Err()).Str("room", roomName).Str("collection", collectionRooms).
+			Msg("cannot find room")
+		return nil, res.Err()
+	}
+
+	var room model.Room
+	err := res.Decode(&room)
+	if err != nil {
+		log.Error().Err(res.Err()).Str("room", roomName).Str("collection", collectionRooms).
+			Msg("cannot decode room")
+
+		return nil, err
+	}
+
+	return &room, nil
+}
 
 func (db *DB) Rooms(ctx context.Context) ([]*model.Room, error) {
 	collection := db.Client.Database("plexams").Collection(collectionRooms)
@@ -172,7 +199,7 @@ func (db *DB) ChangeRoom(ctx context.Context, ancode int, oldRoom, newRoom *mode
 }
 
 func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {
-	collection := db.getCollectionSemester(collectionRoomsForExams)
+	collection := db.getCollectionSemester(collectionRoomsPlanned)
 
 	rawNames, err := collection.Distinct(ctx, "roomname", bson.D{})
 	if err != nil {
@@ -189,6 +216,71 @@ func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	}
 
 	return names, nil
+}
+
+func (db *DB) PlannedRoomNamesInSlot(ctx context.Context, day, slot int) ([]string, error) {
+	collection := db.getCollectionSemester(collectionRoomsPlanned)
+
+	filter := bson.M{"day": day, "slot": slot}
+
+	rawNames, err := collection.Distinct(ctx, "roomname", filter)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot find roomnames for slot")
+		return nil, err
+	}
+
+	names := make([]string, 0, len(rawNames))
+	for _, rawName := range rawNames {
+		name, ok := rawName.(string)
+		if !ok {
+			log.Debug().Interface("raw name", rawName).Msg("cannot convert to string")
+		}
+		names = append(names, name)
+	}
+
+	return names, nil
+}
+
+func (db *DB) PlannedRoomsInSlot(ctx context.Context, day, slot int) ([]*model.PlannedRoom, error) {
+	collection := db.getCollectionSemester(collectionRoomsPlanned)
+
+	filter := bson.M{"day": day, "slot": slot}
+
+	cur, err := collection.Find(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot find rooms for slot")
+		return nil, err
+	}
+
+	plannedRooms := make([]*model.PlannedRoom, 0)
+	err = cur.All(ctx, &plannedRooms)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot decode rooms for slot")
+		return nil, err
+	}
+
+	return plannedRooms, nil
+}
+
+func (db *DB) PlannedRoomsForAncode(ctx context.Context, ancode int) ([]*model.PlannedRoom, error) {
+	collection := db.getCollectionSemester(collectionRoomsPlanned)
+
+	filter := bson.M{"ancode": ancode}
+
+	cur, err := collection.Find(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot find rooms for ancode")
+		return nil, err
+	}
+
+	plannedRooms := make([]*model.PlannedRoom, 0)
+	err = cur.All(ctx, &plannedRooms)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot decode rooms for ancode")
+		return nil, err
+	}
+
+	return plannedRooms, nil
 }
 
 func (db *DB) ReplaceRoomsForNTA(ctx context.Context, plannedRooms []*model.PlannedRoom) error {

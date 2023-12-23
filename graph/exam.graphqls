@@ -136,6 +136,7 @@ type PlannedExam {
   ntas: [NTA!]!
   maxDuration: Int!
   planEntry: PlanEntry
+  plannedRooms: [PlannedRoom!]
 }
 
 type Exam {

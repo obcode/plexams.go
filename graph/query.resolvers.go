@@ -127,16 +127,6 @@ func (r *queryResolver) RoomsForSlot(ctx context.Context, day int, time int) (*m
 	return r.plexams.RoomsForSlot(ctx, day, time)
 }
 
-// PlannedRoomNames is the resolver for the plannedRoomNames field.
-func (r *queryResolver) PlannedRoomNames(ctx context.Context) ([]string, error) {
-	return r.plexams.PlannedRoomNames(ctx)
-}
-
-// PlannedRoomNamesInSlot is the resolver for the plannedRoomNamesInSlot field.
-func (r *queryResolver) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
-	return r.plexams.PlannedRoomNamesInSlot(ctx, day, time)
-}
-
 // InvigilatorsWithReq is the resolver for the invigilatorsWithReq field.
 func (r *queryResolver) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error) {
 	return r.plexams.InvigilatorsWithReq(ctx)

@@ -578,7 +578,7 @@ func (p *Plexams) RoomsForNTAsWithRoomAlone() error {
 func (p *Plexams) PrepareRoomForExams() error {
 	ctx := context.Background()
 
-	examRooms := make([]interface{}, 0)
+	examRooms := make([]*model.PlannedRoom, 0)
 
 	// only if room is needed more than 100 Minutes
 	roomsNotUsableInSlot := set.NewSet[string]()
@@ -890,7 +890,7 @@ func (p *Plexams) PrepareRoomForExams() error {
 	// 	return err
 	// }
 
-	return nil
+	return p.dbClient.ReplaceNonNTARooms(ctx, examRooms)
 }
 
 func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRoomName string) (bool, error) {

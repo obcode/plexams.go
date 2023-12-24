@@ -309,3 +309,27 @@ func (db *DB) ReplaceRoomsForNTA(ctx context.Context, plannedRooms []*model.Plan
 
 	return nil
 }
+
+func (db *DB) ReplaceNonNTARooms(ctx context.Context, plannedRooms []*model.PlannedRoom) error {
+	collection := db.getCollectionSemester(collectionRoomsPlanned)
+
+	_, err := collection.DeleteMany(ctx, bson.M{"handicaproomalone": false})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot delete non NTA rooms")
+		return err
+	}
+
+	roomsInterface := make([]interface{}, 0, len(plannedRooms))
+
+	for _, room := range plannedRooms {
+		roomsInterface = append(roomsInterface, room)
+	}
+
+	_, err = collection.InsertMany(ctx, roomsInterface)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot insert non NTA rooms")
+		return err
+	}
+
+	return nil
+}

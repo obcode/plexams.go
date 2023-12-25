@@ -290,7 +290,7 @@ type PlannedExamWithNta struct {
 type PlannedRoom struct {
 	Day               int      `json:"day"`
 	Slot              int      `json:"slot"`
-	RoomName          string   `json:"roomName"`
+	Room              *Room    `json:"room"`
 	Ancode            int      `json:"ancode"`
 	Duration          int      `json:"duration"`
 	Handicap          bool     `json:"handicap"`

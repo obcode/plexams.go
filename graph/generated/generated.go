@@ -388,7 +388,7 @@ type ComplexityRoot struct {
 		HandicapRoomAlone func(childComplexity int) int
 		NtaMtknr          func(childComplexity int) int
 		Reserve           func(childComplexity int) int
-		RoomName          func(childComplexity int) int
+		Room              func(childComplexity int) int
 		Slot              func(childComplexity int) int
 		StudentsInRoom    func(childComplexity int) int
 	}
@@ -2449,12 +2449,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PlannedRoom.Reserve(childComplexity), true
 
-	case "PlannedRoom.roomName":
-		if e.complexity.PlannedRoom.RoomName == nil {
+	case "PlannedRoom.room":
+		if e.complexity.PlannedRoom.Room == nil {
 			break
 		}
 
-		return e.complexity.PlannedRoom.RoomName(childComplexity), true
+		return e.complexity.PlannedRoom.Room(childComplexity), true
 
 	case "PlannedRoom.slot":
 		if e.complexity.PlannedRoom.Slot == nil {
@@ -4662,7 +4662,7 @@ type SlotWithRooms {
 type PlannedRoom {
   day: Int!
   slot: Int!
-  roomName: String!
+  room: Room!
   ancode: Int!
   duration: Int!
   handicap: Boolean!
@@ -10516,8 +10516,8 @@ func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_rooms(ctx context.
 				return ec.fieldContext_PlannedRoom_day(ctx, field)
 			case "slot":
 				return ec.fieldContext_PlannedRoom_slot(ctx, field)
-			case "roomName":
-				return ec.fieldContext_PlannedRoom_roomName(ctx, field)
+			case "room":
+				return ec.fieldContext_PlannedRoom_room(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlannedRoom_ancode(ctx, field)
 			case "duration":
@@ -16290,8 +16290,8 @@ func (ec *executionContext) fieldContext_PlannedExam_plannedRooms(ctx context.Co
 				return ec.fieldContext_PlannedRoom_day(ctx, field)
 			case "slot":
 				return ec.fieldContext_PlannedRoom_slot(ctx, field)
-			case "roomName":
-				return ec.fieldContext_PlannedRoom_roomName(ctx, field)
+			case "room":
+				return ec.fieldContext_PlannedRoom_room(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlannedRoom_ancode(ctx, field)
 			case "duration":
@@ -16567,8 +16567,8 @@ func (ec *executionContext) fieldContext_PlannedRoom_slot(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _PlannedRoom_roomName(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PlannedRoom_roomName(ctx, field)
+func (ec *executionContext) _PlannedRoom_room(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannedRoom_room(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -16581,7 +16581,7 @@ func (ec *executionContext) _PlannedRoom_roomName(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RoomName, nil
+		return obj.Room, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16593,19 +16593,37 @@ func (ec *executionContext) _PlannedRoom_roomName(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*model.Room)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoom(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PlannedRoom_roomName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PlannedRoom_room(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PlannedRoom",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Room_name(ctx, field)
+			case "seats":
+				return ec.fieldContext_Room_seats(ctx, field)
+			case "handicap":
+				return ec.fieldContext_Room_handicap(ctx, field)
+			case "lab":
+				return ec.fieldContext_Room_lab(ctx, field)
+			case "placesWithSocket":
+				return ec.fieldContext_Room_placesWithSocket(ctx, field)
+			case "needsRequest":
+				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "exahm":
+				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
 	}
 	return fc, nil
@@ -31656,8 +31674,8 @@ func (ec *executionContext) _PlannedRoom(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "roomName":
-			out.Values[i] = ec._PlannedRoom_roomName(ctx, field, obj)
+		case "room":
+			out.Values[i] = ec._PlannedRoom_room(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -28,7 +28,7 @@ type SlotWithRooms {
 type PlannedRoom {
   day: Int!
   slot: Int!
-  roomName: String!
+  room: Room!
   ancode: Int!
   duration: Int!
   handicap: Boolean!

@@ -66,6 +66,11 @@ func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error
 	plannedExams := make([]*model.PlannedExam, 0, len(exams))
 
 	for _, exam := range exams {
+		plannedRooms, err := p.dbClient.PlannedRoomsForAncode(ctx, exam.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot find planned rooms")
+		}
+
 		plannedExams = append(plannedExams,
 			&model.PlannedExam{
 				Ancode:           exam.Ancode,
@@ -77,6 +82,7 @@ func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error
 				Ntas:             exam.Ntas,
 				MaxDuration:      exam.MaxDuration,
 				PlanEntry:        planEntryMap[exam.Ancode],
+				PlannedRooms:     plannedRooms,
 			})
 	}
 

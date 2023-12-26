@@ -287,19 +287,6 @@ type PlannedExamWithNta struct {
 	Nta         []*NTAWithRegs `json:"nta,omitempty"`
 }
 
-type PlannedRoom struct {
-	Day               int      `json:"day"`
-	Slot              int      `json:"slot"`
-	Room              *Room    `json:"room"`
-	Ancode            int      `json:"ancode"`
-	Duration          int      `json:"duration"`
-	Handicap          bool     `json:"handicap"`
-	HandicapRoomAlone bool     `json:"handicapRoomAlone"`
-	Reserve           bool     `json:"reserve"`
-	StudentsInRoom    []string `json:"studentsInRoom"`
-	NtaMtknr          *string  `json:"ntaMtknr,omitempty"`
-}
-
 type PrimussExamAncode struct {
 	Ancode        int    `json:"ancode"`
 	Program       string `json:"program"`

@@ -2,7 +2,7 @@ extend type Query {
   rooms: [Room!]!
   plannedRoomNames: [String!]
   plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
-  plannedRoomsInSlot(day: Int!, time: Int!): [EnhancedPlannedRoom!]
+  plannedRoomsInSlot(day: Int!, time: Int!): [PlannedRoom!]
 }
 
 type Room {
@@ -38,21 +38,21 @@ type PlannedRoom {
   ntaMtknr: String
 }
 
-type EnhancedPlannedRoom {
-  day: Int!
-  slot: Int!
-  roomName: String!
-  room: Room!
-  ancode: Int!
-  exam: GeneratedExam!
-  duration: Int!
-  handicap: Boolean!
-  handicapRoomAlone: Boolean!
-  reserve: Boolean!
-  studentsInRoom: [String!]!
-  ntaMtknr: String
-  ntaInRoom: NTA
-}
+# type EnhancedPlannedRoom {
+#   day: Int!
+#   slot: Int!
+#   roomName: String!
+#   room: Room!
+#   ancode: Int!
+#   exam: GeneratedExam!
+#   duration: Int!
+#   handicap: Boolean!
+#   handicapRoomAlone: Boolean!
+#   reserve: Boolean!
+#   studentsInRoom: [String!]!
+#   ntaMtknr: String
+#   ntaInRoom: NTA
+# }
 
 # Deprecated: rm me
 type RoomForExam {

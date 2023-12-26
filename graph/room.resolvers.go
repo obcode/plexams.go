@@ -6,34 +6,14 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
 // Room is the resolver for the room field.
-func (r *enhancedPlannedRoomResolver) Room(ctx context.Context, obj *model.EnhancedPlannedRoom) (*model.Room, error) {
-	if obj == nil {
-		return nil, fmt.Errorf("error enhanced planned room not available")
-	}
+func (r *plannedRoomResolver) Room(ctx context.Context, obj *model.PlannedRoom) (*model.Room, error) {
 	return r.plexams.RoomFromName(ctx, obj.RoomName)
-}
-
-// Exam is the resolver for the exam field.
-func (r *enhancedPlannedRoomResolver) Exam(ctx context.Context, obj *model.EnhancedPlannedRoom) (*model.GeneratedExam, error) {
-	if obj == nil {
-		return nil, fmt.Errorf("error enhanced planned room not available")
-	}
-	return r.plexams.GeneratedExam(ctx, obj.Ancode)
-}
-
-// NtaInRoom is the resolver for the ntaInRoom field.
-func (r *enhancedPlannedRoomResolver) NtaInRoom(ctx context.Context, obj *model.EnhancedPlannedRoom) (*model.NTA, error) {
-	if obj == nil {
-		return nil, fmt.Errorf("error enhanced planned room not available")
-	}
-	return r.plexams.NtaByMtknr(ctx, *obj.NtaMtknr)
 }
 
 // Rooms is the resolver for the rooms field.
@@ -52,7 +32,7 @@ func (r *queryResolver) PlannedRoomNamesInSlot(ctx context.Context, day int, tim
 }
 
 // PlannedRoomsInSlot is the resolver for the plannedRoomsInSlot field.
-func (r *queryResolver) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.EnhancedPlannedRoom, error) {
+func (r *queryResolver) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedRoom, error) {
 	return r.plexams.PlannedRoomsInSlot(ctx, day, time)
 }
 
@@ -61,13 +41,11 @@ func (r *roomForExamResolver) Room(ctx context.Context, obj *model.RoomForExam) 
 	return r.plexams.Room(ctx, obj)
 }
 
-// EnhancedPlannedRoom returns generated.EnhancedPlannedRoomResolver implementation.
-func (r *Resolver) EnhancedPlannedRoom() generated.EnhancedPlannedRoomResolver {
-	return &enhancedPlannedRoomResolver{r}
-}
+// PlannedRoom returns generated.PlannedRoomResolver implementation.
+func (r *Resolver) PlannedRoom() generated.PlannedRoomResolver { return &plannedRoomResolver{r} }
 
 // RoomForExam returns generated.RoomForExamResolver implementation.
 func (r *Resolver) RoomForExam() generated.RoomForExamResolver { return &roomForExamResolver{r} }
 
-type enhancedPlannedRoomResolver struct{ *Resolver }
+type plannedRoomResolver struct{ *Resolver }
 type roomForExamResolver struct{ *Resolver }

@@ -10,7 +10,7 @@ type RoomForExam struct {
 	Students     []*StudentReg `json:"students"`
 }
 
-type EnhancedPlannedRoom struct {
+type PlannedRoom struct {
 	Day               int      `json:"day"`
 	Slot              int      `json:"slot"`
 	RoomName          string   `json:"roomName"`

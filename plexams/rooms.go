@@ -443,33 +443,33 @@ func (p *Plexams) PlannedRoomNames(ctx context.Context) ([]string, error) {
 }
 
 // TODO: rewrite me
-func (p *Plexams) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.EnhancedPlannedRoom, error) {
+func (p *Plexams) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedRoom, error) {
 	rooms, err := p.dbClient.PlannedRoomsInSlot(ctx, day, time)
 	if err != nil {
 		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get exams in slot")
 	}
 
-	return enhancePlannedRooms(rooms), nil
+	return rooms, nil
 }
 
-func enhancePlannedRooms(plannedRooms []*model.PlannedRoom) []*model.EnhancedPlannedRoom {
-	enhancedPlannedRooms := make([]*model.EnhancedPlannedRoom, 0, len(plannedRooms))
-	for _, room := range plannedRooms {
-		enhancedPlannedRooms = append(enhancedPlannedRooms, &model.EnhancedPlannedRoom{
-			Day:               room.Day,
-			Slot:              room.Ancode,
-			RoomName:          room.Room.Name,
-			Ancode:            room.Ancode,
-			Duration:          room.Duration,
-			Handicap:          room.Handicap,
-			HandicapRoomAlone: room.HandicapRoomAlone,
-			Reserve:           room.Reserve,
-			StudentsInRoom:    room.StudentsInRoom,
-			NtaMtknr:          room.NtaMtknr,
-		})
-	}
-	return enhancedPlannedRooms
-}
+// func enhancePlannedRooms(plannedRooms []*model.PlannedRoom) []*model.EnhancedPlannedRoom {
+// 	enhancedPlannedRooms := make([]*model.EnhancedPlannedRoom, 0, len(plannedRooms))
+// 	for _, room := range plannedRooms {
+// 		enhancedPlannedRooms = append(enhancedPlannedRooms, &model.EnhancedPlannedRoom{
+// 			Day:               room.Day,
+// 			Slot:              room.Ancode,
+// 			RoomName:          room.RoomName,
+// 			Ancode:            room.Ancode,
+// 			Duration:          room.Duration,
+// 			Handicap:          room.Handicap,
+// 			HandicapRoomAlone: room.HandicapRoomAlone,
+// 			Reserve:           room.Reserve,
+// 			StudentsInRoom:    room.StudentsInRoom,
+// 			NtaMtknr:          room.NtaMtknr,
+// 		})
+// 	}
+// 	return enhancedPlannedRooms
+// }
 
 func (p *Plexams) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
 	return p.dbClient.PlannedRoomNamesInSlot(ctx, day, time)

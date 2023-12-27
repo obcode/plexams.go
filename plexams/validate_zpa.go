@@ -2,14 +2,42 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gookit/color"
+	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
+	"github.com/theckman/yacspin"
 )
 
 func (p *Plexams) ValidateZPADateTimes() error {
+	cfg := yacspin.Config{
+		Frequency:         100 * time.Millisecond,
+		CharSet:           yacspin.CharSets[69],
+		Suffix:            aurora.Sprintf(aurora.Cyan(" validating zpa dates and times")),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
+
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
+
+	validationMessages := make([]string, 0)
+
+	spinner.Message(aurora.Sprintf(aurora.Yellow("fetching exam from ZPA")))
 	if err := p.SetZPA(); err != nil {
 		return err
 	}
@@ -21,15 +49,17 @@ func (p *Plexams) ValidateZPADateTimes() error {
 		examsMap[exam.AnCode] = exam
 	}
 
+	spinner.Message(aurora.Sprintf(aurora.Yellow("fetching planned exams from db")))
 	plannedExams, err := p.PlannedExams(context.Background())
 	if err != nil {
 		return err
 	}
 
-	problems := 0
 	notPlannedByMe := 0
 
 	for _, plannedExam := range plannedExams {
+		spinner.Message(aurora.Sprintf(aurora.Yellow("checking exam %d. %s (%s)"),
+			plannedExam.Ancode, plannedExam.ZpaExam.Module, plannedExam.ZpaExam.MainExamer))
 		zpaExam := examsMap[plannedExam.ZpaExam.AnCode]
 		delete(examsMap, plannedExam.ZpaExam.AnCode)
 
@@ -54,31 +84,42 @@ func (p *Plexams) ValidateZPADateTimes() error {
 
 		if zpaExam.Date != plannedExamDate ||
 			zpaExam.Starttime != plannedExamStarttime {
-			problems++
-			color.Red.Printf("wrong date for %d. %s: %s\nwant: %s %s\ngot:  %s %s\n",
-				plannedExam.ZpaExam.AnCode, plannedExam.ZpaExam.MainExamer, plannedExam.ZpaExam.Module,
-				plannedExamDate, plannedExamStarttime,
-				zpaExam.Date, zpaExam.Starttime)
+			validationMessages = append(validationMessages, aurora.Sprintf(
+				aurora.Red("wrong date for %d. %s (%s), want: %s %s, got: %s %s"),
+				aurora.Cyan(zpaExam.AnCode), aurora.Cyan(zpaExam.Module), aurora.Cyan(zpaExam.MainExamer),
+				aurora.Green(plannedExamDate), aurora.Green(plannedExamStarttime),
+				aurora.Magenta(zpaExam.Date), aurora.Magenta(zpaExam.Starttime),
+			))
 		}
 	}
-
-	if problems == 0 {
-		color.Green.Printf("all %d planned exams in zpa with correct date/time (%d not planned by me)\n", len(plannedExams), notPlannedByMe)
-	}
-
-	problems = 0
 
 	for _, zpaExam := range examsMap {
 		if zpaExam.Date != "-" || zpaExam.Starttime != "-" {
-			problems++
-			color.Red.Printf("exam %d. %s: %s has date %s %s, but should not",
-				zpaExam.AnCode, zpaExam.MainExamer, zpaExam.Module,
-				zpaExam.Date, zpaExam.Starttime)
+			validationMessages = append(validationMessages, aurora.Sprintf(
+				aurora.Red("exam %d. %s (%s) has date %s %s, but should not be planned"),
+				aurora.Cyan(zpaExam.AnCode), aurora.Cyan(zpaExam.Module), aurora.Cyan(zpaExam.MainExamer),
+				aurora.Magenta(zpaExam.Date), aurora.Magenta(zpaExam.Starttime)))
 		}
 	}
 
-	if problems == 0 {
-		color.Green.Printf("all %d not planned exams in zpa without date/time\n", len(examsMap))
+	if len(validationMessages) > 0 {
+		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"), len(validationMessages)))
+		err = spinner.StopFail()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+		for _, msg := range validationMessages {
+			fmt.Printf("    ↪ %s\n", msg)
+		}
+
+	} else {
+		spinner.StopMessage(aurora.Sprintf(
+			aurora.Green("%d planned exams (%d not planned by me) & %d not planned are correct"),
+			len(plannedExams), notPlannedByMe, len(examsMap)))
+		err = spinner.Stop()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
 	}
 
 	return nil

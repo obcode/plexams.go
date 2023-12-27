@@ -53,7 +53,6 @@ var (
 						[]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam, plexams.ValidateRoomsTimeDistance}...)
 
 				case "zpa":
-					fmt.Println("validating zpa dates and times")
 					err := plexams.ValidateZPADateTimes()
 					if err != nil {
 						log.Fatal(err)

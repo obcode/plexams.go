@@ -1,3 +1,7 @@
+extend type Query {
+  invigilatorTodos: InvigilationTodos
+}
+
 type Invigilation {
   roomName: String
   duration: Int!

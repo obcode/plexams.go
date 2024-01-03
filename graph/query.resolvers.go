@@ -132,11 +132,6 @@ func (r *queryResolver) InvigilatorsWithReq(ctx context.Context) ([]*model.Invig
 	return r.plexams.InvigilatorsWithReq(ctx)
 }
 
-// InvigilatorTodos is the resolver for the invigilatorTodos field.
-func (r *queryResolver) InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error) {
-	return r.plexams.InvigilationTodos(ctx)
-}
-
 // RoomsWithInvigilationsForSlot is the resolver for the roomsWithInvigilationsForSlot field.
 func (r *queryResolver) RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error) {
 	return r.plexams.RoomsWithInvigilationsForSlot(ctx, day, time)

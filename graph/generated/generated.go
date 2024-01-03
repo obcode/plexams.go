@@ -721,7 +721,6 @@ type QueryResolver interface {
 	RoomsWithConstraints(ctx context.Context, handicap bool, lab bool, placesWithSocket bool, exahm *bool) ([]*model.Room, error)
 	RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error)
 	InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error)
-	InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error)
 	RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error)
 	InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error)
 	DayOkForInvigilator(ctx context.Context, day int, invigilatorID int) (*bool, error)
@@ -735,6 +734,7 @@ type QueryResolver interface {
 	ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error)
 	Exam(ctx context.Context, ancode int) (*model.Exam, error)
 	Exams(ctx context.Context) ([]*model.Exam, error)
+	InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	AllProgramsInPlan(ctx context.Context) ([]string, error)
@@ -4146,7 +4146,11 @@ type Exam {
   rooms: [RoomForExam!]
 }
 `, BuiltIn: false},
-	{Name: "../invigilation.graphqls", Input: `type Invigilation {
+	{Name: "../invigilation.graphqls", Input: `extend type Query {
+  invigilatorTodos: InvigilationTodos
+}
+
+type Invigilation {
   roomName: String
   duration: Int!
   invigilatorID: Int!
@@ -4515,7 +4519,6 @@ type ConflictsPerProgramAncode {
 
   # Invigilators
   invigilatorsWithReq: [Invigilator!]!
-  invigilatorTodos: InvigilationTodos
   roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
   invigilatorsForDay(day: Int!): InvigilatorsForDay
   dayOkForInvigilator(day: Int!, invigilatorID: Int!): Boolean
@@ -18394,65 +18397,6 @@ func (ec *executionContext) fieldContext_Query_invigilatorsWithReq(ctx context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_invigilatorTodos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_invigilatorTodos(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().InvigilatorTodos(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.InvigilationTodos)
-	fc.Result = res
-	return ec.marshalOInvigilationTodos2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTodos(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_invigilatorTodos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "sumExamRooms":
-				return ec.fieldContext_InvigilationTodos_sumExamRooms(ctx, field)
-			case "sumReserve":
-				return ec.fieldContext_InvigilationTodos_sumReserve(ctx, field)
-			case "sumOtherContributions":
-				return ec.fieldContext_InvigilationTodos_sumOtherContributions(ctx, field)
-			case "sumOtherContributionsOvertimeCutted":
-				return ec.fieldContext_InvigilationTodos_sumOtherContributionsOvertimeCutted(ctx, field)
-			case "invigilatorCount":
-				return ec.fieldContext_InvigilationTodos_invigilatorCount(ctx, field)
-			case "todoPerInvigilator":
-				return ec.fieldContext_InvigilationTodos_todoPerInvigilator(ctx, field)
-			case "todoPerInvigilatorOvertimeCutted":
-				return ec.fieldContext_InvigilationTodos_todoPerInvigilatorOvertimeCutted(ctx, field)
-			case "invigilators":
-				return ec.fieldContext_InvigilationTodos_invigilators(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type InvigilationTodos", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_roomsWithInvigilationsForSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_roomsWithInvigilationsForSlot(ctx, field)
 	if err != nil {
@@ -19266,6 +19210,65 @@ func (ec *executionContext) fieldContext_Query_exams(ctx context.Context, field 
 				return ec.fieldContext_Exam_rooms(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Exam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_invigilatorTodos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_invigilatorTodos(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().InvigilatorTodos(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.InvigilationTodos)
+	fc.Result = res
+	return ec.marshalOInvigilationTodos2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTodos(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_invigilatorTodos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "sumExamRooms":
+				return ec.fieldContext_InvigilationTodos_sumExamRooms(ctx, field)
+			case "sumReserve":
+				return ec.fieldContext_InvigilationTodos_sumReserve(ctx, field)
+			case "sumOtherContributions":
+				return ec.fieldContext_InvigilationTodos_sumOtherContributions(ctx, field)
+			case "sumOtherContributionsOvertimeCutted":
+				return ec.fieldContext_InvigilationTodos_sumOtherContributionsOvertimeCutted(ctx, field)
+			case "invigilatorCount":
+				return ec.fieldContext_InvigilationTodos_invigilatorCount(ctx, field)
+			case "todoPerInvigilator":
+				return ec.fieldContext_InvigilationTodos_todoPerInvigilator(ctx, field)
+			case "todoPerInvigilatorOvertimeCutted":
+				return ec.fieldContext_InvigilationTodos_todoPerInvigilatorOvertimeCutted(ctx, field)
+			case "invigilators":
+				return ec.fieldContext_InvigilationTodos_invigilators(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InvigilationTodos", field.Name)
 		},
 	}
 	return fc, nil
@@ -31567,25 +31570,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "invigilatorTodos":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_invigilatorTodos(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "roomsWithInvigilationsForSlot":
 			field := field
 
@@ -31839,6 +31823,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "invigilatorTodos":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_invigilatorTodos(ctx, field)
 				return res
 			}
 

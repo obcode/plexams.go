@@ -50,7 +50,12 @@ var (
 
 				case "rooms":
 					validations = append(validations,
-						[]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam, plexams.ValidateRoomsTimeDistance}...)
+						[]func() error{
+							plexams.ValidateRoomsPerSlot,
+							plexams.ValidateRoomsNeedRequest,
+							plexams.ValidateRoomsPerExam,
+							plexams.ValidateRoomsTimeDistance,
+						}...)
 
 				case "zpa":
 					err := plexams.ValidateZPADateTimes()

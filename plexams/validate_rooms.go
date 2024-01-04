@@ -148,6 +148,111 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 
 	return nil
 }
+func (p *Plexams) ValidateRoomsNeedRequest() error {
+	ctx := context.Background()
+	cfg := yacspin.Config{
+		Frequency:         100 * time.Millisecond,
+		CharSet:           yacspin.CharSets[69],
+		Suffix:            aurora.Sprintf(aurora.Cyan(" validating rooms which needs requests")),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
+
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
+
+	validationMessages := make([]string, 0)
+
+	roomTimetables, err := p.GetReservations()
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get reservations")
+		return err
+	}
+
+	bookedEntries, err := p.ExahmRoomsFromBooked()
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get booked entries")
+		return err
+	}
+
+	for _, bookedEntry := range bookedEntries {
+		for _, roomName := range bookedEntry.Rooms {
+			timeRanges, ok := roomTimetables[roomName]
+			if !ok {
+				timeRanges = make([]TimeRange, 0, 1)
+			}
+			roomTimetables[roomName] = append(timeRanges, TimeRange{
+				From:  bookedEntry.From,
+				Until: bookedEntry.Until,
+			})
+		}
+	}
+
+	log.Debug().Interface("timetables", roomTimetables).Msg("found booked and reserved rooms")
+
+	plannedRooms, err := p.PlannedRooms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get all planned rooms")
+	}
+
+	reservationFound := 0
+
+PLANNEDROOM:
+	for _, plannedRoom := range plannedRooms {
+
+		if !p.roomInfo[plannedRoom.RoomName].NeedsRequest {
+			log.Debug().Str("room", plannedRoom.RoomName).Msg("room needs no request")
+			continue
+		}
+
+		spinner.Message(aurora.Sprintf(aurora.Yellow("checking room  %s in slot (%d/%d)"),
+			plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot))
+
+		startTime := p.getSlotTime(plannedRoom.Day, plannedRoom.Slot).Local()
+		endTime := startTime.Add(time.Duration(plannedRoom.Duration) * time.Minute)
+
+		for _, timerange := range roomTimetables[plannedRoom.RoomName] {
+			if timerange.From.Before(startTime) && timerange.Until.After(endTime) {
+				log.Debug().Str("room", plannedRoom.RoomName).Msg("found reservation")
+				reservationFound++
+				continue PLANNEDROOM
+			}
+		}
+
+		validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("No Reservation for room %s found in slot (%d/%d)"),
+			aurora.Magenta(plannedRoom.RoomName), aurora.Blue(plannedRoom.Day), aurora.Blue(plannedRoom.Slot)))
+	}
+
+	if len(validationMessages) > 0 {
+		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"), len(validationMessages)))
+		err = spinner.StopFail()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+		for _, msg := range validationMessages {
+			fmt.Printf("    ↪ %s\n", msg)
+		}
+
+	} else {
+		spinner.StopMessage(aurora.Sprintf(aurora.Green("found %d reservations"), reservationFound))
+		err = spinner.Stop()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+	}
+
+	return nil
+}
 
 func (p *Plexams) ValidateRoomsPerExam() error {
 	ctx := context.Background()

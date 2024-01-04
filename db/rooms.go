@@ -201,7 +201,7 @@ func (db *DB) ChangeRoom(ctx context.Context, ancode int, oldRoom, newRoom *mode
 func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	collection := db.getCollectionSemester(collectionRoomsPlanned)
 
-	rawNames, err := collection.Distinct(ctx, "room.name", bson.D{})
+	rawNames, err := collection.Distinct(ctx, "roomname", bson.D{})
 	if err != nil {
 		log.Error().Err(err).Msg("cannot find distinct room names")
 	}
@@ -223,7 +223,7 @@ func (db *DB) PlannedRoomNamesInSlot(ctx context.Context, day, slot int) ([]stri
 
 	filter := bson.M{"day": day, "slot": slot}
 
-	rawNames, err := collection.Distinct(ctx, "room.name", filter)
+	rawNames, err := collection.Distinct(ctx, "roomname", filter)
 	if err != nil {
 		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot find roomnames for slot")
 		return nil, err
@@ -239,6 +239,25 @@ func (db *DB) PlannedRoomNamesInSlot(ctx context.Context, day, slot int) ([]stri
 	}
 
 	return names, nil
+}
+
+func (db *DB) PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error) {
+	collection := db.getCollectionSemester(collectionRoomsPlanned)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot find planned rooms")
+		return nil, err
+	}
+
+	plannedRooms := make([]*model.PlannedRoom, 0)
+	err = cur.All(ctx, &plannedRooms)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot decode planned rooms")
+		return nil, err
+	}
+
+	return plannedRooms, nil
 }
 
 func (db *DB) PlannedRoomsInSlot(ctx context.Context, day, slot int) ([]*model.PlannedRoom, error) {

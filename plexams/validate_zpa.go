@@ -37,7 +37,7 @@ func (p *Plexams) ValidateZPADateTimes() error {
 
 	validationMessages := make([]string, 0)
 
-	spinner.Message(aurora.Sprintf(aurora.Yellow("fetching exam from ZPA")))
+	spinner.Message(aurora.Sprintf(aurora.Yellow("fetching exams from ZPA")))
 	if err := p.SetZPA(); err != nil {
 		return err
 	}
@@ -126,28 +126,64 @@ func (p *Plexams) ValidateZPADateTimes() error {
 }
 
 func (p *Plexams) ValidateZPARooms() error {
+	cfg := yacspin.Config{
+		Frequency:         100 * time.Millisecond,
+		CharSet:           yacspin.CharSets[69],
+		Suffix:            aurora.Sprintf(aurora.Cyan(" validating zpa rooms")),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
+
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
+
+	validationMessages := make([]string, 0)
+
+	spinner.Message(aurora.Sprintf(aurora.Yellow("fetching exams from ZPA")))
+	if err := p.SetZPA(); err != nil {
+		return err
+	}
+
 	plannedExamsFromZPA, err := p.zpa.client.GetPlannedExams()
 	if err != nil {
 		return err
 	}
 
-	plannedExams, err := p.ExamsInPlan(context.Background())
+	spinner.Message(aurora.Sprintf(aurora.Yellow("fetching planned exams from db")))
+	plannedExams, err := p.PlannedExams(context.Background())
 	if err != nil {
 		return err
 	}
 
-	problems := 0
+	notPlannedByMe := 0
+	roomsChecked := 0
 
 	// check if plexams data is on zpa
 	for _, plannedExam := range plannedExams {
-		roomsForAncode, err := p.dbClient.RoomsForAncode(context.Background(), plannedExam.Exam.Ancode)
+		if plannedExam.Constraints != nil && plannedExam.Constraints.NotPlannedByMe {
+			notPlannedByMe++
+			continue
+		}
+
+		roomsForAncode, err := p.dbClient.PlannedRoomsForAncode(context.Background(), plannedExam.Ancode)
 		if err != nil {
-			log.Error().Err(err).Int("ancode", plannedExam.Exam.Ancode).Msg("cannot get planned rooms for ancode")
+			log.Error().Err(err).Int("ancode", plannedExam.Ancode).Msg("cannot get planned rooms for ancode")
 		}
 		for _, room := range roomsForAncode {
 			if room.RoomName == "No Room" {
 				continue
 			}
+			roomsChecked++
 			found := false
 			for _, zpaExam := range plannedExamsFromZPA {
 				if room.Ancode == zpaExam.Ancode &&
@@ -155,21 +191,40 @@ func (p *Plexams) ValidateZPARooms() error {
 					room.Duration == zpaExam.Duration &&
 					room.Handicap == zpaExam.IsHandicap &&
 					room.Reserve == zpaExam.IsReserve &&
-					(room.SeatsPlanned == zpaExam.Number || zpaExam.RoomName == "ONLINE") {
+					(len(room.StudentsInRoom) <= zpaExam.Number || // if more than one NTA in the room
+						zpaExam.RoomName == "ONLINE") {
 					found = true
 					break
 				}
 			}
 			if !found {
-				problems++
-				color.Red.Printf("room not found in ZPA\n   %+v\n", room)
+				validationMessages = append(validationMessages, aurora.Sprintf(
+					aurora.Red("room %s for exam %d. %s (%s) not found in ZPA"),
+					aurora.Magenta(room.RoomName),
+					aurora.Cyan(plannedExam.Ancode), aurora.Cyan(plannedExam.ZpaExam.Module), aurora.Cyan(plannedExam.ZpaExam.MainExamer)))
 			}
 		}
 
 	}
 
-	if problems == 0 {
-		color.Green.Println("all rooms planned found in zpa")
+	if len(validationMessages) > 0 {
+		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"), len(validationMessages)))
+		err = spinner.StopFail()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+		for _, msg := range validationMessages {
+			fmt.Printf("    ↪ %s\n", msg)
+		}
+
+	} else {
+		spinner.StopMessage(aurora.Sprintf(
+			aurora.Green("%d planned exams (%d not planned by me) with %d room entries are correct"),
+			len(plannedExams), notPlannedByMe, roomsChecked))
+		err = spinner.Stop()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
 	}
 
 	// TODO: check if zpa data is in plexams

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
@@ -154,46 +155,102 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		// 	reserveInvigilatorID = invigilator.ID
 		// }
 
-		// if withRooms {
-		// 	roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
-		// 	if err != nil {
-		// 		log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for ancode")
-		// 	} else {
-		// 		if len(roomsForAncode) > 0 {
-		// 			rooms = make([]*model.ZPAExamPlanRoom, 0, len(roomsForAncode))
-		// 			for _, roomForAncode := range roomsForAncode {
-		// 				if roomForAncode.RoomName == "No Room" {
-		// 					continue
-		// 				}
+		if withRooms {
+			roomsForAncode, err := p.dbClient.PlannedRoomsForAncode(ctx, exam.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get rooms for ancode")
+			} else {
+				if len(roomsForAncode) > 0 {
+					type roomNameWithDuration struct {
+						name     string
+						duration int
+					}
+					roomsMap := make(map[roomNameWithDuration][]*model.ZPAExamPlanRoom)
 
-		// 				invigilatorID := 0
-		// 				if withInvigilators {
-		// 					invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, slot.DayNumber, slot.SlotNumber)
-		// 					if err != nil {
-		// 						log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Str("room", roomForAncode.RoomName).
-		// 							Msg("cannot get invigilator for room")
-		// 						return nil, err
-		// 					}
-		// 					invigilatorID = invigilator.ID
-		// 				}
+					for _, roomForAncode := range roomsForAncode {
+						if roomForAncode.RoomName == "No Room" {
+							continue
+						}
 
-		// 				roomName := roomForAncode.RoomName
-		// 				if strings.HasPrefix(roomName, "ONLINE") {
-		// 					roomName = "ONLINE"
-		// 				}
+						// 				invigilatorID := 0
+						// 				if withInvigilators {
+						// 					invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, slot.DayNumber, slot.SlotNumber)
+						// 					if err != nil {
+						// 						log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Str("room", roomForAncode.RoomName).
+						// 							Msg("cannot get invigilator for room")
+						// 						return nil, err
+						// 					}
+						// 					invigilatorID = invigilator.ID
+						// 				}
 
-		// 				rooms = append(rooms, &model.ZPAExamPlanRoom{
-		// 					RoomName:      roomName,
-		// 					InvigilatorID: invigilatorID,
-		// 					Duration:      roomForAncode.Duration,
-		// 					IsReserve:     roomForAncode.Reserve,
-		// 					StudentCount:  roomForAncode.SeatsPlanned,
-		// 					IsHandicap:    roomForAncode.Handicap,
-		// 				})
-		// 			}
-		// 		}
-		// 	}
-		// }
+						roomName := roomForAncode.RoomName
+						if strings.HasPrefix(roomName, "ONLINE") {
+							roomName = "ONLINE"
+						}
+
+						roomNameWithDuration := roomNameWithDuration{
+							name:     roomName,
+							duration: roomForAncode.Duration,
+						}
+
+						roomWithDuration, ok := roomsMap[roomNameWithDuration]
+						if !ok {
+							roomWithDuration = make([]*model.ZPAExamPlanRoom, 0, 1)
+						}
+						roomsMap[roomNameWithDuration] = append(roomWithDuration, &model.ZPAExamPlanRoom{
+							RoomName:      roomName,
+							InvigilatorID: 0, // invigilatorID,
+							Duration:      roomForAncode.Duration,
+							IsReserve:     roomForAncode.Reserve,
+							StudentCount:  len(roomForAncode.StudentsInRoom),
+							IsHandicap:    roomForAncode.Handicap,
+						})
+					}
+
+					mergeRooms := func(roomWithSameDuration []*model.ZPAExamPlanRoom) []*model.ZPAExamPlanRoom {
+						for i := 0; i < len(roomWithSameDuration); i++ {
+							current := roomWithSameDuration[i]
+							if current == nil {
+								continue
+							}
+							for j := i + 1; j < len(roomWithSameDuration); j++ {
+								other := roomWithSameDuration[j]
+								if other == nil {
+									continue
+								}
+								if current.IsHandicap && other.IsHandicap ||
+									!current.IsHandicap && !other.IsHandicap {
+									log.Debug().Int("ancode", exam.Ancode).Str("room", current.RoomName).Msg("found rooms to merge")
+									roomWithSameDuration[i].StudentCount += other.StudentCount
+									roomWithSameDuration[i].IsReserve = false
+									roomWithSameDuration[j] = nil
+								}
+							}
+						}
+
+						rooms := make([]*model.ZPAExamPlanRoom, 0)
+						for _, room := range roomWithSameDuration {
+							if room != nil {
+								rooms = append(rooms, room)
+							}
+						}
+						return rooms
+					}
+					rooms = make([]*model.ZPAExamPlanRoom, 0, len(roomsForAncode))
+					for _, roomWithSameDuration := range roomsMap {
+						if len(roomWithSameDuration) == 0 {
+							continue
+						}
+						if len(roomWithSameDuration) == 1 {
+							rooms = append(rooms, roomWithSameDuration...)
+						} else {
+							log.Debug().Int("ancode", exam.Ancode).Interface("roomWithSameDuration", roomWithSameDuration).Msg("more than one room with same duration")
+							rooms = append(rooms, mergeRooms(roomWithSameDuration)...)
+						}
+					}
+				}
+			}
+		}
 
 		exams = append(exams, &model.ZPAExamPlan{
 			Semester:             p.semester,

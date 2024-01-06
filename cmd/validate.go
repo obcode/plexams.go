@@ -63,7 +63,6 @@ var (
 						log.Fatal(err)
 					}
 					if Rooms || Invigilators {
-						fmt.Println("validating zpa rooms")
 						err := plexams.ValidateZPARooms()
 						if err != nil {
 							log.Fatal(err)
@@ -124,7 +123,7 @@ func init() {
 	validateCmd.Flags().IntVarP(&Sleep, "sleep", "s", 0, "sleep [s] seconds and validate again")
 	validateCmd.Flags().IntVarP(&Ancode, "ancode", "a", 0, "show only constraints for given ancode")
 	validateCmd.Flags().BoolVarP(&Clear, "clear", "c", false, "clear screen before output")
-	validateCmd.Flags().BoolVarP(&Rooms, "room", "r", false, "validate zpa rooms")
+	validateCmd.Flags().BoolVarP(&Rooms, "rooms", "r", false, "validate zpa rooms")
 	validateCmd.Flags().BoolVarP(&Invigilators, "invigilators", "i", false, "validate zpa invigilators")
 	validateCmd.Flags().BoolVarP(&OnlyPlannedByMe, "onlyplannedbyme", "o", false, "check no conflicts if both exams are not planned by me")
 }

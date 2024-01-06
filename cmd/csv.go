@@ -35,7 +35,7 @@ var (
 
 			case "exahm":
 				if len(Outfile) == 0 {
-					Outfile = fmt.Sprintf("Prüfungsplanung_EXaHM_SEB_FK07.csv")
+					Outfile = "Prüfungsplanung_EXaHM_SEB_FK07.csv"
 				}
 				fmt.Printf("generating %s\n", Outfile)
 				err := plexams.CsvForEXaHM(Outfile)

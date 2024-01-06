@@ -18,6 +18,7 @@ var (
 	all         --- guess what :-)
 	conflicts   --- check conflicts for each student
 	constraints --- check if constraints hold
+	db          --- data base entries
 	rooms       --- check room constraints
 	zpa         --- check if the plan on ZPA is the same here
 	invigilator-reqs
@@ -47,6 +48,9 @@ var (
 
 				case "constraints":
 					validations = append(validations, plexams.ValidateConstraints)
+
+				case "db":
+					validations = append(validations, plexams.ValidateDB)
 
 				case "rooms":
 					validations = append(validations,

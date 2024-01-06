@@ -79,6 +79,7 @@ type ExamerInPlan {
   mainExamerID: Int!
 }
 
+# TODO: remove starttime!!!
 type PlanEntry {
   dayNumber: Int!
   slotNumber: Int!

@@ -45,6 +45,15 @@ func (p *Plexams) PlannedExam(ctx context.Context, ancode int) (*model.PlannedEx
 	}, err
 }
 
+func (p *Plexams) setCorrectStarttime(planEntry *model.PlanEntry) {
+	slottime := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
+	if !slottime.Equal(planEntry.Starttime) {
+		log.Error().Int("ancode", planEntry.Ancode).Int("day", planEntry.DayNumber).Int("slot", planEntry.SlotNumber).
+			Str("starttime", planEntry.Starttime.Format("02.01.06, 15:04")).Str("slottime", slottime.Format("02.01.06, 15:04")).Msg("starttime not correct in plan entry")
+		planEntry.Starttime = slottime
+	}
+}
+
 func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error) {
 	exams, err := p.GeneratedExams(ctx)
 	if err != nil {
@@ -60,6 +69,7 @@ func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error
 
 	planEntryMap := make(map[int]*model.PlanEntry)
 	for _, planEntry := range planEntries {
+		p.setCorrectStarttime(planEntry)
 		planEntryMap[planEntry.Ancode] = planEntry
 	}
 

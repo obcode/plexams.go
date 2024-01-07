@@ -34,9 +34,11 @@ var (
 				switch arg {
 				case "all":
 					validations = append(validations, []func() error{
+						plexams.ValidateDB,
 						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe, Ancode) },
 						plexams.ValidateConstraints,
 						plexams.ValidateRoomsPerSlot,
+						plexams.ValidateRoomsNeedRequest,
 						plexams.ValidateRoomsPerExam,
 						plexams.ValidateRoomsTimeDistance,
 					}...)

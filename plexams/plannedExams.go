@@ -2,7 +2,6 @@ package plexams
 
 import (
 	"context"
-	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -120,15 +119,4 @@ func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string, on
 	}
 
 	return plannedExamsForProgram, nil
-}
-
-// TODO: needed?
-// nolint
-func (p *Plexams) getTimeForSlot(dayNumber, slotNumber int) *time.Time {
-	for _, slot := range p.semesterConfig.Slots {
-		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
-			return &slot.Starttime
-		}
-	}
-	return nil
 }

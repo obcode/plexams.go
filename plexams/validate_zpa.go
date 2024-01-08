@@ -78,8 +78,9 @@ func (p *Plexams) ValidateZPADateTimes() error {
 		plannedExamDate := "-"
 		plannedExamStarttime := "-"
 		if !shouldHaveNoTimeAndDate && plannedExam.PlanEntry != nil {
-			plannedExamDate = plannedExam.PlanEntry.Starttime.Local().Format("2006-01-02")
-			plannedExamStarttime = plannedExam.PlanEntry.Starttime.Local().Format("15:04:05")
+			starttime := p.getSlotTime(plannedExam.PlanEntry.DayNumber, plannedExam.PlanEntry.SlotNumber)
+			plannedExamDate = starttime.Local().Format("2006-01-02")
+			plannedExamStarttime = starttime.Local().Format("15:04:05")
 		}
 
 		if zpaExam.Date != plannedExamDate ||

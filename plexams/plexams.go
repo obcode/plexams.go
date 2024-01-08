@@ -225,7 +225,7 @@ func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {
 func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
 	for _, slot := range p.semesterConfig.Slots {
 		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
-			return slot.Starttime
+			return slot.Starttime.Local()
 		}
 	}
 	return time.Date(0, 0, 0, 0, 0, 0, 0, nil)

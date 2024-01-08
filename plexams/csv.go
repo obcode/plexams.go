@@ -45,7 +45,8 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 
 		examDate := "fehlt"
 		if exam.PlanEntry != nil {
-			examDate = exam.PlanEntry.Starttime.Local().Format("02.01.06, 15:04 Uhr")
+			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			examDate = starttime.Local().Format("02.01.06, 15:04 Uhr")
 		}
 
 		csvExams[primussAncode] = CsvExam{
@@ -100,7 +101,8 @@ func (p *Plexams) CsvForEXaHM(filename string) error {
 
 		examDate := "fehlt"
 		if exam.PlanEntry != nil {
-			examDate = exam.PlanEntry.Starttime.Local().Format("02.01.06, 15:04 Uhr")
+			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			examDate = starttime.Local().Format("02.01.06, 15:04 Uhr")
 		}
 
 		var rooms []string

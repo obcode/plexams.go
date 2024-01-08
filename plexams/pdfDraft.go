@@ -243,9 +243,10 @@ func (p *Plexams) tableForProgram(ctx context.Context, program, programLong stri
 				[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
 					"fehlt noch"})
 		} else {
+			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 			contents = append(contents,
 				[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-					r.Replace(exam.PlanEntry.Starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr"))})
+					r.Replace(starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr"))})
 		}
 	}
 

@@ -83,7 +83,7 @@ type ExamerInPlan {
 type PlanEntry {
   dayNumber: Int!
   slotNumber: Int!
-  starttime: Time!
+  # starttime: Time!
   ancode: Int!
   locked: Boolean!
 }

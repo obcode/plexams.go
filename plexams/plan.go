@@ -56,7 +56,6 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
 		DayNumber:  slot.DayNumber,
 		SlotNumber: slot.SlotNumber,
-		Starttime:  slot.Starttime,
 		Ancode:     ancode,
 		Locked:     false,
 	})

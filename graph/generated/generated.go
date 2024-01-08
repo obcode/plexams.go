@@ -342,7 +342,6 @@ type ComplexityRoot struct {
 		DayNumber  func(childComplexity int) int
 		Locked     func(childComplexity int) int
 		SlotNumber func(childComplexity int) int
-		Starttime  func(childComplexity int) int
 	}
 
 	PlannedExam struct {
@@ -2190,13 +2189,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PlanEntry.SlotNumber(childComplexity), true
-
-	case "PlanEntry.starttime":
-		if e.complexity.PlanEntry.Starttime == nil {
-			break
-		}
-
-		return e.complexity.PlanEntry.Starttime(childComplexity), true
 
 	case "PlannedExam.ancode":
 		if e.complexity.PlannedExam.Ancode == nil {
@@ -4387,10 +4379,11 @@ type ExamerInPlan {
   mainExamerID: Int!
 }
 
+# TODO: remove starttime!!!
 type PlanEntry {
   dayNumber: Int!
   slotNumber: Int!
-  starttime: Time!
+  # starttime: Time!
   ancode: Int!
   locked: Boolean!
 }
@@ -14894,50 +14887,6 @@ func (ec *executionContext) fieldContext_PlanEntry_slotNumber(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _PlanEntry_starttime(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PlanEntry_starttime(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Starttime, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PlanEntry_starttime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PlanEntry",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _PlanEntry_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PlanEntry_ancode(ctx, field)
 	if err != nil {
@@ -15503,8 +15452,6 @@ func (ec *executionContext) fieldContext_PlannedExam_planEntry(ctx context.Conte
 				return ec.fieldContext_PlanEntry_dayNumber(ctx, field)
 			case "slotNumber":
 				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
-			case "starttime":
-				return ec.fieldContext_PlanEntry_starttime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
@@ -30568,11 +30515,6 @@ func (ec *executionContext) _PlanEntry(ctx context.Context, sel ast.SelectionSet
 			}
 		case "slotNumber":
 			out.Values[i] = ec._PlanEntry_slotNumber(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "starttime":
-			out.Values[i] = ec._PlanEntry_starttime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

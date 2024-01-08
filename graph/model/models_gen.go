@@ -261,11 +261,10 @@ type Plan struct {
 }
 
 type PlanEntry struct {
-	DayNumber  int       `json:"dayNumber"`
-	SlotNumber int       `json:"slotNumber"`
-	Starttime  time.Time `json:"starttime"`
-	Ancode     int       `json:"ancode"`
-	Locked     bool      `json:"locked"`
+	DayNumber  int  `json:"dayNumber"`
+	SlotNumber int  `json:"slotNumber"`
+	Ancode     int  `json:"ancode"`
+	Locked     bool `json:"locked"`
 }
 
 type PlannedExam struct {

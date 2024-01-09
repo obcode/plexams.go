@@ -24,21 +24,21 @@ var (
 					log.Fatal("need program")
 				}
 				program := args[1]
-				if len(Outfile) == 0 {
-					Outfile = fmt.Sprintf("VorläufigePrüfungsplanung_FK07_%s.csv", program)
+				if len(Csvfile) == 0 {
+					Csvfile = fmt.Sprintf("VorläufigePrüfungsplanung_FK07_%s.csv", program)
 				}
-				fmt.Printf("generating %s\n", Outfile)
-				err := plexams.CsvForProgram(program, Outfile)
+				fmt.Printf("generating %s\n", Csvfile)
+				err := plexams.CsvForProgram(program, Csvfile)
 				if err != nil {
 					os.Exit(1)
 				}
 
 			case "exahm":
-				if len(Outfile) == 0 {
-					Outfile = "Prüfungsplanung_EXaHM_SEB_FK07.csv"
+				if len(Csvfile) == 0 {
+					Csvfile = "Prüfungsplanung_EXaHM_SEB_FK07.csv"
 				}
-				fmt.Printf("generating %s\n", Outfile)
-				err := plexams.CsvForEXaHM(Outfile)
+				fmt.Printf("generating %s\n", Csvfile)
+				err := plexams.CsvForEXaHM(Csvfile)
 				if err != nil {
 					os.Exit(1)
 				}
@@ -53,4 +53,5 @@ var (
 
 func init() {
 	rootCmd.AddCommand(csvCmd)
+	csvCmd.Flags().StringVarP(&Csvfile, "out", "o", "", "output (csv) file")
 }

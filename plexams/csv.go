@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/jszwec/csvutil"
@@ -16,6 +17,8 @@ type CsvExam struct {
 	Module     string `csv:"Modul"`
 	MainExamer string `csv:"Erstprüfer:in"`
 	ExamDate   string `csv:"Termin"`
+	Rooms      string `csv:"Räume"`
+	Comment    string `csv:"Anmerkungen"`
 }
 
 func (p *Plexams) CsvForProgram(program, filename string) error {
@@ -26,7 +29,7 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 		return err
 	}
 
-	csvExams := make(map[int]CsvExam, 0)
+	csvExams := make(map[int][]CsvExam, 0)
 	ancodes := make([]int, 0, len(exams))
 
 	for _, exam := range exams {
@@ -49,11 +52,38 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 			examDate = starttime.Local().Format("02.01.06, 15:04 Uhr")
 		}
 
-		csvExams[primussAncode] = CsvExam{
-			Ancode:     primussAncode,
-			Module:     exam.ZpaExam.Module,
-			MainExamer: exam.ZpaExam.MainExamer,
-			ExamDate:   examDate,
+		if exam.PlannedRooms != nil {
+			csvEntries := make([]CsvExam, 0, len(exam.PlannedRooms))
+			for _, room := range exam.PlannedRooms {
+				var sb strings.Builder
+				if room.Handicap {
+					sb.WriteString(fmt.Sprintf("NTA %d Min., ", room.Duration))
+				}
+				if room.Reserve {
+					sb.WriteString("Reserveraum, nicht veröffentlichen, ")
+				}
+				sb.WriteString(fmt.Sprintf("%d Studierende eingeplant", len(room.StudentsInRoom)))
+				csvEntries = append(csvEntries, CsvExam{
+					Ancode:     primussAncode,
+					Module:     exam.ZpaExam.Module,
+					MainExamer: exam.ZpaExam.MainExamer,
+					ExamDate:   examDate,
+					Rooms:      room.RoomName,
+					Comment:    sb.String(),
+				})
+			}
+
+			// examRooms = sb.String()
+
+			csvExams[primussAncode] = csvEntries
+		} else {
+			csvExams[primussAncode] = []CsvExam{{
+				Ancode:     primussAncode,
+				Module:     exam.ZpaExam.Module,
+				MainExamer: exam.ZpaExam.MainExamer,
+				ExamDate:   examDate,
+				Rooms:      "fehlen noch",
+			}}
 		}
 	}
 
@@ -61,7 +91,7 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 
 	csvExamsSlice := make([]CsvExam, 0, len(exams))
 	for _, ancode := range ancodes {
-		csvExamsSlice = append(csvExamsSlice, csvExams[ancode])
+		csvExamsSlice = append(csvExamsSlice, csvExams[ancode]...)
 	}
 
 	b, err := csvutil.Marshal(csvExamsSlice)

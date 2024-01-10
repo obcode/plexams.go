@@ -334,12 +334,14 @@ func (p *Plexams) GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, e
 	return p.dbClient.GetGeneratedExams(ctx)
 }
 
-// GeneratedExam is the resolver for the generatedExam field.
+func (p *Plexams) GeneratedExamsForExamer(ctx context.Context, examerID int) ([]*model.GeneratedExam, error) {
+	return p.dbClient.GetGeneratedExamsForExamer(ctx, examerID)
+}
+
 func (p *Plexams) GeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error) {
 	return p.dbClient.GetGeneratedExam(ctx, ancode)
 }
 
-// ConflictingAncodes is the resolver for the conflictingAncodes field.
 func (p *Plexams) ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error) {
 	exam, err := p.dbClient.GetGeneratedExam(ctx, ancode)
 	if err != nil {

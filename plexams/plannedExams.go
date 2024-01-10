@@ -88,6 +88,27 @@ func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error
 	return plannedExams, nil
 }
 
+func (p *Plexams) PlannedExamsByExamer(ctx context.Context, examerID int) ([]*model.PlannedExam, error) {
+	plannedExams, err := p.PlannedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planned exams")
+		return nil, err
+	}
+
+	plannedExamsForExamer := make([]*model.PlannedExam, 0)
+	for _, plannedExam := range plannedExams {
+		if plannedExam.Constraints != nil && plannedExam.Constraints.NotPlannedByMe {
+			continue
+		}
+		if plannedExam.ZpaExam.MainExamerID == examerID {
+			plannedExamsForExamer = append(plannedExamsForExamer, plannedExam)
+			break
+		}
+	}
+
+	return plannedExamsForExamer, nil
+}
+
 func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string, onlyPlannedByMe bool) ([]*model.PlannedExam, error) {
 	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {

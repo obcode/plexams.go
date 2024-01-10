@@ -1,5 +1,6 @@
 extend type Query {
   invigilatorTodos: InvigilationTodos
+  invigilatorsWithReq: [Invigilator!]!
 }
 
 type Invigilation {

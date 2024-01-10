@@ -14,3 +14,8 @@ import (
 func (r *queryResolver) InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error) {
 	return r.plexams.InvigilationTodos(ctx)
 }
+
+// InvigilatorsWithReq is the resolver for the invigilatorsWithReq field.
+func (r *queryResolver) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error) {
+	return r.plexams.InvigilatorsWithReq(ctx)
+}

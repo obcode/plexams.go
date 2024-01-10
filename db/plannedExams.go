@@ -35,7 +35,7 @@ func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.Exam
 	return exams, nil
 }
 
-// TODO: rewrite me
+// Deprecated: rm me
 func (db *DB) PlannedExamsByMainExamer(ctx context.Context, examerID int) ([]*model.ExamInPlan, error) {
 	collection := db.getCollectionSemester(collectionExamsInPlan)
 
@@ -57,3 +57,5 @@ func (db *DB) PlannedExamsByMainExamer(ctx context.Context, examerID int) ([]*mo
 
 	return exams, nil
 }
+
+// func (db *DB)

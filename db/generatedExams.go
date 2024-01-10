@@ -53,6 +53,27 @@ func (db *DB) GetGeneratedExams(ctx context.Context) ([]*model.GeneratedExam, er
 	return exams, nil
 }
 
+func (db *DB) GetGeneratedExamsForExamer(ctx context.Context, examerID int) ([]*model.GeneratedExam, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionGeneratedExams)
+
+	cur, err := collection.Find(ctx, bson.D{{Key: "zpaexam.mainexamerid", Value: examerID}})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get generated exams")
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	exams := make([]*model.GeneratedExam, 0)
+
+	err = cur.All(ctx, &exams)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot decode generated exams")
+		return nil, err
+	}
+
+	return exams, nil
+}
+
 func (db *DB) GetGeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionGeneratedExams)
 

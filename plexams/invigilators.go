@@ -65,7 +65,8 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 
 			excludedDates := make([]*time.Time, 0, len(reqs.ExcludedDates))
 			for _, day := range reqs.ExcludedDates {
-				t, err := time.Parse("02.01.06", day)
+				loc, _ := time.LoadLocation("Europe/Berlin")
+				t, err := time.ParseInLocation("02.01.06", day, loc)
 				if err != nil {
 					log.Error().Err(err).Str("day", day).Msg("cannot parse date")
 				} else {
@@ -74,12 +75,19 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 			}
 
 			examDateTimes := make([]*time.Time, 0)
-			exams, err := p.dbClient.PlannedExamsByMainExamer(ctx, teacher.ID)
+			exams, err := p.GeneratedExamsForExamer(ctx, teacher.ID)
 			if err != nil {
 				log.Error().Err(err).Str("name", teacher.Shortname).Msg("cannit get exams by main examer")
 			} else {
 				for _, exam := range exams {
-					examDateTimes = append(examDateTimes, &exam.Slot.Starttime)
+					planEntry, err := p.dbClient.PlanEntry(ctx, exam.Ancode)
+					if err != nil {
+						log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get plan entry for ancode")
+					}
+					if planEntry != nil {
+						starttime := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
+						examDateTimes = append(examDateTimes, &starttime)
+					}
 				}
 			}
 
@@ -141,7 +149,7 @@ func (p *Plexams) datesToDay(dates []*time.Time) []int {
 }
 
 func (p *Plexams) InvigilationTodos(ctx context.Context) (*model.InvigilationTodos, error) {
-	selfInvigilations, err := p.GetSelfInvigilations(ctx)
+	selfInvigilations, err := p.MakeSelfInvigilations(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get self invigilations")
 	}
@@ -315,7 +323,7 @@ func dayOkForInvigilator(day int, invigilator *model.Invigilator) (wantDay, canD
 
 func (p *Plexams) PrepareSelfInvigilation() error {
 	ctx := context.Background()
-	selfInvigilations, err := p.GetSelfInvigilations(ctx)
+	selfInvigilations, err := p.MakeSelfInvigilations(ctx)
 	if err != nil {
 		return err
 	}
@@ -331,7 +339,7 @@ func (p *Plexams) PrepareSelfInvigilation() error {
 	return p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "invigilations_self"), toSave)
 }
 
-func (p *Plexams) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
+func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
 	invigilators, err := p.InvigilatorsWithReq(ctx)
 	if err != nil || invigilators == nil {
 		log.Error().Err(err).Msg("cannot get invigilators")

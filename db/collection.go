@@ -41,6 +41,7 @@ const (
 	collectionRoomsForExams = "rooms_for_exams" // Deprecated: ?
 
 	collectionInvigilatorRequirements = "invigilator_requirements"
+	collectionInvigilatorTodos        = "invigilator_todos"
 	collectionOtherInvigilations      = "invigilations_other"
 	collectionSelfInvigilations       = "invigilations_self"
 )

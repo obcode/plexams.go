@@ -77,8 +77,7 @@ input RoomForExamInput {
   mktnrs: [String!]
 }
 
-# Deprecated: rm me
 type RoomAndExam {
-  room: RoomForExam!
+  room: PlannedRoom!
   exam: ZPAExam!
 }

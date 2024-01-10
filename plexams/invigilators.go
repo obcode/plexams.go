@@ -148,7 +148,32 @@ func (p *Plexams) datesToDay(dates []*time.Time) []int {
 	return days
 }
 
-func (p *Plexams) InvigilationTodos(ctx context.Context) (*model.InvigilationTodos, error) {
+func (p *Plexams) GetInvigilationTodos(ctx context.Context) (*model.InvigilationTodos, error) {
+	todos, err := p.dbClient.GetInvigilationTodos(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invigilation todos")
+		return nil, err
+	}
+	if todos == nil {
+		return p.PrepareInvigilationTodos(ctx)
+	}
+
+	err = p.AddInvigilatorsToInvigilationTodos(ctx, todos)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot add invigilators to invigilation todos")
+		return nil, err
+	}
+
+	err = p.dbClient.CacheInvigilatorTodos(ctx, todos)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot cache invigilation todos")
+		return nil, err
+	}
+
+	return todos, nil
+}
+
+func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.InvigilationTodos, error) {
 	selfInvigilations, err := p.MakeSelfInvigilations(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get self invigilations")
@@ -273,7 +298,200 @@ func (p *Plexams) InvigilationTodos(ctx context.Context) (*model.InvigilationTod
 		}
 	}
 
+	err = p.dbClient.CacheInvigilatorTodos(ctx, &todos)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot cache invigilation todos")
+		return &todos, err
+	}
+
 	return &todos, nil
+}
+
+func (p *Plexams) AddInvigilatorsToInvigilationTodos(ctx context.Context, todos *model.InvigilationTodos) error {
+	reqs, err := p.InvigilatorsWithReq(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invigilators with regs")
+		return err
+	}
+
+	todos.Invigilators = reqs
+
+	for _, invigilator := range todos.Invigilators {
+
+		enough := false
+		totalMinutes := todos.TodoPerInvigilatorOvertimeCutted
+		if invigilator.Requirements != nil {
+			totalMinutes = int(float64(totalMinutes) * invigilator.Requirements.Factor)
+		}
+
+		if invigilator.Requirements != nil {
+			totalMinutes -= invigilator.Requirements.AllContributions
+
+			if totalMinutes < 0 {
+				totalMinutes = 0
+				enough = true
+			}
+		}
+
+		invigilationsForInvigilator, err := p.dbClient.InvigilationsForInvigilator(ctx, invigilator.Teacher.ID)
+		if err != nil {
+			log.Error().Err(err).Str("invigilator", invigilator.Teacher.Shortname).
+				Msg("cannot get invigilations")
+			return err
+		}
+
+		invigilationSet := set.NewSet[int]()
+		doingMinutes := 0
+
+		for _, invigilation := range invigilationsForInvigilator {
+			invigilationSet.Add(invigilation.Slot.DayNumber)
+			if !invigilation.IsSelfInvigilation {
+				doingMinutes += invigilation.Duration
+			}
+		}
+		invigilationDays := invigilationSet.ToSlice()
+		sort.Ints(invigilationDays)
+
+		invigilator.Todos = &model.InvigilatorTodos{
+			TotalMinutes:     totalMinutes,
+			DoingMinutes:     doingMinutes,
+			Enough:           enough,
+			InvigilationDays: invigilationDays,
+			Invigilations:    invigilationsForInvigilator,
+		}
+	}
+
+	return nil
+}
+
+// Deprecated: split to other functions
+func (p *Plexams) InvigilationTodos(ctx context.Context) (*model.InvigilationTodos, error) {
+	// selfInvigilations, err := p.MakeSelfInvigilations(ctx)
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("cannot get self invigilations")
+	// }
+
+	// todos := model.InvigilationTodos{}
+
+	// for _, slot := range p.semesterConfig.Slots {
+	// 	roomsInSlot, err := p.PlannedRoomsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+	// 	if err != nil {
+	// 		log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+	// 			Msg("cannot get rooms for slot")
+	// 	} else {
+	// 		if len(roomsInSlot) == 0 {
+	// 			continue
+	// 		}
+	// 		roomMap := make(map[string]int)
+	// 	OUTER:
+	// 		for _, room := range roomsInSlot {
+	// 			for _, selfInvigilation := range selfInvigilations {
+	// 				if selfInvigilation.Slot.DayNumber == slot.DayNumber &&
+	// 					selfInvigilation.Slot.SlotNumber == slot.SlotNumber &&
+	// 					*selfInvigilation.RoomName == room.RoomName {
+	// 					log.Debug().Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Str("room", room.RoomName).
+	// 						Msg("found self invigilation")
+	// 					continue OUTER
+	// 				}
+	// 			}
+	// 			maxDuration, ok := roomMap[room.RoomName]
+	// 			if !ok || maxDuration < room.Duration {
+	// 				roomMap[room.RoomName] = room.Duration
+	// 			}
+	// 		}
+
+	// 		for _, maxDuration := range roomMap {
+	// 			todos.SumExamRooms += maxDuration
+	// 		}
+	// 		todos.SumReserve += 60 // FIXME: Maybe some other time? half of max duration in slot?
+	// 	}
+	// }
+
+	// reqs, err := p.InvigilatorsWithReq(ctx)
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("cannot get invigilators with regs")
+	// }
+
+	// todos.Invigilators = reqs
+
+	// for _, invigilator := range reqs {
+	// 	if invigilator.Requirements != nil {
+	// 		todos.SumOtherContributions += invigilator.Requirements.AllContributions
+	// 	}
+	// }
+
+	// todos.InvigilatorCount = len(reqs)
+	// adjustedInvigilatorCount := 0.0
+
+	// for _, invigilator := range reqs {
+	// 	if invigilator.Requirements != nil {
+	// 		adjustedInvigilatorCount += invigilator.Requirements.Factor
+	// 	}
+	// }
+
+	// todos.TodoPerInvigilator = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+todos.SumOtherContributions) / adjustedInvigilatorCount))
+
+	// sumOtherContributionsOvertimeCutted := 0
+	// for _, invigilator := range reqs {
+	// 	if invigilator.Requirements != nil {
+	// 		if otherContributions := invigilator.Requirements.OralExamsContribution +
+	// 			invigilator.Requirements.LiveCodingContribution +
+	// 			invigilator.Requirements.MasterContribution; otherContributions > todos.TodoPerInvigilator {
+	// 			sumOtherContributionsOvertimeCutted += todos.TodoPerInvigilator
+	// 		} else {
+	// 			sumOtherContributionsOvertimeCutted += otherContributions
+	// 		}
+	// 	}
+	// }
+	// todos.SumOtherContributionsOvertimeCutted = sumOtherContributionsOvertimeCutted
+	// todos.TodoPerInvigilatorOvertimeCutted = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+sumOtherContributionsOvertimeCutted) / adjustedInvigilatorCount))
+
+	// for _, invigilator := range todos.Invigilators {
+
+	// 	enough := false
+	// 	totalMinutes := todos.TodoPerInvigilatorOvertimeCutted
+	// 	if invigilator.Requirements != nil {
+	// 		totalMinutes = int(float64(totalMinutes) * invigilator.Requirements.Factor)
+	// 	}
+
+	// 	if invigilator.Requirements != nil {
+	// 		totalMinutes -= invigilator.Requirements.AllContributions
+
+	// 		if totalMinutes < 0 {
+	// 			totalMinutes = 0
+	// 			enough = true
+	// 		}
+	// 	}
+
+	// 	invigilationsForInvigilator, err := p.dbClient.InvigilationsForInvigilator(ctx, invigilator.Teacher.ID)
+	// 	if err != nil {
+	// 		log.Error().Err(err).Str("invigilator", invigilator.Teacher.Shortname).
+	// 			Msg("cannot get invigilations")
+	// 	}
+
+	// 	invigilationSet := set.NewSet[int]()
+	// 	doingMinutes := 0
+
+	// 	for _, invigilation := range invigilationsForInvigilator {
+	// 		invigilationSet.Add(invigilation.Slot.DayNumber)
+	// 		if !invigilation.IsSelfInvigilation {
+	// 			doingMinutes += invigilation.Duration
+	// 		}
+	// 	}
+	// 	invigilationDays := invigilationSet.ToSlice()
+	// 	sort.Ints(invigilationDays)
+
+	// 	invigilator.Todos = &model.InvigilatorTodos{
+	// 		TotalMinutes:     totalMinutes,
+	// 		DoingMinutes:     doingMinutes,
+	// 		Enough:           enough,
+	// 		InvigilationDays: invigilationDays,
+	// 		Invigilations:    invigilationsForInvigilator,
+	// 	}
+	// }
+
+	// return &todos, nil
+	return nil, nil
 }
 
 func (p *Plexams) InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error) {
@@ -321,6 +539,7 @@ func dayOkForInvigilator(day int, invigilator *model.Invigilator) (wantDay, canD
 	return false, true
 }
 
+// Deprecated: rm me
 func (p *Plexams) PrepareSelfInvigilation() error {
 	ctx := context.Background()
 	selfInvigilations, err := p.MakeSelfInvigilations(ctx)
@@ -339,6 +558,7 @@ func (p *Plexams) PrepareSelfInvigilation() error {
 	return p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "invigilations_self"), toSave)
 }
 
+// Deprecated: rm me
 func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
 	invigilators, err := p.InvigilatorsWithReq(ctx)
 	if err != nil || invigilators == nil {
@@ -355,49 +575,49 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 
 	invigilations := make([]*model.Invigilation, 0)
 	for _, slot := range p.semesterConfig.Slots {
-		examsInSlot, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		examsInSlot, err := p.GetExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
 		if err != nil {
 			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
 				Msg("cannot get exams in slot")
 			continue
 		}
-		examerWithExams := make(map[int][]*model.ExamInPlan)
+		examerWithExams := make(map[int][]*model.PlannedExam)
 	OUTER:
 		for _, exam := range examsInSlot {
-			invigilator, ok := invigilatorMap[exam.Exam.ZpaExam.MainExamerID]
+			invigilator, ok := invigilatorMap[exam.ZpaExam.MainExamerID]
 
 			if !ok {
-				log.Debug().Str("name", exam.Exam.ZpaExam.MainExamer).Msg("ist keine Aufsicht")
+				log.Debug().Str("name", exam.ZpaExam.MainExamer).Msg("ist keine Aufsicht")
+				continue
+			}
+			if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+				continue
+			}
+			if len(exam.PlannedRooms) == 0 {
 				continue
 			}
 			if invigilator.Requirements != nil {
 				for _, day := range invigilator.Requirements.ExcludedDays {
-					if day == exam.Slot.DayNumber {
-						log.Debug().Str("name", exam.Exam.ZpaExam.MainExamer).Interface("slot", exam.Slot).
+					if day == exam.PlanEntry.DayNumber {
+						log.Debug().Str("name", exam.ZpaExam.MainExamer).Interface("slot", exam.PlanEntry).
 							Msg("Tag ist gesperrt für Aufsicht")
 						continue OUTER
 					}
 				}
 			}
-			exams, ok := examerWithExams[exam.Exam.ZpaExam.MainExamerID]
+			exams, ok := examerWithExams[exam.ZpaExam.MainExamerID]
 			if !ok {
-				examerWithExams[exam.Exam.ZpaExam.MainExamerID] = []*model.ExamInPlan{exam}
+				examerWithExams[exam.ZpaExam.MainExamerID] = []*model.PlannedExam{exam}
 			} else {
-				examerWithExams[exam.Exam.ZpaExam.MainExamerID] = append(exams, exam)
+				examerWithExams[exam.ZpaExam.MainExamerID] = append(exams, exam)
 			}
 		}
 
 		for examer, exams := range examerWithExams {
 			roomNames := set.NewSet[string]()
 			for _, exam := range exams {
-				rooms, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
-
-				if err != nil {
-					log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for ancode")
-				} else {
-					for _, room := range rooms {
-						roomNames.Add(room.RoomName)
-					}
+				for _, room := range exam.PlannedRooms {
+					roomNames.Add(room.RoomName)
 				}
 			}
 
@@ -423,77 +643,80 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 
 // TODO: rewrite me
 func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error) {
-	// rooms, err := p.PlannedRoomsInSlot(ctx, day, time)
-	// if err != nil {
-	// 	log.Error().Err(err).Int("day", day).Int("time", time).
-	// 		Msg("cannot get rooms for slot")
-	// 	return nil, err
-	// }
+	rooms, err := p.PlannedRoomsInSlot(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).
+			Msg("cannot get rooms for slot")
+		return nil, err
+	}
 
-	// reserve, err := p.dbClient.GetInvigilatorInSlot(ctx, "reserve", day, time)
-	// if err != nil {
-	// 	log.Error().Err(err).Int("day", day).Int("time", time).
-	// 		Msg("cannot get reserve for slot")
-	// 	return nil, err
-	// }
+	if len(rooms) == 0 {
+		return nil, nil // okay?
+	}
 
-	// slot := &model.InvigilationSlot{
-	// 	Reserve:               reserve,
-	// 	RoomsWithInvigilators: []*model.RoomWithInvigilator{},
-	// }
+	reserve, err := p.dbClient.GetInvigilatorInSlot(ctx, "reserve", day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).
+			Msg("cannot get reserve for slot")
+		return nil, err
+	}
 
-	// roomMap := make(map[string][]*model.RoomForExam)
+	slot := &model.InvigilationSlot{
+		Reserve:               reserve,
+		RoomsWithInvigilators: []*model.RoomWithInvigilator{},
+	}
 
-	// for _, room := range rooms {
-	// 	roomsForExam, ok := roomMap[room.RoomName]
-	// 	if !ok {
-	// 		roomsForExam = make([]*model.RoomForExam, 0, 1)
-	// 	}
-	// 	roomMap[room.RoomName] = append(roomsForExam, room)
-	// }
+	roomMap := make(map[string][]*model.PlannedRoom)
 
-	// keys := make([]string, 0, len(roomMap))
-	// for k := range roomMap {
-	// 	keys = append(keys, k)
-	// }
-	// sort.Strings(keys)
+	for _, room := range rooms {
+		roomsForExam, ok := roomMap[room.RoomName]
+		if !ok {
+			roomsForExam = make([]*model.PlannedRoom, 0, 1)
+		}
+		roomMap[room.RoomName] = append(roomsForExam, room)
+	}
 
-	// for _, name := range keys {
-	// 	roomsForExam := roomMap[name]
-	// 	invigilator, err := p.dbClient.GetInvigilatorForRoom(ctx, name, day, time)
-	// 	if err != nil {
-	// 		log.Error().Err(err).Int("day", day).Int("slot", time).Str("room", name).
-	// 			Msg("cannot get invigilator for rooms in slot")
-	// 	}
+	keys := make([]string, 0, len(roomMap))
+	for k := range roomMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
 
-	// 	roomAndExams := make([]*model.RoomAndExam, 0)
-	// 	maxDuration := 0
-	// 	studentCount := 0
-	// 	for _, roomForExam := range roomsForExam {
-	// 		exam, err := p.dbClient.GetZpaExamByAncode(ctx, roomForExam.Ancode)
-	// 		if err != nil {
-	// 			log.Error().Err(err).Int("ancode", roomForExam.Ancode).
-	// 				Msg("cannot get zpa exam")
-	// 			return nil, err
-	// 		}
-	// 		roomAndExams = append(roomAndExams, &model.RoomAndExam{
-	// 			Room: roomForExam,
-	// 			Exam: exam,
-	// 		})
-	// 		if roomForExam.Duration > maxDuration {
-	// 			maxDuration = roomForExam.Duration
-	// 		}
-	// 		studentCount += roomForExam.SeatsPlanned
-	// 	}
+	for _, name := range keys {
+		roomsForExam := roomMap[name]
+		invigilator, err := p.dbClient.GetInvigilatorForRoom(ctx, name, day, time)
+		if err != nil {
+			log.Error().Err(err).Int("day", day).Int("slot", time).Str("room", name).
+				Msg("cannot get invigilator for rooms in slot")
+		}
 
-	// 	slot.RoomsWithInvigilators = append(slot.RoomsWithInvigilators, &model.RoomWithInvigilator{
-	// 		Name:         name,
-	// 		MaxDuration:  maxDuration,
-	// 		StudentCount: studentCount,
-	// 		RoomAndExams: roomAndExams,
-	// 		Invigilator:  invigilator,
-	// 	})
-	// }
-	// return slot, nil
-	return nil, nil
+		roomAndExams := make([]*model.RoomAndExam, 0)
+		maxDuration := 0
+		studentCount := 0
+		for _, roomForExam := range roomsForExam {
+			exam, err := p.dbClient.GetZpaExamByAncode(ctx, roomForExam.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", roomForExam.Ancode).
+					Msg("cannot get zpa exam")
+				return nil, err
+			}
+			roomAndExams = append(roomAndExams, &model.RoomAndExam{
+				Room: roomForExam,
+				Exam: exam,
+			})
+			if roomForExam.Duration > maxDuration {
+				maxDuration = roomForExam.Duration
+			}
+			studentCount += len(roomForExam.StudentsInRoom)
+		}
+
+		slot.RoomsWithInvigilators = append(slot.RoomsWithInvigilators, &model.RoomWithInvigilator{
+			Name:         name,
+			MaxDuration:  maxDuration,
+			StudentCount: studentCount,
+			RoomAndExams: roomAndExams,
+			Invigilator:  invigilator,
+		})
+	}
+	return slot, nil
 }

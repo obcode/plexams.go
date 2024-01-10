@@ -482,7 +482,6 @@ func (p *Plexams) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	return p.dbClient.PlannedRoomNames(ctx)
 }
 
-// TODO: rewrite me
 func (p *Plexams) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedRoom, error) {
 	rooms, err := p.dbClient.PlannedRoomsInSlot(ctx, day, time)
 	if err != nil {

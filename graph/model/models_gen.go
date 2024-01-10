@@ -324,7 +324,7 @@ type Room struct {
 }
 
 type RoomAndExam struct {
-	Room *RoomForExam `json:"room"`
+	Room *PlannedRoom `json:"room"`
 	Exam *ZPAExam     `json:"exam"`
 }
 

@@ -12,10 +12,20 @@ import (
 
 // InvigilatorTodos is the resolver for the invigilatorTodos field.
 func (r *queryResolver) InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error) {
-	return r.plexams.InvigilationTodos(ctx)
+	return r.plexams.GetInvigilationTodos(ctx)
 }
 
 // InvigilatorsWithReq is the resolver for the invigilatorsWithReq field.
 func (r *queryResolver) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error) {
 	return r.plexams.InvigilatorsWithReq(ctx)
+}
+
+// RoomsWithInvigilationsForSlot is the resolver for the roomsWithInvigilationsForSlot field.
+func (r *queryResolver) RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error) {
+	return r.plexams.RoomsWithInvigilationsForSlot(ctx, day, time)
+}
+
+// InvigilatorsForDay is the resolver for the invigilatorsForDay field.
+func (r *queryResolver) InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error) {
+	return r.plexams.InvigilatorsForDay(ctx, day)
 }

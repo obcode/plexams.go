@@ -127,16 +127,6 @@ func (r *queryResolver) RoomsForSlot(ctx context.Context, day int, time int) (*m
 	return r.plexams.RoomsForSlot(ctx, day, time)
 }
 
-// RoomsWithInvigilationsForSlot is the resolver for the roomsWithInvigilationsForSlot field.
-func (r *queryResolver) RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error) {
-	return r.plexams.RoomsWithInvigilationsForSlot(ctx, day, time)
-}
-
-// InvigilatorsForDay is the resolver for the invigilatorsForDay field.
-func (r *queryResolver) InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error) {
-	return r.plexams.InvigilatorsForDay(ctx, day)
-}
-
 // DayOkForInvigilator is the resolver for the dayOkForInvigilator field.
 func (r *queryResolver) DayOkForInvigilator(ctx context.Context, day int, invigilatorID int) (*bool, error) {
 	panic(fmt.Errorf("not implemented: DayOkForInvigilator - dayOkForInvigilator"))

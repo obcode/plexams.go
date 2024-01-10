@@ -11,6 +11,7 @@ import (
 	"github.com/theckman/yacspin"
 )
 
+// TODO: all planned_rooms okay? especially after moving an exam? check room -> slot -> ancode sameslot?
 func (p *Plexams) ValidateDB() error {
 	ctx := context.Background()
 	cfg := yacspin.Config{

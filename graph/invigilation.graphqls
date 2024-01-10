@@ -1,6 +1,8 @@
 extend type Query {
   invigilatorTodos: InvigilationTodos
   invigilatorsWithReq: [Invigilator!]!
+  roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
+  invigilatorsForDay(day: Int!): InvigilatorsForDay
 }
 
 type Invigilation {

@@ -32,16 +32,18 @@ var (
 	
 	Add exam after planning has started:
 
-	connected-exam  --- prepare a connected exam for ancode
-	exam-group      --- group of exams out of ancodes
+	# connected-exam  --- prepare a connected exam for ancode
+	# exam-group      --- group of exams out of ancodes
 
 	For planning rooms:
 
-	exams-in-plan      --- split exam-groups into exams
-	rooms-for-semester --- prepare rooms which are allowed to use
-	rooms-for-exams    --- rooms for exams
+	# exams-in-plan     --- split exam-groups into exams
+	rooms-for-semester 	--- prepare rooms which are allowed to use
+	rooms-for-ntas 		--- rooms for ntas alone
+	rooms-for-exams   	--- rooms for exams
 
-	invigilate-self    --- set main examer as invigilator if possible
+	# invigilate-self    --- set main examer as invigilator if possible
+	invigilator-todos    --- cache snapshot
 	`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -195,8 +197,14 @@ var (
 					os.Exit(1)
 				}
 
-			case "invigilate-self":
-				err := plexams.PrepareSelfInvigilation()
+			// case "invigilate-self":
+			// 	err := plexams.PrepareSelfInvigilation()
+			// 	if err != nil {
+			// 		os.Exit(1)
+			// 	}
+
+			case "invigilator-todos":
+				_, err := plexams.PrepareInvigilationTodos(context.Background())
 				if err != nil {
 					os.Exit(1)
 				}

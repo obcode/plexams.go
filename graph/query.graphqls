@@ -43,7 +43,5 @@ type Query {
   roomsForSlot(day: Int!, time: Int!): SlotWithRooms
 
   # Invigilators
-  roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
-  invigilatorsForDay(day: Int!): InvigilatorsForDay
   dayOkForInvigilator(day: Int!, invigilatorID: Int!): Boolean
 }

@@ -719,8 +719,6 @@ type QueryResolver interface {
 	ExamsInSlotWithRooms(ctx context.Context, day int, time int) ([]*model.ExamWithRegsAndRooms, error)
 	RoomsWithConstraints(ctx context.Context, handicap bool, lab bool, placesWithSocket bool, exahm *bool) ([]*model.Room, error)
 	RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error)
-	RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error)
-	InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error)
 	DayOkForInvigilator(ctx context.Context, day int, invigilatorID int) (*bool, error)
 	ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
@@ -734,6 +732,8 @@ type QueryResolver interface {
 	Exams(ctx context.Context) ([]*model.Exam, error)
 	InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error)
 	InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error)
+	RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error)
+	InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	AllProgramsInPlan(ctx context.Context) ([]string, error)
@@ -4141,6 +4141,8 @@ type Exam {
 	{Name: "../invigilation.graphqls", Input: `extend type Query {
   invigilatorTodos: InvigilationTodos
   invigilatorsWithReq: [Invigilator!]!
+  roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
+  invigilatorsForDay(day: Int!): InvigilatorsForDay
 }
 
 type Invigilation {
@@ -4512,8 +4514,6 @@ type ConflictsPerProgramAncode {
   roomsForSlot(day: Int!, time: Int!): SlotWithRooms
 
   # Invigilators
-  roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
-  invigilatorsForDay(day: Int!): InvigilatorsForDay
   dayOkForInvigilator(day: Int!, invigilatorID: Int!): Boolean
 }
 `, BuiltIn: false},
@@ -4596,9 +4596,8 @@ input RoomForExamInput {
   mktnrs: [String!]
 }
 
-# Deprecated: rm me
 type RoomAndExam {
-  room: RoomForExam!
+  room: PlannedRoom!
   exam: ZPAExam!
 }
 `, BuiltIn: false},
@@ -18292,122 +18291,6 @@ func (ec *executionContext) fieldContext_Query_roomsForSlot(ctx context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_roomsWithInvigilationsForSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_roomsWithInvigilationsForSlot(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RoomsWithInvigilationsForSlot(rctx, fc.Args["day"].(int), fc.Args["time"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.InvigilationSlot)
-	fc.Result = res
-	return ec.marshalOInvigilationSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationSlot(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_roomsWithInvigilationsForSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "reserve":
-				return ec.fieldContext_InvigilationSlot_reserve(ctx, field)
-			case "roomsWithInvigilators":
-				return ec.fieldContext_InvigilationSlot_roomsWithInvigilators(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type InvigilationSlot", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_roomsWithInvigilationsForSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_invigilatorsForDay(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_invigilatorsForDay(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().InvigilatorsForDay(rctx, fc.Args["day"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.InvigilatorsForDay)
-	fc.Result = res
-	return ec.marshalOInvigilatorsForDay2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorsForDay(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_invigilatorsForDay(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "want":
-				return ec.fieldContext_InvigilatorsForDay_want(ctx, field)
-			case "can":
-				return ec.fieldContext_InvigilatorsForDay_can(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type InvigilatorsForDay", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_invigilatorsForDay_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_dayOkForInvigilator(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_dayOkForInvigilator(ctx, field)
 	if err != nil {
@@ -19217,6 +19100,122 @@ func (ec *executionContext) fieldContext_Query_invigilatorsWithReq(ctx context.C
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Invigilator", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_roomsWithInvigilationsForSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_roomsWithInvigilationsForSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().RoomsWithInvigilationsForSlot(rctx, fc.Args["day"].(int), fc.Args["time"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.InvigilationSlot)
+	fc.Result = res
+	return ec.marshalOInvigilationSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationSlot(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_roomsWithInvigilationsForSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "reserve":
+				return ec.fieldContext_InvigilationSlot_reserve(ctx, field)
+			case "roomsWithInvigilators":
+				return ec.fieldContext_InvigilationSlot_roomsWithInvigilators(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InvigilationSlot", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_roomsWithInvigilationsForSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_invigilatorsForDay(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_invigilatorsForDay(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().InvigilatorsForDay(rctx, fc.Args["day"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.InvigilatorsForDay)
+	fc.Result = res
+	return ec.marshalOInvigilatorsForDay2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorsForDay(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_invigilatorsForDay(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "want":
+				return ec.fieldContext_InvigilatorsForDay_want(ctx, field)
+			case "can":
+				return ec.fieldContext_InvigilatorsForDay_can(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InvigilatorsForDay", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_invigilatorsForDay_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -21580,9 +21579,9 @@ func (ec *executionContext) _RoomAndExam_room(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.RoomForExam)
+	res := resTmp.(*model.PlannedRoom)
 	fc.Result = res
-	return ec.marshalNRoomForExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomForExam(ctx, field.Selections, res)
+	return ec.marshalNPlannedRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlannedRoom(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_RoomAndExam_room(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21593,22 +21592,28 @@ func (ec *executionContext) fieldContext_RoomAndExam_room(ctx context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "ancode":
-				return ec.fieldContext_RoomForExam_ancode(ctx, field)
+			case "day":
+				return ec.fieldContext_PlannedRoom_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_PlannedRoom_slot(ctx, field)
 			case "room":
-				return ec.fieldContext_RoomForExam_room(ctx, field)
-			case "seatsPlanned":
-				return ec.fieldContext_RoomForExam_seatsPlanned(ctx, field)
+				return ec.fieldContext_PlannedRoom_room(ctx, field)
+			case "ancode":
+				return ec.fieldContext_PlannedRoom_ancode(ctx, field)
 			case "duration":
-				return ec.fieldContext_RoomForExam_duration(ctx, field)
+				return ec.fieldContext_PlannedRoom_duration(ctx, field)
 			case "handicap":
-				return ec.fieldContext_RoomForExam_handicap(ctx, field)
+				return ec.fieldContext_PlannedRoom_handicap(ctx, field)
+			case "handicapRoomAlone":
+				return ec.fieldContext_PlannedRoom_handicapRoomAlone(ctx, field)
 			case "reserve":
-				return ec.fieldContext_RoomForExam_reserve(ctx, field)
-			case "students":
-				return ec.fieldContext_RoomForExam_students(ctx, field)
+				return ec.fieldContext_PlannedRoom_reserve(ctx, field)
+			case "studentsInRoom":
+				return ec.fieldContext_PlannedRoom_studentsInRoom(ctx, field)
+			case "ntaMtknr":
+				return ec.fieldContext_PlannedRoom_ntaMtknr(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type RoomForExam", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type PlannedRoom", field.Name)
 		},
 	}
 	return fc, nil
@@ -31490,44 +31495,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "roomsWithInvigilationsForSlot":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_roomsWithInvigilationsForSlot(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "invigilatorsForDay":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_invigilatorsForDay(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "dayOkForInvigilator":
 			field := field
 
@@ -31784,6 +31751,44 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "roomsWithInvigilationsForSlot":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_roomsWithInvigilationsForSlot(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "invigilatorsForDay":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_invigilatorsForDay(ctx, field)
 				return res
 			}
 

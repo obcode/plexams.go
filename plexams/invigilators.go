@@ -495,7 +495,7 @@ func (p *Plexams) InvigilationTodos(ctx context.Context) (*model.InvigilationTod
 }
 
 func (p *Plexams) InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error) {
-	invigilationTodos, err := p.InvigilationTodos(ctx)
+	invigilationTodos, err := p.dbClient.GetInvigilationTodos(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get invigilation todos")
 		return nil, err
@@ -539,7 +539,6 @@ func dayOkForInvigilator(day int, invigilator *model.Invigilator) (wantDay, canD
 	return false, true
 }
 
-// Deprecated: rm me
 func (p *Plexams) PrepareSelfInvigilation() error {
 	ctx := context.Background()
 	selfInvigilations, err := p.MakeSelfInvigilations(ctx)
@@ -558,7 +557,6 @@ func (p *Plexams) PrepareSelfInvigilation() error {
 	return p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "invigilations_self"), toSave)
 }
 
-// Deprecated: rm me
 func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
 	invigilators, err := p.InvigilatorsWithReq(ctx)
 	if err != nil || invigilators == nil {
@@ -573,7 +571,14 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 		invigilatorMap[invigilator.Teacher.ID] = invigilator
 	}
 
-	invigilations := make([]*model.Invigilation, 0)
+	type key struct {
+		roomName string
+		day      int
+		slot     int
+	}
+
+	invigilationsMap := make(map[key][]*model.Invigilation)
+
 	for _, slot := range p.semesterConfig.Slots {
 		examsInSlot, err := p.GetExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
 		if err != nil {
@@ -624,20 +629,46 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 			if roomNames.Cardinality() == 1 {
 				log.Debug().Int("examerid", examer).Interface("room", roomNames).Interface("slot", slot).
 					Msg("found self invigilation")
-				invigilation := model.Invigilation{
+				key := key{
+					roomName: roomNames.ToSlice()[0],
+					day:      slot.DayNumber,
+					slot:     slot.SlotNumber,
+				}
+				invigilationsForKey, ok := invigilationsMap[key]
+				if !ok {
+					invigilationsForKey = make([]*model.Invigilation, 0, 1)
+				}
+				invigilationsMap[key] = append(invigilationsForKey, &model.Invigilation{
 					RoomName:           &roomNames.ToSlice()[0],
 					Duration:           0, // FIXME: ?? self-invigilation does not count
 					InvigilatorID:      examer,
 					Slot:               slot,
 					IsReserve:          false,
 					IsSelfInvigilation: true,
-				}
-				invigilations = append(invigilations, &invigilation)
+				})
 			}
 		}
 
 	}
+
+	invigilations := make([]*model.Invigilation, 0)
+	for _, invigs := range invigilationsMap {
+		// if len(invigs) == 1 {
+		// 	invigilations = append(invigilations, invigs...)
+		// } else {
+		if len(invigs) > 1 {
+			log.Debug().Interface("invigs", invigs).Msg("found more self invigs")
+		}
+		// 	// TODO: find examer with most studs in room
+		// 	// for _, invig := range invigs {
+
+		// 	// }
+		// }
+		invigilations = append(invigilations, invigs[0])
+	}
+
 	log.Debug().Int("count", len(invigilations)).Msg("found self invigilations")
+
 	return invigilations, nil
 }
 

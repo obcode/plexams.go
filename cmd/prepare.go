@@ -42,7 +42,7 @@ var (
 	rooms-for-ntas 		--- rooms for ntas alone
 	rooms-for-exams   	--- rooms for exams
 
-	# invigilate-self    --- set main examer as invigilator if possible
+	self-invigilations    --- set main examer as invigilator if possible
 	invigilator-todos    --- cache snapshot
 	`,
 		Args: cobra.MinimumNArgs(1),
@@ -197,11 +197,11 @@ var (
 					os.Exit(1)
 				}
 
-			// case "invigilate-self":
-			// 	err := plexams.PrepareSelfInvigilation()
-			// 	if err != nil {
-			// 		os.Exit(1)
-			// 	}
+			case "self-invigilations":
+				err := plexams.PrepareSelfInvigilation()
+				if err != nil {
+					os.Exit(1)
+				}
 
 			case "invigilator-todos":
 				_, err := plexams.PrepareInvigilationTodos(context.Background())

@@ -18,7 +18,7 @@ func (p *Plexams) AddInvigilation(ctx context.Context, room string, day, slot, i
 		return err
 	}
 	// check if (day,slot) needs a reserve, i.e. contains exams
-	examsInSlot, err := p.ExamsInSlot(ctx, day, slot)
+	examsInSlot, err := p.GetExamsInSlot(ctx, day, slot)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (p *Plexams) AddInvigilation(ctx context.Context, room string, day, slot, i
 }
 
 func (p *Plexams) GetInvigilator(ctx context.Context, invigilatorID int) (*model.Invigilator, error) {
-	invigilationTodos, err := p.InvigilationTodos(ctx)
+	invigilationTodos, err := p.dbClient.GetInvigilationTodos(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get invigilation todos")
 		return nil, err

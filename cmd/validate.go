@@ -83,7 +83,10 @@ var (
 					}
 
 				case "invigilator-reqs":
-					validations = append(validations, plexams.ValidateInvigilatorRequirements)
+					validations = append(validations,
+						plexams.ValidateInvigilatorRequirements,
+						plexams.ValidateInvigilationDups,
+					)
 
 				case "invigilator-slots":
 					validations = append(validations, plexams.ValidateInvigilatorSlots)
@@ -120,6 +123,7 @@ func validate(funcs []func() error) {
 		if Sleep == 0 {
 			return
 		}
+		fmt.Printf("\n... sleeping %d seconds ...\n\n", Sleep)
 		time.Sleep(time.Duration(Sleep) * time.Second)
 	}
 }

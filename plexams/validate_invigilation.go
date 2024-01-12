@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
-	"github.com/gookit/color"
 	"github.com/logrusorgru/aurora"
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/theckman/yacspin"
 )
@@ -54,7 +55,7 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 			for _, excludedDay := range invigilator.Requirements.ExcludedDays {
 				if invigilationDay == excludedDay {
 					validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("%s has invigilation on excluded day %d"),
-						aurora.Cyan(invigilator.Teacher.Fullname), aurora.Cyan(invigilationDay)))
+						aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(invigilationDay)))
 				}
 			}
 		}
@@ -71,7 +72,7 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 				}
 				if !slotOk {
 					validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("%s has invigilation not allowed slot (%d,%d)"),
-						aurora.Cyan(invigilator.Teacher.Fullname), aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber)))
+						aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber)))
 				}
 			}
 		}
@@ -82,7 +83,7 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 			combinedNumber := invigilation.Slot.DayNumber*10 + invigilation.Slot.SlotNumber
 			if invigilationSlots.Contains(combinedNumber) {
 				validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("%s has more than one invigilation in slot (%d,%d)"),
-					aurora.Cyan(invigilator.Teacher.Fullname), aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber)))
+					aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber)))
 			}
 			invigilationSlots.Add(combinedNumber)
 
@@ -100,7 +101,7 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 					exam.Slot.SlotNumber == invigilation.Slot.SlotNumber {
 					if invigilation.IsReserve {
 						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("%s has reserve invigilation during own exam %d. %s in slot (%d,%d)"),
-							aurora.Cyan(invigilator.Teacher.Fullname), aurora.Cyan(exam.Constraints.Ancode), aurora.Cyan(exam.Exam.ZpaExam.Module),
+							aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(exam.Constraints.Ancode), aurora.Cyan(exam.Exam.ZpaExam.Module),
 							aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber)))
 					}
 
@@ -115,7 +116,7 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 					} else {
 						if rooms.Cardinality() > 1 {
 							validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("%s has invigilation during own exam with more than one room: %d. %s in slot (%d,%d): found rooms %v"),
-								aurora.Cyan(invigilator.Teacher.Fullname), aurora.Cyan(exam.Constraints.Ancode), aurora.Cyan(exam.Exam.ZpaExam.Module),
+								aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(exam.Constraints.Ancode), aurora.Cyan(exam.Exam.ZpaExam.Module),
 								aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber), aurora.Cyan(rooms)))
 						}
 					}
@@ -147,19 +148,134 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 
 	return nil
 }
+func (p *Plexams) ValidateInvigilationDups() error {
+	cfg := yacspin.Config{
+		Frequency:         100 * time.Millisecond,
+		CharSet:           yacspin.CharSets[69],
+		Suffix:            aurora.Sprintf(aurora.Cyan(" validating invigilator duplicates")),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
+
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
+
+	validationMessages := make([]string, 0)
+
+	ctx := context.Background()
+	spinner.Message(aurora.Sprintf(aurora.Magenta("getting all invigilations")))
+	invigilations, err := p.dbClient.GetAllInvigilations(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get all invigilations")
+		return err
+	}
+
+	type key struct {
+		room string
+		day  int
+		slot int
+	}
+
+	invigilationsMap := make(map[key]*model.Invigilation)
+
+	spinner.Message(aurora.Sprintf(aurora.Cyan("checking %d invigilations"), aurora.Magenta(len(invigilations))))
+	for _, invigilation := range invigilations {
+		var room string
+		if invigilation.RoomName == nil {
+			room = "null"
+		} else {
+			room = *invigilation.RoomName
+		}
+		key := key{
+			room: room,
+			day:  invigilation.Slot.DayNumber,
+			slot: invigilation.Slot.SlotNumber,
+		}
+
+		_, ok := invigilationsMap[key]
+		if ok {
+			var roomName string
+			if invigilation.RoomName == nil {
+				roomName = "null"
+			} else {
+				roomName = fmt.Sprintf("\"%s\"", *invigilation.RoomName)
+			}
+			validationMessages = append(validationMessages,
+				aurora.Sprintf(aurora.Red("double entry for {roomname: %s, \"slot.daynumber\": %d, \"slot.slotnumber\": %d}"),
+					aurora.Magenta(roomName), aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber)))
+		} else {
+			invigilationsMap[key] = invigilation
+		}
+	}
+
+	if len(validationMessages) > 0 {
+		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d invigilations, %d problems found"),
+			len(invigilations), len(validationMessages)))
+		err = spinner.StopFail()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+		for _, msg := range validationMessages {
+			fmt.Printf("%s\n", msg)
+		}
+
+	} else {
+		spinner.StopMessage(aurora.Sprintf(aurora.Green("%d invigilations, no problems found"), len(invigilations)))
+		err = spinner.Stop()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+	}
+
+	return nil
+}
 
 // TODO: NTA- und Reserve-Aufsicht (wenn NTA) nicht im folgenden Slot einteilen!
 func (p *Plexams) ValidateInvigilatorSlots() error {
-	color.Style{color.FgRed, color.BgGreen, color.OpBold}.
-		Printf(" ---   validating invigilator for all slots  --- \n")
+	cfg := yacspin.Config{
+		Frequency:         100 * time.Millisecond,
+		CharSet:           yacspin.CharSets[69],
+		Suffix:            aurora.Sprintf(aurora.Cyan(" validating invigilator for all slots")),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
+
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
+
+	validationMessages := make([]string, 0)
 
 	ctx := context.Background()
+
 	// count rooms and reserves without and print number
 	roomWithoutInvigilatorDay := make(map[int]int)
 	slotWithoutReserveDay := make(map[int]int)
 
 	// all rooms and reserve max one invigilator
 	for _, slot := range p.semesterConfig.Slots {
+		spinner.Message(aurora.Sprintf(aurora.Magenta("checking slot (%d,%d)"),
+			aurora.Cyan(slot.DayNumber), aurora.Cyan(slot.SlotNumber)))
+
 		rooms, err := p.PlannedRoomNamesInSlot(ctx, slot.DayNumber, slot.SlotNumber)
 		if err != nil {
 			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Msg("cannot get rooms for")
@@ -175,10 +291,8 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 		if len(invigilations) == 0 {
 			slotWithoutReserveDay[slot.DayNumber]++
 		} else if len(invigilations) > 1 {
-			color.Red.Printf("more than one reserve invigilator in slot (%d,%d): ", slot.DayNumber, slot.SlotNumber)
-			for _, invigilation := range invigilations {
-				color.Red.Printf("%d, ", invigilation.InvigilatorID)
-			}
+			validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("more than one reserve invigilator in slot (%d,%d)"),
+				aurora.Magenta(slot.DayNumber), aurora.Magenta(slot.SlotNumber)))
 		}
 
 		for _, room := range rooms {
@@ -193,12 +307,8 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 			if len(invigilations) == 0 {
 				roomWithoutInvigilatorDay[slot.DayNumber]++
 			} else if len(invigilations) > 1 {
-				color.Red.Printf("more than one invigilator for room %s in slot (%d,%d): ", room,
-					slot.DayNumber, slot.SlotNumber)
-				for _, invigilation := range invigilations {
-					color.Red.Printf("%d, ", invigilation.InvigilatorID)
-				}
-				fmt.Println()
+				validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("more than one invigilator for room %s in slot (%d,%d)"),
+					aurora.Magenta(room), aurora.Magenta(slot.DayNumber), aurora.Magenta(slot.SlotNumber)))
 			}
 		}
 	}
@@ -220,17 +330,40 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 			slotsWithoutReserve := slotWithoutReserveDay[day]
 
 			if roomsWithoutInvig+slotsWithoutReserve > 0 {
-				color.Red.Printf("Day %2d: %2d open invigilations, ", day, roomsWithoutInvig+slotsWithoutReserve)
+				var msg strings.Builder
+				msg.WriteString(aurora.Sprintf(aurora.Red("Day %2d: %2d open invigilations, "),
+					aurora.Magenta(day), aurora.Cyan(roomsWithoutInvig+slotsWithoutReserve)))
+
 				if roomsWithoutInvig > 0 {
-					color.Red.Printf("%2d rooms without invigilator", roomsWithoutInvig)
+					msg.WriteString(aurora.Sprintf(aurora.Red("%2d rooms without invigilator,"), aurora.Cyan(roomsWithoutInvig)))
 				} else {
-					fmt.Print("                            ")
+					msg.WriteString("                             ")
 				}
 				if slotsWithoutReserve > 0 {
-					color.Red.Printf(", %2d slots without reserve", slotsWithoutReserve)
+					msg.WriteString(aurora.Sprintf(aurora.Red("%2d slots without reserve"), aurora.Cyan(slotsWithoutReserve)))
 				}
-				fmt.Println()
+
+				validationMessages = append(validationMessages, msg.String())
 			}
+		}
+	}
+
+	if len(validationMessages) > 0 {
+		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"),
+			len(validationMessages)))
+		err = spinner.StopFail()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+		for _, msg := range validationMessages {
+			fmt.Printf("%s\n", msg)
+		}
+
+	} else {
+		spinner.StopMessage(aurora.Sprintf(aurora.Green("no problems found")))
+		err = spinner.Stop()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
 		}
 	}
 

@@ -137,15 +137,17 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 }
 
 func (p *Plexams) datesToDay(dates []*time.Time) []int {
-	days := make([]int, 0, len(dates))
+	days := set.NewSet[int]()
 	for _, date := range dates {
 		for _, day := range p.semesterConfig.Days {
 			if day.Date.Month() == date.Month() && day.Date.Day() == date.Day() {
-				days = append(days, day.Number)
+				days.Add(day.Number)
 			}
 		}
 	}
-	return days
+	daysSlice := days.ToSlice()
+	sort.Ints(daysSlice)
+	return daysSlice
 }
 
 func (p *Plexams) GetInvigilationTodos(ctx context.Context) (*model.InvigilationTodos, error) {

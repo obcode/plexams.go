@@ -121,6 +121,61 @@ func (db *DB) invigilationsForInvigilator(ctx context.Context, collectionName st
 	return invigilations, nil
 }
 
+func (db *DB) GetAllInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
+	selfInvigilations, err := db.GetSelfInvigilations(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get self invigilations")
+		return nil, err
+	}
+	otherInvigilations, err := db.GetOtherInvigilations(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get other invigilations")
+		return nil, err
+	}
+
+	return append(selfInvigilations, otherInvigilations...), nil
+}
+
+func (db *DB) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
+	collection := db.getCollectionSemester(collectionSelfInvigilations)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invgilations")
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	invigilations := make([]*model.Invigilation, 0)
+	err = cur.All(ctx, &invigilations)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get decode invgilations")
+		return nil, err
+	}
+
+	return invigilations, nil
+}
+
+func (db *DB) GetOtherInvigilations(ctx context.Context) ([]*model.Invigilation, error) {
+	collection := db.getCollectionSemester(collectionOtherInvigilations)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invgilations")
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	invigilations := make([]*model.Invigilation, 0)
+	err = cur.All(ctx, &invigilations)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get decode invgilations")
+		return nil, err
+	}
+
+	return invigilations, nil
+}
+
 func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invigilatorID int) error {
 	collection := db.getCollectionSemester(collectionOtherInvigilations)
 

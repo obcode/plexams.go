@@ -145,15 +145,15 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		// FIXME: with rooms -> zpa
 		var rooms []*model.ZPAExamPlanRoom
 		reserveInvigilatorID := 0
-		// if withInvigilators {
-		// 	invigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", slot.DayNumber, slot.SlotNumber)
-		// 	if err != nil {
-		// 		log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).
-		// 			Msg("cannot get reserve invigilator for slot")
-		// 		return nil, err
-		// 	}
-		// 	reserveInvigilatorID = invigilator.ID
-		// }
+		if withInvigilators {
+			invigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", exam.Ancode).Int("day", exam.PlanEntry.DayNumber).Int("slot", exam.PlanEntry.SlotNumber).
+					Msg("cannot get reserve invigilator for slot")
+				return nil, err
+			}
+			reserveInvigilatorID = invigilator.ID
+		}
 
 		if withRooms {
 			roomsForAncode, err := p.dbClient.PlannedRoomsForAncode(ctx, exam.Ancode)
@@ -172,16 +172,16 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 							continue
 						}
 
-						// 				invigilatorID := 0
-						// 				if withInvigilators {
-						// 					invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, slot.DayNumber, slot.SlotNumber)
-						// 					if err != nil {
-						// 						log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Str("room", roomForAncode.RoomName).
-						// 							Msg("cannot get invigilator for room")
-						// 						return nil, err
-						// 					}
-						// 					invigilatorID = invigilator.ID
-						// 				}
+						invigilatorID := 0
+						if withInvigilators {
+							invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+							if err != nil {
+								log.Error().Err(err).Int("ancode", exam.Ancode).Str("room", roomForAncode.RoomName).
+									Msg("cannot get invigilator for room")
+								return nil, err
+							}
+							invigilatorID = invigilator.ID
+						}
 
 						roomName := roomForAncode.RoomName
 						if strings.HasPrefix(roomName, "ONLINE") {
@@ -199,7 +199,7 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 						}
 						roomsMap[roomNameWithDuration] = append(roomWithDuration, &model.ZPAExamPlanRoom{
 							RoomName:      roomName,
-							InvigilatorID: 0, // invigilatorID,
+							InvigilatorID: invigilatorID,
 							Duration:      roomForAncode.Duration,
 							IsReserve:     roomForAncode.Reserve,
 							StudentCount:  len(roomForAncode.StudentsInRoom),

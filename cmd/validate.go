@@ -75,7 +75,6 @@ var (
 						}
 					}
 					if Invigilators {
-						fmt.Println("validating zpa invigilators")
 						err := plexams.ValidateZPAInvigilators()
 						if err != nil {
 							log.Fatal(err)

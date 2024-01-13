@@ -85,6 +85,7 @@ var (
 					validations = append(validations,
 						plexams.ValidateInvigilatorRequirements,
 						plexams.ValidateInvigilationDups,
+						plexams.ValidateInvigilationsTimeDistance,
 					)
 
 				case "invigilator-slots":

@@ -11,6 +11,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"github.com/theckman/yacspin"
 )
 
@@ -361,6 +362,157 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 
 	} else {
 		spinner.StopMessage(aurora.Sprintf(aurora.Green("no problems found")))
+		err = spinner.Stop()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+	}
+
+	return nil
+}
+
+func (p *Plexams) ValidateInvigilationsTimeDistance() error {
+	ctx := context.Background()
+	timelag := viper.GetInt("rooms.timelag")
+
+	cfg := yacspin.Config{
+		Frequency:         100 * time.Millisecond,
+		CharSet:           yacspin.CharSets[69],
+		Suffix:            aurora.Sprintf(aurora.Cyan(" validating time lag of invigilations (%d minutes)"), timelag),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
+
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
+
+	validationMessages := make([]string, 0)
+	spinner.Message(aurora.Sprintf(aurora.Yellow("prepare invigilations)")))
+
+	allInvigilations, err := p.dbClient.GetAllInvigilations(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get all invigilations")
+	}
+
+	type slot struct {
+		day  int
+		slot int
+	}
+
+	invigilations := make(map[slot][]*model.Invigilation)
+	for _, invigilation := range allInvigilations {
+		slot := slot{
+			day:  invigilation.Slot.DayNumber,
+			slot: invigilation.Slot.SlotNumber,
+		}
+
+		invigilationsInSlot, ok := invigilations[slot]
+		if !ok {
+			invigilationsInSlot = make([]*model.Invigilation, 0, 1)
+		}
+		invigilations[slot] = append(invigilationsInSlot, invigilation)
+	}
+
+	for _, day := range p.semesterConfig.Days {
+		spinner.Message(aurora.Sprintf(aurora.Yellow("checking day %d (%s)"), day.Number, day.Date.Format("02.01.06")))
+
+		for i := range p.semesterConfig.Starttimes {
+			if i == len(p.semesterConfig.Days)-1 {
+				continue
+			}
+			slot1, slot2 := slot{day: day.Number, slot: i + 1}, slot{day: day.Number, slot: i + 2}
+			log.Debug().Interface("slot 1", slot1).Interface("slot 2", slot2).Msg("checking slot")
+
+			invigilationsSlot1, ok := invigilations[slot1]
+			if !ok || len(invigilationsSlot1) == 0 {
+				log.Debug().Interface("slot", slot1).Msg("no invigilations in slot")
+				continue
+			}
+
+			invigilationsSlot2, ok := invigilations[slot2]
+			if !ok || len(invigilationsSlot2) == 0 {
+				log.Debug().Interface("slot", slot2).Msg("no invigilations in slot")
+				continue
+			}
+
+			for _, invigilation1 := range invigilationsSlot1 {
+				for _, invigilation2 := range invigilationsSlot2 {
+					if invigilation1.InvigilatorID != invigilation2.InvigilatorID {
+						continue
+					}
+
+					startSlot1 := p.getSlotTime(invigilation1.Slot.DayNumber, invigilation1.Slot.SlotNumber)
+					startSlot2 := p.getSlotTime(invigilation2.Slot.DayNumber, invigilation2.Slot.SlotNumber)
+
+					realtime := invigilation1.Duration // TODO: calculate me
+
+					if invigilation1.IsSelfInvigilation {
+						roomsInSlot, err := p.dbClient.PlannedRoomsInSlot(ctx, slot1.day, slot1.slot)
+						if err != nil {
+							log.Error().Err(err).Interface("slot", slot1).Msg("cannot get rooms in slot")
+						}
+						for _, room := range roomsInSlot {
+							if invigilation1.RoomName == &room.RoomName {
+								if room.Duration > realtime {
+									realtime = room.Duration
+								}
+							}
+						}
+					}
+
+					if invigilation1.IsReserve {
+						roomsInSlot, err := p.dbClient.PlannedRoomsInSlot(ctx, slot1.day, slot1.slot)
+						if err != nil {
+							log.Error().Err(err).Interface("slot", slot1).Msg("cannot get rooms in slot")
+						}
+						for _, room := range roomsInSlot {
+							if room.Duration > realtime {
+								realtime = room.Duration
+							}
+						}
+					}
+
+					endSlot1 := startSlot1.Add(time.Duration(realtime) * time.Minute)
+
+					if startSlot2.Before(endSlot1.Add(time.Duration(timelag) * time.Minute)) {
+						comment := ""
+						if invigilation1.IsReserve {
+							comment = "(reserve in first slot)"
+						}
+
+						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red(
+							"Not enough time for invigilator %4d between slot (%2d/%d) ends %s and slot (%2d/%d) begins %s: %2g minutes between %s"),
+							aurora.Magenta(invigilation1.InvigilatorID), aurora.BrightBlue(day.Number), aurora.BrightBlue(slot1.slot), aurora.Magenta(endSlot1.Format("15:04")),
+							aurora.BrightBlue(day.Number), aurora.BrightBlue(slot2.slot), aurora.Magenta(startSlot2.Format("15:04")),
+							aurora.Magenta(startSlot2.Sub(endSlot1).Minutes()), aurora.Cyan(comment),
+						))
+					}
+				}
+			}
+		}
+	}
+
+	if len(validationMessages) > 0 {
+		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"), len(validationMessages)))
+		err = spinner.StopFail()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+		for _, msg := range validationMessages {
+			fmt.Printf("    ↪ %s\n", msg)
+		}
+
+	} else {
 		err = spinner.Stop()
 		if err != nil {
 			log.Debug().Err(err).Msg("cannot stop spinner")

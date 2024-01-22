@@ -55,11 +55,25 @@ var (
 				fmt.Printf("fetched %d invigilator requirements\n", len(invigs))
 
 			case "studentregs":
-				count, regsWithErrors, err := plexams.PostStudentRegsToZPA(context.Background())
+				regsPosted, regsWithErrors, err := plexams.PostStudentRegsToZPA(context.Background())
 				if err != nil {
 					log.Fatal().Err(err).Msg("cannot get student regs")
 				}
-				fmt.Printf("%d successfully imported, %d errors\n", count, len(regsWithErrors))
+				fmt.Printf("%d successfully imported, %d errors\n", len(regsPosted), len(regsWithErrors))
+
+				if len(jsonOutputFile) == 0 {
+					jsonOutputFile = "studentregs.json"
+				}
+				json, err := json.MarshalIndent(regsPosted, "", " ")
+				if err != nil {
+					log.Error().Err(err).Msg("cannot marshal studentregs into json")
+				}
+				err = os.WriteFile(jsonOutputFile, json, 0644)
+				if err != nil {
+					log.Error().Err(err).Msg("cannot write studentregs to file")
+				} else {
+					fmt.Printf(" saved copy to %s\n", jsonOutputFile)
+				}
 
 			case "upload-plan":
 

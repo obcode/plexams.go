@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWithError, error) {
+func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudentReg, []*model.RegWithError, error) {
 	if err := p.SetZPA(); err != nil {
-		return 0, nil, err
+		return nil, nil, err
 	}
 
 	zpaStudentRegs := make([]*model.ZPAStudentReg, 0)
@@ -23,7 +23,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 		studentRegs, err := p.dbClient.StudentRegsForProgram(ctx, program)
 		if err != nil {
 			log.Error().Err(err).Str("program", program).Msg("error while getting student regs")
-			return 0, nil, err
+			return nil, nil, err
 		}
 		for _, studentReg := range studentRegs {
 			zpaStudentRegs = append(zpaStudentRegs, p.zpa.client.StudentReg2ZPAStudentReg(studentReg))
@@ -51,11 +51,11 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 	log.Debug().Str("status", status).Bytes("body", body).Msg("got answer from ZPA")
 
 	regsWithErrors := make([]*model.RegWithError, 0)
-	chunkSize := 500
+	chunkSize := 77
 
 	log.Info().Int("count", len(zpaStudentRegs)).Int("chunk size", chunkSize).Msg("Uploading a lot of regs in chunks.")
 
-	for from := 0; from <= len(zpaStudentRegs); from = from + chunkSize {
+	for from := 0; from <= len(zpaStudentRegs); from += chunkSize {
 		to := from + chunkSize
 		if to > len(zpaStudentRegs) {
 			to = len(zpaStudentRegs)
@@ -66,14 +66,14 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 		_, body, err := p.zpa.client.PostStudentRegsToZPA(zpaStudentRegs[from:to])
 		if err != nil {
 			log.Error().Err(err).Msg("error while posting student regs to zpa")
-			return 0, nil, err
+			return nil, nil, err
 		}
 
 		zpaStudentRegErrors := make([]*model.ZPAStudentRegError, 0)
 		err = json.Unmarshal(body, &zpaStudentRegErrors)
 		if err != nil {
 			log.Error().Err(err).Interface("zpa-errors", zpaStudentRegErrors).Msg("error while unmarshalling errors from ZPA")
-			return 0, nil, err
+			return nil, nil, err
 		}
 
 		for i, e := range zpaStudentRegErrors {
@@ -89,10 +89,10 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 
 	err = p.dbClient.SetRegsWithErrors(ctx, regsWithErrors)
 	if err != nil {
-		return 0, nil, err
+		return nil, nil, err
 	}
 
-	return len(zpaStudentRegs) - len(regsWithErrors), regsWithErrors, nil
+	return zpaStudentRegs, regsWithErrors, nil
 }
 
 func noZPAStudRegError(zpaStudentRegError *model.ZPAStudentRegError) bool {

@@ -222,6 +222,16 @@ func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {
 	return p.semesterConfig
 }
 
+func (p *Plexams) GetStarttime(dayNumber, slotNumber int) (*time.Time, error) {
+	for _, slot := range p.semesterConfig.Slots {
+		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
+			time := slot.Starttime.Local()
+			return &time, nil
+		}
+	}
+	return nil, fmt.Errorf("no starttime for slot (%d/%d)", dayNumber, slotNumber)
+}
+
 func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
 	for _, slot := range p.semesterConfig.Slots {
 		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {

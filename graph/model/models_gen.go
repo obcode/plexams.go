@@ -156,17 +156,6 @@ type FK07Program struct {
 	Name string `json:"name"`
 }
 
-type GeneratedExam struct {
-	Ancode           int                    `json:"ancode"`
-	ZpaExam          *ZPAExam               `json:"zpaExam"`
-	PrimussExams     []*EnhancedPrimussExam `json:"primussExams"`
-	Constraints      *Constraints           `json:"constraints,omitempty"`
-	Conflicts        []*ZPAConflict         `json:"conflicts"`
-	StudentRegsCount int                    `json:"studentRegsCount"`
-	Ntas             []*NTA                 `json:"ntas"`
-	MaxDuration      int                    `json:"maxDuration"`
-}
-
 type Invigilation struct {
 	RoomName           *string `json:"roomName,omitempty"`
 	Duration           int     `json:"duration"`
@@ -258,26 +247,6 @@ type NTAWithRegsByExamAndTeacher struct {
 type Plan struct {
 	SemesterConfig *SemesterConfig       `json:"semesterConfig,omitempty"`
 	Slots          []*SlotWithExamGroups `json:"slots,omitempty"`
-}
-
-type PlanEntry struct {
-	DayNumber  int  `json:"dayNumber"`
-	SlotNumber int  `json:"slotNumber"`
-	Ancode     int  `json:"ancode"`
-	Locked     bool `json:"locked"`
-}
-
-type PlannedExam struct {
-	Ancode           int                    `json:"ancode"`
-	ZpaExam          *ZPAExam               `json:"zpaExam"`
-	PrimussExams     []*EnhancedPrimussExam `json:"primussExams"`
-	Constraints      *Constraints           `json:"constraints,omitempty"`
-	Conflicts        []*ZPAConflict         `json:"conflicts"`
-	StudentRegsCount int                    `json:"studentRegsCount"`
-	Ntas             []*NTA                 `json:"ntas"`
-	MaxDuration      int                    `json:"maxDuration"`
-	PlanEntry        *PlanEntry             `json:"planEntry,omitempty"`
-	PlannedRooms     []*PlannedRoom         `json:"plannedRooms,omitempty"`
 }
 
 type PlannedExamWithNta struct {

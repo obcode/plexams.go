@@ -112,6 +112,7 @@ type ConnectedExam {
 type GeneratedExam {
   ancode: Int!
   zpaExam: ZPAExam!
+  mainExamer: Teacher!
   primussExams: [EnhancedPrimussExam!]!
   constraints: Constraints
   conflicts: [ZPAConflict!]!
@@ -129,6 +130,7 @@ type ZPAConflict {
 type PlannedExam {
   ancode: Int!
   zpaExam: ZPAExam!
+  mainExamer: Teacher!
   primussExams: [EnhancedPrimussExam!]!
   constraints: Constraints
   conflicts: [ZPAConflict!]!

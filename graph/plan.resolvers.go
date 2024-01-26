@@ -7,7 +7,9 @@ package graph
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
@@ -19,6 +21,11 @@ func (r *mutationResolver) AddExamToSlot(ctx context.Context, day int, time int,
 // RmExamFromSlot is the resolver for the rmExamFromSlot field.
 func (r *mutationResolver) RmExamFromSlot(ctx context.Context, ancode int) (bool, error) {
 	panic(fmt.Errorf("not implemented: RmExamFromSlot - rmExamFromSlot"))
+}
+
+// Starttime is the resolver for the starttime field.
+func (r *planEntryResolver) Starttime(ctx context.Context, obj *model.PlanEntry) (*time.Time, error) {
+	return r.plexams.GetStarttime(obj.DayNumber, obj.SlotNumber)
 }
 
 // AllProgramsInPlan is the resolver for the allProgramsInPlan field.
@@ -55,3 +62,8 @@ func (r *queryResolver) AllowedSlots(ctx context.Context, ancode int) ([]*model.
 func (r *queryResolver) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
 	return r.plexams.AwkwardSlots(ctx, ancode)
 }
+
+// PlanEntry returns generated.PlanEntryResolver implementation.
+func (r *Resolver) PlanEntry() generated.PlanEntryResolver { return &planEntryResolver{r} }
+
+type planEntryResolver struct{ *Resolver }

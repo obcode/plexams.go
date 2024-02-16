@@ -2,13 +2,13 @@ type Mutation {
   setSemester(input: String!): Semester!
   # Prepare ZPA-Exams
   zpaExamsToPlan(input: [Int!]!): [ZPAExam!]!
-  addZpaExamToPlan(ancode: Int!, unknown: Boolean!): Boolean!
-  rmZpaExamFromPlan(ancode: Int!, unknown: Boolean!): Boolean!
+  addZpaExamToPlan(ancode: Int!): Boolean!
+  rmZpaExamFromPlan(ancode: Int!): Boolean!
   # Additional Exams
   addAdditionalExam(exam: AdditionalExamInput!): Boolean!
   # Primuss
   removePrimussExam(input: PrimussExamInput): Boolean!
-  prepareExams(input: [PrimussExamInput!]!): Boolean!
+  # prepareExams(input: [PrimussExamInput!]!): Boolean!
   addNTA(input: NTAInput!): NTA!
   # Contraints
   notPlannedByMe(ancode: Int!): Boolean!

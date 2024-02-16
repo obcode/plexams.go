@@ -18,6 +18,7 @@ var (
 	all         --- guess what :-)
 	conflicts   --- check conflicts for each student
 	constraints --- check if constraints hold
+	db          --- data base entries
 	rooms       --- check room constraints
 	zpa         --- check if the plan on ZPA is the same here
 	invigilator-reqs
@@ -33,9 +34,11 @@ var (
 				switch arg {
 				case "all":
 					validations = append(validations, []func() error{
+						plexams.ValidateDB,
 						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe, Ancode) },
 						plexams.ValidateConstraints,
 						plexams.ValidateRoomsPerSlot,
+						plexams.ValidateRoomsNeedRequest,
 						plexams.ValidateRoomsPerExam,
 						plexams.ValidateRoomsTimeDistance,
 					}...)
@@ -48,25 +51,30 @@ var (
 				case "constraints":
 					validations = append(validations, plexams.ValidateConstraints)
 
+				case "db":
+					validations = append(validations, plexams.ValidateDB)
+
 				case "rooms":
 					validations = append(validations,
-						[]func() error{plexams.ValidateRoomsPerSlot, plexams.ValidateRoomsPerExam, plexams.ValidateRoomsTimeDistance}...)
+						[]func() error{
+							plexams.ValidateRoomsPerSlot,
+							plexams.ValidateRoomsNeedRequest,
+							plexams.ValidateRoomsPerExam,
+							plexams.ValidateRoomsTimeDistance,
+						}...)
 
 				case "zpa":
-					fmt.Println("validating zpa dates and times")
 					err := plexams.ValidateZPADateTimes()
 					if err != nil {
 						log.Fatal(err)
 					}
 					if Rooms || Invigilators {
-						fmt.Println("validating zpa rooms")
 						err := plexams.ValidateZPARooms()
 						if err != nil {
 							log.Fatal(err)
 						}
 					}
 					if Invigilators {
-						fmt.Println("validating zpa invigilators")
 						err := plexams.ValidateZPAInvigilators()
 						if err != nil {
 							log.Fatal(err)
@@ -74,7 +82,11 @@ var (
 					}
 
 				case "invigilator-reqs":
-					validations = append(validations, plexams.ValidateInvigilatorRequirements)
+					validations = append(validations,
+						plexams.ValidateInvigilatorRequirements,
+						plexams.ValidateInvigilationDups,
+						plexams.ValidateInvigilationsTimeDistance,
+					)
 
 				case "invigilator-slots":
 					validations = append(validations, plexams.ValidateInvigilatorSlots)
@@ -111,6 +123,7 @@ func validate(funcs []func() error) {
 		if Sleep == 0 {
 			return
 		}
+		fmt.Printf("\n... sleeping %d seconds ...\n\n", Sleep)
 		time.Sleep(time.Duration(Sleep) * time.Second)
 	}
 }
@@ -120,7 +133,7 @@ func init() {
 	validateCmd.Flags().IntVarP(&Sleep, "sleep", "s", 0, "sleep [s] seconds and validate again")
 	validateCmd.Flags().IntVarP(&Ancode, "ancode", "a", 0, "show only constraints for given ancode")
 	validateCmd.Flags().BoolVarP(&Clear, "clear", "c", false, "clear screen before output")
-	validateCmd.Flags().BoolVarP(&Rooms, "room", "r", false, "validate zpa rooms")
+	validateCmd.Flags().BoolVarP(&Rooms, "rooms", "r", false, "validate zpa rooms")
 	validateCmd.Flags().BoolVarP(&Invigilators, "invigilators", "i", false, "validate zpa invigilators")
 	validateCmd.Flags().BoolVarP(&OnlyPlannedByMe, "onlyplannedbyme", "o", false, "check no conflicts if both exams are not planned by me")
 }

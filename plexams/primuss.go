@@ -30,7 +30,7 @@ func (p *Plexams) StudentRegsForProgram(ctx context.Context, program string) ([]
 	return p.dbClient.StudentRegsForProgram(ctx, program)
 }
 
-func (p *Plexams) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.StudentRegsPerStudent, error) {
+func (p *Plexams) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.Student, error) {
 	return p.dbClient.StudentRegsPerStudentPlanned(ctx)
 }
 
@@ -40,4 +40,8 @@ func (p *Plexams) StudentRegsImportErrors(ctx context.Context) ([]*model.RegWith
 
 func (p *Plexams) GetConflicts(ctx context.Context, exam *model.PrimussExam) (*model.Conflicts, error) {
 	return p.dbClient.GetPrimussConflictsForAncode(ctx, exam.Program, exam.AnCode)
+}
+
+func (p *Plexams) AddAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) error {
+	return p.dbClient.AddAncode(ctx, zpaAncode, program, primussAncode)
 }

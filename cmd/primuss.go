@@ -15,12 +15,44 @@ var primussCmd = &cobra.Command{
 	Use:   "primuss",
 	Short: "primuss [subcommand]",
 	Long: `Handle primuss data.
+	add-ancode zpa-ancode program primuss-ancode          --- add ancode to zpa-data
 	fix-ancode program from to         --- fix ancode in primuss data (exam and studentregs)
 	rm-studentreg program ancode mtknr --- remove a student registration`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		plexams := initPlexamsConfig()
 		switch args[0] {
+		case "add-ancode":
+			if len(args) < 4 {
+				log.Fatal("need program and primuss ancode")
+			}
+			ancode, err := strconv.Atoi(args[1])
+			if err != nil {
+				log.Fatalf("cannot convert %s to int\n", args[2])
+			}
+			program := args[2]
+			primussAncode, err := strconv.Atoi(args[3])
+			if err != nil {
+				log.Fatalf("cannot convert %s to int\n", args[2])
+			}
+
+			ctx := context.Background()
+			zpaExam, err := plexams.GetZPAExam(ctx, ancode)
+			if err != nil {
+				log.Fatalf("cannot get zpa exam with ancode %d\n", ancode)
+			}
+
+			fmt.Printf("Found exam: %d. %s, %s (%v)\n", zpaExam.AnCode, zpaExam.Module, zpaExam.MainExamer, zpaExam.PrimussAncodes)
+
+			if !confirm(fmt.Sprintf("add primuss ancode %s/%d to zpa exam?", program, primussAncode), 10) {
+				os.Exit(0)
+			}
+
+			err = plexams.AddAncode(ctx, ancode, program, primussAncode)
+			if err != nil {
+				log.Fatalf("cannot add ancode")
+			}
+
 		case "fix-ancode":
 			if len(args) < 4 {
 				log.Fatal("need program, from and to")

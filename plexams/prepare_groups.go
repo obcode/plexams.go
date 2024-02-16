@@ -47,6 +47,7 @@ func (p *Plexams) initPrepareExamGroups(ctx context.Context) (ancodesToPlan []in
 	return
 }
 
+// Deprecated: no more exam groups
 func (p *Plexams) PrepareExamGroups() error {
 	ctx := context.Background()
 	ancodes, examsWithRegs, constraints, err := p.initPrepareExamGroups(ctx)

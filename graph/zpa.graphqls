@@ -1,3 +1,18 @@
+extend type Query {
+  teacher(id: Int!): Teacher
+  teachers(fromZPA: Boolean): [Teacher!]!
+  invigilators: [ZPAInvigilator!]!
+  fk07programs: [FK07Program!]!
+  zpaExams(fromZPA: Boolean): [ZPAExam!]!
+  zpaExamsByType: [ZPAExamsForType!]!
+  zpaExamsToPlan: [ZPAExam!]!
+  zpaExamsNotToPlan: [ZPAExam!]!
+  zpaExamsPlaningStatusUnknown: [ZPAExam!]!
+  zpaExam(ancode: Int!): ZPAExam
+  zpaAnCodes: [AnCode]
+  studentRegsImportErrors: [RegWithError!]!
+}
+
 type ZPAExam {
   zpaID: Int!
   semester: String!
@@ -10,6 +25,12 @@ type ZPAExam {
   duration: Int!
   isRepeaterExam: Boolean!
   groups: [String!]!
+  primussAncodes: [ZPAPrimussAncodes!]!
+}
+
+type ZPAPrimussAncodes {
+  program: String!
+  ancode: Int!
 }
 
 type ZPAExamsForType {
@@ -40,6 +61,7 @@ type FK07Program {
   name: String!
 }
 
+# Deprecated: remove me
 type ZPAExamWithConstraints {
   zpaExam: ZPAExam!
   constraints: Constraints # == nil if no constraint

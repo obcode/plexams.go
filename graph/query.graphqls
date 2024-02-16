@@ -4,29 +4,13 @@ type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
   semesterConfig: SemesterConfig!
-  # ZPA
-  teacher(id: Int!): Teacher
-  teachers(fromZPA: Boolean): [Teacher!]!
-  invigilators: [ZPAInvigilator!]!
-  fk07programs: [FK07Program!]!
-  zpaExams(fromZPA: Boolean): [ZPAExam!]!
-  zpaExamsByType: [ZPAExamsForType!]!
-  zpaExamsToPlan: [ZPAExam!]!
-  zpaExamsNotToPlan: [ZPAExam!]!
-  zpaExamsPlaningStatusUnknown: [ZPAExam!]!
-  zpaExam(ancode: Int!): ZPAExam
-  zpaAnCodes: [AnCode]
-  studentRegsImportErrors: [RegWithError!]!
   # Additional Exams
   additionalExams: [AdditionalExam!]!
   # Primuss
-  primussExams: [PrimussExamByProgram]
   primussExam(program: String!, ancode: Int!): PrimussExam!
   primussExamsForAnCode(ancode: Int!): [PrimussExam!]
   studentRegsForProgram(program: String!): [StudentReg!]
-  # Exams connected
-  connectedExam(ancode: Int!): ConnectedExam
-  connectedExams: [ConnectedExam!]!
+
   # exam with regs
   examWithRegs(ancode: Int!): ExamWithRegs
   examsWithRegs: [ExamWithRegs!]
@@ -36,27 +20,20 @@ type Query {
   # exam groups
   examGroups: [ExamGroup!]!
   examGroup(examGroupCode: Int!): ExamGroup
-  conflictingGroupCodes(examGroupCode: Int!): [ExamGroupConflict!]
   # NTAs
-  ntas: [NTA!]
-  ntasWithRegs: [NTAWithRegs!]
   ntasWithRegsByTeacher: [NTAWithRegsByExamAndTeacher!]
   nta(mtknr: String!): NTAWithRegs
+
   # Plan
-  allowedSlots(examGroupCode: Int!): [Slot!]
-  awkwardSlots(examGroupCode: Int!): [Slot!]! # slots before or after a conflict
-  examGroupsInSlot(day: Int!, time: Int!): [ExamGroup!]
   examGroupsWithoutSlot: [ExamGroup!]
-  allProgramsInPlan: [String!]
-  ancodesInPlan: [Int!]
-  examerInPlan: [ExamerInPlan!]
+
   # PlannedExamsWithNTA
   plannedExamsInSlot(day: Int!, time: Int!): [PlannedExamWithNTA!]
   examsInPlan: [ExamInPlan!]
-  examsInSlot(day: Int!, time: Int!): [ExamInPlan!]
+  # examsInSlot(day: Int!, time: Int!): [ExamInPlan!]
   # Rooms
   examsInSlotWithRooms(day: Int!, time: Int!): [ExamWithRegsAndRooms!]
-  rooms: [Room!]!
+  # rooms: [Room!]!
   roomsWithConstraints(
     handicap: Boolean!
     lab: Boolean!
@@ -64,12 +41,7 @@ type Query {
     exahm: Boolean
   ): [Room!]!
   roomsForSlot(day: Int!, time: Int!): SlotWithRooms
-  plannedRoomNames: [String!]
-  plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
+
   # Invigilators
-  invigilatorsWithReq: [Invigilator!]!
-  invigilatorTodos: InvigilationTodos
-  roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
-  invigilatorsForDay(day: Int!): InvigilatorsForDay
   dayOkForInvigilator(day: Int!, invigilatorID: Int!): Boolean
 }

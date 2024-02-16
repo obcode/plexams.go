@@ -2,73 +2,132 @@ package plexams
 
 import (
 	"context"
-	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string) ([]*model.PlannedExam, error) {
-	connectedExams, err := p.GetConnectedExams(ctx)
+func (p *Plexams) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
+	return p.dbClient.PlanEntries(ctx)
+}
+
+func (p *Plexams) PlannedExam(ctx context.Context, ancode int) (*model.PlannedExam, error) {
+	exam, err := p.GeneratedExam(ctx, ancode)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get connected exams")
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
 		return nil, err
 	}
 
-	plannedExams := make([]*model.PlannedExam, 0)
+	planEntry, err := p.dbClient.PlanEntry(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get planEntry for ancode")
+		return nil, err
+	}
 
-	for _, connectedExam := range connectedExams {
-		constraints, _ := p.ConstraintForAncode(ctx, connectedExam.ZpaExam.AnCode)
-		if constraints != nil && constraints.NotPlannedByMe {
-			// if notPlannedByMe, _ := p.NotPlannedByMe(ctx, connectedExam.ZpaExam.AnCode); notPlannedByMe {
-			log.Debug().Int("ancode", connectedExam.ZpaExam.AnCode).
-				Str("module", connectedExam.ZpaExam.Module).
-				Str("main examer", connectedExam.ZpaExam.MainExamer).
-				Msg("exam not planned by me")
-			continue
-		}
+	plannedRooms, err := p.dbClient.PlannedRoomsForAncode(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get planned rooms for ancode")
+		return nil, err
+	}
 
-		var plannedExam *model.PlannedExam
-		for _, primussExam := range connectedExam.PrimussExams {
-			if primussExam.Program == program {
-				plannedExam = &model.PlannedExam{
-					Ancode:     connectedExam.ZpaExam.AnCode,
-					Module:     connectedExam.ZpaExam.Module,
-					MainExamer: connectedExam.ZpaExam.MainExamer,
-					DateTime:   nil,
-				}
-			}
-		}
+	return &model.PlannedExam{
+		Ancode:           exam.Ancode,
+		ZpaExam:          exam.ZpaExam,
+		PrimussExams:     exam.PrimussExams,
+		Constraints:      exam.Constraints,
+		Conflicts:        exam.Conflicts,
+		StudentRegsCount: exam.StudentRegsCount,
+		Ntas:             exam.Ntas,
+		MaxDuration:      exam.MaxDuration,
+		PlanEntry:        planEntry,
+		PlannedRooms:     plannedRooms,
+	}, err
+}
 
-		if plannedExam == nil {
-			continue
-		}
+func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error) {
+	exams, err := p.GeneratedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get generated exams")
+		return nil, err
+	}
 
-		log.Debug().Int("ancode", plannedExam.Ancode).Msg("found connected exam")
+	planEntries, err := p.dbClient.PlanEntries(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planEntries")
+		return nil, err
+	}
 
-		slot, err := p.SlotForAncode(ctx, plannedExam.Ancode)
+	planEntryMap := make(map[int]*model.PlanEntry)
+	for _, planEntry := range planEntries {
+		planEntryMap[planEntry.Ancode] = planEntry
+	}
+
+	plannedExams := make([]*model.PlannedExam, 0, len(exams))
+
+	for _, exam := range exams {
+		plannedRooms, err := p.dbClient.PlannedRoomsForAncode(ctx, exam.Ancode)
 		if err != nil {
-			log.Error().Err(err).Int("ancode", plannedExam.Ancode).Msg("cannot get slot for ancode")
-			return nil, err
+			log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot find planned rooms")
 		}
-		if slot != nil {
-			plannedExam.DateTime = p.getTimeForSlot(slot.DayNumber, slot.SlotNumber)
-		}
-		plannedExams = append(plannedExams, plannedExam)
+
+		plannedExams = append(plannedExams,
+			&model.PlannedExam{
+				Ancode:           exam.Ancode,
+				ZpaExam:          exam.ZpaExam,
+				PrimussExams:     exam.PrimussExams,
+				Constraints:      exam.Constraints,
+				Conflicts:        exam.Conflicts,
+				StudentRegsCount: exam.StudentRegsCount,
+				Ntas:             exam.Ntas,
+				MaxDuration:      exam.MaxDuration,
+				PlanEntry:        planEntryMap[exam.Ancode],
+				PlannedRooms:     plannedRooms,
+			})
 	}
 
 	return plannedExams, nil
 }
 
-func (p *Plexams) getTimeForSlot(dayNumber, slotNumber int) *time.Time {
-	for _, slot := range p.semesterConfig.Slots {
-		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
-			return &slot.Starttime
+func (p *Plexams) PlannedExamsByExamer(ctx context.Context, examerID int) ([]*model.PlannedExam, error) {
+	plannedExams, err := p.PlannedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planned exams")
+		return nil, err
+	}
+
+	plannedExamsForExamer := make([]*model.PlannedExam, 0)
+	for _, plannedExam := range plannedExams {
+		if plannedExam.Constraints != nil && plannedExam.Constraints.NotPlannedByMe {
+			continue
+		}
+		if plannedExam.ZpaExam.MainExamerID == examerID {
+			plannedExamsForExamer = append(plannedExamsForExamer, plannedExam)
+			break
 		}
 	}
-	return nil
+
+	return plannedExamsForExamer, nil
 }
 
-func (p *Plexams) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.ExamInPlan, error) {
-	return p.dbClient.ExamsInSlot(ctx, day, time)
+func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string, onlyPlannedByMe bool) ([]*model.PlannedExam, error) {
+	plannedExams, err := p.PlannedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planned exams")
+		return nil, err
+	}
+
+	plannedExamsForProgram := make([]*model.PlannedExam, 0)
+	for _, plannedExam := range plannedExams {
+		if onlyPlannedByMe && plannedExam.Constraints != nil && plannedExam.Constraints.NotPlannedByMe {
+			continue
+		}
+		for _, primussExam := range plannedExam.PrimussExams {
+			if primussExam.Exam.Program == program {
+				plannedExamsForProgram = append(plannedExamsForProgram, plannedExam)
+				break
+			}
+		}
+	}
+
+	return plannedExamsForProgram, nil
 }

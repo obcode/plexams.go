@@ -1,3 +1,22 @@
+extend type Query {
+  connectedExam(ancode: Int!): ConnectedExam
+  connectedExams: [ConnectedExam!]!
+
+  externalExams: [ExternalExam!]!
+
+  generatedExams: [GeneratedExam!]!
+  generatedExam(ancode: Int!): GeneratedExam
+
+  plannedExams: [PlannedExam!]!
+  plannedExam(ancode: Int!): PlannedExam
+
+  conflictingAncodes(ancode: Int!): [Conflict!]
+
+  exam(ancode: Int!): Exam
+  exams: [Exam!]!
+}
+
+# Deprecated: remove me
 input AdditionalExamInput {
   ancode: Int!
   module: String!
@@ -7,6 +26,7 @@ input AdditionalExamInput {
   groups: [String!]!
 }
 
+# Deprecated: remove me
 type AdditionalExam {
   ancode: Int!
   module: String!
@@ -17,6 +37,7 @@ type AdditionalExam {
   groups: [String!]!
 }
 
+# Deprecated: remove me
 type ExamWithRegs {
   ancode: Int!
   zpaExam: ZPAExam!
@@ -45,17 +66,20 @@ type RoomConstraints {
   seb: Boolean!
 }
 
+# Deprecated: remove me
 type ExamToPlan {
   exam: ExamWithRegs!
   constraints: Constraints
 }
 
+# Deprecated: remove me
 type PlannedExamWithNTA {
   exam: ExamWithRegs!
   constraints: Constraints
   nta: [NTAWithRegs!]
 }
 
+# Deprecated: remove me
 type ExamInPlan {
   exam: ExamWithRegs!
   constraints: Constraints
@@ -64,8 +88,70 @@ type ExamInPlan {
 }
 
 type ExamWithRegsAndRooms {
-  exam: ExamInPlan!
-  normalRegs: [StudentReg!]!
-  ntaRegs: [NTAWithRegs!]!
-  rooms: [RoomForExam!]!
+  exam: PlannedExam!
+  normalRegsMtknr: [String!]!
+  ntas: [NTA!]!
+  rooms: [PlannedRoom!]!
+}
+
+type ExternalExam {
+  ancode: Int!
+  program: String!
+  module: String!
+  mainExamer: String!
+  duration: Int!
+}
+
+type ConnectedExam {
+  zpaExam: ZPAExam!
+  primussExams: [PrimussExam!]!
+  otherPrimussExams: [PrimussExam!]!
+  errors: [String!]!
+}
+
+type GeneratedExam {
+  ancode: Int!
+  zpaExam: ZPAExam!
+  mainExamer: Teacher!
+  primussExams: [EnhancedPrimussExam!]!
+  constraints: Constraints
+  conflicts: [ZPAConflict!]!
+  studentRegsCount: Int!
+  ntas: [NTA!]!
+  maxDuration: Int!
+}
+
+type ZPAConflict {
+  ancode: Int!
+  numberOfStuds: Int!
+  primussAncodes: [PrimussExamAncode!]!
+}
+
+type PlannedExam {
+  ancode: Int!
+  zpaExam: ZPAExam!
+  mainExamer: Teacher!
+  primussExams: [EnhancedPrimussExam!]!
+  constraints: Constraints
+  conflicts: [ZPAConflict!]!
+  studentRegsCount: Int!
+  ntas: [NTA!]!
+  maxDuration: Int!
+  planEntry: PlanEntry
+  plannedRooms: [PlannedRoom!]
+}
+
+type Exam {
+  ancode: Int!
+  zpaExam: ZPAExam
+  externalExam: ExternalExam
+  primussExams: [PrimussExam!]!
+  studentRegs: [StudentRegsPerAncodeAndProgram!]!
+  conflicts: [ConflictsPerProgramAncode!]!
+  connectErrors: [String!]!
+  constraints: Constraints
+  regularStudents: [Student!]
+  ntaStudents: [Student!]
+  slot: Slot
+  rooms: [RoomForExam!]
 }

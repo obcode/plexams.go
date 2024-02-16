@@ -4,17 +4,19 @@ import (
 	"context"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type DB struct {
-	Client   *mongo.Client
-	semester string
+	Client       *mongo.Client
+	semester     string
+	databaseName string
 }
 
-func NewDB(uri, semester string) (*DB, error) {
+func NewDB(uri, semester string, dbName *string) (*DB, error) {
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, err
@@ -24,14 +26,18 @@ func NewDB(uri, semester string) (*DB, error) {
 		return nil, err
 	}
 
-	return &DB{
-		Client:   client,
-		semester: semester,
-	}, nil
-}
+	databaseName := strings.Replace(semester, " ", "-", 1)
+	if dbName != nil {
+		databaseName = *dbName
+	}
 
-func databaseName(semester string) string {
-	return strings.Replace(semester, " ", "-", 1)
+	log.Debug().Str("database name", databaseName).Msg("using database")
+
+	return &DB{
+		Client:       client,
+		semester:     semester,
+		databaseName: databaseName,
+	}, nil
 }
 
 func semesterName(semester string) string {

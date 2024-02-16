@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWithError, error) {
+func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudentReg, []*model.RegWithError, error) {
 	if err := p.SetZPA(); err != nil {
-		return 0, nil, err
+		return nil, nil, err
 	}
 
 	zpaStudentRegs := make([]*model.ZPAStudentReg, 0)
@@ -23,7 +23,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 		studentRegs, err := p.dbClient.StudentRegsForProgram(ctx, program)
 		if err != nil {
 			log.Error().Err(err).Str("program", program).Msg("error while getting student regs")
-			return 0, nil, err
+			return nil, nil, err
 		}
 		for _, studentReg := range studentRegs {
 			zpaStudentRegs = append(zpaStudentRegs, p.zpa.client.StudentReg2ZPAStudentReg(studentReg))
@@ -51,11 +51,11 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 	log.Debug().Str("status", status).Bytes("body", body).Msg("got answer from ZPA")
 
 	regsWithErrors := make([]*model.RegWithError, 0)
-	chunkSize := 500
+	chunkSize := 77
 
 	log.Info().Int("count", len(zpaStudentRegs)).Int("chunk size", chunkSize).Msg("Uploading a lot of regs in chunks.")
 
-	for from := 0; from <= len(zpaStudentRegs); from = from + chunkSize {
+	for from := 0; from <= len(zpaStudentRegs); from += chunkSize {
 		to := from + chunkSize
 		if to > len(zpaStudentRegs) {
 			to = len(zpaStudentRegs)
@@ -66,14 +66,14 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 		_, body, err := p.zpa.client.PostStudentRegsToZPA(zpaStudentRegs[from:to])
 		if err != nil {
 			log.Error().Err(err).Msg("error while posting student regs to zpa")
-			return 0, nil, err
+			return nil, nil, err
 		}
 
 		zpaStudentRegErrors := make([]*model.ZPAStudentRegError, 0)
 		err = json.Unmarshal(body, &zpaStudentRegErrors)
 		if err != nil {
-			log.Error().Err(err).Msg("error while unmarshalling errors from ZPA")
-			return 0, nil, err
+			log.Error().Err(err).Interface("zpa-errors", zpaStudentRegErrors).Msg("error while unmarshalling errors from ZPA")
+			return nil, nil, err
 		}
 
 		for i, e := range zpaStudentRegErrors {
@@ -89,10 +89,10 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) (int, []*model.RegWi
 
 	err = p.dbClient.SetRegsWithErrors(ctx, regsWithErrors)
 	if err != nil {
-		return 0, nil, err
+		return nil, nil, err
 	}
 
-	return len(zpaStudentRegs) - len(regsWithErrors), regsWithErrors, nil
+	return zpaStudentRegs, regsWithErrors, nil
 }
 
 func noZPAStudRegError(zpaStudentRegError *model.ZPAStudentRegError) bool {
@@ -108,7 +108,7 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		return nil, err
 	}
 
-	examsInPlan, err := p.ExamsInPlan(ctx)
+	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get exam groups")
 		return nil, err
@@ -120,31 +120,35 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 	}
 
 	exams := make([]*model.ZPAExamPlan, 0)
-	for _, exam := range examsInPlan {
+	for _, exam := range plannedExams {
+		if exam.PlanEntry == nil {
+			continue
+		}
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
 		}
 		for _, ancodeNotToPublish := range doNotPublish {
-			if exam.Exam.Ancode == ancodeNotToPublish {
+			if exam.ZpaExam.AnCode == ancodeNotToPublish {
 				continue
 			}
 		}
-		slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get slot for ancode")
-		}
-		timeForAncode := p.getSlotTime(slot.DayNumber, slot.SlotNumber)
-		studentCount := 0
-		for _, studentRegs := range exam.Exam.StudentRegs {
-			studentCount += len(studentRegs.StudentRegs)
-		}
+		// slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
+		// if err != nil {
+		// 	log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get slot for ancode")
+		// }
+		// timeForAncode := p.getSlotTime(slot.DayNumber, slot.SlotNumber)
+		// studentCount := 0
+		// for _, studentRegs := range exam.Exam.StudentRegs {
+		// 	studentCount += len(studentRegs.StudentRegs)
+		// }
 
+		// FIXME: with rooms -> zpa
 		var rooms []*model.ZPAExamPlanRoom
 		reserveInvigilatorID := 0
 		if withInvigilators {
-			invigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", slot.DayNumber, slot.SlotNumber)
+			invigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 			if err != nil {
-				log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).
+				log.Error().Err(err).Int("ancode", exam.Ancode).Int("day", exam.PlanEntry.DayNumber).Int("slot", exam.PlanEntry.SlotNumber).
 					Msg("cannot get reserve invigilator for slot")
 				return nil, err
 			}
@@ -152,12 +156,17 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		}
 
 		if withRooms {
-			roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
+			roomsForAncode, err := p.dbClient.PlannedRoomsForAncode(ctx, exam.Ancode)
 			if err != nil {
-				log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for ancode")
+				log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get rooms for ancode")
 			} else {
 				if len(roomsForAncode) > 0 {
-					rooms = make([]*model.ZPAExamPlanRoom, 0, len(roomsForAncode))
+					type roomNameWithDuration struct {
+						name     string
+						duration int
+					}
+					roomsMap := make(map[roomNameWithDuration][]*model.ZPAExamPlanRoom)
+
 					for _, roomForAncode := range roomsForAncode {
 						if roomForAncode.RoomName == "No Room" {
 							continue
@@ -165,9 +174,9 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 
 						invigilatorID := 0
 						if withInvigilators {
-							invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, slot.DayNumber, slot.SlotNumber)
+							invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 							if err != nil {
-								log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Str("room", roomForAncode.RoomName).
+								log.Error().Err(err).Int("ancode", exam.Ancode).Str("room", roomForAncode.RoomName).
 									Msg("cannot get invigilator for room")
 								return nil, err
 							}
@@ -179,25 +188,78 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 							roomName = "ONLINE"
 						}
 
-						rooms = append(rooms, &model.ZPAExamPlanRoom{
+						roomNameWithDuration := roomNameWithDuration{
+							name:     roomName,
+							duration: roomForAncode.Duration,
+						}
+
+						roomWithDuration, ok := roomsMap[roomNameWithDuration]
+						if !ok {
+							roomWithDuration = make([]*model.ZPAExamPlanRoom, 0, 1)
+						}
+						roomsMap[roomNameWithDuration] = append(roomWithDuration, &model.ZPAExamPlanRoom{
 							RoomName:      roomName,
 							InvigilatorID: invigilatorID,
 							Duration:      roomForAncode.Duration,
 							IsReserve:     roomForAncode.Reserve,
-							StudentCount:  roomForAncode.SeatsPlanned,
+							StudentCount:  len(roomForAncode.StudentsInRoom),
 							IsHandicap:    roomForAncode.Handicap,
 						})
+					}
+
+					mergeRooms := func(roomWithSameDuration []*model.ZPAExamPlanRoom) []*model.ZPAExamPlanRoom {
+						for i := 0; i < len(roomWithSameDuration); i++ {
+							current := roomWithSameDuration[i]
+							if current == nil {
+								continue
+							}
+							for j := i + 1; j < len(roomWithSameDuration); j++ {
+								other := roomWithSameDuration[j]
+								if other == nil {
+									continue
+								}
+								if current.IsHandicap && other.IsHandicap ||
+									!current.IsHandicap && !other.IsHandicap {
+									log.Debug().Int("ancode", exam.Ancode).Str("room", current.RoomName).Msg("found rooms to merge")
+									roomWithSameDuration[i].StudentCount += other.StudentCount
+									roomWithSameDuration[i].IsReserve = false
+									roomWithSameDuration[j] = nil
+								}
+							}
+						}
+
+						rooms := make([]*model.ZPAExamPlanRoom, 0)
+						for _, room := range roomWithSameDuration {
+							if room != nil {
+								rooms = append(rooms, room)
+							}
+						}
+						return rooms
+					}
+					rooms = make([]*model.ZPAExamPlanRoom, 0, len(roomsForAncode))
+					for _, roomWithSameDuration := range roomsMap {
+						if len(roomWithSameDuration) == 0 {
+							continue
+						}
+						if len(roomWithSameDuration) == 1 {
+							rooms = append(rooms, roomWithSameDuration...)
+						} else {
+							log.Debug().Int("ancode", exam.Ancode).Interface("roomWithSameDuration", roomWithSameDuration).Msg("more than one room with same duration")
+							rooms = append(rooms, mergeRooms(roomWithSameDuration)...)
+						}
 					}
 				}
 			}
 		}
 
+		starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+
 		exams = append(exams, &model.ZPAExamPlan{
 			Semester:             p.semester,
-			AnCode:               exam.Exam.Ancode,
-			Date:                 timeForAncode.Format("02.01.2006"),
-			Time:                 timeForAncode.Format("15:04"),
-			StudentCount:         studentCount,
+			AnCode:               exam.ZpaExam.AnCode,
+			Date:                 starttime.Local().Format("02.01.2006"),
+			Time:                 starttime.Local().Format("15:04"),
+			StudentCount:         exam.StudentRegsCount,
 			ReserveInvigilatorID: reserveInvigilatorID,
 			Rooms:                rooms,
 		})

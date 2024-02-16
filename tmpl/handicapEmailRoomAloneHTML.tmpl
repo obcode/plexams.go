@@ -1,0 +1,30 @@
+<p>Sehr geehrte:r {{ .NTA.Name }},</p>
+
+<p>Sie haben gemäß den mir vorliegenden Informationen Anspruch auf einen eigenen Raum
+bei Ihren Prüfungen.</p>
+
+<p>Für folgende Prüfungen, für die Sie sich angemeldet haben, plane ich einen extra Raum ein:</p>
+
+<ul>
+{{ range .Exams -}}
+<li>
+{{ .ZpaExam.MainExamer }}: {{ .ZpaExam.Module }}
+</li>
+{{ end }}
+</ul>
+
+<p>Den Raum entnehmen Sie nach Abschluss der Raumplanung dem im ZPA veröffentlichten Prüfungsplan
+unter <a href="https://zpa.cs.hm.edu/public/exam_plan/">https://zpa.cs.hm.edu/public/exam_plan/</a>.
+Im Zweifelsfall fragen Sie gerne bei mir nach.</p>
+
+<p>Wenn Sie frühzeitig wissen, dass Sie an einer der oben genannten Prüfungen nicht teilnehmen werden,
+teilen Sie mir das bitte mit, damit ich die eingeteilte Aufsicht darüber informieren kann bzw. keinen extra
+Raum mit Aufsicht planen muss.</p>
+
+<p>Mit freundlichen Grüßen<br />
+{{ .PlanerName }}</p>
+
+<pre>
+-- 
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
+</pre>

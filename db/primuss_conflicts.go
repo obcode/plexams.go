@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"sort"
 	"strconv"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -38,11 +39,17 @@ func (db *DB) GetPrimussConflictsForAncode(ctx context.Context, program string, 
 		return nil, err
 	}
 
+	keys := make([]int, 0, len(conflicts.Conflicts))
+	for k := range conflicts.Conflicts {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+
 	conflictsSlice := make([]*model.Conflict, 0)
-	for k, v := range conflicts.Conflicts {
+	for _, k := range keys {
 		conflictsSlice = append(conflictsSlice, &model.Conflict{
 			AnCode:        k,
-			NumberOfStuds: v,
+			NumberOfStuds: conflicts.Conflicts[k],
 		})
 	}
 

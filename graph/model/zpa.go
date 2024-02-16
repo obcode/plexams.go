@@ -14,19 +14,30 @@ type Teacher struct {
 }
 
 type ZPAExam struct {
-	ZpaID          int      `json:"id"`
-	Semester       string   `json:"semester"`
-	AnCode         int      `json:"ancode"`
-	Module         string   `json:"module"`
-	MainExamer     string   `json:"main_examer"`
-	MainExamerID   int      `json:"main_examer_id"`
-	ExamType       string   `json:"exam_type"`
-	ExamTypeFull   string   `json:"full_name"`
-	Date           string   `json:"date"`
-	Starttime      string   `json:"start_time"`
-	Duration       int      `json:"duration"`
-	IsRepeaterExam bool     `json:"is_repeater_exam"`
-	Groups         []string `json:"groups"`
+	ZpaID          int                 `json:"id"`
+	Semester       string              `json:"semester"`
+	AnCode         int                 `json:"ancode"`
+	Module         string              `json:"module"`
+	MainExamer     string              `json:"main_examer"`
+	MainExamerID   int                 `json:"main_examer_id"`
+	ExamType       string              `json:"exam_type"`
+	ExamTypeFull   string              `json:"full_name"`
+	Date           string              `json:"date"`
+	Starttime      string              `json:"start_time"`
+	Duration       int                 `json:"duration"`
+	IsRepeaterExam bool                `json:"is_repeater_exam"`
+	Groups         []string            `json:"groups"`
+	PrimussAncodes []ZPAPrimussAncodes `json:"primuss_ancodes"`
+}
+
+type ZPAPrimussAncodes struct {
+	Program string `json:"program"`
+	Ancode  int    `json:"ancode"`
+}
+
+type AddedPrimussAncode struct {
+	Ancode        int               `json:"ancode"`
+	PrimussAncode ZPAPrimussAncodes `json:"primuss_ancodes"`
 }
 
 type ZPAStudentReg struct {

@@ -1,3 +1,20 @@
+extend type Query {
+  allProgramsInPlan: [String!]
+  ancodesInPlan: [Int!]
+  examerInPlan: [ExamerInPlan!]
+
+  examsInSlot(day: Int!, time: Int!): [PlannedExam!]
+  examsWithoutSlot: [PlannedExam!]!
+
+  allowedSlots(ancode: Int!): [Slot!]
+  awkwardSlots(ancode: Int!): [Slot!]! # slots before or after a conflict
+}
+
+extend type Mutation {
+  addExamToSlot(day: Int!, time: Int!, ancode: Int!): Boolean!
+  rmExamFromSlot(ancode: Int!): Boolean!
+}
+
 type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
@@ -60,4 +77,13 @@ type SlotWithExamGroups {
 type ExamerInPlan {
   mainExamer: String!
   mainExamerID: Int!
+}
+
+# TODO: remove starttime!!!
+type PlanEntry {
+  dayNumber: Int!
+  slotNumber: Int!
+  starttime: Time!
+  ancode: Int!
+  locked: Boolean!
 }

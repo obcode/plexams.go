@@ -6,6 +6,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -19,6 +20,25 @@ func (db *DB) AddNta(ctx context.Context, nta *model.NTA) (*model.NTA, error) {
 	}
 
 	return nta, nil // FIXME: return NTA from DB?
+}
+
+func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTA, error) {
+	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+
+	res := collection.FindOne(ctx, bson.D{{Key: "mtknr", Value: mtknr}})
+	if res.Err() == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+
+	var nta *model.NTA
+
+	err := res.Decode(&nta)
+	if err != nil {
+		log.Error().Err(res.Err()).Str("mtknr", mtknr).Msg("error while finding nta")
+		return nil, err
+	}
+
+	return nta, nil
 }
 
 func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
@@ -44,20 +64,47 @@ func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return ntas, nil
 }
 
-func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameNTAs)
+func (db *DB) SetSemesterOnNTAs(ctx context.Context, studentRegs []interface{}) error {
+	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+
+	for _, regRaw := range studentRegs {
+		reg := regRaw.(*model.Student)
+		if reg.Nta == nil {
+			continue
+		}
+
+		res := collection.FindOneAndUpdate(ctx, bson.D{{Key: "mtknr", Value: reg.Mtknr}},
+			bson.M{"$set": bson.M{"lastSemester": db.semester}})
+
+		if res.Err() != nil {
+			if res.Err() == mongo.ErrNoDocuments {
+				log.Error().Err(res.Err()).Str("mtknr", reg.Mtknr).Msg("nta with mtknr not found")
+			} else {
+				log.Error().Err(res.Err()).Str("mtknr", reg.Mtknr).Msg("error when setting semester on nta")
+				return res.Err()
+			}
+		} else {
+			log.Debug().Str("mtknr", reg.Mtknr).Str("last semester", db.semester).Msg("last semester set on nta")
+		}
+	}
+
+	return nil
+}
+
+func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned)
 
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{Key: "nta.name", Value: 1}})
 
-	cur, err := collection.Find(ctx, bson.M{}, findOptions)
+	cur, err := collection.Find(ctx, bson.D{{Key: "nta", Value: bson.D{{Key: "$ne", Value: nil}}}}, findOptions)
 	if err != nil {
 		log.Error().Err(err).Str("collection", "nta").Msg("MongoDB Find")
 		return nil, err
 	}
 	defer cur.Close(ctx)
 
-	ntas := make([]*model.NTAWithRegs, 0)
+	ntas := make([]*model.Student, 0)
 	err = cur.All(ctx, &ntas)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("Cannot decode to rooms")
@@ -67,8 +114,9 @@ func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.NTAWithRegs, error) {
 	return ntas, nil
 }
 
-func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameNTAs)
+// // Deprecated: remove me
+func (db *DB) NtaWithRegs(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
 
 	var nta model.NTAWithRegs
 	res := collection.FindOne(ctx, bson.D{{Key: "nta.mtknr", Value: mtknr}})
@@ -85,8 +133,9 @@ func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
 	return &nta, nil
 }
 
+// // Deprecated: remove me
 func (db *DB) SaveSemesterNTAs(ctx context.Context, ntaWithRegs []*model.NTAWithRegs) error {
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionNameNTAs)
+	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
 
 	err := collection.Drop(ctx)
 	if err != nil {
@@ -110,7 +159,7 @@ func (db *DB) SaveSemesterNTAs(ctx context.Context, ntaWithRegs []*model.NTAWith
 	}
 
 	for _, nta := range ntaWithRegs {
-		err := db.setCurrentSemesterOnNTA(ctx, nta.Nta.Mtknr)
+		err := db.SetCurrentSemesterOnNTA(ctx, nta.Nta.Mtknr)
 		if err != nil {
 			return err
 		}
@@ -119,7 +168,8 @@ func (db *DB) SaveSemesterNTAs(ctx context.Context, ntaWithRegs []*model.NTAWith
 	return nil
 }
 
-func (db *DB) setCurrentSemesterOnNTA(ctx context.Context, mtknr string) error {
+// TODO: when to call?
+func (db *DB) SetCurrentSemesterOnNTA(ctx context.Context, mtknr string) error {
 	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
 
 	filter := bson.D{{Key: "mtknr", Value: mtknr}}

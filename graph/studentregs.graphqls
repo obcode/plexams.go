@@ -1,3 +1,9 @@
+extend type Query {
+  studentByMtknr(mtknr: String!): Student
+  studentsByName(regex: String!): [Student!]!
+  students: [Student!]!
+}
+
 type StudentRegsPerStudent {
   student: Student!
   ancodes: [Int!]!
@@ -10,6 +16,7 @@ type StudentRegsPerAncode {
 
 type StudentRegsPerAncodeAndProgram {
   program: String!
+  ancode: Int!
   studentRegs: [StudentReg!]!
 }
 
@@ -18,4 +25,6 @@ type Student {
   program: String!
   group: String!
   name: String!
+  regs: [Int!]!
+  nta: NTA
 }

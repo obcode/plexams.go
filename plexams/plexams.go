@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gookit/color"
+	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/zpa"
@@ -53,10 +53,18 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 	if dbUri == "" {
 		log.Info().Msg("starting without DB!")
 	} else {
-		client, err = db.NewDB(dbUri, semester)
+		dbName := viper.GetString("db.database")
+		var databaseName *string
+		if dbName == "" {
+			databaseName = nil
+		} else {
+			databaseName = &dbName
+		}
+
+		client, err = db.NewDB(dbUri, semester, databaseName)
 
 		if err != nil {
-			panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
+			log.Fatal().Err(err).Msg("cannot connect to plexams.db")
 		}
 	}
 
@@ -214,22 +222,31 @@ func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {
 	return p.semesterConfig
 }
 
+func (p *Plexams) GetStarttime(dayNumber, slotNumber int) (*time.Time, error) {
+	for _, slot := range p.semesterConfig.Slots {
+		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
+			time := slot.Starttime.Local()
+			return &time, nil
+		}
+	}
+	return nil, fmt.Errorf("no starttime for slot (%d/%d)", dayNumber, slotNumber)
+}
+
 func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
 	for _, slot := range p.semesterConfig.Slots {
 		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
-			return slot.Starttime
+			return slot.Starttime.Local()
 		}
 	}
 	return time.Date(0, 0, 0, 0, 0, 0, 0, nil)
 }
 
-func (p *Plexams) PrintSemester() {
-	color.Style{color.FgCyan, color.BgYellow, color.OpBold}.Printf(" ---   Planning Semester: %s   --- ", p.semester)
-	color.Println()
+func (p *Plexams) PrintInfo() {
+	fmt.Println(aurora.Sprintf(aurora.Magenta(" ---   Planning Semester: %s   --- \n"), p.semester))
 }
 
 func (p *Plexams) setRoomInfo() {
-	rooms, err := p.dbClient.GlobalRooms(context.Background())
+	rooms, err := p.dbClient.Rooms(context.Background())
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get global rooms")
 	}

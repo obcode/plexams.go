@@ -1,0 +1,75 @@
+<p>Sehr geehrte:r {{ .Teacher.Fullname }},</p>
+
+{{ if not .HasStudentRegs }}
+<p><b>Für Ihre Prüfung <b>{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}</b> liegen überhaupt keine Anmeldungen vor, daher werde ich sie nicht
+planen.</b> Falls die Prüfung dennoch eingeplant werden soll, teilen Sie mir das bitte unmittelbar
+mit.</p>
+
+{{ else }}
+
+<p>Ihre Prüfung <b>{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}</b> plane ich auf Grund folgender Daten.</p>
+
+<p>Sollten die Daten aus Ihrer Sicht fehlerhaft sein, nehmen Sie bitte umgehend mit
+mir Kontakt auf; insbesondere dann, wenn die Anzahl der Anmeldungen stark von der
+tatsächlichen Anzahl zu Prüfenden abweicht (z.B. auf Grund des Nichtbestehens einer
+Zulassungsvoraussetzung).</p>
+
+<p>Sofern mir bekannt, sind Studierende mit Nachteilsausgleich unten angegeben.
+Sollten Ihnen weitere Studierende mit Nachteilsausgleich bekannt sein oder bekannt werden,
+geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtigen kann.</p>
+
+<ul>
+{{ range .Exam.PrimussExams -}}
+
+  {{ if ne (len .StudentRegs) 0 }}
+    <li>Studiengang {{ .Exam.Program }}
+      <br/><br/>
+      Anmeldungen:
+      <br/><br/>
+
+      <ol>
+        {{ range .StudentRegs }}
+          <li>
+            {{ .Name }}
+          </li>
+        {{end}}
+      </ol>
+
+      {{ if ne (len .Ntas) 0 }}
+        <br/><br/>
+        Studierende mit Nachteilsausgleich im Studiengang {{ .Exam.Program }} (auch in der Liste aller Anmeldungen enthalten)
+        <br/><br/>
+
+        <ol>
+          {{ range .Ntas }}
+          <li>
+            {{.Name}}: {{.Compensation}}
+          </li>
+          {{end}}
+        </ol>
+        <br/><br/>
+
+      {{ else }}
+
+        <br/><br/>
+        Im Studiengang {{ .Exam.Program }} sind mir keine Nachteilsausgleiche für diese Prüfung bekannt.
+        <br/><br/>
+
+      {{ end }}
+    </li>
+  {{ else }}
+    <li>Studiengang {{ .Exam.Program }}: Keine Anmeldungen<br/><br/></li>
+  {{ end }}
+
+{{ end }}
+</ul>
+
+{{ end }}
+
+<p>Mit freundlichen Grüßen<br />
+{{ .PlanerName }}</p>
+
+<pre>
+-- 
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
+</pre>

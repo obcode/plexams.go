@@ -7,15 +7,32 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (db *DB) GetPrimussStudentRegsForProgrammAncode(ctx context.Context, program string, ancode int) ([]*model.StudentReg, error) {
-	studentRegs, err := db.GetPrimussStudentRegsPerAncode(ctx, program)
+	collection := db.getCollection(program, StudentRegs)
+
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "name", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.D{{Key: "AnCode", Value: ancode}}, findOptions)
 	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Str("program", program).Msg("MongoDB Find (studentregs)")
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	var studentRegs []*model.StudentReg
+
+	err = cur.All(ctx, &studentRegs)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Str("program", program).Msg("cannot decode to studentregs")
 		return nil, err
 	}
 
-	return studentRegs[ancode], nil
+	return studentRegs, nil
 }
 
 func (db *DB) GetPrimussStudentRegsPerAncode(ctx context.Context, program string) (map[int][]*model.StudentReg, error) {
@@ -50,7 +67,7 @@ func (db *DB) GetPrimussStudentRegsPerAncode(ctx context.Context, program string
 	}
 
 	for k, v := range studentRegs {
-		if !db.checkStudentRegsCount(ctx, program, k, len(v)) {
+		if !db.CheckStudentRegsCount(ctx, program, k, len(v)) {
 			return nil, fmt.Errorf("problem with studentregs, ancode = %d, #studentregs = %d", k, len(v))
 		}
 	}
@@ -167,7 +184,7 @@ type Count struct {
 	Sum    int `bson:"Sum"`
 }
 
-func (db *DB) checkStudentRegsCount(ctx context.Context, program string, ancode, studentRegsCount int) bool {
+func (db *DB) CheckStudentRegsCount(ctx context.Context, program string, ancode, studentRegsCount int) bool {
 	// log.Debug().Str("collectionName", collectionName).Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).
 	// 	Msg("checking count")
 	collection := db.getCollection(program, Counts)
@@ -185,6 +202,25 @@ func (db *DB) checkStudentRegsCount(ctx context.Context, program string, ancode,
 		return false
 	}
 	return true
+}
+
+func (db *DB) GetStudentRegsCount(ctx context.Context, program string, ancode int) (int, error) {
+	// log.Debug().Str("collectionName", collectionName).Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).
+	// 	Msg("checking count")
+	collection := db.getCollection(program, Counts)
+	var result Count
+	res := collection.FindOne(ctx, bson.D{{Key: "AnCo", Value: ancode}, {Key: "Sum", Value: bson.D{{Key: "$ne", Value: ""}}}})
+	if res.Err() == mongo.ErrNoDocuments {
+		return 0, nil
+	}
+	err := res.Decode(&result)
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("program", program).
+			Int("ancode", ancode).Msg("error finding count")
+		return -1, err
+	}
+
+	return result.Sum, nil
 }
 
 func (db *DB) ChangeAncodeInStudentRegsCount(ctx context.Context, program string, ancode, newAncode int) error {
@@ -213,7 +249,7 @@ func (db *DB) ChangeAncodeInStudentRegsCount(ctx context.Context, program string
 
 func (db *DB) SetRegsWithErrors(ctx context.Context, regsWithErrors []*model.RegWithError) error {
 	collectionName := "errors-zpa-studentregs"
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+	collection := db.Client.Database(db.databaseName).Collection(collectionName)
 
 	err := collection.Drop(ctx)
 	if err != nil {
@@ -238,7 +274,7 @@ func (db *DB) SetRegsWithErrors(ctx context.Context, regsWithErrors []*model.Reg
 
 func (db *DB) GetRegsWithErrors(ctx context.Context) ([]*model.RegWithError, error) {
 	collectionName := "errors-zpa-studentregs"
-	collection := db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+	collection := db.Client.Database(db.databaseName).Collection(collectionName)
 
 	regWithErrors := make([]*model.RegWithError, 0)
 

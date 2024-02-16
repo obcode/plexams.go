@@ -94,6 +94,21 @@ func (p *Plexams) Constraints(ctx context.Context) ([]*model.Constraints, error)
 	return p.dbClient.GetConstraints(ctx)
 }
 
+func (p *Plexams) ConstraintsMap(ctx context.Context) (map[int]*model.Constraints, error) {
+	constraints, err := p.dbClient.GetConstraints(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get constraints")
+		return nil, err
+	}
+
+	constraintsMap := make(map[int]*model.Constraints)
+	for _, constraintsForAncode := range constraints {
+		constraintsMap[constraintsForAncode.Ancode] = constraintsForAncode
+	}
+
+	return constraintsMap, nil
+}
+
 func (p *Plexams) ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error) {
 	exams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {

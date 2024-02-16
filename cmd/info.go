@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -16,16 +17,19 @@ var (
 		Use:   "info [subcommand]",
 		Short: "get info",
 		Long: `Get info.
+samename               --- exams with same module name
 goslots                --- info about slots for GO/GN
 request-rooms          --- which rooms to request
 stats                  --- get statistics
 student-regs ancode    --- get student-reqs for ancode
 rooms-for-nta name     --- get planned rooms for student
-exams-for-student name --- get exams for student.`,
+student name           --- get info for student.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			p := initPlexamsConfig()
 			switch args[0] {
+			case "samename":
+				p.PrintSameName()
 			case "goslots":
 				err := plexams.PrintGOSlots(p.GetSemesterConfig().Slots, p.GetGoSlots())
 				if err != nil {
@@ -85,14 +89,23 @@ exams-for-student name --- get exams for student.`,
 					fmt.Println(err)
 					return
 				}
-			case "exams-for-student":
+			case "student":
 				if len(args) < 2 {
 					log.Fatal("need name")
 				}
-				err := p.GetExamsForStudent(args[1])
+				// FIXME
+				students, err := p.StudentsByName(context.TODO(), args[1]) // nolint
 				if err != nil {
 					fmt.Println(err)
 					return
+				}
+				for _, student := range students {
+					fmt.Printf("%s (%s, %s%s): regs %v", student.Name, student.Mtknr, student.Program, student.Group, student.Regs)
+					if student.Nta != nil {
+						fmt.Printf(", NTA: %s\n", student.Nta.Compensation)
+					} else {
+						fmt.Println()
+					}
 				}
 			default:
 				fmt.Println("info called with unknown sub command")

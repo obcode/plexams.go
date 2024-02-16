@@ -1,3 +1,7 @@
+extend type Query {
+  primussExams: [PrimussExamByProgram]
+}
+
 type PrimussExam {
   ancode: Int!
   module: String!
@@ -5,18 +9,39 @@ type PrimussExam {
   program: String!
   examType: String!
   presence: String!
+}
+
+type EnhancedPrimussExam {
+  exam: PrimussExam!
   studentRegs: [StudentReg!]!
-  conflicts: Conflicts!
+  conflicts: [Conflict!]!
+  ntas: [NTA!]!
+}
+
+type PrimussExamWithCount {
+  ancode: Int!
+  module: String!
+  mainExamer: String!
+  program: String!
+  examType: String!
+  presence: String!
+  studentRegsCount: Int!
+}
+
+type PrimussExamByProgram {
+  program: String!
+  exams: [PrimussExamWithCount!]!
+}
+
+type PrimussExamAncode {
+  ancode: Int!
+  program: String!
+  numberOfStuds: Int!
 }
 
 input PrimussExamInput {
   ancode: Int!
   program: String!
-}
-
-type PrimussExamByProgram {
-  program: String!
-  exams: [PrimussExam!]!
 }
 
 type StudentReg {
@@ -45,9 +70,8 @@ type ConflictPerProgram {
   conflicts: [Conflict!]!
 }
 
-type ConnectedExam {
-  zpaExam: ZPAExam!
-  primussExams: [PrimussExam!]!
-  otherPrimussExams: [PrimussExam!]!
-  errors: [String!]!
+type ConflictsPerProgramAncode {
+  program: String!
+  ancode: Int!
+  conflicts: Conflicts
 }

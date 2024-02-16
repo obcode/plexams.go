@@ -1,0 +1,48 @@
+Sehr geehrte:r {{ .Teacher.Fullname }},
+
+{{ if not .HasStudentRegs }}
+Für Ihre Prüfung "{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}" liegen überhaupt keine Anmeldungen vor, daher werde ich sie nicht
+planen.
+
+Falls die Prüfung dennoch eingeplant werden soll, teilen Sie mir das bitte unmittelbar mit.
+{{ else }}
+Ihre Prüfung "{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}" plane ich auf Grund folgender Daten.
+
+Sollten die Daten aus Ihrer Sicht fehlerhaft sein, nehmen Sie bitte umgehend mit
+mir Kontakt auf; insbesondere dann, wenn die Anzahl der Anmeldungen stark von der
+tatsächlichen Anzahl zu Prüfenden abweicht (z.B. auf Grund des Nichtbestehens einer
+Zulassungsvoraussetzung).
+
+Sofern mir bekannt, sind Studierende mit Nachteilsausgleich unten angegeben.
+Sollten Ihnen weitere Studierende mit Nachteilsausgleich bekannt sein oder bekannt werden,
+geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtigen kann.
+
+{{ range .Exam.PrimussExams }}
+  {{ if ne (len .StudentRegs) 0 }}
+  - Studiengang {{ .Exam.Program }}
+    
+      Anmeldungen:    
+        {{- range .StudentRegs }}
+          - {{ .Name }}  
+        {{- end}}
+      
+      {{if ne (len .Ntas) 0 -}}
+        Studierende mit Nachteilsausgleich im Studiengang {{ .Exam.Program }} (auch in der Liste aller Anmeldungen enthalten)
+          {{ range .Ntas -}}
+            - {{.Name}}: {{.Compensation}}
+          {{- end -}}      
+      {{- else -}}
+        Im Studiengang {{ .Exam.Program }} sind mir keine Nachteilsausgleiche für diese Prüfung bekannt.
+      {{- end -}}
+  {{- else -}}
+  - Studiengang {{ .Exam.Program }}: Keine Anmeldungen
+  {{ end -}}
+{{ end }}
+{{ end }}
+
+Mit freundlichen Grüßen
+{{ .PlanerName }}
+
+-- 
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
+

@@ -14,6 +14,7 @@ const (
 	collectionConstraints         = "constraints"
 	collectionNameExamGroups      = "exam_groups"
 	collectionNameAdditionalExams = "additional_exams"
+	collectionNameExternalExams   = "external_exams"
 	collectionNameConnectedExams  = "connected_exams"
 	collectionNameExamsWithRegs   = "exams_with_regs"
 	collectionNameNTAs            = "nta"
@@ -25,17 +26,22 @@ const (
 	collectionStudentRegsPerStudentPlanned = "studentregs_per_student_planned"
 	collectionStudentRegsPerStudentAll     = "studentregs_per_student_all"
 
-	collectionAll       = "zpaexams"
-	collectionToPlan    = "zpaexams-to-plan"
-	collectionNotToPlan = "zpaexams-not-to-plan"
+	collectionAll    = "zpaexams"
+	collectionToPlan = "zpaexamsToPlan"
 
-	collectionExamsInPlan = "exams_in_plan"
+	collectionPrimussAncodes = "primuss_ancodes"
+
+	collectionExamsInPlan = "exams_in_plan" // Deprecated: rm me
+
+	collectionCachedExams    = "cached_exams" // ?
+	collectionGeneratedExams = "generated_exams"
 
 	collectionRooms         = "rooms"
 	collectionRoomsPlanned  = "rooms_planned"
-	collectionRoomsForExams = "rooms_for_exams"
+	collectionRoomsForExams = "rooms_for_exams" // Deprecated: ?
 
 	collectionInvigilatorRequirements = "invigilator_requirements"
+	collectionInvigilatorTodos        = "invigilator_todos"
 	collectionOtherInvigilations      = "invigilations_other"
 	collectionSelfInvigilations       = "invigilations_self"
 )
@@ -50,13 +56,13 @@ const (
 )
 
 func (db *DB) getCollection(program string, primussType PrimussType) *mongo.Collection {
-	return db.Client.Database(databaseName(db.semester)).Collection(fmt.Sprintf("%s_%s", primussType, program))
+	return db.Client.Database(db.databaseName).Collection(fmt.Sprintf("%s_%s", primussType, program))
 }
 
 func (db *DB) getCollectionSemester(collectionName string) *mongo.Collection {
-	return db.Client.Database(databaseName(db.semester)).Collection(collectionName)
+	return db.Client.Database(db.databaseName).Collection(collectionName)
 }
 
 func (db *DB) getCollectionSemesterFromContext(ctx context.Context) *mongo.Collection {
-	return db.Client.Database(databaseName(db.semester)).Collection(ctx.Value(CollectionName("collectionName")).(string))
+	return db.Client.Database(db.databaseName).Collection(ctx.Value(CollectionName("collectionName")).(string))
 }

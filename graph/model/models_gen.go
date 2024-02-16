@@ -34,6 +34,12 @@ type ConflictPerProgram struct {
 	Conflicts []*Conflict `json:"conflicts"`
 }
 
+type ConflictsPerProgramAncode struct {
+	Program   string     `json:"program"`
+	Ancode    int        `json:"ancode"`
+	Conflicts *Conflicts `json:"conflicts,omitempty"`
+}
+
 type ConnectedExam struct {
 	ZpaExam           *ZPAExam       `json:"zpaExam"`
 	PrimussExams      []*PrimussExam `json:"primussExams"`
@@ -51,6 +57,28 @@ type Constraints struct {
 	SameSlot        []int            `json:"sameSlot,omitempty"`
 	Online          bool             `json:"online"`
 	RoomConstraints *RoomConstraints `json:"roomConstraints,omitempty"`
+}
+
+type EnhancedPrimussExam struct {
+	Exam        *PrimussExam  `json:"exam"`
+	StudentRegs []*StudentReg `json:"studentRegs"`
+	Conflicts   []*Conflict   `json:"conflicts"`
+	Ntas        []*NTA        `json:"ntas"`
+}
+
+type Exam struct {
+	Ancode          int                               `json:"ancode"`
+	ZpaExam         *ZPAExam                          `json:"zpaExam,omitempty"`
+	ExternalExam    *ExternalExam                     `json:"externalExam,omitempty"`
+	PrimussExams    []*PrimussExam                    `json:"primussExams"`
+	StudentRegs     []*StudentRegsPerAncodeAndProgram `json:"studentRegs"`
+	Conflicts       []*ConflictsPerProgramAncode      `json:"conflicts"`
+	ConnectErrors   []string                          `json:"connectErrors"`
+	Constraints     *Constraints                      `json:"constraints,omitempty"`
+	RegularStudents []*Student                        `json:"regularStudents,omitempty"`
+	NtaStudents     []*Student                        `json:"ntaStudents,omitempty"`
+	Slot            *Slot                             `json:"slot,omitempty"`
+	Rooms           []*RoomForExam                    `json:"rooms,omitempty"`
 }
 
 type ExamDay struct {
@@ -105,15 +133,23 @@ type ExamWithRegs struct {
 }
 
 type ExamWithRegsAndRooms struct {
-	Exam       *ExamInPlan    `json:"exam"`
-	NormalRegs []*StudentReg  `json:"normalRegs"`
-	NtaRegs    []*NTAWithRegs `json:"ntaRegs"`
-	Rooms      []*RoomForExam `json:"rooms"`
+	Exam            *PlannedExam   `json:"exam"`
+	NormalRegsMtknr []string       `json:"normalRegsMtknr"`
+	Ntas            []*NTA         `json:"ntas"`
+	Rooms           []*PlannedRoom `json:"rooms"`
 }
 
 type ExamerInPlan struct {
 	MainExamer   string `json:"mainExamer"`
 	MainExamerID int    `json:"mainExamerID"`
+}
+
+type ExternalExam struct {
+	Ancode     int    `json:"ancode"`
+	Program    string `json:"program"`
+	Module     string `json:"module"`
+	MainExamer string `json:"mainExamer"`
+	Duration   int    `json:"duration"`
 }
 
 type FK07Program struct {
@@ -182,14 +218,15 @@ type InvigilatorsForDay struct {
 }
 
 type NTAInput struct {
-	Name                 string `json:"name"`
-	Mtknr                string `json:"mtknr"`
-	Compensation         string `json:"compensation"`
-	DeltaDurationPercent int    `json:"deltaDurationPercent"`
-	NeedsRoomAlone       bool   `json:"needsRoomAlone"`
-	Program              string `json:"program"`
-	From                 string `json:"from"`
-	Until                string `json:"until"`
+	Name                 string  `json:"name"`
+	Email                *string `json:"email,omitempty"`
+	Mtknr                string  `json:"mtknr"`
+	Compensation         string  `json:"compensation"`
+	DeltaDurationPercent int     `json:"deltaDurationPercent"`
+	NeedsRoomAlone       bool    `json:"needsRoomAlone"`
+	Program              string  `json:"program"`
+	From                 string  `json:"from"`
+	Until                string  `json:"until"`
 }
 
 type NTAWithRegs struct {
@@ -218,14 +255,30 @@ type PlannedExamWithNta struct {
 	Nta         []*NTAWithRegs `json:"nta,omitempty"`
 }
 
+type PrimussExamAncode struct {
+	Ancode        int    `json:"ancode"`
+	Program       string `json:"program"`
+	NumberOfStuds int    `json:"numberOfStuds"`
+}
+
 type PrimussExamByProgram struct {
-	Program string         `json:"program"`
-	Exams   []*PrimussExam `json:"exams"`
+	Program string                  `json:"program"`
+	Exams   []*PrimussExamWithCount `json:"exams"`
 }
 
 type PrimussExamInput struct {
 	Ancode  int    `json:"ancode"`
 	Program string `json:"program"`
+}
+
+type PrimussExamWithCount struct {
+	Ancode           int    `json:"ancode"`
+	Module           string `json:"module"`
+	MainExamer       string `json:"mainExamer"`
+	Program          string `json:"program"`
+	ExamType         string `json:"examType"`
+	Presence         string `json:"presence"`
+	StudentRegsCount int    `json:"studentRegsCount"`
 }
 
 type Room struct {
@@ -240,7 +293,7 @@ type Room struct {
 }
 
 type RoomAndExam struct {
-	Room *RoomForExam `json:"room"`
+	Room *PlannedRoom `json:"room"`
 	Exam *ZPAExam     `json:"exam"`
 }
 
@@ -312,6 +365,8 @@ type Student struct {
 	Program string `json:"program"`
 	Group   string `json:"group"`
 	Name    string `json:"name"`
+	Regs    []int  `json:"regs"`
+	Nta     *NTA   `json:"nta,omitempty"`
 }
 
 type StudentRegsPerAncode struct {
@@ -321,12 +376,19 @@ type StudentRegsPerAncode struct {
 
 type StudentRegsPerAncodeAndProgram struct {
 	Program     string        `json:"program"`
+	Ancode      int           `json:"ancode"`
 	StudentRegs []*StudentReg `json:"studentRegs"`
 }
 
 type StudentRegsPerStudent struct {
 	Student *Student `json:"student"`
 	Ancodes []int    `json:"ancodes"`
+}
+
+type ZPAConflict struct {
+	Ancode         int                  `json:"ancode"`
+	NumberOfStuds  int                  `json:"numberOfStuds"`
+	PrimussAncodes []*PrimussExamAncode `json:"primussAncodes"`
 }
 
 type ZPAExamWithConstraints struct {

@@ -1,3 +1,8 @@
+extend type Query {
+  ntas: [NTA!]
+  ntasWithRegs: [Student!]
+}
+
 type NTAExam {
   semester: String!
   ancode: String!
@@ -7,6 +12,7 @@ type NTAExam {
 
 type NTA {
   name: String!
+  email: String
   mtknr: String!
   compensation: String!
   deltaDurationPercent: Int!
@@ -20,6 +26,7 @@ type NTA {
 
 input NTAInput {
   name: String!
+  email: String
   mtknr: String!
   compensation: String!
   deltaDurationPercent: Int!

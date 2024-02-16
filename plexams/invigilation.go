@@ -34,7 +34,7 @@ func (p *Plexams) AddInvigilation(ctx context.Context, room string, day, slot, i
 		}
 	}
 	// no exam in same slot
-	exams, err := p.dbClient.PlannedExamsByMainExamer(ctx, invigilatorID)
+	exams, err := p.dbClient.PlannedExamsByMainExamer(ctx, invigilatorID) //nolint
 	if err != nil {
 		return err
 	}

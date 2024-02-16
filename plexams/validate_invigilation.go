@@ -91,7 +91,7 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 		}
 
 		// wenn gleichzeitig Prüfung, dann nur self-invigilation
-		exams, err := p.dbClient.PlannedExamsByMainExamer(ctx, invigilator.Teacher.ID)
+		exams, err := p.dbClient.PlannedExamsByMainExamer(ctx, invigilator.Teacher.ID) //nolint
 		if err != nil {
 			log.Error().Err(err).Str("name", invigilator.Teacher.Shortname).Msg("cannot get exams")
 		}

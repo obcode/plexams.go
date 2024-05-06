@@ -130,7 +130,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	m.Row(20, func() {
 		m.Col(12, func() {
 			m.Text(
-				"Sortiert nach dem Namen der Prüfer:in", props.Text{
+				"Sortiert nach dem Namen des Prüferenden", props.Text{
 					Top:   5,
 					Style: consts.Bold,
 					Align: consts.Center,

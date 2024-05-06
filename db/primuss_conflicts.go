@@ -70,7 +70,7 @@ type Conflict struct {
 
 func (db *DB) getConflictsForAnCode(ctx context.Context, program string, ancode int) (*Conflict, error) {
 	collection := db.getCollection(program, Conflicts)
-	raw, err := collection.FindOne(ctx, bson.D{{Key: "AnCo", Value: ancode}}).DecodeBytes()
+	raw, err := collection.FindOne(ctx, bson.D{{Key: "AnCo", Value: ancode}}).Raw()
 	if err != nil {
 		log.Error().Err(err).Str("program", program).Int("ancode", ancode).Msg("cannot get conflicts for ancode")
 		return nil, err

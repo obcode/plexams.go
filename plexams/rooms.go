@@ -442,7 +442,7 @@ func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRo
 	}
 
 	roomsForSlot, err := p.RoomsForSlot(ctx, slot.DayNumber, slot.SlotNumber)
-	if err != nil || slot == nil {
+	if err != nil || roomsForSlot == nil {
 		log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
 			Msg("error while getting rooms for slot")
 		return false, err

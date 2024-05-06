@@ -189,6 +189,7 @@ func (p *Plexams) SendGeneratedExamMailToTeacher(ctx context.Context, to string,
 	)
 }
 
+// Deprecated: rm me
 func (p *Plexams) SendHandicapsMails(ctx context.Context, run bool) error {
 	ntasByTeacher, err := p.NtasWithRegsByTeacher(ctx)
 	if err != nil {
@@ -233,6 +234,7 @@ func (p *Plexams) SendHandicapsMails(ctx context.Context, run bool) error {
 	return nil
 }
 
+// Deprecated: rm me
 func (p *Plexams) SendHandicapsMailToMainExamer(ctx context.Context, to []string, handicapsEmail *HandicapsEmail) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 

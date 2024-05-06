@@ -78,7 +78,6 @@ var (
 			case "upload-plan":
 
 				// TODO: immer gleich validieren
-				// TODO: Wenn mehrere NTAs im gleichen Raum mit gleicher Zeit wird der Raum im ZPA nur einmal angezeigt => Räume zusammenfassen
 				if len(jsonOutputFile) == 0 {
 					jsonOutputFile = "plan.json"
 					if withRooms {
@@ -114,6 +113,12 @@ var (
 					log.Error().Err(err).Msg("cannot write exams to file")
 				} else {
 					fmt.Printf(" saved copy to %s\n", jsonOutputFile)
+				}
+
+				// validate
+				err = plexams.ValidateZPADateTimes()
+				if err != nil {
+					log.Error().Err(err).Msg("error when validating")
 				}
 
 			default:

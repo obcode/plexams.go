@@ -20,11 +20,11 @@ primuss-data --- send emails to teachers about primuss data and nta.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
-			case "nta":
-				err := plexams.SendHandicapsMails(context.Background(), run)
-				if err != nil {
-					log.Fatalf("got error: %v\n", err)
-				}
+			// case "nta":
+			// 	err := plexams.SendHandicapsMails(context.Background(), run)
+			// 	if err != nil {
+			// 		log.Fatalf("got error: %v\n", err)
+			// 	}
 			case "nta-with-room-alone":
 				err := plexams.SendHandicapsMailsNTARoomAlone(context.Background(), run)
 				if err != nil {

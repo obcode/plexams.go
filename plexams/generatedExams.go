@@ -40,13 +40,14 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		ntaMap[nta.Mtknr] = nta
 	}
 
-	externalExams, err := p.ExternalExams(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get external exams")
-		return err
-	}
+	// externalExams, err := p.ExternalExams(ctx)
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("cannot get external exams")
+	// 	return err
+	// }
 
-	ancodesMap := primussAncodesToZpaAncodes(connectedExams, externalExams)
+	// ancodesMap := primussAncodesToZpaAncodes(connectedExams, externalExams)
+	ancodesMap := primussAncodesToZpaAncodes(connectedExams)
 
 	exams := make([]*model.GeneratedExam, 0, len(connectedExams))
 
@@ -313,7 +314,8 @@ type PrimussAncode struct {
 	Ancode  int
 }
 
-func primussAncodesToZpaAncodes(exams []*model.ConnectedExam, externalExams []*model.ExternalExam) map[PrimussAncode]int {
+// func primussAncodesToZpaAncodes(exams []*model.ConnectedExam, externalExams []*model.ExternalExam) map[PrimussAncode]int {
+func primussAncodesToZpaAncodes(exams []*model.ConnectedExam) map[PrimussAncode]int {
 	ancodesMap := make(map[PrimussAncode]int)
 	for _, exam := range exams {
 		zpaAncode := exam.ZpaExam.AnCode

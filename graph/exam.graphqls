@@ -4,6 +4,8 @@ extend type Query {
 
   externalExams: [ExternalExam!]!
 
+  mucdaiExams: [MucDaiExam!]!
+
   generatedExams: [GeneratedExam!]!
   generatedExam(ancode: Int!): GeneratedExam
 
@@ -100,6 +102,18 @@ type ExternalExam {
   module: String!
   mainExamer: String!
   duration: Int!
+}
+
+type MucDaiExam {
+  primussAncode: Int!
+  module: String!
+  mainExamer: String!
+  mainExamerID: Int
+  examType: String!
+  duration: Int!
+  isRepeaterExam: Boolean!
+  program: String!
+  plannedBy: String!
 }
 
 type ConnectedExam {

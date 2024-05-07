@@ -217,6 +217,21 @@ type InvigilatorsForDay struct {
 	Can  []*Invigilator `json:"can"`
 }
 
+type MucDaiExam struct {
+	PrimussAncode  int    `json:"primussAncode"`
+	Module         string `json:"module"`
+	MainExamer     string `json:"mainExamer"`
+	MainExamerID   *int   `json:"mainExamerID,omitempty"`
+	ExamType       string `json:"examType"`
+	Duration       int    `json:"duration"`
+	IsRepeaterExam bool   `json:"isRepeaterExam"`
+	Program        string `json:"program"`
+	PlannedBy      string `json:"plannedBy"`
+}
+
+type Mutation struct {
+}
+
 type NTAInput struct {
 	Name                 string  `json:"name"`
 	Email                *string `json:"email,omitempty"`
@@ -279,6 +294,9 @@ type PrimussExamWithCount struct {
 	ExamType         string `json:"examType"`
 	Presence         string `json:"presence"`
 	StudentRegsCount int    `json:"studentRegsCount"`
+}
+
+type Query struct {
 }
 
 type Room struct {

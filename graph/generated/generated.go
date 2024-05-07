@@ -24,6 +24,7 @@ import (
 // NewExecutableSchema creates an ExecutableSchema from the ResolverRoot interface.
 func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
 	return &executableSchema{
+		schema:     cfg.Schema,
 		resolvers:  cfg.Resolvers,
 		directives: cfg.Directives,
 		complexity: cfg.Complexity,
@@ -31,6 +32,7 @@ func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
 }
 
 type Config struct {
+	Schema     *ast.Schema
 	Resolvers  ResolverRoot
 	Directives DirectiveRoot
 	Complexity ComplexityRoot
@@ -276,6 +278,18 @@ type ComplexityRoot struct {
 		Want func(childComplexity int) int
 	}
 
+	MucDaiExam struct {
+		Duration       func(childComplexity int) int
+		ExamType       func(childComplexity int) int
+		IsRepeaterExam func(childComplexity int) int
+		MainExamer     func(childComplexity int) int
+		MainExamerID   func(childComplexity int) int
+		Module         func(childComplexity int) int
+		PlannedBy      func(childComplexity int) int
+		PrimussAncode  func(childComplexity int) int
+		Program        func(childComplexity int) int
+	}
+
 	Mutation struct {
 		AddAdditionalExam   func(childComplexity int, exam model.AdditionalExamInput) int
 		AddExamGroupToSlot  func(childComplexity int, day int, time int, examGroupCode int) int
@@ -444,6 +458,7 @@ type ComplexityRoot struct {
 		Invigilators                  func(childComplexity int) int
 		InvigilatorsForDay            func(childComplexity int, day int) int
 		InvigilatorsWithReq           func(childComplexity int) int
+		MucdaiExams                   func(childComplexity int) int
 		NextDeadline                  func(childComplexity int) int
 		Nta                           func(childComplexity int, mtknr string) int
 		Ntas                          func(childComplexity int) int
@@ -738,6 +753,7 @@ type QueryResolver interface {
 	ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
 	ExternalExams(ctx context.Context) ([]*model.ExternalExam, error)
+	MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error)
 	GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error)
 	GeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error)
 	PlannedExams(ctx context.Context) ([]*model.PlannedExam, error)
@@ -784,12 +800,16 @@ type RoomForExamResolver interface {
 }
 
 type executableSchema struct {
+	schema     *ast.Schema
 	resolvers  ResolverRoot
 	directives DirectiveRoot
 	complexity ComplexityRoot
 }
 
 func (e *executableSchema) Schema() *ast.Schema {
+	if e.schema != nil {
+		return e.schema
+	}
 	return parsedSchema
 }
 
@@ -1770,6 +1790,69 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.InvigilatorsForDay.Want(childComplexity), true
+
+	case "MucDaiExam.duration":
+		if e.complexity.MucDaiExam.Duration == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.Duration(childComplexity), true
+
+	case "MucDaiExam.examType":
+		if e.complexity.MucDaiExam.ExamType == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.ExamType(childComplexity), true
+
+	case "MucDaiExam.isRepeaterExam":
+		if e.complexity.MucDaiExam.IsRepeaterExam == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.IsRepeaterExam(childComplexity), true
+
+	case "MucDaiExam.mainExamer":
+		if e.complexity.MucDaiExam.MainExamer == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.MainExamer(childComplexity), true
+
+	case "MucDaiExam.mainExamerID":
+		if e.complexity.MucDaiExam.MainExamerID == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.MainExamerID(childComplexity), true
+
+	case "MucDaiExam.module":
+		if e.complexity.MucDaiExam.Module == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.Module(childComplexity), true
+
+	case "MucDaiExam.plannedBy":
+		if e.complexity.MucDaiExam.PlannedBy == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.PlannedBy(childComplexity), true
+
+	case "MucDaiExam.primussAncode":
+		if e.complexity.MucDaiExam.PrimussAncode == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.PrimussAncode(childComplexity), true
+
+	case "MucDaiExam.program":
+		if e.complexity.MucDaiExam.Program == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.Program(childComplexity), true
 
 	case "Mutation.addAdditionalExam":
 		if e.complexity.Mutation.AddAdditionalExam == nil {
@@ -2794,6 +2877,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.InvigilatorsWithReq(childComplexity), true
+
+	case "Query.mucdaiExams":
+		if e.complexity.Query.MucdaiExams == nil {
+			break
+		}
+
+		return e.complexity.Query.MucdaiExams(childComplexity), true
 
 	case "Query.nextDeadline":
 		if e.complexity.Query.NextDeadline == nil {
@@ -4007,14 +4097,14 @@ func (ec *executionContext) introspectSchema() (*introspection.Schema, error) {
 	if ec.DisableIntrospection {
 		return nil, errors.New("introspection disabled")
 	}
-	return introspection.WrapSchema(parsedSchema), nil
+	return introspection.WrapSchema(ec.Schema()), nil
 }
 
 func (ec *executionContext) introspectType(name string) (*introspection.Type, error) {
 	if ec.DisableIntrospection {
 		return nil, errors.New("introspection disabled")
 	}
-	return introspection.WrapTypeFromDef(parsedSchema, parsedSchema.Types[name]), nil
+	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
 var sources = []*ast.Source{
@@ -4023,6 +4113,8 @@ var sources = []*ast.Source{
   connectedExams: [ConnectedExam!]!
 
   externalExams: [ExternalExam!]!
+
+  mucdaiExams: [MucDaiExam!]!
 
   generatedExams: [GeneratedExam!]!
   generatedExam(ancode: Int!): GeneratedExam
@@ -4120,6 +4212,18 @@ type ExternalExam {
   module: String!
   mainExamer: String!
   duration: Int!
+}
+
+type MucDaiExam {
+  primussAncode: Int!
+  module: String!
+  mainExamer: String!
+  mainExamerID: Int
+  examType: String!
+  duration: Int!
+  isRepeaterExam: Boolean!
+  program: String!
+  plannedBy: String!
 }
 
 type ConnectedExam {
@@ -12586,6 +12690,399 @@ func (ec *executionContext) fieldContext_InvigilatorsForDay_can(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _MucDaiExam_primussAncode(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_primussAncode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrimussAncode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_primussAncode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MucDaiExam_module(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_module(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MucDaiExam_mainExamer(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_mainExamer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MainExamer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_mainExamer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MucDaiExam_mainExamerID(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_mainExamerID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MainExamerID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_mainExamerID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MucDaiExam_examType(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_examType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_examType(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MucDaiExam_duration(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_duration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Duration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_duration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MucDaiExam_isRepeaterExam(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_isRepeaterExam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsRepeaterExam, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_isRepeaterExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MucDaiExam_program(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_program(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MucDaiExam_plannedBy(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_plannedBy(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PlannedBy, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_plannedBy(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_setSemester(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_setSemester(ctx, field)
 	if err != nil {
@@ -18728,6 +19225,70 @@ func (ec *executionContext) fieldContext_Query_externalExams(ctx context.Context
 				return ec.fieldContext_ExternalExam_duration(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExternalExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_mucdaiExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_mucdaiExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().MucdaiExams(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.MucDaiExam)
+	fc.Result = res
+	return ec.marshalNMucDaiExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMucDaiExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_mucdaiExams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "primussAncode":
+				return ec.fieldContext_MucDaiExam_primussAncode(ctx, field)
+			case "module":
+				return ec.fieldContext_MucDaiExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_MucDaiExam_mainExamer(ctx, field)
+			case "mainExamerID":
+				return ec.fieldContext_MucDaiExam_mainExamerID(ctx, field)
+			case "examType":
+				return ec.fieldContext_MucDaiExam_examType(ctx, field)
+			case "duration":
+				return ec.fieldContext_MucDaiExam_duration(ctx, field)
+			case "isRepeaterExam":
+				return ec.fieldContext_MucDaiExam_isRepeaterExam(ctx, field)
+			case "program":
+				return ec.fieldContext_MucDaiExam_program(ctx, field)
+			case "plannedBy":
+				return ec.fieldContext_MucDaiExam_plannedBy(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MucDaiExam", field.Name)
 		},
 	}
 	return fc, nil
@@ -28370,8 +28931,6 @@ func (ec *executionContext) unmarshalInputAdditionalExamInput(ctx context.Contex
 		}
 		switch k {
 		case "ancode":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28379,8 +28938,6 @@ func (ec *executionContext) unmarshalInputAdditionalExamInput(ctx context.Contex
 			}
 			it.Ancode = data
 		case "module":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("module"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -28388,8 +28945,6 @@ func (ec *executionContext) unmarshalInputAdditionalExamInput(ctx context.Contex
 			}
 			it.Module = data
 		case "mainExamerID":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mainExamerID"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28397,8 +28952,6 @@ func (ec *executionContext) unmarshalInputAdditionalExamInput(ctx context.Contex
 			}
 			it.MainExamerID = data
 		case "duration":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("duration"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28406,8 +28959,6 @@ func (ec *executionContext) unmarshalInputAdditionalExamInput(ctx context.Contex
 			}
 			it.Duration = data
 		case "isRepeaterExam":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isRepeaterExam"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
@@ -28415,8 +28966,6 @@ func (ec *executionContext) unmarshalInputAdditionalExamInput(ctx context.Contex
 			}
 			it.IsRepeaterExam = data
 		case "groups":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("groups"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
 			if err != nil {
@@ -28444,8 +28993,6 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 		}
 		switch k {
 		case "name":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -28453,8 +29000,6 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 			}
 			it.Name = data
 		case "email":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
@@ -28462,8 +29007,6 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 			}
 			it.Email = data
 		case "mtknr":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -28471,8 +29014,6 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 			}
 			it.Mtknr = data
 		case "compensation":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("compensation"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -28480,8 +29021,6 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 			}
 			it.Compensation = data
 		case "deltaDurationPercent":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deltaDurationPercent"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28489,8 +29028,6 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 			}
 			it.DeltaDurationPercent = data
 		case "needsRoomAlone":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("needsRoomAlone"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
@@ -28498,8 +29035,6 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 			}
 			it.NeedsRoomAlone = data
 		case "program":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -28507,8 +29042,6 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 			}
 			it.Program = data
 		case "from":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -28516,8 +29049,6 @@ func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj inte
 			}
 			it.From = data
 		case "until":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("until"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -28545,8 +29076,6 @@ func (ec *executionContext) unmarshalInputPrimussExamInput(ctx context.Context, 
 		}
 		switch k {
 		case "ancode":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28554,8 +29083,6 @@ func (ec *executionContext) unmarshalInputPrimussExamInput(ctx context.Context, 
 			}
 			it.Ancode = data
 		case "program":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -28583,8 +29110,6 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 		}
 		switch k {
 		case "ancode":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28592,8 +29117,6 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 			}
 			it.Ancode = data
 		case "day":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28601,8 +29124,6 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 			}
 			it.Day = data
 		case "time":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("time"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28610,8 +29131,6 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 			}
 			it.Time = data
 		case "roomName":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomName"))
 			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
@@ -28619,8 +29138,6 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 			}
 			it.RoomName = data
 		case "seatsPlanned":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("seatsPlanned"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28628,8 +29145,6 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 			}
 			it.SeatsPlanned = data
 		case "duration":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("duration"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
@@ -28637,8 +29152,6 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 			}
 			it.Duration = data
 		case "handicap":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handicap"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
 			if err != nil {
@@ -28646,8 +29159,6 @@ func (ec *executionContext) unmarshalInputRoomForExamInput(ctx context.Context, 
 			}
 			it.Handicap = data
 		case "mktnrs":
-			var err error
-
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mktnrs"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
@@ -30255,6 +30766,82 @@ func (ec *executionContext) _InvigilatorsForDay(ctx context.Context, sel ast.Sel
 			}
 		case "can":
 			out.Values[i] = ec._InvigilatorsForDay_can(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var mucDaiExamImplementors = []string{"MucDaiExam"}
+
+func (ec *executionContext) _MucDaiExam(ctx context.Context, sel ast.SelectionSet, obj *model.MucDaiExam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mucDaiExamImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MucDaiExam")
+		case "primussAncode":
+			out.Values[i] = ec._MucDaiExam_primussAncode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._MucDaiExam_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mainExamer":
+			out.Values[i] = ec._MucDaiExam_mainExamer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mainExamerID":
+			out.Values[i] = ec._MucDaiExam_mainExamerID(ctx, field, obj)
+		case "examType":
+			out.Values[i] = ec._MucDaiExam_examType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "duration":
+			out.Values[i] = ec._MucDaiExam_duration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isRepeaterExam":
+			out.Values[i] = ec._MucDaiExam_isRepeaterExam(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "program":
+			out.Values[i] = ec._MucDaiExam_program(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "plannedBy":
+			out.Values[i] = ec._MucDaiExam_plannedBy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -31903,6 +32490,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_externalExams(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "mucdaiExams":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_mucdaiExams(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -35455,6 +36064,60 @@ func (ec *executionContext) marshalNInvigilator2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._Invigilator(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMucDaiExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMucDaiExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MucDaiExam) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNMucDaiExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMucDaiExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMucDaiExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMucDaiExam(ctx context.Context, sel ast.SelectionSet, v *model.MucDaiExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MucDaiExam(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNNTA2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTA(ctx context.Context, sel ast.SelectionSet, v model.NTA) graphql.Marshaler {

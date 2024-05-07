@@ -66,3 +66,7 @@ func (db *DB) getCollectionSemester(collectionName string) *mongo.Collection {
 func (db *DB) getCollectionSemesterFromContext(ctx context.Context) *mongo.Collection {
 	return db.Client.Database(db.databaseName).Collection(ctx.Value(CollectionName("collectionName")).(string))
 }
+
+func (db *DB) getMucDaiCollection(program string) *mongo.Collection {
+	return db.Client.Database(db.databaseName).Collection(fmt.Sprintf("mucdai_%s", program))
+}

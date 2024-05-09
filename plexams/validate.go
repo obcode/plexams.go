@@ -214,9 +214,32 @@ func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanE
 }
 
 func (p *Plexams) ValidateConstraints() error {
+	count = 0
 	ctx := context.Background()
-	color.Style{color.FgRed, color.BgGreen, color.OpBold}.Println(" ---   validating constraints   --- ")
+	cfg := yacspin.Config{
+		Frequency:         100 * time.Millisecond,
+		CharSet:           yacspin.CharSets[69],
+		Suffix:            aurora.Sprintf(aurora.Cyan(" validating constraints")),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
 
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
+
+	validationMessages := make([]string, 0)
+
+	spinner.Message(aurora.Sprintf(aurora.Yellow(" get constraints")))
 	constraints, err := p.Constraints(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get constraints")
@@ -227,7 +250,16 @@ func (p *Plexams) ValidateConstraints() error {
 		constraintsMap[constraint.Ancode] = constraint
 	}
 
+	spinner.Message(aurora.Sprintf(aurora.Yellow(" get booked entries")))
+	bookedEntries, err := p.ExahmRoomsFromBooked()
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get booked entries")
+		return err
+	}
+
 	for _, constraint := range constraints {
+		count++
+		spinner.Message(aurora.Sprintf(aurora.Yellow(" check constraints for exam %d"), aurora.Magenta(constraint.Ancode)))
 		slot, err := p.SlotForAncode(ctx, constraint.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", constraint.Ancode).Msg("cannot get slot for ancode")
@@ -251,12 +283,16 @@ func (p *Plexams) ValidateConstraints() error {
 					continue
 				}
 
-				color.Red.Printf("Exams %d and %d must be in the same slot, are %v and %v\n", constraint.Ancode, otherAncode, slot, otherSlot)
+				validationMessages = append(validationMessages,
+					aurora.Sprintf(aurora.Red("Exams %d and %d must be in the same slot, are %v and %v"),
+						aurora.Magenta(constraint.Ancode), aurora.Magenta(otherAncode), aurora.Cyan(slot), aurora.Cyan(otherSlot)))
 				continue
 			}
 
 			if *slot != *otherSlot {
-				color.Red.Printf("Exams %d and %d must be in the same slot, are %v and %v\n", constraint.Ancode, otherAncode, slot, otherSlot)
+				validationMessages = append(validationMessages,
+					aurora.Sprintf(aurora.Red("Exams %d and %d must be in the same slot, are %v and %v"),
+						aurora.Magenta(constraint.Ancode), aurora.Magenta(otherAncode), aurora.Cyan(slot), aurora.Cyan(otherSlot)))
 			}
 		}
 		// }
@@ -272,13 +308,17 @@ func (p *Plexams) ValidateConstraints() error {
 				fixed.Month() != slot.Starttime.Month() ||
 				fixed.Local().Hour() != slot.Starttime.Local().Hour() ||
 				fixed.Minute() != slot.Starttime.Minute() {
-				color.Red.Printf("Exams %d has fixed slot %s, is %s\n", constraint.Ancode, fixed.Format("02.01.06 15:04"), constraint.FixedTime.Format("02.01.06 15:04"))
+				validationMessages = append(validationMessages,
+					aurora.Sprintf(aurora.Red("Exams %d has fixed slot %s, is %s"),
+						aurora.Magenta(constraint.Ancode), aurora.Magenta(fixed.Format("02.01.06 15:04")), aurora.Cyan(constraint.FixedTime.Format("02.01.06 15:04"))))
 			}
 		}
 
 		for _, day := range constraint.ExcludeDays {
 			if day.Equal(time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)) {
-				color.Red.Printf("Exam #%d planned on excluded day %s\n", constraint.Ancode, day.Format("02.01.06"))
+				validationMessages = append(validationMessages,
+					aurora.Sprintf(aurora.Red("Exam %d planned on excluded day %s"),
+						aurora.Magenta(constraint.Ancode), aurora.Cyan(day.Format("02.01.06"))))
 			}
 		}
 
@@ -293,11 +333,50 @@ func (p *Plexams) ValidateConstraints() error {
 				}
 			}
 			if !possibleDaysOk {
-				color.Red.Printf("Exam #%d planned on day %s which is not a possible day\n", constraint.Ancode, dayPlanned.Format("02.01.06"))
+				validationMessages = append(validationMessages,
+					aurora.Sprintf(aurora.Red("Exam %d planned on day %s which is not a possible day"),
+						aurora.Magenta(constraint.Ancode), aurora.Cyan(dayPlanned.Format("02.01.06"))))
 			}
 		}
 
+		if constraint.RoomConstraints != nil && constraint.RoomConstraints.ExahmRooms || constraint.RoomConstraints.Seb {
+			if !p.roomBookedDuringExamTime(bookedEntries, slot) {
+				validationMessages = append(validationMessages,
+					aurora.Sprintf(aurora.Red("Exam %d planned at %s, but no room booked"),
+						aurora.Magenta(constraint.Ancode), aurora.Cyan(slot.Starttime.Format("02.01.06 15:04"))))
+			}
+		}
+	}
+
+	if len(validationMessages) > 0 {
+		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d known constraints, but %d problems found"),
+			count, len(validationMessages)))
+		err = spinner.StopFail()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
+		for _, msg := range validationMessages {
+			fmt.Printf("%s\n", msg)
+		}
+
+	} else {
+		spinner.StopMessage(aurora.Sprintf(aurora.Green("%d known constraints, no problems found"),
+			count))
+		err = spinner.Stop()
+		if err != nil {
+			log.Debug().Err(err).Msg("cannot stop spinner")
+		}
 	}
 
 	return nil
+}
+
+func (p *Plexams) roomBookedDuringExamTime(bookedEntries []BookedEntry, slot *model.Slot) bool {
+	for _, bookedEntry := range bookedEntries {
+		if bookedEntry.From.Before(slot.Starttime) && bookedEntry.Until.After(slot.Starttime.Add(90*time.Minute)) {
+			return true
+		}
+	}
+
+	return false
 }

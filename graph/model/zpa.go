@@ -83,3 +83,12 @@ type ZPAExamPlanRoom struct {
 	StudentCount  int    `json:"numberStudents"`
 	IsHandicap    bool   `json:"handicapCompensation"`
 }
+
+type ZPAStudent struct {
+	Greeting  string `json:"greeting"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+	Gender    string `json:"gender"`
+	Group     string `json:"group"`
+}

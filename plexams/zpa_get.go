@@ -67,6 +67,14 @@ func (p *Plexams) getInvigilators(ctx context.Context) ([]*model.Teacher, error)
 	return p.dbClient.GetInvigilators(ctx)
 }
 
+func (p *Plexams) GetStudents(ctx context.Context, mtknr string) ([]*model.ZPAStudent, error) {
+	if err := p.SetZPA(); err != nil {
+		return nil, err
+	}
+
+	return p.zpa.client.GetStudents(mtknr)
+}
+
 func (p *Plexams) GetFk07programs(ctx context.Context) ([]*model.FK07Program, error) {
 	programs := make([]*model.FK07Program, 0, len(p.zpa.fk07programs))
 

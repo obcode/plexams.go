@@ -106,6 +106,23 @@ student name           --- get info for student.`,
 					} else {
 						fmt.Println()
 					}
+					// TODO: ZPA-Info
+					zpaStudents, err := p.GetStudents(context.TODO(), student.Mtknr)
+					if err != nil {
+						fmt.Printf("  -> Studierenden nicht im ZPA gefunden: %v\n", err)
+					} else {
+						switch len(zpaStudents) {
+						case 0:
+							fmt.Println("  -> Studierenden nicht im ZPA gefunden")
+						case 1:
+							fmt.Printf("  -> %+v\n", zpaStudents[0])
+						case 2:
+							fmt.Println("  -> mehrere Studierende mit selber MtkNr gefunden")
+							for _, stud := range zpaStudents {
+								fmt.Printf("      -> %+v\n", stud)
+							}
+						}
+					}
 				}
 			default:
 				fmt.Println("info called with unknown sub command")

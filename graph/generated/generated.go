@@ -549,7 +549,9 @@ type ComplexityRoot struct {
 
 	SemesterConfig struct {
 		Days       func(childComplexity int) int
+		GoDay0     func(childComplexity int) int
 		GoSlots    func(childComplexity int) int
+		GoSlotsRaw func(childComplexity int) int
 		Slots      func(childComplexity int) int
 		Starttimes func(childComplexity int) int
 	}
@@ -3432,12 +3434,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SemesterConfig.Days(childComplexity), true
 
+	case "SemesterConfig.goDay0":
+		if e.complexity.SemesterConfig.GoDay0 == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.GoDay0(childComplexity), true
+
 	case "SemesterConfig.goSlots":
 		if e.complexity.SemesterConfig.GoSlots == nil {
 			break
 		}
 
 		return e.complexity.SemesterConfig.GoSlots(childComplexity), true
+
+	case "SemesterConfig.goSlotsRaw":
+		if e.complexity.SemesterConfig.GoSlotsRaw == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.GoSlotsRaw(childComplexity), true
 
 	case "SemesterConfig.slots":
 		if e.complexity.SemesterConfig.Slots == nil {
@@ -4464,7 +4480,9 @@ type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
   slots: [Slot!]!
-  goSlots: [[Int!]!]
+  goSlotsRaw: [[Int!]!]
+  goSlots: [Slot!]!
+  goDay0: Time!
 }
 
 type ExamDay {
@@ -15343,8 +15361,12 @@ func (ec *executionContext) fieldContext_Plan_semesterConfig(ctx context.Context
 				return ec.fieldContext_SemesterConfig_starttimes(ctx, field)
 			case "slots":
 				return ec.fieldContext_SemesterConfig_slots(ctx, field)
+			case "goSlotsRaw":
+				return ec.fieldContext_SemesterConfig_goSlotsRaw(ctx, field)
 			case "goSlots":
 				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
+			case "goDay0":
+				return ec.fieldContext_SemesterConfig_goDay0(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
 		},
@@ -17915,8 +17937,12 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(ctx context.Contex
 				return ec.fieldContext_SemesterConfig_starttimes(ctx, field)
 			case "slots":
 				return ec.fieldContext_SemesterConfig_slots(ctx, field)
+			case "goSlotsRaw":
+				return ec.fieldContext_SemesterConfig_goSlotsRaw(ctx, field)
 			case "goSlots":
 				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
+			case "goDay0":
+				return ec.fieldContext_SemesterConfig_goDay0(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
 		},
@@ -23434,6 +23460,47 @@ func (ec *executionContext) fieldContext_SemesterConfig_slots(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _SemesterConfig_goSlotsRaw(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_goSlotsRaw(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GoSlotsRaw, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([][]int)
+	fc.Result = res
+	return ec.marshalOInt2ᚕᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_goSlotsRaw(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SemesterConfig_goSlots(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SemesterConfig_goSlots(ctx, field)
 	if err != nil {
@@ -23455,11 +23522,14 @@ func (ec *executionContext) _SemesterConfig_goSlots(ctx context.Context, field g
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.([][]int)
+	res := resTmp.([]*model.Slot)
 	fc.Result = res
-	return ec.marshalOInt2ᚕᚕintᚄ(ctx, field.Selections, res)
+	return ec.marshalNSlot2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_SemesterConfig_goSlots(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -23469,7 +23539,59 @@ func (ec *executionContext) fieldContext_SemesterConfig_goSlots(ctx context.Cont
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_Slot_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_Slot_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_Slot_starttime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Slot", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfig_goDay0(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_goDay0(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GoDay0, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_goDay0(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -33803,8 +33925,18 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "goSlotsRaw":
+			out.Values[i] = ec._SemesterConfig_goSlotsRaw(ctx, field, obj)
 		case "goSlots":
 			out.Values[i] = ec._SemesterConfig_goSlots(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "goDay0":
+			out.Values[i] = ec._SemesterConfig_goDay0(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

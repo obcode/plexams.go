@@ -349,7 +349,9 @@ type SemesterConfig struct {
 	Days       []*ExamDay   `json:"days"`
 	Starttimes []*Starttime `json:"starttimes"`
 	Slots      []*Slot      `json:"slots"`
-	GoSlots    [][]int      `json:"goSlots,omitempty"`
+	GoSlotsRaw [][]int      `json:"goSlotsRaw,omitempty"`
+	GoSlots    []*Slot      `json:"goSlots"`
+	GoDay0     time.Time    `json:"goDay0"`
 }
 
 type Slot struct {

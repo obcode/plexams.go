@@ -288,7 +288,7 @@ func setPossibleSlots(semesterConfig *model.SemesterConfig, group *model.ExamGro
 	possibleSlotsPerExam := make([][]*model.Slot, 0)
 	for _, exam := range group.Exams {
 		possibleSlotsPerExam = append(possibleSlotsPerExam,
-			CalculatedAllowedSlots(semesterConfig.Slots, semesterConfig.GoSlots, exam.IsGO(), exam.Constraints))
+			CalculatedAllowedSlots(semesterConfig.Slots, semesterConfig.GoSlotsRaw, exam.IsGO(), exam.Constraints))
 	}
 	group.ExamGroupInfo.PossibleSlots = mergeAllowedSlots(possibleSlotsPerExam)
 }

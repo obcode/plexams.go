@@ -19,7 +19,9 @@ type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
   slots: [Slot!]!
-  goSlots: [[Int!]!]
+  goSlotsRaw: [[Int!]!]
+  goSlots: [Slot!]!
+  goDay0: Time!
 }
 
 type ExamDay {

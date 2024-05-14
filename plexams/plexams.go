@@ -120,7 +120,7 @@ func (p *Plexams) setGoSlots() {
 		log.Error().Interface("goSlots", goSlotsRaw).Msg("cannot get go slots from config")
 		return
 	}
-	goSlots := make([][]int, 0, len(goSlotsRaw))
+	goSlotsII := make([][]int, 0, len(goSlotsRaw))
 	for _, goSlotRaw := range goSlotsRaw {
 		goSlot := make([]int, 0, 2)
 		for _, intRaw := range goSlotRaw.([]interface{}) {
@@ -131,14 +131,54 @@ func (p *Plexams) setGoSlots() {
 			}
 			goSlot = append(goSlot, number)
 		}
-		goSlots = append(goSlots, goSlot)
+		goSlotsII = append(goSlotsII, goSlot)
 	}
 
+	p.semesterConfig.GoSlotsRaw = goSlotsII
+
+	// Calculate real slots
+	offset := 0
+	for i, day := range p.semesterConfig.Days {
+		if p.semesterConfig.GoDay0.Year() == day.Date.Year() &&
+			p.semesterConfig.GoDay0.Month() == day.Date.Month() &&
+			p.semesterConfig.GoDay0.Day() == day.Date.Day() {
+			offset = i
+			break
+		}
+	}
+
+	type slotNumber struct {
+		day, slot int
+	}
+
+	slotsMap := make(map[slotNumber]*model.Slot)
+	for _, slot := range p.semesterConfig.Slots {
+		slotsMap[slotNumber{
+			day:  slot.DayNumber,
+			slot: slot.SlotNumber,
+		}] = slot
+	}
+
+	for k, v := range slotsMap {
+		fmt.Printf("slot[%v] = %v\n", k, v)
+	}
+
+	goSlots := make([]*model.Slot, 0, len(goSlotsII))
+
+	for _, goSlot := range goSlotsII {
+		goSlots = append(goSlots, slotsMap[slotNumber{
+			day:  goSlot[0] + offset,
+			slot: goSlot[1],
+		}])
+	}
+
+	// offSet := (p.semesterConfig.GoDay0.Sub(p.semesterConfig.Days[0].Date).Hours() / 24)
+	fmt.Printf("day0 = %v, goday0 = %v, offset = %v\n", p.semesterConfig.Days[0].Date, p.semesterConfig.GoDay0, offset)
 	p.semesterConfig.GoSlots = goSlots
 }
 
 func (p *Plexams) GetGoSlots() [][]int {
-	return p.semesterConfig.GoSlots
+	return p.semesterConfig.GoSlotsRaw
 }
 
 func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
@@ -170,8 +210,8 @@ func (p *Plexams) setSemesterConfig() {
 	plan := viper.GetStringMap("semesterConfig")
 	if len(plan) > 0 {
 		// Days from ... until, no saturdays, no sundays
-		from := viper.GetTime("semesterConfig.from")
-		until := viper.GetTime("semesterConfig.until")
+		from := viper.GetTime("semesterConfig.from").Local()
+		until := viper.GetTime("semesterConfig.until").Local()
 		days := make([]*model.ExamDay, 0)
 		day := from
 		number := 1
@@ -213,6 +253,7 @@ func (p *Plexams) setSemesterConfig() {
 			Days:       days,
 			Starttimes: starttimes,
 			Slots:      slots,
+			GoDay0:     viper.GetTime("semesterConfig.goDay0").Local(),
 		}
 	}
 	p.setGoSlots()

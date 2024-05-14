@@ -106,11 +106,12 @@ func (p *Plexams) PrepareStudentRegs() error {
 
 	for mtknr, regs := range studentRegsPerStudent {
 		if len(regs) > 0 {
-			ancodes := make([]int, 0, len(regs))
+			ancodeSet := set.NewSet[int]()
 			for _, reg := range regs {
-				ancodes = append(ancodes, reg.AnCode)
+				ancodeSet.Add(reg.AnCode)
 			}
 
+			ancodes := ancodeSet.ToSlice()
 			sort.Ints(ancodes)
 
 			studentRegsSlice = append(studentRegsSlice, &model.Student{

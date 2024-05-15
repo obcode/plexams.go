@@ -142,7 +142,8 @@ func (p *Plexams) setGoSlots() {
 		if p.semesterConfig.GoDay0.Year() == day.Date.Year() &&
 			p.semesterConfig.GoDay0.Month() == day.Date.Month() &&
 			p.semesterConfig.GoDay0.Day() == day.Date.Day() {
-			offset = i
+			offset = i + 1
+			// fmt.Printf("offset == %d\n", offset)
 			break
 		}
 	}
@@ -159,22 +160,26 @@ func (p *Plexams) setGoSlots() {
 		}] = slot
 	}
 
-	for k, v := range slotsMap {
-		fmt.Printf("slot[%v] = %v\n", k, v)
-	}
+	// for k, v := range slotsMap {
+	// 	fmt.Printf("slot[%v] = %v\n", k, v)
+	// }
 
 	goSlots := make([]*model.Slot, 0, len(goSlotsII))
 
 	for _, goSlot := range goSlotsII {
-		goSlots = append(goSlots, slotsMap[slotNumber{
+		slot, ok := slotsMap[slotNumber{
 			day:  goSlot[0] + offset,
 			slot: goSlot[1],
-		}])
+		}]
+		if ok {
+			goSlots = append(goSlots, slot)
+		}
 	}
 
 	// offSet := (p.semesterConfig.GoDay0.Sub(p.semesterConfig.Days[0].Date).Hours() / 24)
-	fmt.Printf("day0 = %v, goday0 = %v, offset = %v\n", p.semesterConfig.Days[0].Date, p.semesterConfig.GoDay0, offset)
+	// fmt.Printf("day0 = %v, goday0 = %v, offset = %v\n", p.semesterConfig.Days[0].Date, p.semesterConfig.GoDay0, offset)
 	p.semesterConfig.GoSlots = goSlots
+	// fmt.Printf("Go-Slots = %+v\n", p.semesterConfig.GoSlots)
 }
 
 func (p *Plexams) GetGoSlots() [][]int {

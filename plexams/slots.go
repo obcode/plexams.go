@@ -74,10 +74,17 @@ func CalculatedAllowedSlots(semesterConfigSlots []*model.Slot, goSlots [][]int, 
 			slotsWithoutExcludedDays := make([]*model.Slot, 0)
 			for _, excludeDay := range constraints.ExcludeDays {
 				for _, slot := range slots {
-					if !time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local).
-						Equal(*excludeDay) {
-						slotsWithoutExcludedDays = append(slotsWithoutExcludedDays, slot)
+					s := slot.Starttime.Local()
+					e := excludeDay.Local()
+					if constraints.Ancode == 204 {
+						fmt.Printf("slot %s -- excluded day %s\n", s.String(), e.String())
 					}
+					if e.Year() == s.Year() && e.Month() == s.Month() && e.Day() == s.Day() {
+						fmt.Println(">>>> FOUND <<<<")
+						break
+					}
+
+					slotsWithoutExcludedDays = append(slotsWithoutExcludedDays, slot)
 				}
 			}
 			slots = slotsWithoutExcludedDays

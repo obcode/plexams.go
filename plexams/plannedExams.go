@@ -122,7 +122,7 @@ func (p *Plexams) PlannedExamsForProgram(ctx context.Context, program string, on
 			continue
 		}
 		for _, primussExam := range plannedExam.PrimussExams {
-			if primussExam.Exam.Program == program {
+			if primussExam.Exam.Program == program && len(primussExam.StudentRegs) > 0 {
 				plannedExamsForProgram = append(plannedExamsForProgram, plannedExam)
 				break
 			}

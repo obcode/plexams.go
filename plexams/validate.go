@@ -318,7 +318,7 @@ func (p *Plexams) ValidateConstraints() error {
 			if day.Equal(time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)) {
 				validationMessages = append(validationMessages,
 					aurora.Sprintf(aurora.Red("Exam %d planned on excluded day %s"),
-						aurora.Magenta(constraint.Ancode), aurora.Cyan(day.Format("02.01.06"))))
+						aurora.Magenta(constraint.Ancode), aurora.Cyan(day.Local().Format("02.01.06"))))
 			}
 		}
 
@@ -339,7 +339,7 @@ func (p *Plexams) ValidateConstraints() error {
 			}
 		}
 
-		if constraint.RoomConstraints != nil && constraint.RoomConstraints.ExahmRooms || constraint.RoomConstraints.Seb {
+		if constraint.RoomConstraints != nil && (constraint.RoomConstraints.ExahmRooms || constraint.RoomConstraints.Seb) {
 			if !p.roomBookedDuringExamTime(bookedEntries, slot) {
 				validationMessages = append(validationMessages,
 					aurora.Sprintf(aurora.Red("Exam %d planned at %s, but no room booked"),

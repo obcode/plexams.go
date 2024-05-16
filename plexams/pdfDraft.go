@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -232,23 +233,46 @@ func (p *Plexams) tableForProgram(ctx context.Context, program, programLong stri
 		})
 	})
 
-	contents := make([][]string, 0)
+	contentsMap := make(map[int][]string)
 
 	exams, err := p.PlannedExamsForProgram(ctx, program, true)
 	if err != nil {
 		log.Error().Err(err).Msg("error while getting exams")
 	}
+	ancodes := make([]int, 0, len(exams))
+
+OUTER:
 	for _, exam := range exams {
+		ancode := exam.Ancode
+
+		for _, primussExam := range exam.PrimussExams {
+			if primussExam.Exam.Program == program {
+				if len(primussExam.StudentRegs) == 0 {
+					break OUTER
+				}
+				ancode = primussExam.Exam.AnCode
+			}
+		}
+
+		ancodes = append(ancodes, ancode)
+
 		if exam.PlanEntry == nil {
-			contents = append(contents,
-				[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-					"fehlt noch"})
+			contentsMap[ancode] =
+				[]string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+					"fehlt noch"}
 		} else {
 			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			contents = append(contents,
-				[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-					r.Replace(starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr"))})
+			contentsMap[ancode] =
+				[]string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+					r.Replace(starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr"))}
 		}
+	}
+
+	sort.Ints(ancodes)
+
+	contents := make([][]string, 0, len(contentsMap))
+	for _, ancode := range ancodes {
+		contents = append(contents, contentsMap[ancode])
 	}
 
 	grayColor := color.Color{

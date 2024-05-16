@@ -36,6 +36,9 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 		primussAncode := 0
 		for _, primussExam := range exam.PrimussExams {
 			if primussExam.Exam.Program == program {
+				if len(primussExam.StudentRegs) == 0 {
+					break
+				}
 				primussAncode = primussExam.Exam.AnCode
 				ancodes = append(ancodes, primussAncode)
 				break
@@ -52,7 +55,7 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 			examDate = starttime.Local().Format("02.01.06, 15:04 Uhr")
 		}
 
-		if exam.PlannedRooms != nil {
+		if len(exam.PlannedRooms) > 0 {
 			csvEntries := make([]CsvExam, 0, len(exam.PlannedRooms))
 			for _, room := range exam.PlannedRooms {
 				var sb strings.Builder

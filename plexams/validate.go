@@ -180,11 +180,11 @@ func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanE
 			if p[i].DayNumber == p[j].DayNumber &&
 				p[i].SlotNumber == p[j].SlotNumber {
 				count++
-				*validationMessages = append(*validationMessages, aurora.Sprintf(aurora.Red("    - [\"%s\", \"%d\", \"%d\"] # %3d. Same slot: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)"),
+				*validationMessages = append(*validationMessages, aurora.Sprintf(aurora.Red("    - [\"%s\", \"%d\", \"%d\"] # %3d. Same slot: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s%s / %s)"),
 					aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode), count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
-					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Mtknr),
+					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
 				))
 			} else
 			// adjacent slots
@@ -192,21 +192,21 @@ func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanE
 				(p[i].SlotNumber+1 == p[j].SlotNumber ||
 					p[i].SlotNumber-1 == p[j].SlotNumber) {
 				count++
-				*validationMessages = append(*validationMessages, aurora.Sprintf(aurora.Red("    - [\"%s\", \"%d\", \"%d\"] # %3d. Adjacent slots: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)"),
+				*validationMessages = append(*validationMessages, aurora.Sprintf(aurora.Red("    - [\"%s\", \"%d\", \"%d\"] # %3d. Adjacent slots: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s%s / %s)"),
 					aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode), count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
-					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Mtknr),
+					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
 				))
 			} else
 			// same day
 			if p[i].DayNumber == p[j].DayNumber {
 				count++
-				*validationMessages = append(*validationMessages, aurora.Sprintf(aurora.Yellow("    - [\"%s\", \"%d\", \"%d\"] # %3d. Same day: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s/%s)"),
+				*validationMessages = append(*validationMessages, aurora.Sprintf(aurora.Yellow("    - [\"%s\", \"%d\", \"%d\"] # %3d. Same day: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s%s / %s)"),
 					aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode), count,
 					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
 					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
-					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Mtknr),
+					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
 				))
 			}
 		}

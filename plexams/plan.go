@@ -224,7 +224,8 @@ OUTER:
 			Constraints:      exam.Constraints,
 			Conflicts:        exam.Conflicts,
 			StudentRegsCount: exam.StudentRegsCount,
-			PlanEntry:        nil,
+			Ntas:             exam.Ntas,
+			MaxDuration:      exam.MaxDuration,
 		})
 	}
 

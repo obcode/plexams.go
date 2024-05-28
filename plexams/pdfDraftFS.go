@@ -63,16 +63,17 @@ func (p *Plexams) DraftFS(ctx context.Context, outfile string) error {
 		})
 	})
 
-	p.tableForProgram(ctx, "DC", "Data Science & Scientific Computing (DC)", m)
-	p.tableForProgram(ctx, "IB", "Wirtschaftsinformatik (IB)", m)
-	p.tableForProgram(ctx, "IC", "Scientific Computing (IC)", m)
-	p.tableForProgram(ctx, "IF", "Informatik (IF)", m)
+	p.tableForProgram(ctx, "DA", "Master Data Analytics (DA)", m)
+	p.tableForProgram(ctx, "DC", "Bachelor Data Science & Scientific Computing (DC)", m)
+	p.tableForProgram(ctx, "IB", "Bachelor Wirtschaftsinformatik (IB)", m)
+	p.tableForProgram(ctx, "IC", "Bachelor Scientific Computing (IC)", m)
+	p.tableForProgram(ctx, "IF", "Bachelor Informatik (IF)", m)
 	p.tableForProgram(ctx, "IG", "Master Informatik (IG)", m)
 	p.tableForProgram(ctx, "IN", "Master Wirtschaftsinformatik (IN)", m)
 	p.tableForProgram(ctx, "IS", "Master Stochastic Engineering in Business and Finance (IS)", m)
 	p.tableForProgram(ctx, "IT", "Master IT-Sicherheit (IT)", m)
-	p.tableForProgram(ctx, "WD", "Wirtschaftsinformatik - Digitales Management (WD)", m)
-	p.tableForProgram(ctx, "WT", "Wirtschaftsinformatik - Informationstechnologie (WT)", m)
+	p.tableForProgram(ctx, "WD", "Bachelor Wirtschaftsinformatik - Digitales Management (WD)", m)
+	p.tableForProgram(ctx, "WT", "Bachelor Wirtschaftsinformatik - Informationstechnologie (WT)", m)
 
 	err := m.OutputFileAndClose(outfile)
 	if err != nil {

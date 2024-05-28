@@ -20,7 +20,8 @@ var (
 	draft-fk08       --- draft plan for fk08 exams
 	draft-fk10       --- draft plan for fk10 exams
 	draft-fs         --- draft plan for fs
-	draft-exahm      --- draft plan for exams in exahm rooms`,
+	draft-exahm      --- draft plan for exams in exahm rooms
+	draft-si         --- draft plan for special interest students`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -101,6 +102,13 @@ var (
 				}
 				fmt.Printf("generating %s\n", Outfile)
 				err := plexams.DraftFS(context.Background(), Outfile)
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "draft-si":
+				fmt.Println("generating special interest drafts")
+				err := plexams.DraftSI(context.Background())
 				if err != nil {
 					os.Exit(1)
 				}

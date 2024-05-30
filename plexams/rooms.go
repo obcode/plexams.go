@@ -154,10 +154,12 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 		} else {
 			//   R1.046:
 			//     reservations:
-			//       - date: 2024-01-24
+			//       - slot: [1,3]
+			//         date: 2024-01-24
 			//         from: 10:15
 			//         until: 12:15
-			//       - date: 2024-01-24
+			//       - slot: [1, 5]
+			//         date: 2024-01-24
 			//         from: 14:15
 			//         until: 16:15
 			reservations := viper.Get(fmt.Sprintf("roomConstraints.%s.reservations", room.Name))
@@ -216,8 +218,10 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 }
 
 type TimeRange struct {
-	From  time.Time
-	Until time.Time
+	From       time.Time
+	Until      time.Time
+	DayNumber  int
+	SlotNumber int
 }
 
 func (p *Plexams) GetReservations() (map[string][]TimeRange, error) {
@@ -267,7 +271,10 @@ func (p *Plexams) reservations2Slots(reservations []interface{}) (set.Set[SlotNu
 		fmt.Printf("    From: %v Until: %v\n", fromUntil.From, fromUntil.Until)
 
 		for _, slot := range p.semesterConfig.Slots {
-			if (fromUntil.From.Before(slot.Starttime.Local()) || fromUntil.From.Equal(slot.Starttime.Local())) && fromUntil.Until.After(slot.Starttime.Local().Add(89*time.Minute)) {
+			if (fromUntil.From.Before(slot.Starttime.Local()) || fromUntil.From.Equal(slot.Starttime.Local())) &&
+				fromUntil.Until.After(slot.Starttime.Local().Add(89*time.Minute)) &&
+				fromUntil.DayNumber == slot.DayNumber &&
+				fromUntil.SlotNumber == slot.SlotNumber {
 				fmt.Printf("        ---> add (%d, %d)\n", slot.DayNumber, slot.SlotNumber)
 				slots.Add(SlotNumber{slot.DayNumber, slot.SlotNumber})
 			}
@@ -314,9 +321,19 @@ func fromUntil(dateEntry interface{}) (fromUntil *TimeRange, err error) {
 		return nil, err
 	}
 
+	dayNumber := -1
+	slotNumber := -1
+	slot, ok := entry["slot"].([]interface{})
+	if ok {
+		dayNumber = slot[0].(int)
+		slotNumber = slot[1].(int)
+	}
+
 	return &TimeRange{
-		From:  from,
-		Until: until,
+		From:       from,
+		Until:      until,
+		DayNumber:  dayNumber,
+		SlotNumber: slotNumber,
 	}, nil
 }
 

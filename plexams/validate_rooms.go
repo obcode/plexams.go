@@ -192,8 +192,9 @@ func (p *Plexams) ValidateRoomsNeedRequest() error {
 				timeRanges = make([]TimeRange, 0, 1)
 			}
 			roomTimetables[roomName] = append(timeRanges, TimeRange{
-				From:  bookedEntry.From,
-				Until: bookedEntry.Until,
+				From:     bookedEntry.From,
+				Until:    bookedEntry.Until,
+				Approved: true, // booked entries are always approved
 			})
 		}
 	}
@@ -225,6 +226,12 @@ PLANNEDROOM:
 			if timerange.From.Before(startTime) && timerange.Until.After(endTime) {
 				log.Debug().Str("room", plannedRoom.RoomName).Msg("found reservation")
 				reservationFound++
+
+				if !timerange.Approved {
+					validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Reservation for room %s found in slot (%d/%d) is not yet approved"),
+						aurora.Magenta(plannedRoom.RoomName), aurora.Blue(plannedRoom.Day), aurora.Blue(plannedRoom.Slot)))
+				}
+
 				continue PLANNEDROOM
 			}
 		}

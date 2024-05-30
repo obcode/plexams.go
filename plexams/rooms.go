@@ -222,6 +222,7 @@ type TimeRange struct {
 	Until      time.Time
 	DayNumber  int
 	SlotNumber int
+	Approved   bool
 }
 
 func (p *Plexams) GetReservations() (map[string][]TimeRange, error) {
@@ -328,12 +329,14 @@ func fromUntil(dateEntry interface{}) (fromUntil *TimeRange, err error) {
 		dayNumber = slot[0].(int)
 		slotNumber = slot[1].(int)
 	}
+	approved := entry["approved"].(bool)
 
 	return &TimeRange{
 		From:       from,
 		Until:      until,
 		DayNumber:  dayNumber,
 		SlotNumber: slotNumber,
+		Approved:   approved,
 	}, nil
 }
 

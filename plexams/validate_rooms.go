@@ -194,7 +194,7 @@ func (p *Plexams) ValidateRoomsNeedRequest() error {
 			roomTimetables[roomName] = append(timeRanges, TimeRange{
 				From:     bookedEntry.From,
 				Until:    bookedEntry.Until,
-				Approved: true, // booked entries are always approved
+				Approved: bookedEntry.Approved,
 			})
 		}
 	}

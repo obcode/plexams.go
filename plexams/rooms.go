@@ -30,9 +30,10 @@ roomConstraints:
 */
 
 type BookedEntry struct {
-	From  time.Time
-	Until time.Time
-	Rooms []string
+	From     time.Time
+	Until    time.Time
+	Rooms    []string
+	Approved bool
 }
 
 func (p *Plexams) ExahmRoomsFromBooked() ([]BookedEntry, error) {
@@ -74,10 +75,13 @@ func (p *Plexams) ExahmRoomsFromBooked() ([]BookedEntry, error) {
 			rooms = append(rooms, room)
 		}
 
+		approved := entry["approved"].(bool)
+
 		entries = append(entries, BookedEntry{
-			From:  fromUntil.From,
-			Until: fromUntil.Until,
-			Rooms: rooms,
+			From:     fromUntil.From,
+			Until:    fromUntil.Until,
+			Rooms:    rooms,
+			Approved: approved,
 		})
 
 	}

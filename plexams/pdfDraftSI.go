@@ -11,6 +11,7 @@ import (
 	"github.com/johnfercher/maroto/pkg/consts"
 	"github.com/johnfercher/maroto/pkg/pdf"
 	"github.com/johnfercher/maroto/pkg/props"
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -37,7 +38,17 @@ func (p *Plexams) DraftSI(ctx context.Context) error {
 		}
 		log.Debug().Interface("ancodes", ancodes).Msg("found ancodes")
 
-		err := p.draftSI(ctx, name, filename, ancodes)
+		exams := make([]*model.PlannedExam, 0, len(ancodes))
+		for _, ancode := range ancodes {
+			exam, err := p.PlannedExam(ctx, ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exams with ancode")
+				continue
+			}
+			exams = append(exams, exam)
+		}
+
+		err := p.draftSI(ctx, name, filename, exams)
 		if err != nil {
 			log.Error().Err(err).Msg("cannot draft SI")
 		}
@@ -46,7 +57,30 @@ func (p *Plexams) DraftSI(ctx context.Context) error {
 	return nil
 }
 
-func (p *Plexams) draftSI(ctx context.Context, name string, outfile string, ancodes []int) error {
+func (p *Plexams) DraftLbaRep(ctx context.Context) error {
+	plannedExams, err := p.PlannedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planned exams")
+	}
+	exams := make([]*model.PlannedExam, 0)
+	for _, exam := range plannedExams {
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+		if exam.ZpaExam.IsRepeaterExam {
+			examer, err := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID)
+			if err != nil {
+				log.Error().Err(err).Int("main examer ID", exam.ZpaExam.MainExamerID).Msg("cannot get teacher")
+			}
+			if examer.IsLBA {
+				exams = append(exams, exam)
+			}
+		}
+	}
+	return p.draftSI(ctx, "Wiederholungsprüfungen von LBAs", "draft-lba-rep.pdf", exams)
+}
+
+func (p *Plexams) draftSI(ctx context.Context, name string, outfile string, exams []*model.PlannedExam) error {
 	m := pdf.NewMaroto(consts.Portrait, consts.A4)
 	m.SetPageMargins(10, 15, 10)
 
@@ -98,7 +132,7 @@ func (p *Plexams) draftSI(ctx context.Context, name string, outfile string, anco
 		})
 	})
 
-	p.tableForAncodes(ctx, name, ancodes, m)
+	p.tableForExams(ctx, name, exams, m)
 
 	err := m.OutputFileAndClose(outfile)
 	if err != nil {
@@ -110,7 +144,7 @@ func (p *Plexams) draftSI(ctx context.Context, name string, outfile string, anco
 	return nil
 }
 
-func (p *Plexams) tableForAncodes(ctx context.Context, name string, ancodes []int, m pdf.Maroto) {
+func (p *Plexams) tableForExams(ctx context.Context, name string, exams []*model.PlannedExam, m pdf.Maroto) {
 	header := []string{"AnCode", "Modul", "Prüfer:in", "Termin"}
 
 	m.Row(18, func() {
@@ -126,14 +160,18 @@ func (p *Plexams) tableForAncodes(ctx context.Context, name string, ancodes []in
 
 	contents := make([][]string, 0)
 
+	examsMap := make(map[int]*model.PlannedExam)
+	ancodes := make([]int, 0, len(exams))
+
+	for _, exam := range exams {
+		examsMap[exam.Ancode] = exam
+		ancodes = append(ancodes, exam.Ancode)
+	}
+
 	sort.Ints(ancodes)
 
 	for _, ancode := range ancodes {
-		exam, err := p.PlannedExam(ctx, ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get planned exam for ancode")
-			continue
-		}
+		exam := examsMap[ancode]
 
 		if exam.PlanEntry == nil {
 			contents = append(contents, []string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,

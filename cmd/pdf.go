@@ -113,6 +113,13 @@ var (
 					os.Exit(1)
 				}
 
+			case "draft-lba-rep":
+				fmt.Println("generating draft for repeater exams of lbas")
+				err := plexams.DraftLbaRep(context.Background())
+				if err != nil {
+					os.Exit(1)
+				}
+
 			default:
 				fmt.Println("pdf called with unknown sub command")
 			}

@@ -9,6 +9,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"github.com/theckman/yacspin"
 )
 
@@ -38,6 +39,19 @@ func (p *Plexams) PrepareGeneratedExams() error {
 	ntaMap := make(map[string]*model.NTA)
 	for _, nta := range allNtas {
 		ntaMap[nta.Mtknr] = nta
+	}
+
+	durationMap := make(map[int]int)
+	d := viper.Get("duration")
+	durationRaw, ok := d.([]interface{})
+	if !ok {
+		log.Debug().Msg("cannot get durations")
+	}
+	for _, duration := range durationRaw {
+		durationM := duration.(map[string]interface{})
+		ancode := durationM["ancode"].(int)
+		duration := durationM["duration"].(int)
+		durationMap[ancode] = duration
 	}
 
 	// externalExams, err := p.ExternalExams(ctx)
@@ -146,6 +160,11 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		conflicts := make([]*model.ZPAConflict, 0, len(conflictsMap))
 		for _, key := range keys {
 			conflicts = append(conflicts, conflictsMap[key])
+		}
+
+		// maybe fix duration
+		if d, ok := durationMap[connectedExam.ZpaExam.AnCode]; ok {
+			connectedExam.ZpaExam.Duration = d
 		}
 
 		duration := connectedExam.ZpaExam.Duration

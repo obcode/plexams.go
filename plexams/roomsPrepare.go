@@ -521,6 +521,9 @@ func (p *Plexams) PrepareRoomForExams() error {
 							if len(slotWithRooms.ExahmRooms) > 0 {
 								room = slotWithRooms.ExahmRooms[0]
 								slotWithRooms.ExahmRooms = slotWithRooms.ExahmRooms[1:]
+							} else if len(slotWithRooms.LabRooms) > 0 {
+								room = slotWithRooms.LabRooms[0]
+								slotWithRooms.LabRooms = slotWithRooms.LabRooms[1:]
 							}
 						} else if exam.Exam.Constraints.RoomConstraints.Lab {
 							if len(slotWithRooms.LabRooms) > 0 {

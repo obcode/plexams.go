@@ -294,7 +294,12 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, run bool) 
 			}
 		}
 
-		err = p.SendHandicapsMailToStudent(ctx, []string{p.planer.Email}, &NTAEmail{
+		to := []string{p.planer.Email}
+		if run && nta.Nta.Email != nil {
+			to = []string{*nta.Nta.Email}
+		}
+
+		err = p.SendHandicapsMailToStudent(ctx, to, &NTAEmail{
 			NTA:        nta,
 			Exams:      exams,
 			PlanerName: p.planer.Name,

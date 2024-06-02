@@ -347,6 +347,15 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 					}
 				}
 			}
+			if exam.Constraints.RoomConstraints.Seb {
+				for _, room := range exam.PlannedRooms {
+					if !p.GetRoomInfo(room.RoomName).Seb {
+						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Is not an exahm room %s for exam %d. %s (%s) in slot (%d,%d)"),
+							aurora.Magenta(room.RoomName), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
+							aurora.BrightBlue(exam.PlanEntry.DayNumber), aurora.BrightBlue(exam.PlanEntry.SlotNumber)))
+					}
+				}
+			}
 			if exam.Constraints.RoomConstraints.Lab {
 				for _, room := range exam.PlannedRooms {
 					if !p.GetRoomInfo(room.RoomName).Lab {

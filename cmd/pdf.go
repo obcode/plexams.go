@@ -21,7 +21,8 @@ var (
 	draft-fk10       --- draft plan for fk10 exams
 	draft-fs         --- draft plan for fs
 	draft-exahm      --- draft plan for exams in exahm rooms
-	draft-si         --- draft plan for special interest students`,
+	draft-si         --- draft plan for special interest students
+	draft-lba-rep    --- draft plan for repeater exams of lbas`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()

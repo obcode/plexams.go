@@ -288,6 +288,7 @@ func (p *Plexams) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
 // 	}
 // }
 
+// TODO: check if there are Exams with same Ancode in other programs
 func (p *Plexams) ConnectExam(ancode int, program string) error {
 	ctx := context.Background()
 	connectedExam, err := p.GetConnectedExam(ctx, ancode)

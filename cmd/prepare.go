@@ -180,7 +180,7 @@ var (
 			// 	}
 
 			case "rooms-for-semester":
-				err := plexams.PrepareRoomsForSemester()
+				err := plexams.PrepareRoomsForSemester(approvedOnly)
 				if err != nil {
 					os.Exit(1)
 				}
@@ -214,8 +214,10 @@ var (
 			}
 		},
 	}
+	approvedOnly bool
 )
 
 func init() {
 	rootCmd.AddCommand(prepareCmd)
+	prepareCmd.Flags().BoolVarP(&approvedOnly, "approvedOnly", "a", false, "use only already approved rooms for planning")
 }

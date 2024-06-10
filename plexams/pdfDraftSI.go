@@ -48,7 +48,7 @@ func (p *Plexams) DraftSI(ctx context.Context) error {
 			exams = append(exams, exam)
 		}
 
-		err := p.draftSI(ctx, name, filename, exams)
+		err := p.draftSI(name, filename, exams)
 		if err != nil {
 			log.Error().Err(err).Msg("cannot draft SI")
 		}
@@ -77,10 +77,10 @@ func (p *Plexams) DraftLbaRep(ctx context.Context) error {
 			}
 		}
 	}
-	return p.draftSI(ctx, "Wiederholungsprüfungen von LBAs", "draft-lba-rep.pdf", exams)
+	return p.draftSI("Wiederholungsprüfungen von LBAs", "draft-lba-rep.pdf", exams)
 }
 
-func (p *Plexams) draftSI(ctx context.Context, name string, outfile string, exams []*model.PlannedExam) error {
+func (p *Plexams) draftSI(name string, outfile string, exams []*model.PlannedExam) error {
 	m := pdf.NewMaroto(consts.Portrait, consts.A4)
 	m.SetPageMargins(10, 15, 10)
 
@@ -132,7 +132,7 @@ func (p *Plexams) draftSI(ctx context.Context, name string, outfile string, exam
 		})
 	})
 
-	p.tableForExams(ctx, name, exams, m)
+	p.tableForExams(name, exams, m)
 
 	err := m.OutputFileAndClose(outfile)
 	if err != nil {
@@ -144,7 +144,7 @@ func (p *Plexams) draftSI(ctx context.Context, name string, outfile string, exam
 	return nil
 }
 
-func (p *Plexams) tableForExams(ctx context.Context, name string, exams []*model.PlannedExam, m pdf.Maroto) {
+func (p *Plexams) tableForExams(name string, exams []*model.PlannedExam, m pdf.Maroto) {
 	header := []string{"AnCode", "Modul", "Prüfer:in", "Termin"}
 
 	m.Row(18, func() {

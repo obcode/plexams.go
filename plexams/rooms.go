@@ -7,6 +7,7 @@ import (
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -123,7 +124,7 @@ func (p *Plexams) SlotsWithRoomsFromBookedEntries(bookedEntries []BookedEntry) (
 	return slotsWithRooms, nil
 }
 
-func (p *Plexams) PrepareRoomsForSemester() error {
+func (p *Plexams) PrepareRoomsForSemester(approvedOnly bool) error {
 	globalRooms, err := p.dbClient.Rooms(context.Background())
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get global rooms")
@@ -139,11 +140,12 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 		if roomConstraints == nil {
 
 			if room.NeedsRequest {
-				fmt.Printf("%s: no constraints found, but room needs request, ignoring room\n", room.Name)
+				fmt.Println(aurora.Sprintf(aurora.Red("%s: no constraints found, but room needs request, ignoring room"),
+					aurora.Cyan(room.Name)))
 				continue
 			}
 
-			fmt.Printf("%s: no constraints found\n", room.Name)
+			fmt.Println(aurora.Sprintf(aurora.Green("%s: no constraints found"), aurora.Cyan(room.Name)))
 
 			for _, slot := range p.semesterConfig.Slots {
 				slotNumber := SlotNumber{slot.DayNumber, slot.SlotNumber}
@@ -168,13 +170,14 @@ func (p *Plexams) PrepareRoomsForSemester() error {
 			//         until: 16:15
 			reservations := viper.Get(fmt.Sprintf("roomConstraints.%s.reservations", room.Name))
 			if reservations != nil {
-				fmt.Printf("%s: reservations found\n", room.Name)
+				fmt.Println(aurora.Sprintf(aurora.Green("%s: reservations found"), aurora.Cyan(room.Name)))
+
 				reservationsSlice, ok := reservations.([]interface{})
 				if !ok {
 					log.Error().Interface("reservations", reservations).Msg("cannot convert reservations to slice")
 					return fmt.Errorf("cannot convert reservations to slice")
 				}
-				reservedSlots, err := p.reservations2Slots(reservationsSlice)
+				reservedSlots, err := p.reservations2Slots(reservationsSlice, approvedOnly)
 				if err != nil {
 					log.Error().Err(err).Msg("cannot convert reservations to slots")
 					return err
@@ -264,7 +267,7 @@ func (p *Plexams) GetReservations() (map[string][]TimeRange, error) {
 	return reservations, nil
 }
 
-func (p *Plexams) reservations2Slots(reservations []interface{}) (set.Set[SlotNumber], error) {
+func (p *Plexams) reservations2Slots(reservations []interface{}, approvedOnly bool) (set.Set[SlotNumber], error) {
 	slots := set.NewSet[SlotNumber]()
 	for _, reservation := range reservations {
 		fromUntil, err := fromUntil(reservation)
@@ -273,15 +276,21 @@ func (p *Plexams) reservations2Slots(reservations []interface{}) (set.Set[SlotNu
 			return nil, err
 		}
 
-		fmt.Printf("    From: %v Until: %v\n", fromUntil.From, fromUntil.Until)
+		fmt.Println(aurora.Sprintf(aurora.Magenta("    From: %v Until: %v"),
+			aurora.Cyan(fromUntil.From.Format("02.01.06 15:04")),
+			aurora.Cyan(fromUntil.Until.Format("02.01.06 15:04"))))
 
 		for _, slot := range p.semesterConfig.Slots {
 			if (fromUntil.From.Before(slot.Starttime.Local()) || fromUntil.From.Equal(slot.Starttime.Local())) &&
 				fromUntil.Until.After(slot.Starttime.Local().Add(89*time.Minute)) &&
 				fromUntil.DayNumber == slot.DayNumber &&
 				fromUntil.SlotNumber == slot.SlotNumber {
-				fmt.Printf("        ---> add (%d, %d)\n", slot.DayNumber, slot.SlotNumber)
-				slots.Add(SlotNumber{slot.DayNumber, slot.SlotNumber})
+				if !approvedOnly || fromUntil.Approved {
+					fmt.Println(aurora.Sprintf(aurora.Green("        ---> add (%d, %d)"), slot.DayNumber, slot.SlotNumber))
+					slots.Add(SlotNumber{slot.DayNumber, slot.SlotNumber})
+				} else {
+					fmt.Println(aurora.Sprintf(aurora.Red("        ---> not yet approved: (%d, %d)"), slot.DayNumber, slot.SlotNumber))
+				}
 			}
 		}
 	}

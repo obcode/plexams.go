@@ -196,7 +196,7 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 	} else {
 		filter = bson.M{
 			"$and": []bson.M{
-				{"roomname": roomname},
+				{"roomname": room},
 				{"isreserve": false},
 				{"slot.daynumber": day},
 				{"slot.slotnumber": slot},

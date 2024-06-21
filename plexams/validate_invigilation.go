@@ -350,7 +350,7 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 	}
 
 	if len(validationMessages) > 0 {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"),
+		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d days open"),
 			len(validationMessages)))
 		err = spinner.StopFail()
 		if err != nil {
@@ -361,7 +361,7 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 		}
 
 	} else {
-		spinner.StopMessage(aurora.Sprintf(aurora.Green("no problems found")))
+		spinner.StopMessage(aurora.Sprintf(aurora.Green("no days open")))
 		err = spinner.Stop()
 		if err != nil {
 			log.Debug().Err(err).Msg("cannot stop spinner")

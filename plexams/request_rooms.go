@@ -35,7 +35,7 @@ func (p *Plexams) RequestRooms() error {
 				continue
 			}
 			if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil &&
-				(exam.Constraints.RoomConstraints.ExahmRooms || exam.Constraints.RoomConstraints.Lab ||
+				(exam.Constraints.RoomConstraints.Exahm || exam.Constraints.RoomConstraints.Lab ||
 					exam.Constraints.RoomConstraints.Seb || exam.Constraints.RoomConstraints.PlacesWithSocket) {
 				continue
 			}

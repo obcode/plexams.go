@@ -232,7 +232,7 @@ func (db *DB) Lab(ctx context.Context, ancode int) (bool, error) {
 	return true, nil
 }
 
-func (db *DB) ExahmRooms(ctx context.Context, ancode int) (bool, error) {
+func (db *DB) Exahm(ctx context.Context, ancode int) (bool, error) {
 	constraint, err := db.GetConstraintsForAncode(ctx, ancode)
 	if err != nil {
 		return false, err
@@ -248,7 +248,7 @@ func (db *DB) ExahmRooms(ctx context.Context, ancode int) (bool, error) {
 		constraint.RoomConstraints = &model.RoomConstraints{}
 	}
 
-	constraint.RoomConstraints.ExahmRooms = true
+	constraint.RoomConstraints.Exahm = true
 
 	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 	if update {

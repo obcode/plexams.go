@@ -297,7 +297,7 @@ type ComplexityRoot struct {
 		AddNta              func(childComplexity int, input model.NTAInput) int
 		AddRoomToExam       func(childComplexity int, input model.RoomForExamInput) int
 		AddZpaExamToPlan    func(childComplexity int, ancode int) int
-		ExahmRooms          func(childComplexity int, ancode int) int
+		Exahm               func(childComplexity int, ancode int) int
 		ExcludeDays         func(childComplexity int, ancode int, days []string) int
 		Lab                 func(childComplexity int, ancode int) int
 		NotPlannedByMe      func(childComplexity int, ancode int) int
@@ -519,7 +519,7 @@ type ComplexityRoot struct {
 	}
 
 	RoomConstraints struct {
-		ExahmRooms       func(childComplexity int) int
+		Exahm            func(childComplexity int) int
 		Lab              func(childComplexity int) int
 		PlacesWithSocket func(childComplexity int) int
 		Seb              func(childComplexity int) int
@@ -709,7 +709,7 @@ type MutationResolver interface {
 	SameSlot(ctx context.Context, ancode int, ancodes []int) (bool, error)
 	PlacesWithSockets(ctx context.Context, ancode int) (bool, error)
 	Lab(ctx context.Context, ancode int) (bool, error)
-	ExahmRooms(ctx context.Context, ancode int) (bool, error)
+	Exahm(ctx context.Context, ancode int) (bool, error)
 	Seb(ctx context.Context, ancode int) (bool, error)
 	Online(ctx context.Context, ancode int) (bool, error)
 	AddExamGroupToSlot(ctx context.Context, day int, time int, examGroupCode int) (bool, error)
@@ -1928,17 +1928,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.AddZpaExamToPlan(childComplexity, args["ancode"].(int)), true
 
-	case "Mutation.exahmRooms":
-		if e.complexity.Mutation.ExahmRooms == nil {
+	case "Mutation.exahm":
+		if e.complexity.Mutation.Exahm == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_exahmRooms_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_exahm_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ExahmRooms(childComplexity, args["ancode"].(int)), true
+		return e.complexity.Mutation.Exahm(childComplexity, args["ancode"].(int)), true
 
 	case "Mutation.excludeDays":
 		if e.complexity.Mutation.ExcludeDays == nil {
@@ -3308,12 +3308,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RoomAndExam.Room(childComplexity), true
 
-	case "RoomConstraints.exahmRooms":
-		if e.complexity.RoomConstraints.ExahmRooms == nil {
+	case "RoomConstraints.exahm":
+		if e.complexity.RoomConstraints.Exahm == nil {
 			break
 		}
 
-		return e.complexity.RoomConstraints.ExahmRooms(childComplexity), true
+		return e.complexity.RoomConstraints.Exahm(childComplexity), true
 
 	case "RoomConstraints.lab":
 		if e.complexity.RoomConstraints.Lab == nil {
@@ -4190,7 +4190,7 @@ type Constraints {
 type RoomConstraints {
   placesWithSocket: Boolean!
   lab: Boolean!
-  exahmRooms: Boolean!
+  exahm: Boolean!
   seb: Boolean!
 }
 
@@ -4396,7 +4396,7 @@ type RoomWithInvigilator {
   sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
   placesWithSockets(ancode: Int!): Boolean!
   lab(ancode: Int!): Boolean!
-  exahmRooms(ancode: Int!): Boolean!
+  exahm(ancode: Int!): Boolean!
   seb(ancode: Int!): Boolean!
   online(ancode: Int!): Boolean!
   # Plan
@@ -5024,7 +5024,7 @@ func (ec *executionContext) field_Mutation_addZpaExamToPlan_args(ctx context.Con
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_exahmRooms_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_exahm_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
@@ -7349,8 +7349,8 @@ func (ec *executionContext) fieldContext_Constraints_roomConstraints(ctx context
 				return ec.fieldContext_RoomConstraints_placesWithSocket(ctx, field)
 			case "lab":
 				return ec.fieldContext_RoomConstraints_lab(ctx, field)
-			case "exahmRooms":
-				return ec.fieldContext_RoomConstraints_exahmRooms(ctx, field)
+			case "exahm":
+				return ec.fieldContext_RoomConstraints_exahm(ctx, field)
 			case "seb":
 				return ec.fieldContext_RoomConstraints_seb(ctx, field)
 			}
@@ -13870,8 +13870,8 @@ func (ec *executionContext) fieldContext_Mutation_lab(ctx context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_exahmRooms(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_exahmRooms(ctx, field)
+func (ec *executionContext) _Mutation_exahm(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_exahm(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13884,7 +13884,7 @@ func (ec *executionContext) _Mutation_exahmRooms(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ExahmRooms(rctx, fc.Args["ancode"].(int))
+		return ec.resolvers.Mutation().Exahm(rctx, fc.Args["ancode"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13901,7 +13901,7 @@ func (ec *executionContext) _Mutation_exahmRooms(ctx context.Context, field grap
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_exahmRooms(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_exahm(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -13918,7 +13918,7 @@ func (ec *executionContext) fieldContext_Mutation_exahmRooms(ctx context.Context
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_exahmRooms_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_exahm_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -22594,8 +22594,8 @@ func (ec *executionContext) fieldContext_RoomConstraints_lab(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _RoomConstraints_exahmRooms(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RoomConstraints_exahmRooms(ctx, field)
+func (ec *executionContext) _RoomConstraints_exahm(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomConstraints_exahm(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -22608,7 +22608,7 @@ func (ec *executionContext) _RoomConstraints_exahmRooms(ctx context.Context, fie
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ExahmRooms, nil
+		return obj.Exahm, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -22625,7 +22625,7 @@ func (ec *executionContext) _RoomConstraints_exahmRooms(ctx context.Context, fie
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RoomConstraints_exahmRooms(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RoomConstraints_exahm(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RoomConstraints",
 		Field:      field,
@@ -31100,9 +31100,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "exahmRooms":
+		case "exahm":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_exahmRooms(ctx, field)
+				return ec._Mutation_exahm(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -33674,8 +33674,8 @@ func (ec *executionContext) _RoomConstraints(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "exahmRooms":
-			out.Values[i] = ec._RoomConstraints_exahmRooms(ctx, field, obj)
+		case "exahm":
+			out.Values[i] = ec._RoomConstraints_exahm(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

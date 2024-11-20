@@ -151,7 +151,7 @@ func (p *Plexams) RoomsForNTAsWithRoomAloneOld() error {
 
 				var room *model.Room
 				exam := examsMap[slotEntry.ancode]
-				if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil && exam.Constraints.RoomConstraints.ExahmRooms {
+				if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil && exam.Constraints.RoomConstraints.Exahm {
 					for _, exahmRoom := range rooms.ExahmRooms {
 						if exahmRoom.Handicap {
 							room = exahmRoom
@@ -464,7 +464,7 @@ func (p *Plexams) PrepareRoomForExamsOld() error {
 						roomInfo := roomInfo[room.RoomName]
 						otherExam := examsMap[room.Ancode]
 						if exam.Exam.Constraints != nil && exam.Exam.Constraints.RoomConstraints != nil {
-							if exam.Exam.Constraints.RoomConstraints.ExahmRooms && !roomInfo.Exahm ||
+							if exam.Exam.Constraints.RoomConstraints.Exahm && !roomInfo.Exahm ||
 								exam.Exam.Constraints.RoomConstraints.Lab && !roomInfo.Lab ||
 								exam.Exam.Constraints.RoomConstraints.PlacesWithSocket && !roomInfo.PlacesWithSocket ||
 								exam.Exam.Constraints.RoomConstraints.Seb && !roomInfo.Seb {
@@ -512,7 +512,7 @@ func (p *Plexams) PrepareRoomForExamsOld() error {
 							Seats: 1000,
 						}
 					} else if exam.Exam.Constraints.RoomConstraints != nil {
-						if exam.Exam.Constraints.RoomConstraints.ExahmRooms {
+						if exam.Exam.Constraints.RoomConstraints.Exahm {
 							if len(slotWithRooms.ExahmRooms) > 0 {
 								room = slotWithRooms.ExahmRooms[0]
 								slotWithRooms.ExahmRooms = slotWithRooms.ExahmRooms[1:]
@@ -645,7 +645,7 @@ func (p *Plexams) PrepareRoomForExamsOld() error {
 							Seats: 1000,
 						}
 					} else if exam.Exam.Constraints.RoomConstraints != nil {
-						if exam.Exam.Constraints.RoomConstraints.ExahmRooms {
+						if exam.Exam.Constraints.RoomConstraints.Exahm {
 							if len(slotWithRooms.ExahmRooms) > 0 {
 								roomFound = slotWithRooms.ExahmRooms[0]
 								slotWithRooms.ExahmRooms = slotWithRooms.ExahmRooms[1:]

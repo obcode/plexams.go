@@ -70,8 +70,8 @@ func (p *Plexams) SameSlot(ctx context.Context, ancodeInput int, ancodesInput []
 	return allOK, nil
 }
 
-func (p *Plexams) ExahmRooms(ctx context.Context, ancode int) (bool, error) {
-	return p.dbClient.ExahmRooms(ctx, ancode)
+func (p *Plexams) Exahm(ctx context.Context, ancode int) (bool, error) {
+	return p.dbClient.Exahm(ctx, ancode)
 }
 
 func (p *Plexams) SafeExamBrowser(ctx context.Context, ancode int) (bool, error) {

@@ -339,7 +339,7 @@ func (p *Plexams) ValidateConstraints() error {
 			}
 		}
 
-		if constraint.RoomConstraints != nil && (constraint.RoomConstraints.ExahmRooms || constraint.RoomConstraints.Seb) {
+		if constraint.RoomConstraints != nil && (constraint.RoomConstraints.Exahm || constraint.RoomConstraints.Seb) {
 			if !p.roomBookedDuringExamTime(bookedEntries, slot) {
 				validationMessages = append(validationMessages,
 					aurora.Sprintf(aurora.Red("Exam %d planned at %s, but no room booked"),

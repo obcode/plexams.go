@@ -134,7 +134,7 @@ func (db *DB) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, er
 
 func (db *DB) modelConnectedExamToConnectedExam(exam *model.ConnectedExam) *ConnectedExam {
 	var primussExamsAncodes []*PrimussExam
-	if exam.PrimussExams != nil && len(exam.PrimussExams) > 0 {
+	if len(exam.PrimussExams) > 0 {
 		primussExamsAncodes = make([]*PrimussExam, 0, len(exam.PrimussExams))
 		for _, primussExam := range exam.PrimussExams {
 			primussExamsAncodes = append(primussExamsAncodes, &PrimussExam{
@@ -145,7 +145,7 @@ func (db *DB) modelConnectedExamToConnectedExam(exam *model.ConnectedExam) *Conn
 	}
 
 	var otherPrimussExamsAncodes []*PrimussExam
-	if exam.OtherPrimussExams != nil && len(exam.OtherPrimussExams) > 0 {
+	if len(exam.OtherPrimussExams) > 0 {
 		otherPrimussExamsAncodes = make([]*PrimussExam, 0, len(exam.OtherPrimussExams))
 		for _, otherPrimussExam := range exam.OtherPrimussExams {
 			otherPrimussExamsAncodes = append(otherPrimussExamsAncodes, &PrimussExam{

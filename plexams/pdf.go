@@ -412,7 +412,7 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 				contents = append(contents, []string{"", "", "", "", "", "Fernprüfung gem. BayFEV "})
 			}
 
-			if constraints.ExcludeDays != nil && len(constraints.ExcludeDays) > 0 {
+			if len(constraints.ExcludeDays) > 0 {
 				dayString := ""
 				for i, day := range constraints.ExcludeDays {
 					if i == 0 {
@@ -425,7 +425,7 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 				contents = append(contents, []string{"", "", "", "", "", fmt.Sprintf("Nicht am %s", dayString)})
 			}
 
-			if constraints.PossibleDays != nil && len(constraints.PossibleDays) > 0 {
+			if len(constraints.PossibleDays) > 0 {
 				dayString := ""
 				for i, day := range constraints.PossibleDays {
 					if i == 0 {
@@ -438,7 +438,7 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 				contents = append(contents, []string{"", "", "", "", "", fmt.Sprintf("Möglich am %s", dayString)})
 			}
 
-			if constraints.SameSlot != nil && len(constraints.SameSlot) > 0 {
+			if len(constraints.SameSlot) > 0 {
 				for _, sameSlotAncode := range constraints.SameSlot {
 					otherExam, err := p.GetZpaExamByAncode(ctx, sameSlotAncode)
 					if err != nil {

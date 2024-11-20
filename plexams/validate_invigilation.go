@@ -62,7 +62,7 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 		}
 
 		// onlySlotsOk
-		if invigilator.Requirements.OnlyInSlots != nil && len(invigilator.Requirements.OnlyInSlots) > 0 {
+		if len(invigilator.Requirements.OnlyInSlots) > 0 {
 			for _, invigilation := range invigilator.Todos.Invigilations {
 				slotOk := false
 				for _, slot := range invigilator.Requirements.OnlyInSlots {

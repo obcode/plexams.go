@@ -318,7 +318,7 @@ type RoomAndExam struct {
 type RoomConstraints struct {
 	PlacesWithSocket bool `json:"placesWithSocket"`
 	Lab              bool `json:"lab"`
-	ExahmRooms       bool `json:"exahmRooms"`
+	Exahm            bool `json:"exahm"`
 	Seb              bool `json:"seb"`
 }
 

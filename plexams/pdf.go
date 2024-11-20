@@ -454,7 +454,7 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 				if constraints.RoomConstraints.Seb {
 					contents = append(contents, []string{"", "", "", "", "", "SafeExamBrowser"})
 				}
-				if constraints.RoomConstraints.ExahmRooms {
+				if constraints.RoomConstraints.Exahm {
 					contents = append(contents, []string{"", "", "", "", "", "EXaHM"})
 				}
 				if constraints.RoomConstraints.Lab {

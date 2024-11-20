@@ -76,9 +76,9 @@ func (r *mutationResolver) Lab(ctx context.Context, ancode int) (bool, error) {
 	return r.plexams.Lab(ctx, ancode)
 }
 
-// ExahmRooms is the resolver for the exahmRooms field.
-func (r *mutationResolver) ExahmRooms(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.ExahmRooms(ctx, ancode)
+// Exahm is the resolver for the exahm field.
+func (r *mutationResolver) Exahm(ctx context.Context, ancode int) (bool, error) {
+	return r.plexams.Exahm(ctx, ancode)
 }
 
 // Seb is the resolver for the seb field.

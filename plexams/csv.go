@@ -128,7 +128,7 @@ func (p *Plexams) CsvForEXaHM(filename string) error {
 
 	for _, exam := range exams {
 		if exam.Constraints == nil || exam.Constraints.RoomConstraints == nil ||
-			(!exam.Constraints.RoomConstraints.ExahmRooms && !exam.Constraints.RoomConstraints.Seb) {
+			(!exam.Constraints.RoomConstraints.Exahm && !exam.Constraints.RoomConstraints.Seb) {
 			continue
 		}
 

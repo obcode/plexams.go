@@ -338,7 +338,7 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 
 		// check if room constraints of exams are met
 		if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil {
-			if exam.Constraints.RoomConstraints.ExahmRooms {
+			if exam.Constraints.RoomConstraints.Exahm {
 				for _, room := range exam.PlannedRooms {
 					if !p.GetRoomInfo(room.RoomName).Exahm {
 						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Is not an exahm room %s for exam %d. %s (%s) in slot (%d,%d)"),

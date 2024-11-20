@@ -381,7 +381,7 @@ func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto) {
 
 	for _, exam := range allExams {
 		if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil &&
-			(exam.Constraints.RoomConstraints.ExahmRooms || exam.Constraints.RoomConstraints.Seb) {
+			(exam.Constraints.RoomConstraints.Exahm || exam.Constraints.RoomConstraints.Seb) {
 			exams = append(exams, exam)
 		}
 	}

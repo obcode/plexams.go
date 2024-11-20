@@ -70,7 +70,7 @@ func CalculatedAllowedSlots(semesterConfigSlots []*model.Slot, goSlots [][]int, 
 
 	if constraints != nil {
 
-		if constraints.ExcludeDays != nil && len(constraints.ExcludeDays) > 0 {
+		if len(constraints.ExcludeDays) > 0 {
 			slotsWithoutExcludedDays := make([]*model.Slot, 0)
 			for _, excludeDay := range constraints.ExcludeDays {
 				for _, slot := range slots {
@@ -90,7 +90,7 @@ func CalculatedAllowedSlots(semesterConfigSlots []*model.Slot, goSlots [][]int, 
 			slots = slotsWithoutExcludedDays
 		}
 
-		if constraints.PossibleDays != nil && len(constraints.PossibleDays) > 0 {
+		if len(constraints.PossibleDays) > 0 {
 			slotsWithIncludedDays := make([]*model.Slot, 0)
 			for _, includeDay := range constraints.PossibleDays {
 				for _, slot := range slots {

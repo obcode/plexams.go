@@ -71,16 +71,6 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 				})
 		})
 	})
-	m.Row(10, func() {
-		m.Col(12, func() {
-			m.Text(
-				"Dieses Dokument enthält alle Prüfungen in 3 Sortierungen.", props.Text{
-					Top:   3,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
 
 	header := []string{"AnCode", "Modul", "Prüfer:in", "Gruppe(n)", "Form"}
 
@@ -89,48 +79,16 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 		log.Error().Err(err).Msg("error while getting exams")
 	}
 
-	m.Row(20, func() {
-		m.Col(12, func() {
-			m.Text(
-				"Sortiert nach AnCode (= der Code im ZPA)", props.Text{
-					Top:   5,
-					Style: consts.Bold,
-					Align: consts.Center,
-				})
-		})
-	})
-
-	contents := make([][]string, 0, len(exams))
-
-	for _, exam := range exams {
-		contents = append(contents, []string{strconv.Itoa(exam.AnCode), exam.Module, exam.MainExamer, fmt.Sprintf("%v", exam.Groups), exam.ExamTypeFull})
-	}
-
 	grayColor := color.Color{
 		Red:   211,
 		Green: 211,
 		Blue:  211,
 	}
 
-	m.TableList(header, contents, props.TableList{
-		HeaderProp: props.TableListContent{
-			Size:      9,
-			GridSizes: []uint{1, 4, 2, 2, 3},
-		},
-		ContentProp: props.TableListContent{
-			Size:      8,
-			GridSizes: []uint{1, 4, 2, 2, 3},
-		},
-		Align:                consts.Left,
-		AlternatedBackground: &grayColor,
-		HeaderContentSpace:   1,
-		Line:                 false,
-	})
-
 	m.Row(20, func() {
 		m.Col(12, func() {
 			m.Text(
-				"Sortiert nach dem Namen des Prüferenden", props.Text{
+				"Sortiert nach dem Namen des Prüferenden. Die Einträge in der Spalte Form stehen so im ZPA.", props.Text{
 					Top:   5,
 					Style: consts.Bold,
 					Align: consts.Center,
@@ -153,59 +111,10 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	}
 	sort.Strings(keys)
 
-	contents = make([][]string, 0, len(exams))
+	contents := make([][]string, 0, len(exams))
 
 	for _, key := range keys {
 		for _, exam := range examsByExamers[key] {
-			contents = append(contents, []string{strconv.Itoa(exam.AnCode), exam.Module, exam.MainExamer, fmt.Sprintf("%v", exam.Groups), exam.ExamTypeFull})
-		}
-	}
-
-	m.TableList(header, contents, props.TableList{
-		HeaderProp: props.TableListContent{
-			Size:      9,
-			GridSizes: []uint{1, 4, 2, 2, 3},
-		},
-		ContentProp: props.TableListContent{
-			Size:      8,
-			GridSizes: []uint{1, 4, 2, 2, 3},
-		},
-		Align:                consts.Left,
-		AlternatedBackground: &grayColor,
-		HeaderContentSpace:   1,
-		Line:                 false,
-	})
-
-	m.Row(20, func() {
-		m.Col(12, func() {
-			m.Text(
-				"Sortiert nach dem Prüfungsnamen", props.Text{
-					Top:   5,
-					Style: consts.Bold,
-					Align: consts.Center,
-				})
-		})
-	})
-
-	examsByModules := make(map[string][]*model.ZPAExam)
-	for _, exam := range exams {
-		examsByModule, ok := examsByModules[exam.Module]
-		if !ok {
-			examsByModule = make([]*model.ZPAExam, 0, 1)
-		}
-		examsByModules[exam.Module] = append(examsByModule, exam)
-	}
-
-	keys = make([]string, 0, len(examsByModules))
-	for k := range examsByModules {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	contents = make([][]string, 0, len(exams))
-
-	for _, key := range keys {
-		for _, exam := range examsByModules[key] {
 			contents = append(contents, []string{strconv.Itoa(exam.AnCode), exam.Module, exam.MainExamer, fmt.Sprintf("%v", exam.Groups), exam.ExamTypeFull})
 		}
 	}

@@ -127,6 +127,8 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, run bool) error {
 		}
 
 		err = p.SendGeneratedExamMailToTeacher(ctx, to, &GeneratedExamMailData{
+			FromDate:       p.semesterConfig.Days[0].Date.Format("02.01.2006"),
+			ToDate:         p.semesterConfig.Days[len(p.semesterConfig.Days)-1].Date.Format("02.01.2006"),
 			Exam:           exam,
 			Teacher:        teacher,
 			PlanerName:     p.planer.Name,
@@ -146,6 +148,8 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, run bool) error {
 }
 
 type GeneratedExamMailData struct {
+	FromDate       string
+	ToDate         string
 	Exam           *model.GeneratedExam
 	Teacher        *model.Teacher
 	PlanerName     string

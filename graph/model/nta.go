@@ -19,6 +19,7 @@ type NTA struct {
 	Until                string     `bson:"until"`
 	LastSemester         *string    `bson:"lastSemester"`
 	Exams                []*NTAExam `bson:"exams"`
+	Deactivated          bool       `bson:"deactivated"`
 }
 
 func NtaInputToNta(ntaInput NTAInput) *NTA {

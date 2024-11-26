@@ -316,6 +316,7 @@ type ComplexityRoot struct {
 
 	NTA struct {
 		Compensation         func(childComplexity int) int
+		Deactivated          func(childComplexity int) int
 		DeltaDurationPercent func(childComplexity int) int
 		Email                func(childComplexity int) int
 		Exams                func(childComplexity int) int
@@ -2114,6 +2115,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.NTA.Compensation(childComplexity), true
+
+	case "NTA.deactivated":
+		if e.complexity.NTA.Deactivated == nil {
+			break
+		}
+
+		return e.complexity.NTA.Deactivated(childComplexity), true
 
 	case "NTA.deltaDurationPercent":
 		if e.complexity.NTA.DeltaDurationPercent == nil {
@@ -4430,6 +4438,7 @@ type NTA {
   until: String!
   lastSemester: String
   exams: [NTAExam!]!
+  deactivated: Boolean!
 }
 
 input NTAInput {
@@ -7587,6 +7596,8 @@ func (ec *executionContext) fieldContext_EnhancedPrimussExam_ntas(ctx context.Co
 				return ec.fieldContext_NTA_lastSemester(ctx, field)
 			case "exams":
 				return ec.fieldContext_NTA_exams(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 		},
@@ -9886,6 +9897,8 @@ func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_ntas(ctx context.C
 				return ec.fieldContext_NTA_lastSemester(ctx, field)
 			case "exams":
 				return ec.fieldContext_NTA_exams(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 		},
@@ -10763,6 +10776,8 @@ func (ec *executionContext) fieldContext_GeneratedExam_ntas(ctx context.Context,
 				return ec.fieldContext_NTA_lastSemester(ctx, field)
 			case "exams":
 				return ec.fieldContext_NTA_exams(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 		},
@@ -13522,6 +13537,8 @@ func (ec *executionContext) fieldContext_Mutation_addNTA(ctx context.Context, fi
 				return ec.fieldContext_NTA_lastSemester(ctx, field)
 			case "exams":
 				return ec.fieldContext_NTA_exams(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 		},
@@ -14798,6 +14815,50 @@ func (ec *executionContext) fieldContext_NTA_exams(ctx context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _NTA_deactivated(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NTA_deactivated(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Deactivated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NTA_deactivated(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTA",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _NTAExam_semester(ctx context.Context, field graphql.CollectedField, obj *model.NTAExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_NTAExam_semester(ctx, field)
 	if err != nil {
@@ -15035,6 +15096,8 @@ func (ec *executionContext) fieldContext_NTAWithRegs_nta(ctx context.Context, fi
 				return ec.fieldContext_NTA_lastSemester(ctx, field)
 			case "exams":
 				return ec.fieldContext_NTA_exams(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 		},
@@ -16095,6 +16158,8 @@ func (ec *executionContext) fieldContext_PlannedExam_ntas(ctx context.Context, f
 				return ec.fieldContext_NTA_lastSemester(ctx, field)
 			case "exams":
 				return ec.fieldContext_NTA_exams(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 		},
@@ -20091,6 +20156,8 @@ func (ec *executionContext) fieldContext_Query_ntas(ctx context.Context, field g
 				return ec.fieldContext_NTA_lastSemester(ctx, field)
 			case "exams":
 				return ec.fieldContext_NTA_exams(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 		},
@@ -24741,6 +24808,8 @@ func (ec *executionContext) fieldContext_Student_nta(ctx context.Context, field 
 				return ec.fieldContext_NTA_lastSemester(ctx, field)
 			case "exams":
 				return ec.fieldContext_NTA_exams(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 		},
@@ -31236,6 +31305,11 @@ func (ec *executionContext) _NTA(ctx context.Context, sel ast.SelectionSet, obj 
 			out.Values[i] = ec._NTA_lastSemester(ctx, field, obj)
 		case "exams":
 			out.Values[i] = ec._NTA_exams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deactivated":
+			out.Values[i] = ec._NTA_deactivated(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

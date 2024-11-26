@@ -38,7 +38,12 @@ func (p *Plexams) PrepareGeneratedExams() error {
 
 	ntaMap := make(map[string]*model.NTA)
 	for _, nta := range allNtas {
-		ntaMap[nta.Mtknr] = nta
+		if !nta.Deactivated {
+			log.Debug().Str("mtknr", nta.Mtknr).Msg("adding nta")
+			ntaMap[nta.Mtknr] = nta
+		} else {
+			log.Debug().Str("mtknr", nta.Mtknr).Msg("NOT adding deactivated nta")
+		}
 	}
 
 	durationMap := make(map[int]int)

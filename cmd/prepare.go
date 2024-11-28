@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -18,7 +20,7 @@ var (
 	connected-exams --- prepare connected exams                    --- step 1
 	connect-exam ancode program   --- connect an unconnected exam  --- step 1,5
 
-	add-external-exam program ancode duration --- add an external exam
+	add-mucdai-exam program primuss-ancode --- add an external add-mucdai-exam exam
 
 	generated-exams --- generate exams from connected-exams, external-exams and primuss-data --- step 2
 
@@ -49,9 +51,10 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
-			case "add-external-exam":
-				if len(args) < 4 {
-					log.Fatal("need program, ancode, and duration")
+
+			case "add-mucdai-exam":
+				if len(args) < 3 {
+					log.Fatal("need program and primuss-ancode")
 				}
 				program := args[1]
 				ancode, err := strconv.Atoi(args[2])
@@ -59,28 +62,36 @@ var (
 					fmt.Printf("cannot use %s as ancode", args[1])
 					os.Exit(1)
 				}
-				duration, err := strconv.Atoi(args[3])
-				if err != nil {
-					fmt.Printf("cannot use %s as duration", args[1])
-					os.Exit(1)
-				}
 
 				ctx := context.Background()
 
-				primussExam, err := plexams.GetPrimussExam(ctx, program, ancode)
+				mucdaiExam, err := plexams.MucDaiExam(ctx, program, ancode)
 				if err != nil {
 					log.Fatal(err)
 				}
 
 				if !confirm(fmt.Sprintf("add external exam %s/%d. %s (%s)?",
-					primussExam.Program, primussExam.AnCode, primussExam.Module, primussExam.MainExamer), 10) {
+					mucdaiExam.Program, mucdaiExam.PrimussAncode, mucdaiExam.Module, mucdaiExam.MainExamer), 10) {
 					os.Exit(0)
 				}
 
-				err = plexams.AddExternalExam(ctx, primussExam, duration)
+				// generate Ancode == prefix + PrimussAncode
+				zpaAncode := viper.Get(fmt.Sprintf("externalExamsBase.%s", mucdaiExam.Program)).(int) + mucdaiExam.PrimussAncode
+				fmt.Printf("zpaAncode: %d\n", zpaAncode)
+
+				zpaExam, err := plexams.AddMucDaiExam(ctx, zpaAncode, mucdaiExam)
 				if err != nil {
 					os.Exit(1)
 				}
+
+				prettyJSON, err := json.MarshalIndent(zpaExam, "", "    ")
+				if err != nil {
+					fmt.Println("Failed to generate json", err)
+					return
+				}
+
+				// Print the pretty-printed JSON
+				fmt.Println(string(prettyJSON))
 
 			case "connected-exams":
 				err := plexams.PrepareConnectedExams()

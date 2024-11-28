@@ -96,6 +96,7 @@ type ExamWithRegsAndRooms {
   rooms: [PlannedRoom!]!
 }
 
+# Deprecated: remove me
 type ExternalExam {
   ancode: Int!
   program: String!
@@ -104,6 +105,7 @@ type ExternalExam {
   duration: Int!
 }
 
+# Deprecated: remove me
 type MucDaiExam {
   primussAncode: Int!
   module: String!

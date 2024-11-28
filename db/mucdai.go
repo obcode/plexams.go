@@ -39,3 +39,18 @@ func (db *DB) MucDaiExamsForProgram(ctx context.Context, program string) ([]*Muc
 
 	return exams, nil
 }
+
+func (db *DB) MucDaiExam(ctx context.Context, program string, ancode int) (*MucDaiExam, error) {
+	collection := db.getMucDaiCollection(program)
+
+	var exam MucDaiExam
+
+	err := collection.FindOne(ctx, bson.D{{Key: "Nr", Value: ancode}}).Decode(&exam)
+	if err != nil {
+		log.Error().Err(err).Str("program", program).Int("ancode", ancode).
+			Msg("cannot get exam for MUC.DAI program")
+		return nil, err
+	}
+
+	return &exam, nil
+}

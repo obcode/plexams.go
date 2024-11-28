@@ -102,6 +102,30 @@ func (p *Plexams) PrepareConnectedExams() error {
 		exams = append(exams, exam)
 	}
 
+	fmt.Println("getting non zpa exams")
+
+	nonZPAExams, err := p.dbClient.NonZpaExams(ctx)
+	if err == nil {
+		for _, nonZPAExam := range nonZPAExams {
+			primussExams := make([]*model.PrimussExam, 0)
+			for _, primuss := range nonZPAExam.PrimussAncodes {
+				primussExam, err := p.GetPrimussExam(ctx, primuss.Program, primuss.Ancode)
+				if err != nil {
+					log.Error().Err(err).Str("program", primuss.Program).Int("ancode", primuss.Ancode).
+						Msg("cannot get primuss exam")
+					return err
+				}
+				primussExams = append(primussExams, primussExam)
+			}
+			exams = append(exams, &model.ConnectedExam{
+				ZpaExam:           nonZPAExam,
+				PrimussExams:      primussExams,
+				OtherPrimussExams: nil,
+				Errors:            []string{},
+			})
+		}
+	}
+
 	err = p.dbClient.SaveConnectedExams(ctx, exams)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot save connected exams")

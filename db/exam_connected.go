@@ -164,10 +164,21 @@ func (db *DB) modelConnectedExamToConnectedExam(exam *model.ConnectedExam) *Conn
 }
 
 func (db *DB) connectedExamToModelConnectedExam(ctx context.Context, exam *ConnectedExam) (*model.ConnectedExam, error) {
-	zpaExam, err := db.GetZpaExamByAncode(ctx, exam.ZpaExam)
-	if err != nil {
-		log.Error().Err(err).Int("ancode", exam.ZpaExam).Msg("cannot get zpa exam")
-		return nil, err
+	var zpaExam *model.ZPAExam
+	var err error
+
+	if exam.ZpaExam < 1000 {
+		zpaExam, err = db.GetZpaExamByAncode(ctx, exam.ZpaExam)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.ZpaExam).Msg("cannot get zpa exam")
+			return nil, err
+		}
+	} else {
+		zpaExam, err = db.NonZpaExam(ctx, exam.ZpaExam)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.ZpaExam).Msg("cannot get non zpa exam")
+			return nil, err
+		}
 	}
 
 	var primussExams []*model.PrimussExam

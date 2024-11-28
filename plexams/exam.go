@@ -102,8 +102,6 @@ func (p *Plexams) PrepareConnectedExams() error {
 		exams = append(exams, exam)
 	}
 
-	fmt.Println("getting non zpa exams")
-
 	nonZPAExams, err := p.dbClient.NonZpaExams(ctx)
 	if err == nil {
 		for _, nonZPAExam := range nonZPAExams {

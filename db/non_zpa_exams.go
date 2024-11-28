@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -38,6 +37,5 @@ func (db *DB) NonZpaExams(ctx context.Context) ([]*model.ZPAExam, error) {
 		log.Error().Err(err).Msg("cannot get non zpa exams")
 		return nil, err
 	}
-	fmt.Printf("exams: %v\n", exams)
 	return exams, nil
 }

@@ -11,9 +11,13 @@ import (
 )
 
 func (db *DB) GetTeacher(ctx context.Context, id int) (*model.Teacher, error) {
-	collection := db.Client.Database(db.databaseName).Collection("teachers")
-
 	var teacher model.Teacher
+
+	if id == 0 {
+		return &teacher, nil
+	}
+
+	collection := db.Client.Database(db.databaseName).Collection("teachers")
 
 	err := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}}).Decode(&teacher)
 	if err != nil {

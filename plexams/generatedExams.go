@@ -22,7 +22,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		return err
 	}
 
-	// TODO: connectedExamsMap
+	// TODO: connectedExamsMap?
 
 	constraints, err := p.ConstraintsMap(ctx)
 	if err != nil {
@@ -181,11 +181,18 @@ func (p *Plexams) PrepareGeneratedExams() error {
 			}
 		}
 
+		constraints := constraints[connectedExam.ZpaExam.AnCode]
+		if connectedExam.ZpaExam.AnCode >= 1000 {
+			constraints = &model.Constraints{
+				NotPlannedByMe: true,
+			}
+		}
+
 		exams = append(exams, &model.GeneratedExam{
 			Ancode:           connectedExam.ZpaExam.AnCode,
 			ZpaExam:          connectedExam.ZpaExam,
 			PrimussExams:     enhancedPrimussExams,
-			Constraints:      constraints[connectedExam.ZpaExam.AnCode],
+			Constraints:      constraints,
 			Conflicts:        conflicts,
 			StudentRegsCount: studentRegsCount,
 			Ntas:             ntas,

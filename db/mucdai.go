@@ -5,6 +5,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type MucDaiExam struct {
@@ -23,7 +24,9 @@ type MucDaiExam struct {
 func (db *DB) MucDaiExamsForProgram(ctx context.Context, program string) ([]*MucDaiExam, error) {
 	collection := db.getMucDaiCollection(program)
 
-	cur, err := collection.Find(ctx, bson.D{})
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "Nr", Value: 1}})
+	cur, err := collection.Find(ctx, bson.D{}, findOptions)
 	if err != nil {
 		log.Error().Err(err).Str("program", program).Msg("cannot get exams for MUC.DAI program")
 		return nil, err

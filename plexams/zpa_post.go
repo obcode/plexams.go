@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -55,6 +56,21 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudent
 
 	log.Info().Int("count", len(zpaStudentRegs)).Int("chunk size", chunkSize).Msg("Uploading a lot of regs in chunks.")
 
+	filename := "studentregs.json"
+	file, err := os.Create(filename)
+	if err != nil {
+		log.Error().Err(err).Str("filename", filename).Msg("error while creating file")
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(zpaStudentRegs); err != nil {
+		log.Error().Err(err).Msg("error while writing JSON data to file")
+	}
+
+	log.Info().Str("filename", filename).Msg("studentregs written to file")
+
 	for from := 0; from <= len(zpaStudentRegs); from += chunkSize {
 		to := from + chunkSize
 		if to > len(zpaStudentRegs) {
@@ -73,6 +89,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudent
 		err = json.Unmarshal(body, &zpaStudentRegErrors)
 		if err != nil {
 			log.Error().Err(err).Interface("zpa-errors", zpaStudentRegErrors).Msg("error while unmarshalling errors from ZPA")
+			fmt.Printf("%s\n", body)
 			return nil, nil, err
 		}
 

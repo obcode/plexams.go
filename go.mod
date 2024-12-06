@@ -6,6 +6,7 @@ toolchain go1.23.3
 
 require (
 	github.com/99designs/gqlgen v0.17.57
+	github.com/arran4/golang-ical v0.3.1
 	github.com/deckarep/golang-set/v2 v2.6.0
 	github.com/go-chi/chi v1.5.5
 	github.com/gookit/color v1.5.4

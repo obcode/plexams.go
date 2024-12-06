@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudentReg, []*model.RegWithError, error) {
+func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile string) ([]*model.ZPAStudentReg, []*model.RegWithError, error) {
 	if err := p.SetZPA(); err != nil {
 		return nil, nil, err
 	}
@@ -54,22 +57,38 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudent
 	regsWithErrors := make([]*model.RegWithError, 0)
 	chunkSize := 77
 
-	log.Info().Int("count", len(zpaStudentRegs)).Int("chunk size", chunkSize).Msg("Uploading a lot of regs in chunks.")
-
-	filename := "studentregs.json"
-	file, err := os.Create(filename)
+	zpaStudentRegsJson, err := json.MarshalIndent(zpaStudentRegs, "", " ")
 	if err != nil {
-		log.Error().Err(err).Str("filename", filename).Msg("error while creating file")
+		log.Error().Err(err).Msg("cannot marshal studentregs into json")
 	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(zpaStudentRegs); err != nil {
-		log.Error().Err(err).Msg("error while writing JSON data to file")
+	err = os.WriteFile(jsonOutputFile, zpaStudentRegsJson, 0644)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot write studentregs to file")
+	} else {
+		fmt.Printf(" saved copy to %s\n", jsonOutputFile)
 	}
 
-	log.Info().Str("filename", filename).Msg("studentregs written to file")
+	cfg := yacspin.Config{
+		Frequency: 100 * time.Millisecond,
+		CharSet:   yacspin.CharSets[69],
+		Suffix: aurora.Sprintf(aurora.Cyan(" uploading %d student regs in chunks of %d to ZPA"),
+			len(zpaStudentRegs), chunkSize),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
+
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
 
 	for from := 0; from <= len(zpaStudentRegs); from += chunkSize {
 		to := from + chunkSize
@@ -77,7 +96,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudent
 			to = len(zpaStudentRegs)
 		}
 
-		log.Info().Int("from", from).Int("to", to).Msg("Uploading chunk of regs.")
+		spinner.Message(aurora.Sprintf(aurora.Yellow(" Uploading chunk of regs. %d-%d"), from, to-1))
 
 		_, body, err := p.zpa.client.PostStudentRegsToZPA(zpaStudentRegs[from:to])
 		if err != nil {
@@ -107,6 +126,13 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context) ([]*model.ZPAStudent
 	err = p.dbClient.SetRegsWithErrors(ctx, regsWithErrors)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	spinner.StopMessage(aurora.Sprintf(aurora.Green("uploaded %d regs, %d with errors"),
+		len(zpaStudentRegs), len(regsWithErrors)))
+	err = spinner.Stop()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot stop spinner")
 	}
 
 	return zpaStudentRegs, regsWithErrors, nil

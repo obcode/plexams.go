@@ -58,6 +58,9 @@ func (p *Plexams) ValidateZPADateTimes() error {
 	notPlannedByMe := 0
 
 	for _, plannedExam := range plannedExams {
+		if plannedExam.Ancode >= 1000 {
+			continue
+		}
 		spinner.Message(aurora.Sprintf(aurora.Yellow("checking exam %d. %s (%s)"),
 			plannedExam.Ancode, plannedExam.ZpaExam.Module, plannedExam.ZpaExam.MainExamer))
 		zpaExam := examsMap[plannedExam.ZpaExam.AnCode]

@@ -127,6 +127,9 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
 		}
+		if exam.Ancode >= 1000 {
+			continue
+		}
 		for _, ancodeNotToPublish := range doNotPublish {
 			if exam.ZpaExam.AnCode == ancodeNotToPublish {
 				continue

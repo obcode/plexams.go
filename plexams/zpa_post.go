@@ -311,6 +311,57 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		})
 	}
 
+	// publish - additionalExams
+	additionalExamsRaw := viper.Get("publish.additionalExams")
+
+	additionalExams := make([]*model.ZPAExamPlan, 0)
+	if additionalExamsRaw != nil {
+		additionalExamsRawSlice := additionalExamsRaw.([]interface{})
+		for _, additionalExamRaw := range additionalExamsRawSlice {
+			additionalExam := additionalExamRaw.(map[string]interface{})
+			ancode := additionalExam["ancode"].(int)
+			// studentCount := int(additionalExam["studentCount"].(float64))
+			date := additionalExam["date"].(string)
+			time := additionalExam["time"].(string)
+			// room := additionalExam["room"].(string)
+			// invigilatorID := int(additionalExam["invigilatorID"].(float64))
+
+			roomsRaw := additionalExam["rooms"].([]interface{})
+			rooms := make([]*model.ZPAExamPlanRoom, 0)
+			for _, roomRaw := range roomsRaw {
+				room := roomRaw.(map[string]interface{})
+				roomName := room["room_name"].(string)
+				invigilatorID := room["invigilator_id"].(int)
+				duration := room["duration"].(int)
+				reserveRoom := room["reserve_room"].(bool)
+				numberStudents := room["number_students"].(int)
+				handicapCompensation := room["handicap_compensation"].(bool)
+
+				rooms = append(rooms, &model.ZPAExamPlanRoom{
+					RoomName:      roomName,
+					InvigilatorID: invigilatorID,
+					Duration:      duration,
+					IsReserve:     reserveRoom,
+					StudentCount:  numberStudents,
+					IsHandicap:    handicapCompensation,
+				})
+			}
+			additionalExams = append(additionalExams, &model.ZPAExamPlan{
+				Semester:             p.semester,
+				AnCode:               ancode,
+				Date:                 date,
+				Time:                 time,
+				ReserveInvigilatorID: 0,
+				Rooms:                rooms,
+			})
+		}
+	}
+
+	for _, exam := range additionalExams {
+		fmt.Printf("additional exam: %d. %s. %s\n", exam.AnCode, exam.Date, exam.Time)
+		exams = append(exams, exam)
+	}
+
 	if upload {
 		// post to ZPA
 		status, body, err := p.zpa.client.PostExams(exams)

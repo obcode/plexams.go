@@ -222,6 +222,7 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 	}
 
 	return p.sendMail([]string{to},
+		nil,
 		subject,
 		bufText.Bytes(),
 		bufHTML.Bytes(),
@@ -298,6 +299,7 @@ func (p *Plexams) SendHandicapsMailToMainExamer(ctx context.Context, to []string
 	}
 
 	return p.sendMail(to,
+		nil,
 		fmt.Sprintf("[Prüfungsplanung %s] Nachteilausgleich(e) für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
 		bufHTML.Bytes(),
@@ -334,11 +336,20 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, run bool) 
 		}
 
 		to := []string{p.planer.Email}
+		cc := []string{}
 		if run && nta.Nta.Email != nil {
 			to = []string{*nta.Nta.Email}
+			for _, exam := range exams {
+				teacher, err := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID)
+				if err != nil {
+					log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get teacher")
+					return err
+				}
+				cc = append(cc, teacher.Email)
+			}
 		}
 
-		err = p.SendHandicapsMailToStudent(ctx, to, &NTAEmail{
+		err = p.SendHandicapsMailToStudent(ctx, to, cc, &NTAEmail{
 			NTA:        nta,
 			Exams:      exams,
 			PlanerName: p.planer.Name,
@@ -351,7 +362,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, run bool) 
 	return nil
 }
 
-func (p *Plexams) SendHandicapsMailToStudent(ctx context.Context, to []string, handicapsEmail *NTAEmail) error {
+func (p *Plexams) SendHandicapsMailToStudent(ctx context.Context, to []string, cc []string, handicapsEmail *NTAEmail) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
 	tmpl, err := template.ParseFiles("tmpl/handicapEmailRoomAlone.tmpl")
@@ -375,15 +386,17 @@ func (p *Plexams) SendHandicapsMailToStudent(ctx context.Context, to []string, h
 	}
 
 	return p.sendMail(to,
+		cc,
 		fmt.Sprintf("[Prüfungsplanung %s] Eigener Raum für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
 		bufHTML.Bytes(),
 	)
 }
 
-func (p *Plexams) sendMail(to []string, subject string, text []byte, html []byte) error {
+func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte, html []byte) error {
 	e := &email.Email{
 		To:      to,
+		Cc:      cc,
 		Bcc:     []string{p.planer.Email},
 		From:    fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email),
 		Subject: subject,

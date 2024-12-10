@@ -228,7 +228,7 @@ PLANNEDROOM:
 				reservationFound++
 
 				if !timerange.Approved {
-					validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Reservation for room %s found in slot (%d/%d) is not yet approved"),
+					validationMessages = append(validationMessages, aurora.Sprintf(aurora.Yellow("Reservation for room %s found in slot (%d/%d) is not yet approved"),
 						aurora.Magenta(plannedRoom.RoomName), aurora.Blue(plannedRoom.Day), aurora.Blue(plannedRoom.Slot)))
 				}
 

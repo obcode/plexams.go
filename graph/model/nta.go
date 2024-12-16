@@ -14,6 +14,7 @@ type NTA struct {
 	Compensation         string     `bson:"compensation"`
 	DeltaDurationPercent int        `bson:"deltaDurationPercent"`
 	NeedsRoomAlone       bool       `bson:"needsRoomAlone"`
+	NeedsHardware        bool       `bson:"needsHardware"`
 	Program              string     `bson:"program"`
 	From                 string     `bson:"from"`
 	Until                string     `bson:"until"`
@@ -30,6 +31,7 @@ func NtaInputToNta(ntaInput NTAInput) *NTA {
 		Compensation:         ntaInput.Compensation,
 		DeltaDurationPercent: ntaInput.DeltaDurationPercent,
 		NeedsRoomAlone:       ntaInput.NeedsRoomAlone,
+		NeedsHardware:        ntaInput.NeedsHardware,
 		Program:              ntaInput.Program,
 		From:                 ntaInput.From,
 		Until:                ntaInput.Until,

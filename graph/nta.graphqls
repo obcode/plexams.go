@@ -17,6 +17,7 @@ type NTA {
   compensation: String!
   deltaDurationPercent: Int!
   needsRoomAlone: Boolean!
+  needsHardware: Boolean!
   program: String!
   from: String!
   until: String!
@@ -32,6 +33,7 @@ input NTAInput {
   compensation: String!
   deltaDurationPercent: Int!
   needsRoomAlone: Boolean!
+  needsHardware: Boolean!
   program: String!
   from: String!
   until: String!

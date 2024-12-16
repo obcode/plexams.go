@@ -239,6 +239,7 @@ type NTAInput struct {
 	Compensation         string  `json:"compensation"`
 	DeltaDurationPercent int     `json:"deltaDurationPercent"`
 	NeedsRoomAlone       bool    `json:"needsRoomAlone"`
+	NeedsHardware        bool    `json:"needsHardware"`
 	Program              string  `json:"program"`
 	From                 string  `json:"from"`
 	Until                string  `json:"until"`

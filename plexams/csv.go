@@ -65,7 +65,11 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 				if room.Reserve {
 					sb.WriteString("Reserveraum, nicht veröffentlichen, ")
 				}
-				sb.WriteString(fmt.Sprintf("%d Studierende eingeplant", len(room.StudentsInRoom)))
+				if len(room.StudentsInRoom) == 1 {
+					sb.WriteString("1 Studierender eingeplant")
+				} else {
+					sb.WriteString(fmt.Sprintf("%d Studierende eingeplant", len(room.StudentsInRoom)))
+				}
 				csvEntries = append(csvEntries, CsvExam{
 					Ancode:     primussAncode,
 					Module:     exam.ZpaExam.Module,

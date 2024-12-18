@@ -326,25 +326,28 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 			// room := additionalExam["room"].(string)
 			// invigilatorID := int(additionalExam["invigilatorID"].(float64))
 
-			roomsRaw := additionalExam["rooms"].([]interface{})
 			rooms := make([]*model.ZPAExamPlanRoom, 0)
-			for _, roomRaw := range roomsRaw {
-				room := roomRaw.(map[string]interface{})
-				roomName := room["room_name"].(string)
-				invigilatorID := room["invigilator_id"].(int)
-				duration := room["duration"].(int)
-				reserveRoom := room["reserve_room"].(bool)
-				numberStudents := room["number_students"].(int)
-				handicapCompensation := room["handicap_compensation"].(bool)
 
-				rooms = append(rooms, &model.ZPAExamPlanRoom{
-					RoomName:      roomName,
-					InvigilatorID: invigilatorID,
-					Duration:      duration,
-					IsReserve:     reserveRoom,
-					StudentCount:  numberStudents,
-					IsHandicap:    handicapCompensation,
-				})
+			if _, ok := additionalExam["rooms"]; ok {
+				roomsRaw := additionalExam["rooms"].([]interface{})
+				for _, roomRaw := range roomsRaw {
+					room := roomRaw.(map[string]interface{})
+					roomName := room["room_name"].(string)
+					invigilatorID := room["invigilator_id"].(int)
+					duration := room["duration"].(int)
+					reserveRoom := room["reserve_room"].(bool)
+					numberStudents := room["number_students"].(int)
+					handicapCompensation := room["handicap_compensation"].(bool)
+
+					rooms = append(rooms, &model.ZPAExamPlanRoom{
+						RoomName:      roomName,
+						InvigilatorID: invigilatorID,
+						Duration:      duration,
+						IsReserve:     reserveRoom,
+						StudentCount:  numberStudents,
+						IsHandicap:    handicapCompensation,
+					})
+				}
 			}
 			additionalExams = append(additionalExams, &model.ZPAExamPlan{
 				Semester:             p.semester,

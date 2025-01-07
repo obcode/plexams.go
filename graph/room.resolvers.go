@@ -36,6 +36,11 @@ func (r *queryResolver) PlannedRoomsInSlot(ctx context.Context, day int, time in
 	return r.plexams.PlannedRoomsInSlot(ctx, day, time)
 }
 
+// PlannedRoomForNta is the resolver for the plannedRoomForNTA field.
+func (r *queryResolver) PlannedRoomForStudent(ctx context.Context, ancode int, mtknr string) (*model.PlannedRoom, error) {
+	return r.plexams.PlannedRoomForStudent(ctx, ancode, mtknr)
+}
+
 // Room is the resolver for the room field.
 func (r *roomForExamResolver) Room(ctx context.Context, obj *model.RoomForExam) (*model.Room, error) {
 	return r.plexams.Room(ctx, obj)

@@ -524,6 +524,25 @@ func (p *Plexams) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]
 	return rooms, nil
 }
 
+func (p *Plexams) PlannedRoomForStudent(ctx context.Context, ancode int, mtknr string) (*model.PlannedRoom, error) {
+	plannedRoomsForExam, err := p.dbClient.PlannedRoomsForAncode(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get planned rooms for ancode")
+		return nil, err
+	}
+	for _, room := range plannedRoomsForExam {
+		for _, student := range room.StudentsInRoom {
+			if student == mtknr {
+				return room, nil
+			}
+		}
+	}
+
+	err = fmt.Errorf("student %s not found in planned rooms for ancode %d", mtknr, ancode)
+	log.Error().Err(err).Int("ancode", ancode).Str("mtknr", mtknr).Msg("student not found in planned rooms")
+	return nil, err
+}
+
 // func enhancePlannedRooms(plannedRooms []*model.PlannedRoom) []*model.EnhancedPlannedRoom {
 // 	enhancedPlannedRooms := make([]*model.EnhancedPlannedRoom, 0, len(plannedRooms))
 // 	for _, room := range plannedRooms {

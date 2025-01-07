@@ -3,6 +3,7 @@ extend type Query {
   plannedRoomNames: [String!]
   plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
   plannedRoomsInSlot(day: Int!, time: Int!): [PlannedRoom!]
+  plannedRoomForStudent(ancode: Int!, mtknr: String!): PlannedRoom
 }
 
 type Room {

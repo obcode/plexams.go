@@ -538,9 +538,9 @@ func (p *Plexams) PlannedRoomForStudent(ctx context.Context, ancode int, mtknr s
 		}
 	}
 
-	err = fmt.Errorf("student %s not found in planned rooms for ancode %d", mtknr, ancode)
-	log.Error().Err(err).Int("ancode", ancode).Str("mtknr", mtknr).Msg("student not found in planned rooms")
-	return nil, err
+	// err = fmt.Errorf("student %s not found in planned rooms for ancode %d", mtknr, ancode)
+	// log.Error().Err(err).Int("ancode", ancode).Str("mtknr", mtknr).Msg("student not found in planned rooms")
+	return nil, nil
 }
 
 // func enhancePlannedRooms(plannedRooms []*model.PlannedRoom) []*model.EnhancedPlannedRoom {

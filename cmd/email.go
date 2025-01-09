@@ -15,8 +15,8 @@ var (
 		Use:   "email [subcommand]",
 		Short: "send email",
 		Long: `Send emails.
-nta --- send emails to teachers about nta,
-nta-with-room-alone --- send emails to students with room alone,
+nta-with-room-alone --- send emails to students with room alone before planning,
+nta-planned --- send emails about rooms to all students with nta after planning,
 primuss-data [all|<ancode>] --- send emails to teachers about primuss data and nta.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -24,6 +24,11 @@ primuss-data [all|<ancode>] --- send emails to teachers about primuss data and n
 			switch args[0] {
 			case "nta-with-room-alone":
 				err := plexams.SendHandicapsMailsNTARoomAlone(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "nta-planned":
+				err := plexams.SendHandicapsMailsNTAPlanned(context.Background(), run)
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

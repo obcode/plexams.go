@@ -1,0 +1,22 @@
+<p>Hallo {{ .NTA.Name }},</p>
+
+<p>Sie haben gemäß den mir vorliegenden Informationen Anspruch auf Nachteilsausgleich
+bei Ihren Prüfungen.</p>
+
+<p>Für folgende Prüfungen habe ich Sie im jeweils angegebenen Raum eingeplant:</p>
+
+<ul>
+{{ range .ExamsWithRoom -}}
+<li>
+{{ .Room.RoomName }} --- {{ .Exam.ZpaExam.MainExamer }}: {{ .Exam.ZpaExam.Module }}
+</li>
+{{ end }}
+</ul>
+
+<p>Mit freundlichen Grüßen<br />
+{{ .PlanerName }}</p>
+
+<pre>
+-- 
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
+</pre>

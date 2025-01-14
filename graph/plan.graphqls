@@ -15,6 +15,12 @@ extend type Mutation {
   rmExamFromSlot(ancode: Int!): Boolean!
 }
 
+type Emails {
+  profs: String!
+  lbas: String!
+  fs: String!
+}
+
 type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
@@ -22,6 +28,7 @@ type SemesterConfig {
   goSlotsRaw: [[Int!]!]
   goSlots: [Slot!]!
   goDay0: Time!
+  emails: Emails!
 }
 
 type ExamDay {

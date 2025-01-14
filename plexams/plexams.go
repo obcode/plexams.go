@@ -254,14 +254,41 @@ func (p *Plexams) setSemesterConfig() {
 			}
 		}
 
+		emails := &model.Emails{}
+		emailsMap := viper.GetStringMapString("semesterConfig.emails")
+		var ok bool
+		emails.Profs, ok = emailsMap["profs"]
+		if !ok {
+			log.Error().Interface("emails", emailsMap).Msg("cannot get profs emails from config")
+		}
+		emails.Lbas, ok = emailsMap["lbas"]
+		if !ok {
+			log.Error().Interface("emails", emailsMap).Msg("cannot get lbas emails from config")
+		}
+		emails.Fs, ok = emailsMap["fs"]
+		if !ok {
+			log.Error().Interface("emails", emailsMap).Msg("cannot get fs emails from config")
+		}
+
 		p.semesterConfig = &model.SemesterConfig{
 			Days:       days,
 			Starttimes: starttimes,
 			Slots:      slots,
 			GoDay0:     viper.GetTime("semesterConfig.goDay0").Local(),
+			Emails:     emails,
 		}
 	}
 	p.setGoSlots()
+}
+
+func (p *Plexams) PrintSemesterConfig() {
+	fmt.Printf("Semester: %s\n", p.semester)
+	fmt.Printf("Days: %v\n", p.semesterConfig.Days)
+	fmt.Printf("Starttimes: %v\n", p.semesterConfig.Starttimes)
+	fmt.Printf("Slots: %v\n", p.semesterConfig.Slots)
+	fmt.Printf("GoDay0: %v\n", p.semesterConfig.GoDay0)
+	fmt.Printf("GoSlots: %v\n", p.semesterConfig.GoSlots)
+	fmt.Printf("Emails: %v\n", p.semesterConfig.Emails)
 }
 
 func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {

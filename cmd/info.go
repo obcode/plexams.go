@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -96,44 +95,20 @@ student name           --- get info for student.`,
 				if len(args) < 2 {
 					log.Fatal("need name")
 				}
-				// FIXME
-				students, err := p.StudentsByName(context.TODO(), args[1]) // nolint
+				err := p.PrintStudentInfo(args[1], long, zpa)
 				if err != nil {
-					fmt.Println(err)
-					return
-				}
-				for _, student := range students {
-					fmt.Printf("%s (%s, %s%s): regs %v", student.Name, student.Mtknr, student.Program, student.Group, student.Regs)
-					if student.Nta != nil {
-						fmt.Printf(", NTA: %s\n", student.Nta.Compensation)
-					} else {
-						fmt.Println()
-					}
-					// TODO: ZPA-Info
-					zpaStudents, err := p.GetStudents(context.TODO(), student.Mtknr)
-					if err != nil {
-						fmt.Printf("  -> Studierenden nicht im ZPA gefunden: %v\n", err)
-					} else {
-						switch len(zpaStudents) {
-						case 0:
-							fmt.Println("  -> Studierenden nicht im ZPA gefunden")
-						case 1:
-							fmt.Printf("  -> %+v\n", zpaStudents[0])
-						case 2:
-							fmt.Println("  -> mehrere Studierende mit selber MtkNr gefunden")
-							for _, stud := range zpaStudents {
-								fmt.Printf("      -> %+v\n", stud)
-							}
-						}
-					}
+					log.Fatalf("got error: %v\n", err)
 				}
 			default:
 				fmt.Println("info called with unknown sub command")
 			}
 		},
 	}
+	long, zpa bool
 )
 
 func init() {
 	rootCmd.AddCommand(infoCmd)
+	infoCmd.Flags().BoolVarP(&long, "long", "l", false, "long info")
+	infoCmd.Flags().BoolVarP(&zpa, "zpa", "z", false, "info from zpa")
 }

@@ -108,6 +108,12 @@ type ComplexityRoot struct {
 		SameSlot        func(childComplexity int) int
 	}
 
+	Emails struct {
+		Fs    func(childComplexity int) int
+		Lbas  func(childComplexity int) int
+		Profs func(childComplexity int) int
+	}
+
 	EnhancedPrimussExam struct {
 		Conflicts   func(childComplexity int) int
 		Exam        func(childComplexity int) int
@@ -552,6 +558,7 @@ type ComplexityRoot struct {
 
 	SemesterConfig struct {
 		Days       func(childComplexity int) int
+		Emails     func(childComplexity int) int
 		GoDay0     func(childComplexity int) int
 		GoSlots    func(childComplexity int) int
 		GoSlotsRaw func(childComplexity int) int
@@ -1047,6 +1054,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Constraints.SameSlot(childComplexity), true
+
+	case "Emails.fs":
+		if e.complexity.Emails.Fs == nil {
+			break
+		}
+
+		return e.complexity.Emails.Fs(childComplexity), true
+
+	case "Emails.lbas":
+		if e.complexity.Emails.Lbas == nil {
+			break
+		}
+
+		return e.complexity.Emails.Lbas(childComplexity), true
+
+	case "Emails.profs":
+		if e.complexity.Emails.Profs == nil {
+			break
+		}
+
+		return e.complexity.Emails.Profs(childComplexity), true
 
 	case "EnhancedPrimussExam.conflicts":
 		if e.complexity.EnhancedPrimussExam.Conflicts == nil {
@@ -3464,6 +3492,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SemesterConfig.Days(childComplexity), true
 
+	case "SemesterConfig.emails":
+		if e.complexity.SemesterConfig.Emails == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.Emails(childComplexity), true
+
 	case "SemesterConfig.goDay0":
 		if e.complexity.SemesterConfig.GoDay0 == nil {
 			break
@@ -4511,6 +4546,12 @@ extend type Mutation {
   rmExamFromSlot(ancode: Int!): Boolean!
 }
 
+type Emails {
+  profs: String!
+  lbas: String!
+  fs: String!
+}
+
 type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
@@ -4518,6 +4559,7 @@ type SemesterConfig {
   goSlotsRaw: [[Int!]!]
   goSlots: [Slot!]!
   goDay0: Time!
+  emails: Emails!
 }
 
 type ExamDay {
@@ -8710,6 +8752,138 @@ func (ec *executionContext) fieldContext_Constraints_roomConstraints(_ context.C
 				return ec.fieldContext_RoomConstraints_seb(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RoomConstraints", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Emails_profs(ctx context.Context, field graphql.CollectedField, obj *model.Emails) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Emails_profs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Profs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Emails_profs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Emails",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Emails_lbas(ctx context.Context, field graphql.CollectedField, obj *model.Emails) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Emails_lbas(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Lbas, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Emails_lbas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Emails",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Emails_fs(ctx context.Context, field graphql.CollectedField, obj *model.Emails) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Emails_fs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Fs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Emails_fs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Emails",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -16830,6 +17004,8 @@ func (ec *executionContext) fieldContext_Plan_semesterConfig(_ context.Context, 
 				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
 			case "goDay0":
 				return ec.fieldContext_SemesterConfig_goDay0(ctx, field)
+			case "emails":
+				return ec.fieldContext_SemesterConfig_emails(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
 		},
@@ -19410,6 +19586,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
 			case "goDay0":
 				return ec.fieldContext_SemesterConfig_goDay0(ctx, field)
+			case "emails":
+				return ec.fieldContext_SemesterConfig_emails(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
 		},
@@ -25137,6 +25315,58 @@ func (ec *executionContext) fieldContext_SemesterConfig_goDay0(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfig_emails(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_emails(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Emails, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Emails)
+	fc.Result = res
+	return ec.marshalNEmails2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmails(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_emails(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "profs":
+				return ec.fieldContext_Emails_profs(ctx, field)
+			case "lbas":
+				return ec.fieldContext_Emails_lbas(ctx, field)
+			case "fs":
+				return ec.fieldContext_Emails_fs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Emails", field.Name)
 		},
 	}
 	return fc, nil
@@ -31268,6 +31498,55 @@ func (ec *executionContext) _Constraints(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var emailsImplementors = []string{"Emails"}
+
+func (ec *executionContext) _Emails(ctx context.Context, sel ast.SelectionSet, obj *model.Emails) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, emailsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Emails")
+		case "profs":
+			out.Values[i] = ec._Emails_profs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lbas":
+			out.Values[i] = ec._Emails_lbas(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fs":
+			out.Values[i] = ec._Emails_fs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var enhancedPrimussExamImplementors = []string{"EnhancedPrimussExam"}
 
 func (ec *executionContext) _EnhancedPrimussExam(ctx context.Context, sel ast.SelectionSet, obj *model.EnhancedPrimussExam) graphql.Marshaler {
@@ -35522,6 +35801,11 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "emails":
+			out.Values[i] = ec._SemesterConfig_emails(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -37183,6 +37467,16 @@ func (ec *executionContext) marshalNConnectedExam2ᚖgithubᚗcomᚋobcodeᚋple
 		return graphql.Null
 	}
 	return ec._ConnectedExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEmails2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmails(ctx context.Context, sel ast.SelectionSet, v *model.Emails) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Emails(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNEnhancedPrimussExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEnhancedPrimussExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EnhancedPrimussExam) graphql.Marshaler {

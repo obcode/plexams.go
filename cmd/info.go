@@ -17,6 +17,7 @@ var (
 		Use:   "info [subcommand]",
 		Short: "get info",
 		Long: `Get info.
+semester-config		   --- print config
 samename               --- exams with same module name
 goslots                --- info about slots for GO/GN
 request-rooms          --- which rooms to request
@@ -28,6 +29,8 @@ student name           --- get info for student.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			p := initPlexamsConfig()
 			switch args[0] {
+			case "semester-config":
+				p.PrintSemesterConfig()
 			case "samename":
 				p.PrintSameName()
 			case "goslots":

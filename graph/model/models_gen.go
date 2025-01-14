@@ -59,6 +59,12 @@ type Constraints struct {
 	RoomConstraints *RoomConstraints `json:"roomConstraints,omitempty"`
 }
 
+type Emails struct {
+	Profs string `json:"profs"`
+	Lbas  string `json:"lbas"`
+	Fs    string `json:"fs"`
+}
+
 type EnhancedPrimussExam struct {
 	Exam        *PrimussExam  `json:"exam"`
 	StudentRegs []*StudentReg `json:"studentRegs"`
@@ -353,6 +359,7 @@ type SemesterConfig struct {
 	GoSlotsRaw [][]int      `json:"goSlotsRaw,omitempty"`
 	GoSlots    []*Slot      `json:"goSlots"`
 	GoDay0     time.Time    `json:"goDay0"`
+	Emails     *Emails      `json:"emails"`
 }
 
 type Slot struct {

@@ -15,6 +15,7 @@ var (
 		Use:   "email [subcommand]",
 		Short: "send email",
 		Long: `Send emails.
+constraints --- ask for constraints,
 nta-with-room-alone --- send emails to students with room alone before planning,
 nta-planned --- send emails about rooms to all students with nta after planning,
 primuss-data [all|<ancode>] --- send emails to teachers about primuss data and nta.`,
@@ -22,6 +23,11 @@ primuss-data [all|<ancode>] --- send emails to teachers about primuss data and n
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
+			case "phase0":
+				err := plexams.SendEmailConstraints(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
 			case "nta-with-room-alone":
 				err := plexams.SendHandicapsMailsNTARoomAlone(context.Background(), run)
 				if err != nil {

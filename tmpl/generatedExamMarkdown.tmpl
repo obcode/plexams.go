@@ -1,0 +1,24 @@
+# Anmeldungen {{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}
+{{- range .Exam.PrimussExams }}
+{{ if ne (len .StudentRegs) 0 }}
+## Studiengang {{ .Exam.Program }}
+{{range $i, $reg := .StudentRegs }}
+{{ add $i 1 }}. {{ $reg.Name }}  
+{{- end}}
+
+{{if ne (len .Ntas) 0 -}}
+### Studierende mit Nachteilsausgleich (auch in der Liste aller Anmeldungen enthalten)
+{{ range $i, $reg := .Ntas}}
+{{ add $i 1 }}. {{$reg.Name}}: {{$reg.Compensation}}
+{{- end -}}      
+{{- else -}}
+Keine Nachteilsausgleiche bekannt.
+{{- end -}}
+{{ else }}
+## Studiengang {{ .Exam.Program }}
+
+Keine Anmeldungen
+{{- end -}}
+{{ end }}
+
+#### Markdown wurde generiert von https://github.com/obcode/plexams.go

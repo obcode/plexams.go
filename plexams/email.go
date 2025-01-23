@@ -223,11 +223,62 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 			p.semester, generatedExamMailData.Exam.ZpaExam.Module)
 	}
 
+	attachments := make([]*email.Attachment, 0, 1)
+
+	if generatedExamMailData.HasStudentRegs {
+		attachment := &email.Attachment{
+			Filename:    fmt.Sprintf("Anmeldungen-%d.csv", generatedExamMailData.Exam.Ancode),
+			ContentType: "text/csv; charset=\"utf-8\"",
+			Header:      map[string][]string{},
+			Content:     []byte("Mtknr;Name;Studiengang;Gruppe\n"),
+			HTMLRelated: false,
+		}
+
+		for _, primussExam := range generatedExamMailData.Exam.PrimussExams {
+			for _, studentReg := range primussExam.StudentRegs {
+				attachment.Content = append(attachment.Content,
+					[]byte(fmt.Sprintf("\"%s\";%s;%s;%s\n",
+						studentReg.Mtknr,
+						studentReg.Name,
+						studentReg.Program,
+						studentReg.Group,
+					))...)
+			}
+		}
+
+		attachments = append(attachments, attachment)
+
+		tmpl, err = template.New("generatedExamMarkdown.tmpl").Funcs(template.FuncMap{
+			"add": func(a, b int) int {
+				return a + b
+			},
+		}).ParseFiles("tmpl/generatedExamMarkdown.tmpl")
+		if err != nil {
+			return err
+		}
+		bufMD := new(bytes.Buffer)
+		err = tmpl.Execute(bufMD, generatedExamMailData)
+		if err != nil {
+			return err
+		}
+
+		attachment = &email.Attachment{
+			Filename:    fmt.Sprintf("Anmeldungen-%d.md", generatedExamMailData.Exam.Ancode),
+			ContentType: "text/plain; charset=\"utf-8\"",
+			Header:      map[string][]string{},
+			Content:     bufMD.Bytes(),
+			HTMLRelated: false,
+		}
+		attachments = append(attachments, attachment)
+
+	}
+
 	return p.sendMail([]string{to},
 		nil,
 		subject,
 		bufText.Bytes(),
 		bufHTML.Bytes(),
+		attachments,
 	)
 }
 
@@ -305,6 +356,7 @@ func (p *Plexams) SendHandicapsMailToMainExamer(ctx context.Context, to []string
 		fmt.Sprintf("[Prüfungsplanung %s] Nachteilausgleich(e) für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
 		bufHTML.Bytes(),
+		nil,
 	)
 }
 
@@ -392,6 +444,7 @@ func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, to []
 		fmt.Sprintf("[Prüfungsplanung %s] Eigener Raum für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
 		bufHTML.Bytes(),
+		nil,
 	)
 }
 
@@ -520,19 +573,21 @@ func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, to []st
 		fmt.Sprintf("[Prüfungsplanung %s] Räume für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
 		bufHTML.Bytes(),
+		nil,
 	)
 }
 
-func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte, html []byte) error {
+func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment) error {
 	e := &email.Email{
-		To:      to,
-		Cc:      cc,
-		Bcc:     []string{p.planer.Email},
-		From:    fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email),
-		Subject: subject,
-		Text:    text,
-		HTML:    html,
-		Headers: textproto.MIMEHeader{},
+		To:          to,
+		Cc:          cc,
+		Bcc:         []string{p.planer.Email},
+		From:        fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email),
+		Subject:     subject,
+		Text:        text,
+		HTML:        html,
+		Headers:     textproto.MIMEHeader{},
+		Attachments: attachments,
 	}
 
 	err := e.SendWithStartTLS(fmt.Sprintf("%s:%d", p.email.server, p.email.port),

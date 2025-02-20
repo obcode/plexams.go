@@ -16,6 +16,7 @@ type ExportNtas struct {
 
 type ExportPlannedRooms struct {
 	MainExamer       string       `json:"mainExamer"`
+	MainExamerID     int          `json:"mainExamerID"`
 	Module           string       `json:"module"`
 	Room             string       `json:"room"`
 	Date             string       `json:"date"`
@@ -81,6 +82,7 @@ func (p *Plexams) ExportPlannedRooms(jsonfile string) error {
 
 			exportPlannedRooms = append(exportPlannedRooms, &ExportPlannedRooms{
 				MainExamer:       exam.ZpaExam.MainExamer,
+				MainExamerID:     exam.ZpaExam.MainExamerID,
 				Module:           exam.ZpaExam.Module,
 				Room:             roomName,
 				Date:             starttime.Local().Format("02.01.2006"),

@@ -28,6 +28,7 @@ type SemesterConfig {
   goSlotsRaw: [[Int!]!]
   goSlots: [Slot!]!
   goDay0: Time!
+  fromFK07: Time!
   emails: Emails!
 }
 

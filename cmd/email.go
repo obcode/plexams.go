@@ -23,7 +23,7 @@ primuss-data [all|<ancode>] --- send emails to teachers about primuss data and n
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
-			case "phase0":
+			case "constraints":
 				err := plexams.SendEmailConstraints(context.Background(), run)
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)

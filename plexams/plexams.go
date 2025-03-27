@@ -216,6 +216,7 @@ func (p *Plexams) setSemesterConfig() {
 	if len(plan) > 0 {
 		// Days from ... until, no saturdays, no sundays
 		from := viper.GetTime("semesterConfig.from").Local()
+		// fromFK07 := viper.GetTime("semesterConfig.fromFK07").Local()
 		until := viper.GetTime("semesterConfig.until").Local()
 		days := make([]*model.ExamDay, 0)
 		day := from

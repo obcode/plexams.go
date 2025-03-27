@@ -1,8 +1,97 @@
 package plexams
 
-import "context"
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"html/template"
+	"time"
+
+	"github.com/logrusorgru/aurora"
+	"github.com/rs/zerolog/log"
+	"github.com/theckman/yacspin"
+)
+
+type ConstraintsEmail struct {
+	FromDate     string
+	FromFK07Date string
+	ToDate       string
+	FeedbackDate string
+	PlanerName   string
+}
 
 func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
+	cfg := yacspin.Config{
+		Frequency:         100 * time.Millisecond,
+		CharSet:           yacspin.CharSets[69],
+		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email asking for constraints")),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error happend",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
 
-	return nil
+	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
+
+	contraintsEmailData := &ConstraintsEmail{
+		FromDate:     "",
+		FromFK07Date: "",
+		ToDate:       "",
+		PlanerName:   p.planer.Name,
+		FeedbackDate: feedbackDate,
+	}
+
+	tmpl, err := template.ParseFiles("tmpl/constraintsEmail.tmpl")
+	if err != nil {
+		return err
+	}
+	bufText := new(bytes.Buffer)
+	err = tmpl.Execute(bufText, contraintsEmailData)
+	if err != nil {
+		return err
+	}
+
+	tmpl, err = template.ParseFiles("tmpl/constraintsEmailHTML.tmpl")
+	if err != nil {
+		return err
+	}
+	bufHTML := new(bytes.Buffer)
+	err = tmpl.Execute(bufHTML, contraintsEmailData)
+	if err != nil {
+		return err
+	}
+
+	subject := fmt.Sprintf("[Prüfungsplanung %s] Besonderheiten für die Prüfungsplanung - Rückmeldung bis spätestens %s",
+		p.semester, feedbackDate)
+
+	err = spinner.Stop()
+
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot stop spinner")
+	}
+
+	var to []string
+	if run {
+		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas}
+	} else {
+		to = []string{"galority@gmail.com"}
+	}
+
+	return p.sendMail(to,
+		nil,
+		subject,
+		bufText.Bytes(),
+		bufHTML.Bytes(),
+		nil,
+	)
 }

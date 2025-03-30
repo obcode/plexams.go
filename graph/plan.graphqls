@@ -3,6 +3,8 @@ extend type Query {
   ancodesInPlan: [Int!]
   examerInPlan: [ExamerInPlan!]
 
+  preExamsInSlot(day: Int!, time: Int!): [ZPAExam!]
+
   examsInSlot(day: Int!, time: Int!): [PlannedExam!]
   examsWithoutSlot: [PlannedExam!]!
 

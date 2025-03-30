@@ -61,6 +61,37 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 	})
 }
 
+func (p *Plexams) PreAddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int) (bool, error) {
+	var slot *model.Slot
+
+	for _, s := range p.semesterConfig.Slots {
+		if s.DayNumber == dayNumber && s.SlotNumber == timeNumber {
+			slot = s
+			break
+		}
+	}
+
+	if slot == nil {
+		err := fmt.Errorf("slot (%d,%d) does not exist", dayNumber, timeNumber)
+		log.Error().Err(err).Int("day", dayNumber).Int("slot", timeNumber).Msg("slot does not exist")
+		return false, err
+	}
+
+	// check if exam with ancode exists
+	exam, err := p.GetZPAExam(ctx, ancode)
+	if err != nil || exam == nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("zpa exam does not exist")
+		return false, err
+	}
+
+	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
+		DayNumber:  slot.DayNumber,
+		SlotNumber: slot.SlotNumber,
+		Ancode:     ancode,
+		Locked:     false,
+	})
+}
+
 func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
 	exam, err := p.GeneratedExam(ctx, ancode)
 	if err != nil {

@@ -359,6 +359,7 @@ type SemesterConfig struct {
 	GoSlotsRaw [][]int      `json:"goSlotsRaw,omitempty"`
 	GoSlots    []*Slot      `json:"goSlots"`
 	GoDay0     time.Time    `json:"goDay0"`
+	FromFk07   time.Time    `json:"fromFK07"`
 	Emails     *Emails      `json:"emails"`
 }
 

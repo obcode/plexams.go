@@ -279,6 +279,7 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 		bufText.Bytes(),
 		bufHTML.Bytes(),
 		attachments,
+		false,
 	)
 }
 
@@ -357,6 +358,7 @@ func (p *Plexams) SendHandicapsMailToMainExamer(ctx context.Context, to []string
 		bufText.Bytes(),
 		bufHTML.Bytes(),
 		nil,
+		false,
 	)
 }
 
@@ -445,6 +447,7 @@ func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, to []
 		bufText.Bytes(),
 		bufHTML.Bytes(),
 		nil,
+		false,
 	)
 }
 
@@ -574,10 +577,11 @@ func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, to []st
 		bufText.Bytes(),
 		bufHTML.Bytes(),
 		nil,
+		true,
 	)
 }
 
-func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment) error {
+func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, noreply bool) error {
 	e := &email.Email{
 		To:          to,
 		Cc:          cc,
@@ -588,6 +592,10 @@ func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte
 		HTML:        html,
 		Headers:     textproto.MIMEHeader{},
 		Attachments: attachments,
+	}
+
+	if noreply {
+		e.ReplyTo = []string{"obraun+noreply@hm.edu"}
 	}
 
 	err := e.SendWithStartTLS(fmt.Sprintf("%s:%d", p.email.server, p.email.port),

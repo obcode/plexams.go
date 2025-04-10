@@ -15,7 +15,7 @@ import (
 type ConstraintsEmail struct {
 	FromDate     string
 	FromFK07Date string
-	ToDate       string
+	UntilDate    string
 	FeedbackDate string
 	PlanerName   string
 }
@@ -44,9 +44,9 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
 
 	contraintsEmailData := &ConstraintsEmail{
-		FromDate:     "",
-		FromFK07Date: "",
-		ToDate:       "",
+		FromDate:     p.semesterConfig.From.Format("02.01.06"),
+		FromFK07Date: p.semesterConfig.FromFk07.Format("02.01.06"),
+		UntilDate:    p.semesterConfig.Until.Format("02.01.06"),
 		PlanerName:   p.planer.Name,
 		FeedbackDate: feedbackDate,
 	}
@@ -93,5 +93,6 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
 		bufText.Bytes(),
 		bufHTML.Bytes(),
 		nil,
+		true,
 	)
 }

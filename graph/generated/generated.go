@@ -560,12 +560,14 @@ type ComplexityRoot struct {
 	SemesterConfig struct {
 		Days       func(childComplexity int) int
 		Emails     func(childComplexity int) int
+		From       func(childComplexity int) int
 		FromFk07   func(childComplexity int) int
 		GoDay0     func(childComplexity int) int
 		GoSlots    func(childComplexity int) int
 		GoSlotsRaw func(childComplexity int) int
 		Slots      func(childComplexity int) int
 		Starttimes func(childComplexity int) int
+		Until      func(childComplexity int) int
 	}
 
 	Slot struct {
@@ -3514,6 +3516,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SemesterConfig.Emails(childComplexity), true
 
+	case "SemesterConfig.from":
+		if e.complexity.SemesterConfig.From == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.From(childComplexity), true
+
 	case "SemesterConfig.fromFK07":
 		if e.complexity.SemesterConfig.FromFk07 == nil {
 			break
@@ -3555,6 +3564,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SemesterConfig.Starttimes(childComplexity), true
+
+	case "SemesterConfig.until":
+		if e.complexity.SemesterConfig.Until == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.Until(childComplexity), true
 
 	case "Slot.dayNumber":
 		if e.complexity.Slot.DayNumber == nil {
@@ -4583,7 +4599,9 @@ type SemesterConfig {
   goSlotsRaw: [[Int!]!]
   goSlots: [Slot!]!
   goDay0: Time!
+  from: Time!
   fromFK07: Time!
+  until: Time!
   emails: Emails!
 }
 
@@ -16836,8 +16854,12 @@ func (ec *executionContext) fieldContext_Plan_semesterConfig(_ context.Context, 
 				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
 			case "goDay0":
 				return ec.fieldContext_SemesterConfig_goDay0(ctx, field)
+			case "from":
+				return ec.fieldContext_SemesterConfig_from(ctx, field)
 			case "fromFK07":
 				return ec.fieldContext_SemesterConfig_fromFK07(ctx, field)
+			case "until":
+				return ec.fieldContext_SemesterConfig_until(ctx, field)
 			case "emails":
 				return ec.fieldContext_SemesterConfig_emails(ctx, field)
 			}
@@ -19420,8 +19442,12 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
 			case "goDay0":
 				return ec.fieldContext_SemesterConfig_goDay0(ctx, field)
+			case "from":
+				return ec.fieldContext_SemesterConfig_from(ctx, field)
 			case "fromFK07":
 				return ec.fieldContext_SemesterConfig_fromFK07(ctx, field)
+			case "until":
+				return ec.fieldContext_SemesterConfig_until(ctx, field)
 			case "emails":
 				return ec.fieldContext_SemesterConfig_emails(ctx, field)
 			}
@@ -25236,6 +25262,50 @@ func (ec *executionContext) fieldContext_SemesterConfig_goDay0(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _SemesterConfig_from(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_from(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.From, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_from(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SemesterConfig_fromFK07(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SemesterConfig_fromFK07(ctx, field)
 	if err != nil {
@@ -25268,6 +25338,50 @@ func (ec *executionContext) _SemesterConfig_fromFK07(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_SemesterConfig_fromFK07(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfig_until(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_until(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Until, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_until(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SemesterConfig",
 		Field:      field,
@@ -35958,8 +36072,18 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "from":
+			out.Values[i] = ec._SemesterConfig_from(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "fromFK07":
 			out.Values[i] = ec._SemesterConfig_fromFK07(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "until":
+			out.Values[i] = ec._SemesterConfig_until(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

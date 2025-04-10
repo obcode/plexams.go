@@ -2,16 +2,19 @@
 
 Liebe Prüfende,
 
-wie in den letzten Semestern plane ich alle Prüfungen in denen der Eintrag
-in der Spalte Prüfungsform unter 
-https://zpa.cs.hm.edu/public/exam_means_list/
-die Zeichenkette schriftlich enthält.
+als Prüfungsplaner der FK07 plane ich alle Prüfungen,
+in denen der Eintrag in der Spalte Prüfungsform unter https://zpa.cs.hm.edu/public/exam_means_list/
+die Zeichenkette schriftlich enthält, im Prüfungszeitraum vom {{ .FromFK07Date }} bis {{ .UntilDate }}.
+{{if ne .FromDate .FromFK07Date}}
+  Bitte beachten Sie, dass die anderen, an unseren Studiengängen beteiligten, Fakultäten teilweise früher,
+  ab dem {{ .FromDate }}, mit den Prüfungen beginnen.
+{{end}}
 
 Sollten Sie eine praktische Prüfung im Prüfungszeitraum durchführen wollen,
 teilen Sie mir das bitte mit. Die Prüfung werde ich dann auch planen.
 
 Bitte teilen Sie mir Besonderheiten mit, die ich bei der Planung Ihrer Prüfung beachten muss.
-Öffnen Sie dazu ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13
+Öffnen Sie dazu ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13.
 
 Verwenden Sie als Ticket-Art entweder "Anforderungen an die Raumplanung" oder "allgemeine Anforderungen an Prüfungen".
 
@@ -33,6 +36,7 @@ Rückmeldung bitte bis {{ .FeedbackDate }}.
 
 Mit freundlichen Grüßen
 {{ .PlanerName }}
+Prüfungsplaner der FK07
 
 -- 
 Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

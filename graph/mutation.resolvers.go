@@ -46,51 +46,6 @@ func (r *mutationResolver) AddNta(ctx context.Context, input model.NTAInput) (*m
 	return r.plexams.AddNta(ctx, input)
 }
 
-// NotPlannedByMe is the resolver for the notPlannedByMe field.
-func (r *mutationResolver) NotPlannedByMe(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.NotPlannedByMe(ctx, ancode)
-}
-
-// ExcludeDays is the resolver for the excludeDays field.
-func (r *mutationResolver) ExcludeDays(ctx context.Context, ancode int, days []string) (bool, error) {
-	return r.plexams.ExcludeDays(ctx, ancode, days)
-}
-
-// PossibleDays is the resolver for the possibleDays field.
-func (r *mutationResolver) PossibleDays(ctx context.Context, ancode int, days []string) (bool, error) {
-	return r.plexams.PossibleDays(ctx, ancode, days)
-}
-
-// SameSlot is the resolver for the sameSlot field.
-func (r *mutationResolver) SameSlot(ctx context.Context, ancode int, ancodes []int) (bool, error) {
-	return r.plexams.SameSlot(ctx, ancode, ancodes)
-}
-
-// RoomWithSockets is the resolver for the roomWithSockets field.
-func (r *mutationResolver) PlacesWithSockets(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.PlacesWithSockets(ctx, ancode)
-}
-
-// Lab is the resolver for the lab field.
-func (r *mutationResolver) Lab(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.Lab(ctx, ancode)
-}
-
-// Exahm is the resolver for the exahm field.
-func (r *mutationResolver) Exahm(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.Exahm(ctx, ancode)
-}
-
-// Seb is the resolver for the seb field.
-func (r *mutationResolver) Seb(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.SafeExamBrowser(ctx, ancode)
-}
-
-// Online is the resolver for the online field.
-func (r *mutationResolver) Online(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.Online(ctx, ancode)
-}
-
 // AddExamGroupToSlot is the resolver for the addExamGroupToSlot field.
 func (r *mutationResolver) AddExamGroupToSlot(ctx context.Context, day int, time int, examGroupCode int) (bool, error) {
 	return r.plexams.AddExamGroupToSlot(ctx, day, time, examGroupCode)

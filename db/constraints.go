@@ -348,3 +348,33 @@ func (db *DB) GetConstraints(ctx context.Context) ([]*model.Constraints, error) 
 
 	return constraints, nil
 }
+
+func (db *DB) AddConstraints(ctx context.Context, ancode int, constraints *model.Constraints) (*model.Constraints, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
+
+	res, err := collection.ReplaceOne(ctx, bson.D{{Key: "ancode", Value: ancode}}, constraints)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot add constraints")
+		return nil, err
+	}
+	if res.MatchedCount == 0 {
+		_, err = collection.InsertOne(ctx, constraints)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot add constraints")
+			return nil, err
+		}
+	}
+	return db.GetConstraintsForAncode(ctx, ancode)
+}
+
+func (db *DB) RmConstraints(ctx context.Context, ancode int) (bool, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
+
+	_, err := collection.DeleteOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
+	if err != nil {
+		log.Debug().Err(err).Int("ancode", ancode).Msg("cannot delete constraints")
+		return false, err
+	}
+
+	return true, nil
+}

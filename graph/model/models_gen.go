@@ -59,6 +59,20 @@ type Constraints struct {
 	RoomConstraints *RoomConstraints `json:"roomConstraints,omitempty"`
 }
 
+type ConstraintsInput struct {
+	NotPlannedByMe   *bool        `json:"notPlannedByMe,omitempty"`
+	ExcludeDays      []*time.Time `json:"excludeDays,omitempty"`
+	PossibleDays     []*time.Time `json:"possibleDays,omitempty"`
+	FixedDay         *time.Time   `json:"fixedDay,omitempty"`
+	FixedTime        *time.Time   `json:"fixedTime,omitempty"`
+	SameSlot         []int        `json:"sameSlot,omitempty"`
+	Online           *bool        `json:"online,omitempty"`
+	PlacesWithSocket *bool        `json:"placesWithSocket,omitempty"`
+	Lab              *bool        `json:"lab,omitempty"`
+	Exahm            *bool        `json:"exahm,omitempty"`
+	Seb              *bool        `json:"seb,omitempty"`
+}
+
 type Emails struct {
 	Profs string `json:"profs"`
 	Lbas  string `json:"lbas"`

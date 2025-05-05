@@ -10,16 +10,7 @@ type Mutation {
   removePrimussExam(input: PrimussExamInput): Boolean!
   # prepareExams(input: [PrimussExamInput!]!): Boolean!
   addNTA(input: NTAInput!): NTA!
-  # Contraints
-  notPlannedByMe(ancode: Int!): Boolean!
-  excludeDays(ancode: Int!, days: [String!]!): Boolean!
-  possibleDays(ancode: Int!, days: [String!]!): Boolean!
-  sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
-  placesWithSockets(ancode: Int!): Boolean!
-  lab(ancode: Int!): Boolean!
-  exahm(ancode: Int!): Boolean!
-  seb(ancode: Int!): Boolean!
-  online(ancode: Int!): Boolean!
+
   # Plan
   addExamGroupToSlot(day: Int!, time: Int!, examGroupCode: Int!): Boolean!
   rmExamGroupFromSlot(examGroupCode: Int!): Boolean!

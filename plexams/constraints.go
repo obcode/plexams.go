@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -128,4 +129,124 @@ func (p *Plexams) ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.Z
 	}
 
 	return examsWithConstraints, nil
+}
+
+func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInput model.ConstraintsInput) (*model.Constraints, error) {
+	log.Debug().Int("ancode", ancode).Interface("constraintsInput", constraintsInput).
+		Msg("adding constraints")
+	constraints := &model.Constraints{
+		Ancode: ancode,
+	}
+	if constraintsInput.NotPlannedByMe != nil && *constraintsInput.NotPlannedByMe {
+		constraints.NotPlannedByMe = *constraintsInput.NotPlannedByMe
+	} else { // ignore everything else if exam is not planned by me
+		if constraintsInput.Online != nil && *constraintsInput.Online {
+			constraints.Online = *constraintsInput.Online
+		}
+		if constraintsInput.PlacesWithSocket != nil ||
+			constraintsInput.Lab != nil ||
+			constraintsInput.Seb != nil ||
+			constraintsInput.Exahm != nil {
+			constraints.RoomConstraints = &model.RoomConstraints{}
+			if constraintsInput.PlacesWithSocket != nil && *constraintsInput.PlacesWithSocket {
+				constraints.RoomConstraints.PlacesWithSocket = *constraintsInput.PlacesWithSocket
+			}
+			if constraintsInput.Lab != nil && *constraintsInput.Lab {
+				constraints.RoomConstraints.Lab = *constraintsInput.Lab
+			}
+			if constraintsInput.Seb != nil && *constraintsInput.Seb {
+				constraints.RoomConstraints.Seb = *constraintsInput.Seb
+			}
+			if constraintsInput.Exahm != nil && *constraintsInput.Exahm {
+				constraints.RoomConstraints.Exahm = *constraintsInput.Exahm
+			}
+		}
+		constraints.FixedDay = constraintsInput.FixedDay
+		constraints.FixedTime = constraintsInput.FixedTime
+		constraints.ExcludeDays = constraintsInput.ExcludeDays
+		constraints.PossibleDays = constraintsInput.PossibleDays
+
+		existingConstraints, err := p.dbClient.GetConstraintsForAncode(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("error while trying top get constraints for ancode")
+			return nil, err
+		}
+		if existingConstraints != nil {
+			if len(existingConstraints.SameSlot) > 0 {
+				ancodesToRemove := make([]int, 0)
+				existingAncodes := make(map[int]bool)
+				for _, existingAncode := range existingConstraints.SameSlot {
+					existingAncodes[existingAncode] = true
+				}
+				for _, inputAncode := range constraintsInput.SameSlot {
+					delete(existingAncodes, inputAncode)
+				}
+				for ancode := range existingAncodes {
+					ancodesToRemove = append(ancodesToRemove, ancode)
+				}
+				for _, ancodeToRemove := range ancodesToRemove {
+					// rm same slot constraints from all other constraints
+					_, err := p.rmSameSlotConstraints(ctx, ancodeToRemove)
+					if err != nil {
+						log.Error().Err(err).Int("ancode", ancode).Int("ancodeToRemove", ancodeToRemove).
+							Msg("cannot remove ancode from same slot constraints")
+					}
+				}
+			}
+		}
+		if len(constraintsInput.SameSlot) > 0 {
+			constraints.SameSlot = constraintsInput.SameSlot
+			for _, ancodeToAdd := range constraintsInput.SameSlot {
+				_, err := p.addAncodeToSameSlotConstraints(ctx, ancodeToAdd, append(constraintsInput.SameSlot, ancode))
+				if err != nil {
+					log.Error().Err(err).Int("ancode", ancode).Int("ancodeToAdd", ancodeToAdd).
+						Msg("cannot add ancode to same slot constraints")
+				}
+			}
+		}
+	}
+
+	return p.dbClient.AddConstraints(ctx, ancode, constraints)
+}
+
+func (p *Plexams) addAncodeToSameSlotConstraints(ctx context.Context, ancode int, ancodesToAdd []int) (*model.Constraints, error) {
+	constraints, err := p.dbClient.GetConstraintsForAncode(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("error while trying top get constraints for ancode")
+	}
+	if constraints == nil {
+		constraints = &model.Constraints{
+			Ancode: ancode,
+		}
+	}
+
+	uniqueSameSlotMap := make(map[int]bool)
+	for _, otherAncode := range ancodesToAdd {
+		if otherAncode != ancode {
+			uniqueSameSlotMap[otherAncode] = true
+		}
+	}
+
+	uniqueSameSlot := make([]int, 0, len(uniqueSameSlotMap))
+	for ancode := range uniqueSameSlotMap {
+		uniqueSameSlot = append(uniqueSameSlot, ancode)
+	}
+	sort.Ints(uniqueSameSlot)
+	constraints.SameSlot = uniqueSameSlot
+
+	return p.dbClient.AddConstraints(ctx, ancode, constraints)
+}
+
+func (p *Plexams) rmSameSlotConstraints(ctx context.Context, ancode int) (*model.Constraints, error) {
+	constraints, err := p.dbClient.GetConstraintsForAncode(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("error while trying top get constraints for ancode")
+	}
+	constraints.SameSlot = nil
+
+	return p.dbClient.AddConstraints(ctx, ancode, constraints)
+}
+
+func (p *Plexams) RmConstraints(ctx context.Context, ancode int) (bool, error) {
+	return p.dbClient.RmConstraints(ctx, ancode)
 }

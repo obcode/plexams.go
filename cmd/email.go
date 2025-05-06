@@ -16,6 +16,7 @@ var (
 		Short: "send email",
 		Long: `Send emails.
 constraints --- ask for constraints,
+prepared --- announce exams to plan and constraints,
 nta-with-room-alone --- send emails to students with room alone before planning,
 nta-planned --- send emails about rooms to all students with nta after planning,
 primuss-data [all|<ancode>] --- send emails to teachers about primuss data and nta.`,
@@ -25,6 +26,11 @@ primuss-data [all|<ancode>] --- send emails to teachers about primuss data and n
 			switch args[0] {
 			case "constraints":
 				err := plexams.SendEmailConstraints(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "prepared":
+				err := plexams.SendEmailPrepared(context.Background(), run)
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

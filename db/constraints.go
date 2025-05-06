@@ -325,7 +325,7 @@ func (db *DB) GetConstraints(ctx context.Context) ([]*model.Constraints, error) 
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionConstraints).Msg("MongoDB Find")
 		return constraints, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	// TODO: replace all cur.Next with cur.All
 	for cur.Next(ctx) {

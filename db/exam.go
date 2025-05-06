@@ -34,7 +34,7 @@ func (db *DB) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, err
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameAdditionalExams).Msg("MongoDB Find")
 		return exams, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	for cur.Next(ctx) {
 		var exam model.AdditionalExam
@@ -146,7 +146,7 @@ func (db *DB) ExamsWithRegs(ctx context.Context) ([]*model.ExamWithRegs, error) 
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameExamsWithRegs).Msg("MongoDB Find")
 		return exams, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	for cur.Next(ctx) {
 		var exam model.ExamWithRegs
@@ -179,7 +179,7 @@ func (db *DB) ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error) {
 	if err != nil {
 		log.Error().Err(err).Msg("error while trying to find exams in plan")
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	exams := make([]*model.ExamInPlan, 0)
 

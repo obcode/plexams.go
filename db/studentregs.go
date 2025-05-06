@@ -22,7 +22,7 @@ func (db *DB) GetStudentRegsPerAncodePlanned(ctx context.Context) ([]*model.Stud
 		log.Error().Err(err).Str("semester", db.semester).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	for cur.Next(ctx) {
 		var studentReg model.StudentRegsPerAncode
@@ -56,7 +56,7 @@ func (db *DB) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.Studen
 		log.Error().Err(err).Str("semester", db.semester).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	studentRegs := make([]*model.Student, 0)
 
@@ -78,7 +78,7 @@ func (db *DB) StudentRegsPerStudentAll(ctx context.Context) ([]*model.StudentReg
 		log.Error().Err(err).Str("semester", db.semester).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	studentRegs := make([]*model.StudentRegsPerStudent, 0)
 
@@ -113,7 +113,7 @@ func (db *DB) StudentByMtknr(ctx context.Context, mtknr string, ntas map[string]
 			log.Error().Err(err).Str("collection", collectionName).Str("mtkntr", mtknr).
 				Msg("error while searching for student in collection")
 		}
-		defer cur.Close(ctx)
+		defer cur.Close(ctx) //nolint:errcheck
 
 		var results []*model.StudentReg
 
@@ -196,7 +196,7 @@ func (db *DB) StudentsByName(ctx context.Context, regex string) ([]*model.Studen
 			log.Error().Err(err).Str("collection", collectionName).Str("regex", regex).
 				Msg("error while searching for student in collection")
 		}
-		defer cur.Close(ctx)
+		defer cur.Close(ctx) //nolint:errcheck
 
 		for cur.Next(ctx) {
 			mtknr := cur.Current.Lookup("MTKNR").StringValue()

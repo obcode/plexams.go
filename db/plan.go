@@ -67,7 +67,7 @@ func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.P
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	planEntries := make([]*model.PlanEntry, 0)
 
@@ -117,7 +117,7 @@ func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	planEntries := make([]*model.PlanEntry, 0)
 	err = cur.All(ctx, &planEntries)
@@ -137,7 +137,7 @@ func (db *DB) PlannedAncodes(ctx context.Context) ([]*model.PlanEntry, error) {
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("cannot get plan ancode entries")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	planEntries := make([]*model.PlanEntry, 0)
 	err = cur.All(ctx, &planEntries)

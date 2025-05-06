@@ -30,7 +30,7 @@ func (db *DB) NonZpaExams(ctx context.Context) ([]*model.ZPAExam, error) {
 		log.Error().Err(err).Msg("cannot get non zpa exams")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	err = cur.All(ctx, &exams)
 	if err != nil {

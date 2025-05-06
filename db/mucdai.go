@@ -31,7 +31,7 @@ func (db *DB) MucDaiExamsForProgram(ctx context.Context, program string) ([]*Muc
 		log.Error().Err(err).Str("program", program).Msg("cannot get exams for MUC.DAI program")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	exams := make([]*MucDaiExam, 0)
 	err = cur.All(ctx, &exams)

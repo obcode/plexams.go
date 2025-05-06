@@ -25,7 +25,7 @@ func (db *DB) GetZPAExams(ctx context.Context) ([]*model.ZPAExam, error) {
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", "zpaexams").Msg("MongoDB Find")
 		return exams, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	addedAncodes, err := db.GetAddedAncodes(ctx)
 	if err != nil {
@@ -285,7 +285,7 @@ func (db *DB) getZpaAncodesPlannedOrNot(ctx context.Context, toPlan *bool) (*set
 		log.Error().Err(err).Interface("toPlan", toPlan).Msg("cannot get zpa exams to plan")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	result := make([]*ExamToPlanType, 0)
 

@@ -219,7 +219,7 @@ func removeSlotsForDay(allSlots []*model.Slot, day *time.Time) []*model.Slot {
 	slots := make([]*model.Slot, 0)
 
 	for _, slot := range allSlots {
-		if !(day.Local().Day() == slot.Starttime.Local().Day() && day.Local().Month() == slot.Starttime.Local().Month()) {
+		if day.Local().Day() != slot.Starttime.Local().Day() || day.Local().Month() != slot.Starttime.Local().Month() {
 			slots = append(slots, slot)
 		}
 	}

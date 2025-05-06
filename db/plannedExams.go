@@ -23,7 +23,7 @@ func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.Exam
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	exams := make([]*model.ExamInPlan, 0)
 	err = cur.All(ctx, &exams)
@@ -46,7 +46,7 @@ func (db *DB) PlannedExamsByMainExamer(ctx context.Context, examerID int) ([]*mo
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	exams := make([]*model.ExamInPlan, 0)
 	err = cur.All(ctx, &exams)

@@ -109,7 +109,7 @@ func (db *DB) invigilationsForInvigilator(ctx context.Context, collectionName st
 		log.Error().Err(err).Str("collection", collectionSelfInvigilations).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	invigilations := make([]*model.Invigilation, 0)
 	err = cur.All(ctx, &invigilations)
@@ -144,7 +144,7 @@ func (db *DB) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilation, 
 		log.Error().Err(err).Msg("cannot get invgilations")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	invigilations := make([]*model.Invigilation, 0)
 	err = cur.All(ctx, &invigilations)
@@ -164,7 +164,7 @@ func (db *DB) GetOtherInvigilations(ctx context.Context) ([]*model.Invigilation,
 		log.Error().Err(err).Msg("cannot get invgilations")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	invigilations := make([]*model.Invigilation, 0)
 	err = cur.All(ctx, &invigilations)

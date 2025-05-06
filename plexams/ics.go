@@ -20,7 +20,7 @@ func (p *Plexams) ReadMucdaiICS(filename string) error {
 		fmt.Printf("Fehler beim Öffnen der Datei: %v\n", err)
 		return err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	// iCal-Datei parsen
 	cal, err := ical.ParseCalendar(file)

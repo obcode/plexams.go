@@ -606,11 +606,7 @@ func (p *Plexams) PrepareRoomForExams() error {
 		examRooms = append(examRooms, p.setRoomsToUse(prepareRoomsCfg, exams, slotWithRooms)...)
 
 		// rooms without NTA
-		for {
-			if len(exams) == 0 {
-				break
-			}
-
+		for len(exams) != 0 {
 			sort.Slice(exams, func(i, j int) bool {
 				return len(exams[i].NormalRegsMtknr)+len(exams[i].Ntas) > len(exams[j].NormalRegsMtknr)+len(exams[j].Ntas)
 			})

@@ -22,7 +22,7 @@ func (db *DB) GetPrimussStudentRegsForProgrammAncode(ctx context.Context, progra
 		log.Error().Err(err).Int("ancode", ancode).Str("program", program).Msg("MongoDB Find (studentregs)")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	var studentRegs []*model.StudentReg
 
@@ -45,7 +45,7 @@ func (db *DB) GetPrimussStudentRegsPerAncode(ctx context.Context, program string
 		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("MongoDB Find (studentregs)")
 		return studentRegs, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	for cur.Next(ctx) {
 		var studentReg model.StudentReg
@@ -90,7 +90,7 @@ func (db *DB) GetPrimussStudentRegsPerStudent(ctx context.Context, program strin
 		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("MongoDB Find (studentregs)")
 		return studentRegs, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	for cur.Next(ctx) {
 		var studentReg model.StudentReg
@@ -129,7 +129,7 @@ func (db *DB) StudentRegsForProgram(ctx context.Context, program string) ([]*mod
 		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("MongoDB Find (studentregs)")
 		return studentRegs, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	for cur.Next(ctx) {
 		var studentReg model.StudentReg
@@ -283,7 +283,7 @@ func (db *DB) GetRegsWithErrors(ctx context.Context) ([]*model.RegWithError, err
 		log.Error().Err(err).Str("semester", db.semester).Msg("MongoDB Find (reg with errors)")
 		return regWithErrors, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	for cur.Next(ctx) {
 		var regWithError model.RegWithError

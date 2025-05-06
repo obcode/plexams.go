@@ -218,13 +218,13 @@ func (p *Plexams) setSemesterConfig() {
 		from := viper.GetTime("semesterConfig.from").Local()
 		until := viper.GetTime("semesterConfig.until").Local()
 		days := make([]*model.ExamDay, 0)
-		day := from
+		day := time.Date(from.Year(), from.Month(), from.Day(), 12, 0, 0, 0, time.Local)
 		number := 1
-		for !day.After(until) {
+		for !day.After(until.Add(23 * time.Hour)) {
 			if day.Weekday() != time.Saturday && day.Weekday() != time.Sunday {
 				days = append(days, &model.ExamDay{
 					Number: number,
-					Date:   time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.Local),
+					Date:   time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local),
 				})
 				number++
 			}

@@ -27,7 +27,7 @@ func (db *DB) ExternalExams(ctx context.Context) ([]*model.ExternalExam, error) 
 		log.Error().Err(err).Msg("cannot get external exams")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	var result []*model.ExternalExam
 	err = cur.All(ctx, &result)

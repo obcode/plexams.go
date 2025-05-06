@@ -81,7 +81,7 @@ func (algorithm *Algorithm) NRuns(n int) ([]*model.PlanEntry, error) {
 	// plan := algorithm.moveSlotsToFront(bestPlan)
 	plan := bestPlan
 	if !plan.validate() {
-		return nil, errors.New("No Valid Plan found")
+		return nil, errors.New("no Valid Plan found")
 	}
 
 	var exportPlan []*model.PlanEntry

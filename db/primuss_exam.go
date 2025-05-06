@@ -134,7 +134,7 @@ func (db *DB) getPrimussExams(ctx context.Context, program string) ([]*model.Pri
 		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("MongoDB Find")
 		return exams, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	err = cur.All(ctx, &exams)
 

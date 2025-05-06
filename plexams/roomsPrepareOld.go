@@ -415,11 +415,7 @@ func (p *Plexams) PrepareRoomForExamsOld() error {
 		plannedRoomsWithFreeSeats := make(map[string]PlannedRoomsWithFreeSeats)
 
 		// rooms without NTA
-		for {
-			if len(exams) == 0 {
-				break
-			}
-
+		for len(exams) != 0 {
 			sort.Slice(exams, func(i, j int) bool {
 				return len(exams[i].NormalRegsMtknr)+len(exams[i].Ntas) > len(exams[j].NormalRegsMtknr)+len(exams[j].Ntas)
 			})

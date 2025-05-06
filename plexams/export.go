@@ -101,7 +101,7 @@ func (p *Plexams) ExportPlannedRooms(jsonfile string) error {
 		log.Error().Err(err).Msg("cannot create JSON file")
 		return err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")

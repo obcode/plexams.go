@@ -31,6 +31,7 @@ func (r *mutationResolver) RmZpaExamFromPlan(ctx context.Context, ancode int) (b
 	return r.plexams.RmZpaExamFromPlan(ctx, ancode)
 }
 
+// Deprecated: rm me
 // AddAdditionalExam is the resolver for the addAdditionalExam field.
 func (r *mutationResolver) AddAdditionalExam(ctx context.Context, exam model.AdditionalExamInput) (bool, error) {
 	return r.plexams.AddAdditionalExam(ctx, exam)
@@ -46,6 +47,7 @@ func (r *mutationResolver) AddNta(ctx context.Context, input model.NTAInput) (*m
 	return r.plexams.AddNta(ctx, input)
 }
 
+// Deprecated: rm me
 // AddExamGroupToSlot is the resolver for the addExamGroupToSlot field.
 func (r *mutationResolver) AddExamGroupToSlot(ctx context.Context, day int, time int, examGroupCode int) (bool, error) {
 	return r.plexams.AddExamGroupToSlot(ctx, day, time, examGroupCode)

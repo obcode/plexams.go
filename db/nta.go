@@ -52,7 +52,7 @@ func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	ntas := make([]*model.NTA, 0)
 	err = cur.All(ctx, &ntas)
@@ -102,7 +102,7 @@ func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
 		log.Error().Err(err).Str("collection", "nta").Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	ntas := make([]*model.Student, 0)
 	err = cur.All(ctx, &ntas)

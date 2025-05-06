@@ -37,6 +37,7 @@ func (r *queryResolver) SemesterConfig(ctx context.Context) (*model.SemesterConf
 	return r.plexams.GetSemesterConfig(), nil
 }
 
+// Deprecated: rm me
 // AdditionalExams is the resolver for the additionalExams field.
 func (r *queryResolver) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error) {
 	return r.plexams.AdditionalExams(ctx)
@@ -57,11 +58,13 @@ func (r *queryResolver) StudentRegsForProgram(ctx context.Context, program strin
 	return r.plexams.StudentRegsForProgram(ctx, program)
 }
 
+// Deprecated: rm me
 // ExamWithRegs is the resolver for the examWithRegs field.
 func (r *queryResolver) ExamWithRegs(ctx context.Context, ancode int) (*model.ExamWithRegs, error) {
 	return r.plexams.ExamWithRegs(ctx, ancode)
 }
 
+// Deprecated: rm me
 // ExamsWithRegs is the resolver for the examsWithRegs field.
 func (r *queryResolver) ExamsWithRegs(ctx context.Context) ([]*model.ExamWithRegs, error) {
 	return r.plexams.ExamsWithRegs(ctx)
@@ -82,21 +85,25 @@ func (r *queryResolver) ExamGroups(ctx context.Context) ([]*model.ExamGroup, err
 	return r.plexams.ExamGroups(ctx)
 }
 
+// Deprecated: rm me
 // ExamGroup is the resolver for the examGroup field.
 func (r *queryResolver) ExamGroup(ctx context.Context, examGroupCode int) (*model.ExamGroup, error) {
 	return r.plexams.ExamGroup(ctx, examGroupCode)
 }
 
+// Deprecated: rm me
 // NtasWithRegsByTeacher is the resolver for the ntasWithRegsByTeacher field.
 func (r *queryResolver) NtasWithRegsByTeacher(ctx context.Context) ([]*model.NTAWithRegsByExamAndTeacher, error) {
 	return r.plexams.NtasWithRegsByTeacher(ctx)
 }
 
+// Deprecated: rm me
 // Nta is the resolver for the nta field.
 func (r *queryResolver) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
 	return r.plexams.Nta(ctx, mtknr)
 }
 
+// Deprecated: rm me
 // ExamGroupsWithoutSlot is the resolver for the examGroupsWithoutSlot field.
 func (r *queryResolver) ExamGroupsWithoutSlot(ctx context.Context) ([]*model.ExamGroup, error) {
 	return r.plexams.ExamGroupsWithoutSlot(ctx)

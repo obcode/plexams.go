@@ -114,7 +114,7 @@ func (db *DB) ExamGroups(ctx context.Context) ([]*model.ExamGroup, error) {
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameExamGroups).Msg("MongoDB Find")
 		return examGroups, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	for cur.Next(ctx) {
 		var examGroup model.ExamGroup

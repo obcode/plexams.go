@@ -107,7 +107,7 @@ func (db *DB) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, er
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionNameConnectedExams).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	err = cur.All(ctx, &exams)
 

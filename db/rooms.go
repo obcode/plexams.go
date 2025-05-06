@@ -47,7 +47,7 @@ func (db *DB) Rooms(ctx context.Context) ([]*model.Room, error) {
 		log.Error().Err(err).Str("collection", collectionRooms).Msg("MongoDB Find")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	rooms := make([]*model.Room, 0)
 	err = cur.All(ctx, &rooms)

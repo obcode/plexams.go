@@ -23,7 +23,7 @@ func (zpa *ZPA) get(path string, v any) error {
 		fmt.Printf("Error %s", err)
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	body, _ := io.ReadAll(resp.Body)
 
 	err = json.Unmarshal(body, v)
@@ -56,7 +56,7 @@ func (zpa *ZPA) post(path string, rawBody any) (status string, body []byte, err 
 		fmt.Printf("Error %s", err)
 		return "", nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, _ = io.ReadAll(resp.Body)
 	return resp.Status, body, nil

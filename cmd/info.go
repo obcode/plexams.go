@@ -73,7 +73,7 @@ student name           --- get info for student.`,
 					log.Fatal(err)
 				}
 
-				defer f.Close()
+				defer f.Close() //nolint:errcheck
 
 				_, err2 := f.Write(formatted_data)
 

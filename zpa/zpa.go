@@ -57,7 +57,7 @@ func NewZPA(baseurl string, username string, password string, semester string) (
 		fmt.Printf("Error %s", err)
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	body, _ := io.ReadAll(resp.Body)
 
 	var token Token

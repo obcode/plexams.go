@@ -56,7 +56,7 @@ func (db *DB) getTeachers(ctx context.Context, predicate func(model.Teacher) boo
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", "teachers").Msg("MongoDB Find")
 		return teachers, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	for cur.Next(ctx) {
 		var teacher model.Teacher

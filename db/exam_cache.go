@@ -43,7 +43,7 @@ func (db *DB) CachedExams(ctx context.Context) ([]*model.Exam, error) {
 		log.Error().Err(err).Msg("cannot get cached exams")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	exams := make([]*model.Exam, 0)
 

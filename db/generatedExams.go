@@ -40,7 +40,7 @@ func (db *DB) GetGeneratedExams(ctx context.Context) ([]*model.GeneratedExam, er
 		log.Error().Err(err).Msg("cannot get generated exams")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	exams := make([]*model.GeneratedExam, 0)
 
@@ -61,7 +61,7 @@ func (db *DB) GetGeneratedExamsForExamer(ctx context.Context, examerID int) ([]*
 		log.Error().Err(err).Msg("cannot get generated exams")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	exams := make([]*model.GeneratedExam, 0)
 

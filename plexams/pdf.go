@@ -33,7 +33,7 @@ func (p *Plexams) semesterFull() string {
 }
 
 func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) error {
-	m := pdf.NewMaroto(consts.Landscape, consts.A4)
+	m := pdf.NewMaroto(consts.Portrait, consts.A4)
 	m.SetPageMargins(10, 15, 10)
 
 	m.RegisterFooter(func() {
@@ -63,8 +63,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	m.Row(10, func() {
 		m.Col(12, func() {
 			m.Text(
-				fmt.Sprintf("Melden Sie sich bitte umgehend per E-Mail (%s) bei mir (%s), wenn Ihre Prüfung hier fehlt oder hier nicht stehen sollte.",
-					p.planer.Email, p.planer.Name), props.Text{
+				"Öffnen Sie bitte umgehend ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13, wenn Ihre Prüfung hier fehlt oder hier nicht stehen sollte.", props.Text{
 					Top:   3,
 					Style: consts.Normal,
 					Align: consts.Center,
@@ -72,7 +71,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 		})
 	})
 
-	header := []string{"AnCode", "Modul", "Prüfer:in", "Gruppe(n)", "Form"}
+	header := []string{"AnCode", "Modul", "Prüfer:in", "Gruppe(n)"}
 
 	exams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
@@ -88,7 +87,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	m.Row(20, func() {
 		m.Col(12, func() {
 			m.Text(
-				"Sortiert nach dem Namen des Prüferenden. Die Einträge in der Spalte Form stehen so im ZPA.", props.Text{
+				"Sortiert nach dem Namen des Prüferenden.", props.Text{
 					Top:   5,
 					Style: consts.Bold,
 					Align: consts.Center,
@@ -115,18 +114,18 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 
 	for _, key := range keys {
 		for _, exam := range examsByExamers[key] {
-			contents = append(contents, []string{strconv.Itoa(exam.AnCode), exam.Module, exam.MainExamer, fmt.Sprintf("%v", exam.Groups), exam.ExamTypeFull})
+			contents = append(contents, []string{strconv.Itoa(exam.AnCode), exam.Module, exam.MainExamer, fmt.Sprintf("%v", exam.Groups)})
 		}
 	}
 
 	m.TableList(header, contents, props.TableList{
 		HeaderProp: props.TableListContent{
 			Size:      9,
-			GridSizes: []uint{1, 4, 2, 2, 3},
+			GridSizes: []uint{1, 6, 2, 3},
 		},
 		ContentProp: props.TableListContent{
 			Size:      8,
-			GridSizes: []uint{1, 4, 2, 2, 3},
+			GridSizes: []uint{1, 6, 2, 3},
 		},
 		Align:                consts.Left,
 		AlternatedBackground: &grayColor,
@@ -272,8 +271,8 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 	m.Row(12, func() {
 		m.Col(12, func() {
 			m.Text(
-				fmt.Sprintf("Melden Sie sich bitte umgehend per E-Mail (%s) bei mir (%s), wenn Ihre Prüfung eine Randbedingung hat, die hier fehlt oder hier nicht stehen sollte.",
-					p.planer.Email, p.planer.Name), props.Text{
+				"Öffnen Sie bitte umgehend ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13, wenn Ihre Prüfung eine Randbedingung hat, die hier fehlt oder hier nicht stehen sollte.",
+				props.Text{
 					Top:   3,
 					Style: consts.Normal,
 					Align: consts.Center,

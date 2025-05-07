@@ -531,8 +531,11 @@ type ComplexityRoot struct {
 	}
 
 	RoomConstraints struct {
+		Comments         func(childComplexity int) int
 		Exahm            func(childComplexity int) int
+		KdpJiraURL       func(childComplexity int) int
 		Lab              func(childComplexity int) int
+		MaxStudents      func(childComplexity int) int
 		PlacesWithSocket func(childComplexity int) int
 		Seb              func(childComplexity int) int
 	}
@@ -3411,6 +3414,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RoomAndExam.Room(childComplexity), true
 
+	case "RoomConstraints.comments":
+		if e.complexity.RoomConstraints.Comments == nil {
+			break
+		}
+
+		return e.complexity.RoomConstraints.Comments(childComplexity), true
+
 	case "RoomConstraints.exahm":
 		if e.complexity.RoomConstraints.Exahm == nil {
 			break
@@ -3418,12 +3428,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RoomConstraints.Exahm(childComplexity), true
 
+	case "RoomConstraints.kdpJiraURL":
+		if e.complexity.RoomConstraints.KdpJiraURL == nil {
+			break
+		}
+
+		return e.complexity.RoomConstraints.KdpJiraURL(childComplexity), true
+
 	case "RoomConstraints.lab":
 		if e.complexity.RoomConstraints.Lab == nil {
 			break
 		}
 
 		return e.complexity.RoomConstraints.Lab(childComplexity), true
+
+	case "RoomConstraints.maxStudents":
+		if e.complexity.RoomConstraints.MaxStudents == nil {
+			break
+		}
+
+		return e.complexity.RoomConstraints.MaxStudents(childComplexity), true
 
 	case "RoomConstraints.placesWithSocket":
 		if e.complexity.RoomConstraints.PlacesWithSocket == nil {
@@ -4288,6 +4312,9 @@ type RoomConstraints {
   lab: Boolean!
   exahm: Boolean!
   seb: Boolean!
+  kdpJiraURL: String
+  maxStudents: Int
+  comments: String
 }
 
 input ConstraintsInput {
@@ -4302,6 +4329,9 @@ input ConstraintsInput {
   lab: Boolean
   exahm: Boolean
   seb: Boolean
+  kdpJiraURL: String
+  maxStudents: Int
+  comments: String
 }
 `, BuiltIn: false},
 	{Name: "../exam.graphqls", Input: `extend type Query {
@@ -8728,6 +8758,12 @@ func (ec *executionContext) fieldContext_Constraints_roomConstraints(_ context.C
 				return ec.fieldContext_RoomConstraints_exahm(ctx, field)
 			case "seb":
 				return ec.fieldContext_RoomConstraints_seb(ctx, field)
+			case "kdpJiraURL":
+				return ec.fieldContext_RoomConstraints_kdpJiraURL(ctx, field)
+			case "maxStudents":
+				return ec.fieldContext_RoomConstraints_maxStudents(ctx, field)
+			case "comments":
+				return ec.fieldContext_RoomConstraints_comments(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RoomConstraints", field.Name)
 		},
@@ -24605,6 +24641,129 @@ func (ec *executionContext) fieldContext_RoomConstraints_seb(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _RoomConstraints_kdpJiraURL(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomConstraints_kdpJiraURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.KdpJiraURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomConstraints_kdpJiraURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomConstraints_maxStudents(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomConstraints_maxStudents(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxStudents, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomConstraints_maxStudents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomConstraints_comments(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomConstraints_comments(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Comments, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomConstraints_comments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RoomForExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.RoomForExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoomForExam_ancode(ctx, field)
 	if err != nil {
@@ -31396,7 +31555,7 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"notPlannedByMe", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "placesWithSocket", "lab", "exahm", "seb"}
+	fieldsInOrder := [...]string{"notPlannedByMe", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "placesWithSocket", "lab", "exahm", "seb", "kdpJiraURL", "maxStudents", "comments"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -31480,6 +31639,27 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 				return it, err
 			}
 			it.Seb = data
+		case "kdpJiraURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kdpJiraURL"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KdpJiraURL = data
+		case "maxStudents":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxStudents"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxStudents = data
+		case "comments":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("comments"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Comments = data
 		}
 	}
 
@@ -36188,6 +36368,12 @@ func (ec *executionContext) _RoomConstraints(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "kdpJiraURL":
+			out.Values[i] = ec._RoomConstraints_kdpJiraURL(ctx, field, obj)
+		case "maxStudents":
+			out.Values[i] = ec._RoomConstraints_maxStudents(ctx, field, obj)
+		case "comments":
+			out.Values[i] = ec._RoomConstraints_comments(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

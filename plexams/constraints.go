@@ -160,6 +160,15 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 			if constraintsInput.Exahm != nil && *constraintsInput.Exahm {
 				constraints.RoomConstraints.Exahm = *constraintsInput.Exahm
 			}
+			if constraintsInput.KdpJiraURL != nil && *constraintsInput.KdpJiraURL != "" {
+				constraints.RoomConstraints.KdpJiraURL = constraintsInput.KdpJiraURL
+			}
+			if constraintsInput.MaxStudents != nil && *constraintsInput.MaxStudents > 0 {
+				constraints.RoomConstraints.MaxStudents = constraintsInput.MaxStudents
+			}
+			if constraintsInput.Comments != nil && *constraintsInput.Comments != "" {
+				constraints.RoomConstraints.Comments = constraintsInput.Comments
+			}
 		}
 		constraints.FixedDay = constraintsInput.FixedDay
 		constraints.FixedTime = constraintsInput.FixedTime

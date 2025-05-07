@@ -30,6 +30,9 @@ type RoomConstraints {
   lab: Boolean!
   exahm: Boolean!
   seb: Boolean!
+  kdpJiraURL: String
+  maxStudents: Int
+  comments: String
 }
 
 input ConstraintsInput {
@@ -44,4 +47,7 @@ input ConstraintsInput {
   lab: Boolean
   exahm: Boolean
   seb: Boolean
+  kdpJiraURL: String
+  maxStudents: Int
+  comments: String
 }

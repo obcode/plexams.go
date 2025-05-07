@@ -71,6 +71,9 @@ type ConstraintsInput struct {
 	Lab              *bool        `json:"lab,omitempty"`
 	Exahm            *bool        `json:"exahm,omitempty"`
 	Seb              *bool        `json:"seb,omitempty"`
+	KdpJiraURL       *string      `json:"kdpJiraURL,omitempty"`
+	MaxStudents      *int         `json:"maxStudents,omitempty"`
+	Comments         *string      `json:"comments,omitempty"`
 }
 
 type Emails struct {
@@ -337,10 +340,13 @@ type RoomAndExam struct {
 }
 
 type RoomConstraints struct {
-	PlacesWithSocket bool `json:"placesWithSocket"`
-	Lab              bool `json:"lab"`
-	Exahm            bool `json:"exahm"`
-	Seb              bool `json:"seb"`
+	PlacesWithSocket bool    `json:"placesWithSocket"`
+	Lab              bool    `json:"lab"`
+	Exahm            bool    `json:"exahm"`
+	Seb              bool    `json:"seb"`
+	KdpJiraURL       *string `json:"kdpJiraURL,omitempty"`
+	MaxStudents      *int    `json:"maxStudents,omitempty"`
+	Comments         *string `json:"comments,omitempty"`
 }
 
 type RoomForExamInput struct {

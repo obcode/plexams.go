@@ -298,6 +298,42 @@ func (p *Plexams) GetExamsInSlot(ctx context.Context, day int, time int) ([]*mod
 	return p.dbClient.GetExamsInSlot(ctx, day, time)
 }
 
+func (p *Plexams) PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.PreExam, error) {
+	planEntries, err := p.dbClient.GetPlanEntriesInSlot(ctx, day, time)
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get plan entries in slot")
+		return nil, err
+	}
+	if len(planEntries) == 0 {
+		return nil, nil
+	}
+
+	preExams := make([]*model.PreExam, 0, len(planEntries))
+	for _, planEntry := range planEntries {
+		exam, err := p.GetZPAExam(ctx, planEntry.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
+			return nil, err
+		}
+		constraints, err := p.ConstraintForAncode(ctx, planEntry.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get constraints")
+			return nil, err
+		}
+		planEntry, err := p.dbClient.PlanEntry(ctx, exam.AnCode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.AnCode).Msg("cannot get plan entry")
+		}
+		preExams = append(preExams, &model.PreExam{
+			ZpaExam:     exam,
+			Constraints: constraints,
+			PlanEntry:   planEntry,
+		})
+	}
+
+	return preExams, nil
+}
+
 func (p *Plexams) SlotForAncode(ctx context.Context, ancode int) (*model.Slot, error) {
 	planEntry, err := p.dbClient.PlanEntry(ctx, ancode)
 	if err != nil {

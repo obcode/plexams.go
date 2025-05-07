@@ -3,7 +3,7 @@ extend type Query {
   ancodesInPlan: [Int!]
   examerInPlan: [ExamerInPlan!]
 
-  preExamsInSlot(day: Int!, time: Int!): [ZPAExam!]
+  preExamsInSlot(day: Int!, time: Int!): [PreExam!]
 
   examsInSlot(day: Int!, time: Int!): [PlannedExam!]
   examsWithoutSlot: [PlannedExam!]!
@@ -91,6 +91,12 @@ type SlotWithExamGroups {
 type ExamerInPlan {
   mainExamer: String!
   mainExamerID: Int!
+}
+
+type PreExam {
+  zpaExam: ZPAExam!
+  constraints: Constraints
+  planEntry: PlanEntry
 }
 
 # TODO: remove starttime!!!

@@ -44,8 +44,8 @@ func (r *queryResolver) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan
 }
 
 // PreExamsInSlot is the resolver for the preExamsInSlot field.
-func (r *queryResolver) PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.ZPAExam, error) {
-	panic(fmt.Errorf("not implemented: PreExamsInSlot - preExamsInSlot"))
+func (r *queryResolver) PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.PreExam, error) {
+	return r.plexams.PreExamsInSlot(ctx, day, time)
 }
 
 // ExamGroupsInSlot is the resolver for the examGroupsInSlot field.

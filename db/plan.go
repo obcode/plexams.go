@@ -53,6 +53,34 @@ func (db *DB) RmExamGroupFromSlot(ctx context.Context, ancode int) (bool, error)
 	return true, nil
 }
 
+func (db *DB) GetPlanEntriesInSlot(ctx context.Context, day int, time int) ([]*model.PlanEntry, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
+
+	filter := bson.M{
+		"$and": []bson.M{
+			{"daynumber": day},
+			{"slotnumber": time},
+		},
+	}
+	cur, err := collection.Find(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("MongoDB Find")
+		return nil, err
+	}
+	defer cur.Close(ctx) //nolint:errcheck
+
+	planEntries := make([]*model.PlanEntry, 0)
+
+	err = cur.All(ctx, &planEntries)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionNamePlan).Interface("cur", cur).
+			Msg("Cannot decode to nta")
+		return nil, err
+	}
+
+	return planEntries, nil
+}
+
 func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 

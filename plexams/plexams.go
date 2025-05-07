@@ -249,7 +249,8 @@ func (p *Plexams) setSemesterConfig() {
 				slots = append(slots, &model.Slot{
 					DayNumber:  day.Number,
 					SlotNumber: starttime.Number,
-					Starttime:  day.Date.Add(time.Duration(hour)*time.Hour + time.Duration(minute)*time.Minute),
+					Starttime:  time.Date(day.Date.Year(), day.Date.Month(), day.Date.Day(), hour, minute, 0, 0, time.Local),
+					// day.Date.Add(time.Duration(hour)*time.Hour + time.Duration(minute)*time.Minute),
 				})
 			}
 		}

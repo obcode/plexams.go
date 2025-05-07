@@ -406,6 +406,12 @@ type ComplexityRoot struct {
 		StudentsInRoom    func(childComplexity int) int
 	}
 
+	PreExam struct {
+		Constraints func(childComplexity int) int
+		PlanEntry   func(childComplexity int) int
+		ZpaExam     func(childComplexity int) int
+	}
+
 	PrimussExam struct {
 		AnCode     func(childComplexity int) int
 		ExamType   func(childComplexity int) int
@@ -678,6 +684,7 @@ type ComplexityRoot struct {
 
 	ZPAExamWithConstraints struct {
 		Constraints func(childComplexity int) int
+		PlanEntry   func(childComplexity int) int
 		ZpaExam     func(childComplexity int) int
 	}
 
@@ -793,7 +800,7 @@ type QueryResolver interface {
 	AllProgramsInPlan(ctx context.Context) ([]string, error)
 	AncodesInPlan(ctx context.Context) ([]int, error)
 	ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error)
-	PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.ZPAExam, error)
+	PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.PreExam, error)
 	ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error)
 	ExamsWithoutSlot(ctx context.Context) ([]*model.PlannedExam, error)
 	AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
@@ -2554,6 +2561,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PlannedRoom.StudentsInRoom(childComplexity), true
 
+	case "PreExam.constraints":
+		if e.complexity.PreExam.Constraints == nil {
+			break
+		}
+
+		return e.complexity.PreExam.Constraints(childComplexity), true
+
+	case "PreExam.planEntry":
+		if e.complexity.PreExam.PlanEntry == nil {
+			break
+		}
+
+		return e.complexity.PreExam.PlanEntry(childComplexity), true
+
+	case "PreExam.zpaExam":
+		if e.complexity.PreExam.ZpaExam == nil {
+			break
+		}
+
+		return e.complexity.PreExam.ZpaExam(childComplexity), true
+
 	case "PrimussExam.ancode":
 		if e.complexity.PrimussExam.AnCode == nil {
 			break
@@ -4065,6 +4093,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ZPAExamWithConstraints.Constraints(childComplexity), true
 
+	case "ZPAExamWithConstraints.planEntry":
+		if e.complexity.ZPAExamWithConstraints.PlanEntry == nil {
+			break
+		}
+
+		return e.complexity.ZPAExamWithConstraints.PlanEntry(childComplexity), true
+
 	case "ZPAExamWithConstraints.zpaExam":
 		if e.complexity.ZPAExamWithConstraints.ZpaExam == nil {
 			break
@@ -4651,7 +4686,7 @@ type NTAWithRegsByExam {
   ancodesInPlan: [Int!]
   examerInPlan: [ExamerInPlan!]
 
-  preExamsInSlot(day: Int!, time: Int!): [ZPAExam!]
+  preExamsInSlot(day: Int!, time: Int!): [PreExam!]
 
   examsInSlot(day: Int!, time: Int!): [PlannedExam!]
   examsWithoutSlot: [PlannedExam!]!
@@ -4739,6 +4774,12 @@ type SlotWithExamGroups {
 type ExamerInPlan {
   mainExamer: String!
   mainExamerID: Int!
+}
+
+type PreExam {
+  zpaExam: ZPAExam!
+  constraints: Constraints
+  planEntry: PlanEntry
 }
 
 # TODO: remove starttime!!!
@@ -5072,10 +5113,10 @@ type FK07Program {
   name: String!
 }
 
-# Deprecated: remove me
 type ZPAExamWithConstraints {
   zpaExam: ZPAExam!
   constraints: Constraints # == nil if no constraint
+  planEntry: PlanEntry # == nil if no plan entry
 }
 
 type Teacher {
@@ -18676,6 +18717,190 @@ func (ec *executionContext) fieldContext_PlannedRoom_ntaMtknr(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _PreExam_zpaExam(ctx context.Context, field graphql.CollectedField, obj *model.PreExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreExam_zpaExam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ZpaExam, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ZPAExam)
+	fc.Result = res
+	return ec.marshalNZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreExam_zpaExam(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaID":
+				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
+			case "semester":
+				return ec.fieldContext_ZPAExam_semester(ctx, field)
+			case "ancode":
+				return ec.fieldContext_ZPAExam_ancode(ctx, field)
+			case "module":
+				return ec.fieldContext_ZPAExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_ZPAExam_mainExamer(ctx, field)
+			case "mainExamerID":
+				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
+			case "examType":
+				return ec.fieldContext_ZPAExam_examType(ctx, field)
+			case "examTypeFull":
+				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
+			case "duration":
+				return ec.fieldContext_ZPAExam_duration(ctx, field)
+			case "isRepeaterExam":
+				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
+			case "groups":
+				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreExam_constraints(ctx context.Context, field graphql.CollectedField, obj *model.PreExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreExam_constraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Constraints, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Constraints)
+	fc.Result = res
+	return ec.marshalOConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraints(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreExam_constraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_Constraints_ancode(ctx, field)
+			case "notPlannedByMe":
+				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "excludeDays":
+				return ec.fieldContext_Constraints_excludeDays(ctx, field)
+			case "possibleDays":
+				return ec.fieldContext_Constraints_possibleDays(ctx, field)
+			case "fixedDay":
+				return ec.fieldContext_Constraints_fixedDay(ctx, field)
+			case "fixedTime":
+				return ec.fieldContext_Constraints_fixedTime(ctx, field)
+			case "sameSlot":
+				return ec.fieldContext_Constraints_sameSlot(ctx, field)
+			case "online":
+				return ec.fieldContext_Constraints_online(ctx, field)
+			case "roomConstraints":
+				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Constraints", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreExam_planEntry(ctx context.Context, field graphql.CollectedField, obj *model.PreExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreExam_planEntry(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PlanEntry, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.PlanEntry)
+	fc.Result = res
+	return ec.marshalOPlanEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanEntry(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreExam_planEntry(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_PlanEntry_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_PlanEntry_starttime(ctx, field)
+			case "ancode":
+				return ec.fieldContext_PlanEntry_ancode(ctx, field)
+			case "locked":
+				return ec.fieldContext_PlanEntry_locked(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrimussExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrimussExam_ancode(ctx, field)
 	if err != nil {
@@ -20248,6 +20473,8 @@ func (ec *executionContext) fieldContext_Query_zpaExamsToPlanWithConstraints(_ c
 				return ec.fieldContext_ZPAExamWithConstraints_zpaExam(ctx, field)
 			case "constraints":
 				return ec.fieldContext_ZPAExamWithConstraints_constraints(ctx, field)
+			case "planEntry":
+				return ec.fieldContext_ZPAExamWithConstraints_planEntry(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExamWithConstraints", field.Name)
 		},
@@ -22110,9 +22337,9 @@ func (ec *executionContext) _Query_preExamsInSlot(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*model.ZPAExam)
+	res := resTmp.([]*model.PreExam)
 	fc.Result = res
-	return ec.marshalOZPAExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExamᚄ(ctx, field.Selections, res)
+	return ec.marshalOPreExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreExamᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_preExamsInSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -22123,32 +22350,14 @@ func (ec *executionContext) fieldContext_Query_preExamsInSlot(ctx context.Contex
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "zpaID":
-				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
-			case "semester":
-				return ec.fieldContext_ZPAExam_semester(ctx, field)
-			case "ancode":
-				return ec.fieldContext_ZPAExam_ancode(ctx, field)
-			case "module":
-				return ec.fieldContext_ZPAExam_module(ctx, field)
-			case "mainExamer":
-				return ec.fieldContext_ZPAExam_mainExamer(ctx, field)
-			case "mainExamerID":
-				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
-			case "examType":
-				return ec.fieldContext_ZPAExam_examType(ctx, field)
-			case "examTypeFull":
-				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
-			case "duration":
-				return ec.fieldContext_ZPAExam_duration(ctx, field)
-			case "isRepeaterExam":
-				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
-			case "groups":
-				return ec.fieldContext_ZPAExam_groups(ctx, field)
-			case "primussAncodes":
-				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "zpaExam":
+				return ec.fieldContext_PreExam_zpaExam(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreExam_constraints(ctx, field)
+			case "planEntry":
+				return ec.fieldContext_PreExam_planEntry(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type PreExam", field.Name)
 		},
 	}
 	defer func() {
@@ -28871,6 +29080,59 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_constraints(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _ZPAExamWithConstraints_planEntry(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExamWithConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAExamWithConstraints_planEntry(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PlanEntry, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.PlanEntry)
+	fc.Result = res
+	return ec.marshalOPlanEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanEntry(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAExamWithConstraints_planEntry(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAExamWithConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_PlanEntry_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_PlanEntry_starttime(ctx, field)
+			case "ancode":
+				return ec.fieldContext_PlanEntry_ancode(ctx, field)
+			case "locked":
+				return ec.fieldContext_PlanEntry_locked(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ZPAExamsForType_type(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExamsForType) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ZPAExamsForType_type(ctx, field)
 	if err != nil {
@@ -34479,6 +34741,49 @@ func (ec *executionContext) _PlannedRoom(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var preExamImplementors = []string{"PreExam"}
+
+func (ec *executionContext) _PreExam(ctx context.Context, sel ast.SelectionSet, obj *model.PreExam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preExamImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreExam")
+		case "zpaExam":
+			out.Values[i] = ec._PreExam_zpaExam(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "constraints":
+			out.Values[i] = ec._PreExam_constraints(ctx, field, obj)
+		case "planEntry":
+			out.Values[i] = ec._PreExam_planEntry(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var primussExamImplementors = []string{"PrimussExam"}
 
 func (ec *executionContext) _PrimussExam(ctx context.Context, sel ast.SelectionSet, obj *model.PrimussExam) graphql.Marshaler {
@@ -37431,6 +37736,8 @@ func (ec *executionContext) _ZPAExamWithConstraints(ctx context.Context, sel ast
 			}
 		case "constraints":
 			out.Values[i] = ec._ZPAExamWithConstraints_constraints(ctx, field, obj)
+		case "planEntry":
+			out.Values[i] = ec._ZPAExamWithConstraints_planEntry(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -39261,6 +39568,16 @@ func (ec *executionContext) marshalNPlannedRoom2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._PlannedRoom(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPreExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreExam(ctx context.Context, sel ast.SelectionSet, v *model.PreExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreExam(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPrimussExam2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExam(ctx context.Context, sel ast.SelectionSet, v model.PrimussExam) graphql.Marshaler {
@@ -41860,6 +42177,53 @@ func (ec *executionContext) marshalOPlannedRoom2ᚖgithubᚗcomᚋobcodeᚋplexa
 	return ec._PlannedRoom(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOPreExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreExam) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPreExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOPrimussExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PrimussExam) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -42374,53 +42738,6 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 	}
 	res := graphql.MarshalTime(*v)
 	return res
-}
-
-func (ec *executionContext) marshalOZPAExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ZPAExam) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExam(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalOZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExam(ctx context.Context, sel ast.SelectionSet, v *model.ZPAExam) graphql.Marshaler {

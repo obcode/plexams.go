@@ -61,10 +61,10 @@ type FK07Program {
   name: String!
 }
 
-# Deprecated: remove me
 type ZPAExamWithConstraints {
   zpaExam: ZPAExam!
   constraints: Constraints # == nil if no constraint
+  planEntry: PlanEntry # == nil if no plan entry
 }
 
 type Teacher {

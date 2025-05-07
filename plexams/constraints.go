@@ -122,9 +122,14 @@ func (p *Plexams) ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.Z
 		if err != nil {
 			log.Error().Err(err).Int("ancode", exam.AnCode).Msg("cannot get constraint")
 		}
+		planEntry, err := p.dbClient.PlanEntry(ctx, exam.AnCode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", exam.AnCode).Msg("cannot get plan entry")
+		}
 		examsWithConstraints = append(examsWithConstraints, &model.ZPAExamWithConstraints{
 			ZpaExam:     exam,
 			Constraints: constraint,
+			PlanEntry:   planEntry,
 		})
 	}
 

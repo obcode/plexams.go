@@ -294,6 +294,12 @@ type PlannedExamWithNta struct {
 	Nta         []*NTAWithRegs `json:"nta,omitempty"`
 }
 
+type PreExam struct {
+	ZpaExam     *ZPAExam     `json:"zpaExam"`
+	Constraints *Constraints `json:"constraints,omitempty"`
+	PlanEntry   *PlanEntry   `json:"planEntry,omitempty"`
+}
+
 type PrimussExamAncode struct {
 	Ancode        int    `json:"ancode"`
 	Program       string `json:"program"`
@@ -445,6 +451,7 @@ type ZPAConflict struct {
 type ZPAExamWithConstraints struct {
 	ZpaExam     *ZPAExam     `json:"zpaExam"`
 	Constraints *Constraints `json:"constraints,omitempty"`
+	PlanEntry   *PlanEntry   `json:"planEntry,omitempty"`
 }
 
 type ZPAExamsForType struct {

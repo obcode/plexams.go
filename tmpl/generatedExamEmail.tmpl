@@ -1,3 +1,5 @@
+[Antworten bitte nicht via E-Mail, sondern JIRA]
+
 Hallo {{ .Teacher.Fullname }},
 
 {{ if not .HasStudentRegs }}
@@ -9,12 +11,13 @@ Falls die Prüfung dennoch eingeplant werden soll, teilen Sie mir das bitte unmi
 Ihre Prüfung "{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}" plane ich auf Grundlage folgender Daten
 (im Anhang als CSV und Markdown).
 
-Die Prüfung findet im Prüfungszeitraum vom {{ .FromDate }} bis {{ .ToDate }} am Campus Lothstrasse statt.
+Die Prüfung findet im Prüfungszeitraum vom {{ .FromFK07Date }} bis {{ .ToDate }} am Campus Lothstrasse statt.
 
 Sollten die Daten aus Ihrer Sicht fehlerhaft sein, nehmen Sie bitte umgehend mit
 mir Kontakt auf; insbesondere dann, wenn die Anzahl der Anmeldungen stark von der
 tatsächlichen Anzahl zu Prüfenden abweicht (z.B. auf Grund des Nichtbestehens einer
 Zulassungsvoraussetzung).
+Öffnen Sie dazu ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13.
 
 Sofern mir bekannt, sind Studierende mit Nachteilsausgleich unten angegeben.
 Sollten Ihnen weitere Studierende mit Nachteilsausgleich bekannt sein oder bekannt werden,

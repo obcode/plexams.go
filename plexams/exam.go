@@ -29,6 +29,9 @@ func (p *Plexams) prepareConnectedExam(ctx context.Context, ancode int, allProgr
 
 	// Replace with primuss ancodes
 	for _, primussAncode := range zpaExam.PrimussAncodes {
+		if primussAncode.Ancode == 0 || primussAncode.Ancode == -1 {
+			continue
+		}
 		primussExam, err := p.GetPrimussExam(ctx, primussAncode.Program, primussAncode.Ancode)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("%s/%d not found", primussAncode.Program, primussAncode.Ancode))

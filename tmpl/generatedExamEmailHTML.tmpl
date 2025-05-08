@@ -1,3 +1,6 @@
+<p>[Antworten bitte nicht via E-Mail,
+sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA</a>]</p>
+
 <p>Hallo {{ .Teacher.Fullname }},</p>
 
 {{ if not .HasStudentRegs }}
@@ -9,12 +12,14 @@ mit.</p>
 
 <p>Ihre Prüfung <b>{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}</b> plane ich auf Grundlage folgender Daten (im Anhang als CSV und Markdown).</p>
 
-<p>Die Prüfung findet im Prüfungszeitraum vom {{ .FromDate }} bis {{ .ToDate }} am Campus Lothstrasse statt.</p>
+<p>Die Prüfung findet im Prüfungszeitraum vom {{ .FromFK07Date }} bis {{ .ToDate }} am Campus Lothstrasse statt.</p>
 
 <p>Sollten die Daten aus Ihrer Sicht fehlerhaft sein, nehmen Sie bitte umgehend mit
 mir Kontakt auf; insbesondere dann, wenn die Anzahl der Anmeldungen stark von der
 tatsächlichen Anzahl zu Prüfenden abweicht (z.B. auf Grund des Nichtbestehens einer
-Zulassungsvoraussetzung).</p>
+Zulassungsvoraussetzung). Öffnen Sie dazu ein JIRA-Ticket unter
+<a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">
+https://jira.cc.hm.edu/servicedesk/customer/portal/13</a></p>
 
 <p>Sofern mir bekannt, sind Studierende mit Nachteilsausgleich unten angegeben.
 Sollten Ihnen weitere Studierende mit Nachteilsausgleich bekannt sein oder bekannt werden,

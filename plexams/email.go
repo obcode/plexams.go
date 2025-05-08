@@ -166,7 +166,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 	}
 
 	err = p.sendGeneratedExamMailToTeacher(to, &GeneratedExamMailData{
-		FromDate:       p.semesterConfig.Days[0].Date.Format("02.01.2006"),
+		FromFK07Date:   p.semesterConfig.FromFk07.Format("02.01.2006"),
 		ToDate:         p.semesterConfig.Days[len(p.semesterConfig.Days)-1].Date.Format("02.01.2006"),
 		Exam:           exam,
 		Teacher:        teacher,
@@ -185,7 +185,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 }
 
 type GeneratedExamMailData struct {
-	FromDate       string
+	FromFK07Date   string
 	ToDate         string
 	Exam           *model.GeneratedExam
 	Teacher        *model.Teacher
@@ -216,7 +216,7 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 		return err
 	}
 
-	subject := fmt.Sprintf("[Prüfungsplanung %s] Vorliegende Planungsdaten für Ihre Prüfung %s",
+	subject := fmt.Sprintf("[Prüfungsplanung %s] Vorliegende Anmeldedaten für Ihre Prüfung %s",
 		p.semester, generatedExamMailData.Exam.ZpaExam.Module)
 	if !generatedExamMailData.HasStudentRegs {
 		subject = fmt.Sprintf("[Prüfungsplanung %s] Keine Anmeldungen für Ihre Prüfung %s",

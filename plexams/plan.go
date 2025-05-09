@@ -134,6 +134,9 @@ func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 		return nil, err
 	}
 
+	for _, slot := range p.semesterConfig.ForbiddenSlots {
+		slotsWithConflicts.Add(*slot)
+	}
 	for _, slot := range allowedSlots {
 		if !slotsWithConflicts.Contains(*slot) {
 			allowedSlotsWithConflicts = append(allowedSlotsWithConflicts, slot)

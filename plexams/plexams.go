@@ -255,6 +255,23 @@ func (p *Plexams) setSemesterConfig() {
 			}
 		}
 
+		forbiddenSlots := make([]*model.Slot, 0)
+		forbiddenDaysSlice := viper.Get("semesterConfig.forbiddenDays").([]interface{})
+		for _, forbiddenDayRaw := range forbiddenDaysSlice {
+			forbiddenDay, ok := forbiddenDayRaw.(time.Time)
+			if !ok {
+				log.Error().Interface("forbiddenDayRaw", forbiddenDayRaw).Msg("cannot convert forbidden day to time.Time")
+				continue
+			}
+			for _, slot := range slots {
+				if slot.Starttime.Year() == forbiddenDay.Year() &&
+					slot.Starttime.Month() == forbiddenDay.Month() &&
+					slot.Starttime.Day() == forbiddenDay.Day() {
+					forbiddenSlots = append(forbiddenSlots, slot)
+				}
+			}
+		}
+
 		emails := &model.Emails{}
 		emailsMap := viper.GetStringMapString("semesterConfig.emails")
 		var ok bool
@@ -278,10 +295,11 @@ func (p *Plexams) setSemesterConfig() {
 			GoDay0:     viper.GetTime("semesterConfig.goDay0").Local(),
 			Emails:     emails,
 			// GoSlotsRaw: [][]int{},
-			GoSlots:  slots,
-			From:     from,
-			FromFk07: viper.GetTime("semesterConfig.fromFK07").Local(),
-			Until:    until,
+			GoSlots:        slots,
+			From:           from,
+			FromFk07:       viper.GetTime("semesterConfig.fromFK07").Local(),
+			Until:          until,
+			ForbiddenSlots: forbiddenSlots,
 		}
 	}
 	p.setGoSlots()

@@ -379,16 +379,17 @@ type Semester struct {
 }
 
 type SemesterConfig struct {
-	Days       []*ExamDay   `json:"days"`
-	Starttimes []*Starttime `json:"starttimes"`
-	Slots      []*Slot      `json:"slots"`
-	GoSlotsRaw [][]int      `json:"goSlotsRaw,omitempty"`
-	GoSlots    []*Slot      `json:"goSlots"`
-	GoDay0     time.Time    `json:"goDay0"`
-	From       time.Time    `json:"from"`
-	FromFk07   time.Time    `json:"fromFK07"`
-	Until      time.Time    `json:"until"`
-	Emails     *Emails      `json:"emails"`
+	Days           []*ExamDay   `json:"days"`
+	Starttimes     []*Starttime `json:"starttimes"`
+	Slots          []*Slot      `json:"slots"`
+	GoSlotsRaw     [][]int      `json:"goSlotsRaw,omitempty"`
+	GoSlots        []*Slot      `json:"goSlots"`
+	GoDay0         time.Time    `json:"goDay0"`
+	ForbiddenSlots []*Slot      `json:"forbiddenSlots,omitempty"`
+	From           time.Time    `json:"from"`
+	FromFk07       time.Time    `json:"fromFK07"`
+	Until          time.Time    `json:"until"`
+	Emails         *Emails      `json:"emails"`
 }
 
 type Slot struct {

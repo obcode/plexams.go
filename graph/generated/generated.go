@@ -569,16 +569,17 @@ type ComplexityRoot struct {
 	}
 
 	SemesterConfig struct {
-		Days       func(childComplexity int) int
-		Emails     func(childComplexity int) int
-		From       func(childComplexity int) int
-		FromFk07   func(childComplexity int) int
-		GoDay0     func(childComplexity int) int
-		GoSlots    func(childComplexity int) int
-		GoSlotsRaw func(childComplexity int) int
-		Slots      func(childComplexity int) int
-		Starttimes func(childComplexity int) int
-		Until      func(childComplexity int) int
+		Days           func(childComplexity int) int
+		Emails         func(childComplexity int) int
+		ForbiddenSlots func(childComplexity int) int
+		From           func(childComplexity int) int
+		FromFk07       func(childComplexity int) int
+		GoDay0         func(childComplexity int) int
+		GoSlots        func(childComplexity int) int
+		GoSlotsRaw     func(childComplexity int) int
+		Slots          func(childComplexity int) int
+		Starttimes     func(childComplexity int) int
+		Until          func(childComplexity int) int
 	}
 
 	Slot struct {
@@ -3596,6 +3597,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SemesterConfig.Emails(childComplexity), true
 
+	case "SemesterConfig.forbiddenSlots":
+		if e.complexity.SemesterConfig.ForbiddenSlots == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.ForbiddenSlots(childComplexity), true
+
 	case "SemesterConfig.from":
 		if e.complexity.SemesterConfig.From == nil {
 			break
@@ -4713,6 +4721,7 @@ type SemesterConfig {
   goSlotsRaw: [[Int!]!]
   goSlots: [Slot!]!
   goDay0: Time!
+  forbiddenSlots: [Slot!]
   from: Time!
   fromFK07: Time!
   until: Time!
@@ -17189,6 +17198,8 @@ func (ec *executionContext) fieldContext_Plan_semesterConfig(_ context.Context, 
 				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
 			case "goDay0":
 				return ec.fieldContext_SemesterConfig_goDay0(ctx, field)
+			case "forbiddenSlots":
+				return ec.fieldContext_SemesterConfig_forbiddenSlots(ctx, field)
 			case "from":
 				return ec.fieldContext_SemesterConfig_from(ctx, field)
 			case "fromFK07":
@@ -19961,6 +19972,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_goSlots(ctx, field)
 			case "goDay0":
 				return ec.fieldContext_SemesterConfig_goDay0(ctx, field)
+			case "forbiddenSlots":
+				return ec.fieldContext_SemesterConfig_forbiddenSlots(ctx, field)
 			case "from":
 				return ec.fieldContext_SemesterConfig_from(ctx, field)
 			case "fromFK07":
@@ -25883,6 +25896,55 @@ func (ec *executionContext) fieldContext_SemesterConfig_goDay0(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfig_forbiddenSlots(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_forbiddenSlots(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ForbiddenSlots, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Slot)
+	fc.Result = res
+	return ec.marshalOSlot2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_forbiddenSlots(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_Slot_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_Slot_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_Slot_starttime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Slot", field.Name)
 		},
 	}
 	return fc, nil
@@ -36932,6 +36994,8 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "forbiddenSlots":
+			out.Values[i] = ec._SemesterConfig_forbiddenSlots(ctx, field, obj)
 		case "from":
 			out.Values[i] = ec._SemesterConfig_from(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

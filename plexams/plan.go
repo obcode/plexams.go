@@ -53,6 +53,16 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 			return false, fmt.Errorf("slot (%d,%d) is not allowed for exam %d",
 				dayNumber, timeNumber, ancode)
 		}
+		planEntry, err := p.dbClient.PlanEntry(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get plan entry")
+			return false, err
+		}
+		if planEntry != nil && exam.Constraints != nil && exam.Constraints.RoomConstraints != nil &&
+			(exam.Constraints.RoomConstraints.Exahm || exam.Constraints.RoomConstraints.Seb) {
+			log.Debug().Int("ancode", ancode).Msg("exam needs EXaHM rooms")
+			return false, fmt.Errorf("exam %d needs EXaHM rooms", ancode)
+		}
 	}
 
 	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{

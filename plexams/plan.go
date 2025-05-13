@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int) (bool, error) {
+func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int, force bool) (bool, error) {
 	var slot *model.Slot
 
 	for _, s := range p.semesterConfig.Slots {
@@ -34,23 +34,25 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 		return false, err
 	}
 
-	allowedSlots, err := p.AllowedSlots(ctx, ancode)
-	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get allowed slots")
-	}
-	slotIsAllowed := false
-
-	for _, slot := range allowedSlots {
-		if slot.DayNumber == dayNumber && slot.SlotNumber == timeNumber {
-			slotIsAllowed = true
-			break
+	if !force {
+		allowedSlots, err := p.AllowedSlots(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get allowed slots")
 		}
-	}
-	if !slotIsAllowed {
-		log.Debug().Int("day", dayNumber).Int("time", timeNumber).Int("ancode", ancode).
-			Msg("slot is not allowed")
-		return false, fmt.Errorf("slot (%d,%d) is not allowed for exam %d",
-			dayNumber, timeNumber, ancode)
+		slotIsAllowed := false
+
+		for _, slot := range allowedSlots {
+			if slot.DayNumber == dayNumber && slot.SlotNumber == timeNumber {
+				slotIsAllowed = true
+				break
+			}
+		}
+		if !slotIsAllowed {
+			log.Debug().Int("day", dayNumber).Int("time", timeNumber).Int("ancode", ancode).
+				Msg("slot is not allowed")
+			return false, fmt.Errorf("slot (%d,%d) is not allowed for exam %d",
+				dayNumber, timeNumber, ancode)
+		}
 	}
 
 	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{

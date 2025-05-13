@@ -66,7 +66,7 @@ var (
 				if err != nil {
 					log.Fatalf("cannot convert %s to int", args[3])
 				}
-				success, err := plexams.AddExamToSlot(context.Background(), ancode, day, slot)
+				success, err := plexams.AddExamToSlot(context.Background(), ancode, day, slot, force)
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 					os.Exit(1)
@@ -108,7 +108,7 @@ var (
 
 				for i, planEntry := range planEntries {
 					fmt.Printf("%2d. fixing %v", i+1, planEntry)
-					success, err := plexams.AddExamToSlot(context.Background(), planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
+					success, err := plexams.AddExamToSlot(context.Background(), planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber, force)
 					if err != nil {
 						fmt.Printf("error: %v\n", err)
 						os.Exit(1)
@@ -191,8 +191,10 @@ var (
 			}
 		},
 	}
+	force bool
 )
 
 func init() {
 	rootCmd.AddCommand(planCmd)
+	planCmd.Flags().BoolVarP(&force, "force", "f", false, "force the operation")
 }

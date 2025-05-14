@@ -54,6 +54,7 @@ func (p *Plexams) GetStudentRegsForAncode(ancode int) (*model.StudentRegsForAnco
 		studentRegs = append(studentRegs, &model.StudentRegsPerAncodeAndProgram{
 			Program:     program,
 			StudentRegs: studentRegsForProgram,
+			Ancode:      ancode,
 		})
 	}
 

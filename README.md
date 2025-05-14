@@ -91,7 +91,7 @@ flowchart TD
     ```
 
 11. Zuordnung ZPA-Prüfungen zu Primuss-Anmeldungen fixieren.
-12. Nachteilsausgleiche bei Prüfer:innen per E-Mail melden/nachfragen
+12. Nachteilsausgleiche bei Prüfendernen per E-Mail melden/nachfragen
 
     ```
     plexams.go email nta -r

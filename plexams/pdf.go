@@ -71,7 +71,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 		})
 	})
 
-	header := []string{"AnCode", "Modul", "Prüfer:in", "Gruppe(n)"}
+	header := []string{"AnCode", "Modul", "Prüfender", "Gruppe(n)"}
 
 	exams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
@@ -170,7 +170,7 @@ func (p *Plexams) SameModulNames(ctx context.Context, outfile string) error {
 		})
 	})
 
-	header := []string{"Modul", "AnCode", "Prüfer:in", "Gruppe(n)", "Form"}
+	header := []string{"Modul", "AnCode", "Prüfender", "Gruppe(n)", "Form"}
 
 	exams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
@@ -290,7 +290,7 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 		})
 	})
 
-	header := []string{"AnCode", "Prüfer:in", "Modul", "Gruppe(n)", "Form", "Constraints"}
+	header := []string{"AnCode", "Prüfender", "Modul", "Gruppe(n)", "Form", "Constraints"}
 
 	exams, err := p.ZpaExamsToPlanWithConstraints(ctx)
 	if err != nil {

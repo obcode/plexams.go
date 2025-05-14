@@ -145,7 +145,7 @@ func (p *Plexams) draftSI(name string, outfile string, exams []*model.PlannedExa
 }
 
 func (p *Plexams) tableForExams(name string, exams []*model.PlannedExam, m pdf.Maroto) {
-	header := []string{"AnCode", "Modul", "Prüfer:in", "Termin"}
+	header := []string{"AnCode", "Modul", "Prüfender", "Termin"}
 
 	m.Row(18, func() {
 		m.Col(12, func() {

@@ -151,8 +151,20 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 		if constraintsInput.PlacesWithSocket != nil ||
 			constraintsInput.Lab != nil ||
 			constraintsInput.Seb != nil ||
-			constraintsInput.Exahm != nil {
+			constraintsInput.Exahm != nil ||
+			constraintsInput.AllowedRooms != nil {
 			constraints.RoomConstraints = &model.RoomConstraints{}
+			if constraintsInput.AllowedRooms != nil && len(constraintsInput.AllowedRooms) > 0 {
+				constraints.RoomConstraints.AllowedRooms = make([]string, 0, len(constraintsInput.AllowedRooms))
+				for _, room := range constraintsInput.AllowedRooms {
+					if room != "" {
+						constraints.RoomConstraints.AllowedRooms = append(constraints.RoomConstraints.AllowedRooms, room)
+					}
+				}
+				if len(constraints.RoomConstraints.AllowedRooms) == 0 {
+					constraints.RoomConstraints.AllowedRooms = nil
+				}
+			}
 			if constraintsInput.PlacesWithSocket != nil && *constraintsInput.PlacesWithSocket {
 				constraints.RoomConstraints.PlacesWithSocket = *constraintsInput.PlacesWithSocket
 			}

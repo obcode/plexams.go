@@ -338,6 +338,19 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 
 		// check if room constraints of exams are met
 		if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil {
+			if len(exam.Constraints.RoomConstraints.AllowedRooms) > 0 {
+				allowedRooms := set.NewSet[string]()
+				for _, room := range exam.Constraints.RoomConstraints.AllowedRooms {
+					allowedRooms.Add(room)
+				}
+				for _, room := range exam.PlannedRooms {
+					if !allowedRooms.Contains(room.RoomName) {
+						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Room %s is not allowed for exam %d. %s (%s) in slot (%d,%d)"),
+							aurora.Magenta(room.RoomName), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
+							aurora.BrightBlue(exam.PlanEntry.DayNumber), aurora.BrightBlue(exam.PlanEntry.SlotNumber)))
+					}
+				}
+			}
 			if exam.Constraints.RoomConstraints.Exahm {
 				for _, room := range exam.PlannedRooms {
 					if !p.GetRoomInfo(room.RoomName).Exahm {

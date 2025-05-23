@@ -346,6 +346,29 @@ func (p *Plexams) ValidateConstraints() error {
 						aurora.Magenta(constraint.Ancode), aurora.Cyan(slot.Starttime.Format("02.01.06 15:04"))))
 			}
 		}
+
+		if constraint.RoomConstraints != nil && len(constraint.RoomConstraints.AllowedRooms) > 0 {
+			plannedRooms, err := p.dbClient.PlannedRoomsForAncode(ctx, constraint.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", constraint.Ancode).Msg("cannot get rooms for ancode")
+			}
+			allowedRooms := set.NewSet[string]()
+			for _, room := range constraint.RoomConstraints.AllowedRooms {
+				allowedRooms.Add(room)
+			}
+			for _, room := range plannedRooms {
+				if !allowedRooms.Contains(room.RoomName) {
+					validationMessages = append(validationMessages,
+						aurora.Sprintf(aurora.Red("Exam %d planned in room %s, but allowed rooms are %s"),
+							aurora.Magenta(constraint.Ancode), aurora.Cyan(room.RoomName), aurora.Cyan(constraint.RoomConstraints.AllowedRooms)))
+				}
+			}
+			if len(plannedRooms) == 0 {
+				validationMessages = append(validationMessages,
+					aurora.Sprintf(aurora.Red("Exam %d planned in no room, but allowed rooms are %s"),
+						aurora.Magenta(constraint.Ancode), aurora.Cyan(constraint.RoomConstraints.AllowedRooms)))
+			}
+		}
 	}
 
 	if len(validationMessages) > 0 {

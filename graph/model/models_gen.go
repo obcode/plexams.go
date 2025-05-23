@@ -60,6 +60,7 @@ type Constraints struct {
 }
 
 type ConstraintsInput struct {
+	AllowedRooms     []string     `json:"allowedRooms,omitempty"`
 	NotPlannedByMe   *bool        `json:"notPlannedByMe,omitempty"`
 	ExcludeDays      []*time.Time `json:"excludeDays,omitempty"`
 	PossibleDays     []*time.Time `json:"possibleDays,omitempty"`
@@ -346,13 +347,14 @@ type RoomAndExam struct {
 }
 
 type RoomConstraints struct {
-	PlacesWithSocket bool    `json:"placesWithSocket"`
-	Lab              bool    `json:"lab"`
-	Exahm            bool    `json:"exahm"`
-	Seb              bool    `json:"seb"`
-	KdpJiraURL       *string `json:"kdpJiraURL,omitempty"`
-	MaxStudents      *int    `json:"maxStudents,omitempty"`
-	Comments         *string `json:"comments,omitempty"`
+	AllowedRooms     []string `json:"allowedRooms,omitempty"`
+	PlacesWithSocket bool     `json:"placesWithSocket"`
+	Lab              bool     `json:"lab"`
+	Exahm            bool     `json:"exahm"`
+	Seb              bool     `json:"seb"`
+	KdpJiraURL       *string  `json:"kdpJiraURL,omitempty"`
+	MaxStudents      *int     `json:"maxStudents,omitempty"`
+	Comments         *string  `json:"comments,omitempty"`
 }
 
 type RoomForExamInput struct {

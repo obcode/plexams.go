@@ -118,6 +118,7 @@ type CsvExamEXaHM struct {
 	Students    int    `csv:"Anmeldungen"`
 	Rooms       string `csv:"Räume"`
 	Type        string `csv:"Typ"`
+	Jira        string `csv:"Jira"`
 }
 
 func (p *Plexams) CsvForEXaHM(filename string) error {
@@ -167,6 +168,7 @@ func (p *Plexams) CsvForEXaHM(filename string) error {
 			Students:    exam.StudentRegsCount,
 			Rooms:       fmt.Sprintf("%v", rooms),
 			Type:        typeOfExam,
+			Jira:        *exam.Constraints.RoomConstraints.KdpJiraURL,
 		})
 	}
 

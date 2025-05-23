@@ -26,6 +26,7 @@ type Constraints {
 }
 
 type RoomConstraints {
+  allowedRooms: [String!]
   placesWithSocket: Boolean!
   lab: Boolean!
   exahm: Boolean!
@@ -36,6 +37,7 @@ type RoomConstraints {
 }
 
 input ConstraintsInput {
+  allowedRooms: [String!]
   notPlannedByMe: Boolean
   excludeDays: [Time!]
   possibleDays: [Time!]

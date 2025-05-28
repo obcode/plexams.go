@@ -24,7 +24,7 @@ type ConnectedExam struct {
 func (db *DB) SaveConnectedExam(ctx context.Context, exam *model.ConnectedExam) error {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameConnectedExams)
 
-	_, err := collection.InsertOne(ctx, exam)
+	_, err := collection.InsertOne(ctx, db.modelConnectedExamToConnectedExam(exam))
 	if err != nil {
 		log.Error().Err(err).
 			Str("collectionName", collectionNameConnectedExams).

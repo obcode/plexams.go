@@ -18,7 +18,7 @@ func (p *Plexams) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam,
 	return p.dbClient.AdditionalExams(ctx)
 }
 
-func (p *Plexams) prepareConnectedExam(ctx context.Context, ancode int, allPrograms []string) (*model.ConnectedExam, error) {
+func (p *Plexams) prepareConnectedZPAExam(ctx context.Context, ancode int, allPrograms []string) (*model.ConnectedExam, error) {
 	zpaExam, err := p.dbClient.GetZpaExamByAncode(ctx, ancode)
 	if err != nil {
 		return nil, err
@@ -72,6 +72,35 @@ OUTER:
 	}, nil
 }
 
+func (p *Plexams) prepareConnectedNonZPAExam(ctx context.Context, ancode int, nonZPAExam *model.ZPAExam) (*model.ConnectedExam, error) {
+	if nonZPAExam == nil {
+		var err error
+		nonZPAExam, err = p.dbClient.NonZpaExam(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get non zpa exam by ancode")
+			return nil, err
+		}
+	}
+
+	primussExams := make([]*model.PrimussExam, 0)
+	for _, primuss := range nonZPAExam.PrimussAncodes {
+		primussExam, err := p.GetPrimussExam(ctx, primuss.Program, primuss.Ancode)
+		if err != nil {
+			log.Error().Err(err).Str("program", primuss.Program).Int("ancode", primuss.Ancode).
+				Msg("cannot get primuss exam")
+			return nil, err
+		}
+		primussExams = append(primussExams, primussExam)
+	}
+
+	return &model.ConnectedExam{
+		ZpaExam:           nonZPAExam,
+		PrimussExams:      primussExams,
+		OtherPrimussExams: nil,
+		Errors:            []string{},
+	}, nil
+}
+
 func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
 	return p.dbClient.GetConnectedExams(ctx)
 }
@@ -96,7 +125,7 @@ func (p *Plexams) PrepareConnectedExams() error {
 
 	exams := make([]*model.ConnectedExam, 0)
 	for _, ancode := range ancodes {
-		exam, err := p.prepareConnectedExam(ctx, ancode.Ancode, allPrograms)
+		exam, err := p.prepareConnectedZPAExam(ctx, ancode.Ancode, allPrograms)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", ancode.Ancode).
 				Msg("cannot connected exam")
@@ -108,22 +137,13 @@ func (p *Plexams) PrepareConnectedExams() error {
 	nonZPAExams, err := p.dbClient.NonZpaExams(ctx)
 	if err == nil {
 		for _, nonZPAExam := range nonZPAExams {
-			primussExams := make([]*model.PrimussExam, 0)
-			for _, primuss := range nonZPAExam.PrimussAncodes {
-				primussExam, err := p.GetPrimussExam(ctx, primuss.Program, primuss.Ancode)
-				if err != nil {
-					log.Error().Err(err).Str("program", primuss.Program).Int("ancode", primuss.Ancode).
-						Msg("cannot get primuss exam")
-					return err
-				}
-				primussExams = append(primussExams, primussExam)
+			connectedExam, err := p.prepareConnectedNonZPAExam(ctx, nonZPAExam.AnCode, nonZPAExam)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", nonZPAExam.AnCode).
+					Msg("cannot prepare connected non zpa exam")
+				return err
 			}
-			exams = append(exams, &model.ConnectedExam{
-				ZpaExam:           nonZPAExam,
-				PrimussExams:      primussExams,
-				OtherPrimussExams: nil,
-				Errors:            []string{},
-			})
+			exams = append(exams, connectedExam)
 		}
 	}
 
@@ -145,17 +165,28 @@ func (p *Plexams) PrepareConnectedExam(ancode int) error {
 		return err
 	}
 
-	exam, err := p.prepareConnectedExam(ctx, ancode, allPrograms)
-	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).
-			Msg("cannot connected exam")
-		return err
+	var exam *model.ConnectedExam
+	if ancode < 1000 {
+		exam, err = p.prepareConnectedZPAExam(ctx, ancode, allPrograms)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).
+				Msg("cannot connected exam")
+			return err
+		}
+	} else {
+		exam, err = p.prepareConnectedNonZPAExam(ctx, ancode, nil)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get non zpa exam by ancode")
+			return err
+		}
 	}
 
-	err = p.dbClient.SaveConnectedExam(ctx, exam)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot save connected exam")
-		return err
+	if exam != nil {
+		err = p.dbClient.SaveConnectedExam(ctx, exam)
+		if err != nil {
+			log.Error().Err(err).Msg("cannot save connected exam")
+			return err
+		}
 	}
 
 	return nil

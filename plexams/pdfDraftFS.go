@@ -12,6 +12,26 @@ import (
 )
 
 func (p *Plexams) DraftFS(ctx context.Context, outfile string) error {
+	m := p.draftFS(ctx)
+	err := m.OutputFileAndClose(outfile)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not save PDF")
+		return err
+	}
+	return nil
+}
+
+func (p *Plexams) DraftFSBytes(ctx context.Context) ([]byte, error) {
+	m := p.draftFS(ctx)
+	buf, err := m.Output()
+	if err != nil {
+		log.Error().Err(err).Msg("Could not save PDF to bytes")
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (p *Plexams) draftFS(ctx context.Context) pdf.Maroto {
 	m := pdf.NewMaroto(consts.Portrait, consts.A4)
 	m.SetPageMargins(10, 15, 10)
 
@@ -75,10 +95,5 @@ func (p *Plexams) DraftFS(ctx context.Context, outfile string) error {
 	p.tableForProgram(ctx, "WD", "Bachelor Wirtschaftsinformatik - Digitales Management (WD)", m)
 	p.tableForProgram(ctx, "WT", "Bachelor Wirtschaftsinformatik - Informationstechnologie (WT)", m)
 
-	err := m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
+	return m
 }

@@ -12,19 +12,11 @@ import (
 	"github.com/theckman/yacspin"
 )
 
-type ConstraintsEmail struct {
-	FromDate     string
-	FromFK07Date string
-	UntilDate    string
-	FeedbackDate string
-	PlanerName   string
-}
-
-func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
+func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool) error {
 	cfg := yacspin.Config{
 		Frequency:         100 * time.Millisecond,
 		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email asking for constraints")),
+		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email announcing prepared exams and constraints")),
 		SuffixAutoColon:   true,
 		StopCharacter:     "✓",
 		StopColors:        []string{"fgGreen"},
@@ -51,7 +43,7 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFiles("tmpl/constraintsEmail.tmpl")
+	tmpl, err := template.ParseFiles("tmpl/preparedEmail.tmpl")
 	if err != nil {
 		return err
 	}
@@ -61,7 +53,7 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
 		return err
 	}
 
-	tmpl, err = template.ParseFiles("tmpl/constraintsEmailHTML.tmpl")
+	tmpl, err = template.ParseFiles("tmpl/preparedEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}
@@ -71,8 +63,8 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
 		return err
 	}
 
-	subject := fmt.Sprintf("[Prüfungsplanung %s] Besonderheiten für die Prüfungsplanung - Rückmeldung bis spätestens %s",
-		p.semester, feedbackDate)
+	subject := fmt.Sprintf("[Prüfungsplanung %s] Informationen zu den zu planenden Prüfungen und Besonderheiten",
+		p.semester)
 
 	err = spinner.Stop()
 

@@ -15,35 +15,17 @@ var (
 		Use:   "email [subcommand]",
 		Short: "send email",
 		Long: `Send emails.
-constraints --- ask for constraints,
-prepared --- announce exams to plan and constraints,
-nta-with-room-alone --- send emails to students with room alone before planning,
-nta-planned --- send emails about rooms to all students with nta after planning,
-primuss-data [all|<ancode>] --- send emails to teachers about primuss data and nta.`,
+primuss-data [all|<ancode>] --- send emails to teachers about primuss data and nta
+constraints 				--- ask for constraints
+prepared 					--- announce exams to plan and constraints
+draft 						--- announce draft plan
+nta-with-room-alone 		--- send emails to students with room alone before planning
+nta-planned 				--- send emails about rooms to all students with nta after planning
+`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
-			case "constraints":
-				err := plexams.SendEmailConstraints(context.Background(), run)
-				if err != nil {
-					log.Fatalf("got error: %v\n", err)
-				}
-			case "prepared":
-				err := plexams.SendEmailPrepared(context.Background(), run)
-				if err != nil {
-					log.Fatalf("got error: %v\n", err)
-				}
-			case "nta-with-room-alone":
-				err := plexams.SendHandicapsMailsNTARoomAlone(context.Background(), run)
-				if err != nil {
-					log.Fatalf("got error: %v\n", err)
-				}
-			case "nta-planned":
-				err := plexams.SendHandicapsMailsNTAPlanned(context.Background(), run)
-				if err != nil {
-					log.Fatalf("got error: %v\n", err)
-				}
 			case "primuss-data":
 				if len(args) < 2 {
 					log.Fatal("need program and primuss-ancode")
@@ -63,6 +45,31 @@ primuss-data [all|<ancode>] --- send emails to teachers about primuss data and n
 					if err != nil {
 						log.Fatalf("got error: %v\n", err)
 					}
+				}
+			case "constraints":
+				err := plexams.SendEmailConstraints(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "prepared":
+				err := plexams.SendEmailPrepared(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "draft":
+				err := plexams.SendEmailDraft(run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "nta-with-room-alone":
+				err := plexams.SendHandicapsMailsNTARoomAlone(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "nta-planned":
+				err := plexams.SendHandicapsMailsNTAPlanned(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
 				}
 
 			default:

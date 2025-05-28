@@ -25,6 +25,15 @@ type KnownConflict struct {
 	Mtknr, Ancode1, Ancode2 string
 }
 
+type conflictingAncodes struct {
+	smallerAncode int
+	largerAncode  int
+}
+type problemWithStudents struct {
+	problem  string
+	students []string
+}
+
 func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 	count = 0
 	knownConflictsCount = 0
@@ -50,7 +59,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 		log.Debug().Err(err).Msg("cannot start spinner")
 	}
 
-	validationMessages := make([]string, 0)
+	validationMessages := make(map[conflictingAncodes]*problemWithStudents)
 
 	spinner.Message(aurora.Sprintf(aurora.Yellow(" get planned ancodes")))
 	planAncodeEntries, err := p.dbClient.PlannedAncodes(ctx)
@@ -98,7 +107,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 
 	spinner.Message(aurora.Sprintf(aurora.Yellow(" validating students")))
 	for _, student := range students {
-		validateStudentReg(student, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe,
+		p.validateStudentReg(student, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe,
 			knownConflicts, ancode, &validationMessages)
 	}
 
@@ -109,8 +118,34 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 		if err != nil {
 			log.Debug().Err(err).Msg("cannot stop spinner")
 		}
-		for _, msg := range validationMessages {
-			fmt.Printf("%s\n", msg)
+		fmt.Printf("\nknownConflicts:\n  studentRegs:")
+		for conflictingAncodes, problemWithStudents := range validationMessages {
+			exam1, err := p.PlannedExam(ctx, conflictingAncodes.smallerAncode)
+			if err != nil {
+				log.Debug().Err(err).Msg("cannot get planned exam")
+				continue
+			}
+			exam2, err := p.PlannedExam(ctx, conflictingAncodes.largerAncode)
+			if err != nil {
+				log.Debug().Err(err).Msg("cannot get planned exam")
+				continue
+			}
+
+			log.Debug().Interface("exam1", exam1).Interface("exam2", exam2).Msg("found conflicting exams")
+			fmt.Printf("%s\n", aurora.Sprintf(aurora.Red("\n    # %s"), problemWithStudents.problem))
+			for _, exam := range []*model.PlannedExam{exam1, exam2} {
+				repeater := ""
+				if exam.ZpaExam.IsRepeaterExam {
+					repeater = "-- Wiederholungsprüfung"
+				}
+				fmt.Printf("%s\n", aurora.Sprintf(aurora.Red("    #   %5d. %s (%s): %s %s"), exam.Ancode,
+					aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
+					aurora.Yellow(exam.ZpaExam.Groups),
+					aurora.Cyan(repeater)))
+			}
+			for _, studentStr := range problemWithStudents.students {
+				fmt.Printf("%s\n", studentStr)
+			}
 		}
 
 	} else {
@@ -125,9 +160,9 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 	return nil
 }
 
-func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanEntry,
+func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanEntry,
 	planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool, knownConflicts set.Set[KnownConflict], ancode int,
-	validationMessages *[]string) {
+	validationMessages *map[conflictingAncodes]*problemWithStudents) {
 	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("checking regs for student")
 
 	planAncodeEntriesForStudent := make([]*model.PlanEntry, 0)
@@ -161,7 +196,6 @@ func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanE
 				Ancode1: fmt.Sprint(p[i].Ancode),
 				Ancode2: fmt.Sprint(p[j].Ancode),
 			}) {
-				// fmt.Printf("found known conflict: [%s, %d, %d]\n", student.Mtknr, p[i].Ancode, p[j].Ancode)
 				knownConflictsCount++
 				continue
 			}
@@ -176,38 +210,54 @@ func validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanE
 				continue
 			}
 
+			problem := ""
 			// same slot
 			if p[i].DayNumber == p[j].DayNumber &&
 				p[i].SlotNumber == p[j].SlotNumber {
-				count++
-				*validationMessages = append(*validationMessages, aurora.Sprintf(aurora.Red("    - [\"%s\", \"%d\", \"%d\"] # %3d. Same slot: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s%s / %s)"),
-					aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode), count,
-					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
-					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
-					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
-				))
+				problem = fmt.Sprintf("same slot %s (%d, %d)",
+					plexams.getSlotTime(p[i].DayNumber, p[i].SlotNumber).Format("02.01.06, 15:04 Uhr"), p[i].DayNumber, p[i].SlotNumber)
 			} else
 			// adjacent slots
 			if p[i].DayNumber == p[j].DayNumber &&
 				(p[i].SlotNumber+1 == p[j].SlotNumber ||
 					p[i].SlotNumber-1 == p[j].SlotNumber) {
-				count++
-				*validationMessages = append(*validationMessages, aurora.Sprintf(aurora.Red("    - [\"%s\", \"%d\", \"%d\"] # %3d. Adjacent slots: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s%s / %s)"),
-					aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode), count,
-					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
-					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
-					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
-				))
+				problem = fmt.Sprintf("adjacent slot %s (%d, %d) and %s (%d, %d)",
+					plexams.getSlotTime(p[i].DayNumber, p[i].SlotNumber).Format("02.01.06, 15:04 Uhr"), p[i].DayNumber, p[i].SlotNumber,
+					plexams.getSlotTime(p[j].DayNumber, p[j].SlotNumber).Format("02.01.06, 15:04 Uhr"), p[j].DayNumber, p[j].SlotNumber)
 			} else
 			// same day
 			if p[i].DayNumber == p[j].DayNumber {
-				count++
-				*validationMessages = append(*validationMessages, aurora.Sprintf(aurora.Yellow("    - [\"%s\", \"%d\", \"%d\"] # %3d. Same day: ancodes %d (%d, %d) and %d (%d,%d) for student %s (%s%s / %s)"),
-					aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode), count,
-					p[i].Ancode, p[i].DayNumber, p[i].SlotNumber,
-					p[j].Ancode, p[j].DayNumber, p[j].SlotNumber,
-					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
-				))
+				problem = fmt.Sprintf("same day %s (%d, %d) and %s (%d, %d)",
+					plexams.getSlotTime(p[i].DayNumber, p[i].SlotNumber).Format("02.01.06, 15:04 Uhr"), p[i].DayNumber, p[i].SlotNumber,
+					plexams.getSlotTime(p[j].DayNumber, p[j].SlotNumber).Format("02.01.06, 15:04 Uhr"), p[j].DayNumber, p[j].SlotNumber)
+			}
+
+			if problem != "" {
+				smallerAncode := p[i].Ancode
+				largerAncode := p[j].Ancode
+				if p[i].Ancode > p[j].Ancode {
+					smallerAncode = p[j].Ancode
+					largerAncode = p[i].Ancode
+				}
+
+				conflictingAncodes := conflictingAncodes{
+					smallerAncode: smallerAncode,
+					largerAncode:  largerAncode,
+				}
+
+				validationMessageForProblem, ok := (*validationMessages)[conflictingAncodes]
+				if !ok {
+					validationMessageForProblem = &problemWithStudents{
+						problem:  problem,
+						students: make([]string, 0),
+					}
+				}
+				validationMessageForProblem.students = append(validationMessageForProblem.students,
+					aurora.Sprintf(aurora.Yellow("    - [\"%s\", \"%d\", \"%d\"] # %s (%s%s / %s)"),
+						aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode),
+						aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
+					))
+				(*validationMessages)[conflictingAncodes] = validationMessageForProblem
 			}
 		}
 	}

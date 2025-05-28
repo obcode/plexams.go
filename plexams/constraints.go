@@ -154,7 +154,7 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 			constraintsInput.Exahm != nil ||
 			constraintsInput.AllowedRooms != nil {
 			constraints.RoomConstraints = &model.RoomConstraints{}
-			if constraintsInput.AllowedRooms != nil && len(constraintsInput.AllowedRooms) > 0 {
+			if len(constraintsInput.AllowedRooms) > 0 {
 				constraints.RoomConstraints.AllowedRooms = make([]string, 0, len(constraintsInput.AllowedRooms))
 				for _, room := range constraintsInput.AllowedRooms {
 					if room != "" {

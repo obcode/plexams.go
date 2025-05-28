@@ -196,6 +196,6 @@ func (p *Plexams) sendEmailDraftFS(run bool) error {
 		bufText.Bytes(),
 		bufHTML.Bytes(),
 		attachments,
-		true,
+		false,
 	)
 }

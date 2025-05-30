@@ -154,7 +154,7 @@ type GeneratedExamMailData struct {
 func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailData *GeneratedExamMailData) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	tmpl, err := template.ParseFiles("tmpl/generatedExamEmail.tmpl")
+	tmpl, err := template.ParseFS(emailTemplates, "tmpl/generatedExamEmail.tmpl")
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 		return err
 	}
 
-	tmpl, err = template.ParseFiles("tmpl/generatedExamEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/generatedExamEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}
@@ -210,7 +210,7 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 			"add": func(a, b int) int {
 				return a + b
 			},
-		}).ParseFiles("tmpl/generatedExamMarkdown.tmpl")
+		}).ParseFS(emailTemplates, "tmpl/generatedExamMarkdown.tmpl")
 		if err != nil {
 			return err
 		}

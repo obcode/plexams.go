@@ -51,7 +51,7 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFiles("tmpl/constraintsEmail.tmpl")
+	tmpl, err := template.ParseFS(emailTemplates, "tmpl/constraintsEmail.tmpl")
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
 		return err
 	}
 
-	tmpl, err = template.ParseFiles("tmpl/constraintsEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/constraintsEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

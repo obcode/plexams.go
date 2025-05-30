@@ -58,7 +58,7 @@ func (p *Plexams) sendEmailDraftZPA(run bool) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFiles("tmpl/draftEmailZPA.tmpl")
+	tmpl, err := template.ParseFS(emailTemplates, "tmpl/draftEmailZPA.tmpl")
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (p *Plexams) sendEmailDraftZPA(run bool) error {
 		return err
 	}
 
-	tmpl, err = template.ParseFiles("tmpl/draftEmailZPAHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/draftEmailZPAHTML.tmpl")
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (p *Plexams) sendEmailDraftFS(run bool) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFiles("tmpl/draftEmailFS.tmpl")
+	tmpl, err := template.ParseFS(emailTemplates, "tmpl/draftEmailFS.tmpl")
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (p *Plexams) sendEmailDraftFS(run bool) error {
 		return err
 	}
 
-	tmpl, err = template.ParseFiles("tmpl/draftEmailFSHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/draftEmailFSHTML.tmpl")
 	if err != nil {
 		return err
 	}

@@ -43,7 +43,7 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFiles("tmpl/preparedEmail.tmpl")
+	tmpl, err := template.ParseFS(emailTemplates, "tmpl/preparedEmail.tmpl")
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool) error {
 		return err
 	}
 
-	tmpl, err = template.ParseFiles("tmpl/preparedEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/preparedEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

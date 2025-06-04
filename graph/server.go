@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi"
@@ -24,6 +25,7 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	c := generated.Config{Resolvers: plexamsResolver}
 	srv := handler.New(generated.NewExecutableSchema(c))
 	srv.AddTransport(transport.POST{})
+	srv.Use(extension.Introspection{})
 
 	// srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: plexamsResolver}))
 

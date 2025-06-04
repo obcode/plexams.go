@@ -150,6 +150,22 @@ func (db *DB) AddRoomToExam(ctx context.Context, room *model.RoomForExam) error 
 	return nil
 }
 
+func (db *DB) PreAddRoomToExam(ctx context.Context, ancode int, roomName string) (bool, error) {
+	collection := db.getCollectionSemester(collectionRoomsPrePlanned)
+
+	_, err := collection.InsertOne(ctx, bson.M{
+		"ancode":   ancode,
+		"roomname": roomName,
+	})
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).
+			Int("ancode", ancode).Str("roomname", roomName).
+			Msg("cannot insert pre planned room")
+		return false, err
+	}
+	return true, nil
+}
+
 func (db *DB) RoomsForAncode(ctx context.Context, ancode int) ([]*model.RoomForExam, error) {
 	collection := db.getCollectionSemester(collectionRoomsForExams)
 

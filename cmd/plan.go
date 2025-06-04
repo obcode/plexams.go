@@ -16,6 +16,7 @@ var (
 		Short: "plan [subcommand]",
 		Long: `Manipulate the plan.
 	pre-plan ancode day slot    --- move [ancode] to [day number] [slot number]
+	pre-room ancode roomname    --- plan [room name] for [ancode]
 	move-to ancode day slot    --- move [ancode] to [day number] [slot number]
 	change-room ancode oldroom newroom    --- change room for [ancode] from [oldroom] to [newroom]
 	lock-exam ancode   --- lock exam to slot
@@ -75,29 +76,47 @@ var (
 					fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
 				}
 
-			case "pre-move-to":
-				if len(args) < 4 {
-					log.Fatal("need ancode, day and slot number")
+			// case "pre-move-to":
+			// 	if len(args) < 4 {
+			// 		log.Fatal("need ancode, day and slot number")
+			// 	}
+			// 	ancode, err := strconv.Atoi(args[1])
+			// 	if err != nil {
+			// 		log.Fatalf("cannot convert %s to int", args[1])
+			// 	}
+			// 	day, err := strconv.Atoi(args[2])
+			// 	if err != nil {
+			// 		log.Fatalf("cannot convert %s to int", args[2])
+			// 	}
+			// 	slot, err := strconv.Atoi(args[3])
+			// 	if err != nil {
+			// 		log.Fatalf("cannot convert %s to int", args[3])
+			// 	}
+			// 	success, err := plexams.PreAddExamToSlot(context.Background(), ancode, day, slot)
+			// 	if err != nil {
+			// 		fmt.Printf("error: %v\n", err)
+			// 		os.Exit(1)
+			// 	}
+			// 	if success {
+			// 		fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
+			// 	}
+
+			case "pre-room":
+				if len(args) < 3 {
+					log.Fatal("need ancode and room name")
 				}
 				ancode, err := strconv.Atoi(args[1])
 				if err != nil {
 					log.Fatalf("cannot convert %s to int", args[1])
 				}
-				day, err := strconv.Atoi(args[2])
-				if err != nil {
-					log.Fatalf("cannot convert %s to int", args[2])
-				}
-				slot, err := strconv.Atoi(args[3])
-				if err != nil {
-					log.Fatalf("cannot convert %s to int", args[3])
-				}
-				success, err := plexams.PreAddExamToSlot(context.Background(), ancode, day, slot)
+				roomName := args[2]
+				success, err := plexams.PreAddRoomToExam(context.Background(), ancode, roomName)
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 					os.Exit(1)
 				}
 				if success {
-					fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
+					fmt.Printf("successfully moved exam %d to room %s\n", ancode, roomName)
 				}
 
 			case "fixslotsindb":

@@ -449,6 +449,21 @@ func (p *Plexams) AddRoomToExam(ctx context.Context, input model.RoomForExamInpu
 // 	return room, nil
 // }
 
+func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName string) (bool, error) {
+	room, err := p.dbClient.RoomFromName(ctx, roomName)
+	if err != nil {
+		log.Error().Err(err).Str("room", roomName).Msg("cannot get room from name")
+		return false, err
+	}
+
+	if room == nil {
+		log.Error().Str("room", roomName).Msg("room not found")
+		return false, fmt.Errorf("room %s not found", roomName)
+	}
+
+	return p.dbClient.PreAddRoomToExam(ctx, ancode, room.Name)
+}
+
 func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRoomName string) (bool, error) {
 	roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, ancode)
 	if err != nil {

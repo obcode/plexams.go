@@ -38,6 +38,7 @@ const (
 	collectionGeneratedExams = "generated_exams"
 
 	collectionRooms           = "rooms"
+	collectionRoomsForSlots   = "rooms_for_slots"
 	collectionRoomsPrePlanned = "rooms_pre_planned"
 	collectionRoomsPlanned    = "rooms_planned"
 	collectionRoomsForExams   = "rooms_for_exams" // Deprecated: ?

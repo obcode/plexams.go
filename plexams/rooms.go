@@ -193,6 +193,10 @@ func (p *Plexams) PrepareRoomsForSemester(approvedOnly bool) error {
 					roomsForSlots[slotNumber] = slotEntry
 				}
 			}
+			notAllowedDays := viper.Get(fmt.Sprintf("roomConstraints.%s.notAllowedDays", room.Name))
+			if notAllowedDays != nil {
+
+			}
 		}
 	}
 
@@ -378,6 +382,10 @@ func splitRooms(rooms []*model.Room) ([]*model.Room, []*model.Room, []*model.Roo
 
 func (p *Plexams) Rooms(ctx context.Context) ([]*model.Room, error) {
 	return p.dbClient.Rooms(ctx)
+}
+
+func (p *Plexams) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) {
+	return p.dbClient.RoomsForSlots(ctx)
 }
 
 func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error) {

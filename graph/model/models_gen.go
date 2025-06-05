@@ -376,6 +376,12 @@ type RoomWithInvigilator struct {
 	Invigilator  *Teacher       `json:"invigilator,omitempty"`
 }
 
+type RoomsForSlot struct {
+	Day       int      `json:"day"`
+	Slot      int      `json:"slot"`
+	RoomNames []string `json:"roomNames"`
+}
+
 type Semester struct {
 	ID string `json:"id"`
 }

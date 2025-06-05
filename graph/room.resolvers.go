@@ -21,6 +21,11 @@ func (r *queryResolver) Rooms(ctx context.Context) ([]*model.Room, error) {
 	return r.plexams.Rooms(ctx)
 }
 
+// RoomsForSlots is the resolver for the roomsForSlots field.
+func (r *queryResolver) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) {
+	return r.plexams.RoomsForSlots(ctx)
+}
+
 // PlannedRoomNames is the resolver for the plannedRoomNames field.
 func (r *queryResolver) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	return r.plexams.PlannedRoomNames(ctx)

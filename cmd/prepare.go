@@ -190,8 +190,15 @@ var (
 			// 		os.Exit(1)
 			// 	}
 
+			// Deprecated: one rooms-for-slots works
 			case "rooms-for-semester":
 				err := plexams.PrepareRoomsForSemester(approvedOnly)
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "rooms-for-slots":
+				err := plexams.PrepareRoomsForSlots(approvedOnly)
 				if err != nil {
 					os.Exit(1)
 				}

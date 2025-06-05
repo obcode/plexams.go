@@ -1,5 +1,6 @@
 extend type Query {
   rooms: [Room!]!
+  roomsForSlots: [RoomsForSlot!]!
   plannedRoomNames: [String!]
   plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
   plannedRoomsInSlot(day: Int!, time: Int!): [PlannedRoom!]
@@ -24,6 +25,12 @@ type SlotWithRooms {
   exahmRooms: [Room!]!
   labRooms: [Room!]!
   ntaRooms: [Room!]!
+}
+
+type RoomsForSlot {
+  day: Int!
+  slot: Int!
+  roomNames: [String!]!
 }
 
 type PlannedRoom {

@@ -86,6 +86,28 @@ func (db *DB) SaveRooms(ctx context.Context, slotsWithRooms []*model.SlotWithRoo
 	return nil
 }
 
+func (db *DB) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) {
+	collection := db.getCollectionSemester(collectionRoomsForSlots)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Str("collectionName", collectionRoomsForSlots).
+			Msg("cannot find rooms for slots")
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	var roomsForSlots []*model.RoomsForSlot
+	if err := cur.All(ctx, &roomsForSlots); err != nil {
+		log.Error().Err(err).Str("collectionName", collectionRoomsForSlots).
+			Msg("cannot decode rooms for slots")
+		return nil, err
+	}
+
+	return roomsForSlots, nil
+}
+
+// TODO: Rewrite method to use RoomsForSlot
 func (db *DB) RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error) {
 	collection := db.getCollectionSemester(collectionRooms)
 
@@ -108,6 +130,30 @@ func (db *DB) RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotW
 	}
 
 	return &slotWithRooms, nil
+}
+
+func (db *DB) SaveRoomsForSlots(ctx context.Context, roomsForSlots []*model.RoomsForSlot) error {
+	collection := db.getCollectionSemester(collectionRoomsForSlots)
+
+	err := collection.Drop(ctx)
+	if err != nil {
+		log.Error().Err(err).
+			Str("collectionName", collectionRoomsForSlots).
+			Msg("cannot drop collection")
+		return err
+	}
+	roomsForSlotsToInsert := make([]interface{}, 0, len(roomsForSlots))
+	for _, roomForSlot := range roomsForSlots {
+		roomsForSlotsToInsert = append(roomsForSlotsToInsert, roomForSlot)
+	}
+	_, err = collection.InsertMany(ctx, roomsForSlotsToInsert)
+	if err != nil {
+		log.Error().Err(err).
+			Str("collectionName", collectionRoomsForSlots).
+			Msg("cannot insert rooms for slots")
+		return err
+	}
+	return nil
 }
 
 func (db *DB) RoomPlannedInSlot(ctx context.Context, roomName string, day int, time int) ([]*model.RoomForExam, error) {

@@ -301,62 +301,6 @@ func (p *Plexams) reservations2Slots(reservations []interface{}, approvedOnly bo
 	return slots, nil
 }
 
-func fromUntil(dateEntry interface{}) (fromUntil *TimeRange, err error) {
-	entry, ok := dateEntry.(map[string]interface{})
-	if !ok {
-		err = fmt.Errorf("cannot convert date entry to map")
-		log.Error().Interface("date entry", dateEntry).Msg("cannot convert date entry to map")
-		return nil, err
-	}
-
-	rawDate, ok := entry["date"].(time.Time)
-	if !ok {
-		err = fmt.Errorf("cannot convert date entry to string")
-		log.Error().Interface("date entry", entry["date"]).Msg("cannot convert date entry to string")
-		return nil, err
-	}
-	rawFrom, ok := entry["from"].(string)
-	if !ok {
-		err = fmt.Errorf("cannot convert from entry to string")
-		log.Error().Interface("date entry", entry["from"]).Msg("cannot convert from entry to string")
-		return nil, err
-	}
-	rawUntil, ok := entry["until"].(string)
-	if !ok {
-		err = fmt.Errorf("cannot convert until entry to string")
-		log.Error().Interface("date entry", entry["until"]).Msg("cannot convert until entry to string")
-		return nil, err
-	}
-
-	from, err := time.ParseInLocation("2006-01-02 15:04", fmt.Sprintf("%s %s", rawDate.Format("2006-01-02"), rawFrom), time.Local)
-	if err != nil {
-		log.Error().Err(err).Interface("date", rawDate).Str("time", rawFrom).Msg("cannot parse to time")
-		return nil, err
-	}
-	until, err := time.ParseInLocation("2006-01-02 15:04", fmt.Sprintf("%s %s", rawDate.Format("2006-01-02"), rawUntil), time.Local)
-	if err != nil {
-		log.Error().Err(err).Interface("date", rawDate).Str("time", rawFrom).Msg("cannot parse to time")
-		return nil, err
-	}
-
-	dayNumber := -1
-	slotNumber := -1
-	slot, ok := entry["slot"].([]interface{})
-	if ok {
-		dayNumber = slot[0].(int)
-		slotNumber = slot[1].(int)
-	}
-	approved := entry["approved"].(bool)
-
-	return &TimeRange{
-		From:       from,
-		Until:      until,
-		DayNumber:  dayNumber,
-		SlotNumber: slotNumber,
-		Approved:   approved,
-	}, nil
-}
-
 func splitRooms(rooms []*model.Room) ([]*model.Room, []*model.Room, []*model.Room, []*model.Room) {
 	normalRooms := make([]*model.Room, 0)
 	exahmRooms := make([]*model.Room, 0)

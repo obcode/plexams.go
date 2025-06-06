@@ -193,10 +193,10 @@ func (p *Plexams) PrepareRoomsForSemester(approvedOnly bool) error {
 					roomsForSlots[slotNumber] = slotEntry
 				}
 			}
-			notAllowedDays := viper.Get(fmt.Sprintf("roomConstraints.%s.notAllowedDays", room.Name))
-			if notAllowedDays != nil {
+			// notAllowedDays := viper.Get(fmt.Sprintf("roomConstraints.%s.notAllowedDays", room.Name))
+			// if notAllowedDays != nil {
 
-			}
+			// }
 		}
 	}
 

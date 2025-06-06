@@ -95,7 +95,7 @@ func (db *DB) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) 
 			Msg("cannot find rooms for slots")
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer cur.Close(ctx) //nolint:errcheck
 
 	var roomsForSlots []*model.RoomsForSlot
 	if err := cur.All(ctx, &roomsForSlots); err != nil {

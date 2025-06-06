@@ -33,6 +33,10 @@ import (
 //go:embed tmpl/handicapEmailRoomAloneHTML.tmpl
 //go:embed tmpl/preparedEmail.tmpl
 //go:embed tmpl/preparedEmailHTML.tmpl
+//go:embed tmpl/publishedEmail.tmpl
+//go:embed tmpl/publishedEmailHTML.tmpl
+//go:embed tmpl/invigilationEmail.tmpl
+//go:embed tmpl/invigilationEmailHTML.tmpl
 var emailTemplates embed.FS
 
 func (p *Plexams) SendTestMail() error {

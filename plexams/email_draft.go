@@ -155,7 +155,7 @@ func (p *Plexams) sendEmailDraftFS(run bool) error {
 		return err
 	}
 
-	subject := fmt.Sprintf("[Prüfungsplanung %s] Vorläufiger Prüfungsplan  - Rückmeldung bis spätestens %s",
+	subject := fmt.Sprintf("[Prüfungsplanung %s] Vorläufiger Prüfungsplan - Rückmeldung bis spätestens %s",
 		p.semester, feedbackDate)
 
 	err = spinner.Stop()

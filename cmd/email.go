@@ -18,6 +18,8 @@ var (
 primuss-data [all|<ancode>] --- send emails to teachers about primuss data and nta
 constraints 				--- ask for constraints
 prepared 					--- announce exams to plan and constraints
+published 					--- announce published exams
+invigilations 				--- send email requesting invigilations constraints
 draft 						--- announce draft plan
 nta-with-room-alone 		--- send emails to students with room alone before planning
 nta-planned 				--- send emails about rooms to all students with nta after planning
@@ -53,6 +55,16 @@ nta-planned 				--- send emails about rooms to all students with nta after plann
 				}
 			case "prepared":
 				err := plexams.SendEmailPrepared(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "published":
+				err := plexams.SendEmailPublished(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "invigilations":
+				err := plexams.SendEmailInvigilations(context.Background(), run)
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

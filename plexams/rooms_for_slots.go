@@ -165,9 +165,9 @@ func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[s
 					fmt.Printf("rawDate: %s\n", rawDate.Local().Format("2006-01-02 15:04"))
 					for _, slot := range allSlots {
 						// TODO: stimmt nicht!
-						if !(slot.Starttime.Local().Year() == rawDate.Year() &&
-							slot.Starttime.Local().Month() == rawDate.Month() &&
-							slot.Starttime.Local().Day() == rawDate.Day()) {
+						if slot.Starttime.Local().Year() != rawDate.Year() ||
+							slot.Starttime.Local().Month() != rawDate.Month() ||
+							slot.Starttime.Local().Day() != rawDate.Day() {
 							if _, ok := restrictedSlots[room.Name]; !ok {
 								restrictedSlots[room.Name] = set.NewSet[SlotNumber]()
 							}

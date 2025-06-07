@@ -6,7 +6,6 @@ import (
 	"sort"
 	"time"
 
-	set "github.com/deckarep/golang-set/v2"
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -177,7 +176,7 @@ func (p *Plexams) PrepareRoomsForSemester(approvedOnly bool) error {
 					log.Error().Interface("reservations", reservations).Msg("cannot convert reservations to slice")
 					return fmt.Errorf("cannot convert reservations to slice")
 				}
-				reservedSlots, err := p.reservations2Slots(reservationsSlice, approvedOnly)
+				reservedSlots, err := p.reservations2Slots(reservationsSlice, room.Name, approvedOnly)
 				if err != nil {
 					log.Error().Err(err).Msg("cannot convert reservations to slots")
 					return err
@@ -269,36 +268,6 @@ func (p *Plexams) GetReservations() (map[string][]TimeRange, error) {
 	}
 
 	return reservations, nil
-}
-
-func (p *Plexams) reservations2Slots(reservations []interface{}, approvedOnly bool) (set.Set[SlotNumber], error) {
-	slots := set.NewSet[SlotNumber]()
-	for _, reservation := range reservations {
-		fromUntil, err := fromUntil(reservation)
-		if err != nil {
-			log.Error().Err(err).Interface("reservation", reservation).Msg("cannot convert reservation to time")
-			return nil, err
-		}
-
-		fmt.Println(aurora.Sprintf(aurora.Magenta("    From: %v Until: %v"),
-			aurora.Cyan(fromUntil.From.Format("02.01.06 15:04")),
-			aurora.Cyan(fromUntil.Until.Format("02.01.06 15:04"))))
-
-		for _, slot := range p.semesterConfig.Slots {
-			if (fromUntil.From.Before(slot.Starttime.Local()) || fromUntil.From.Equal(slot.Starttime.Local())) &&
-				fromUntil.Until.After(slot.Starttime.Local().Add(89*time.Minute)) &&
-				fromUntil.DayNumber == slot.DayNumber &&
-				fromUntil.SlotNumber == slot.SlotNumber {
-				if !approvedOnly || fromUntil.Approved {
-					fmt.Println(aurora.Sprintf(aurora.Green("        ---> add (%d, %d)"), slot.DayNumber, slot.SlotNumber))
-					slots.Add(SlotNumber{slot.DayNumber, slot.SlotNumber})
-				} else {
-					fmt.Println(aurora.Sprintf(aurora.Red("        ---> not yet approved: (%d, %d)"), slot.DayNumber, slot.SlotNumber))
-				}
-			}
-		}
-	}
-	return slots, nil
 }
 
 func splitRooms(rooms []*model.Room) ([]*model.Room, []*model.Room, []*model.Room, []*model.Room) {

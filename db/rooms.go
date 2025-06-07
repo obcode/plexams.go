@@ -88,8 +88,9 @@ func (db *DB) SaveRooms(ctx context.Context, slotsWithRooms []*model.SlotWithRoo
 
 func (db *DB) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) {
 	collection := db.getCollectionSemester(collectionRoomsForSlots)
-
-	cur, err := collection.Find(ctx, bson.M{})
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "day", Value: 1}, {Key: "slot", Value: 1}})
+	cur, err := collection.Find(ctx, bson.M{}, findOptions)
 	if err != nil {
 		log.Error().Err(err).Str("collectionName", collectionRoomsForSlots).
 			Msg("cannot find rooms for slots")

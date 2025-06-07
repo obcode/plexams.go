@@ -40,7 +40,8 @@ var (
 	For planning rooms:
 
 	# exams-in-plan     --- split exam-groups into exams
-	rooms-for-semester 	--- prepare rooms which are allowed to use
+	rooms-for-slots 	--- prepare rooms which are allowed to use
+	rooms-for-semester 	--- Deprecated: use rooms-for-slots
 	rooms-for-ntas 		--- rooms for ntas alone
 	rooms-for-exams   	--- rooms for exams
 

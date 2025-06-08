@@ -82,7 +82,7 @@ func (db *DB) getInvigilationInSlot(ctx context.Context, collectionName, roomnam
 
 	err = cur.All(ctx, &invigilations)
 	if err != nil {
-		log.Error().Err(err).Str("collection", collectionRooms).Msg("Cannot decode to rooms for exams")
+		log.Error().Err(err).Str("collection", collectionName).Msg("Cannot decode to invigilations")
 		return nil, err
 	}
 

@@ -3,10 +3,8 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"sort"
 	"time"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -123,109 +121,109 @@ func (p *Plexams) SlotsWithRoomsFromBookedEntries(bookedEntries []BookedEntry) (
 	return slotsWithRooms, nil
 }
 
-func (p *Plexams) PrepareRoomsForSemester(approvedOnly bool) error {
-	globalRooms, err := p.dbClient.Rooms(context.Background())
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get global rooms")
-		return err
-	}
+// func (p *Plexams) PrepareRoomsForSemester(approvedOnly bool) error {
+// 	globalRooms, err := p.dbClient.Rooms(context.Background())
+// 	if err != nil {
+// 		log.Error().Err(err).Msg("cannot get global rooms")
+// 		return err
+// 	}
 
-	roomsForSlots := make(map[SlotNumber][]*model.Room)
-	for _, room := range globalRooms {
-		if room.Name == "No Room" || room.Exahm {
-			continue
-		}
-		roomConstraints := viper.Get(fmt.Sprintf("roomConstraints.%s", room.Name))
-		if roomConstraints == nil {
+// 	roomsForSlots := make(map[SlotNumber][]*model.Room)
+// 	for _, room := range globalRooms {
+// 		if room.Name == "No Room" || room.Exahm {
+// 			continue
+// 		}
+// 		roomConstraints := viper.Get(fmt.Sprintf("roomConstraints.%s", room.Name))
+// 		if roomConstraints == nil {
 
-			if room.NeedsRequest {
-				fmt.Println(aurora.Sprintf(aurora.Red("%s: no constraints found, but room needs request, ignoring room"),
-					aurora.Cyan(room.Name)))
-				continue
-			}
+// 			if room.NeedsRequest {
+// 				fmt.Println(aurora.Sprintf(aurora.Red("%s: no constraints found, but room needs request, ignoring room"),
+// 					aurora.Cyan(room.Name)))
+// 				continue
+// 			}
 
-			fmt.Println(aurora.Sprintf(aurora.Green("%s: no constraints found"), aurora.Cyan(room.Name)))
+// 			fmt.Println(aurora.Sprintf(aurora.Green("%s: no constraints found"), aurora.Cyan(room.Name)))
 
-			for _, slot := range p.semesterConfig.Slots {
-				slotNumber := SlotNumber{slot.DayNumber, slot.SlotNumber}
-				slotEntry, ok := roomsForSlots[slotNumber]
-				if !ok {
-					slotEntry = []*model.Room{room}
-				} else {
-					slotEntry = append(slotEntry, room)
-				}
-				roomsForSlots[slotNumber] = slotEntry
-			}
-		} else {
-			//   R1.046:
-			//     reservations:
-			//       - slot: [1,3]
-			//         date: 2024-01-24
-			//         from: 10:15
-			//         until: 12:15
-			//       - slot: [1, 5]
-			//         date: 2024-01-24
-			//         from: 14:15
-			//         until: 16:15
-			reservations := viper.Get(fmt.Sprintf("roomConstraints.%s.reservations", room.Name))
-			if reservations != nil {
-				fmt.Println(aurora.Sprintf(aurora.Green("%s: reservations found"), aurora.Cyan(room.Name)))
+// 			for _, slot := range p.semesterConfig.Slots {
+// 				slotNumber := SlotNumber{slot.DayNumber, slot.SlotNumber}
+// 				slotEntry, ok := roomsForSlots[slotNumber]
+// 				if !ok {
+// 					slotEntry = []*model.Room{room}
+// 				} else {
+// 					slotEntry = append(slotEntry, room)
+// 				}
+// 				roomsForSlots[slotNumber] = slotEntry
+// 			}
+// 		} else {
+// 			//   R1.046:
+// 			//     reservations:
+// 			//       - slot: [1,3]
+// 			//         date: 2024-01-24
+// 			//         from: 10:15
+// 			//         until: 12:15
+// 			//       - slot: [1, 5]
+// 			//         date: 2024-01-24
+// 			//         from: 14:15
+// 			//         until: 16:15
+// 			reservations := viper.Get(fmt.Sprintf("roomConstraints.%s.reservations", room.Name))
+// 			if reservations != nil {
+// 				fmt.Println(aurora.Sprintf(aurora.Green("%s: reservations found"), aurora.Cyan(room.Name)))
 
-				reservationsSlice, ok := reservations.([]interface{})
-				if !ok {
-					log.Error().Interface("reservations", reservations).Msg("cannot convert reservations to slice")
-					return fmt.Errorf("cannot convert reservations to slice")
-				}
-				reservedSlots, err := p.reservations2Slots(reservationsSlice, room.Name, approvedOnly)
-				if err != nil {
-					log.Error().Err(err).Msg("cannot convert reservations to slots")
-					return err
-				}
-				for _, slot := range reservedSlots.ToSlice() {
-					slotNumber := SlotNumber{slot.day, slot.slot}
-					slotEntry, ok := roomsForSlots[slotNumber]
-					if !ok {
-						slotEntry = []*model.Room{room}
-					} else {
-						slotEntry = append(slotEntry, room)
-					}
-					roomsForSlots[slotNumber] = slotEntry
-				}
-			}
-			// notAllowedDays := viper.Get(fmt.Sprintf("roomConstraints.%s.notAllowedDays", room.Name))
-			// if notAllowedDays != nil {
+// 				reservationsSlice, ok := reservations.([]interface{})
+// 				if !ok {
+// 					log.Error().Interface("reservations", reservations).Msg("cannot convert reservations to slice")
+// 					return fmt.Errorf("cannot convert reservations to slice")
+// 				}
+// 				reservedSlots, err := p.reservations2Slots(reservationsSlice, room.Name, approvedOnly)
+// 				if err != nil {
+// 					log.Error().Err(err).Msg("cannot convert reservations to slots")
+// 					return err
+// 				}
+// 				for _, slot := range reservedSlots.ToSlice() {
+// 					slotNumber := SlotNumber{slot.day, slot.slot}
+// 					slotEntry, ok := roomsForSlots[slotNumber]
+// 					if !ok {
+// 						slotEntry = []*model.Room{room}
+// 					} else {
+// 						slotEntry = append(slotEntry, room)
+// 					}
+// 					roomsForSlots[slotNumber] = slotEntry
+// 				}
+// 			}
+// 			// notAllowedDays := viper.Get(fmt.Sprintf("roomConstraints.%s.notAllowedDays", room.Name))
+// 			// if notAllowedDays != nil {
 
-			// }
-		}
-	}
+// 			// }
+// 		}
+// 	}
 
-	bookedEntries, err := p.ExahmRoomsFromBooked()
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get exahm rooms from booked")
-		return err
-	}
-	bookedRoomsMap, err := p.SlotsWithRoomsFromBookedEntries(bookedEntries)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get booked rooms map from booked entries")
-		return err
-	}
+// 	bookedEntries, err := p.ExahmRoomsFromBooked()
+// 	if err != nil {
+// 		log.Error().Err(err).Msg("cannot get exahm rooms from booked")
+// 		return err
+// 	}
+// 	bookedRoomsMap, err := p.SlotsWithRoomsFromBookedEntries(bookedEntries)
+// 	if err != nil {
+// 		log.Error().Err(err).Msg("cannot get booked rooms map from booked entries")
+// 		return err
+// 	}
 
-	slotsWithRooms := make([]*model.SlotWithRooms, 0, len(roomsForSlots))
-	for slot, rooms := range roomsForSlots {
-		normalRooms, _, labRooms, ntaRooms := splitRooms(rooms)
-		exahmRooms := bookedRoomsMap[slot]
-		slotsWithRooms = append(slotsWithRooms, &model.SlotWithRooms{
-			DayNumber:   slot.day,
-			SlotNumber:  slot.slot,
-			NormalRooms: normalRooms,
-			ExahmRooms:  exahmRooms,
-			LabRooms:    labRooms,
-			NtaRooms:    ntaRooms,
-		})
-	}
+// 	slotsWithRooms := make([]*model.SlotWithRooms, 0, len(roomsForSlots))
+// 	for slot, rooms := range roomsForSlots {
+// 		normalRooms, _, labRooms, ntaRooms := splitRooms(rooms)
+// 		exahmRooms := bookedRoomsMap[slot]
+// 		slotsWithRooms = append(slotsWithRooms, &model.SlotWithRooms{
+// 			DayNumber:   slot.day,
+// 			SlotNumber:  slot.slot,
+// 			NormalRooms: normalRooms,
+// 			ExahmRooms:  exahmRooms,
+// 			LabRooms:    labRooms,
+// 			NtaRooms:    ntaRooms,
+// 		})
+// 	}
 
-	return p.dbClient.SaveRooms(context.Background(), slotsWithRooms)
-}
+// 	return p.dbClient.SaveRooms(context.Background(), slotsWithRooms)
+// }
 
 type TimeRange struct {
 	From       time.Time
@@ -270,28 +268,28 @@ func (p *Plexams) GetReservations() (map[string][]TimeRange, error) {
 	return reservations, nil
 }
 
-func splitRooms(rooms []*model.Room) ([]*model.Room, []*model.Room, []*model.Room, []*model.Room) {
-	normalRooms := make([]*model.Room, 0)
-	exahmRooms := make([]*model.Room, 0)
-	labRooms := make([]*model.Room, 0)
-	ntaRooms := make([]*model.Room, 0)
-	for _, room := range rooms {
-		if room.Handicap {
-			ntaRooms = append(ntaRooms, room)
-		} else if room.Exahm {
-			exahmRooms = append(exahmRooms, room)
-		} else if room.Lab {
-			labRooms = append(labRooms, room)
-		} else {
-			normalRooms = append(normalRooms, room)
-		}
-	}
-	sort.Slice(normalRooms, func(i, j int) bool { return normalRooms[i].Seats > normalRooms[j].Seats })
-	sort.Slice(exahmRooms, func(i, j int) bool { return exahmRooms[i].Seats > exahmRooms[j].Seats })
-	sort.Slice(labRooms, func(i, j int) bool { return labRooms[i].Seats > labRooms[j].Seats })
-	sort.Slice(ntaRooms, func(i, j int) bool { return ntaRooms[i].Seats < ntaRooms[j].Seats })
-	return normalRooms, exahmRooms, labRooms, ntaRooms
-}
+// func splitRooms(rooms []*model.Room) ([]*model.Room, []*model.Room, []*model.Room, []*model.Room) {
+// 	normalRooms := make([]*model.Room, 0)
+// 	exahmRooms := make([]*model.Room, 0)
+// 	labRooms := make([]*model.Room, 0)
+// 	ntaRooms := make([]*model.Room, 0)
+// 	for _, room := range rooms {
+// 		if room.Handicap {
+// 			ntaRooms = append(ntaRooms, room)
+// 		} else if room.Exahm {
+// 			exahmRooms = append(exahmRooms, room)
+// 		} else if room.Lab {
+// 			labRooms = append(labRooms, room)
+// 		} else {
+// 			normalRooms = append(normalRooms, room)
+// 		}
+// 	}
+// 	sort.Slice(normalRooms, func(i, j int) bool { return normalRooms[i].Seats > normalRooms[j].Seats })
+// 	sort.Slice(exahmRooms, func(i, j int) bool { return exahmRooms[i].Seats > exahmRooms[j].Seats })
+// 	sort.Slice(labRooms, func(i, j int) bool { return labRooms[i].Seats > labRooms[j].Seats })
+// 	sort.Slice(ntaRooms, func(i, j int) bool { return ntaRooms[i].Seats < ntaRooms[j].Seats })
+// 	return normalRooms, exahmRooms, labRooms, ntaRooms
+// }
 
 func (p *Plexams) Rooms(ctx context.Context) ([]*model.Room, error) {
 	return p.dbClient.Rooms(ctx)
@@ -301,7 +299,7 @@ func (p *Plexams) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, err
 	return p.dbClient.RoomsForSlots(ctx)
 }
 
-func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error) {
+func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) (*model.RoomsForSlot, error) {
 	return p.dbClient.RoomsForSlot(ctx, day, time)
 }
 
@@ -386,65 +384,66 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 }
 
 func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRoomName string) (bool, error) {
-	roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, ancode)
-	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("error while getting rooms for ancode")
-		return false, err
-	}
+	return false, fmt.Errorf("ChangeRoom is not implemented yet")
+	// 	roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, ancode)
+	// 	if err != nil {
+	// 		log.Error().Err(err).Int("ancode", ancode).Msg("error while getting rooms for ancode")
+	// 		return false, err
+	// 	}
 
-	var oldRoom *model.Room
-	for _, room := range roomsForAncode {
-		if room.RoomName == oldRoomName {
-			log.Debug().Msg("old room found")
-			oldRoom = p.GetRoomInfo(room.RoomName)
-		}
-	}
-	if oldRoom == nil {
-		log.Error().Msg("old room not found")
-		return false, fmt.Errorf("old room %s for ancode %d not found", oldRoomName, ancode)
-	}
+	// 	var oldRoom *model.Room
+	// 	for _, room := range roomsForAncode {
+	// 		if room.RoomName == oldRoomName {
+	// 			log.Debug().Msg("old room found")
+	// 			oldRoom = p.GetRoomInfo(room.RoomName)
+	// 		}
+	// 	}
+	// 	if oldRoom == nil {
+	// 		log.Error().Msg("old room not found")
+	// 		return false, fmt.Errorf("old room %s for ancode %d not found", oldRoomName, ancode)
+	// 	}
 
-	slot, err := p.SlotForAncode(ctx, ancode)
-	if err != nil || slot == nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("error while getting slot for ancode")
-		return false, err
-	}
+	// 	slot, err := p.SlotForAncode(ctx, ancode)
+	// 	if err != nil || slot == nil {
+	// 		log.Error().Err(err).Int("ancode", ancode).Msg("error while getting slot for ancode")
+	// 		return false, err
+	// 	}
 
-	roomsForSlot, err := p.RoomsForSlot(ctx, slot.DayNumber, slot.SlotNumber)
-	if err != nil || roomsForSlot == nil {
-		log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
-			Msg("error while getting rooms for slot")
-		return false, err
-	}
+	// 	roomsForSlot, err := p.RoomsForSlot(ctx, slot.DayNumber, slot.SlotNumber)
+	// 	if err != nil || roomsForSlot == nil {
+	// 		log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+	// 			Msg("error while getting rooms for slot")
+	// 		return false, err
+	// 	}
 
-	var newRoom *model.Room
+	// 	var newRoom *model.Room
 
-	if oldRoom.Exahm {
-		for _, roomForSlot := range roomsForSlot.ExahmRooms {
-			if roomForSlot.Name == newRoomName {
-				newRoom = roomForSlot
-			}
-		}
-	} else if oldRoom.Lab {
-		for _, roomForSlot := range roomsForSlot.LabRooms {
-			if roomForSlot.Name == newRoomName {
-				newRoom = roomForSlot
-			}
-		}
-	} else {
-		for _, roomForSlot := range roomsForSlot.NormalRooms {
-			if roomForSlot.Name == newRoomName {
-				newRoom = roomForSlot
-			}
-		}
-	}
+	// 	if oldRoom.Exahm {
+	// 		for _, roomForSlot := range roomsForSlot.ExahmRooms {
+	// 			if roomForSlot.Name == newRoomName {
+	// 				newRoom = roomForSlot
+	// 			}
+	// 		}
+	// 	} else if oldRoom.Lab {
+	// 		for _, roomForSlot := range roomsForSlot.LabRooms {
+	// 			if roomForSlot.Name == newRoomName {
+	// 				newRoom = roomForSlot
+	// 			}
+	// 		}
+	// 	} else {
+	// 		for _, roomForSlot := range roomsForSlot.NormalRooms {
+	// 			if roomForSlot.Name == newRoomName {
+	// 				newRoom = roomForSlot
+	// 			}
+	// 		}
+	// 	}
 
-	if newRoom == nil {
-		log.Error().Msg("old room not found")
-		return false, fmt.Errorf("new room %s for ancode %d not found", newRoomName, ancode)
-	}
+	// 	if newRoom == nil {
+	// 		log.Error().Msg("old room not found")
+	// 		return false, fmt.Errorf("new room %s for ancode %d not found", newRoomName, ancode)
+	// 	}
 
-	return p.dbClient.ChangeRoom(ctx, ancode, oldRoom, newRoom)
+	// return p.dbClient.ChangeRoom(ctx, ancode, oldRoom, newRoom)
 }
 
 func (p *Plexams) PlannedRoomNames(ctx context.Context) ([]string, error) {

@@ -46,6 +46,7 @@ type ResolverRoot interface {
 	PlannedRoom() PlannedRoomResolver
 	Query() QueryResolver
 	RoomForExam() RoomForExamResolver
+	RoomsForSlot() RoomsForSlotResolver
 }
 
 type DirectiveRoot struct {
@@ -567,9 +568,9 @@ type ComplexityRoot struct {
 	}
 
 	RoomsForSlot struct {
-		Day       func(childComplexity int) int
-		RoomNames func(childComplexity int) int
-		Slot      func(childComplexity int) int
+		Day   func(childComplexity int) int
+		Rooms func(childComplexity int) int
+		Slot  func(childComplexity int) int
 	}
 
 	Semester struct {
@@ -600,15 +601,6 @@ type ComplexityRoot struct {
 		DayNumber  func(childComplexity int) int
 		ExamGroups func(childComplexity int) int
 		SlotNumber func(childComplexity int) int
-	}
-
-	SlotWithRooms struct {
-		DayNumber   func(childComplexity int) int
-		ExahmRooms  func(childComplexity int) int
-		LabRooms    func(childComplexity int) int
-		NormalRooms func(childComplexity int) int
-		NtaRooms    func(childComplexity int) int
-		SlotNumber  func(childComplexity int) int
 	}
 
 	Starttime struct {
@@ -787,7 +779,7 @@ type QueryResolver interface {
 	ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error)
 	ExamsInSlotWithRooms(ctx context.Context, day int, time int) ([]*model.ExamWithRegsAndRooms, error)
 	RoomsWithConstraints(ctx context.Context, handicap bool, lab bool, placesWithSocket bool, exahm *bool) ([]*model.Room, error)
-	RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error)
+	RoomsForSlot(ctx context.Context, day int, time int) (*model.RoomsForSlot, error)
 	DayOkForInvigilator(ctx context.Context, day int, invigilatorID int) (*bool, error)
 	ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
@@ -839,6 +831,9 @@ type QueryResolver interface {
 }
 type RoomForExamResolver interface {
 	Room(ctx context.Context, obj *model.RoomForExam) (*model.Room, error)
+}
+type RoomsForSlotResolver interface {
+	Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error)
 }
 
 type executableSchema struct {
@@ -3606,12 +3601,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RoomsForSlot.Day(childComplexity), true
 
-	case "RoomsForSlot.roomNames":
-		if e.complexity.RoomsForSlot.RoomNames == nil {
+	case "RoomsForSlot.rooms":
+		if e.complexity.RoomsForSlot.Rooms == nil {
 			break
 		}
 
-		return e.complexity.RoomsForSlot.RoomNames(childComplexity), true
+		return e.complexity.RoomsForSlot.Rooms(childComplexity), true
 
 	case "RoomsForSlot.slot":
 		if e.complexity.RoomsForSlot.Slot == nil {
@@ -3745,48 +3740,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SlotWithExamGroups.SlotNumber(childComplexity), true
-
-	case "SlotWithRooms.dayNumber":
-		if e.complexity.SlotWithRooms.DayNumber == nil {
-			break
-		}
-
-		return e.complexity.SlotWithRooms.DayNumber(childComplexity), true
-
-	case "SlotWithRooms.exahmRooms":
-		if e.complexity.SlotWithRooms.ExahmRooms == nil {
-			break
-		}
-
-		return e.complexity.SlotWithRooms.ExahmRooms(childComplexity), true
-
-	case "SlotWithRooms.labRooms":
-		if e.complexity.SlotWithRooms.LabRooms == nil {
-			break
-		}
-
-		return e.complexity.SlotWithRooms.LabRooms(childComplexity), true
-
-	case "SlotWithRooms.normalRooms":
-		if e.complexity.SlotWithRooms.NormalRooms == nil {
-			break
-		}
-
-		return e.complexity.SlotWithRooms.NormalRooms(childComplexity), true
-
-	case "SlotWithRooms.ntaRooms":
-		if e.complexity.SlotWithRooms.NtaRooms == nil {
-			break
-		}
-
-		return e.complexity.SlotWithRooms.NtaRooms(childComplexity), true
-
-	case "SlotWithRooms.slotNumber":
-		if e.complexity.SlotWithRooms.SlotNumber == nil {
-			break
-		}
-
-		return e.complexity.SlotWithRooms.SlotNumber(childComplexity), true
 
 	case "Starttime.number":
 		if e.complexity.Starttime.Number == nil {
@@ -4966,7 +4919,7 @@ type ConflictsPerProgramAncode {
     placesWithSocket: Boolean!
     exahm: Boolean
   ): [Room!]!
-  roomsForSlot(day: Int!, time: Int!): SlotWithRooms
+  roomsForSlot(day: Int!, time: Int!): RoomsForSlot
 
   # Invigilators
   dayOkForInvigilator(day: Int!, invigilatorID: Int!): Boolean
@@ -4992,19 +4945,19 @@ type Room {
   seb: Boolean!
 }
 
-type SlotWithRooms {
-  dayNumber: Int!
-  slotNumber: Int!
-  normalRooms: [Room!]!
-  exahmRooms: [Room!]!
-  labRooms: [Room!]!
-  ntaRooms: [Room!]!
-}
+# type SlotWithRooms {
+#   dayNumber: Int!
+#   slotNumber: Int!
+#   normalRooms: [Room!]!
+#   exahmRooms: [Room!]!
+#   labRooms: [Room!]!
+#   ntaRooms: [Room!]!
+# }
 
 type RoomsForSlot {
   day: Int!
   slot: Int!
-  roomNames: [String!]!
+  rooms: [Room!]!
 }
 
 type PlannedRoom {
@@ -21085,9 +21038,9 @@ func (ec *executionContext) _Query_roomsForSlot(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.SlotWithRooms)
+	res := resTmp.(*model.RoomsForSlot)
 	fc.Result = res
-	return ec.marshalOSlotWithRooms2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotWithRooms(ctx, field.Selections, res)
+	return ec.marshalORoomsForSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomsForSlot(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_roomsForSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21098,20 +21051,14 @@ func (ec *executionContext) fieldContext_Query_roomsForSlot(ctx context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_SlotWithRooms_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_SlotWithRooms_slotNumber(ctx, field)
-			case "normalRooms":
-				return ec.fieldContext_SlotWithRooms_normalRooms(ctx, field)
-			case "exahmRooms":
-				return ec.fieldContext_SlotWithRooms_exahmRooms(ctx, field)
-			case "labRooms":
-				return ec.fieldContext_SlotWithRooms_labRooms(ctx, field)
-			case "ntaRooms":
-				return ec.fieldContext_SlotWithRooms_ntaRooms(ctx, field)
+			case "day":
+				return ec.fieldContext_RoomsForSlot_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_RoomsForSlot_slot(ctx, field)
+			case "rooms":
+				return ec.fieldContext_RoomsForSlot_rooms(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type SlotWithRooms", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type RoomsForSlot", field.Name)
 		},
 	}
 	defer func() {
@@ -22861,8 +22808,8 @@ func (ec *executionContext) fieldContext_Query_roomsForSlots(_ context.Context, 
 				return ec.fieldContext_RoomsForSlot_day(ctx, field)
 			case "slot":
 				return ec.fieldContext_RoomsForSlot_slot(ctx, field)
-			case "roomNames":
-				return ec.fieldContext_RoomsForSlot_roomNames(ctx, field)
+			case "rooms":
+				return ec.fieldContext_RoomsForSlot_rooms(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RoomsForSlot", field.Name)
 		},
@@ -25804,8 +25751,8 @@ func (ec *executionContext) fieldContext_RoomsForSlot_slot(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _RoomsForSlot_roomNames(ctx context.Context, field graphql.CollectedField, obj *model.RoomsForSlot) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RoomsForSlot_roomNames(ctx, field)
+func (ec *executionContext) _RoomsForSlot_rooms(ctx context.Context, field graphql.CollectedField, obj *model.RoomsForSlot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomsForSlot_rooms(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -25818,7 +25765,7 @@ func (ec *executionContext) _RoomsForSlot_roomNames(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RoomNames, nil
+		return ec.resolvers.RoomsForSlot().Rooms(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -25830,19 +25777,37 @@ func (ec *executionContext) _RoomsForSlot_roomNames(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]string)
+	res := resTmp.([]*model.Room)
 	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RoomsForSlot_roomNames(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RoomsForSlot_rooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RoomsForSlot",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Room_name(ctx, field)
+			case "seats":
+				return ec.fieldContext_Room_seats(ctx, field)
+			case "handicap":
+				return ec.fieldContext_Room_handicap(ctx, field)
+			case "lab":
+				return ec.fieldContext_Room_lab(ctx, field)
+			case "placesWithSocket":
+				return ec.fieldContext_Room_placesWithSocket(ctx, field)
+			case "needsRequest":
+				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "exahm":
+				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
 	}
 	return fc, nil
@@ -26678,342 +26643,6 @@ func (ec *executionContext) fieldContext_SlotWithExamGroups_examGroups(_ context
 				return ec.fieldContext_ExamGroup_examGroupInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamGroup", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SlotWithRooms_dayNumber(ctx context.Context, field graphql.CollectedField, obj *model.SlotWithRooms) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SlotWithRooms_dayNumber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DayNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SlotWithRooms_dayNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SlotWithRooms",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SlotWithRooms_slotNumber(ctx context.Context, field graphql.CollectedField, obj *model.SlotWithRooms) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SlotWithRooms_slotNumber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.SlotNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SlotWithRooms_slotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SlotWithRooms",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SlotWithRooms_normalRooms(ctx context.Context, field graphql.CollectedField, obj *model.SlotWithRooms) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SlotWithRooms_normalRooms(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.NormalRooms, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.Room)
-	fc.Result = res
-	return ec.marshalNRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SlotWithRooms_normalRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SlotWithRooms",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_Room_name(ctx, field)
-			case "seats":
-				return ec.fieldContext_Room_seats(ctx, field)
-			case "handicap":
-				return ec.fieldContext_Room_handicap(ctx, field)
-			case "lab":
-				return ec.fieldContext_Room_lab(ctx, field)
-			case "placesWithSocket":
-				return ec.fieldContext_Room_placesWithSocket(ctx, field)
-			case "needsRequest":
-				return ec.fieldContext_Room_needsRequest(ctx, field)
-			case "exahm":
-				return ec.fieldContext_Room_exahm(ctx, field)
-			case "seb":
-				return ec.fieldContext_Room_seb(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SlotWithRooms_exahmRooms(ctx context.Context, field graphql.CollectedField, obj *model.SlotWithRooms) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SlotWithRooms_exahmRooms(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ExahmRooms, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.Room)
-	fc.Result = res
-	return ec.marshalNRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SlotWithRooms_exahmRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SlotWithRooms",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_Room_name(ctx, field)
-			case "seats":
-				return ec.fieldContext_Room_seats(ctx, field)
-			case "handicap":
-				return ec.fieldContext_Room_handicap(ctx, field)
-			case "lab":
-				return ec.fieldContext_Room_lab(ctx, field)
-			case "placesWithSocket":
-				return ec.fieldContext_Room_placesWithSocket(ctx, field)
-			case "needsRequest":
-				return ec.fieldContext_Room_needsRequest(ctx, field)
-			case "exahm":
-				return ec.fieldContext_Room_exahm(ctx, field)
-			case "seb":
-				return ec.fieldContext_Room_seb(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SlotWithRooms_labRooms(ctx context.Context, field graphql.CollectedField, obj *model.SlotWithRooms) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SlotWithRooms_labRooms(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.LabRooms, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.Room)
-	fc.Result = res
-	return ec.marshalNRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SlotWithRooms_labRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SlotWithRooms",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_Room_name(ctx, field)
-			case "seats":
-				return ec.fieldContext_Room_seats(ctx, field)
-			case "handicap":
-				return ec.fieldContext_Room_handicap(ctx, field)
-			case "lab":
-				return ec.fieldContext_Room_lab(ctx, field)
-			case "placesWithSocket":
-				return ec.fieldContext_Room_placesWithSocket(ctx, field)
-			case "needsRequest":
-				return ec.fieldContext_Room_needsRequest(ctx, field)
-			case "exahm":
-				return ec.fieldContext_Room_exahm(ctx, field)
-			case "seb":
-				return ec.fieldContext_Room_seb(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SlotWithRooms_ntaRooms(ctx context.Context, field graphql.CollectedField, obj *model.SlotWithRooms) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SlotWithRooms_ntaRooms(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.NtaRooms, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.Room)
-	fc.Result = res
-	return ec.marshalNRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_SlotWithRooms_ntaRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SlotWithRooms",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_Room_name(ctx, field)
-			case "seats":
-				return ec.fieldContext_Room_seats(ctx, field)
-			case "handicap":
-				return ec.fieldContext_Room_handicap(ctx, field)
-			case "lab":
-				return ec.fieldContext_Room_lab(ctx, field)
-			case "placesWithSocket":
-				return ec.fieldContext_Room_placesWithSocket(ctx, field)
-			case "needsRequest":
-				return ec.fieldContext_Room_needsRequest(ctx, field)
-			case "exahm":
-				return ec.fieldContext_Room_exahm(ctx, field)
-			case "seb":
-				return ec.fieldContext_Room_seb(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
 	}
 	return fc, nil
@@ -37242,18 +36871,49 @@ func (ec *executionContext) _RoomsForSlot(ctx context.Context, sel ast.Selection
 		case "day":
 			out.Values[i] = ec._RoomsForSlot_day(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "slot":
 			out.Values[i] = ec._RoomsForSlot_slot(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "roomNames":
-			out.Values[i] = ec._RoomsForSlot_roomNames(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+		case "rooms":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RoomsForSlot_rooms(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -37471,70 +37131,6 @@ func (ec *executionContext) _SlotWithExamGroups(ctx context.Context, sel ast.Sel
 			}
 		case "examGroups":
 			out.Values[i] = ec._SlotWithExamGroups_examGroups(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var slotWithRoomsImplementors = []string{"SlotWithRooms"}
-
-func (ec *executionContext) _SlotWithRooms(ctx context.Context, sel ast.SelectionSet, obj *model.SlotWithRooms) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, slotWithRoomsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("SlotWithRooms")
-		case "dayNumber":
-			out.Values[i] = ec._SlotWithRooms_dayNumber(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "slotNumber":
-			out.Values[i] = ec._SlotWithRooms_slotNumber(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "normalRooms":
-			out.Values[i] = ec._SlotWithRooms_normalRooms(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "exahmRooms":
-			out.Values[i] = ec._SlotWithRooms_exahmRooms(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "labRooms":
-			out.Values[i] = ec._SlotWithRooms_labRooms(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "ntaRooms":
-			out.Values[i] = ec._SlotWithRooms_ntaRooms(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -42866,6 +42462,13 @@ func (ec *executionContext) marshalORoomForExam2ᚕᚖgithubᚗcomᚋobcodeᚋpl
 	return ret
 }
 
+func (ec *executionContext) marshalORoomsForSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomsForSlot(ctx context.Context, sel ast.SelectionSet, v *model.RoomsForSlot) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RoomsForSlot(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOSemesterConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfig(ctx context.Context, sel ast.SelectionSet, v *model.SemesterConfig) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -42973,13 +42576,6 @@ func (ec *executionContext) marshalOSlotWithExamGroups2ᚖgithubᚗcomᚋobcode�
 		return graphql.Null
 	}
 	return ec._SlotWithExamGroups(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOSlotWithRooms2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotWithRooms(ctx context.Context, sel ast.SelectionSet, v *model.SlotWithRooms) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._SlotWithRooms(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOStep2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStep(ctx context.Context, sel ast.SelectionSet, v *model.Step) graphql.Marshaler {

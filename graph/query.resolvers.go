@@ -130,7 +130,7 @@ func (r *queryResolver) RoomsWithConstraints(ctx context.Context, handicap bool,
 }
 
 // RoomsForSlot is the resolver for the roomsForSlot field.
-func (r *queryResolver) RoomsForSlot(ctx context.Context, day int, time int) (*model.SlotWithRooms, error) {
+func (r *queryResolver) RoomsForSlot(ctx context.Context, day int, time int) (*model.RoomsForSlot, error) {
 	return r.plexams.RoomsForSlot(ctx, day, time)
 }
 

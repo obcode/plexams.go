@@ -1,5 +1,11 @@
 package model
 
+type RoomsForSlot struct {
+	Day       int      `json:"day"`
+	Slot      int      `json:"slot"`
+	RoomNames []string `json:"roomNames"`
+}
+
 type RoomForExam struct {
 	Ancode       int           `json:"ancode"`
 	RoomName     string        `json:"roomName"`

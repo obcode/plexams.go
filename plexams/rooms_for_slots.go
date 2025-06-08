@@ -15,6 +15,21 @@ import (
 	"github.com/theckman/yacspin"
 )
 
+func (p *Plexams) RoomsFromRoomNames(ctx context.Context, roomNames []string) ([]*model.Room, error) {
+	rooms := make([]*model.Room, 0, len(roomNames))
+	for _, roomName := range roomNames {
+		room, err := p.dbClient.RoomFromName(ctx, roomName)
+		if err != nil {
+			log.Error().Err(err).Str("roomName", roomName).Msg("cannot get room from db")
+			return nil, err
+		}
+		if room != nil {
+			rooms = append(rooms, room)
+		}
+	}
+	return rooms, nil
+}
+
 func (p *Plexams) PrepareRoomsForSlots(approvedOnly bool) error {
 	ctx := context.Background()
 	cfg := yacspin.Config{

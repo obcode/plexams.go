@@ -68,11 +68,16 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 				Msg("error while getting allowed rooms for slot")
 			return err
 		}
-		allAllowedRooms :=
-			append(allowedRooms.NormalRooms,
-				append(allowedRooms.LabRooms,
-					append(allowedRooms.ExahmRooms,
-						allowedRooms.NtaRooms...)...)...)
+		allAllowedRooms, err := p.RoomsFromRoomNames(ctx, allowedRooms.RoomNames)
+		if err != nil {
+			log.Error().Err(err).
+				Interface("room names", allowedRooms.RoomNames).
+				Msg("error while getting rooms from names")
+		}
+		// append(allowedRooms.NormalRooms,
+		// 	append(allowedRooms.LabRooms,
+		// 		append(allowedRooms.ExahmRooms,
+		// 			allowedRooms.NtaRooms...)...)...)
 
 		for _, plannedRoom := range plannedRooms {
 			if plannedRoom.RoomName == "ONLINE" {

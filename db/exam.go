@@ -185,7 +185,7 @@ func (db *DB) ExamsInPlan(ctx context.Context) ([]*model.ExamInPlan, error) {
 
 	err = cur.All(ctx, &exams)
 	if err != nil {
-		log.Error().Err(err).Str("collection", collectionRooms).Msg("Cannot decode to rooms for exams")
+		log.Error().Err(err).Str("collection", collectionExamsInPlan).Msg("Cannot decode to exams in plan")
 		return nil, err
 	}
 

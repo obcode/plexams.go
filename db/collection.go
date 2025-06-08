@@ -37,7 +37,7 @@ const (
 	collectionCachedExams    = "cached_exams" // ?
 	collectionGeneratedExams = "generated_exams"
 
-	collectionRooms           = "rooms"
+	collectionGlobalRooms     = "rooms"
 	collectionRoomsForSlots   = "rooms_for_slots"
 	collectionRoomsPrePlanned = "rooms_pre_planned"
 	collectionRoomsPlanned    = "rooms_planned"

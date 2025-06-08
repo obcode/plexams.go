@@ -376,12 +376,6 @@ type RoomWithInvigilator struct {
 	Invigilator  *Teacher       `json:"invigilator,omitempty"`
 }
 
-type RoomsForSlot struct {
-	Day       int      `json:"day"`
-	Slot      int      `json:"slot"`
-	RoomNames []string `json:"roomNames"`
-}
-
 type Semester struct {
 	ID string `json:"id"`
 }
@@ -410,15 +404,6 @@ type SlotWithExamGroups struct {
 	DayNumber  int          `json:"dayNumber"`
 	SlotNumber int          `json:"slotNumber"`
 	ExamGroups []*ExamGroup `json:"examGroups,omitempty"`
-}
-
-type SlotWithRooms struct {
-	DayNumber   int     `json:"dayNumber"`
-	SlotNumber  int     `json:"slotNumber"`
-	NormalRooms []*Room `json:"normalRooms"`
-	ExahmRooms  []*Room `json:"exahmRooms"`
-	LabRooms    []*Room `json:"labRooms"`
-	NtaRooms    []*Room `json:"ntaRooms"`
 }
 
 type Starttime struct {

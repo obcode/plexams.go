@@ -40,7 +40,7 @@ type Query {
     placesWithSocket: Boolean!
     exahm: Boolean
   ): [Room!]!
-  roomsForSlot(day: Int!, time: Int!): SlotWithRooms
+  roomsForSlot(day: Int!, time: Int!): RoomsForSlot
 
   # Invigilators
   dayOkForInvigilator(day: Int!, invigilatorID: Int!): Boolean

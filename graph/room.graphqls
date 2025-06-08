@@ -18,19 +18,19 @@ type Room {
   seb: Boolean!
 }
 
-type SlotWithRooms {
-  dayNumber: Int!
-  slotNumber: Int!
-  normalRooms: [Room!]!
-  exahmRooms: [Room!]!
-  labRooms: [Room!]!
-  ntaRooms: [Room!]!
-}
+# type SlotWithRooms {
+#   dayNumber: Int!
+#   slotNumber: Int!
+#   normalRooms: [Room!]!
+#   exahmRooms: [Room!]!
+#   labRooms: [Room!]!
+#   ntaRooms: [Room!]!
+# }
 
 type RoomsForSlot {
   day: Int!
   slot: Int!
-  roomNames: [String!]!
+  rooms: [Room!]!
 }
 
 type PlannedRoom {

@@ -15,8 +15,8 @@ var (
 		Use:   "plan",
 		Short: "plan [subcommand]",
 		Long: `Manipulate the plan.
-	pre-plan ancode day slot    --- move [ancode] to [day number] [slot number]
-	pre-room ancode roomname    --- plan [room name] for [ancode]
+	pre-plan-exam ancode day slot    --- move [ancode] to [day number] [slot number]
+	pre-plan-room ancode roomname    --- plan [room name] for [ancode]
 	move-to ancode day slot    --- move [ancode] to [day number] [slot number]
 	change-room ancode oldroom newroom    --- change room for [ancode] from [oldroom] to [newroom]
 	lock-exam ancode   --- lock exam to slot
@@ -27,7 +27,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
-			case "pre-plan":
+			case "pre-plan-exam":
 				if len(args) < 4 {
 					log.Fatal("need ancode, day and slot number")
 				}
@@ -101,7 +101,7 @@ var (
 			// 		fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
 			// 	}
 
-			case "pre-room":
+			case "pre-plan-room":
 				if len(args) < 3 {
 					log.Fatal("need ancode and room name")
 				}

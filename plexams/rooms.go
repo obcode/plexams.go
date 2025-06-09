@@ -368,8 +368,8 @@ func (p *Plexams) AddRoomToExam(ctx context.Context, input model.RoomForExamInpu
 // 	return room, nil
 // }
 
-func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName string) (bool, error) {
-	room, err := p.dbClient.RoomFromName(ctx, roomName)
+func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error) {
+	room, err := p.dbClient.RoomByName(ctx, roomName)
 	if err != nil {
 		log.Error().Err(err).Str("room", roomName).Msg("cannot get room from name")
 		return false, err
@@ -380,7 +380,11 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 		return false, fmt.Errorf("room %s not found", roomName)
 	}
 
-	return p.dbClient.PreAddRoomToExam(ctx, ancode, room.Name)
+	return p.dbClient.AddPrePlannedRoomToExam(ctx, &model.PrePlannedRoom{
+		Ancode:   ancode,
+		RoomName: roomName,
+		Mtknr:    mtknr,
+	})
 }
 
 func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRoomName string) (bool, error) {
@@ -505,6 +509,6 @@ func (p *Plexams) PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error
 	return p.dbClient.PlannedRooms(ctx)
 }
 
-func (p *Plexams) RoomFromName(ctx context.Context, roomName string) (*model.Room, error) {
-	return p.dbClient.RoomFromName(ctx, roomName)
+func (p *Plexams) RoomByName(ctx context.Context, roomName string) (*model.Room, error) {
+	return p.dbClient.RoomByName(ctx, roomName)
 }

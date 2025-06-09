@@ -43,7 +43,7 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 
 	for _, slot := range slots {
 
-		plannedExams, err := p.dbClient.GetExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		plannedExams, err := p.dbClient.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
 		if err != nil {
 			log.Error().Err(err).
 				Int("day", slot.DayNumber).

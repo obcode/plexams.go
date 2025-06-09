@@ -13,7 +13,7 @@ import (
 
 // Room is the resolver for the room field.
 func (r *plannedRoomResolver) Room(ctx context.Context, obj *model.PlannedRoom) (*model.Room, error) {
-	return r.plexams.RoomFromName(ctx, obj.RoomName)
+	return r.plexams.RoomByName(ctx, obj.RoomName)
 }
 
 // Rooms is the resolver for the rooms field.

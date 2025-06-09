@@ -189,10 +189,11 @@ type ComplexityRoot struct {
 	}
 
 	ExamWithRegsAndRooms struct {
-		Exam            func(childComplexity int) int
-		NormalRegsMtknr func(childComplexity int) int
-		Ntas            func(childComplexity int) int
-		Rooms           func(childComplexity int) int
+		Exam              func(childComplexity int) int
+		NormalRegsMtknr   func(childComplexity int) int
+		NtasInAloneRooms  func(childComplexity int) int
+		NtasInNormalRooms func(childComplexity int) int
+		Rooms             func(childComplexity int) int
 	}
 
 	ExamerInPlan struct {
@@ -411,6 +412,12 @@ type ComplexityRoot struct {
 		Constraints func(childComplexity int) int
 		PlanEntry   func(childComplexity int) int
 		ZpaExam     func(childComplexity int) int
+	}
+
+	PrePlannedRoom struct {
+		Ancode   func(childComplexity int) int
+		Mtknr    func(childComplexity int) int
+		RoomName func(childComplexity int) int
 	}
 
 	PrimussExam struct {
@@ -1436,12 +1443,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ExamWithRegsAndRooms.NormalRegsMtknr(childComplexity), true
 
-	case "ExamWithRegsAndRooms.ntas":
-		if e.complexity.ExamWithRegsAndRooms.Ntas == nil {
+	case "ExamWithRegsAndRooms.ntasInAloneRooms":
+		if e.complexity.ExamWithRegsAndRooms.NtasInAloneRooms == nil {
 			break
 		}
 
-		return e.complexity.ExamWithRegsAndRooms.Ntas(childComplexity), true
+		return e.complexity.ExamWithRegsAndRooms.NtasInAloneRooms(childComplexity), true
+
+	case "ExamWithRegsAndRooms.ntasInNormalRooms":
+		if e.complexity.ExamWithRegsAndRooms.NtasInNormalRooms == nil {
+			break
+		}
+
+		return e.complexity.ExamWithRegsAndRooms.NtasInNormalRooms(childComplexity), true
 
 	case "ExamWithRegsAndRooms.rooms":
 		if e.complexity.ExamWithRegsAndRooms.Rooms == nil {
@@ -2586,6 +2600,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PreExam.ZpaExam(childComplexity), true
+
+	case "PrePlannedRoom.ancode":
+		if e.complexity.PrePlannedRoom.Ancode == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedRoom.Ancode(childComplexity), true
+
+	case "PrePlannedRoom.mtknr":
+		if e.complexity.PrePlannedRoom.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedRoom.Mtknr(childComplexity), true
+
+	case "PrePlannedRoom.roomName":
+		if e.complexity.PrePlannedRoom.RoomName == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedRoom.RoomName(childComplexity), true
 
 	case "PrimussExam.ancode":
 		if e.complexity.PrimussExam.AnCode == nil {
@@ -4451,7 +4486,8 @@ type ExamInPlan {
 type ExamWithRegsAndRooms {
   exam: PlannedExam!
   normalRegsMtknr: [String!]!
-  ntas: [NTA!]!
+  ntasInNormalRooms: [NTA!]!
+  ntasInAloneRooms: [NTA!]!
   rooms: [PlannedRoom!]!
 }
 
@@ -4971,6 +5007,12 @@ type PlannedRoom {
   reserve: Boolean!
   studentsInRoom: [String!]!
   ntaMtknr: String
+}
+
+type PrePlannedRoom {
+  ancode: Int!
+  roomName: String!
+  mtknr: String
 }
 
 # type EnhancedPlannedRoom {
@@ -11430,8 +11472,8 @@ func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_normalRegsMtknr(_ 
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamWithRegsAndRooms_ntas(ctx context.Context, field graphql.CollectedField, obj *model.ExamWithRegsAndRooms) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamWithRegsAndRooms_ntas(ctx, field)
+func (ec *executionContext) _ExamWithRegsAndRooms_ntasInNormalRooms(ctx context.Context, field graphql.CollectedField, obj *model.ExamWithRegsAndRooms) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamWithRegsAndRooms_ntasInNormalRooms(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11444,7 +11486,7 @@ func (ec *executionContext) _ExamWithRegsAndRooms_ntas(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ntas, nil
+		return obj.NtasInNormalRooms, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -11461,7 +11503,79 @@ func (ec *executionContext) _ExamWithRegsAndRooms_ntas(ctx context.Context, fiel
 	return ec.marshalNNTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_ntas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_ntasInNormalRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamWithRegsAndRooms",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_NTA_name(ctx, field)
+			case "email":
+				return ec.fieldContext_NTA_email(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_NTA_mtknr(ctx, field)
+			case "compensation":
+				return ec.fieldContext_NTA_compensation(ctx, field)
+			case "deltaDurationPercent":
+				return ec.fieldContext_NTA_deltaDurationPercent(ctx, field)
+			case "needsRoomAlone":
+				return ec.fieldContext_NTA_needsRoomAlone(ctx, field)
+			case "needsHardware":
+				return ec.fieldContext_NTA_needsHardware(ctx, field)
+			case "program":
+				return ec.fieldContext_NTA_program(ctx, field)
+			case "from":
+				return ec.fieldContext_NTA_from(ctx, field)
+			case "until":
+				return ec.fieldContext_NTA_until(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_NTA_lastSemester(ctx, field)
+			case "exams":
+				return ec.fieldContext_NTA_exams(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamWithRegsAndRooms_ntasInAloneRooms(ctx context.Context, field graphql.CollectedField, obj *model.ExamWithRegsAndRooms) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamWithRegsAndRooms_ntasInAloneRooms(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NtasInAloneRooms, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NTA)
+	fc.Result = res
+	return ec.marshalNNTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_ntasInAloneRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExamWithRegsAndRooms",
 		Field:      field,
@@ -18920,6 +19034,135 @@ func (ec *executionContext) fieldContext_PreExam_planEntry(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _PrePlannedRoom_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedRoom_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedRoom_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PrePlannedRoom_roomName(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedRoom_roomName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedRoom_roomName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PrePlannedRoom_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedRoom_mtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedRoom_mtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrimussExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrimussExam_ancode(ctx, field)
 	if err != nil {
@@ -20920,8 +21163,10 @@ func (ec *executionContext) fieldContext_Query_examsInSlotWithRooms(ctx context.
 				return ec.fieldContext_ExamWithRegsAndRooms_exam(ctx, field)
 			case "normalRegsMtknr":
 				return ec.fieldContext_ExamWithRegsAndRooms_normalRegsMtknr(ctx, field)
-			case "ntas":
-				return ec.fieldContext_ExamWithRegsAndRooms_ntas(ctx, field)
+			case "ntasInNormalRooms":
+				return ec.fieldContext_ExamWithRegsAndRooms_ntasInNormalRooms(ctx, field)
+			case "ntasInAloneRooms":
+				return ec.fieldContext_ExamWithRegsAndRooms_ntasInAloneRooms(ctx, field)
 			case "rooms":
 				return ec.fieldContext_ExamWithRegsAndRooms_rooms(ctx, field)
 			}
@@ -33074,8 +33319,13 @@ func (ec *executionContext) _ExamWithRegsAndRooms(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "ntas":
-			out.Values[i] = ec._ExamWithRegsAndRooms_ntas(ctx, field, obj)
+		case "ntasInNormalRooms":
+			out.Values[i] = ec._ExamWithRegsAndRooms_ntasInNormalRooms(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ntasInAloneRooms":
+			out.Values[i] = ec._ExamWithRegsAndRooms_ntasInAloneRooms(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -34739,6 +34989,52 @@ func (ec *executionContext) _PreExam(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._PreExam_constraints(ctx, field, obj)
 		case "planEntry":
 			out.Values[i] = ec._PreExam_planEntry(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var prePlannedRoomImplementors = []string{"PrePlannedRoom"}
+
+func (ec *executionContext) _PrePlannedRoom(ctx context.Context, sel ast.SelectionSet, obj *model.PrePlannedRoom) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, prePlannedRoomImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PrePlannedRoom")
+		case "ancode":
+			out.Values[i] = ec._PrePlannedRoom_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomName":
+			out.Values[i] = ec._PrePlannedRoom_roomName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mtknr":
+			out.Values[i] = ec._PrePlannedRoom_mtknr(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

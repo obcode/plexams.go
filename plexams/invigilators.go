@@ -582,7 +582,7 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 	invigilationsMap := make(map[key][]*model.Invigilation)
 
 	for _, slot := range p.semesterConfig.Slots {
-		examsInSlot, err := p.GetExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		examsInSlot, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
 		if err != nil {
 			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
 				Msg("cannot get exams in slot")

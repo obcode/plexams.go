@@ -157,10 +157,11 @@ type ExamWithRegs struct {
 }
 
 type ExamWithRegsAndRooms struct {
-	Exam            *PlannedExam   `json:"exam"`
-	NormalRegsMtknr []string       `json:"normalRegsMtknr"`
-	Ntas            []*NTA         `json:"ntas"`
-	Rooms           []*PlannedRoom `json:"rooms"`
+	Exam              *PlannedExam   `json:"exam"`
+	NormalRegsMtknr   []string       `json:"normalRegsMtknr"`
+	NtasInNormalRooms []*NTA         `json:"ntasInNormalRooms"`
+	NtasInAloneRooms  []*NTA         `json:"ntasInAloneRooms"`
+	Rooms             []*PlannedRoom `json:"rooms"`
 }
 
 type ExamerInPlan struct {
@@ -299,6 +300,12 @@ type PreExam struct {
 	ZpaExam     *ZPAExam     `json:"zpaExam"`
 	Constraints *Constraints `json:"constraints,omitempty"`
 	PlanEntry   *PlanEntry   `json:"planEntry,omitempty"`
+}
+
+type PrePlannedRoom struct {
+	Ancode   int     `json:"ancode"`
+	RoomName string  `json:"roomName"`
+	Mtknr    *string `json:"mtknr,omitempty"`
 }
 
 type PrimussExamAncode struct {

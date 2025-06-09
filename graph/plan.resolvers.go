@@ -50,7 +50,7 @@ func (r *queryResolver) PreExamsInSlot(ctx context.Context, day int, time int) (
 
 // ExamGroupsInSlot is the resolver for the examGroupsInSlot field.
 func (r *queryResolver) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
-	return r.plexams.GetExamsInSlot(ctx, day, time)
+	return r.plexams.ExamsInSlot(ctx, day, time)
 }
 
 // ExamsWithoutSlot is the resolver for the examsWithoutSlot field.

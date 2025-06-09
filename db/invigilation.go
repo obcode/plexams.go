@@ -236,7 +236,7 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 func (db *DB) getMaxDurationForRoomInSlot(ctx context.Context, roomname string, day, slot int) int {
 	maxDuration := 0
 
-	examsInSlot, _ := db.GetExamsInSlot(ctx, day, slot)
+	examsInSlot, _ := db.ExamsInSlot(ctx, day, slot)
 	for _, exam := range examsInSlot {
 		for _, room := range exam.PlannedRooms {
 			if roomname == room.RoomName && maxDuration < room.Duration {

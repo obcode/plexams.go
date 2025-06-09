@@ -46,6 +46,12 @@ type PlannedRoom {
   ntaMtknr: String
 }
 
+type PrePlannedRoom {
+  ancode: Int!
+  roomName: String!
+  mtknr: String
+}
+
 # type EnhancedPlannedRoom {
 #   day: Int!
 #   slot: Int!

@@ -304,13 +304,13 @@ func (p *Plexams) AncodesInPlan(ctx context.Context) ([]int, error) {
 	return p.dbClient.AncodesInPlan(ctx)
 }
 
-// Deprecated: rm me
-func (p *Plexams) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.ExamInPlan, error) {
-	return p.dbClient.ExamsInSlot(ctx, day, time)
-}
+// // Deprecated: rm me
+// func (p *Plexams) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.ExamInPlan, error) {
+// 	return p.dbClient.ExamsInSlot(ctx, day, time)
+// }
 
-func (p *Plexams) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
-	return p.dbClient.GetExamsInSlot(ctx, day, time)
+func (p *Plexams) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
+	return p.dbClient.ExamsInSlot(ctx, day, time)
 }
 
 func (p *Plexams) PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.PreExam, error) {

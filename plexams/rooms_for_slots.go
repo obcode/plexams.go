@@ -18,7 +18,7 @@ import (
 func (p *Plexams) RoomsFromRoomNames(ctx context.Context, roomNames []string) ([]*model.Room, error) {
 	rooms := make([]*model.Room, 0, len(roomNames))
 	for _, roomName := range roomNames {
-		room, err := p.dbClient.RoomFromName(ctx, roomName)
+		room, err := p.dbClient.RoomByName(ctx, roomName)
 		if err != nil {
 			log.Error().Err(err).Str("roomName", roomName).Msg("cannot get room from db")
 			return nil, err
@@ -80,6 +80,9 @@ func (p *Plexams) PrepareRoomsForSlots(approvedOnly bool) error {
 	}
 
 	for _, room := range globalRooms {
+		if room.Name == "No Room" || room.Name == "ONLINE_1" || room.Name == "ONLINE_2" {
+			continue
+		}
 		restrictedSlots, ok := roomsWithRestrictedSlots[room.Name]
 		if ok {
 			for slot := range restrictedSlots.Iter() {

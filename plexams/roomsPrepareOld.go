@@ -272,7 +272,7 @@ import (
 // 		if slot.SlotNumber == 1 {
 // 			roomsNotUsableInSlot = set.NewSet[string]()
 // 		}
-// 		examsInPlan, err := p.GetExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+// 		examsInPlan, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
 
 // 		if err != nil {
 // 			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).

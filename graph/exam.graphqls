@@ -73,7 +73,8 @@ type ExamInPlan {
 type ExamWithRegsAndRooms {
   exam: PlannedExam!
   normalRegsMtknr: [String!]!
-  ntas: [NTA!]!
+  ntasInNormalRooms: [NTA!]!
+  ntasInAloneRooms: [NTA!]!
   rooms: [PlannedRoom!]!
 }
 

@@ -22,7 +22,6 @@ goslots                --- info about slots for GO/GN
 request-rooms          --- which rooms to request
 stats                  --- get statistics
 student-regs ancode    --- get student-reqs for ancode
-rooms-for-nta name     --- get planned rooms for student
 student name           --- get info for student.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -82,15 +81,7 @@ student name           --- get info for student.`,
 				}
 
 				fmt.Println("done")
-			case "rooms-for-nta":
-				if len(args) < 2 {
-					log.Fatal("need name")
-				}
-				err := p.GetRoomsForNTA(args[1])
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
+
 			case "student":
 				if len(args) < 2 {
 					log.Fatal("need name")

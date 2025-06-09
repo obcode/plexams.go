@@ -26,23 +26,9 @@ var (
 
 	studentregs     --- regs per exam & regs per student (needs connected-exams) --- step 2
 	
-	# nta             --- find NTAs for semester                     --- step 3
-
-	# exams-with-regs --- exams from connected-exams and studentregs --- step 4
-	# exam-groups     --- group of exams in the same slot            --- step 5 -- according to constraints?
-	# partition       --- generate partition of groups               --- step 6
-	
-	Add exam after planning has started:
-
-	# connected-exam  --- prepare a connected exam for ancode
-	# exam-group      --- group of exams out of ancodes
-
 	For planning rooms:
 
-	# exams-in-plan     --- split exam-groups into exams
 	rooms-for-slots 	--- prepare rooms which are allowed to use
-	rooms-for-semester 	--- Deprecated: use rooms-for-slots
-	rooms-for-ntas 		--- rooms for ntas alone
 	rooms-for-exams   	--- rooms for exams
 
 	self-invigilations    --- set main examer as invigilator if possible
@@ -130,12 +116,6 @@ var (
 					os.Exit(1)
 				}
 
-			// case "exams-with-regs": // Deprecated: no longer needed
-			// 	err := plexams.PrepareExamsWithRegs()
-			// 	if err != nil {
-			// 		os.Exit(1)
-			// 	}
-
 			case "generated-exams":
 				err := plexams.PrepareGeneratedExams()
 				if err != nil {
@@ -148,57 +128,8 @@ var (
 					os.Exit(1)
 				}
 
-			// case "exam-groups":
-			// 	err := plexams.PrepareExamGroups()
-			// 	if err != nil {
-			// 		os.Exit(1)
-			// 	}
-
-			// case "exam-group":
-			// 	if len(args) < 2 {
-			// 		log.Fatal("need ancode(s)")
-			// 	}
-			// 	ancodes := make([]int, 0, len(args)-1)
-			// 	for _, arg := range args[1:] {
-			// 		ancode, err := strconv.Atoi(arg)
-			// 		if err != nil {
-			// 			fmt.Printf("cannot use %s as ancode", args[1])
-			// 			os.Exit(1)
-			// 		}
-			// 		ancodes = append(ancodes, ancode)
-			// 	}
-
-			// 	err := plexams.PrepareExamGroup(ancodes)
-			// 	if err != nil {
-			// 		os.Exit(1)
-			// 	}
-
-			// case "partition":
-			// 	err := plexams.PartitionGroups()
-			// 	if err != nil {
-			// 		os.Exit(1)
-			// 	}
-
-			// case "nta": // Deprecated: part of generate exams
-			// 	err := plexams.PrepareNta()
-			// 	if err != nil {
-			// 		os.Exit(1)
-			// 	}
-
-			// case "exams-in-plan":
-			// 	err := plexams.PreparePlannedExams()
-			// 	if err != nil {
-			// 		os.Exit(1)
-			// 	}
-
 			case "rooms-for-slots":
 				err := plexams.PrepareRoomsForSlots(approvedOnly)
-				if err != nil {
-					os.Exit(1)
-				}
-
-			case "rooms-for-ntas":
-				err := plexams.RoomsForNTAsWithRoomAlone()
 				if err != nil {
 					os.Exit(1)
 				}

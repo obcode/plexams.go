@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (db *DB) RoomFromName(ctx context.Context, roomName string) (*model.Room, error) {
+func (db *DB) RoomByName(ctx context.Context, roomName string) (*model.Room, error) {
 	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
 
 	res := collection.FindOne(ctx, bson.M{"name": roomName})
@@ -169,16 +169,33 @@ func (db *DB) AddRoomToExam(ctx context.Context, room *model.RoomForExam) error 
 	return nil
 }
 
-func (db *DB) PreAddRoomToExam(ctx context.Context, ancode int, roomName string) (bool, error) {
+func (db *DB) PrePlannedRooms(ctx context.Context) ([]*model.PrePlannedRoom, error) {
 	collection := db.getCollectionSemester(collectionRoomsPrePlanned)
 
-	_, err := collection.InsertOne(ctx, bson.M{
-		"ancode":   ancode,
-		"roomname": roomName,
-	})
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).Msg("MongoDB Find")
+		return nil, err
+	}
+	defer cur.Close(ctx) //nolint:errcheck
+
+	rooms := make([]*model.PrePlannedRoom, 0)
+	err = cur.All(ctx, &rooms)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).Msg("Cannot decode to rooms")
+		return nil, err
+	}
+
+	return rooms, nil
+}
+
+func (db *DB) AddPrePlannedRoomToExam(ctx context.Context, prePlannedRoom *model.PrePlannedRoom) (bool, error) {
+	collection := db.getCollectionSemester(collectionRoomsPrePlanned)
+
+	_, err := collection.InsertOne(ctx, prePlannedRoom)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).
-			Int("ancode", ancode).Str("roomname", roomName).
+			Int("ancode", prePlannedRoom.Ancode).Str("roomname", prePlannedRoom.RoomName).
 			Msg("cannot insert pre planned room")
 		return false, err
 	}
@@ -216,9 +233,9 @@ func (db *DB) RoomsPlannedInSlot(ctx context.Context, day, time int) ([]*model.R
 
 	rooms := make([]*model.RoomForExam, 0)
 	for _, exam := range exams {
-		roomsForAncode, err := db.RoomsForAncode(ctx, exam.Exam.Ancode)
+		roomsForAncode, err := db.RoomsForAncode(ctx, exam.Ancode)
 		if err != nil {
-			log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("error while getting rooms for ancode")
+			log.Error().Err(err).Int("ancode", exam.Ancode).Msg("error while getting rooms for ancode")
 			return nil, err
 		}
 

@@ -24,7 +24,7 @@ func (p *Plexams) RequestRooms() error {
 	}
 
 	for _, slot := range p.semesterConfig.Slots {
-		examsInSlot, err := p.GetExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		examsInSlot, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
 		if err != nil {
 			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Msg("cannot get exams in slot")
 			return err

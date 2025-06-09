@@ -81,7 +81,7 @@ func (db *DB) GetPlanEntriesInSlot(ctx context.Context, day int, time int) ([]*m
 	return planEntries, nil
 }
 
-func (db *DB) GetExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
+func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	filter := bson.M{

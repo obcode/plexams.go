@@ -108,11 +108,7 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 	examRooms := p.setPrePlannedRooms(prepareRoomsCfg)
 
 	// rooms for students without NTA
-	for {
-		if len(prepareRoomsCfg.exams) == 0 {
-			break
-		}
-
+	for len(prepareRoomsCfg.exams) != 0 {
 		sort.Slice(prepareRoomsCfg.exams, func(i, j int) bool {
 			return len(prepareRoomsCfg.exams[i].NormalRegsMtknr)+len(prepareRoomsCfg.exams[i].NtasInNormalRooms) >
 				len(prepareRoomsCfg.exams[j].NormalRegsMtknr)+len(prepareRoomsCfg.exams[j].NtasInNormalRooms)

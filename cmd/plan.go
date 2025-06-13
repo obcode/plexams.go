@@ -110,11 +110,11 @@ var (
 					log.Fatalf("cannot convert %s to int", args[1])
 				}
 				roomName := args[2]
-				var mtknr *string
+				var mtknrOrReserve *string
 				if len(args) > 3 && args[3] != "" {
-					mtknr = &args[3]
+					mtknrOrReserve = &args[3]
 				}
-				success, err := plexams.PreAddRoomToExam(context.Background(), ancode, roomName, mtknr)
+				success, err := plexams.PreAddRoomToExam(context.Background(), ancode, roomName, mtknrOrReserve)
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 					os.Exit(1)

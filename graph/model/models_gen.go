@@ -306,6 +306,7 @@ type PrePlannedRoom struct {
 	Ancode   int     `json:"ancode"`
 	RoomName string  `json:"roomName"`
 	Mtknr    *string `json:"mtknr,omitempty"`
+	Reserve  bool    `json:"reserve"`
 }
 
 type PrimussExamAncode struct {

@@ -368,7 +368,7 @@ func (p *Plexams) AddRoomToExam(ctx context.Context, input model.RoomForExamInpu
 // 	return room, nil
 // }
 
-func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error) {
+func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName string, mtknrOrReserve *string) (bool, error) {
 	room, err := p.dbClient.RoomByName(ctx, roomName)
 	if err != nil {
 		log.Error().Err(err).Str("room", roomName).Msg("cannot get room from name")
@@ -380,10 +380,34 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 		return false, fmt.Errorf("room %s not found", roomName)
 	}
 
+	reserve := false
+	var mtknr *string
+
+	if mtknrOrReserve != nil {
+		if *mtknrOrReserve == "reserve" {
+			reserve = true
+			mtknr = nil
+		} else {
+			// student, err := p.dbClient.StudentByMtknr(ctx, *mtknrOrReserve, nil)
+			student, err := p.StudentByMtknr(ctx, *mtknrOrReserve, nil)
+			if err != nil {
+				log.Error().Err(err).Str("mtknr", *mtknrOrReserve).Msg("cannot get student by mtknr")
+				return false, err
+			}
+			if student == nil {
+				log.Error().Str("mtknr", *mtknrOrReserve).Msg("student not found")
+				return false, fmt.Errorf("student with mtknr %s not found", *mtknrOrReserve)
+			}
+			mtknr = mtknrOrReserve
+			reserve = false
+		}
+	}
+
 	return p.dbClient.AddPrePlannedRoomToExam(ctx, &model.PrePlannedRoom{
 		Ancode:   ancode,
 		RoomName: roomName,
 		Mtknr:    mtknr,
+		Reserve:  reserve,
 	})
 }
 

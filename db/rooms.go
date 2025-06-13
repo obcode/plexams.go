@@ -354,39 +354,12 @@ func (db *DB) PlannedRoomsForAncode(ctx context.Context, ancode int) ([]*model.P
 	return plannedRooms, nil
 }
 
-func (db *DB) ReplaceRoomsForNTA(ctx context.Context, plannedRooms []*model.PlannedRoom) error {
+func (db *DB) ReplacePlannedRooms(ctx context.Context, plannedRooms []*model.PlannedRoom) error {
 	collection := db.getCollectionSemester(collectionRoomsPlanned)
 
-	for _, room := range plannedRooms {
-		log.Debug().Int("day", room.Day).Int("slot", room.Slot).Int("ancode", room.Ancode).
-			Msg("replacing room")
-
-		filter := bson.M{
-			"$and": []bson.M{
-				{"ancode": room.Ancode},
-				{"ntamtknr": room.NtaMtknr},
-			},
-		}
-		opts := options.Replace().SetUpsert(true)
-
-		_, err := collection.ReplaceOne(ctx, filter, room, opts)
-
-		if err != nil {
-			log.Error().Err(err).Int("day", room.Day).Int("slot", room.Slot).Int("ancode", room.Ancode).
-				Msg("cannot replace room")
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (db *DB) ReplaceNonNTARooms(ctx context.Context, plannedRooms []*model.PlannedRoom) error {
-	collection := db.getCollectionSemester(collectionRoomsPlanned)
-
-	_, err := collection.DeleteMany(ctx, bson.M{"handicaproomalone": false})
+	err := collection.Drop(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot delete non NTA rooms")
+		log.Error().Err(err).Msg("cannot drop planned rooms")
 		return err
 	}
 

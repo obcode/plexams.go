@@ -417,6 +417,7 @@ type ComplexityRoot struct {
 	PrePlannedRoom struct {
 		Ancode   func(childComplexity int) int
 		Mtknr    func(childComplexity int) int
+		Reserve  func(childComplexity int) int
 		RoomName func(childComplexity int) int
 	}
 
@@ -494,6 +495,7 @@ type ComplexityRoot struct {
 		PlannedRoomForStudent         func(childComplexity int, ancode int, mtknr string) int
 		PlannedRoomNames              func(childComplexity int) int
 		PlannedRoomNamesInSlot        func(childComplexity int, day int, time int) int
+		PlannedRooms                  func(childComplexity int) int
 		PlannedRoomsInSlot            func(childComplexity int, day int, time int) int
 		PreExamsInSlot                func(childComplexity int, day int, time int) int
 		PrimussExam                   func(childComplexity int, program string, ancode int) int
@@ -816,6 +818,7 @@ type QueryResolver interface {
 	PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error)
 	Rooms(ctx context.Context) ([]*model.Room, error)
 	RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error)
+	PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error)
 	PlannedRoomNames(ctx context.Context) ([]string, error)
 	PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error)
 	PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedRoom, error)
@@ -2615,6 +2618,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PrePlannedRoom.Mtknr(childComplexity), true
 
+	case "PrePlannedRoom.reserve":
+		if e.complexity.PrePlannedRoom.Reserve == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedRoom.Reserve(childComplexity), true
+
 	case "PrePlannedRoom.roomName":
 		if e.complexity.PrePlannedRoom.RoomName == nil {
 			break
@@ -3138,6 +3148,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.PlannedRoomNamesInSlot(childComplexity, args["day"].(int), args["time"].(int)), true
+
+	case "Query.plannedRooms":
+		if e.complexity.Query.PlannedRooms == nil {
+			break
+		}
+
+		return e.complexity.Query.PlannedRooms(childComplexity), true
 
 	case "Query.plannedRoomsInSlot":
 		if e.complexity.Query.PlannedRoomsInSlot == nil {
@@ -4964,6 +4981,7 @@ type ConflictsPerProgramAncode {
 	{Name: "../room.graphqls", Input: `extend type Query {
   rooms: [Room!]!
   roomsForSlots: [RoomsForSlot!]!
+  plannedRooms: [PlannedRoom!]!
   plannedRoomNames: [String!]
   plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
   plannedRoomsInSlot(day: Int!, time: Int!): [PlannedRoom!]
@@ -5013,6 +5031,7 @@ type PrePlannedRoom {
   ancode: Int!
   roomName: String!
   mtknr: String
+  reserve: Boolean!
 }
 
 # type EnhancedPlannedRoom {
@@ -19163,6 +19182,50 @@ func (ec *executionContext) fieldContext_PrePlannedRoom_mtknr(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _PrePlannedRoom_reserve(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedRoom_reserve(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Reserve, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedRoom_reserve(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrimussExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrimussExam_ancode(ctx, field)
 	if err != nil {
@@ -23057,6 +23120,72 @@ func (ec *executionContext) fieldContext_Query_roomsForSlots(_ context.Context, 
 				return ec.fieldContext_RoomsForSlot_rooms(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RoomsForSlot", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_plannedRooms(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_plannedRooms(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PlannedRooms(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PlannedRoom)
+	fc.Result = res
+	return ec.marshalNPlannedRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlannedRoomᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_plannedRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "day":
+				return ec.fieldContext_PlannedRoom_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_PlannedRoom_slot(ctx, field)
+			case "room":
+				return ec.fieldContext_PlannedRoom_room(ctx, field)
+			case "ancode":
+				return ec.fieldContext_PlannedRoom_ancode(ctx, field)
+			case "duration":
+				return ec.fieldContext_PlannedRoom_duration(ctx, field)
+			case "handicap":
+				return ec.fieldContext_PlannedRoom_handicap(ctx, field)
+			case "handicapRoomAlone":
+				return ec.fieldContext_PlannedRoom_handicapRoomAlone(ctx, field)
+			case "reserve":
+				return ec.fieldContext_PlannedRoom_reserve(ctx, field)
+			case "studentsInRoom":
+				return ec.fieldContext_PlannedRoom_studentsInRoom(ctx, field)
+			case "ntaMtknr":
+				return ec.fieldContext_PlannedRoom_ntaMtknr(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlannedRoom", field.Name)
 		},
 	}
 	return fc, nil
@@ -35035,6 +35164,11 @@ func (ec *executionContext) _PrePlannedRoom(ctx context.Context, sel ast.Selecti
 			}
 		case "mtknr":
 			out.Values[i] = ec._PrePlannedRoom_mtknr(ctx, field, obj)
+		case "reserve":
+			out.Values[i] = ec._PrePlannedRoom_reserve(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -36339,6 +36473,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_roomsForSlots(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "plannedRooms":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_plannedRooms(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

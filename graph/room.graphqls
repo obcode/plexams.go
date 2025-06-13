@@ -1,6 +1,7 @@
 extend type Query {
   rooms: [Room!]!
   roomsForSlots: [RoomsForSlot!]!
+  plannedRooms: [PlannedRoom!]!
   plannedRoomNames: [String!]
   plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
   plannedRoomsInSlot(day: Int!, time: Int!): [PlannedRoom!]
@@ -50,6 +51,7 @@ type PrePlannedRoom {
   ancode: Int!
   roomName: String!
   mtknr: String
+  reserve: Boolean!
 }
 
 # type EnhancedPlannedRoom {

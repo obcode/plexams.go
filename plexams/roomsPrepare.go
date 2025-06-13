@@ -36,7 +36,7 @@ func (p *Plexams) PrepareRoomForExams() error {
 		examRooms = append(examRooms, rooms...)
 	}
 
-	return p.dbClient.ReplaceNonNTARooms(ctx, examRooms)
+	return p.dbClient.ReplacePlannedRooms(ctx, examRooms)
 }
 
 func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCfg *prepareRoomsCfg) ([]*model.PlannedRoom, error) {
@@ -135,7 +135,8 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 
 		var room *model.Room
 		neededSeats := len(exam.NormalRegsMtknr) + len(exam.NtasInNormalRooms)
-		if neededSeats < 10 { // if we need less than 10 seats, we can use a room with free seats
+		if neededSeats < 10 || (exam.Exam.Constraints != nil && exam.Exam.Constraints.RoomConstraints != nil &&
+			(exam.Exam.Constraints.RoomConstraints.Seb || exam.Exam.Constraints.RoomConstraints.Exahm)) { // if we need less than 10 seats, we can use a room with free seats
 			room = p.findRoomWithFreeSeats(prepareRoomsCfg, exam, neededSeats)
 		}
 		if room == nil {
@@ -519,7 +520,11 @@ func (p *Plexams) setPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg) []*model.
 			log.Debug().Err(err).Msg("cannot start spinner")
 		}
 		for _, prePlannedRoom := range prePlannedRooms {
-			room := findRoomByRoomName(prepareRoomsCfg.availableRooms, prePlannedRoom.RoomName)
+			room, ok := prepareRoomsCfg.roomInfo[prePlannedRoom.RoomName]
+			if !ok {
+				log.Error().Str("roomName", prePlannedRoom.RoomName).Msg("pre-planned room not found in room info")
+				panic(fmt.Sprintf("pre-planned room %s not found in room info", prePlannedRoom.RoomName))
+			}
 			var examRoom *model.PlannedRoom
 			if prePlannedRoom.Mtknr == nil { // room for normal students
 				studentCountInRoom := room.Seats
@@ -537,6 +542,7 @@ func (p *Plexams) setPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg) []*model.
 					Ancode:         exam.Exam.Ancode,
 					Duration:       exam.Exam.ZpaExam.Duration,
 					StudentsInRoom: studentsInRoom,
+					Reserve:        prePlannedRoom.Reserve,
 				}
 			} else { // room for NTA
 				foundNTA := false
@@ -611,15 +617,6 @@ func (p *Plexams) addPlannedRoom(prepareRoomsCfg *prepareRoomsCfg, exam *model.E
 			break
 		}
 	}
-}
-
-func findRoomByRoomName(rooms []*model.Room, roomName string) *model.Room {
-	for _, room := range rooms {
-		if room.Name == roomName {
-			return room
-		}
-	}
-	return nil
 }
 
 func (p *Plexams) findRoomWithFreeSeats(prepareRoomsCfg *prepareRoomsCfg, exam *model.ExamWithRegsAndRooms, neededSeats int) *model.Room {

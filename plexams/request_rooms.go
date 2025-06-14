@@ -222,7 +222,7 @@ func (p *Plexams) PlannedRoomInfo(roomName string) error {
 	for _, entry := range entriesForRoom {
 		starttime := starttimes[entry.Day][entry.Slot]
 		endtime := starttime.Add(time.Duration(entry.Duration) * time.Minute) // 90 minutes for the exam slot
-		fmt.Printf("- %s - %s (= %d Minuten reine Prüfungszeit)\n",
+		fmt.Printf("- %s - %s (= %3d Minuten reine Prüfungszeit)\n",
 			starttime.Format("02.01.06: 15:04"), endtime.Format("15:04 Uhr"), entry.Duration)
 	}
 

@@ -16,13 +16,14 @@ var (
 		Use:   "info [subcommand]",
 		Short: "get info",
 		Long: `Get info.
-semester-config		   --- print config
-samename               --- exams with same module name
-goslots                --- info about slots for GO/GN
-request-rooms          --- which rooms to request
-stats                  --- get statistics
-student-regs ancode    --- get student-reqs for ancode
-student name           --- get info for student.`,
+semester-config		    --- print config
+samename                --- exams with same module name
+goslots                 --- info about slots for GO/GN
+request-rooms           --- which rooms to request
+planned-room [roomname] --- get planned room for roomname
+stats                   --- get statistics
+student-regs ancode     --- get student-reqs for ancode
+student name            --- get info for student.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			p := initPlexamsConfig()
@@ -38,6 +39,14 @@ student name           --- get info for student.`,
 				}
 			case "request-rooms":
 				err := p.RequestRooms()
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "planned-room":
+				if len(args) < 2 {
+					log.Fatal("need roomname")
+				}
+				err := p.PlannedRoomInfo(args[1])
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

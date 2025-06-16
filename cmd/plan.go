@@ -16,7 +16,7 @@ var (
 		Short: "plan [subcommand]",
 		Long: `Manipulate the plan.
 	pre-plan-exam ancode day slot    --- move [ancode] to [day number] [slot number]
-	pre-plan-room ancode roomname    --- plan [room name] for [ancode]
+	pre-plan-room ancode roomname [mtknr/reserve]    --- plan [room name] for [ancode]
 	move-to ancode day slot    --- move [ancode] to [day number] [slot number]
 	change-room ancode oldroom newroom    --- change room for [ancode] from [oldroom] to [newroom]
 	lock-exam ancode   --- lock exam to slot
@@ -103,7 +103,7 @@ var (
 
 			case "pre-plan-room":
 				if len(args) < 3 {
-					log.Fatal("need ancode and room name")
+					log.Fatal("need ancode and room name and optional mtknr/reserve")
 				}
 				ancode, err := strconv.Atoi(args[1])
 				if err != nil {

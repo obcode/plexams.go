@@ -344,3 +344,43 @@ func (db *DB) RemoveStudentReg(ctx context.Context, program string, ancode int, 
 
 	return int(res.DeletedCount), nil
 }
+
+func (db *DB) AddStudentReg(ctx context.Context, program string, ancode int, mtknr string) error {
+	collection := db.getCollection(program, StudentRegs)
+
+	student, err := db.StudentByMtknr(ctx, mtknr, nil)
+	if err != nil {
+		log.Error().Err(err).Str("program", program).Int("ancode", ancode).Str("mtknr", mtknr).
+			Msg("error while trying to get student by mtknr")
+		return err
+	}
+
+	doc := bson.D{
+		{Key: "AnCode", Value: ancode},
+		{Key: "MTKNR", Value: mtknr},
+		{Key: "name", Value: student.Name},
+	}
+
+	_, err = collection.InsertOne(ctx, doc)
+	if err != nil {
+		log.Error().Err(err).Str("program", program).Int("ancode", ancode).Str("mtknr", mtknr).
+			Msg("error while trying to insert")
+		return err
+	}
+
+	collection = db.getCollection(program, Counts)
+
+	filterUpdate := bson.D{{Key: "AnCo", Value: ancode}}
+	update := bson.D{{Key: "$inc", Value: bson.D{{Key: "Sum", Value: 1}}}}
+
+	_, err = collection.UpdateOne(ctx, filterUpdate, update)
+
+	if err != nil {
+		log.Error().Err(err).
+			Str("program", program).Int("ancode", ancode).
+			Msg("error while trying to change sum in count.")
+		return err
+	}
+
+	return nil
+}

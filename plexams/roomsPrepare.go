@@ -189,6 +189,10 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 
 	// rooms for NTAs in normal rooms
 	for _, exam := range prepareRoomsCfg.exams {
+		if exam.Exam.Ancode == 160 {
+			fmt.Println("found")
+		}
+
 		if len(exam.NtasInNormalRooms) == 0 {
 			continue
 		}
@@ -214,7 +218,7 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 		}
 		var room *model.Room
 		for _, plannedRoom := range exam.Rooms {
-			if maxDuration > 100 && (plannedRoom.RoomName == "R1.046" || plannedRoom.RoomName == "R1.049") {
+			if (maxDuration > 100 && (plannedRoom.RoomName == "R1.046" || plannedRoom.RoomName == "R1.049")) || plannedRoom.HandicapRoomAlone {
 				continue
 			}
 
@@ -599,7 +603,7 @@ func (p *Plexams) setPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg) []*model.
 
 func (p *Plexams) addPlannedRoom(prepareRoomsCfg *prepareRoomsCfg, exam *model.ExamWithRegsAndRooms, room *model.Room, examRoom *model.PlannedRoom) {
 	exam.Rooms = append(exam.Rooms, examRoom)
-	if room.Seats-len(examRoom.StudentsInRoom)-len(exam.NtasInNormalRooms) > 0 {
+	if !examRoom.HandicapRoomAlone && room.Seats-len(examRoom.StudentsInRoom)-len(exam.NtasInNormalRooms) > 0 {
 		if plannedRooms, ok := prepareRoomsCfg.plannedRoomsWithFreeSeats[room.Name]; ok {
 			plannedRooms.plannedRooms = append(plannedRooms.plannedRooms, examRoom)
 			plannedRooms.freeSeats -= (len(examRoom.StudentsInRoom) + len(exam.NtasInNormalRooms))

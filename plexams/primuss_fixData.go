@@ -21,3 +21,7 @@ func (p *Plexams) ChangeAncodeInConflicts(ctx context.Context, program string, a
 func (p *Plexams) RemoveStudentReg(ctx context.Context, program string, ancode int, mtknr string) (int, error) {
 	return p.dbClient.RemoveStudentReg(ctx, program, ancode, mtknr)
 }
+
+func (p *Plexams) AddStudentReg(ctx context.Context, program string, ancode int, mtknr string) error {
+	return p.dbClient.AddStudentReg(ctx, program, ancode, mtknr)
+}

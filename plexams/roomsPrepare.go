@@ -547,6 +547,7 @@ func (p *Plexams) setPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg) []*model.
 					Duration:       exam.Exam.ZpaExam.Duration,
 					StudentsInRoom: studentsInRoom,
 					Reserve:        prePlannedRoom.Reserve,
+					PrePlanned:     true,
 				}
 			} else { // room for NTA
 				foundNTA := false
@@ -585,6 +586,7 @@ func (p *Plexams) setPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg) []*model.
 					HandicapRoomAlone: nta.NeedsRoomAlone,
 					Reserve:           false,
 					NtaMtknr:          prePlannedRoom.Mtknr,
+					PrePlanned:        true,
 				}
 			}
 			p.addPlannedRoom(prepareRoomsCfg, exam, room, examRoom)

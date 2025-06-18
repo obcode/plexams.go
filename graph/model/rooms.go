@@ -27,4 +27,5 @@ type PlannedRoom struct {
 	Reserve           bool     `json:"reserve"`
 	StudentsInRoom    []string `json:"studentsInRoom"`
 	NtaMtknr          *string  `json:"ntaMtknr,omitempty"`
+	PrePlanned        bool     `json:"prePlanned,omitempty"`
 }

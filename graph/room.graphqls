@@ -45,6 +45,7 @@ type PlannedRoom {
   reserve: Boolean!
   studentsInRoom: [String!]!
   ntaMtknr: String
+  prePlanned: Boolean!
 }
 
 type PrePlannedRoom {

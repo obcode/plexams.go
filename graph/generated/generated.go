@@ -402,6 +402,7 @@ type ComplexityRoot struct {
 		Handicap          func(childComplexity int) int
 		HandicapRoomAlone func(childComplexity int) int
 		NtaMtknr          func(childComplexity int) int
+		PrePlanned        func(childComplexity int) int
 		Reserve           func(childComplexity int) int
 		Room              func(childComplexity int) int
 		Slot              func(childComplexity int) int
@@ -2554,6 +2555,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PlannedRoom.NtaMtknr(childComplexity), true
+
+	case "PlannedRoom.prePlanned":
+		if e.complexity.PlannedRoom.PrePlanned == nil {
+			break
+		}
+
+		return e.complexity.PlannedRoom.PrePlanned(childComplexity), true
 
 	case "PlannedRoom.reserve":
 		if e.complexity.PlannedRoom.Reserve == nil {
@@ -5025,6 +5033,7 @@ type PlannedRoom {
   reserve: Boolean!
   studentsInRoom: [String!]!
   ntaMtknr: String
+  prePlanned: Boolean!
 }
 
 type PrePlannedRoom {
@@ -11694,6 +11703,8 @@ func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_rooms(_ context.Co
 				return ec.fieldContext_PlannedRoom_studentsInRoom(ctx, field)
 			case "ntaMtknr":
 				return ec.fieldContext_PlannedRoom_ntaMtknr(ctx, field)
+			case "prePlanned":
+				return ec.fieldContext_PlannedRoom_prePlanned(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlannedRoom", field.Name)
 		},
@@ -18241,6 +18252,8 @@ func (ec *executionContext) fieldContext_PlannedExam_plannedRooms(_ context.Cont
 				return ec.fieldContext_PlannedRoom_studentsInRoom(ctx, field)
 			case "ntaMtknr":
 				return ec.fieldContext_PlannedRoom_ntaMtknr(ctx, field)
+			case "prePlanned":
+				return ec.fieldContext_PlannedRoom_prePlanned(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlannedRoom", field.Name)
 		},
@@ -18864,6 +18877,50 @@ func (ec *executionContext) fieldContext_PlannedRoom_ntaMtknr(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlannedRoom_prePlanned(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannedRoom_prePlanned(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrePlanned, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlannedRoom_prePlanned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlannedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -23184,6 +23241,8 @@ func (ec *executionContext) fieldContext_Query_plannedRooms(_ context.Context, f
 				return ec.fieldContext_PlannedRoom_studentsInRoom(ctx, field)
 			case "ntaMtknr":
 				return ec.fieldContext_PlannedRoom_ntaMtknr(ctx, field)
+			case "prePlanned":
+				return ec.fieldContext_PlannedRoom_prePlanned(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlannedRoom", field.Name)
 		},
@@ -23340,6 +23399,8 @@ func (ec *executionContext) fieldContext_Query_plannedRoomsInSlot(ctx context.Co
 				return ec.fieldContext_PlannedRoom_studentsInRoom(ctx, field)
 			case "ntaMtknr":
 				return ec.fieldContext_PlannedRoom_ntaMtknr(ctx, field)
+			case "prePlanned":
+				return ec.fieldContext_PlannedRoom_prePlanned(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlannedRoom", field.Name)
 		},
@@ -23414,6 +23475,8 @@ func (ec *executionContext) fieldContext_Query_plannedRoomForStudent(ctx context
 				return ec.fieldContext_PlannedRoom_studentsInRoom(ctx, field)
 			case "ntaMtknr":
 				return ec.fieldContext_PlannedRoom_ntaMtknr(ctx, field)
+			case "prePlanned":
+				return ec.fieldContext_PlannedRoom_prePlanned(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlannedRoom", field.Name)
 		},
@@ -25038,6 +25101,8 @@ func (ec *executionContext) fieldContext_RoomAndExam_room(_ context.Context, fie
 				return ec.fieldContext_PlannedRoom_studentsInRoom(ctx, field)
 			case "ntaMtknr":
 				return ec.fieldContext_PlannedRoom_ntaMtknr(ctx, field)
+			case "prePlanned":
+				return ec.fieldContext_PlannedRoom_prePlanned(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlannedRoom", field.Name)
 		},
@@ -35075,6 +35140,11 @@ func (ec *executionContext) _PlannedRoom(ctx context.Context, sel ast.SelectionS
 			}
 		case "ntaMtknr":
 			out.Values[i] = ec._PlannedRoom_ntaMtknr(ctx, field, obj)
+		case "prePlanned":
+			out.Values[i] = ec._PlannedRoom_prePlanned(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -313,6 +313,7 @@ type ComplexityRoot struct {
 		Online              func(childComplexity int, ancode int) int
 		PlacesWithSockets   func(childComplexity int, ancode int) int
 		PossibleDays        func(childComplexity int, ancode int, days []string) int
+		PrePlanRoom         func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
 		RemovePrimussExam   func(childComplexity int, input *model.PrimussExamInput) int
 		RmConstraints       func(childComplexity int, ancode int) int
 		RmExamFromSlot      func(childComplexity int, ancode int) int
@@ -756,6 +757,7 @@ type MutationResolver interface {
 	RmConstraints(ctx context.Context, ancode int) (bool, error)
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
+	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string) (bool, error)
 }
 type PlanEntryResolver interface {
 	Starttime(ctx context.Context, obj *model.PlanEntry) (*time.Time, error)
@@ -2097,6 +2099,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.PossibleDays(childComplexity, args["ancode"].(int), args["days"].([]string)), true
+
+	case "Mutation.prePlanRoom":
+		if e.complexity.Mutation.PrePlanRoom == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_prePlanRoom_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string)), true
 
 	case "Mutation.removePrimussExam":
 		if e.complexity.Mutation.RemovePrimussExam == nil {
@@ -4996,6 +5010,15 @@ type ConflictsPerProgramAncode {
   plannedRoomForStudent(ancode: Int!, mtknr: String!): PlannedRoom
 }
 
+extend type Mutation {
+  prePlanRoom(
+    ancode: Int!
+    roomName: String!
+    reserve: Boolean!
+    mtknr: String
+  ): Boolean!
+}
+
 type Room {
   name: String!
   seats: Int!
@@ -5774,6 +5797,103 @@ func (ec *executionContext) field_Mutation_possibleDays_argsDays(
 	}
 
 	var zeroVal []string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_prePlanRoom_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_prePlanRoom_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg0
+	arg1, err := ec.field_Mutation_prePlanRoom_argsRoomName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["roomName"] = arg1
+	arg2, err := ec.field_Mutation_prePlanRoom_argsReserve(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["reserve"] = arg2
+	arg3, err := ec.field_Mutation_prePlanRoom_argsMtknr(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mtknr"] = arg3
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_prePlanRoom_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_prePlanRoom_argsRoomName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["roomName"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("roomName"))
+	if tmp, ok := rawArgs["roomName"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_prePlanRoom_argsReserve(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["reserve"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("reserve"))
+	if tmp, ok := rawArgs["reserve"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_prePlanRoom_argsMtknr(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["mtknr"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -16195,6 +16315,61 @@ func (ec *executionContext) fieldContext_Mutation_rmExamFromSlot(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_rmExamFromSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_prePlanRoom(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_prePlanRoom(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().PrePlanRoom(rctx, fc.Args["ancode"].(int), fc.Args["roomName"].(string), fc.Args["reserve"].(bool), fc.Args["mtknr"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_prePlanRoom(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_prePlanRoom_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -34472,6 +34647,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "rmExamFromSlot":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_rmExamFromSlot(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "prePlanRoom":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_prePlanRoom(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

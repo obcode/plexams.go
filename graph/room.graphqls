@@ -8,6 +8,15 @@ extend type Query {
   plannedRoomForStudent(ancode: Int!, mtknr: String!): PlannedRoom
 }
 
+extend type Mutation {
+  prePlanRoom(
+    ancode: Int!
+    roomName: String!
+    reserve: Boolean!
+    mtknr: String
+  ): Boolean!
+}
+
 type Room {
   name: String!
   seats: Int!

@@ -191,8 +191,21 @@ func (db *DB) PrePlannedRooms(ctx context.Context) ([]*model.PrePlannedRoom, err
 
 func (db *DB) AddPrePlannedRoomToExam(ctx context.Context, prePlannedRoom *model.PrePlannedRoom) (bool, error) {
 	collection := db.getCollectionSemester(collectionRoomsPrePlanned)
-
-	_, err := collection.InsertOne(ctx, prePlannedRoom)
+	// Delete any existing document with the same ancode, room, and mtknr
+	filter := bson.M{
+		"ancode":   prePlannedRoom.Ancode,
+		"roomname": prePlannedRoom.RoomName,
+		"mtknr":    prePlannedRoom.Mtknr,
+	}
+	_, err := collection.DeleteOne(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).
+			Int("ancode", prePlannedRoom.Ancode).Str("roomname", prePlannedRoom.RoomName).
+			Interface("mtknr", prePlannedRoom.Mtknr).
+			Msg("cannot delete existing pre planned room")
+		return false, err
+	}
+	_, err = collection.InsertOne(ctx, prePlannedRoom)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).
 			Int("ancode", prePlannedRoom.Ancode).Str("roomname", prePlannedRoom.RoomName).

@@ -11,6 +11,11 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// PrePlanRoom is the resolver for the prePlanRoom field.
+func (r *mutationResolver) PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string) (bool, error) {
+	return r.plexams.PreAddRoomToExam(ctx, ancode, roomName, mtknr, reserve)
+}
+
 // Room is the resolver for the room field.
 func (r *plannedRoomResolver) Room(ctx context.Context, obj *model.PlannedRoom) (*model.Room, error) {
 	return r.plexams.RoomByName(ctx, obj.RoomName)

@@ -18,9 +18,9 @@ var (
 primuss-data [all|<ancode>] --- send emails to teachers about primuss data and nta
 constraints 				--- ask for constraints
 prepared 					--- announce exams to plan and constraints
+draft 						--- announce draft plan
 published 					--- announce published exams
 invigilations 				--- send email requesting invigilations constraints
-draft 						--- announce draft plan
 nta-with-room-alone 		--- send emails to students with room alone before planning
 nta-planned 				--- send emails about rooms to all students with nta after planning
 `,

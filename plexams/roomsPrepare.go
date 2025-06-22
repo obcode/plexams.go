@@ -360,7 +360,7 @@ func (p *Plexams) prepareRoomsCfg(ctx context.Context) (*prepareRoomsCfg, error)
 
 	prepareRoomsCfg := &prepareRoomsCfg{
 		roomInfo:        roomInfo,
-		prePlannedRooms: p.prePlannedRooms(ctx),
+		prePlannedRooms: p.prePlannedRooms(ctx, roomInfo),
 		additionalSeats: additionalSeats(),
 	}
 
@@ -394,7 +394,7 @@ func additionalSeats() map[int]int {
 	return additionalSeats
 }
 
-func (p *Plexams) prePlannedRooms(ctx context.Context) map[int][]*model.PrePlannedRoom {
+func (p *Plexams) prePlannedRooms(ctx context.Context, roomInfo map[string]*model.Room) map[int][]*model.PrePlannedRoom {
 	prePlannedRoomsMap := make(map[int][]*model.PrePlannedRoom)
 	prePlannedRooms, err := p.dbClient.PrePlannedRooms(ctx)
 	if err != nil {
@@ -408,6 +408,39 @@ func (p *Plexams) prePlannedRooms(ctx context.Context) map[int][]*model.PrePlann
 		}
 
 		prePlannedRoomsMap[room.Ancode] = append(prePlannedRoomsMap[room.Ancode], room)
+	}
+
+	for _, rooms := range prePlannedRoomsMap {
+		// Sort rooms within each exam's preplanned rooms
+		// First: rooms with Mtknr != nil
+		// Last: rooms with reserve == true
+		// Middle: sort by seats (descending)
+		sort.Slice(rooms, func(i, j int) bool {
+			// First priority: rooms with Mtknr != nil come first
+			if (rooms[i].Mtknr != nil) != (rooms[j].Mtknr != nil) {
+				return rooms[i].Mtknr != nil
+			}
+
+			// If both have Mtknr != nil, keep original order
+			if rooms[i].Mtknr != nil && rooms[j].Mtknr != nil {
+				return false
+			}
+
+			// Last priority: rooms with reserve == true come last
+			if rooms[i].Reserve != rooms[j].Reserve {
+				return !rooms[i].Reserve
+			}
+
+			// If both are non-reserve rooms, sort by seats (descending)
+			if !rooms[i].Reserve && !rooms[j].Reserve {
+				seatsI := roomInfo[rooms[i].RoomName].Seats
+				seatsJ := roomInfo[rooms[j].RoomName].Seats
+				return seatsI > seatsJ
+			}
+
+			// Keep original order for reserve rooms
+			return false
+		})
 	}
 
 	return prePlannedRoomsMap
@@ -523,15 +556,23 @@ func (p *Plexams) setPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg) []*model.
 		if err != nil {
 			log.Debug().Err(err).Msg("cannot start spinner")
 		}
+
+		seatsTakenMap := make(map[string]int) // room.name -> seats taken
+
 		for _, prePlannedRoom := range prePlannedRooms {
 			room, ok := prepareRoomsCfg.roomInfo[prePlannedRoom.RoomName]
 			if !ok {
 				log.Error().Str("roomName", prePlannedRoom.RoomName).Msg("pre-planned room not found in room info")
 				panic(fmt.Sprintf("pre-planned room %s not found in room info", prePlannedRoom.RoomName))
 			}
+
 			var examRoom *model.PlannedRoom
 			if prePlannedRoom.Mtknr == nil { // room for normal students
-				studentCountInRoom := room.Seats
+				seatsTaken, ok := seatsTakenMap[room.Name]
+				if !ok {
+					seatsTaken = 0
+				}
+				studentCountInRoom := room.Seats - seatsTaken
 				if studentCountInRoom > len(exam.NormalRegsMtknr) {
 					studentCountInRoom = len(exam.NormalRegsMtknr)
 				}
@@ -549,6 +590,7 @@ func (p *Plexams) setPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg) []*model.
 					Reserve:        prePlannedRoom.Reserve,
 					PrePlanned:     true,
 				}
+				seatsTakenMap[room.Name] = seatsTaken + studentCountInRoom
 			} else { // room for NTA
 				foundNTA := false
 				for i, nta := range exam.NtasInNormalRooms {
@@ -588,6 +630,7 @@ func (p *Plexams) setPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg) []*model.
 					NtaMtknr:          prePlannedRoom.Mtknr,
 					PrePlanned:        true,
 				}
+				seatsTakenMap[room.Name]++
 			}
 			p.addPlannedRoom(prepareRoomsCfg, exam, room, examRoom)
 

@@ -523,19 +523,21 @@ func (p *Plexams) InvigilatorsForDay(ctx context.Context, day int) (*model.Invig
 
 func dayOkForInvigilator(day int, invigilator *model.Invigilator) (wantDay, canDay bool) {
 	// day in exlude days?
-	for _, excludedDay := range invigilator.Requirements.ExcludedDays {
-		if day == excludedDay {
-			return false, false
+	if invigilator.Requirements != nil {
+		for _, excludedDay := range invigilator.Requirements.ExcludedDays {
+			if day == excludedDay {
+				return false, false
+			}
 		}
-	}
-	for _, examDay := range invigilator.Requirements.ExamDays {
-		if day == examDay {
-			return true, true
+		for _, examDay := range invigilator.Requirements.ExamDays {
+			if day == examDay {
+				return true, true
+			}
 		}
-	}
-	for _, invigilationDay := range invigilator.Todos.InvigilationDays {
-		if day == invigilationDay {
-			return true, true
+		for _, invigilationDay := range invigilator.Todos.InvigilationDays {
+			if day == invigilationDay {
+				return true, true
+			}
 		}
 	}
 	return false, true

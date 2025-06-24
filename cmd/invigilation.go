@@ -92,6 +92,12 @@ reserve    [daynumber] [slotnumber] [invigilator ID] --- add reserve for slot (d
 			if err != nil {
 				log.Fatalf("got error: %v\n", err)
 			}
+
+			fmt.Println("recalculating todos...")
+			_, err = plexams.PrepareInvigilationTodos(context.Background())
+			if err != nil {
+				log.Fatalf("got error: %v\n", err)
+			}
 			fmt.Println("...done")
 
 		},

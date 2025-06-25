@@ -58,8 +58,13 @@ reserve    [daynumber] [slotnumber] [invigilator ID] --- add reserve for slot (d
 
 			invigilatorID, err := strconv.Atoi(args[3])
 			if err != nil {
-				fmt.Printf("cannot use %s as invigilators id", args[3])
-				os.Exit(1)
+				// find invigilator by name
+				invigilatorName := args[3]
+				invigilatorID, err = plexams.GetTeacherIdByRegex(ctx, invigilatorName)
+				if err != nil || invigilatorID == 0 {
+					fmt.Printf("cannot find invigilator with regex %s", args[3])
+					os.Exit(1)
+				}
 			}
 
 			oldInvigilator, err := plexams.GetInvigilatorInSlot(ctx, room, day, slot)

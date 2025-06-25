@@ -113,6 +113,7 @@ type ComplexityRoot struct {
 		Fs    func(childComplexity int) int
 		Lbas  func(childComplexity int) int
 		Profs func(childComplexity int) int
+		Sekr  func(childComplexity int) int
 	}
 
 	EnhancedPrimussExam struct {
@@ -1112,6 +1113,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Emails.Profs(childComplexity), true
+
+	case "Emails.sekr":
+		if e.complexity.Emails.Sekr == nil {
+			break
+		}
+
+		return e.complexity.Emails.Sekr(childComplexity), true
 
 	case "EnhancedPrimussExam.conflicts":
 		if e.complexity.EnhancedPrimussExam.Conflicts == nil {
@@ -4786,6 +4794,7 @@ type Emails {
   profs: String!
   lbas: String!
   fs: String!
+  sekr: String!
 }
 
 type SemesterConfig {
@@ -9139,6 +9148,50 @@ func (ec *executionContext) _Emails_fs(ctx context.Context, field graphql.Collec
 }
 
 func (ec *executionContext) fieldContext_Emails_fs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Emails",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Emails_sekr(ctx context.Context, field graphql.CollectedField, obj *model.Emails) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Emails_sekr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Sekr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Emails_sekr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Emails",
 		Field:      field,
@@ -26986,6 +27039,8 @@ func (ec *executionContext) fieldContext_SemesterConfig_emails(_ context.Context
 				return ec.fieldContext_Emails_lbas(ctx, field)
 			case "fs":
 				return ec.fieldContext_Emails_fs(ctx, field)
+			case "sekr":
+				return ec.fieldContext_Emails_sekr(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Emails", field.Name)
 		},
@@ -33162,6 +33217,11 @@ func (ec *executionContext) _Emails(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "fs":
 			out.Values[i] = ec._Emails_fs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sekr":
+			out.Values[i] = ec._Emails_sekr(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

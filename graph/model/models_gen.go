@@ -81,6 +81,7 @@ type Emails struct {
 	Profs string `json:"profs"`
 	Lbas  string `json:"lbas"`
 	Fs    string `json:"fs"`
+	Sekr  string `json:"sekr"`
 }
 
 type EnhancedPrimussExam struct {

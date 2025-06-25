@@ -272,8 +272,11 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 	roomWithoutInvigilatorDay := make(map[int]int)
 	slotWithoutReserveDay := make(map[int]int)
 
+	maxInvigsMissingInOneSlot := make(map[int]int)
+
 	// all rooms and reserve max one invigilator
 	for _, slot := range p.semesterConfig.Slots {
+		invigsMissing := 0
 		spinner.Message(aurora.Sprintf(aurora.Magenta("checking slot (%d,%d)"),
 			aurora.Cyan(slot.DayNumber), aurora.Cyan(slot.SlotNumber)))
 
@@ -291,6 +294,7 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 
 		if len(invigilations) == 0 {
 			slotWithoutReserveDay[slot.DayNumber]++
+			invigsMissing++
 		} else if len(invigilations) > 1 {
 			validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("more than one reserve invigilator in slot (%d,%d)"),
 				aurora.Magenta(slot.DayNumber), aurora.Magenta(slot.SlotNumber)))
@@ -307,10 +311,14 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 			}
 			if len(invigilations) == 0 {
 				roomWithoutInvigilatorDay[slot.DayNumber]++
+				invigsMissing++
 			} else if len(invigilations) > 1 {
-				validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("more than one invigilator for room %s in slot (%d,%d)"),
+				validationMessages = append(validationMessages, aurora.Sprintf(aurora.Yellow("more than one invigilator for room %s in slot (%d,%d)"),
 					aurora.Magenta(room), aurora.Magenta(slot.DayNumber), aurora.Magenta(slot.SlotNumber)))
 			}
+		}
+		if invigsMissing > maxInvigsMissingInOneSlot[slot.DayNumber] {
+			maxInvigsMissingInOneSlot[slot.DayNumber] = invigsMissing
 		}
 	}
 
@@ -332,16 +340,16 @@ func (p *Plexams) ValidateInvigilatorSlots() error {
 
 			if roomsWithoutInvig+slotsWithoutReserve > 0 {
 				var msg strings.Builder
-				msg.WriteString(aurora.Sprintf(aurora.Red("Day %2d: %2d open invigilations, "),
-					aurora.Magenta(day), aurora.Cyan(roomsWithoutInvig+slotsWithoutReserve)))
+				msg.WriteString(aurora.Sprintf(aurora.Yellow("Day %2d: %2d open invigilations, %2d max. in one Slot "),
+					aurora.Magenta(day), aurora.Cyan(roomsWithoutInvig+slotsWithoutReserve), aurora.Cyan(maxInvigsMissingInOneSlot[day])))
 
 				if roomsWithoutInvig > 0 {
-					msg.WriteString(aurora.Sprintf(aurora.Red("%2d rooms without invigilator,"), aurora.Cyan(roomsWithoutInvig)))
+					msg.WriteString(aurora.Sprintf(aurora.Yellow("%2d rooms without invigilator,"), aurora.Cyan(roomsWithoutInvig)))
 				} else {
 					msg.WriteString("                             ")
 				}
 				if slotsWithoutReserve > 0 {
-					msg.WriteString(aurora.Sprintf(aurora.Red("%2d slots without reserve"), aurora.Cyan(slotsWithoutReserve)))
+					msg.WriteString(aurora.Sprintf(aurora.Yellow("%2d slots without reserve"), aurora.Cyan(slotsWithoutReserve)))
 				}
 
 				validationMessages = append(validationMessages, msg.String())

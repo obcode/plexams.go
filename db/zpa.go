@@ -28,6 +28,19 @@ func (db *DB) GetTeacher(ctx context.Context, id int) (*model.Teacher, error) {
 	return &teacher, nil
 }
 
+func (db *DB) GetTeacherIdByRegex(ctx context.Context, name string) (int, error) {
+	collection := db.Client.Database(db.databaseName).Collection("teachers")
+
+	var teacher model.Teacher
+	err := collection.FindOne(ctx, bson.D{{Key: "fullname", Value: bson.D{{Key: "$regex", Value: name}}}}).Decode(&teacher)
+	if err != nil {
+		log.Error().Err(err).Str("name", name).Msg("cannot find teacher in db")
+		return 0, err
+	}
+
+	return teacher.ID, nil
+}
+
 func (db *DB) GetTeachers(ctx context.Context) ([]*model.Teacher, error) {
 	return db.getTeachers(ctx, func(model.Teacher) bool { return true })
 }

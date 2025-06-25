@@ -12,7 +12,7 @@ import (
 	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) SendEmailPublished(ctx context.Context, run bool) error {
+func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool) error {
 	cfg := yacspin.Config{
 		Frequency:         100 * time.Millisecond,
 		CharSet:           yacspin.CharSets[69],

@@ -15,6 +15,10 @@ func (p *Plexams) GetTeacher(ctx context.Context, id int) (*model.Teacher, error
 	return p.dbClient.GetTeacher(ctx, id)
 }
 
+func (p *Plexams) GetTeacherIdByRegex(ctx context.Context, name string) (int, error) {
+	return p.dbClient.GetTeacherIdByRegex(ctx, name)
+}
+
 func (p *Plexams) GetTeachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error) {
 	if fromZpa != nil && *fromZpa {
 		if err := p.SetZPA(); err != nil {

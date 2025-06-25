@@ -21,6 +21,7 @@ type Emails {
   profs: String!
   lbas: String!
   fs: String!
+  sekr: String!
 }
 
 type SemesterConfig {

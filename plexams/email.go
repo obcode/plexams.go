@@ -35,6 +35,10 @@ import (
 //go:embed tmpl/preparedEmailHTML.tmpl
 //go:embed tmpl/publishedEmailExams.tmpl
 //go:embed tmpl/publishedEmailExamsHTML.tmpl
+//go:embed tmpl/publishedEmailRooms.tmpl
+//go:embed tmpl/publishedEmailRoomsHTML.tmpl
+//go:embed tmpl/publishedEmailInvigilations.tmpl
+//go:embed tmpl/publishedEmailInvigilationsHTML.tmpl
 //go:embed tmpl/invigilationEmail.tmpl
 //go:embed tmpl/invigilationEmailHTML.tmpl
 var emailTemplates embed.FS

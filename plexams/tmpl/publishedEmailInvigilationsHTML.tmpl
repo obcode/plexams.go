@@ -1,0 +1,40 @@
+<p>[Antworten bitte nicht via E-Mail,
+sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA</a>]</p>
+
+<p>ich habe gerade die Aufsichtenplanung abgeschlossen und ins ZPA gepusht.</p>
+<p>Unter <u><a href='https://zpa.cs.hm.edu/teacher/exam_plan/'>https://zpa.cs.hm.edu/teacher/exam_plan/</a></u>
+sehen Sie nun alle Ihre Prüfungen und die Prüfungen bei denen Sie Aufsicht oder Reserveaufsicht sind.</p>
+<p>Sie sehen die Termine übrigens auch in Ihrem Wochenplan unter
+<u><a href='https://zpa.cs.hm.edu/teacher/week_plan/'>https://zpa.cs.hm.edu/teacher/week_plan/</a></u>
+und damit auch im iCal-Feed.</p>
+<p><b>Beachten Sie bitte als eingeteilte Aufsicht:</b>
+In Ihrem Raum können mehrere Prüfungen gleichzeitig stattfinden und die Studierenden können
+ unterschiedliche Prüfungsdauern haben (z.B. Nachteilsausgleich).</p>
+<p><b>Beachten Sie bitte als Reserveaufsicht:</b> Sie sind Reserve für alle Prüfungen die gleichzeitig stattfinden.
+Informieren Sie sich am Besten selbst ob alle eingeteilten Aufsichten da sind.</p>
+<p><b>@Sekretariat:</b> Bitte ausdrucken und aushängen. Danke!</p>
+<p>Nachdem der Plan mit den Aufsichten im Raum mit den Postfächern ausgehängt wurde,
+<b>repräsentiert der Aushang den gültigen Stand</b>.</p>
+<p>Wenn Sie Aufsichten tauschen oder ein LBA selbst Aufsicht macht, tragen Sie das bitte in dem aushängenden Plan ein.</p>
+
+<p>Und wie immer ein bisschen Transparenz am Schluss:</p>
+
+<ul>
+<li>{{ .NoOfInvigilators }} Aufsichten</li>
+<li>{{ .InvigilationInRooms }} Minuten Aufsichten in Räumen</li>
+<li>{{ .ReserveInvigilation }} Minuten Reserveaufsichten (eine Reserve rechnet mit 60 Minuten)</li>
+<li>{{ .OtherContributions }} Minuten anrechenbare Minuten durch Mastergespräche, Beisitzer, ...</li>
+<li>100% zu leistende Aufsichten entsprechen {{ .TodoPerInvigilator }} Minuten, Teilzeit, halbes Freisemester, … entsprechend weniger</li>
+<li>Aufsicht bei eigener Prüfung rechnet nicht mit (genau wie eigene mündliche Prüfungen nicht anrechenbar sind)</li>
+<li>Die geleisteten Zeiten pro Person liegen zwischen {{ .MaxDeviation }} Minuten zu wenig und {{ .MinDeviation }} Minuten zu viel</li>
+</ul>
+
+<p>Mit freundlichen Grüßen</p>
+<p>{{ .PlanerName }}<br />
+Prüfungsplaner der FK07
+</p>
+
+<pre>
+-- 
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
+</pre>

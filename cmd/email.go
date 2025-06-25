@@ -20,7 +20,9 @@ constraints 				--- ask for constraints
 prepared 					--- announce exams to plan and constraints
 draft 						--- announce draft plan
 published-exams 			--- announce published exams
+published-rooms 			--- announce published rooms
 invigilations 				--- send email requesting invigilations constraints
+published-invigilations 	--- announce published invigilations
 nta-with-room-alone 		--- send emails to students with room alone before planning
 nta-planned 				--- send emails about rooms to all students with nta after planning
 `,
@@ -60,6 +62,16 @@ nta-planned 				--- send emails about rooms to all students with nta after plann
 				}
 			case "published-exams":
 				err := plexams.SendEmailPublishedExams(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "published-rooms":
+				err := plexams.SendEmailPublishedRooms(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "published-invigilations":
+				err := plexams.SendEmailPublishedInvigilations(context.Background(), run)
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

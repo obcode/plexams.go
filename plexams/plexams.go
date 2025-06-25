@@ -287,6 +287,10 @@ func (p *Plexams) setSemesterConfig() {
 		if !ok {
 			log.Error().Interface("emails", emailsMap).Msg("cannot get fs emails from config")
 		}
+		emails.Sekr, ok = emailsMap["sekr"]
+		if !ok {
+			log.Error().Interface("emails", emailsMap).Msg("cannot get fs emails from config")
+		}
 
 		p.semesterConfig = &model.SemesterConfig{
 			Days:       days,

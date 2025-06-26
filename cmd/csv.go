@@ -13,8 +13,10 @@ var (
 		Use:   "csv",
 		Short: "csv [subcommand]",
 		Long: `Generate various CSVs.
-	draft [program] - generate csv for program
-	exahm - csv for EXaHM/SEB exams.`,
+	draft [program]  - generate csv for program
+	exahm            - csv for EXaHM/SEB exams
+	lba-repeater     - csv for LBA repeater exams
+	`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -39,6 +41,16 @@ var (
 				}
 				fmt.Printf("generating %s\n", Csvfile)
 				err := plexams.CsvForEXaHM(Csvfile)
+				if err != nil {
+					os.Exit(1)
+				}
+
+			case "lba-repeater":
+				if len(Csvfile) == 0 {
+					Csvfile = "Prüfungsplanung_LBA_Repeater_FK07.csv"
+				}
+				fmt.Printf("generating %s\n", Csvfile)
+				err := plexams.CsvForLBARepeater(Csvfile)
 				if err != nil {
 					os.Exit(1)
 				}

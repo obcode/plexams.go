@@ -132,7 +132,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool)
 			Content:     pdfData,
 			HTMLRelated: false,
 		}},
-		true,
+		false,
 	)
 
 	if err != nil {

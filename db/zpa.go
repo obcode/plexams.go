@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -55,8 +54,8 @@ func isInvigilator(teacher model.Teacher, semester string) bool {
 	return teacher.IsProf &&
 		!teacher.IsProfHC &&
 		!teacher.IsLBA &&
-		teacher.FK == "FK07" &&
-		strings.Compare(semester, teacher.LastSemester) <= 0
+		teacher.FK == "FK07" // &&
+	// strings.Compare(semester, teacher.LastSemester) <= 0
 }
 
 func (db *DB) getTeachers(ctx context.Context, predicate func(model.Teacher) bool) ([]*model.Teacher, error) {

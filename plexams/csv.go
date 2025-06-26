@@ -112,7 +112,7 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 type CsvExamEXaHM struct {
 	Ancode      int    `csv:"Ancode"`
 	Module      string `csv:"Modul"`
-	MainExamer  string `csv:"Erstprüfer:in"`
+	MainExamer  string `csv:"Erstprüfender"`
 	ExamDate    string `csv:"Termin"`
 	MaxDuration int    `csv:"Maximale Länge"`
 	Students    int    `csv:"Anmeldungen"`
@@ -173,6 +173,82 @@ func (p *Plexams) CsvForEXaHM(filename string) error {
 	}
 
 	b, err := csvutil.Marshal(exahmExams)
+	if err != nil {
+		log.Error().Err(err).Msg("error when marshaling to csv")
+	}
+
+	return os.WriteFile(filename, b, 0644)
+}
+
+type CsvLBARepeater struct {
+	Ancode             int    `csv:"Ancode"`
+	Module             string `csv:"Modul"`
+	MainExamer         string `csv:"Erstprüfender"`
+	EmailMainExamer    string `csv:"E-Mail Erstprüfender"`
+	ExamDate           string `csv:"Termin"`
+	Invigilators       string `csv:"Aufsichten"`
+	EmailsInvigilators string `csv:"E-Mails Aufsichten"`
+}
+
+func (p *Plexams) CsvForLBARepeater(filename string) error {
+	ctx := context.Background()
+	plannedExams, err := p.PlannedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planned exams")
+		return err
+	}
+
+	var csvEntries []CsvLBARepeater
+	for _, exam := range plannedExams {
+		if !exam.ZpaExam.IsRepeaterExam {
+			continue
+		}
+
+		mainExamer, err := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID)
+		if err != nil {
+			log.Error().Err(err).Msg("cannot get main examiner")
+			return err
+		}
+
+		if !mainExamer.IsLBA {
+			continue
+		}
+
+		examDate := "fehlt"
+		if exam.PlanEntry != nil {
+			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			examDate = starttime.Local().Format("02.01.06, 15:04 Uhr")
+		}
+
+		invigilators, invigilatorEmails := "", ""
+
+		invigs := set.NewSet[int]()
+		for _, room := range exam.PlannedRooms {
+			invigilator, err := p.GetInvigilatorForRoom(ctx, room.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			if err != nil {
+				log.Error().Err(err).Msg("cannot get invigilator")
+				return err
+			}
+			if invigs.Contains(invigilator.ID) {
+				continue
+			}
+			invigilators += invigilator.Shortname + ", "
+			invigilatorEmails += invigilator.Email + ", "
+			invigs.Add(invigilator.ID)
+		}
+
+		csvEntries = append(csvEntries, CsvLBARepeater{
+			Ancode:             exam.Ancode,
+			Module:             exam.ZpaExam.Module,
+			MainExamer:         exam.ZpaExam.MainExamer,
+			EmailMainExamer:    mainExamer.Email,
+			ExamDate:           examDate,
+			Invigilators:       invigilators,
+			EmailsInvigilators: invigilatorEmails,
+		})
+	}
+
+	b, err := csvutil.Marshal(csvEntries)
 	if err != nil {
 		log.Error().Err(err).Msg("error when marshaling to csv")
 	}

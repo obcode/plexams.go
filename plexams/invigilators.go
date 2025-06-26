@@ -676,6 +676,10 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 	return invigilations, nil
 }
 
+func (p *Plexams) GetInvigilatorForRoom(ctx context.Context, name string, day, time int) (*model.Teacher, error) {
+	return p.dbClient.GetInvigilatorForRoom(ctx, name, day, time)
+}
+
 // TODO: rewrite me
 func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error) {
 	rooms, err := p.PlannedRoomsInSlot(ctx, day, time)
@@ -719,7 +723,7 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 
 	for _, name := range keys {
 		roomsForExam := roomMap[name]
-		invigilator, err := p.dbClient.GetInvigilatorForRoom(ctx, name, day, time)
+		invigilator, err := p.GetInvigilatorForRoom(ctx, name, day, time)
 		if err != nil {
 			log.Error().Err(err).Int("day", day).Int("slot", time).Str("room", name).
 				Msg("cannot get invigilator for rooms in slot")

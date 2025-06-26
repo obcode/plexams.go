@@ -12,14 +12,14 @@ var (
 		Use:   "export",
 		Short: "export [subcommand]",
 		Long: `Generate various CSVs.
-	plannedRooms - export rooms of planned exams.`,
+	planned-rooms - export rooms of planned exams.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
-			case "plannedRooms":
+			case "planned-rooms":
 				if len(jsonfile) == 0 {
-					jsonfile = "PlannedRooms.json"
+					jsonfile = "planned-rooms.json"
 				}
 				fmt.Printf("generating %s\n", jsonfile)
 				err := plexams.ExportPlannedRooms(jsonfile)

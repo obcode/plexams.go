@@ -46,11 +46,13 @@ func (db *DB) GetTeachers(ctx context.Context) ([]*model.Teacher, error) {
 
 func (db *DB) GetInvigilators(ctx context.Context) ([]*model.Teacher, error) {
 	return db.getTeachers(ctx, func(teacher model.Teacher) bool {
-		return isInvigilator(teacher, db.semester)
+		return isInvigilator(teacher)
+		// return isInvigilator(teacher, db.semester)
 	})
 }
 
-func isInvigilator(teacher model.Teacher, semester string) bool {
+func isInvigilator(teacher model.Teacher) bool {
+	// func isInvigilator(teacher model.Teacher, semester string) bool {
 	return teacher.IsProf &&
 		!teacher.IsProfHC &&
 		!teacher.IsLBA &&

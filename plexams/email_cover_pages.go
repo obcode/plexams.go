@@ -39,7 +39,7 @@ func (p *Plexams) SendCoverPagesMails(ctx context.Context, run bool) error {
 	}
 
 	for examerID := range examerIDs.Iter() {
-		p.SendCoverPageMail(ctx, examerID, run)
+		p.SendCoverPageMail(ctx, examerID, run) //nolint:errcheck
 	}
 
 	return nil

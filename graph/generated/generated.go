@@ -864,7 +864,7 @@ func (e *executableSchema) Schema() *ast.Schema {
 	return parsedSchema
 }
 
-func (e *executableSchema) Complexity(typeName, field string, childComplexity int, rawArgs map[string]any) (int, bool) {
+func (e *executableSchema) Complexity(ctx context.Context, typeName, field string, childComplexity int, rawArgs map[string]any) (int, bool) {
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
@@ -1945,7 +1945,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addAdditionalExam_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addAdditionalExam_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -1957,7 +1957,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addConstraints_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addConstraints_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -1969,7 +1969,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addExamGroupToSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addExamGroupToSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -1981,7 +1981,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addExamToSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addExamToSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -1993,7 +1993,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addNTA_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addNTA_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2005,7 +2005,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addRoomToExam_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addRoomToExam_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2017,7 +2017,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addZpaExamToPlan_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addZpaExamToPlan_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2029,7 +2029,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_exahm_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_exahm_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2041,7 +2041,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_excludeDays_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_excludeDays_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2053,7 +2053,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_lab_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_lab_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2065,7 +2065,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_notPlannedByMe_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_notPlannedByMe_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2077,7 +2077,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_online_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_online_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2089,7 +2089,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_placesWithSockets_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_placesWithSockets_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2101,7 +2101,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_possibleDays_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_possibleDays_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2113,7 +2113,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_prePlanRoom_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_prePlanRoom_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2125,7 +2125,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_removePrimussExam_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removePrimussExam_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2137,7 +2137,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_rmConstraints_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_rmConstraints_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2149,7 +2149,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_rmExamFromSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_rmExamFromSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2161,7 +2161,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_rmExamGroupFromSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_rmExamGroupFromSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2173,7 +2173,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_rmZpaExamFromPlan_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_rmZpaExamFromPlan_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2185,7 +2185,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_sameSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_sameSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2197,7 +2197,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_seb_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_seb_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2209,7 +2209,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setSemester_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setSemester_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2221,7 +2221,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_zpaExamsToPlan_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_zpaExamsToPlan_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2814,7 +2814,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_allowedSlots_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_allowedSlots_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2833,7 +2833,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_awkwardSlots_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_awkwardSlots_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2845,7 +2845,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_conflictingAncodes_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_conflictingAncodes_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2857,7 +2857,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_connectedExam_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_connectedExam_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2876,7 +2876,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_constraintForAncode_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_constraintForAncode_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2888,7 +2888,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_dayOkForInvigilator_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_dayOkForInvigilator_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2900,7 +2900,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_exam_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_exam_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2912,7 +2912,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_examGroup_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_examGroup_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2938,7 +2938,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_examWithRegs_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_examWithRegs_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2971,7 +2971,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_examsInSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_examsInSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -2983,7 +2983,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_examsInSlotWithRooms_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_examsInSlotWithRooms_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3023,7 +3023,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_generatedExam_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_generatedExam_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3056,7 +3056,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_invigilatorsForDay_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_invigilatorsForDay_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3089,7 +3089,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_nta_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_nta_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3122,7 +3122,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_plannedExam_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_plannedExam_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3141,7 +3141,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_plannedExamsInSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_plannedExamsInSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3153,7 +3153,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_plannedRoomForStudent_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_plannedRoomForStudent_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3172,7 +3172,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_plannedRoomNamesInSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_plannedRoomNamesInSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3191,7 +3191,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_plannedRoomsInSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_plannedRoomsInSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3203,7 +3203,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_preExamsInSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_preExamsInSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3215,7 +3215,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_primussExam_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_primussExam_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3234,7 +3234,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_primussExamsForAnCode_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_primussExamsForAnCode_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3253,7 +3253,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_roomsForSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_roomsForSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3272,7 +3272,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_roomsWithConstraints_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_roomsWithConstraints_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3284,7 +3284,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_roomsWithInvigilationsForSlot_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_roomsWithInvigilationsForSlot_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3310,7 +3310,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_studentByMtknr_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_studentByMtknr_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3322,7 +3322,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_studentRegsForProgram_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_studentRegsForProgram_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3348,7 +3348,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_studentsByName_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_studentsByName_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3360,7 +3360,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_teacher_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_teacher_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3372,7 +3372,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_teachers_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_teachers_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3398,7 +3398,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_zpaExam_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_zpaExam_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -3410,7 +3410,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_zpaExams_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_zpaExams_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -39185,6 +39185,7 @@ func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (
 }
 
 func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalBoolean(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -39863,6 +39864,7 @@ func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalFloatContext(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -39932,6 +39934,7 @@ func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, 
 }
 
 func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalInt(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -41059,6 +41062,7 @@ func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -41324,6 +41328,7 @@ func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v an
 }
 
 func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalTime(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -41375,6 +41380,7 @@ func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalTime(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -41776,6 +41782,7 @@ func (ec *executionContext) unmarshalN__DirectiveLocation2string(ctx context.Con
 }
 
 func (ec *executionContext) marshalN__DirectiveLocation2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -41964,6 +41971,7 @@ func (ec *executionContext) unmarshalN__TypeKind2string(ctx context.Context, v a
 }
 
 func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -42027,6 +42035,8 @@ func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (
 }
 
 func (ec *executionContext) marshalOBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalBoolean(v)
 	return res
 }
@@ -42043,6 +42053,8 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
 }
@@ -42565,6 +42577,8 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
 }
@@ -43397,6 +43411,8 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(*v)
 	return res
 }
@@ -43522,6 +43538,8 @@ func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v an
 }
 
 func (ec *executionContext) marshalOTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalTime(v)
 	return res
 }
@@ -43574,6 +43592,8 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalTime(*v)
 	return res
 }

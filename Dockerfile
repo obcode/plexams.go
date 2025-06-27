@@ -6,6 +6,10 @@ RUN go get -d -v ./... && \
 
 FROM alpine
 COPY --from=builder /app/plexams.go /app/plexams.go
-RUN apk add wait4x
+
+RUN apk --no-cache add tzdata wait4x
+ENV TZ=Europe/Berlin
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 EXPOSE 8080
 ENTRYPOINT ["/app/plexams.go"]

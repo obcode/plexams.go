@@ -9,10 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) GetStudentRegsPerAncodePlanned(ctx context.Context) ([]*model.StudentRegsPerAncode, error) {
-	return p.dbClient.GetStudentRegsPerAncodePlanned(ctx)
-}
-
 func (p *Plexams) GetStudentRegsForAncode(ancode int) (*model.StudentRegsForAncode, error) {
 	ctx := context.TODO()
 	f := false

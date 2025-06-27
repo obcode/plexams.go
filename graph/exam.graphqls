@@ -2,72 +2,15 @@ extend type Query {
   connectedExam(ancode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
 
-  externalExams: [ExternalExam!]!
-
-  mucdaiExams: [MucDaiExam!]!
-
   generatedExams: [GeneratedExam!]!
   generatedExam(ancode: Int!): GeneratedExam
 
   plannedExams: [PlannedExam!]!
   plannedExam(ancode: Int!): PlannedExam
 
+  mucdaiExams: [MucDaiExam!]!
+
   conflictingAncodes(ancode: Int!): [Conflict!]
-
-  exam(ancode: Int!): Exam
-  exams: [Exam!]!
-}
-
-# Deprecated: remove me
-input AdditionalExamInput {
-  ancode: Int!
-  module: String!
-  mainExamerID: Int!
-  duration: Int!
-  isRepeaterExam: Boolean!
-  groups: [String!]!
-}
-
-# Deprecated: remove me
-type AdditionalExam {
-  ancode: Int!
-  module: String!
-  mainExamer: String!
-  mainExamerID: Int!
-  duration: Int!
-  isRepeaterExam: Boolean!
-  groups: [String!]!
-}
-
-# Deprecated: remove me
-type ExamWithRegs {
-  ancode: Int!
-  zpaExam: ZPAExam!
-  primussExams: [PrimussExam!]!
-  studentRegs: [StudentRegsPerAncodeAndProgram!]!
-  conflicts: [ConflictPerProgram!]!
-  connectErrors: [String!]!
-}
-
-# Deprecated: remove me
-type ExamToPlan {
-  exam: ExamWithRegs!
-  constraints: Constraints
-}
-
-# Deprecated: remove me
-type PlannedExamWithNTA {
-  exam: ExamWithRegs!
-  constraints: Constraints
-  nta: [NTAWithRegs!]
-}
-
-# Deprecated: remove me
-type ExamInPlan {
-  exam: ExamWithRegs!
-  constraints: Constraints
-  nta: [NTAWithRegs!]
-  slot: Slot
 }
 
 type ExamWithRegsAndRooms {
@@ -76,28 +19,6 @@ type ExamWithRegsAndRooms {
   ntasInNormalRooms: [NTA!]!
   ntasInAloneRooms: [NTA!]!
   rooms: [PlannedRoom!]!
-}
-
-# Deprecated: remove me
-type ExternalExam {
-  ancode: Int!
-  program: String!
-  module: String!
-  mainExamer: String!
-  duration: Int!
-}
-
-# Deprecated: remove me
-type MucDaiExam {
-  primussAncode: Int!
-  module: String!
-  mainExamer: String!
-  mainExamerID: Int
-  examType: String!
-  duration: Int!
-  isRepeaterExam: Boolean!
-  program: String!
-  plannedBy: String!
 }
 
 type ConnectedExam {
@@ -139,17 +60,14 @@ type PlannedExam {
   plannedRooms: [PlannedRoom!]
 }
 
-type Exam {
-  ancode: Int!
-  zpaExam: ZPAExam
-  externalExam: ExternalExam
-  primussExams: [PrimussExam!]!
-  studentRegs: [StudentRegsPerAncodeAndProgram!]!
-  conflicts: [ConflictsPerProgramAncode!]!
-  connectErrors: [String!]!
-  constraints: Constraints
-  regularStudents: [Student!]
-  ntaStudents: [Student!]
-  slot: Slot
-  rooms: [RoomForExam!]
+type MucDaiExam {
+  primussAncode: Int!
+  module: String!
+  mainExamer: String!
+  mainExamerID: Int
+  examType: String!
+  duration: Int!
+  isRepeaterExam: Boolean!
+  program: String!
+  plannedBy: String!
 }

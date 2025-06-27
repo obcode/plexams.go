@@ -31,16 +31,6 @@ func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedE
 	return r.plexams.GetConnectedExams(ctx)
 }
 
-// ExternalExams is the resolver for the externalExams field.
-func (r *queryResolver) ExternalExams(ctx context.Context) ([]*model.ExternalExam, error) {
-	return r.plexams.ExternalExams(ctx)
-}
-
-// MucdaiExams is the resolver for the mucdaiExams field.
-func (r *queryResolver) MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error) {
-	return r.plexams.MucdaiExams(ctx)
-}
-
 // GeneratedExams is the resolver for the generatedExams field.
 func (r *queryResolver) GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error) {
 	return r.plexams.GeneratedExams(ctx)
@@ -61,23 +51,14 @@ func (r *queryResolver) PlannedExam(ctx context.Context, ancode int) (*model.Pla
 	return r.plexams.PlannedExam(ctx, ancode)
 }
 
+// MucdaiExams is the resolver for the mucdaiExams field.
+func (r *queryResolver) MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error) {
+	return r.plexams.MucdaiExams(ctx)
+}
+
 // ConflictingAncodes is the resolver for the conflictingAncodes field.
 func (r *queryResolver) ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error) {
 	return r.plexams.ConflictingAncodes(ctx, ancode)
-}
-
-// Exam is the resolver for the exam field.
-func (r *queryResolver) Exam(ctx context.Context, ancode int) (*model.Exam, error) {
-	exam, err := r.plexams.CachedExam(ctx, ancode)
-	if err != nil || exam == nil {
-		return r.plexams.Exam(ctx, ancode)
-	}
-	return exam, err
-}
-
-// Exams is the resolver for the exams field.
-func (r *queryResolver) Exams(ctx context.Context) ([]*model.Exam, error) {
-	return r.plexams.CachedExams(ctx)
 }
 
 // GeneratedExam returns generated.GeneratedExamResolver implementation.

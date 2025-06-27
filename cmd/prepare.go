@@ -17,22 +17,15 @@ var (
 		Use:   "prepare",
 		Short: "prepare [subcommand]",
 		Long: `Prepare collections.
-	connected-exams --- prepare connected exams                    --- step 1
-	connect-exam ancode program   --- connect an unconnected exam  --- step 1,5
-
+	connected-exams                        --- prepare connected exams
+	connect-exam ancode program            --- connect an unconnected exam
 	add-mucdai-exam program primuss-ancode --- add an external add-mucdai-exam exam
-
-	generated-exams --- generate exams from connected-exams, external-exams and primuss-data --- step 2
-
-	studentregs     --- regs per exam & regs per student (needs connected-exams) --- step 2
-	
-	For planning rooms:
-
-	rooms-for-slots 	--- prepare rooms which are allowed to use
-	rooms-for-exams   	--- rooms for exams
-
-	self-invigilations    --- set main examer as invigilator if possible
-	invigilator-todos    --- cache snapshot
+	generated-exams                        --- generate exams from connected-exams and primuss-data
+	studentregs                            --- regs per exam & regs per student (needs connected-exams)
+	rooms-for-slots                        --- prepare rooms which are allowed to use
+	rooms-for-exams                        --- rooms for exams
+	self-invigilations                     --- set main examer as invigilator if possible
+	invigilator-todos                      --- cache snapshot
 	`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {

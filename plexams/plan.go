@@ -371,3 +371,27 @@ func (p *Plexams) SlotForAncode(ctx context.Context, ancode int) (*model.Slot, e
 func (p *Plexams) LockPlan(ctx context.Context) error {
 	return p.dbClient.LockPlan(ctx)
 }
+
+func (p *Plexams) LockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.GeneratedExam, error) {
+	planEntry, err := p.dbClient.LockExam(ctx, ancode)
+	if err != nil {
+		return nil, nil, err
+	}
+	exam, err := p.dbClient.GetGeneratedExam(ctx, ancode)
+	if err != nil {
+		return planEntry, nil, err
+	}
+	return planEntry, exam, nil
+}
+
+func (p *Plexams) UnlockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.GeneratedExam, error) {
+	planEntry, err := p.dbClient.UnlockExam(ctx, ancode)
+	if err != nil {
+		return nil, nil, err
+	}
+	exam, err := p.dbClient.GetGeneratedExam(ctx, ancode)
+	if err != nil {
+		return planEntry, nil, err
+	}
+	return planEntry, exam, nil
+}

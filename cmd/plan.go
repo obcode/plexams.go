@@ -15,14 +15,13 @@ var (
 		Use:   "plan",
 		Short: "plan [subcommand]",
 		Long: `Manipulate the plan.
-	pre-plan-exam ancode day slot    --- move [ancode] to [day number] [slot number]
-	pre-plan-room ancode roomname [mtknr/reserve]    --- plan [room name] for [ancode]
-	move-to ancode day slot    --- move [ancode] to [day number] [slot number]
-	change-room ancode oldroom newroom    --- change room for [ancode] from [oldroom] to [newroom]
-	lock-exam ancode   --- lock exam to slot
-	unlock-exam ancode --- unlock / allow moving
-	remove-unlocked            --- remove all unlocked exam groups from the plan
-	lock                       --- lock the whole plan`,
+	pre-plan-exam ancode day slot                  --- move [ancode] to [day number] [slot number]
+	pre-plan-room ancode roomname [mtknr/reserve]  --- plan [room name] for [ancode]
+	move-to ancode day slot                        --- move [ancode] to [day number] [slot number]
+	change-room ancode oldroom newroom             --- change room for [ancode] from [oldroom] to [newroom]
+	lock-exam ancode                               --- lock exam to slot
+	unlock-exam ancode                             --- unlock / allow moving
+	lock                                           --- lock the whole plan`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -75,31 +74,6 @@ var (
 				if success {
 					fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
 				}
-
-			// case "pre-move-to":
-			// 	if len(args) < 4 {
-			// 		log.Fatal("need ancode, day and slot number")
-			// 	}
-			// 	ancode, err := strconv.Atoi(args[1])
-			// 	if err != nil {
-			// 		log.Fatalf("cannot convert %s to int", args[1])
-			// 	}
-			// 	day, err := strconv.Atoi(args[2])
-			// 	if err != nil {
-			// 		log.Fatalf("cannot convert %s to int", args[2])
-			// 	}
-			// 	slot, err := strconv.Atoi(args[3])
-			// 	if err != nil {
-			// 		log.Fatalf("cannot convert %s to int", args[3])
-			// 	}
-			// 	success, err := plexams.PreAddExamToSlot(context.Background(), ancode, day, slot)
-			// 	if err != nil {
-			// 		fmt.Printf("error: %v\n", err)
-			// 		os.Exit(1)
-			// 	}
-			// 	if success {
-			// 		fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
-			// 	}
 
 			case "pre-plan-room":
 				if len(args) < 3 {
@@ -198,14 +172,6 @@ var (
 					fmt.Printf("successfully unlocked exam %d. %s, %s from slot (%d,%d)\n",
 						exam.Ancode, exam.ZpaExam.MainExamer, exam.ZpaExam.Module, planEntry.DayNumber, planEntry.SlotNumber)
 				}
-
-			case "remove-unlocked":
-				count, err := plexams.RemoveUnlockedExamGroupsFromPlan(context.Background())
-				if err != nil {
-					log.Fatalf("error %v", err)
-					os.Exit(1)
-				}
-				fmt.Printf("successfully deleted %d unlocked exam groups from the plan\n", count)
 
 			case "lock":
 				err := plexams.LockPlan(context.Background())

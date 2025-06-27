@@ -29,9 +29,3 @@ type Conflict struct {
 	AnCode        int `json:"ancode"`
 	NumberOfStuds int `json:"numberOfStuds"`
 }
-
-type RegisteredExam struct {
-	Exam        *PrimussExam  `json:"exam"`
-	StudentRegs []*StudentReg `json:"studentRegs"`
-	Conflicts   []*Conflict   `json:"conflicts"`
-}

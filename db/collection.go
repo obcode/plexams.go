@@ -10,21 +10,14 @@ import (
 type CollectionName string
 
 const (
-	collectionNameSemesterConfig  = "semester_config"
-	collectionConstraints         = "constraints"
-	collectionNameExamGroups      = "exam_groups"
-	collectionNameAdditionalExams = "additional_exams"
-	collectionNameExternalExams   = "external_exams"
-	collectionNameConnectedExams  = "connected_exams"
-	collectionNameExamsWithRegs   = "exams_with_regs"
-	collectionNameNTAs            = "nta"
-	collectionNamePlan            = "plan"
-	collectionNamePlanBackup      = "plan_backup"
+	collectionNameSemesterConfig = "semester_config"
+	collectionConstraints        = "constraints"
+	collectionNameConnectedExams = "connected_exams"
+	collectionNameNTAs           = "nta"
+	collectionNamePlan           = "plan"
+	collectionNamePlanBackup     = "plan_backup"
 
-	collectionStudentRegsPerAncodePlanned  = "studentregs_per_ancode_planned"
-	collectionStudentRegsPerAncodeAll      = "studentregs_per_ancode_all"
 	collectionStudentRegsPerStudentPlanned = "studentregs_per_student_planned"
-	collectionStudentRegsPerStudentAll     = "studentregs_per_student_all"
 
 	collectionAll         = "zpaexams"
 	collectionToPlan      = "zpaexamsToPlan"
@@ -32,16 +25,12 @@ const (
 
 	collectionPrimussAncodes = "primuss_ancodes"
 
-	collectionExamsInPlan = "exams_in_plan" // Deprecated: rm me
-
-	collectionCachedExams    = "cached_exams" // ?
 	collectionGeneratedExams = "generated_exams"
 
 	collectionGlobalRooms     = "rooms"
 	collectionRoomsForSlots   = "rooms_for_slots"
 	collectionRoomsPrePlanned = "rooms_pre_planned"
 	collectionRoomsPlanned    = "rooms_planned"
-	collectionRoomsForExams   = "rooms_for_exams" // Deprecated: ?
 
 	collectionInvigilatorRequirements = "invigilator_requirements"
 	collectionInvigilatorTodos        = "invigilator_todos"

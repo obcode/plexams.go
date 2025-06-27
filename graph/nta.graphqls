@@ -1,6 +1,11 @@
 extend type Query {
   ntas: [NTA!]
   ntasWithRegs: [Student!]
+  nta(mtknr: String!): NTAWithRegs
+}
+
+extend type Mutation {
+  addNTA(input: NTAInput!): NTA!
 }
 
 type NTAExam {

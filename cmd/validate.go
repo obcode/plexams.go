@@ -15,16 +15,15 @@ var (
 		Use:   "validate",
 		Short: "validate [subcommand] [-s <seconds>]",
 		Long: `Validate the plan.
-	all         --- guess what :-)
-	conflicts   --- check conflicts for each student
-	constraints --- check if constraints hold
-	db          --- data base entries
-	rooms       --- check room constraints
-	zpa         --- check if the plan on ZPA is the same here
-	invigilator-reqs
-	invigilator-slots
-
-	-s <seconds> --- sleep <seconds> and validate again`,
+	all                --- guess what :-)
+	conflicts          --- check conflicts for each student
+	constraints        --- check if constraints hold
+	db                 --- data base entries
+	rooms              --- check room constraints
+	zpa                --- check if the plan on ZPA is the same here
+	invigilator-reqs.  --- check if invigilator requirements are met
+	invigilator-slots  --- check if invigilator slots are okay
+`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()

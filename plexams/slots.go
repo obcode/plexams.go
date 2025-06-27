@@ -2,10 +2,8 @@ package plexams
 
 import (
 	"fmt"
-	"sort"
 	"time"
 
-	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
@@ -137,44 +135,4 @@ func slotsToModelSlots(semesterConfigSlots []*model.Slot, slots map[int]map[int]
 		}
 	}
 	return modelSlots
-}
-
-func mergeAllowedSlots(sliceOfSlots [][]*model.Slot) []*model.Slot {
-	slotsRes := set.NewSet[*model.Slot]()
-	for i, slots := range sliceOfSlots {
-		slotsSet := set.NewSet[*model.Slot]()
-		for _, slot := range slots {
-			slotsSet.Add(slot)
-		}
-		if i == 0 {
-			slotsRes = slotsSet
-		} else {
-			slotsRes = slotsRes.Intersect(slotsSet)
-		}
-	}
-
-	slots := make([]*model.Slot, 0)
-	for slot := range slotsRes.Iter() {
-		slots = append(slots, slot)
-	}
-
-	return sortSlots(slots)
-}
-
-func sortSlots(slots []*model.Slot) []*model.Slot {
-	slotMap := make(map[int]*model.Slot)
-	keys := make([]int, 0)
-	for _, slot := range slots {
-		// assume there are not more than 9 Slots
-		key := slot.DayNumber*10 + slot.SlotNumber
-		slotMap[key] = slot
-		keys = append(keys, key)
-	}
-
-	sort.Ints(keys)
-	sortedSlots := make([]*model.Slot, 0, len(slots))
-	for _, key := range keys {
-		sortedSlots = append(sortedSlots, slotMap[key])
-	}
-	return sortedSlots
 }

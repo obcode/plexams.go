@@ -218,8 +218,6 @@ func (db *DB) getZPAExamsPlannedOrNot(ctx context.Context, toPlan *bool) ([]*mod
 		return nil, err
 	}
 
-	// log.Debug().Interface("ancodes", ancodeSet).Msg("got ancodes to plan")
-
 	zpaExams, err := db.GetZPAExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get zpa exams")
@@ -252,8 +250,6 @@ func (db *DB) getZPAExamsPlannedOrNot(ctx context.Context, toPlan *bool) ([]*mod
 			exams = append(exams, zpaExam)
 		}
 	}
-
-	// log.Debug().Interface("exams", exams).Msg("found exams to plan")
 
 	return exams, nil
 }
@@ -368,34 +364,6 @@ func (db *DB) addAddedAncodesToExam(ctx context.Context, zpaExam *model.ZPAExam,
 	}
 
 	zpaExam.PrimussAncodes = newPrimussAncodes
-
-	// 	rmNewAncodes := make([]model.ZPAPrimussAncodes, 0, len(zpaExam.PrimussAncodes))
-	// OUTER:
-	// 	for _, ancode := range zpaExam.PrimussAncodes {
-	// 		for _, newAncode := range addedAncodesForAncode {
-	// 			if ancode.Program == newAncode.Program {
-	// 				break OUTER
-	// 			}
-	// 		}
-	// 		rmNewAncodes = append(rmNewAncodes, ancode)
-	// 	}
-	// 	zpaExam.PrimussAncodes = append(rmNewAncodes, addedAncodesForAncode...)
-
-	// 	// add dummy ancodes if no ancode for group is present
-	// OUTER2:
-	// 	for _, group := range zpaExam.Groups {
-	// 		groupShort := group[:2]
-	// 		for _, ancodes := range zpaExam.PrimussAncodes {
-	// 			if ancodes.Program == groupShort {
-	// 				break OUTER2
-	// 			}
-	// 		}
-	// 		zpaExam.PrimussAncodes = append(zpaExam.PrimussAncodes,
-	// 			model.ZPAPrimussAncodes{
-	// 				Program: groupShort,
-	// 				Ancode:  -1,
-	// 			})
-	// 	}
 
 	return nil
 }

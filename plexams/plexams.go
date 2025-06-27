@@ -196,21 +196,6 @@ func (p *Plexams) GetSemester(ctx context.Context) *model.Semester {
 	}
 }
 
-func (p *Plexams) SetSemester(ctx context.Context, s string) (*model.Semester, error) {
-	p.semester = s
-	err := p.dbClient.SetSemester(s)
-	if err != nil {
-		return nil, err
-	}
-	return &model.Semester{
-		ID: p.semester,
-	}, nil
-}
-
-func (p *Plexams) Log(ctx context.Context, subj, msg string) error {
-	return p.dbClient.Log(ctx, subj, msg)
-}
-
 func (p *Plexams) setSemesterConfig() {
 	plan := viper.GetStringMap("semesterConfig")
 	if len(plan) > 0 {
@@ -361,13 +346,4 @@ func (p *Plexams) setRoomInfo() {
 
 func (p *Plexams) GetRoomInfo(roomName string) *model.Room {
 	return p.roomInfo[roomName]
-}
-
-func (p *Plexams) Room(ctx context.Context, roomForExam *model.RoomForExam) (*model.Room, error) {
-	room := p.GetRoomInfo(roomForExam.RoomName)
-	if room == nil {
-		log.Error().Str("room name", roomForExam.RoomName).Msg("cannot find room in global rooms")
-	}
-
-	return room, nil
 }

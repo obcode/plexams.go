@@ -19,7 +19,7 @@ func (db *DB) AddNta(ctx context.Context, nta *model.NTA) (*model.NTA, error) {
 		return nil, err
 	}
 
-	return nta, nil // FIXME: return NTA from DB?
+	return db.Nta(ctx, nta.Mtknr)
 }
 
 func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTA, error) {
@@ -114,7 +114,6 @@ func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
 	return ntas, nil
 }
 
-// // Deprecated: remove me
 func (db *DB) NtaWithRegs(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
 
@@ -131,56 +130,4 @@ func (db *DB) NtaWithRegs(ctx context.Context, mtknr string) (*model.NTAWithRegs
 	}
 
 	return &nta, nil
-}
-
-// // Deprecated: remove me
-func (db *DB) SaveSemesterNTAs(ctx context.Context, ntaWithRegs []*model.NTAWithRegs) error {
-	collection := db.Client.Database(db.databaseName).Collection(collectionNameNTAs)
-
-	err := collection.Drop(ctx)
-	if err != nil {
-		log.Error().Err(err).
-			Str("collectionName", collectionNameNTAs).
-			Msg("cannot drop collection")
-		return err
-	}
-
-	ntaWithRegsToInsert := make([]interface{}, 0, len(ntaWithRegs))
-	for _, ntaWithReg := range ntaWithRegs {
-		ntaWithRegsToInsert = append(ntaWithRegsToInsert, ntaWithReg)
-	}
-
-	_, err = collection.InsertMany(ctx, ntaWithRegsToInsert)
-	if err != nil {
-		log.Error().Err(err).
-			Str("collectionName", collectionNameNTAs).
-			Msg("cannot insert ntas")
-		return err
-	}
-
-	for _, nta := range ntaWithRegs {
-		err := db.SetCurrentSemesterOnNTA(ctx, nta.Nta.Mtknr)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// TODO: when to call?
-func (db *DB) SetCurrentSemesterOnNTA(ctx context.Context, mtknr string) error {
-	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
-
-	filter := bson.D{{Key: "mtknr", Value: mtknr}}
-	update := bson.D{{Key: "$set", Value: bson.D{{Key: "lastSemester", Value: db.semester}}}}
-
-	_, err := collection.UpdateOne(ctx, filter, update)
-	if err != nil {
-		log.Error().Err(err).Str("mtknr", mtknr).
-			Str("collectionName", collectionNameNTAs).
-			Msg("cannot update nta with current semester")
-		return err
-	}
-	return nil
 }

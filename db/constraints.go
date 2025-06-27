@@ -327,19 +327,7 @@ func (db *DB) GetConstraints(ctx context.Context) ([]*model.Constraints, error) 
 	}
 	defer cur.Close(ctx) //nolint:errcheck
 
-	// TODO: replace all cur.Next with cur.All
-	for cur.Next(ctx) {
-		var constraint model.Constraints
-
-		err := cur.Decode(&constraint)
-		if err != nil {
-			log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionConstraints).Interface("cur", cur).
-				Msg("Cannot decode to additional exam")
-			return constraints, err
-		}
-
-		constraints = append(constraints, &constraint)
-	}
+	cur.All(ctx, &constraints)
 
 	if err := cur.Err(); err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionConstraints).Msg("Cursor returned error")

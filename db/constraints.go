@@ -327,9 +327,9 @@ func (db *DB) GetConstraints(ctx context.Context) ([]*model.Constraints, error) 
 	}
 	defer cur.Close(ctx) //nolint:errcheck
 
-	cur.All(ctx, &constraints)
+	err = cur.All(ctx, &constraints)
 
-	if err := cur.Err(); err != nil {
+	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).Str("collection", collectionConstraints).Msg("Cursor returned error")
 		return constraints, err
 	}

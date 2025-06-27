@@ -12,39 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (db *DB) GetStudentRegsPerAncodePlanned(ctx context.Context) ([]*model.StudentRegsPerAncode, error) {
-	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerAncodePlanned)
-
-	studentRegs := make([]*model.StudentRegsPerAncode, 0)
-
-	cur, err := collection.Find(ctx, bson.M{})
-	if err != nil {
-		log.Error().Err(err).Str("semester", db.semester).Msg("MongoDB Find")
-		return nil, err
-	}
-	defer cur.Close(ctx) //nolint:errcheck
-
-	for cur.Next(ctx) {
-		var studentReg model.StudentRegsPerAncode
-
-		err := cur.Decode(&studentReg)
-		if err != nil {
-			log.Error().Err(err).Str("semester", db.semester).Interface("cur", cur).
-				Msg("Cannot decode to studentReg")
-			return nil, err
-		}
-
-		studentRegs = append(studentRegs, &studentReg)
-	}
-
-	if err := cur.Err(); err != nil {
-		log.Error().Err(err).Str("semester", db.semester).Msg("Cursor returned error")
-		return nil, err
-	}
-
-	return studentRegs, nil
-}
-
 func (db *DB) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.Student, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned)
 
@@ -59,28 +26,6 @@ func (db *DB) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.Studen
 	defer cur.Close(ctx) //nolint:errcheck
 
 	studentRegs := make([]*model.Student, 0)
-
-	err = cur.All(ctx, &studentRegs)
-	if err != nil {
-		log.Error().Err(err).Str("semester", db.semester).Interface("cur", cur).
-			Msg("Cannot decode to studentRegs")
-		return nil, err
-	}
-
-	return studentRegs, nil
-}
-
-func (db *DB) StudentRegsPerStudentAll(ctx context.Context) ([]*model.StudentRegsPerStudent, error) {
-	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentAll)
-
-	cur, err := collection.Find(ctx, bson.M{})
-	if err != nil {
-		log.Error().Err(err).Str("semester", db.semester).Msg("MongoDB Find")
-		return nil, err
-	}
-	defer cur.Close(ctx) //nolint:errcheck
-
-	studentRegs := make([]*model.StudentRegsPerStudent, 0)
 
 	err = cur.All(ctx, &studentRegs)
 	if err != nil {

@@ -1,7 +1,0 @@
-type Semester {
-  id: String!
-}
-
-type AnCode {
-  ancode: Int!
-}

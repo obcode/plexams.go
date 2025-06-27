@@ -34,15 +34,12 @@ func (p *Plexams) AddInvigilation(ctx context.Context, room string, day, slot, i
 		}
 	}
 	// no exam in same slot
-	exams, err := p.dbClient.PlannedExamsByMainExamer(ctx, invigilatorID) //nolint
-	if err != nil {
-		return err
-	}
-	for _, exam := range exams {
-		if exam.Slot.DayNumber == day && exam.Slot.SlotNumber == slot {
+	for _, examInSlot := range examsInSlot {
+		if examInSlot.PlanEntry.DayNumber == day && examInSlot.PlanEntry.SlotNumber == slot {
 			return fmt.Errorf("cannot add invigilation, %s has own exam in slot", invigilator.Teacher.Shortname)
 		}
 	}
+
 	// add to DB
 	return p.dbClient.AddInvigilation(context.Background(), room, day, slot, invigilatorID)
 }

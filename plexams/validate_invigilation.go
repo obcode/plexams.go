@@ -91,33 +91,33 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 		}
 
 		// wenn gleichzeitig Prüfung, dann nur self-invigilation
-		exams, err := p.dbClient.PlannedExamsByMainExamer(ctx, invigilator.Teacher.ID) //nolint
+		exams, err := p.PlannedExamsByExamer(ctx, invigilator.Teacher.ID)
 		if err != nil {
 			log.Error().Err(err).Str("name", invigilator.Teacher.Shortname).Msg("cannot get exams")
 		}
 
 		for _, exam := range exams {
 			for _, invigilation := range invigilator.Todos.Invigilations {
-				if exam.Slot.DayNumber == invigilation.Slot.DayNumber &&
-					exam.Slot.SlotNumber == invigilation.Slot.SlotNumber {
+				if exam.PlanEntry.DayNumber == invigilation.Slot.DayNumber &&
+					exam.PlanEntry.SlotNumber == invigilation.Slot.SlotNumber {
 					if invigilation.IsReserve {
 						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("%s has reserve invigilation during own exam %d. %s in slot (%d,%d)"),
-							aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(exam.Constraints.Ancode), aurora.Cyan(exam.Exam.ZpaExam.Module),
+							aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(exam.Constraints.Ancode), aurora.Cyan(exam.ZpaExam.Module),
 							aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber)))
 					}
 
-					roomsForExam, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
+					roomsForExam, err := p.dbClient.PlannedRoomsForAncode(ctx, exam.Ancode)
 					rooms := set.NewSet[string]()
 					for _, room := range roomsForExam {
 						rooms.Add(room.RoomName)
 					}
 
 					if err != nil {
-						log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for exam")
+						log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get rooms for exam")
 					} else {
 						if rooms.Cardinality() > 1 {
 							validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("%s has invigilation during own exam with more than one room: %d. %s in slot (%d,%d): found rooms %v"),
-								aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(exam.Constraints.Ancode), aurora.Cyan(exam.Exam.ZpaExam.Module),
+								aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(exam.Constraints.Ancode), aurora.Cyan(exam.ZpaExam.Module),
 								aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber), aurora.Cyan(rooms)))
 						}
 					}

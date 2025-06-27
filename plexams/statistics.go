@@ -12,14 +12,14 @@ func (p *Plexams) PrintStatistics() error {
 
 	// - Gesamtzahl der Anmeldungen aller Studierenden (auch die, die aus anderen Fakultäten kommen) auf alle von uns angebotenen Prüfungen.
 	// Zähle
-	studentRegs, err := p.dbClient.StudentRegsPerStudentAll(ctx)
+	studentRegs, err := p.dbClient.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
 		return err
 	}
 
 	regs := 0
 	for _, studentReg := range studentRegs {
-		regs += len(studentReg.Ancodes)
+		regs += len(studentReg.Regs)
 	}
 
 	fmt.Printf("- %d Studierende mit insgesamt %d Anmeldungen auf unsere Prüfungen\n", len(studentRegs), regs)
@@ -29,9 +29,9 @@ func (p *Plexams) PrintStatistics() error {
 STUDENTREG:
 	for _, studentReg := range studentRegs {
 		for _, program := range p.zpa.fk07programs {
-			if program == studentReg.Student.Program {
+			if program == studentReg.Program {
 				studentRegsFK07++
-				regsFK07 += len(studentReg.Ancodes)
+				regsFK07 += len(studentReg.Regs)
 				continue STUDENTREG
 			}
 		}

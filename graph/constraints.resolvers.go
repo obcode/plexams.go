@@ -7,6 +7,7 @@ package graph
 import (
 	"context"
 
+	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
@@ -64,3 +65,18 @@ func (r *mutationResolver) AddConstraints(ctx context.Context, ancode int, const
 func (r *mutationResolver) RmConstraints(ctx context.Context, ancode int) (bool, error) {
 	return r.plexams.RmConstraints(ctx, ancode)
 }
+
+// ConstraintForAncode is the resolver for the constraintForAncode field.
+func (r *queryResolver) ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error) {
+	return r.plexams.ConstraintForAncode(ctx, ancode)
+}
+
+// ZpaExamsToPlanWithConstraints is the resolver for the zpaExamsToPlanWithConstraints field.
+func (r *queryResolver) ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error) {
+	return r.plexams.ZpaExamsToPlanWithConstraints(ctx)
+}
+
+// Mutation returns generated.MutationResolver implementation.
+func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
+
+type mutationResolver struct{ *Resolver }

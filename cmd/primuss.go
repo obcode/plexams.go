@@ -135,12 +135,6 @@ var primussCmd = &cobra.Command{
 			for i, conflict := range newConflicts.Conflicts {
 				fmt.Printf("    %3d. conflict %d (%d students)\n", i+1, conflict.AnCode, conflict.NumberOfStuds)
 			}
-			// 6. log changes
-			err = plexams.Log(ctx, fmt.Sprintf("successfully changed primuss exam ancode from %s/%d to %s/%d",
-				program, from, program, to), "")
-			if err != nil {
-				log.Fatalf("error while trying to log the change: %v", err)
-			}
 
 		case "rm-studentreg":
 			if len(args) < 4 {

@@ -56,11 +56,6 @@ func (r *queryResolver) PlannedRoomForStudent(ctx context.Context, ancode int, m
 	return r.plexams.PlannedRoomForStudent(ctx, ancode, mtknr)
 }
 
-// Room is the resolver for the room field.
-func (r *roomForExamResolver) Room(ctx context.Context, obj *model.RoomForExam) (*model.Room, error) {
-	return r.plexams.Room(ctx, obj)
-}
-
 // Rooms is the resolver for the rooms field.
 func (r *roomsForSlotResolver) Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error) {
 	return r.plexams.RoomsFromRoomNames(ctx, obj.RoomNames)
@@ -69,12 +64,8 @@ func (r *roomsForSlotResolver) Rooms(ctx context.Context, obj *model.RoomsForSlo
 // PlannedRoom returns generated.PlannedRoomResolver implementation.
 func (r *Resolver) PlannedRoom() generated.PlannedRoomResolver { return &plannedRoomResolver{r} }
 
-// RoomForExam returns generated.RoomForExamResolver implementation.
-func (r *Resolver) RoomForExam() generated.RoomForExamResolver { return &roomForExamResolver{r} }
-
 // RoomsForSlot returns generated.RoomsForSlotResolver implementation.
 func (r *Resolver) RoomsForSlot() generated.RoomsForSlotResolver { return &roomsForSlotResolver{r} }
 
 type plannedRoomResolver struct{ *Resolver }
-type roomForExamResolver struct{ *Resolver }
 type roomsForSlotResolver struct{ *Resolver }

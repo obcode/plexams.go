@@ -185,8 +185,6 @@ type Count struct {
 }
 
 func (db *DB) CheckStudentRegsCount(ctx context.Context, program string, ancode, studentRegsCount int) bool {
-	// log.Debug().Str("collectionName", collectionName).Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).
-	// 	Msg("checking count")
 	collection := db.getCollection(program, Counts)
 	var result Count
 	err := collection.FindOne(ctx, bson.D{{Key: "AnCo", Value: ancode}}).Decode(&result)
@@ -205,8 +203,6 @@ func (db *DB) CheckStudentRegsCount(ctx context.Context, program string, ancode,
 }
 
 func (db *DB) GetStudentRegsCount(ctx context.Context, program string, ancode int) (int, error) {
-	// log.Debug().Str("collectionName", collectionName).Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).
-	// 	Msg("checking count")
 	collection := db.getCollection(program, Counts)
 	var result Count
 	res := collection.FindOne(ctx, bson.D{{Key: "AnCo", Value: ancode}, {Key: "Sum", Value: bson.D{{Key: "$ne", Value: ""}}}})

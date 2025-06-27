@@ -24,20 +24,6 @@ type Emails {
   sekr: String!
 }
 
-type SemesterConfig {
-  days: [ExamDay!]!
-  starttimes: [Starttime!]!
-  slots: [Slot!]!
-  goSlotsRaw: [[Int!]!]
-  goSlots: [Slot!]!
-  goDay0: Time!
-  forbiddenSlots: [Slot!]
-  from: Time!
-  fromFK07: Time!
-  until: Time!
-  emails: Emails!
-}
-
 type ExamDay {
   number: Int!
   date: Time!
@@ -54,42 +40,6 @@ type Slot {
   starttime: Time!
 }
 
-type ExamGroup {
-  examGroupCode: Int!
-  exams: [ExamToPlan!]!
-  examGroupInfo: ExamGroupInfo
-}
-
-type ExamGroupInfo {
-  notPlannedByMe: Boolean!
-  excludeDays: [Int!]
-  possibleDays: [Int!]
-  fixedDay: Int
-  fixedSlot: Slot
-  possibleSlots: [Slot!]
-  conflicts: [ExamGroupConflict]
-  studentRegs: Int!
-  programs: [String!]!
-  maxDuration: Int!
-  maxDurationNTA: Int
-}
-
-type ExamGroupConflict {
-  examGroupCode: Int!
-  count: Int!
-}
-
-type Plan {
-  semesterConfig: SemesterConfig
-  slots: [SlotWithExamGroups]
-}
-
-type SlotWithExamGroups {
-  dayNumber: Int!
-  slotNumber: Int!
-  examGroups: [ExamGroup]
-}
-
 type ExamerInPlan {
   mainExamer: String!
   mainExamerID: Int!
@@ -101,7 +51,6 @@ type PreExam {
   planEntry: PlanEntry
 }
 
-# TODO: remove starttime!!!
 type PlanEntry {
   dayNumber: Int!
   slotNumber: Int!

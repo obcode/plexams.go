@@ -10,6 +10,21 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// ZpaExamsToPlan is the resolver for the zpaExamsToPlan field.
+func (r *mutationResolver) ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error) {
+	return r.plexams.ZpaExamsToPlan(ctx, input)
+}
+
+// AddZPAExamToPlan is the resolver for the addZPAExamToPlan field.
+func (r *mutationResolver) AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error) {
+	return r.plexams.AddZpaExamToPlan(ctx, ancode)
+}
+
+// RmZPAExamFromPlan is the resolver for the rmZPAExamFromPlan field.
+func (r *mutationResolver) RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error) {
+	return r.plexams.RmZpaExamFromPlan(ctx, ancode)
+}
+
 // Teacher is the resolver for the teacher field.
 func (r *queryResolver) Teacher(ctx context.Context, id int) (*model.Teacher, error) {
 	return r.plexams.GetTeacher(ctx, id)

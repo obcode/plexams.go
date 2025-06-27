@@ -1,3 +1,8 @@
+extend type Query {
+  constraintForAncode(ancode: Int!): Constraints
+  zpaExamsToPlanWithConstraints: [ZPAExamWithConstraints!]!
+}
+
 extend type Mutation {
   notPlannedByMe(ancode: Int!): Boolean!
   excludeDays(ancode: Int!, days: [String!]!): Boolean!

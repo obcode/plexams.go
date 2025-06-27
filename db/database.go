@@ -10,9 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// TODO: Alles berechnen, keine ExamGroups etc. erstellen und speichern, sondern immer on-the-fly.
-// Ziel: NTAs nachträglich problemlos einpflegen etc.
-
 func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
 	dbs, err := db.Client.ListDatabaseNames(context.Background(),
 		bson.D{primitive.E{

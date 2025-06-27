@@ -6,16 +6,6 @@ type RoomsForSlot struct {
 	RoomNames []string `json:"roomNames"`
 }
 
-type RoomForExam struct {
-	Ancode       int           `json:"ancode"`
-	RoomName     string        `json:"roomName"`
-	SeatsPlanned int           `json:"seatsPlanned"`
-	Duration     int           `json:"duration"`
-	Handicap     bool          `json:"handicap"`
-	Reserve      bool          `json:"reserve"`
-	Students     []*StudentReg `json:"students"`
-}
-
 type PlannedRoom struct {
 	Day               int      `json:"day"`
 	Slot              int      `json:"slot"`

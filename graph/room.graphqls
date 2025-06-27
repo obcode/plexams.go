@@ -28,15 +28,6 @@ type Room {
   seb: Boolean!
 }
 
-# type SlotWithRooms {
-#   dayNumber: Int!
-#   slotNumber: Int!
-#   normalRooms: [Room!]!
-#   exahmRooms: [Room!]!
-#   labRooms: [Room!]!
-#   ntaRooms: [Room!]!
-# }
-
 type RoomsForSlot {
   day: Int!
   slot: Int!
@@ -62,45 +53,6 @@ type PrePlannedRoom {
   roomName: String!
   mtknr: String
   reserve: Boolean!
-}
-
-# type EnhancedPlannedRoom {
-#   day: Int!
-#   slot: Int!
-#   roomName: String!
-#   room: Room!
-#   ancode: Int!
-#   exam: GeneratedExam!
-#   duration: Int!
-#   handicap: Boolean!
-#   handicapRoomAlone: Boolean!
-#   reserve: Boolean!
-#   studentsInRoom: [String!]!
-#   ntaMtknr: String
-#   ntaInRoom: NTA
-# }
-
-# Deprecated: rm me
-type RoomForExam {
-  ancode: Int!
-  room: Room
-  seatsPlanned: Int!
-  duration: Int!
-  handicap: Boolean!
-  reserve: Boolean!
-  students: [StudentReg!]!
-}
-
-# Deprecated: rm me
-input RoomForExamInput {
-  ancode: Int!
-  day: Int!
-  time: Int!
-  roomName: String!
-  seatsPlanned: Int!
-  duration: Int!
-  handicap: Boolean!
-  mktnrs: [String!]
 }
 
 type RoomAndExam {

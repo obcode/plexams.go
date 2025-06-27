@@ -10,6 +10,11 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// AddNta is the resolver for the addNTA field.
+func (r *mutationResolver) AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error) {
+	return r.plexams.AddNta(ctx, input)
+}
+
 // Ntas is the resolver for the ntas field.
 func (r *queryResolver) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return r.plexams.Ntas(ctx)
@@ -18,4 +23,9 @@ func (r *queryResolver) Ntas(ctx context.Context) ([]*model.NTA, error) {
 // NtasWithRegs is the resolver for the ntasWithRegs field.
 func (r *queryResolver) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
 	return r.plexams.NtasWithRegs(ctx)
+}
+
+// Nta is the resolver for the nta field.
+func (r *queryResolver) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
+	return r.plexams.Nta(ctx, mtknr)
 }

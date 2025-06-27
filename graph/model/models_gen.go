@@ -6,25 +6,6 @@ import (
 	"time"
 )
 
-type AdditionalExam struct {
-	Ancode         int      `json:"ancode"`
-	Module         string   `json:"module"`
-	MainExamer     string   `json:"mainExamer"`
-	MainExamerID   int      `json:"mainExamerID"`
-	Duration       int      `json:"duration"`
-	IsRepeaterExam bool     `json:"isRepeaterExam"`
-	Groups         []string `json:"groups"`
-}
-
-type AdditionalExamInput struct {
-	Ancode         int      `json:"ancode"`
-	Module         string   `json:"module"`
-	MainExamerID   int      `json:"mainExamerID"`
-	Duration       int      `json:"duration"`
-	IsRepeaterExam bool     `json:"isRepeaterExam"`
-	Groups         []string `json:"groups"`
-}
-
 type AnCode struct {
 	Ancode int `json:"ancode"`
 }
@@ -91,70 +72,9 @@ type EnhancedPrimussExam struct {
 	Ntas        []*NTA        `json:"ntas"`
 }
 
-type Exam struct {
-	Ancode          int                               `json:"ancode"`
-	ZpaExam         *ZPAExam                          `json:"zpaExam,omitempty"`
-	ExternalExam    *ExternalExam                     `json:"externalExam,omitempty"`
-	PrimussExams    []*PrimussExam                    `json:"primussExams"`
-	StudentRegs     []*StudentRegsPerAncodeAndProgram `json:"studentRegs"`
-	Conflicts       []*ConflictsPerProgramAncode      `json:"conflicts"`
-	ConnectErrors   []string                          `json:"connectErrors"`
-	Constraints     *Constraints                      `json:"constraints,omitempty"`
-	RegularStudents []*Student                        `json:"regularStudents,omitempty"`
-	NtaStudents     []*Student                        `json:"ntaStudents,omitempty"`
-	Slot            *Slot                             `json:"slot,omitempty"`
-	Rooms           []*RoomForExam                    `json:"rooms,omitempty"`
-}
-
 type ExamDay struct {
 	Number int       `json:"number"`
 	Date   time.Time `json:"date"`
-}
-
-type ExamGroup struct {
-	ExamGroupCode int            `json:"examGroupCode"`
-	Exams         []*ExamToPlan  `json:"exams"`
-	ExamGroupInfo *ExamGroupInfo `json:"examGroupInfo,omitempty"`
-}
-
-type ExamGroupConflict struct {
-	ExamGroupCode int `json:"examGroupCode"`
-	Count         int `json:"count"`
-}
-
-type ExamGroupInfo struct {
-	NotPlannedByMe bool                 `json:"notPlannedByMe"`
-	ExcludeDays    []int                `json:"excludeDays,omitempty"`
-	PossibleDays   []int                `json:"possibleDays,omitempty"`
-	FixedDay       *int                 `json:"fixedDay,omitempty"`
-	FixedSlot      *Slot                `json:"fixedSlot,omitempty"`
-	PossibleSlots  []*Slot              `json:"possibleSlots,omitempty"`
-	Conflicts      []*ExamGroupConflict `json:"conflicts,omitempty"`
-	StudentRegs    int                  `json:"studentRegs"`
-	Programs       []string             `json:"programs"`
-	MaxDuration    int                  `json:"maxDuration"`
-	MaxDurationNta *int                 `json:"maxDurationNTA,omitempty"`
-}
-
-type ExamInPlan struct {
-	Exam        *ExamWithRegs  `json:"exam"`
-	Constraints *Constraints   `json:"constraints,omitempty"`
-	Nta         []*NTAWithRegs `json:"nta,omitempty"`
-	Slot        *Slot          `json:"slot,omitempty"`
-}
-
-type ExamToPlan struct {
-	Exam        *ExamWithRegs `json:"exam"`
-	Constraints *Constraints  `json:"constraints,omitempty"`
-}
-
-type ExamWithRegs struct {
-	Ancode        int                               `json:"ancode"`
-	ZpaExam       *ZPAExam                          `json:"zpaExam"`
-	PrimussExams  []*PrimussExam                    `json:"primussExams"`
-	StudentRegs   []*StudentRegsPerAncodeAndProgram `json:"studentRegs"`
-	Conflicts     []*ConflictPerProgram             `json:"conflicts"`
-	ConnectErrors []string                          `json:"connectErrors"`
 }
 
 type ExamWithRegsAndRooms struct {
@@ -168,14 +88,6 @@ type ExamWithRegsAndRooms struct {
 type ExamerInPlan struct {
 	MainExamer   string `json:"mainExamer"`
 	MainExamerID int    `json:"mainExamerID"`
-}
-
-type ExternalExam struct {
-	Ancode     int    `json:"ancode"`
-	Program    string `json:"program"`
-	Module     string `json:"module"`
-	MainExamer string `json:"mainExamer"`
-	Duration   int    `json:"duration"`
 }
 
 type FK07Program struct {
@@ -286,17 +198,6 @@ type NTAWithRegsByExamAndTeacher struct {
 	Exams   []*NTAWithRegsByExam `json:"exams,omitempty"`
 }
 
-type Plan struct {
-	SemesterConfig *SemesterConfig       `json:"semesterConfig,omitempty"`
-	Slots          []*SlotWithExamGroups `json:"slots,omitempty"`
-}
-
-type PlannedExamWithNta struct {
-	Exam        *ExamWithRegs  `json:"exam"`
-	Constraints *Constraints   `json:"constraints,omitempty"`
-	Nta         []*NTAWithRegs `json:"nta,omitempty"`
-}
-
 type PreExam struct {
 	ZpaExam     *ZPAExam     `json:"zpaExam"`
 	Constraints *Constraints `json:"constraints,omitempty"`
@@ -366,17 +267,6 @@ type RoomConstraints struct {
 	Comments         *string  `json:"comments,omitempty"`
 }
 
-type RoomForExamInput struct {
-	Ancode       int      `json:"ancode"`
-	Day          int      `json:"day"`
-	Time         int      `json:"time"`
-	RoomName     string   `json:"roomName"`
-	SeatsPlanned int      `json:"seatsPlanned"`
-	Duration     int      `json:"duration"`
-	Handicap     bool     `json:"handicap"`
-	Mktnrs       []string `json:"mktnrs,omitempty"`
-}
-
 type RoomWithInvigilator struct {
 	Name         string         `json:"name"`
 	MaxDuration  int            `json:"maxDuration"`
@@ -407,12 +297,6 @@ type Slot struct {
 	DayNumber  int       `json:"dayNumber"`
 	SlotNumber int       `json:"slotNumber"`
 	Starttime  time.Time `json:"starttime"`
-}
-
-type SlotWithExamGroups struct {
-	DayNumber  int          `json:"dayNumber"`
-	SlotNumber int          `json:"slotNumber"`
-	ExamGroups []*ExamGroup `json:"examGroups,omitempty"`
 }
 
 type Starttime struct {

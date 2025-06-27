@@ -129,46 +129,6 @@ func (db *DB) SaveRoomsForSlots(ctx context.Context, roomsForSlots []*model.Room
 	return nil
 }
 
-func (db *DB) RoomPlannedInSlot(ctx context.Context, roomName string, day int, time int) ([]*model.RoomForExam, error) {
-	collection := db.getCollectionSemester(collectionRoomsPlanned)
-
-	filter := bson.M{
-		"$and": []bson.M{
-			{"room.roomName": roomName},
-			{"day": day},
-			{"slot": time},
-		},
-	}
-
-	cur, err := collection.Find(ctx, filter)
-	if err != nil {
-		log.Error().Err(err).Msg("error while trying to find rooms planned in slot")
-		return nil, err
-	}
-
-	roomsForExam := make([]*model.RoomForExam, 0)
-
-	err = cur.All(ctx, &roomsForExam)
-	if err != nil {
-		log.Error().Err(err).Str("collection", collectionRoomsPlanned).Msg("Cannot decode to rooms for exams")
-		return nil, err
-	}
-
-	return roomsForExam, nil
-}
-
-func (db *DB) AddRoomToExam(ctx context.Context, room *model.RoomForExam) error {
-	collection := db.getCollectionSemester(collectionRoomsForExams)
-
-	_, err := collection.InsertOne(ctx, room)
-	if err != nil {
-		log.Error().Err(err).Str("collection", collectionRoomsForExams).Msg("cannot insert room into collection")
-		return err
-	}
-
-	return nil
-}
-
 func (db *DB) PrePlannedRooms(ctx context.Context) ([]*model.PrePlannedRoom, error) {
 	collection := db.getCollectionSemester(collectionRoomsPrePlanned)
 
@@ -213,54 +173,6 @@ func (db *DB) AddPrePlannedRoomToExam(ctx context.Context, prePlannedRoom *model
 		return false, err
 	}
 	return true, nil
-}
-
-func (db *DB) RoomsForAncode(ctx context.Context, ancode int) ([]*model.RoomForExam, error) {
-	collection := db.getCollectionSemester(collectionRoomsPlanned)
-
-	cur, err := collection.Find(ctx, bson.D{{Key: "ancode", Value: ancode}})
-	if err != nil {
-		log.Error().Err(err).Str("collection", collectionRoomsPlanned).Int("ancode", ancode).
-			Msg("error while trying to find rooms for ancode")
-		return nil, err
-	}
-
-	roomsForExam := make([]*model.RoomForExam, 0)
-
-	err = cur.All(ctx, &roomsForExam)
-	if err != nil {
-		log.Error().Err(err).Str("collection", collectionRoomsPlanned).Int("ancode", ancode).
-			Msg("Cannot decode to rooms for exams")
-		return nil, err
-	}
-
-	return roomsForExam, nil
-}
-
-func (db *DB) RoomsPlannedInSlot(ctx context.Context, day, time int) ([]*model.RoomForExam, error) {
-	exams, err := db.ExamsInSlot(ctx, day, time)
-	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("time", time).Msg("error while getting exams in slot")
-		return nil, err
-	}
-
-	rooms := make([]*model.RoomForExam, 0)
-	for _, exam := range exams {
-		roomsForAncode, err := db.RoomsForAncode(ctx, exam.Ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", exam.Ancode).Msg("error while getting rooms for ancode")
-			return nil, err
-		}
-
-		rooms = append(rooms, roomsForAncode...)
-	}
-
-	return rooms, nil
-}
-
-func (db *DB) ChangeRoom(ctx context.Context, ancode int, oldRoom, newRoom *model.Room) (bool, error) {
-	// TODO: Implement db.ChangeRoom
-	return false, nil
 }
 
 func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {

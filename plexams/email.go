@@ -1,19 +1,15 @@
 package plexams
 
 import (
-	"bytes"
-	"context"
 	"crypto/tls"
 	"embed"
 	"fmt"
-	"html/template"
 	"net/smtp"
 	"net/textproto"
 
 	// TODO: Ersetzen durch github.com/wneessen/go-mail
 
 	"github.com/jordan-wright/email"
-	"github.com/rs/zerolog/log"
 )
 
 //go:embed tmpl/constraintsEmail.tmpl
@@ -63,85 +59,6 @@ func (p *Plexams) SendTestMail() error {
 		})
 }
 
-// Deprecated: rm me
-func (p *Plexams) SendHandicapsMails(ctx context.Context, run bool) error {
-	ntasByTeacher, err := p.NtasWithRegsByTeacher(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, nta := range ntasByTeacher {
-		exams := make([]*HandicapExam, 0, len(nta.Exams))
-		for _, exam := range nta.Exams {
-			handicapStudents := make([]*HandicapStudent, 0, len(exam.Ntas))
-			for _, ntaForExam := range exam.Ntas {
-				handicapStudents = append(handicapStudents, &HandicapStudent{
-					Name:         ntaForExam.Nta.Name,
-					Compensation: ntaForExam.Nta.Compensation,
-				})
-			}
-
-			exams = append(exams, &HandicapExam{
-				AnCode:           exam.Exam.AnCode,
-				Module:           exam.Exam.Module,
-				TypeExamFull:     exam.Exam.ExamTypeFull,
-				HandicapStudents: handicapStudents,
-			})
-		}
-
-		var to []string
-		if run {
-			to = []string{nta.Teacher.Email}
-		} else {
-			to = []string{"galority@gmail.com"}
-		}
-
-		err = p.SendHandicapsMailToMainExamer(ctx, to, &HandicapsEmail{
-			MainExamer: nta.Teacher.Fullname,
-			Exams:      exams,
-			PlanerName: p.planer.Name,
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Deprecated: rm me
-func (p *Plexams) SendHandicapsMailToMainExamer(ctx context.Context, to []string, handicapsEmail *HandicapsEmail) error {
-	log.Debug().Interface("to", to).Msg("sending email")
-
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/handicapEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, handicapsEmail)
-	if err != nil {
-		return err
-	}
-
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/handicapEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, handicapsEmail)
-	if err != nil {
-		return err
-	}
-
-	return p.sendMail(to,
-		nil,
-		fmt.Sprintf("[Prüfungsplanung %s] Nachteilausgleich(e) für Ihre Prüfung(en)", p.semester),
-		bufText.Bytes(),
-		bufHTML.Bytes(),
-		nil,
-		false,
-	)
-}
-
 func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, noreply bool) error {
 	e := &email.Email{
 		To:          to,
@@ -166,9 +83,5 @@ func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte
 			ServerName:         p.email.server,
 		})
 
-	if err != nil {
-		return err
-	}
-
-	return p.Log(context.Background(), fmt.Sprintf("send email to %s", to), string(text))
+	return err
 }

@@ -84,4 +84,5 @@ type Teacher {
   fk: String!
   id: Int!
   email: String!
+  isActive: Boolean!
 }

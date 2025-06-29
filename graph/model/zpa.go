@@ -11,6 +11,7 @@ type Teacher struct {
 	FK           string `json:"fk"`
 	ID           int    `json:"person_id"`
 	Email        string `json:"email"`
+	IsActive     bool   `json:"is_active"`
 }
 
 type ZPAExam struct {

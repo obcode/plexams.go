@@ -35,6 +35,18 @@ func (p *Plexams) ExportPlannedRooms(jsonfile string) error {
 		log.Error().Err(err).Msg("cannot get planned exams")
 	}
 
+	boolVal := false
+	teacher, err := p.GetTeachers(ctx, &boolVal)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get teachers")
+		return err
+	}
+
+	teachers := make(map[int]*model.Teacher)
+	for _, t := range teacher {
+		teachers[t.ID] = t
+	}
+
 	exportPlannedRooms := make([]*ExportPlannedRooms, 0)
 	for _, exam := range plannedExams {
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
@@ -81,7 +93,7 @@ func (p *Plexams) ExportPlannedRooms(jsonfile string) error {
 			}
 
 			exportPlannedRooms = append(exportPlannedRooms, &ExportPlannedRooms{
-				MainExamer:       exam.ZpaExam.MainExamer,
+				MainExamer:       teachers[exam.ZpaExam.MainExamerID].Shortname,
 				MainExamerID:     exam.ZpaExam.MainExamerID,
 				Module:           exam.ZpaExam.Module,
 				Room:             roomName,
@@ -90,7 +102,7 @@ func (p *Plexams) ExportPlannedRooms(jsonfile string) error {
 				NumberOfStudents: numberOfStudents,
 				Duration:         exam.ZpaExam.Duration,
 				MaxDuration:      maxDuration,
-				Invigilator:      invigilator.Shortname,
+				Invigilator:      teachers[invigilator.ID].Shortname,
 				Ntas:             ntas,
 			})
 		}

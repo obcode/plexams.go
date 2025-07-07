@@ -1,14 +1,14 @@
 module github.com/obcode/plexams.go
 
-go 1.24.1
+go 1.24.4
 
 tool github.com/99designs/gqlgen
 
 require (
-	github.com/99designs/gqlgen v0.17.75
+	github.com/99designs/gqlgen v0.17.76
 	github.com/arran4/golang-ical v0.3.2
 	github.com/deckarep/golang-set/v2 v2.8.0
-	github.com/go-chi/chi v1.5.5
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/gookit/color v1.5.4
 	github.com/johnfercher/maroto v1.0.0
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
@@ -20,7 +20,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/theckman/yacspin v0.13.12
-	github.com/vektah/gqlparser/v2 v2.5.28
+	github.com/vektah/gqlparser/v2 v2.5.30
 	go.mongodb.org/mongo-driver v1.17.4
 )
 
@@ -30,7 +30,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/fatih/color v1.14.1 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
-	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
+	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect

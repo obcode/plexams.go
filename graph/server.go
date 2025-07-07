@@ -12,7 +12,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/cors"

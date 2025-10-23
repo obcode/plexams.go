@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
@@ -78,7 +79,10 @@ func initConfig() {
 		if semester == "" {
 			semester = viper.GetString("semester")
 		}
-		viper.AddConfigPath(fmt.Sprintf("%s/%s", viper.GetString("semester-path"), semester))
+		p := viper.GetString("semester-path")
+		p = os.ExpandEnv(p)      // $HOME, $USER, ...
+		p, _ = homedir.Expand(p) // ~ und ~user
+		viper.AddConfigPath(filepath.Join(p, semester))
 		viper.SetConfigName("plexams")
 		err = viper.MergeInConfig()
 		if err != nil {

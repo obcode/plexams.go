@@ -50,11 +50,16 @@ jobs:
     steps:
       - uses: actions/checkout@master
         with:
+          fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.2
       - uses: go-semantic-release/action@v1
+        id: semrel
         with:
           changelog-file: "CHANGELOG.md"
           changelog-generator-opt: "emojis=true"
-          #   allow-initial-development-versions: true
+          hooks: goreleaser
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}

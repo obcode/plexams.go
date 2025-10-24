@@ -378,7 +378,6 @@ type ComplexityRoot struct {
 		InvigilatorsForDay            func(childComplexity int, day int) int
 		InvigilatorsWithReq           func(childComplexity int) int
 		MucdaiExams                   func(childComplexity int) int
-		NextDeadline                  func(childComplexity int) int
 		Nta                           func(childComplexity int, mtknr string) int
 		Ntas                          func(childComplexity int) int
 		NtasWithRegs                  func(childComplexity int) int
@@ -405,7 +404,6 @@ type ComplexityRoot struct {
 		StudentsByName                func(childComplexity int, regex string) int
 		Teacher                       func(childComplexity int, id int) int
 		Teachers                      func(childComplexity int, fromZpa *bool) int
-		Workflow                      func(childComplexity int) int
 		ZpaAnCodes                    func(childComplexity int) int
 		ZpaExam                       func(childComplexity int, ancode int) int
 		ZpaExams                      func(childComplexity int, fromZpa *bool) int
@@ -491,13 +489,6 @@ type ComplexityRoot struct {
 		Start  func(childComplexity int) int
 	}
 
-	Step struct {
-		Deadline func(childComplexity int) int
-		Done     func(childComplexity int) int
-		Name     func(childComplexity int) int
-		Number   func(childComplexity int) int
-	}
-
 	Student struct {
 		Group   func(childComplexity int) int
 		Mtknr   func(childComplexity int) int
@@ -537,6 +528,7 @@ type ComplexityRoot struct {
 		FK           func(childComplexity int) int
 		Fullname     func(childComplexity int) int
 		ID           func(childComplexity int) int
+		IsActive     func(childComplexity int) int
 		IsLBA        func(childComplexity int) int
 		IsProf       func(childComplexity int) int
 		IsProfHC     func(childComplexity int) int
@@ -677,8 +669,6 @@ type QueryResolver interface {
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
 	Students(ctx context.Context) ([]*model.Student, error)
-	Workflow(ctx context.Context) ([]*model.Step, error)
-	NextDeadline(ctx context.Context) (*model.Step, error)
 	Teacher(ctx context.Context, id int) (*model.Teacher, error)
 	Teachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error)
 	Invigilators(ctx context.Context) ([]*model.ZPAInvigilator, error)
@@ -2343,13 +2333,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.MucdaiExams(childComplexity), true
 
-	case "Query.nextDeadline":
-		if e.complexity.Query.NextDeadline == nil {
-			break
-		}
-
-		return e.complexity.Query.NextDeadline(childComplexity), true
-
 	case "Query.nta":
 		if e.complexity.Query.Nta == nil {
 			break
@@ -2601,13 +2584,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Teachers(childComplexity, args["fromZPA"].(*bool)), true
-
-	case "Query.workflow":
-		if e.complexity.Query.Workflow == nil {
-			break
-		}
-
-		return e.complexity.Query.Workflow(childComplexity), true
 
 	case "Query.zpaAnCodes":
 		if e.complexity.Query.ZpaAnCodes == nil {
@@ -2990,34 +2966,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Starttime.Start(childComplexity), true
 
-	case "Step.deadline":
-		if e.complexity.Step.Deadline == nil {
-			break
-		}
-
-		return e.complexity.Step.Deadline(childComplexity), true
-
-	case "Step.done":
-		if e.complexity.Step.Done == nil {
-			break
-		}
-
-		return e.complexity.Step.Done(childComplexity), true
-
-	case "Step.name":
-		if e.complexity.Step.Name == nil {
-			break
-		}
-
-		return e.complexity.Step.Name(childComplexity), true
-
-	case "Step.number":
-		if e.complexity.Step.Number == nil {
-			break
-		}
-
-		return e.complexity.Step.Number(childComplexity), true
-
 	case "Student.group":
 		if e.complexity.Student.Group == nil {
 			break
@@ -3178,6 +3126,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Teacher.ID(childComplexity), true
+
+	case "Teacher.isActive":
+		if e.complexity.Teacher.IsActive == nil {
+			break
+		}
+
+		return e.complexity.Teacher.IsActive(childComplexity), true
 
 	case "Teacher.isLBA":
 		if e.complexity.Teacher.IsLBA == nil {
@@ -3553,7 +3508,9 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "../constraints.graphqls", Input: `extend type Query {
+	{Name: "../constraints.graphqls", Input: `scalar Time
+
+extend type Query {
   constraintForAncode(ancode: Int!): Constraints
   zpaExamsToPlanWithConstraints: [ZPAExamWithConstraints!]!
 }
@@ -4093,20 +4050,6 @@ type Student {
   nta: NTA
 }
 `, BuiltIn: false},
-	{Name: "../workflow.graphqls", Input: `scalar Time
-
-extend type Query {
-  workflow: [Step!]!
-  nextDeadline: Step
-}
-
-type Step {
-  number: Int!
-  name: String!
-  done: Boolean!
-  deadline: Time
-}
-`, BuiltIn: false},
 	{Name: "../zpa.graphqls", Input: `extend type Query {
   teacher(id: Int!): Teacher
   teachers(fromZPA: Boolean): [Teacher!]!
@@ -4193,6 +4136,7 @@ type Teacher {
   fk: String!
   id: Int!
   email: String!
+  isActive: Boolean!
 }
 `, BuiltIn: false},
 }
@@ -8198,6 +8142,8 @@ func (ec *executionContext) fieldContext_GeneratedExam_mainExamer(_ context.Cont
 				return ec.fieldContext_Teacher_id(ctx, field)
 			case "email":
 				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
@@ -8857,6 +8803,8 @@ func (ec *executionContext) fieldContext_InvigilationSlot_reserve(_ context.Cont
 				return ec.fieldContext_Teacher_id(ctx, field)
 			case "email":
 				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
@@ -9339,6 +9287,8 @@ func (ec *executionContext) fieldContext_Invigilator_teacher(_ context.Context, 
 				return ec.fieldContext_Teacher_id(ctx, field)
 			case "email":
 				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
@@ -12930,6 +12880,8 @@ func (ec *executionContext) fieldContext_NTAWithRegsByExamAndTeacher_teacher(_ c
 				return ec.fieldContext_Teacher_id(ctx, field)
 			case "email":
 				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
@@ -13377,6 +13329,8 @@ func (ec *executionContext) fieldContext_PlannedExam_mainExamer(_ context.Contex
 				return ec.fieldContext_Teacher_id(ctx, field)
 			case "email":
 				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
@@ -18032,111 +17986,6 @@ func (ec *executionContext) fieldContext_Query_students(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_workflow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_workflow(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Workflow(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.Step)
-	fc.Result = res
-	return ec.marshalNStep2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStepᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_workflow(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "number":
-				return ec.fieldContext_Step_number(ctx, field)
-			case "name":
-				return ec.fieldContext_Step_name(ctx, field)
-			case "done":
-				return ec.fieldContext_Step_done(ctx, field)
-			case "deadline":
-				return ec.fieldContext_Step_deadline(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Step", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_nextDeadline(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_nextDeadline(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().NextDeadline(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.Step)
-	fc.Result = res
-	return ec.marshalOStep2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStep(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_nextDeadline(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "number":
-				return ec.fieldContext_Step_number(ctx, field)
-			case "name":
-				return ec.fieldContext_Step_name(ctx, field)
-			case "done":
-				return ec.fieldContext_Step_done(ctx, field)
-			case "deadline":
-				return ec.fieldContext_Step_deadline(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Step", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_teacher(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_teacher(ctx, field)
 	if err != nil {
@@ -18193,6 +18042,8 @@ func (ec *executionContext) fieldContext_Query_teacher(ctx context.Context, fiel
 				return ec.fieldContext_Teacher_id(ctx, field)
 			case "email":
 				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
@@ -18270,6 +18121,8 @@ func (ec *executionContext) fieldContext_Query_teachers(ctx context.Context, fie
 				return ec.fieldContext_Teacher_id(ctx, field)
 			case "email":
 				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
@@ -20207,6 +20060,8 @@ func (ec *executionContext) fieldContext_RoomWithInvigilator_invigilator(_ conte
 				return ec.fieldContext_Teacher_id(ctx, field)
 			case "email":
 				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
@@ -21147,179 +21002,6 @@ func (ec *executionContext) fieldContext_Starttime_start(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Step_number(ctx context.Context, field graphql.CollectedField, obj *model.Step) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Step_number(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Number, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Step_number(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Step",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Step_name(ctx context.Context, field graphql.CollectedField, obj *model.Step) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Step_name(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Name, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Step_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Step",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Step_done(ctx context.Context, field graphql.CollectedField, obj *model.Step) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Step_done(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Done, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Step_done(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Step",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Step_deadline(ctx context.Context, field graphql.CollectedField, obj *model.Step) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Step_deadline(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Deadline, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Step_deadline(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Step",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -22662,6 +22344,50 @@ func (ec *executionContext) fieldContext_Teacher_email(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Teacher_isActive(ctx context.Context, field graphql.CollectedField, obj *model.Teacher) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Teacher_isActive(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsActive, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Teacher_isActive(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Teacher",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ZPAConflict_ancode(ctx context.Context, field graphql.CollectedField, obj *model.ZPAConflict) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ZPAConflict_ancode(ctx, field)
 	if err != nil {
@@ -23693,6 +23419,8 @@ func (ec *executionContext) fieldContext_ZPAInvigilator_teacher(_ context.Contex
 				return ec.fieldContext_Teacher_id(ctx, field)
 			case "email":
 				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
@@ -29575,47 +29303,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "workflow":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_workflow(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "nextDeadline":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_nextDeadline(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "teacher":
 			field := field
 
@@ -30477,57 +30164,6 @@ func (ec *executionContext) _Starttime(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
-var stepImplementors = []string{"Step"}
-
-func (ec *executionContext) _Step(ctx context.Context, sel ast.SelectionSet, obj *model.Step) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, stepImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Step")
-		case "number":
-			out.Values[i] = ec._Step_number(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "name":
-			out.Values[i] = ec._Step_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "done":
-			out.Values[i] = ec._Step_done(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "deadline":
-			out.Values[i] = ec._Step_deadline(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var studentImplementors = []string{"Student"}
 
 func (ec *executionContext) _Student(ctx context.Context, sel ast.SelectionSet, obj *model.Student) graphql.Marshaler {
@@ -30848,6 +30484,11 @@ func (ec *executionContext) _Teacher(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "email":
 			out.Values[i] = ec._Teacher_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isActive":
+			out.Values[i] = ec._Teacher_isActive(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -33069,60 +32710,6 @@ func (ec *executionContext) marshalNStarttime2ᚖgithubᚗcomᚋobcodeᚋplexams
 	return ec._Starttime(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNStep2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStepᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Step) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNStep2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStep(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNStep2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStep(ctx context.Context, sel ast.SelectionSet, v *model.Step) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Step(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -34886,13 +34473,6 @@ func (ec *executionContext) marshalOSlot2ᚕᚖgithubᚗcomᚋobcodeᚋplexams�
 	return ret
 }
 
-func (ec *executionContext) marshalOStep2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStep(ctx context.Context, sel ast.SelectionSet, v *model.Step) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Step(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
 	if v == nil {
 		return nil, nil
@@ -35060,18 +34640,6 @@ func (ec *executionContext) marshalOTeacher2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._Teacher(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v any) (time.Time, error) {
-	res, err := graphql.UnmarshalTime(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalTime(v)
-	return res
 }
 
 func (ec *executionContext) unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx context.Context, v any) ([]*time.Time, error) {

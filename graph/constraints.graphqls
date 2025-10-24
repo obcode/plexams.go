@@ -1,3 +1,5 @@
+scalar Time
+
 extend type Query {
   constraintForAncode(ancode: Int!): Constraints
   zpaExamsToPlanWithConstraints: [ZPAExamWithConstraints!]!

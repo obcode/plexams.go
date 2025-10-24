@@ -25,7 +25,6 @@ var (
 		Long:  `Planing exams.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
-			plexams.PrintWorkflow()
 			graph.StartServer(plexams, viper.GetString("server.port"))
 		},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {

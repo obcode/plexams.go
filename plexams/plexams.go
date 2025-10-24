@@ -19,7 +19,6 @@ type Plexams struct {
 	semester       string
 	dbClient       *db.DB
 	zpa            *ZPA
-	workflow       []*model.Step
 	planer         *Planer
 	email          *Email
 	semesterConfig *model.SemesterConfig
@@ -78,7 +77,6 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 			password:     zpaPassword,
 			fk07programs: fk07programs,
 		},
-		workflow: initWorkflow(),
 		planer: &Planer{
 			Name:  viper.GetString("planer.name"),
 			Email: viper.GetString("planer.email"),

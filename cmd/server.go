@@ -12,7 +12,6 @@ var serverCmd = &cobra.Command{
 	Long:  `Start GraphQL-Server.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		plexams := initPlexamsConfig()
-		plexams.PrintWorkflow()
 		graph.StartServer(plexams, viper.GetString("server.port"))
 	},
 }

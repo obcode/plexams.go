@@ -61,6 +61,9 @@
     "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
     "source=${localEnv:HOME}/.plexams.yml,target=/home/vscode/.plexams.yml,type=bind,consistency=cached"
   ],
+  // mount the workspace into a named Docker volume instead of bind-mounting the host repo
+  "workspaceMount": "source=${localWorkspaceFolderBasename},target=/workspace/${localWorkspaceFolderBasename},type=volume",
+  "workspaceFolder": "/workspace/${localWorkspaceFolderBasename}",
   "forwardPorts": [
     8080,
     8081,
@@ -72,7 +75,7 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "sudo chown -R vscode:vscode /shared/bin && go mod download",
+  "postCreateCommand": "sudo chown -R vscode:vscode /shared/bin ; sudo chown -R vscode:vscode /workspace/plexams.go",
   "remoteEnv": {
     "GOBIN": "/shared/bin",
     "PATH": "${containerEnv:PATH}:/shared/bin"

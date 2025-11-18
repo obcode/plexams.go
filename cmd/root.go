@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
@@ -82,8 +81,8 @@ func initConfig() {
 		p := viper.GetString("semester-path")
 		p = os.ExpandEnv(p)      // $HOME, $USER, ...
 		p, _ = homedir.Expand(p) // ~ und ~user
-		viper.AddConfigPath(filepath.Join(p, semester))
-		viper.SetConfigName("plexams")
+		viper.AddConfigPath(p)
+		viper.SetConfigName(semester)
 		err = viper.MergeInConfig()
 		if err != nil {
 			panic(fmt.Errorf("%s: should be %s.yml", err, "plexams"))

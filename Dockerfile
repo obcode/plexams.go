@@ -1,15 +1,38 @@
-FROM golang:alpine as builder
+# Build args
+ARG VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME=unknown
+
+FROM golang:1.23-alpine AS builder
+
 WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source
 COPY . .
-RUN go get -d -v ./... && \
-    go build -o plexams.go main.go
 
-FROM alpine
-COPY --from=builder /app/plexams.go /app/plexams.go
+# Build args für den Builder
+ARG VERSION
+ARG GIT_COMMIT
+ARG BUILD_TIME
 
-RUN apk --no-cache add tzdata wait4x
-ENV TZ=Europe/Berlin
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+# Build mit Version
+RUN go build -ldflags "\
+    -X 'github.com/obcode/plexams.go/cmd.Version=${VERSION}' \
+    -X 'github.com/obcode/plexams.go/cmd.BuildTime=${BUILD_TIME}' \
+    -X 'github.com/obcode/plexams.go/cmd.GitCommit=${GIT_COMMIT}'" \
+    -o plexams.go .
 
-EXPOSE 8080
-ENTRYPOINT ["/app/plexams.go"]
+# Final stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /root/
+
+COPY --from=builder /app/plexams.go .
+
+CMD ["./plexams.go"]

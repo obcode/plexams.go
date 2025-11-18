@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/mitchellh/go-homedir"
 	"github.com/obcode/plexams.go/graph"
 	"github.com/obcode/plexams.go/plexams"
@@ -93,6 +94,8 @@ func initConfig() {
 }
 
 func initPlexamsConfig() *plexams.Plexams {
+	fmt.Println(aurora.Sprintf(aurora.Cyan("Plexams.go version: %s\n"), Version))
+
 	if dbURI == "" {
 		dbURI = viper.GetString("db.uri")
 	}

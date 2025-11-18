@@ -1,4 +1,4 @@
-VERSION ?= $(shell date +%Y.%m.%d-%H%M%S)
+VERSION ?= $(shell date +%Y.%m.%d-%H:%M:%S)
 GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 

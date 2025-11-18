@@ -58,8 +58,8 @@ jobs:
       - uses: go-semantic-release/action@v1
         id: semrel
         with:
-          changelog-file: "CHANGELOG.md"
+          # changelog-file: "CHANGELOG.md"
           changelog-generator-opt: "emojis=true"
-          hooks: goreleaser
+          # hooks: goreleaser
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}

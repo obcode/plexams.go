@@ -74,7 +74,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool) error {
 
 	var to []string
 	if run {
-		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.Fs}
+		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester, p.semesterConfig.Emails.Fs}
 	} else {
 		to = []string{"galority@gmail.com"}
 	}
@@ -151,7 +151,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool) error {
 
 	var to []string
 	if run {
-		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas}
+		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
 	} else {
 		to = []string{"galority@gmail.com"}
 	}

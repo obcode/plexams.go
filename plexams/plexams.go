@@ -266,6 +266,10 @@ func (p *Plexams) setSemesterConfig() {
 		if !ok {
 			log.Error().Interface("emails", emailsMap).Msg("cannot get lbas emails from config")
 		}
+		emails.LbasLastSemester, ok = emailsMap["lbaslastsemester"]
+		if !ok {
+			log.Error().Interface("emails", emailsMap).Msg("cannot get lbaslastsemester emails from config")
+		}
 		emails.Fs, ok = emailsMap["fs"]
 		if !ok {
 			log.Error().Interface("emails", emailsMap).Msg("cannot get fs emails from config")

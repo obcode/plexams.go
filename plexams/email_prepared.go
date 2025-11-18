@@ -74,7 +74,7 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool) error {
 
 	var to []string
 	if run {
-		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas}
+		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
 	} else {
 		to = []string{"galority@gmail.com"}
 	}

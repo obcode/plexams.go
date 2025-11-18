@@ -20,6 +20,7 @@ extend type Mutation {
 type Emails {
   profs: String!
   lbas: String!
+  lbasLastSemester: String!
   fs: String!
   sekr: String!
 }

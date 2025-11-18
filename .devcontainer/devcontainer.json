@@ -55,11 +55,11 @@
   },
   "mounts": [
     "source=shared-binaries,target=/shared/bin,type=volume",
-    "source=pruefungsplanung-semester,target=/home/vscode/semester,type=volume",
-    // "source=${localEnv:HOME}/semester,target=/home/vscode/semester,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.plexams.yml,target=/home/vscode/.plexams.yml,type=bind,consistency=cached"
+    "source=pruefungsplanung-semester,target=/home/ubuntu/semester,type=volume",
+    // "source=${localEnv:HOME}/semester,target=/home/ubuntu/semester,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.gitconfig,target=/home/ubuntu/.gitconfig,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.ssh,target=/home/ubuntu/.ssh,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.plexams.yml,target=/home/ubuntu/.plexams.yml,type=bind,consistency=cached"
   ],
   // mount the workspace into a named Docker volume instead of bind-mounting the host repo
   "workspaceMount": "source=${localWorkspaceFolderBasename},target=/workspace/${localWorkspaceFolderBasename},type=volume",
@@ -75,7 +75,7 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "sudo chown -R vscode:vscode /shared/bin ; sudo chown -R vscode:vscode /workspace/plexams.go",
+  "postCreateCommand": "sudo chown -R ubuntu:ubuntu /shared/bin ; sudo chown -R ubuntu:ubuntu /workspace/plexams.go",
   "remoteEnv": {
     "GOBIN": "/shared/bin",
     "PATH": "${containerEnv:PATH}:/shared/bin"

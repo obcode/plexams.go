@@ -31,6 +31,7 @@ type ZPA struct {
 	username     string
 	password     string
 	fk07programs []string
+	oldprograms  []string
 }
 
 type Planer struct {
@@ -45,7 +46,7 @@ type Email struct {
 	password string
 }
 
-func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk07programs []string) (*Plexams, error) {
+func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk07programs, oldprograms []string) (*Plexams, error) {
 
 	var client *db.DB
 	var err error
@@ -76,6 +77,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 			username:     zpaUsername,
 			password:     zpaPassword,
 			fk07programs: fk07programs,
+			oldprograms:  oldprograms,
 		},
 		planer: &Planer{
 			Name:  viper.GetString("planer.name"),

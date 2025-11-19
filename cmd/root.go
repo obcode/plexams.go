@@ -109,6 +109,7 @@ func initPlexamsConfig() *plexams.Plexams {
 		viper.GetString("zpa.username"),
 		viper.GetString("zpa.password"),
 		viper.GetStringSlice("zpa.fk07programs"),
+		viper.GetStringSlice("zpa.oldprograms"),
 	)
 
 	if err != nil {

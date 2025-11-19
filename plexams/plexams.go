@@ -272,13 +272,19 @@ func (p *Plexams) setSemesterConfig() {
 		if !ok {
 			log.Error().Interface("emails", emailsMap).Msg("cannot get lbaslastsemester emails from config")
 		}
+
 		emails.Fs, ok = emailsMap["fs"]
 		if !ok {
 			log.Error().Interface("emails", emailsMap).Msg("cannot get fs emails from config")
 		}
 		emails.Sekr, ok = emailsMap["sekr"]
 		if !ok {
-			log.Error().Interface("emails", emailsMap).Msg("cannot get fs emails from config")
+			log.Error().Interface("emails", emailsMap).Msg("cannot get sekr emails from config")
+		}
+
+		emails.AdditionalExamer = viper.GetStringSlice("semesterConfig.additionalexamer")
+		if len(emails.AdditionalExamer) == 0 {
+			log.Debug().Msg("no additionalexamer emails in config")
 		}
 
 		p.semesterConfig = &model.SemesterConfig{

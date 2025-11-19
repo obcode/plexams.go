@@ -141,7 +141,7 @@ func equalIntSlots(slots1, slots2 [][]int) bool {
 }
 
 func NewPlexams() *plexams.Plexams {
-	plexams, err := plexams.NewPlexams("", "", "", "", "", nil)
+	plexams, err := plexams.NewPlexams("", "", "", "", "", nil, nil)
 	if err != nil {
 		panic(err)
 	}

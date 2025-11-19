@@ -59,11 +59,12 @@ type ConstraintsInput struct {
 }
 
 type Emails struct {
-	Profs            string `json:"profs"`
-	Lbas             string `json:"lbas"`
-	LbasLastSemester string `json:"lbasLastSemester"`
-	Fs               string `json:"fs"`
-	Sekr             string `json:"sekr"`
+	Profs            string   `json:"profs"`
+	Lbas             string   `json:"lbas"`
+	LbasLastSemester string   `json:"lbasLastSemester"`
+	AdditionalExamer []string `json:"additionalExamer"`
+	Fs               string   `json:"fs"`
+	Sekr             string   `json:"sekr"`
 }
 
 type EnhancedPrimussExam struct {

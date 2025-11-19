@@ -90,6 +90,9 @@ func (p *Plexams) sendEmailDraftZPA(run bool) error {
 	var to []string
 	if run {
 		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
+		if len(p.semesterConfig.Emails.AdditionalExamer) > 0 {
+			to = append(to, p.semesterConfig.Emails.AdditionalExamer...)
+		}
 	} else {
 		to = []string{"galority@gmail.com"}
 	}

@@ -149,6 +149,26 @@ func (db *DB) PrePlannedRooms(ctx context.Context) ([]*model.PrePlannedRoom, err
 	return rooms, nil
 }
 
+func (db *DB) PrePlannedRoomsForExam(ctx context.Context, ancode int) ([]*model.PrePlannedRoom, error) {
+	collection := db.getCollectionSemester(collectionRoomsPrePlanned)
+
+	cur, err := collection.Find(ctx, bson.M{"ancode": ancode})
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).Msg("MongoDB Find")
+		return nil, err
+	}
+	defer cur.Close(ctx) //nolint:errcheck
+
+	rooms := make([]*model.PrePlannedRoom, 0)
+	err = cur.All(ctx, &rooms)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).Msg("Cannot decode to rooms")
+		return nil, err
+	}
+
+	return rooms, nil
+}
+
 func (db *DB) AddPrePlannedRoomToExam(ctx context.Context, prePlannedRoom *model.PrePlannedRoom) (bool, error) {
 	collection := db.getCollectionSemester(collectionRoomsPrePlanned)
 	// Delete any existing document with the same ancode, room, and mtknr

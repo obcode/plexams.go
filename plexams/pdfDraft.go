@@ -299,7 +299,7 @@ OUTER:
 }
 
 func (p *Plexams) DraftExahmPDF(ctx context.Context, outfile string) error {
-	m := pdf.NewMaroto(consts.Portrait, consts.A4)
+	m := pdf.NewMaroto(consts.Landscape, consts.A4)
 	m.SetPageMargins(10, 15, 10)
 
 	m.RegisterFooter(func() {
@@ -350,7 +350,7 @@ func (p *Plexams) DraftExahmPDF(ctx context.Context, outfile string) error {
 		})
 	})
 
-	p.tableForExahm(ctx, m, false)
+	// p.tableForExahm(ctx, m, false)
 	p.tableForExahm(ctx, m, true)
 
 	err := m.OutputFileAndClose(outfile)
@@ -362,7 +362,7 @@ func (p *Plexams) DraftExahmPDF(ctx context.Context, outfile string) error {
 }
 
 func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto, sortByDate bool) {
-	header := []string{"AnCode", "Modul", "Prüfender", "Termin", "Plätze"}
+	header := []string{"AnCode", "Modul", "Prüfender", "Termin", "Plätze", "Räume"}
 
 	text := "Prüfungen mit EXaHM/SEB, sortiert nach AnCode"
 	if sortByDate {
@@ -404,23 +404,54 @@ func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto, sortByDate bo
 			if exams[j].PlanEntry == nil {
 				return true
 			}
-			return exams[i].PlanEntry.DayNumber < exams[j].PlanEntry.DayNumber ||
-				(exams[i].PlanEntry.DayNumber == exams[j].PlanEntry.DayNumber &&
-					exams[i].PlanEntry.SlotNumber < exams[j].PlanEntry.SlotNumber)
+			if exams[i].PlanEntry.DayNumber != exams[j].PlanEntry.DayNumber {
+				return exams[i].PlanEntry.DayNumber < exams[j].PlanEntry.DayNumber
+			}
+			if exams[i].PlanEntry.SlotNumber != exams[j].PlanEntry.SlotNumber {
+				return exams[i].PlanEntry.SlotNumber < exams[j].PlanEntry.SlotNumber
+			}
+			return exams[i].Ancode < exams[j].Ancode
 		})
 	}
 
 	for _, exam := range exams {
-		if exam.PlanEntry == nil {
-			contents = append(contents,
-				[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-					"fehlt noch", strconv.Itoa(exam.StudentRegsCount)})
-		} else {
+		planEntry := "fehlt noch"
+		if exam.PlanEntry != nil {
 			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			contents = append(contents,
-				[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-					r.Replace(starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr")), strconv.Itoa(exam.StudentRegsCount)})
+			planEntry = r.Replace(starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr"))
 		}
+
+		rooms := "fehlen noch"
+		if len(exam.PlannedRooms) > 0 {
+			var builder strings.Builder
+			for i, room := range exam.PlannedRooms {
+				if i != 0 {
+					builder.WriteString(", ")
+				}
+				builder.WriteString(room.RoomName)
+			}
+			rooms = builder.String()
+		} else {
+			prePlannedRooms, err := p.PrePlannedRoomsForExam(ctx, exam.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", exam.Ancode).
+					Msg("error while trying to get preplanned rooms")
+			}
+			if len(prePlannedRooms) > 0 {
+				var builder strings.Builder
+				for i, room := range prePlannedRooms {
+					if i != 0 {
+						builder.WriteString(", ")
+					}
+					builder.WriteString(room.RoomName)
+				}
+				rooms = builder.String()
+			}
+		}
+
+		contents = append(contents,
+			[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+				planEntry, strconv.Itoa(exam.StudentRegsCount), rooms})
 	}
 
 	grayColor := color.Color{
@@ -432,11 +463,11 @@ func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto, sortByDate bo
 	m.TableList(header, contents, props.TableList{
 		HeaderProp: props.TableListContent{
 			Size:      11,
-			GridSizes: []uint{1, 5, 2, 3, 1},
+			GridSizes: []uint{1, 4, 2, 3, 1, 1},
 		},
 		ContentProp: props.TableListContent{
 			Size:      11,
-			GridSizes: []uint{1, 5, 2, 3, 1},
+			GridSizes: []uint{1, 4, 2, 3, 1, 1},
 		},
 		Align:                consts.Left,
 		AlternatedBackground: &grayColor,

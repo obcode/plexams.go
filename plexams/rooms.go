@@ -336,6 +336,10 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 	})
 }
 
+func (p *Plexams) PrePlannedRoomsForExam(ctx context.Context, ancode int) ([]*model.PrePlannedRoom, error) {
+	return p.dbClient.PrePlannedRoomsForExam(ctx, ancode)
+}
+
 func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRoomName string) (bool, error) {
 	return false, fmt.Errorf("ChangeRoom is not implemented yet")
 	// 	roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, ancode)

@@ -362,7 +362,7 @@ func (p *Plexams) DraftExahmPDF(ctx context.Context, outfile string) error {
 }
 
 func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto, sortByDate bool) {
-	header := []string{"AnCode", "Modul", "Prüfender", "Termin", "Plätze", "Räume"}
+	header := []string{"AnCode", "Modul", "Prüfender", "Termin", "Form", "Plätze", "Räume"}
 
 	text := "Prüfungen mit EXaHM/SEB, sortiert nach AnCode"
 	if sortByDate {
@@ -449,9 +449,14 @@ func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto, sortByDate bo
 			}
 		}
 
+		variant := "SEB"
+		if exam.Constraints.RoomConstraints.Exahm {
+			variant = "EXaHM"
+		}
+
 		contents = append(contents,
 			[]string{strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-				planEntry, strconv.Itoa(exam.StudentRegsCount), rooms})
+				planEntry, variant, strconv.Itoa(exam.StudentRegsCount), rooms})
 	}
 
 	grayColor := color.Color{
@@ -463,11 +468,11 @@ func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto, sortByDate bo
 	m.TableList(header, contents, props.TableList{
 		HeaderProp: props.TableListContent{
 			Size:      11,
-			GridSizes: []uint{1, 4, 2, 3, 1, 1},
+			GridSizes: []uint{1, 3, 2, 3, 1, 1, 1},
 		},
 		ContentProp: props.TableListContent{
 			Size:      11,
-			GridSizes: []uint{1, 4, 2, 3, 1, 1},
+			GridSizes: []uint{1, 3, 2, 3, 1, 1, 1},
 		},
 		Align:                consts.Left,
 		AlternatedBackground: &grayColor,

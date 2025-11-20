@@ -152,7 +152,10 @@ func (db *DB) PrePlannedRooms(ctx context.Context) ([]*model.PrePlannedRoom, err
 func (db *DB) PrePlannedRoomsForExam(ctx context.Context, ancode int) ([]*model.PrePlannedRoom, error) {
 	collection := db.getCollectionSemester(collectionRoomsPrePlanned)
 
-	cur, err := collection.Find(ctx, bson.M{"ancode": ancode})
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "roomname", Value: 1}})
+
+	cur, err := collection.Find(ctx, bson.M{"ancode": ancode}, findOptions)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).Msg("MongoDB Find")
 		return nil, err
@@ -283,7 +286,10 @@ func (db *DB) PlannedRoomsForAncode(ctx context.Context, ancode int) ([]*model.P
 
 	filter := bson.M{"ancode": ancode}
 
-	cur, err := collection.Find(ctx, filter)
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "roomname", Value: 1}})
+
+	cur, err := collection.Find(ctx, filter, findOptions)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot find rooms for ancode")
 		return nil, err

@@ -199,8 +199,10 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 
 		for _, primussExam := range generatedExamMailData.Exam.PrimussExams {
 			for _, studentReg := range primussExam.StudentRegs {
+				// force Excel/Numbers to treat the field as text with leading zeros:
+				// write the Mtknr as an Excel formula: ="000123"
 				attachment.Content = append(attachment.Content,
-					[]byte(fmt.Sprintf("\"%s\";%s;%s;%s\n",
+					[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s\n",
 						studentReg.Mtknr,
 						studentReg.Name,
 						studentReg.Program,
@@ -244,4 +246,94 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 		attachments,
 		false,
 	)
+}
+
+type UnpplannedExamMailData struct {
+	Exam       *model.PrimussExam
+	PlanerName string
+}
+
+func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, ancode int, emailAddress string, run bool) error {
+	exam, err := p.dbClient.GetPrimussExam(ctx, program, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Str("program", program).Msg("cannot get primuss exam")
+		return err
+	}
+	studentRegs, err := p.dbClient.GetPrimussStudentRegsForProgrammAncode(ctx, program, ancode)
+	if err != nil {
+		log.Debug().Err(err).Int("ancode", ancode).Str("program", program).Msg("cannot get primuss student registrations")
+	}
+	subject := fmt.Sprintf("[Prüfungsplanung %s] Anmeldedaten für Ihre Prüfung %s im Studiengang %s",
+		p.semester, exam.Module, program)
+
+	if len(studentRegs) > 0 {
+		attachments := make([]*email.Attachment, 0, 1)
+
+		attachment := &email.Attachment{
+			Filename:    fmt.Sprintf("Anmeldungen-%s-%d.csv", program, ancode),
+			ContentType: "text/csv; charset=\"utf-8\"",
+			Header:      map[string][]string{},
+			Content:     []byte("Mtknr;Name;Studiengang;Gruppe\n"),
+			HTMLRelated: false,
+		}
+
+		for _, studentReg := range studentRegs {
+			// force Excel/Numbers to treat the field as text with leading zeros:
+			// write the Mtknr as an Excel formula: ="000123"
+			attachment.Content = append(attachment.Content,
+				[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s\n",
+					studentReg.Mtknr,
+					studentReg.Name,
+					studentReg.Program,
+					studentReg.Group,
+				))...)
+		}
+
+		attachments = append(attachments, attachment)
+
+		unplannedExamData := &UnpplannedExamMailData{
+			Exam:       exam,
+			PlanerName: p.planer.Name,
+		}
+
+		tmpl, err := template.ParseFS(emailTemplates, "tmpl/unplannedExamEmail.tmpl")
+		if err != nil {
+			return err
+		}
+		bufText := new(bytes.Buffer)
+		err = tmpl.Execute(bufText, unplannedExamData)
+		if err != nil {
+			return err
+		}
+
+		tmpl, err = template.ParseFS(emailTemplates, "tmpl/unplannedExamEmailHTML.tmpl")
+		if err != nil {
+			return err
+		}
+		bufHTML := new(bytes.Buffer)
+		err = tmpl.Execute(bufHTML, unplannedExamData)
+		if err != nil {
+			return err
+		}
+
+		var to string
+		if run {
+			to = emailAddress
+		} else {
+			to = "galority@gmail.com"
+		}
+
+		return p.sendMail([]string{to},
+			nil,
+			subject,
+			bufText.Bytes(),
+			bufHTML.Bytes(),
+			attachments,
+			false,
+		)
+	} else {
+		log.Info().Int("ancode", ancode).Str("program", program).Msg("no student registrations found")
+	}
+
+	return nil
 }

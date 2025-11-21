@@ -39,6 +39,9 @@ import (
 //go:embed tmpl/publishedEmailInvigilationsHTML.tmpl
 //go:embed tmpl/invigilationEmail.tmpl
 //go:embed tmpl/invigilationEmailHTML.tmpl
+//go:embed tmpl/unplannedExamEmail.tmpl
+//go:embed tmpl/unplannedExamEmailHTML.tmpl
+
 var emailTemplates embed.FS
 
 func (p *Plexams) SendTestMail() error {

@@ -2,10 +2,24 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
+
+func (p *Plexams) PlannedAncodes() error {
+	exams, err := p.GetZpaExamsToPlan(context.Background())
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get zpa exams to plan")
+		return err
+	}
+
+	for _, exam := range exams {
+		fmt.Println(exam.AnCode)
+	}
+	return nil
+}
 
 func (p *Plexams) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 	return p.dbClient.PlanEntries(ctx)

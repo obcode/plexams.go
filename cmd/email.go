@@ -46,7 +46,7 @@ cover-pages [all|<teacherid>] --- send emails with externally generated cover pa
 						fmt.Printf("cannot use %s as ancode", args[1])
 						os.Exit(1)
 					}
-					err = plexams.SendGeneratedExamMail(context.Background(), ancode, run)
+					err = plexams.SendGeneratedExamMail(context.Background(), ancode, updated, run)
 					if err != nil {
 						log.Fatalf("got error: %v\n", err)
 					}
@@ -121,10 +121,12 @@ cover-pages [all|<teacherid>] --- send emails with externally generated cover pa
 			}
 		},
 	}
-	run bool
+	run     bool
+	updated bool
 )
 
 func init() {
 	rootCmd.AddCommand(emailCmd)
 	emailCmd.Flags().BoolVarP(&run, "run", "r", false, "really send")
+	emailCmd.Flags().BoolVarP(&updated, "updated", "u", false, "updated data")
 }

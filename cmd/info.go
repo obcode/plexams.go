@@ -21,6 +21,7 @@ samename                --- exams with same module name
 goslots                 --- info about slots for GO/GN
 request-rooms           --- which rooms to request
 planned-room [roomname] --- get planned room for roomname
+planned-ancodes		 	--- get planned ancodes
 stats                   --- get statistics
 student-regs ancode     --- get student-reqs for ancode
 student name            --- get info for student.`,
@@ -47,6 +48,11 @@ student name            --- get info for student.`,
 					log.Fatal("need roomname")
 				}
 				err := p.PlannedRoomInfo(args[1])
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "planned-ancodes":
+				err := p.PlannedAncodes()
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

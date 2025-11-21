@@ -10,7 +10,10 @@
       "request": "launch",
       "mode": "debug",
       "program": "main.go",
-      "args": ["prepare", "rooms-for-exams"]
+      "args": [
+        "prepare",
+        "studentregs"
+      ]
     }
   ]
 }

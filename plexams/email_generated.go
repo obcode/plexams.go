@@ -14,7 +14,7 @@ import (
 	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, run bool) error {
+func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, updated bool, run bool) error {
 	generatedExam, err := p.GeneratedExam(ctx, ancode)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
@@ -34,7 +34,7 @@ func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, run boo
 	teachersMap := make(map[int]*model.Teacher)
 	teachersMap[teacher.ID] = teacher
 
-	err = p.sendGeneratedExamMail(generatedExam, teachersMap, run)
+	err = p.sendGeneratedExamMail(generatedExam, teachersMap, updated, run)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", generatedExam.Ancode).Msg("cannot send email")
 	}
@@ -61,7 +61,7 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, run bool) error {
 	}
 
 	for _, exam := range generatedExams {
-		err = p.sendGeneratedExamMail(exam, teachersMap, run)
+		err = p.sendGeneratedExamMail(exam, teachersMap, false, run)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot send email")
 		}
@@ -70,7 +70,7 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, run bool) error {
 	return nil
 }
 
-func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap map[int]*model.Teacher, run bool) error {
+func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap map[int]*model.Teacher, updated bool, run bool) error {
 	cfg := yacspin.Config{
 		Frequency: 100 * time.Millisecond,
 		CharSet:   yacspin.CharSets[69],
@@ -130,7 +130,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 		Teacher:        teacher,
 		PlanerName:     p.planer.Name,
 		HasStudentRegs: hasStudentRegs,
-	})
+	}, updated)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot send email")
 		return err
@@ -151,7 +151,7 @@ type GeneratedExamMailData struct {
 	HasStudentRegs bool
 }
 
-func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailData *GeneratedExamMailData) error {
+func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailData *GeneratedExamMailData, updated bool) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
 	tmpl, err := template.ParseFS(emailTemplates, "tmpl/generatedExamEmail.tmpl")
@@ -174,8 +174,13 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 		return err
 	}
 
-	subject := fmt.Sprintf("[Prüfungsplanung %s] Vorliegende Anmeldedaten für Ihre Prüfung %s",
-		p.semester, generatedExamMailData.Exam.ZpaExam.Module)
+	attribute := "Vorliegende"
+	if updated {
+		attribute = "Aktualisierte"
+	}
+
+	subject := fmt.Sprintf("[Prüfungsplanung %s] %s Anmeldedaten für Ihre Prüfung %s",
+		p.semester, attribute, generatedExamMailData.Exam.ZpaExam.Module)
 	if !generatedExamMailData.HasStudentRegs {
 		subject = fmt.Sprintf("[Prüfungsplanung %s] Keine Anmeldungen für Ihre Prüfung %s",
 			p.semester, generatedExamMailData.Exam.ZpaExam.Module)

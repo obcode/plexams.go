@@ -424,12 +424,14 @@ type ComplexityRoot struct {
 	Room struct {
 		Exahm            func(childComplexity int) int
 		Handicap         func(childComplexity int) int
+		HmebSeats        func(childComplexity int) int
 		Lab              func(childComplexity int) int
 		Name             func(childComplexity int) int
 		NeedsRequest     func(childComplexity int) int
 		PlacesWithSocket func(childComplexity int) int
 		Seats            func(childComplexity int) int
 		Seb              func(childComplexity int) int
+		SebSeats         func(childComplexity int) int
 	}
 
 	RoomAndExam struct {
@@ -2695,6 +2697,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Room.Handicap(childComplexity), true
 
+	case "Room.hmebSeats":
+		if e.complexity.Room.HmebSeats == nil {
+			break
+		}
+
+		return e.complexity.Room.HmebSeats(childComplexity), true
+
 	case "Room.lab":
 		if e.complexity.Room.Lab == nil {
 			break
@@ -2736,6 +2745,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Room.Seb(childComplexity), true
+
+	case "Room.sebSeats":
+		if e.complexity.Room.SebSeats == nil {
+			break
+		}
+
+		return e.complexity.Room.SebSeats(childComplexity), true
 
 	case "RoomAndExam.exam":
 		if e.complexity.RoomAndExam.Exam == nil {
@@ -3975,6 +3991,8 @@ type Room {
   needsRequest: Boolean!
   exahm: Boolean!
   seb: Boolean!
+  sebSeats: Int
+  hmebSeats: Int
 }
 
 type RoomsForSlot {
@@ -14032,6 +14050,10 @@ func (ec *executionContext) fieldContext_PlannedRoom_room(_ context.Context, fie
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
 				return ec.fieldContext_Room_seb(ctx, field)
+			case "sebSeats":
+				return ec.fieldContext_Room_sebSeats(ctx, field)
+			case "hmebSeats":
+				return ec.fieldContext_Room_hmebSeats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -17527,6 +17549,10 @@ func (ec *executionContext) fieldContext_Query_rooms(_ context.Context, field gr
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
 				return ec.fieldContext_Room_seb(ctx, field)
+			case "sebSeats":
+				return ec.fieldContext_Room_sebSeats(ctx, field)
+			case "hmebSeats":
+				return ec.fieldContext_Room_hmebSeats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -19450,6 +19476,88 @@ func (ec *executionContext) fieldContext_Room_seb(_ context.Context, field graph
 	return fc, nil
 }
 
+func (ec *executionContext) _Room_sebSeats(ctx context.Context, field graphql.CollectedField, obj *model.Room) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Room_sebSeats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SebSeats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Room_sebSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Room",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Room_hmebSeats(ctx context.Context, field graphql.CollectedField, obj *model.Room) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Room_hmebSeats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HmebSeats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Room_hmebSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Room",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RoomAndExam_room(ctx context.Context, field graphql.CollectedField, obj *model.RoomAndExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoomAndExam_room(ctx, field)
 	if err != nil {
@@ -20318,6 +20426,10 @@ func (ec *executionContext) fieldContext_RoomsForSlot_rooms(_ context.Context, f
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
 				return ec.fieldContext_Room_seb(ctx, field)
+			case "sebSeats":
+				return ec.fieldContext_Room_sebSeats(ctx, field)
+			case "hmebSeats":
+				return ec.fieldContext_Room_hmebSeats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -29804,6 +29916,10 @@ func (ec *executionContext) _Room(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "sebSeats":
+			out.Values[i] = ec._Room_sebSeats(ctx, field, obj)
+		case "hmebSeats":
+			out.Values[i] = ec._Room_hmebSeats(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

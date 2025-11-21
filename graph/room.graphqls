@@ -26,6 +26,8 @@ type Room {
   needsRequest: Boolean!
   exahm: Boolean!
   seb: Boolean!
+  sebSeats: Int
+  hmebSeats: Int
 }
 
 type RoomsForSlot {

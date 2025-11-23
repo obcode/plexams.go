@@ -336,6 +336,10 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 	})
 }
 
+func (p *Plexams) PrePlannedRooms(ctx context.Context) ([]*model.PrePlannedRoom, error) {
+	return p.dbClient.PrePlannedRooms(ctx)
+}
+
 func (p *Plexams) PrePlannedRoomsForExam(ctx context.Context, ancode int) ([]*model.PrePlannedRoom, error) {
 	return p.dbClient.PrePlannedRoomsForExam(ctx, ancode)
 }

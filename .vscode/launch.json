@@ -11,8 +11,10 @@
       "mode": "debug",
       "program": "main.go",
       "args": [
-        "prepare",
-        "studentregs"
+        "ics",
+        "export",
+        "DE",
+        "-o DE.ics"
       ]
     }
   ]

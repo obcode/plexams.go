@@ -1,6 +1,7 @@
 package plexams
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -12,6 +13,47 @@ type Event struct {
 	Summary string
 	Start   time.Time
 	// End     time.Time
+}
+
+func (p *Plexams) ExportICS(program string, filename string) error {
+	cal := ical.NewCalendar()
+	cal.SetMethod(ical.MethodRequest)
+	cal.SetProductId(fmt.Sprintf("-//Plexams ICS Exporter//%s", program))
+
+	exams, err := p.PlannedExamsForProgram(context.Background(), program, true)
+	if err != nil {
+		return err
+	}
+
+	for _, exam := range exams {
+		vevent := cal.AddEvent(fmt.Sprintf("%s-%s-%d", p.semester, program, exam.Ancode))
+		programAncode := exam.Ancode
+		for _, primussExam := range exam.PrimussExams {
+			if primussExam.Exam.Program == program {
+				programAncode = primussExam.Exam.AnCode
+			}
+		}
+		vevent.SetSummary(fmt.Sprintf("FK07/%s: %d. %s (%s)", program, programAncode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer))
+		starttime, err := p.GetStarttime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+		if err != nil {
+			return err
+		}
+		vevent.SetStartAt(*starttime)
+		vevent.SetDuration(time.Duration(exam.ZpaExam.Duration) * time.Minute)
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close() //nolint:errcheck
+
+	_, err = file.WriteString(cal.Serialize())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *Plexams) ReadMucdaiICS(filename string) error {

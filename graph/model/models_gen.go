@@ -242,6 +242,11 @@ type PrimussExamWithCount struct {
 type Query struct {
 }
 
+type RegWithProgram struct {
+	Program string `json:"program"`
+	Reg     int    `json:"reg"`
+}
+
 type Room struct {
 	Name             string `json:"name"`
 	Seats            int    `json:"seats"`
@@ -309,12 +314,13 @@ type Starttime struct {
 }
 
 type Student struct {
-	Mtknr   string `json:"mtknr"`
-	Program string `json:"program"`
-	Group   string `json:"group"`
-	Name    string `json:"name"`
-	Regs    []int  `json:"regs"`
-	Nta     *NTA   `json:"nta,omitempty"`
+	Mtknr           string            `json:"mtknr"`
+	Program         string            `json:"program"`
+	Group           string            `json:"group"`
+	Name            string            `json:"name"`
+	Regs            []int             `json:"regs"`
+	RegsWithProgram []*RegWithProgram `json:"regsWithProgram"`
+	Nta             *NTA              `json:"nta,omitempty"`
 }
 
 type StudentRegsPerAncode struct {

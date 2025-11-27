@@ -60,8 +60,13 @@ func (p *Plexams) PrepareStudentRegs() error {
 		log.Debug().Interface("primussAncode", k).Int("zpa ancode", v).Msg("primuss ancodes with different zpa ancodes")
 	}
 
+	type studentRegFromProgram struct {
+		program    string
+		studentReg *model.StudentReg
+	}
+
 	// mtknr -> studentreg
-	studentRegsPerStudent := make(map[string][]*model.StudentReg)
+	studentRegsPerStudent := make(map[string][]studentRegFromProgram)
 
 	for _, program := range programs {
 		studentRegs, err := p.dbClient.StudentRegsForProgram(ctx, program)
@@ -84,9 +89,9 @@ func (p *Plexams) PrepareStudentRegs() error {
 
 			otherRegs, ok := studentRegsPerStudent[studentReg.Mtknr]
 			if ok {
-				studentRegsPerStudent[studentReg.Mtknr] = append(otherRegs, studentReg)
+				studentRegsPerStudent[studentReg.Mtknr] = append(otherRegs, studentRegFromProgram{program, studentReg})
 			} else {
-				studentRegsPerStudent[studentReg.Mtknr] = []*model.StudentReg{studentReg}
+				studentRegsPerStudent[studentReg.Mtknr] = []studentRegFromProgram{{program, studentReg}}
 			}
 		}
 	}
@@ -113,19 +118,28 @@ func (p *Plexams) PrepareStudentRegs() error {
 		if len(regs) > 0 {
 			ancodeSet := set.NewSet[int]()
 			for _, reg := range regs {
-				ancodeSet.Add(reg.AnCode)
+				ancodeSet.Add(reg.studentReg.AnCode)
 			}
 
 			ancodes := ancodeSet.ToSlice()
 			sort.Ints(ancodes)
 
+			regsWithProgram := make([]*model.RegWithProgram, 0, len(regs))
+			for _, reg := range regs {
+				regsWithProgram = append(regsWithProgram, &model.RegWithProgram{
+					Program: reg.program,
+					Reg:     reg.studentReg.AnCode,
+				})
+			}
+
 			studentRegsSlice = append(studentRegsSlice, &model.Student{
-				Mtknr:   mtknr,
-				Program: regs[0].Program,
-				Group:   regs[0].Group,
-				Name:    regs[0].Name,
-				Regs:    ancodes,
-				Nta:     ntaMap[mtknr],
+				Mtknr:           mtknr,
+				Program:         regs[0].studentReg.Program,
+				Group:           regs[0].studentReg.Group,
+				Name:            regs[0].studentReg.Name,
+				Regs:            ancodes,
+				RegsWithProgram: regsWithProgram,
+				Nta:             ntaMap[mtknr],
 			})
 		}
 	}

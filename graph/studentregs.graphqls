@@ -20,11 +20,17 @@ type StudentRegsPerAncodeAndProgram {
   studentRegs: [StudentReg!]!
 }
 
+type RegWithProgram {
+  program: String!
+  reg: Int!
+}
+
 type Student {
   mtknr: String!
   program: String!
   group: String!
   name: String!
   regs: [Int!]!
+  regsWithProgram: [RegWithProgram!]!
   nta: NTA
 }

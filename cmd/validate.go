@@ -19,6 +19,7 @@ var (
 	conflicts          		--- check conflicts for each student
 	constraints       	 	--- check if constraints hold
 	preplanned-exahm-rooms 	--- validate exahm pre-planned rooms
+	studentregs				--- check for students with registrations in diffenrent programs
 	db                 		--- data base entries
 	rooms              		--- check room constraints
 	zpa                		--- check if the plan on ZPA is the same here
@@ -50,6 +51,9 @@ var (
 
 				case "constraints":
 					validations = append(validations, plexams.ValidateConstraints)
+
+				case "studentregs":
+					validations = append(validations, plexams.ValidateStudentRegs)
 
 				case "db":
 					validations = append(validations, plexams.ValidateDB)

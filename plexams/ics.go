@@ -39,7 +39,10 @@ func (p *Plexams) ExportICS(program string, filename string) error {
 			return err
 		}
 		vevent.SetStartAt(*starttime)
-		vevent.SetDuration(time.Duration(exam.ZpaExam.Duration) * time.Minute)
+		err = vevent.SetDuration(time.Duration(exam.ZpaExam.Duration) * time.Minute)
+		if err != nil {
+			return err
+		}
 	}
 
 	file, err := os.Create(filename)

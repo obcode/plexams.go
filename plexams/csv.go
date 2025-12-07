@@ -159,6 +159,11 @@ func (p *Plexams) CsvForEXaHM(filename string) error {
 			typeOfExam = "SEB"
 		}
 
+		jira := "---"
+		if exam.Constraints.RoomConstraints.KdpJiraURL != nil {
+			jira = *exam.Constraints.RoomConstraints.KdpJiraURL
+		}
+
 		exahmExams = append(exahmExams, CsvExamEXaHM{
 			Ancode:      exam.Ancode,
 			Module:      exam.ZpaExam.Module,
@@ -168,7 +173,7 @@ func (p *Plexams) CsvForEXaHM(filename string) error {
 			Students:    exam.StudentRegsCount,
 			Rooms:       fmt.Sprintf("%v", rooms),
 			Type:        typeOfExam,
-			Jira:        *exam.Constraints.RoomConstraints.KdpJiraURL,
+			Jira:        jira,
 		})
 	}
 

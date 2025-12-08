@@ -87,13 +87,13 @@ func (p *Plexams) sendEmailDraftZPA(run bool) error {
 		log.Debug().Err(err).Msg("cannot stop spinner")
 	}
 
-	var to []string
-	if run {
-		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
-		if len(p.semesterConfig.Emails.AdditionalExamer) > 0 {
-			to = append(to, p.semesterConfig.Emails.AdditionalExamer...)
-		}
-	} else {
+	to := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
+	if len(p.semesterConfig.Emails.AdditionalExamer) > 0 {
+		to = append(to, p.semesterConfig.Emails.AdditionalExamer...)
+	}
+
+	if !run {
+		subject = "[TEST EMAIL] " + subject + " (Würde an: " + fmt.Sprintf("%v", to) + ")"
 		to = []string{"galority@gmail.com"}
 	}
 

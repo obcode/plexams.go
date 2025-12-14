@@ -74,6 +74,11 @@ var (
 				if success {
 					fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
 				}
+				str, err := plexams.ExamInfo(ancode)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+				fmt.Println(str)
 
 			case "pre-plan-room":
 				if len(args) < 3 {

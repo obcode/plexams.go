@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -238,4 +239,26 @@ func (p *Plexams) ConnectExam(ancode int, program string) error {
 	}
 
 	return p.dbClient.ReplaceConnectedExam(ctx, connectedExam)
+}
+
+func (p *Plexams) ExamInfo(ancode int) (string, error) {
+	ctx := context.Background()
+	exam, err := p.PlannedExam(ctx, ancode)
+	if err != nil {
+		return "", err
+	}
+	if exam == nil {
+		return "", fmt.Errorf("no planned exam for ancode %d", ancode)
+	}
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("%5d. %s (%s)", exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer))
+	if exam.PlanEntry != nil {
+		starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+		sb.WriteString(fmt.Sprintf("\n    Termin: %s (Tag %d / Slot %d)", starttime.Local().Format("02.01.06, 15:04 Uhr"), exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber))
+	} else {
+		sb.WriteString("\n    Termin: fehlt")
+	}
+
+	return sb.String(), nil
 }

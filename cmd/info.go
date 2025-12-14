@@ -17,6 +17,7 @@ var (
 		Short: "get info",
 		Long: `Get info.
 semester-config		    --- print config
+exam [ancode]           --- print info about exam
 samename                --- exams with same module name
 goslots                 --- info about slots for GO/GN
 request-rooms           --- which rooms to request
@@ -31,6 +32,19 @@ student name            --- get info for student.`,
 			switch args[0] {
 			case "semester-config":
 				p.PrintSemesterConfig()
+			case "exam":
+				if len(args) < 2 {
+					log.Fatal("need ancode")
+				}
+				ancode, err := strconv.Atoi(args[1])
+				if err != nil {
+					log.Fatalf("cannot convert %s to int", args[1])
+				}
+				str, err := p.ExamInfo(ancode)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+				fmt.Println(str)
 			case "samename":
 				p.PrintSameName()
 			case "goslots":

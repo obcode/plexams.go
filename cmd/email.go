@@ -37,7 +37,7 @@ cover-pages [all|<teacherid>] 				--- send emails with externally generated cove
 					log.Fatal("need ancode or all")
 				}
 				if args[1] == "all" {
-					err := plexams.SendGeneratedExamMails(context.Background(), run)
+					err := plexams.SendGeneratedExamMails(context.Background(), false, run)
 					if err != nil {
 						log.Fatalf("got error: %v\n", err)
 					}
@@ -47,7 +47,7 @@ cover-pages [all|<teacherid>] 				--- send emails with externally generated cove
 						fmt.Printf("cannot use %s as ancode", args[1])
 						os.Exit(1)
 					}
-					err = plexams.SendGeneratedExamMail(context.Background(), ancode, updated, run)
+					err = plexams.SendGeneratedExamMail(context.Background(), ancode, emailAddresses, updated, run)
 					if err != nil {
 						log.Fatalf("got error: %v\n", err)
 					}
@@ -137,12 +137,14 @@ cover-pages [all|<teacherid>] 				--- send emails with externally generated cove
 			}
 		},
 	}
-	run     bool
-	updated bool
+	run            bool
+	emailAddresses bool
+	updated        bool
 )
 
 func init() {
 	rootCmd.AddCommand(emailCmd)
 	emailCmd.Flags().BoolVarP(&run, "run", "r", false, "really send")
+	emailCmd.Flags().BoolVarP(&emailAddresses, "emailAddresses", "e", false, "send email addresses")
 	emailCmd.Flags().BoolVarP(&updated, "updated", "u", false, "updated data")
 }

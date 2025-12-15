@@ -308,7 +308,7 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 		spinner.Message(aurora.Sprintf(aurora.Yellow("checking rooms for %d. %s (%s) with %d students and %d ntas"),
 			exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, exam.StudentRegsCount, len(exam.Ntas)))
 		// check if each student has a room
-		allStudentRegs := make([]*model.StudentReg, 0)
+		allStudentRegs := make([]*model.EnhancedStudentReg, 0)
 		for _, primussExam := range exam.PrimussExams {
 			allStudentRegs = append(allStudentRegs, primussExam.StudentRegs...)
 		}

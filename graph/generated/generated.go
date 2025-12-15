@@ -114,6 +114,16 @@ type ComplexityRoot struct {
 		StudentRegs func(childComplexity int) int
 	}
 
+	EnhancedStudentReg struct {
+		Ancode     func(childComplexity int) int
+		Group      func(childComplexity int) int
+		Mtknr      func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Presence   func(childComplexity int) int
+		Program    func(childComplexity int) int
+		ZpaStudent func(childComplexity int) int
+	}
+
 	ExamDay struct {
 		Date   func(childComplexity int) int
 		Number func(childComplexity int) int
@@ -598,6 +608,7 @@ type ComplexityRoot struct {
 		Greeting  func(childComplexity int) int
 		Group     func(childComplexity int) int
 		LastName  func(childComplexity int) int
+		Mtknr     func(childComplexity int) int
 	}
 
 	ZPAStudentReg struct {
@@ -971,6 +982,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.EnhancedPrimussExam.StudentRegs(childComplexity), true
+
+	case "EnhancedStudentReg.ancode":
+		if e.complexity.EnhancedStudentReg.Ancode == nil {
+			break
+		}
+
+		return e.complexity.EnhancedStudentReg.Ancode(childComplexity), true
+
+	case "EnhancedStudentReg.group":
+		if e.complexity.EnhancedStudentReg.Group == nil {
+			break
+		}
+
+		return e.complexity.EnhancedStudentReg.Group(childComplexity), true
+
+	case "EnhancedStudentReg.mtknr":
+		if e.complexity.EnhancedStudentReg.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.EnhancedStudentReg.Mtknr(childComplexity), true
+
+	case "EnhancedStudentReg.name":
+		if e.complexity.EnhancedStudentReg.Name == nil {
+			break
+		}
+
+		return e.complexity.EnhancedStudentReg.Name(childComplexity), true
+
+	case "EnhancedStudentReg.presence":
+		if e.complexity.EnhancedStudentReg.Presence == nil {
+			break
+		}
+
+		return e.complexity.EnhancedStudentReg.Presence(childComplexity), true
+
+	case "EnhancedStudentReg.program":
+		if e.complexity.EnhancedStudentReg.Program == nil {
+			break
+		}
+
+		return e.complexity.EnhancedStudentReg.Program(childComplexity), true
+
+	case "EnhancedStudentReg.zpaStudent":
+		if e.complexity.EnhancedStudentReg.ZpaStudent == nil {
+			break
+		}
+
+		return e.complexity.EnhancedStudentReg.ZpaStudent(childComplexity), true
 
 	case "ExamDay.date":
 		if e.complexity.ExamDay.Date == nil {
@@ -3429,47 +3489,54 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ZPAPrimussAncodes.Program(childComplexity), true
 
-	case "ZPAStudent.Email":
+	case "ZPAStudent.email":
 		if e.complexity.ZPAStudent.Email == nil {
 			break
 		}
 
 		return e.complexity.ZPAStudent.Email(childComplexity), true
 
-	case "ZPAStudent.FirstName":
+	case "ZPAStudent.firstName":
 		if e.complexity.ZPAStudent.FirstName == nil {
 			break
 		}
 
 		return e.complexity.ZPAStudent.FirstName(childComplexity), true
 
-	case "ZPAStudent.Gender":
+	case "ZPAStudent.gender":
 		if e.complexity.ZPAStudent.Gender == nil {
 			break
 		}
 
 		return e.complexity.ZPAStudent.Gender(childComplexity), true
 
-	case "ZPAStudent.Greeting":
+	case "ZPAStudent.greeting":
 		if e.complexity.ZPAStudent.Greeting == nil {
 			break
 		}
 
 		return e.complexity.ZPAStudent.Greeting(childComplexity), true
 
-	case "ZPAStudent.Group":
+	case "ZPAStudent.group":
 		if e.complexity.ZPAStudent.Group == nil {
 			break
 		}
 
 		return e.complexity.ZPAStudent.Group(childComplexity), true
 
-	case "ZPAStudent.LastName":
+	case "ZPAStudent.lastName":
 		if e.complexity.ZPAStudent.LastName == nil {
 			break
 		}
 
 		return e.complexity.ZPAStudent.LastName(childComplexity), true
+
+	case "ZPAStudent.mtknr":
+		if e.complexity.ZPAStudent.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudent.Mtknr(childComplexity), true
 
 	case "ZPAStudentReg.ancode":
 		if e.complexity.ZPAStudentReg.AnCode == nil {
@@ -3995,7 +4062,7 @@ type PrimussExam {
 
 type EnhancedPrimussExam {
   exam: PrimussExam!
-  studentRegs: [StudentReg!]!
+  studentRegs: [EnhancedStudentReg!]!
   conflicts: [Conflict!]!
   ntas: [NTA!]!
 }
@@ -4033,6 +4100,16 @@ type StudentReg {
   group: String!
   name: String!
   presence: String!
+}
+
+type EnhancedStudentReg {
+  mtknr: String!
+  ancode: Int!
+  program: String!
+  group: String!
+  name: String!
+  presence: String!
+  zpaStudent: ZPAStudent
 }
 
 type Conflicts {
@@ -4279,12 +4356,13 @@ type Teacher {
 }
 
 type ZPAStudent {
-  Greeting: String!
-  FirstName: String!
-  LastName: String!
-  Email: String!
-  Gender: String!
-  Group: String!
+  mtknr: String!
+  greeting: String!
+  firstName: String!
+  lastName: String!
+  email: String!
+  gender: String!
+  group: String!
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -7506,9 +7584,9 @@ func (ec *executionContext) _EnhancedPrimussExam_studentRegs(ctx context.Context
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.StudentReg)
+	res := resTmp.([]*model.EnhancedStudentReg)
 	fc.Result = res
-	return ec.marshalNStudentReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegᚄ(ctx, field.Selections, res)
+	return ec.marshalNEnhancedStudentReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEnhancedStudentRegᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_EnhancedPrimussExam_studentRegs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -7520,19 +7598,21 @@ func (ec *executionContext) fieldContext_EnhancedPrimussExam_studentRegs(_ conte
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "mtknr":
-				return ec.fieldContext_StudentReg_mtknr(ctx, field)
+				return ec.fieldContext_EnhancedStudentReg_mtknr(ctx, field)
 			case "ancode":
-				return ec.fieldContext_StudentReg_ancode(ctx, field)
+				return ec.fieldContext_EnhancedStudentReg_ancode(ctx, field)
 			case "program":
-				return ec.fieldContext_StudentReg_program(ctx, field)
+				return ec.fieldContext_EnhancedStudentReg_program(ctx, field)
 			case "group":
-				return ec.fieldContext_StudentReg_group(ctx, field)
+				return ec.fieldContext_EnhancedStudentReg_group(ctx, field)
 			case "name":
-				return ec.fieldContext_StudentReg_name(ctx, field)
+				return ec.fieldContext_EnhancedStudentReg_name(ctx, field)
 			case "presence":
-				return ec.fieldContext_StudentReg_presence(ctx, field)
+				return ec.fieldContext_EnhancedStudentReg_presence(ctx, field)
+			case "zpaStudent":
+				return ec.fieldContext_EnhancedStudentReg_zpaStudent(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type StudentReg", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type EnhancedStudentReg", field.Name)
 		},
 	}
 	return fc, nil
@@ -7655,6 +7735,327 @@ func (ec *executionContext) fieldContext_EnhancedPrimussExam_ntas(_ context.Cont
 				return ec.fieldContext_NTA_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnhancedStudentReg_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.EnhancedStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EnhancedStudentReg_mtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EnhancedStudentReg_mtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnhancedStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnhancedStudentReg_ancode(ctx context.Context, field graphql.CollectedField, obj *model.EnhancedStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EnhancedStudentReg_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EnhancedStudentReg_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnhancedStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnhancedStudentReg_program(ctx context.Context, field graphql.CollectedField, obj *model.EnhancedStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EnhancedStudentReg_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EnhancedStudentReg_program(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnhancedStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnhancedStudentReg_group(ctx context.Context, field graphql.CollectedField, obj *model.EnhancedStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EnhancedStudentReg_group(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Group, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EnhancedStudentReg_group(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnhancedStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnhancedStudentReg_name(ctx context.Context, field graphql.CollectedField, obj *model.EnhancedStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EnhancedStudentReg_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EnhancedStudentReg_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnhancedStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnhancedStudentReg_presence(ctx context.Context, field graphql.CollectedField, obj *model.EnhancedStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EnhancedStudentReg_presence(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Presence, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EnhancedStudentReg_presence(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnhancedStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnhancedStudentReg_zpaStudent(ctx context.Context, field graphql.CollectedField, obj *model.EnhancedStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EnhancedStudentReg_zpaStudent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ZpaStudent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.ZPAStudent)
+	fc.Result = res
+	return ec.marshalOZPAStudent2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudent(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EnhancedStudentReg_zpaStudent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnhancedStudentReg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mtknr":
+				return ec.fieldContext_ZPAStudent_mtknr(ctx, field)
+			case "greeting":
+				return ec.fieldContext_ZPAStudent_greeting(ctx, field)
+			case "firstName":
+				return ec.fieldContext_ZPAStudent_firstName(ctx, field)
+			case "lastName":
+				return ec.fieldContext_ZPAStudent_lastName(ctx, field)
+			case "email":
+				return ec.fieldContext_ZPAStudent_email(ctx, field)
+			case "gender":
+				return ec.fieldContext_ZPAStudent_gender(ctx, field)
+			case "group":
+				return ec.fieldContext_ZPAStudent_group(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAStudent", field.Name)
 		},
 	}
 	return fc, nil
@@ -21804,18 +22205,20 @@ func (ec *executionContext) fieldContext_Student_zpaStudent(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "Greeting":
-				return ec.fieldContext_ZPAStudent_Greeting(ctx, field)
-			case "FirstName":
-				return ec.fieldContext_ZPAStudent_FirstName(ctx, field)
-			case "LastName":
-				return ec.fieldContext_ZPAStudent_LastName(ctx, field)
-			case "Email":
-				return ec.fieldContext_ZPAStudent_Email(ctx, field)
-			case "Gender":
-				return ec.fieldContext_ZPAStudent_Gender(ctx, field)
-			case "Group":
-				return ec.fieldContext_ZPAStudent_Group(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_ZPAStudent_mtknr(ctx, field)
+			case "greeting":
+				return ec.fieldContext_ZPAStudent_greeting(ctx, field)
+			case "firstName":
+				return ec.fieldContext_ZPAStudent_firstName(ctx, field)
+			case "lastName":
+				return ec.fieldContext_ZPAStudent_lastName(ctx, field)
+			case "email":
+				return ec.fieldContext_ZPAStudent_email(ctx, field)
+			case "gender":
+				return ec.fieldContext_ZPAStudent_gender(ctx, field)
+			case "group":
+				return ec.fieldContext_ZPAStudent_group(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAStudent", field.Name)
 		},
@@ -24160,8 +24563,52 @@ func (ec *executionContext) fieldContext_ZPAPrimussAncodes_ancode(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _ZPAStudent_Greeting(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudent_Greeting(ctx, field)
+func (ec *executionContext) _ZPAStudent_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_mtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudent_mtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudent_greeting(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_greeting(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -24191,7 +24638,7 @@ func (ec *executionContext) _ZPAStudent_Greeting(ctx context.Context, field grap
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ZPAStudent_Greeting(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ZPAStudent_greeting(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ZPAStudent",
 		Field:      field,
@@ -24204,8 +24651,8 @@ func (ec *executionContext) fieldContext_ZPAStudent_Greeting(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _ZPAStudent_FirstName(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudent_FirstName(ctx, field)
+func (ec *executionContext) _ZPAStudent_firstName(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_firstName(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -24235,7 +24682,7 @@ func (ec *executionContext) _ZPAStudent_FirstName(ctx context.Context, field gra
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ZPAStudent_FirstName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ZPAStudent_firstName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ZPAStudent",
 		Field:      field,
@@ -24248,8 +24695,8 @@ func (ec *executionContext) fieldContext_ZPAStudent_FirstName(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _ZPAStudent_LastName(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudent_LastName(ctx, field)
+func (ec *executionContext) _ZPAStudent_lastName(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_lastName(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -24279,7 +24726,7 @@ func (ec *executionContext) _ZPAStudent_LastName(ctx context.Context, field grap
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ZPAStudent_LastName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ZPAStudent_lastName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ZPAStudent",
 		Field:      field,
@@ -24292,8 +24739,8 @@ func (ec *executionContext) fieldContext_ZPAStudent_LastName(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _ZPAStudent_Email(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudent_Email(ctx, field)
+func (ec *executionContext) _ZPAStudent_email(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_email(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -24323,7 +24770,7 @@ func (ec *executionContext) _ZPAStudent_Email(ctx context.Context, field graphql
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ZPAStudent_Email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ZPAStudent_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ZPAStudent",
 		Field:      field,
@@ -24336,8 +24783,8 @@ func (ec *executionContext) fieldContext_ZPAStudent_Email(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _ZPAStudent_Gender(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudent_Gender(ctx, field)
+func (ec *executionContext) _ZPAStudent_gender(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_gender(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -24367,7 +24814,7 @@ func (ec *executionContext) _ZPAStudent_Gender(ctx context.Context, field graphq
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ZPAStudent_Gender(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ZPAStudent_gender(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ZPAStudent",
 		Field:      field,
@@ -24380,8 +24827,8 @@ func (ec *executionContext) fieldContext_ZPAStudent_Gender(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _ZPAStudent_Group(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudent_Group(ctx, field)
+func (ec *executionContext) _ZPAStudent_group(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_group(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -24411,7 +24858,7 @@ func (ec *executionContext) _ZPAStudent_Group(ctx context.Context, field graphql
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ZPAStudent_Group(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ZPAStudent_group(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ZPAStudent",
 		Field:      field,
@@ -27421,6 +27868,72 @@ func (ec *executionContext) _EnhancedPrimussExam(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var enhancedStudentRegImplementors = []string{"EnhancedStudentReg"}
+
+func (ec *executionContext) _EnhancedStudentReg(ctx context.Context, sel ast.SelectionSet, obj *model.EnhancedStudentReg) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, enhancedStudentRegImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EnhancedStudentReg")
+		case "mtknr":
+			out.Values[i] = ec._EnhancedStudentReg_mtknr(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ancode":
+			out.Values[i] = ec._EnhancedStudentReg_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "program":
+			out.Values[i] = ec._EnhancedStudentReg_program(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "group":
+			out.Values[i] = ec._EnhancedStudentReg_group(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._EnhancedStudentReg_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "presence":
+			out.Values[i] = ec._EnhancedStudentReg_presence(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "zpaStudent":
+			out.Values[i] = ec._EnhancedStudentReg_zpaStudent(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -31795,33 +32308,38 @@ func (ec *executionContext) _ZPAStudent(ctx context.Context, sel ast.SelectionSe
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ZPAStudent")
-		case "Greeting":
-			out.Values[i] = ec._ZPAStudent_Greeting(ctx, field, obj)
+		case "mtknr":
+			out.Values[i] = ec._ZPAStudent_mtknr(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "FirstName":
-			out.Values[i] = ec._ZPAStudent_FirstName(ctx, field, obj)
+		case "greeting":
+			out.Values[i] = ec._ZPAStudent_greeting(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "LastName":
-			out.Values[i] = ec._ZPAStudent_LastName(ctx, field, obj)
+		case "firstName":
+			out.Values[i] = ec._ZPAStudent_firstName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "Email":
-			out.Values[i] = ec._ZPAStudent_Email(ctx, field, obj)
+		case "lastName":
+			out.Values[i] = ec._ZPAStudent_lastName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "Gender":
-			out.Values[i] = ec._ZPAStudent_Gender(ctx, field, obj)
+		case "email":
+			out.Values[i] = ec._ZPAStudent_email(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "Group":
-			out.Values[i] = ec._ZPAStudent_Group(ctx, field, obj)
+		case "gender":
+			out.Values[i] = ec._ZPAStudent_gender(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "group":
+			out.Values[i] = ec._ZPAStudent_group(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -32496,6 +33014,60 @@ func (ec *executionContext) marshalNEnhancedPrimussExam2ᚖgithubᚗcomᚋobcode
 		return graphql.Null
 	}
 	return ec._EnhancedPrimussExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEnhancedStudentReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEnhancedStudentRegᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EnhancedStudentReg) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNEnhancedStudentReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEnhancedStudentReg(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNEnhancedStudentReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEnhancedStudentReg(ctx context.Context, sel ast.SelectionSet, v *model.EnhancedStudentReg) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EnhancedStudentReg(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExamDay2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamDayᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamDay) graphql.Marshaler {

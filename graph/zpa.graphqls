@@ -88,11 +88,11 @@ type Teacher {
 }
 
 type ZPAStudent {
-  Mtknr: String!
-  Greeting: String!
-  FirstName: String!
-  LastName: String!
-  Email: String!
-  Gender: String!
-  Group: String!
+  mtknr: String!
+  greeting: String!
+  firstName: String!
+  lastName: String!
+  email: String!
+  gender: String!
+  group: String!
 }

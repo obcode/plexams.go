@@ -18,6 +18,7 @@ const (
 	collectionNamePlanBackup     = "plan_backup"
 
 	collectionStudentRegsPerStudentPlanned = "studentregs_per_student_planned"
+	collectionZpaStudents                  = "zpastudents"
 
 	collectionAll         = "zpaexams"
 	collectionToPlan      = "zpaexamsToPlan"

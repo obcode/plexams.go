@@ -16,7 +16,7 @@ type PrimussExam {
 
 type EnhancedPrimussExam {
   exam: PrimussExam!
-  studentRegs: [StudentReg!]!
+  studentRegs: [EnhancedStudentReg!]!
   conflicts: [Conflict!]!
   ntas: [NTA!]!
 }
@@ -54,6 +54,16 @@ type StudentReg {
   group: String!
   name: String!
   presence: String!
+}
+
+type EnhancedStudentReg {
+  mtknr: String!
+  ancode: Int!
+  program: String!
+  group: String!
+  name: String!
+  presence: String!
+  zpaStudent: ZPAStudent
 }
 
 type Conflicts {

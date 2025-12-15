@@ -9,10 +9,31 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+func (db *DB) GetZPAStudents(ctx context.Context) ([]*model.ZPAStudent, error) {
+	collection := db.getCollectionSemester(collectionZpaStudents)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get zpa students")
+		return nil, err
+	}
+	defer cur.Close(ctx) //nolint:errcheck
+
+	zpaStudents := make([]*model.ZPAStudent, 0)
+
+	err = cur.All(ctx, &zpaStudents)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot decode zpa students")
+		return nil, err
+	}
+
+	return zpaStudents, nil
+}
+
 func (db *DB) GetZPAStudentByMtknr(ctx context.Context, mtknr string) (*model.ZPAStudent, error) {
 	var zpaStudent model.ZPAStudent
 
-	collection := db.Client.Database(db.databaseName).Collection("zpastudents")
+	collection := db.getCollectionSemester(collectionZpaStudents)
 
 	err := collection.FindOne(ctx, bson.D{{Key: "mtknr", Value: mtknr}}).Decode(&zpaStudent)
 	if err != nil {

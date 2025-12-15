@@ -46,6 +46,16 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		}
 	}
 
+	zpaStudents, err := p.GetZPAStudents(ctx)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot get zpa students")
+	}
+
+	zpaStudentsMap := make(map[string]*model.ZPAStudent)
+	for _, zpaStudent := range zpaStudents {
+		zpaStudentsMap[zpaStudent.Mtknr] = zpaStudent
+	}
+
 	durationMap := make(map[int]int)
 	d := viper.Get("duration")
 	durationRaw, ok := d.([]interface{})
@@ -107,7 +117,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 
 		enhancedPrimussExams := make([]*model.EnhancedPrimussExam, 0, len(connectedExam.PrimussExams))
 		for _, primussExam := range connectedExam.PrimussExams {
-			enhanced, err := p.primussToEnhanced(ctx, primussExam, ntaMap)
+			enhanced, err := p.primussToEnhanced(ctx, primussExam, ntaMap, zpaStudentsMap)
 			if err != nil {
 				log.Error().Err(err).Str("program", primussExam.Program).Int("ancode", primussExam.AnCode).
 					Msg("cannot enhance primuss exam")
@@ -303,7 +313,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 	return p.dbClient.CacheGeneratedExams(ctx, exams)
 }
 
-func (p *Plexams) primussToEnhanced(ctx context.Context, exam *model.PrimussExam, ntaMap map[string]*model.NTA) (*model.EnhancedPrimussExam, error) {
+func (p *Plexams) primussToEnhanced(ctx context.Context, exam *model.PrimussExam, ntaMap map[string]*model.NTA, zpaStudents map[string]*model.ZPAStudent) (*model.EnhancedPrimussExam, error) {
 	studentRegs, err := p.GetStudentRegs(ctx, exam)
 	if err != nil {
 		log.Error().Err(err).Str("program", exam.Program).Int("ancode", exam.AnCode).
@@ -320,11 +330,22 @@ func (p *Plexams) primussToEnhanced(ctx context.Context, exam *model.PrimussExam
 
 	ntas := make([]*model.NTA, 0)
 
+	enhancedStudentRegs := make([]*model.EnhancedStudentReg, 0, len(studentRegs))
+
 	for _, studentReg := range studentRegs {
 		nta, ok := ntaMap[studentReg.Mtknr]
 		if ok {
 			ntas = append(ntas, nta)
 		}
+		enhancedStudentRegs = append(enhancedStudentRegs, &model.EnhancedStudentReg{
+			Mtknr:      studentReg.Mtknr,
+			Ancode:     studentReg.AnCode,
+			Program:    studentReg.Program,
+			Group:      studentReg.Group,
+			Name:       studentReg.Name,
+			Presence:   studentReg.Presence,
+			ZpaStudent: zpaStudents[studentReg.Mtknr],
+		})
 	}
 
 	if len(studentRegs) > 0 && !p.dbClient.CheckStudentRegsCount(ctx, exam.Program, exam.AnCode, len(studentRegs)) {
@@ -334,7 +355,7 @@ func (p *Plexams) primussToEnhanced(ctx context.Context, exam *model.PrimussExam
 
 	return &model.EnhancedPrimussExam{
 		Exam:        exam,
-		StudentRegs: studentRegs,
+		StudentRegs: enhancedStudentRegs,
 		Conflicts:   conflicts.Conflicts,
 		Ntas:        ntas,
 	}, nil

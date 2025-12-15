@@ -16,6 +16,10 @@ func (p *Plexams) GetZPAExam(ctx context.Context, ancode int) (*model.ZPAExam, e
 	return p.dbClient.GetZpaExamByAncode(ctx, ancode)
 }
 
+func (p *Plexams) GetZPAStudents(ctx context.Context) ([]*model.ZPAStudent, error) {
+	return p.dbClient.GetZPAStudents(ctx)
+}
+
 func (p *Plexams) GetStudentsFromZPA(ctx context.Context) (studentsFound int, studentsNotFound int, err error) {
 	cfg := yacspin.Config{
 		Frequency:         100 * time.Millisecond,

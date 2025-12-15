@@ -68,10 +68,20 @@ type Emails struct {
 }
 
 type EnhancedPrimussExam struct {
-	Exam        *PrimussExam  `json:"exam"`
-	StudentRegs []*StudentReg `json:"studentRegs"`
-	Conflicts   []*Conflict   `json:"conflicts"`
-	Ntas        []*NTA        `json:"ntas"`
+	Exam        *PrimussExam          `json:"exam"`
+	StudentRegs []*EnhancedStudentReg `json:"studentRegs"`
+	Conflicts   []*Conflict           `json:"conflicts"`
+	Ntas        []*NTA                `json:"ntas"`
+}
+
+type EnhancedStudentReg struct {
+	Mtknr      string      `json:"mtknr"`
+	Ancode     int         `json:"ancode"`
+	Program    string      `json:"program"`
+	Group      string      `json:"group"`
+	Name       string      `json:"name"`
+	Presence   string      `json:"presence"`
+	ZpaStudent *ZPAStudent `json:"zpaStudent,omitempty"`
 }
 
 type ExamDay struct {

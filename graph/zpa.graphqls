@@ -86,3 +86,13 @@ type Teacher {
   email: String!
   isActive: Boolean!
 }
+
+type ZPAStudent {
+  Mtknr: String!
+  Greeting: String!
+  FirstName: String!
+  LastName: String!
+  Email: String!
+  Gender: String!
+  Group: String!
+}

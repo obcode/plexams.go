@@ -18,6 +18,7 @@ var (
 	teacher     --- fetch teacher
 	exams       --- fetch exams
 	invigs      --- fetch invigilator requirements
+	students    --- fetch zpa infos of students with registrations
 	studentregs --- post student registrations to zpa
 	upload-plan --- upload the exam list`,
 		Args: cobra.MinimumNArgs(1),
@@ -53,6 +54,13 @@ var (
 					log.Fatal().Err(err).Msg("cannot get imvigilator requirements")
 				}
 				fmt.Printf("fetched %d invigilator requirements\n", len(invigs))
+
+			case "students":
+				studentsFound, studentsNotFound, err := plexams.GetStudentsFromZPA(context.Background())
+				if err != nil {
+					log.Fatal().Err(err).Msg("cannot get students")
+				}
+				fmt.Printf("found %d students, %d not found\n", studentsFound, studentsNotFound)
 
 			case "studentregs":
 

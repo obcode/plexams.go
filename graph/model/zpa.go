@@ -86,6 +86,7 @@ type ZPAExamPlanRoom struct {
 }
 
 type ZPAStudent struct {
+	Mtknr     string `json:"mtknr"`
 	Greeting  string `json:"greeting"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`

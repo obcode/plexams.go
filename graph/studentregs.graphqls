@@ -32,5 +32,6 @@ type Student {
   name: String!
   regs: [Int!]!
   regsWithProgram: [RegWithProgram!]!
+  zpaStudent: ZPAStudent
   nta: NTA
 }

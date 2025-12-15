@@ -507,6 +507,7 @@ type ComplexityRoot struct {
 		Program         func(childComplexity int) int
 		Regs            func(childComplexity int) int
 		RegsWithProgram func(childComplexity int) int
+		ZpaStudent      func(childComplexity int) int
 	}
 
 	StudentReg struct {
@@ -588,6 +589,15 @@ type ComplexityRoot struct {
 	ZPAPrimussAncodes struct {
 		Ancode  func(childComplexity int) int
 		Program func(childComplexity int) int
+	}
+
+	ZPAStudent struct {
+		Email     func(childComplexity int) int
+		FirstName func(childComplexity int) int
+		Gender    func(childComplexity int) int
+		Greeting  func(childComplexity int) int
+		Group     func(childComplexity int) int
+		LastName  func(childComplexity int) int
 	}
 
 	ZPAStudentReg struct {
@@ -3076,6 +3086,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Student.RegsWithProgram(childComplexity), true
 
+	case "Student.zpaStudent":
+		if e.complexity.Student.ZpaStudent == nil {
+			break
+		}
+
+		return e.complexity.Student.ZpaStudent(childComplexity), true
+
 	case "StudentReg.ancode":
 		if e.complexity.StudentReg.AnCode == nil {
 			break
@@ -3411,6 +3428,48 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ZPAPrimussAncodes.Program(childComplexity), true
+
+	case "ZPAStudent.Email":
+		if e.complexity.ZPAStudent.Email == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudent.Email(childComplexity), true
+
+	case "ZPAStudent.FirstName":
+		if e.complexity.ZPAStudent.FirstName == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudent.FirstName(childComplexity), true
+
+	case "ZPAStudent.Gender":
+		if e.complexity.ZPAStudent.Gender == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudent.Gender(childComplexity), true
+
+	case "ZPAStudent.Greeting":
+		if e.complexity.ZPAStudent.Greeting == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudent.Greeting(childComplexity), true
+
+	case "ZPAStudent.Group":
+		if e.complexity.ZPAStudent.Group == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudent.Group(childComplexity), true
+
+	case "ZPAStudent.LastName":
+		if e.complexity.ZPAStudent.LastName == nil {
+			break
+		}
+
+		return e.complexity.ZPAStudent.LastName(childComplexity), true
 
 	case "ZPAStudentReg.ancode":
 		if e.complexity.ZPAStudentReg.AnCode == nil {
@@ -4126,6 +4185,7 @@ type Student {
   name: String!
   regs: [Int!]!
   regsWithProgram: [RegWithProgram!]!
+  zpaStudent: ZPAStudent
   nta: NTA
 }
 `, BuiltIn: false},
@@ -4217,7 +4277,15 @@ type Teacher {
   email: String!
   isActive: Boolean!
 }
-`, BuiltIn: false},
+
+type ZPAStudent {
+  Greeting: String!
+  FirstName: String!
+  LastName: String!
+  Email: String!
+  Gender: String!
+  Group: String!
+}`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -16768,6 +16836,8 @@ func (ec *executionContext) fieldContext_Query_ntasWithRegs(_ context.Context, f
 				return ec.fieldContext_Student_regs(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
+			case "zpaStudent":
+				return ec.fieldContext_Student_zpaStudent(ctx, field)
 			case "nta":
 				return ec.fieldContext_Student_nta(ctx, field)
 			}
@@ -18072,6 +18142,8 @@ func (ec *executionContext) fieldContext_Query_studentByMtknr(ctx context.Contex
 				return ec.fieldContext_Student_regs(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
+			case "zpaStudent":
+				return ec.fieldContext_Student_zpaStudent(ctx, field)
 			case "nta":
 				return ec.fieldContext_Student_nta(ctx, field)
 			}
@@ -18143,6 +18215,8 @@ func (ec *executionContext) fieldContext_Query_studentsByName(ctx context.Contex
 				return ec.fieldContext_Student_regs(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
+			case "zpaStudent":
+				return ec.fieldContext_Student_zpaStudent(ctx, field)
 			case "nta":
 				return ec.fieldContext_Student_nta(ctx, field)
 			}
@@ -18214,6 +18288,8 @@ func (ec *executionContext) fieldContext_Query_students(_ context.Context, field
 				return ec.fieldContext_Student_regs(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
+			case "zpaStudent":
+				return ec.fieldContext_Student_zpaStudent(ctx, field)
 			case "nta":
 				return ec.fieldContext_Student_nta(ctx, field)
 			}
@@ -21692,6 +21768,61 @@ func (ec *executionContext) fieldContext_Student_regsWithProgram(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Student_zpaStudent(ctx context.Context, field graphql.CollectedField, obj *model.Student) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Student_zpaStudent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ZpaStudent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.ZPAStudent)
+	fc.Result = res
+	return ec.marshalOZPAStudent2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudent(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Student_zpaStudent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Student",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Greeting":
+				return ec.fieldContext_ZPAStudent_Greeting(ctx, field)
+			case "FirstName":
+				return ec.fieldContext_ZPAStudent_FirstName(ctx, field)
+			case "LastName":
+				return ec.fieldContext_ZPAStudent_LastName(ctx, field)
+			case "Email":
+				return ec.fieldContext_ZPAStudent_Email(ctx, field)
+			case "Gender":
+				return ec.fieldContext_ZPAStudent_Gender(ctx, field)
+			case "Group":
+				return ec.fieldContext_ZPAStudent_Group(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAStudent", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Student_nta(ctx context.Context, field graphql.CollectedField, obj *model.Student) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Student_nta(ctx, field)
 	if err != nil {
@@ -22318,6 +22449,8 @@ func (ec *executionContext) fieldContext_StudentRegsPerStudent_student(_ context
 				return ec.fieldContext_Student_regs(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
+			case "zpaStudent":
+				return ec.fieldContext_Student_zpaStudent(ctx, field)
 			case "nta":
 				return ec.fieldContext_Student_nta(ctx, field)
 			}
@@ -24022,6 +24155,270 @@ func (ec *executionContext) fieldContext_ZPAPrimussAncodes_ancode(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudent_Greeting(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_Greeting(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Greeting, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudent_Greeting(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudent_FirstName(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_FirstName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FirstName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudent_FirstName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudent_LastName(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_LastName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LastName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudent_LastName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudent_Email(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_Email(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Email, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudent_Email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudent_Gender(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_Gender(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Gender, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudent_Gender(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ZPAStudent_Group(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAStudent_Group(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Group, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAStudent_Group(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30752,6 +31149,8 @@ func (ec *executionContext) _Student(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "zpaStudent":
+			out.Values[i] = ec._Student_zpaStudent(ctx, field, obj)
 		case "nta":
 			out.Values[i] = ec._Student_nta(ctx, field, obj)
 		default:
@@ -31359,6 +31758,70 @@ func (ec *executionContext) _ZPAPrimussAncodes(ctx context.Context, sel ast.Sele
 			}
 		case "ancode":
 			out.Values[i] = ec._ZPAPrimussAncodes_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var zPAStudentImplementors = []string{"ZPAStudent"}
+
+func (ec *executionContext) _ZPAStudent(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAStudent) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, zPAStudentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ZPAStudent")
+		case "Greeting":
+			out.Values[i] = ec._ZPAStudent_Greeting(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "FirstName":
+			out.Values[i] = ec._ZPAStudent_FirstName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "LastName":
+			out.Values[i] = ec._ZPAStudent_LastName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "Email":
+			out.Values[i] = ec._ZPAStudent_Email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "Gender":
+			out.Values[i] = ec._ZPAStudent_Gender(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "Group":
+			out.Values[i] = ec._ZPAStudent_Group(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -35361,6 +35824,13 @@ func (ec *executionContext) marshalOZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._ZPAExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOZPAStudent2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudent(ctx context.Context, sel ast.SelectionSet, v *model.ZPAStudent) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ZPAStudent(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

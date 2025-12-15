@@ -320,6 +320,7 @@ type Student struct {
 	Name            string            `json:"name"`
 	Regs            []int             `json:"regs"`
 	RegsWithProgram []*RegWithProgram `json:"regsWithProgram"`
+	ZpaStudent      *ZPAStudent       `json:"zpaStudent,omitempty"`
 	Nta             *NTA              `json:"nta,omitempty"`
 }
 

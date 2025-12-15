@@ -9,6 +9,20 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+func (db *DB) GetZPAStudentByMtknr(ctx context.Context, mtknr string) (*model.ZPAStudent, error) {
+	var zpaStudent model.ZPAStudent
+
+	collection := db.Client.Database(db.databaseName).Collection("zpastudents")
+
+	err := collection.FindOne(ctx, bson.D{{Key: "mtknr", Value: mtknr}}).Decode(&zpaStudent)
+	if err != nil {
+		log.Debug().Err(err).Str("mtknr", mtknr).Msg("cannot find zpa student in db")
+		return nil, err
+	}
+
+	return &zpaStudent, nil
+}
+
 func (db *DB) GetTeacher(ctx context.Context, id int) (*model.Teacher, error) {
 	var teacher model.Teacher
 

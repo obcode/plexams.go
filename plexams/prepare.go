@@ -132,6 +132,11 @@ func (p *Plexams) PrepareStudentRegs() error {
 				})
 			}
 
+			zpaStudent, err := p.dbClient.GetZPAStudentByMtknr(ctx, mtknr)
+			if err != nil {
+				log.Debug().Err(err).Str("mtknr", mtknr).Msg("cannot get zpa student")
+			}
+
 			studentRegsSlice = append(studentRegsSlice, &model.Student{
 				Mtknr:           mtknr,
 				Program:         regs[0].studentReg.Program,
@@ -140,6 +145,7 @@ func (p *Plexams) PrepareStudentRegs() error {
 				Regs:            ancodes,
 				RegsWithProgram: regsWithProgram,
 				Nta:             ntaMap[mtknr],
+				ZpaStudent:      zpaStudent,
 			})
 		}
 	}

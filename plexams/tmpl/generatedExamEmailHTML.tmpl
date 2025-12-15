@@ -38,6 +38,7 @@ geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtig
         {{ range .StudentRegs }}
           <li>
             {{ .Name }}
+            {{ if ne .ZpaStudent nil }}({{ .ZpaStudent.Gender }}) <{{ .ZpaStudent.Email }}>{{ end }}
           </li>
         {{end}}
       </ol>

@@ -3,7 +3,7 @@
 {{ if ne (len .StudentRegs) 0 }}
 ## Studiengang {{ .Exam.Program }}
 {{range $i, $reg := .StudentRegs }}
-{{ add $i 1 }}. {{ $reg.Name }}  
+{{ add $i 1 }}. {{ $reg.Name }} {{ if ne .ZpaStudent nil }}({{ .ZpaStudent.Gender }}) <{{ .ZpaStudent.Email }}>{{ end }}
 {{- end}}
 
 {{if ne (len .Ntas) 0 -}}

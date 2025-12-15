@@ -29,7 +29,7 @@ geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtig
     
       Anmeldungen:    
         {{- range .StudentRegs }}
-          - {{ .Name }}  
+          - {{ .Name }}  {{ if ne .ZpaStudent nil }}({{ .ZpaStudent.Gender }}) <{{ .ZpaStudent.Email }}>{{ end }}
         {{- end}}
       
       {{if ne (len .Ntas) 0 -}}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	txttmpl "text/template"
 	"time"
 
 	"github.com/jordan-wright/email"
@@ -14,7 +15,7 @@ import (
 	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, emailAddresses, updated, run bool) error {
+func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, updated, run bool) error {
 	generatedExam, err := p.GeneratedExam(ctx, ancode)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
@@ -34,7 +35,7 @@ func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, emailAd
 	teachersMap := make(map[int]*model.Teacher)
 	teachersMap[teacher.ID] = teacher
 
-	err = p.sendGeneratedExamMail(generatedExam, teachersMap, emailAddresses, updated, run)
+	err = p.sendGeneratedExamMail(generatedExam, teachersMap, updated, run)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", generatedExam.Ancode).Msg("cannot send email")
 	}
@@ -61,7 +62,7 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, ru
 	}
 
 	for _, exam := range generatedExams {
-		err = p.sendGeneratedExamMail(exam, teachersMap, emailAddresses, false, run)
+		err = p.sendGeneratedExamMail(exam, teachersMap, false, run)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot send email")
 		}
@@ -70,7 +71,7 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, ru
 	return nil
 }
 
-func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap map[int]*model.Teacher, emailAddresses, updated, run bool) error {
+func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap map[int]*model.Teacher, updated, run bool) error {
 	cfg := yacspin.Config{
 		Frequency: 100 * time.Millisecond,
 		CharSet:   yacspin.CharSets[69],
@@ -130,7 +131,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 		Teacher:        teacher,
 		PlanerName:     p.planer.Name,
 		HasStudentRegs: hasStudentRegs,
-	}, emailAddresses, updated)
+	}, updated)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot send email")
 		return err
@@ -151,7 +152,7 @@ type GeneratedExamMailData struct {
 	HasStudentRegs bool
 }
 
-func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailData *GeneratedExamMailData, emailAddresses, updated bool) error {
+func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailData *GeneratedExamMailData, updated bool) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
 	tmpl, err := template.ParseFS(emailTemplates, "tmpl/generatedExamEmail.tmpl")
@@ -187,96 +188,66 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 	}
 
 	attachments := make([]*email.Attachment, 0, 1)
+	var attachment *email.Attachment
 
 	if generatedExamMailData.HasStudentRegs {
-		var attachment *email.Attachment
-		if !emailAddresses {
-			attachment = &email.Attachment{
-				Filename:    fmt.Sprintf("Anmeldungen-%d.csv", generatedExamMailData.Exam.Ancode),
-				ContentType: "text/csv; charset=\"utf-8\"",
-				Header:      map[string][]string{},
-				Content:     []byte("Mtknr;Name;Studiengang;Gruppe\n"),
-				HTMLRelated: false,
-			}
-
-			for _, primussExam := range generatedExamMailData.Exam.PrimussExams {
-				for _, studentReg := range primussExam.StudentRegs {
-					// force Excel/Numbers to treat the field as text with leading zeros:
-					// write the Mtknr as an Excel formula: ="000123"
-					attachment.Content = append(attachment.Content,
-						[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s\n",
-							studentReg.Mtknr,
-							studentReg.Name,
-							studentReg.Program,
-							studentReg.Group,
-						))...)
-				}
-			}
-		} else {
-			attachment = &email.Attachment{
-				Filename:    fmt.Sprintf("Anmeldungen-%d.csv", generatedExamMailData.Exam.Ancode),
-				ContentType: "text/csv; charset=\"utf-8\"",
-				Header:      map[string][]string{},
-				Content:     []byte("Mtknr;Name;E-Mail;Studiengang;Gruppe\n"),
-				HTMLRelated: false,
-			}
-
-			for _, primussExam := range generatedExamMailData.Exam.PrimussExams {
-				for _, studentReg := range primussExam.StudentRegs {
-					zpaStudentReg, err := p.GetStudents(context.Background(), studentReg.Mtknr)
-					studentEmail := "unbekannt"
-					if err != nil {
-						log.Debug().Err(err).Str("mtknr", studentReg.Mtknr).Msg("cannot get zpa student registration")
-					} else {
-						if len(zpaStudentReg) == 0 {
-							log.Debug().Str("mtknr", studentReg.Mtknr).Msg("no zpa student registration found")
-							studentEmail = "nicht im ZPA gefunden"
-						} else if len(zpaStudentReg) > 1 {
-							log.Debug().Str("mtknr", studentReg.Mtknr).Int("count", len(zpaStudentReg)).Msg("multiple zpa student registrations found")
-							studentEmail = "mehr als ein Studierenden mit der selben Matrikelnummer im ZPA gefunden"
-						} else {
-							studentEmail = zpaStudentReg[0].Email
-						}
-					}
-					// force Excel/Numbers to treat the field as text with leading zeros:
-					// write the Mtknr as an Excel formula: ="000123"
-					attachment.Content = append(attachment.Content,
-						[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s;%s\n",
-							studentReg.Mtknr,
-							studentReg.Name,
-							studentEmail,
-							studentReg.Program,
-							studentReg.Group,
-						))...)
-				}
-			}
-		}
-		attachments = append(attachments, attachment)
-
-		tmpl, err = template.New("generatedExamMarkdown.tmpl").Funcs(template.FuncMap{
-			"add": func(a, b int) int {
-				return a + b
-			},
-		}).ParseFS(emailTemplates, "tmpl/generatedExamMarkdown.tmpl")
-		if err != nil {
-			return err
-		}
-		bufMD := new(bytes.Buffer)
-		err = tmpl.Execute(bufMD, generatedExamMailData)
-		if err != nil {
-			return err
-		}
-
 		attachment = &email.Attachment{
-			Filename:    fmt.Sprintf("Anmeldungen-%d.md", generatedExamMailData.Exam.Ancode),
-			ContentType: "text/plain; charset=\"utf-8\"",
+			Filename:    fmt.Sprintf("Anmeldungen-%d.csv", generatedExamMailData.Exam.Ancode),
+			ContentType: "text/csv; charset=\"utf-8\"",
 			Header:      map[string][]string{},
-			Content:     bufMD.Bytes(),
+			Content:     []byte("Mtknr;Name;Gender;E-Mail;Studiengang;Gruppe\n"),
 			HTMLRelated: false,
 		}
-		attachments = append(attachments, attachment)
+
+		for _, primussExam := range generatedExamMailData.Exam.PrimussExams {
+			for _, studentReg := range primussExam.StudentRegs {
+				// force Excel/Numbers to treat the field as text with leading zeros:
+				// write the Mtknr as an Excel formula: ="000123"
+				gender := ""
+				email := ""
+
+				if studentReg.ZpaStudent != nil {
+					gender = studentReg.ZpaStudent.Gender
+					email = studentReg.ZpaStudent.Email
+				}
+
+				attachment.Content = append(attachment.Content,
+					[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s;%s;%s\n",
+						studentReg.Mtknr,
+						studentReg.Name,
+						gender,
+						email,
+						studentReg.Program,
+						studentReg.Group,
+					))...)
+			}
+		}
 
 	}
+	attachments = append(attachments, attachment)
+
+	txttmpl, err := txttmpl.New("generatedExamMarkdown.tmpl").Funcs(template.FuncMap{
+		"add": func(a, b int) int {
+			return a + b
+		},
+	}).ParseFS(emailTemplates, "tmpl/generatedExamMarkdown.tmpl")
+	if err != nil {
+		return err
+	}
+	bufMD := new(bytes.Buffer)
+	err = txttmpl.Execute(bufMD, generatedExamMailData)
+	if err != nil {
+		return err
+	}
+
+	attachment = &email.Attachment{
+		Filename:    fmt.Sprintf("Anmeldungen-%d.md", generatedExamMailData.Exam.Ancode),
+		ContentType: "text/plain; charset=\"utf-8\"",
+		Header:      map[string][]string{},
+		Content:     bufMD.Bytes(),
+		HTMLRelated: false,
+	}
+	attachments = append(attachments, attachment)
 
 	return p.sendMail([]string{to},
 		nil,

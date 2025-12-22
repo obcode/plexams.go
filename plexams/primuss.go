@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 )
 
 func (p *Plexams) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
@@ -24,6 +25,31 @@ func (p *Plexams) GetPrimussExamsForAncode(ctx context.Context, ancode int) ([]*
 
 func (p *Plexams) GetStudentRegs(ctx context.Context, exam *model.PrimussExam) ([]*model.StudentReg, error) {
 	return p.dbClient.GetPrimussStudentRegsForProgrammAncode(ctx, exam.Program, exam.AnCode)
+}
+
+func (p *Plexams) GetEnhancedStudentRegs(ctx context.Context, program string, ancode int) ([]*model.EnhancedStudentReg, error) {
+	studentRegs, err := p.dbClient.GetPrimussStudentRegsForProgrammAncode(ctx, program, ancode)
+	if err != nil {
+		return nil, err
+	}
+
+	enhancedStudentRegs := make([]*model.EnhancedStudentReg, 0, len(studentRegs))
+	for _, studentReg := range studentRegs {
+		zpaStudent, err := p.dbClient.GetZPAStudentByMtknr(ctx, studentReg.Mtknr)
+		if err != nil {
+			log.Debug().Err(err).Str("mtknr", studentReg.Mtknr).Msg("cannot find zpa student for student reg")
+		}
+		enhancedStudentRegs = append(enhancedStudentRegs, &model.EnhancedStudentReg{
+			ZpaStudent: zpaStudent,
+			Mtknr:      studentReg.Mtknr,
+			Ancode:     studentReg.AnCode,
+			Program:    studentReg.Program,
+			Group:      studentReg.Group,
+			Name:       studentReg.Name,
+			Presence:   studentReg.Presence,
+		})
+	}
+	return enhancedStudentRegs, nil
 }
 
 func (p *Plexams) StudentRegsForProgram(ctx context.Context, program string) ([]*model.StudentReg, error) {

@@ -270,7 +270,7 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 		log.Error().Err(err).Int("ancode", ancode).Str("program", program).Msg("cannot get primuss exam")
 		return err
 	}
-	studentRegs, err := p.dbClient.GetPrimussStudentRegsForProgrammAncode(ctx, program, ancode)
+	studentRegs, err := p.GetEnhancedStudentRegs(ctx, program, ancode)
 	if err != nil {
 		log.Debug().Err(err).Int("ancode", ancode).Str("program", program).Msg("cannot get primuss student registrations")
 	}
@@ -284,17 +284,27 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 			Filename:    fmt.Sprintf("Anmeldungen-%s-%d.csv", program, ancode),
 			ContentType: "text/csv; charset=\"utf-8\"",
 			Header:      map[string][]string{},
-			Content:     []byte("Mtknr;Name;Studiengang;Gruppe\n"),
+			Content:     []byte("Mtknr;Name;Gender;E-Mail;Studiengang;Gruppe\n"),
 			HTMLRelated: false,
 		}
 
 		for _, studentReg := range studentRegs {
 			// force Excel/Numbers to treat the field as text with leading zeros:
 			// write the Mtknr as an Excel formula: ="000123"
+			gender := ""
+			email := ""
+
+			if studentReg.ZpaStudent != nil {
+				gender = studentReg.ZpaStudent.Gender
+				email = studentReg.ZpaStudent.Email
+			}
+
 			attachment.Content = append(attachment.Content,
-				[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s\n",
+				[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s;%s;%s\n",
 					studentReg.Mtknr,
 					studentReg.Name,
+					gender,
+					email,
 					studentReg.Program,
 					studentReg.Group,
 				))...)

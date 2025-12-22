@@ -25,7 +25,7 @@ func (r *queryResolver) NtasWithRegs(ctx context.Context) ([]*model.Student, err
 	return r.plexams.NtasWithRegs(ctx)
 }
 
-// Nta is the resolver for the nta field.
+// Deprecated: Nta is the resolver for the nta field.
 func (r *queryResolver) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
 	return r.plexams.Nta(ctx, mtknr)
 }

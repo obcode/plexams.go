@@ -1,0 +1,39 @@
+<p>Liebe Prüfende,</p>
+
+<p>anbei übersende ich Ihnen Informationen bzgl. eines Studierenden mit einem neuen
+Anspruch auf Nachteilsausgleich.</p>
+
+<p>
+{{ .Student.Name }}
+{{ if ne .Student.ZpaStudent nil }}({{ .Student.ZpaStudent.Gender }}) <{{ .Student.ZpaStudent.Email }}>{{ end }}
+</p>
+
+<p>
+Der Nachteilsausgleich vom {{ .Student.Nta.From }}
+lautet sinngemäß <i>"{{ .Student.Nta.Compensation }}"</i> und beinhaltet für meine Planung:
+</p>
+
+<ul>
+{{ if ge .Student.Nta.DeltaDurationPercent 0 }}<li> {{ .Student.Nta.DeltaDurationPercent }}% Verlängerung </i>{{ end }}
+{{ if .Student.Nta.NeedsRoomAlone }}<li> Prüfung in eigenem Raum </i>{{ end }}
+{{ if .Student.Nta.NeedsHardware }}<li> Prüfung mit eigener/besonderer Hardware </i>{{ end }}
+</ul>
+
+<p>Der Studierende hat sich für folgende, von mir geplanten, Prüfungen angemeldet:</p>
+
+<ul>
+{{ range .Exams -}}
+<li>
+{{ .Ancode }}. {{ .ZpaExam.Module }} ({{ .ZpaExam.MainExamer }})
+</li>
+{{ end }}
+</ul>
+
+<p>Mit freundlichen Grüßen<br />
+{{ .PlanerName }}</p>
+
+<pre>
+-- 
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
+</pre>
+

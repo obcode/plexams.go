@@ -29,6 +29,8 @@ import (
 //go:embed tmpl/handicapEmailPlannedHTML.tmpl
 //go:embed tmpl/handicapEmailRoomAlone.tmpl
 //go:embed tmpl/handicapEmailRoomAloneHTML.tmpl
+//go:embed tmpl/newNTAEmail.tmpl
+//go:embed tmpl/newNTAEmailHTML.tmpl
 //go:embed tmpl/preparedEmail.tmpl
 //go:embed tmpl/preparedEmailHTML.tmpl
 //go:embed tmpl/publishedEmailExams.tmpl

@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"sort"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
@@ -37,88 +36,103 @@ func (db *DB) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.Studen
 	return studentRegs, nil
 }
 
-func (db *DB) StudentByMtknr(ctx context.Context, mtknr string, ntas map[string]*model.NTA) (*model.Student, error) {
-	collectionNames, err := db.studentRegsCollectionNames(ctx)
+func (db *DB) StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned)
+	filter := bson.D{{Key: "mtknr", Value: mtknr}}
 
+	var student model.Student
+
+	err := collection.FindOne(ctx, filter).Decode(&student)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get student regs collections")
+		log.Error().Err(err).Str("mtknr", mtknr).Msg("cannot find student by mtknr")
 		return nil, err
 	}
 
-	var student *model.Student
-
-	for _, collectionName := range collectionNames {
-		log.Debug().Str("collection", collectionName).Str("mtkntr", mtknr).
-			Msg("searching for student in collection")
-
-		collection := db.Client.Database(db.databaseName).Collection(collectionName)
-
-		cur, err := collection.Find(ctx, bson.D{{Key: "MTKNR", Value: mtknr}})
-		if err != nil {
-			log.Error().Err(err).Str("collection", collectionName).Str("mtkntr", mtknr).
-				Msg("error while searching for student in collection")
-		}
-		defer cur.Close(ctx) //nolint:errcheck
-
-		var results []*model.StudentReg
-
-		err = cur.All(ctx, &results)
-		if err != nil {
-			log.Error().Err(err).Str("collection", collectionName).Str("mtkntr", mtknr).
-				Msg("error while decoding student from collection")
-		}
-
-		if len(results) > 0 {
-			log.Debug().Interface("regs", results).Str("collection", collectionName).Str("mtkntr", mtknr).
-				Msg("found regs for student")
-
-			var regs []int
-
-			if student != nil && (student.Program != results[0].Program ||
-				student.Group != results[0].Group ||
-				student.Name != results[0].Name) {
-				log.Error().Str("collection", collectionName).Str("mtkntr", mtknr).
-					Msg("found student in more than one programs")
-			}
-
-			if student != nil {
-				regs = student.Regs
-			} else {
-				regs = make([]int, 0, len(results))
-			}
-
-			for _, res := range results {
-				regs = append(regs, res.AnCode)
-			}
-
-			sort.Ints(regs)
-
-			var nta *model.NTA
-
-			if ntas == nil {
-				nta, err = db.Nta(ctx, mtknr)
-				if err != nil {
-					log.Error().Err(err).Str("mtknr", mtknr).Msg("error while checking nta")
-				}
-			} else {
-				nta = ntas[mtknr]
-			}
-
-			student = &model.Student{
-				Mtknr:   mtknr,
-				Program: results[0].Program,
-				Group:   results[0].Group,
-				Name:    results[0].Name,
-				Regs:    regs,
-				Nta:     nta,
-			}
-
-		}
-
-	}
-
-	return student, nil
+	return &student, nil
 }
+
+// func (db *DB) StudentByMtknr(ctx context.Context, mtknr string, ntas map[string]*model.NTA) (*model.Student, error) {
+// 	collectionNames, err := db.studentRegsCollectionNames(ctx)
+
+// 	if err != nil {
+// 		log.Error().Err(err).Msg("cannot get student regs collections")
+// 		return nil, err
+// 	}
+
+// 	var student *model.Student
+
+// 	for _, collectionName := range collectionNames {
+// 		log.Debug().Str("collection", collectionName).Str("mtkntr", mtknr).
+// 			Msg("searching for student in collection")
+
+// 		collection := db.Client.Database(db.databaseName).Collection(collectionName)
+
+// 		cur, err := collection.Find(ctx, bson.D{{Key: "MTKNR", Value: mtknr}})
+// 		if err != nil {
+// 			log.Error().Err(err).Str("collection", collectionName).Str("mtkntr", mtknr).
+// 				Msg("error while searching for student in collection")
+// 		}
+// 		defer cur.Close(ctx) //nolint:errcheck
+
+// 		var results []*model.StudentReg
+
+// 		err = cur.All(ctx, &results)
+// 		if err != nil {
+// 			log.Error().Err(err).Str("collection", collectionName).Str("mtkntr", mtknr).
+// 				Msg("error while decoding student from collection")
+// 		}
+
+// 		if len(results) > 0 {
+// 			log.Debug().Interface("regs", results).Str("collection", collectionName).Str("mtkntr", mtknr).
+// 				Msg("found regs for student")
+
+// 			var regs []int
+
+// 			if student != nil && (student.Program != results[0].Program ||
+// 				student.Group != results[0].Group ||
+// 				student.Name != results[0].Name) {
+// 				log.Error().Str("collection", collectionName).Str("mtkntr", mtknr).
+// 					Msg("found student in more than one programs")
+// 			}
+
+// 			if student != nil {
+// 				regs = student.Regs
+// 			} else {
+// 				regs = make([]int, 0, len(results))
+// 			}
+
+// 			for _, res := range results {
+// 				regs = append(regs, res.AnCode)
+// 			}
+
+// 			sort.Ints(regs)
+
+// 			var nta *model.NTA
+
+// 			if ntas == nil {
+// 				nta, err = db.Nta(ctx, mtknr)
+// 				if err != nil {
+// 					log.Error().Err(err).Str("mtknr", mtknr).Msg("error while checking nta")
+// 				}
+// 			} else {
+// 				nta = ntas[mtknr]
+// 			}
+
+// 			student = &model.Student{
+// 				Mtknr:   mtknr,
+// 				Program: results[0].Program,
+// 				Group:   results[0].Group,
+// 				Name:    results[0].Name,
+// 				Regs:    regs,
+// 				Nta:     nta,
+// 			}
+
+// 		}
+
+// 	}
+
+// 	return student, nil
+// }
 
 func (db *DB) StudentsByName(ctx context.Context, regex string) ([]*model.Student, error) {
 	collectionNames, err := db.studentRegsCollectionNames(ctx)
@@ -152,7 +166,7 @@ func (db *DB) StudentsByName(ctx context.Context, regex string) ([]*model.Studen
 	students := make([]*model.Student, 0, studentMtknrs.Cardinality())
 
 	for _, mtknr := range studentMtknrs.ToSlice() {
-		student, err := db.StudentByMtknr(ctx, mtknr, nil)
+		student, err := db.StudentByMtknr(ctx, mtknr)
 		if err != nil {
 			log.Error().Err(err).Str("mtknr", mtknr).Msg("error while trying to get student")
 		} else {

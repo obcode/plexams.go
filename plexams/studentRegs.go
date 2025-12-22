@@ -110,8 +110,8 @@ func (p *Plexams) GetExamsForStudent(name string) error {
 	return nil
 }
 
-func (p *Plexams) StudentByMtknr(ctx context.Context, mtknr string, ntas map[string]*model.NTA) (*model.Student, error) {
-	return p.dbClient.StudentByMtknr(ctx, mtknr, ntas)
+func (p *Plexams) StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error) {
+	return p.dbClient.StudentByMtknr(ctx, mtknr)
 }
 
 func (p *Plexams) StudentsByName(ctx context.Context, regex string) ([]*model.Student, error) {
@@ -122,40 +122,40 @@ func (p *Plexams) Students(ctx context.Context) ([]*model.Student, error) {
 	return p.dbClient.StudentRegsPerStudentPlanned(ctx)
 }
 
-func (p *Plexams) StudentsFromStudentRegs(ctx context.Context, studentRegs []*model.StudentRegsPerAncodeAndProgram) (
-	regularStuds, ntaStuds []*model.Student, err error) {
-	regularStuds = make([]*model.Student, 0)
-	ntaStuds = make([]*model.Student, 0)
+// func (p *Plexams) StudentsFromStudentRegs(ctx context.Context, studentRegs []*model.StudentRegsPerAncodeAndProgram) (
+// 	regularStuds, ntaStuds []*model.Student, err error) {
+// 	regularStuds = make([]*model.Student, 0)
+// 	ntaStuds = make([]*model.Student, 0)
 
-	ntaSlice, err := p.Ntas(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get ntas")
-		return nil, nil, err
-	}
+// 	ntaSlice, err := p.Ntas(ctx)
+// 	if err != nil {
+// 		log.Error().Err(err).Msg("cannot get ntas")
+// 		return nil, nil, err
+// 	}
 
-	ntas := make(map[string]*model.NTA)
-	for _, nta := range ntaSlice {
-		ntas[nta.Mtknr] = nta
-	}
+// 	ntas := make(map[string]*model.NTA)
+// 	for _, nta := range ntaSlice {
+// 		ntas[nta.Mtknr] = nta
+// 	}
 
-	for _, program := range studentRegs {
-		for _, studentReg := range program.StudentRegs {
-			student, err := p.StudentByMtknr(ctx, studentReg.Mtknr, ntas)
-			if err != nil {
-				log.Error().Err(err).Str("mtknr", studentReg.Mtknr).Msg("error while trying to get student")
-				return nil, nil, err
-			}
-			if student.Nta != nil {
-				ntaStuds = append(ntaStuds, student)
-			} else {
-				regularStuds = append(regularStuds, student)
-			}
-		}
-	}
+// 	for _, program := range studentRegs {
+// 		for _, studentReg := range program.StudentRegs {
+// 			student, err := p.StudentByMtknr(ctx, studentReg.Mtknr, ntas)
+// 			if err != nil {
+// 				log.Error().Err(err).Str("mtknr", studentReg.Mtknr).Msg("error while trying to get student")
+// 				return nil, nil, err
+// 			}
+// 			if student.Nta != nil {
+// 				ntaStuds = append(ntaStuds, student)
+// 			} else {
+// 				regularStuds = append(regularStuds, student)
+// 			}
+// 		}
+// 	}
 
-	if len(ntaStuds) == 0 {
-		ntaStuds = nil
-	}
+// 	if len(ntaStuds) == 0 {
+// 		ntaStuds = nil
+// 	}
 
-	return regularStuds, ntaStuds, nil
-}
+// 	return regularStuds, ntaStuds, nil
+// }

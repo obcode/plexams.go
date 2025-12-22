@@ -18,6 +18,7 @@ func (p *Plexams) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
 	return p.dbClient.NtasWithRegs(ctx)
 }
 
+// Deprecated: use StudentByMtknr
 func (p *Plexams) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
 	return p.dbClient.NtaWithRegs(ctx, mtknr)
 }

@@ -316,7 +316,7 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 	}
 
 	if mtknr != nil {
-		student, err := p.StudentByMtknr(ctx, *mtknr, nil)
+		student, err := p.StudentByMtknr(ctx, *mtknr)
 		if err != nil {
 			log.Error().Err(err).Str("mtknr", *mtknr).Msg("cannot get student by mtknr")
 			return false, err

@@ -249,3 +249,84 @@ func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, to []st
 		true,
 	)
 }
+
+type NewNTA struct {
+	Student    *model.Student
+	Exams      []*model.PlannedExam
+	PlanerName string
+}
+
+func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool) error {
+	student, err := p.StudentByMtknr(ctx, mtknr)
+	if err != nil {
+		log.Error().Err(err).Str("mtknr", mtknr).Msg("cannot get nta")
+		return err
+	}
+	if student.Nta == nil {
+		log.Error().Str("mtknr", mtknr).Msg("student is not an nta")
+		return fmt.Errorf("student is not an nta")
+	}
+	examerIDsSet := set.NewSet[int]()
+	exams := make([]*model.PlannedExam, 0, len(student.Regs))
+	for _, ancode := range student.Regs {
+		exam, err := p.PlannedExam(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam")
+			return err
+		}
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+		examerIDsSet.Add(exam.ZpaExam.MainExamerID)
+		exams = append(exams, exam)
+	}
+	to := make([]string, 0, examerIDsSet.Cardinality())
+	for _, examerID := range examerIDsSet.ToSlice() {
+		examer, err := p.GetTeacher(ctx, examerID)
+		if err != nil {
+			log.Error().Err(err).Int("teacherID", examerID).Msg("cannot get examer")
+			return err
+		}
+		to = append(to, examer.Email)
+	}
+	log.Debug().Interface("to", to).Msg("sending email to examers about new nta")
+
+	newNTA := &NewNTA{
+		Student:    student,
+		Exams:      exams,
+		PlanerName: p.planer.Name,
+	}
+
+	tmpl, err := template.ParseFS(emailTemplates, "tmpl/newNTAEmail.tmpl")
+	if err != nil {
+		return err
+	}
+	bufText := new(bytes.Buffer)
+	err = tmpl.Execute(bufText, newNTA)
+	if err != nil {
+		return err
+	}
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/newNTAEmailHTML.tmpl")
+	if err != nil {
+		return err
+	}
+	bufHTML := new(bytes.Buffer)
+	err = tmpl.Execute(bufHTML, newNTA)
+	if err != nil {
+		return err
+	}
+
+	if !run {
+		to = []string{p.planer.Email}
+	}
+
+	return p.sendMail(to,
+		nil,
+		fmt.Sprintf("[Prüfungsplanung %s] Neuer NTA", p.semester),
+		bufText.Bytes(),
+		bufHTML.Bytes(),
+		nil,
+		true,
+	)
+
+}

@@ -344,7 +344,7 @@ func (db *DB) RemoveStudentReg(ctx context.Context, program string, ancode int, 
 func (db *DB) AddStudentReg(ctx context.Context, program string, ancode int, mtknr string) error {
 	collection := db.getCollection(program, StudentRegs)
 
-	student, err := db.StudentByMtknr(ctx, mtknr, nil)
+	student, err := db.StudentByMtknr(ctx, mtknr)
 	if err != nil {
 		log.Error().Err(err).Str("program", program).Int("ancode", ancode).Str("mtknr", mtknr).
 			Msg("error while trying to get student by mtknr")

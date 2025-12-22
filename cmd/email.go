@@ -24,6 +24,7 @@ published-exams 			  				--- announce published exams
 published-rooms 			  				--- announce published rooms
 invigilations 				  				--- send email requesting invigilations constraints
 published-invigilations       				--- announce published invigilations
+new-nta 				  				    --- send emails to examers about new nta
 nta-with-room-alone 		  				--- send emails to students with room alone before planning
 nta-planned 				  				--- send emails about rooms to all students with nta after planning
 cover-pages [all|<teacherid>] 				--- send emails with externally generated cover pages
@@ -99,6 +100,15 @@ cover-pages [all|<teacherid>] 				--- send emails with externally generated cove
 				}
 			case "draft":
 				err := plexams.SendEmailDraft(run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "new-nta":
+				if len(args) < 2 {
+					log.Fatal("need mtknr of new nta")
+				}
+				mtknr := args[1]
+				err := plexams.SendMailNewNTA(context.Background(), mtknr, run)
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

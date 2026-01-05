@@ -48,7 +48,7 @@
           "**/CVS": true,
           "**/.DS_Store": true
         },
-        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.defaultProfile.linux": "zsh",
         "terminal.integrated.cwd": "${workspaceFolder}"
       }
     }
@@ -75,7 +75,7 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "sudo chown -R ubuntu:ubuntu /shared/bin ; sudo chown -R ubuntu:ubuntu /workspace/plexams.go",
+  "postCreateCommand": "go install github.com/HenriBeck/gowatch@latest; sudo chown -R ubuntu:ubuntu /shared/bin ; sudo chown -R ubuntu:ubuntu /workspace/plexams.go",
   "remoteEnv": {
     "GOBIN": "/shared/bin",
     "PATH": "${containerEnv:PATH}:/shared/bin"

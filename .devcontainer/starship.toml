@@ -1,0 +1,62 @@
+# Starship Configuration - Elegant Prompt mit Go und Docker Support
+
+format = """
+[─>](bold green) $directory$golang$docker_context$git_branch$git_status $cmd_duration
+[❯](bold green) """
+
+right_format = "$time"
+
+[username]
+show_always = true
+format = "[$user]($style) "
+style_user = "bold yellow"
+
+[hostname]
+format = "[@$hostname]($style) "
+style = "bold cyan"
+
+[directory]
+format = "[$path]($style)[$read_only]($read_only_style) "
+style = "bold blue"
+read_only = " 🔒"
+read_only_style = "bold red"
+truncation_length = 3
+truncate_to_repo = false
+home_symbol = "🏠"
+
+[git_branch]
+format = "[on]($style) [$symbol$branch]($style) "
+style = "bold purple"
+symbol = "🌱 "
+
+[git_status]
+format = "([\\($all_status$ahead_behind\\)]($style) )"
+style = "bold red"
+conflicted = "🏳"
+diverged = "😵"
+renamed = "👅 "
+deleted = "🗑 "
+
+[golang]
+format = "[🐹 $version]($style) "
+style = "bold cyan"
+disabled = false
+detect_extensions = ["go"]
+detect_files = ["go.mod", "go.sum", "glide.yaml", "Gopkg.yml", "Gopkg.lock"]
+detect_folders = ["Godeps"]
+
+[docker_context]
+format = "[🐳 $context]($style) "
+style = "bold blue"
+disabled = false
+
+[time]
+disabled = false
+time_format = "%R"
+style = "bold white"
+format = "[$time]($style) "
+
+[cmd_duration]
+min_time = 2_000
+format = "[⏱️ $duration]($style) "
+style = "bold yellow"

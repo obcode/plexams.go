@@ -23,7 +23,8 @@ var (
 	draft-exahm      --- draft plan for exams in exahm rooms
 	draft-si         --- draft plan for special interest students
 	draft-lba-rep    --- draft plan for repeater exams of lbas`,
-		Args: cobra.MinimumNArgs(1),
+		ValidArgs: []string{"exams-to-plan", "same-module-name", "constraints", "draft-muc.dai", "draft-fk08", "draft-fk10", "draft-fs", "draft-exahm", "draft-si", "draft-lba-rep"},
+		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {

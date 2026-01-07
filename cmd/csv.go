@@ -17,7 +17,8 @@ var (
 	exahm            - csv for EXaHM/SEB exams
 	lba-repeater     - csv for LBA repeater exams
 	`,
-		Args: cobra.MinimumNArgs(1),
+		ValidArgs: []string{"draft", "exahm", "lba-repeater"},
+		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {

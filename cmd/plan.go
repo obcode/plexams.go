@@ -22,7 +22,8 @@ var (
 	lock-exam ancode                               --- lock exam to slot
 	unlock-exam ancode                             --- unlock / allow moving
 	lock                                           --- lock the whole plan`,
-		Args: cobra.MinimumNArgs(1),
+		ValidArgs: []string{"pre-plan-exam", "pre-plan-room", "move-to", "change-room", "lock-exam", "unlock-exam", "lock", "fixslotsindb"},
+		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {

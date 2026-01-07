@@ -26,7 +26,8 @@ planned-ancodes		 	--- get planned ancodes
 stats                   --- get statistics
 student-regs ancode     --- get student-reqs for ancode
 student name            --- get info for student.`,
-		Args: cobra.MinimumNArgs(1),
+		ValidArgs: []string{"semester-config", "exam", "samename", "goslots", "request-rooms", "planned-room", "planned-ancodes", "stats", "student-regs", "student"},
+		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			p := initPlexamsConfig()
 			switch args[0] {

@@ -29,7 +29,8 @@ nta-with-room-alone 		  				--- send emails to students with room alone before p
 nta-planned 				  				--- send emails about rooms to all students with nta after planning
 cover-pages [all|<teacherid>] 				--- send emails with externally generated cover pages
 `,
-		Args: cobra.MinimumNArgs(1),
+		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "constraints", "prepared", "draft", "published-exams", "published-rooms", "invigilations", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages"},
+		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {

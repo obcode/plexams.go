@@ -13,7 +13,8 @@ var (
 		Short: "export [subcommand]",
 		Long: `Generate various CSVs.
 	planned-rooms - export rooms of planned exams.`,
-		Args: cobra.MinimumNArgs(1),
+		ValidArgs: []string{"planned-rooms"},
+		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {

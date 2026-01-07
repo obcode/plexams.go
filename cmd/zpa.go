@@ -21,7 +21,8 @@ var (
 	students    --- fetch zpa infos of students with registrations
 	studentregs --- post student registrations to zpa
 	upload-plan --- upload the exam list`,
-		Args: cobra.MinimumNArgs(1),
+		ValidArgs: []string{"teacher", "exams", "invigs", "students", "studentregs", "upload-plan"},
+		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {

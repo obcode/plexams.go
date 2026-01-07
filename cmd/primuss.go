@@ -19,7 +19,8 @@ var primussCmd = &cobra.Command{
 	fix-ancode program from to         			  --- fix ancode in primuss data (exam and studentregs)
 	rm-studentreg program ancode mtknr 			  --- remove a student registration
 	add-studentreg program ancode mtknr           --- add a student registration`,
-	Args: cobra.MinimumNArgs(1),
+	ValidArgs: []string{"add-ancode", "fix-ancode", "rm-studentreg", "add-studentreg"},
+	Args:      cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		plexams := initPlexamsConfig()
 		switch args[0] {

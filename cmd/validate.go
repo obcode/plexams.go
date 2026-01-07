@@ -26,7 +26,8 @@ var (
 	invigilator-reqs.  		--- check if invigilator requirements are met
 	invigilator-slots  		--- check if invigilator slots are okay
 `,
-		Args: cobra.MinimumNArgs(1),
+		ValidArgs: []string{"all", "conflicts", "constraints", "preplanned-exahm-rooms", "studentregs", "db", "rooms", "zpa", "invigilator-reqs", "invigilator-slots"},
+		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 

@@ -27,7 +27,8 @@ var (
 	self-invigilations                     --- set main examer as invigilator if possible
 	invigilator-todos                      --- cache snapshot
 	`,
-		Args: cobra.MinimumNArgs(1),
+		ValidArgs: []string{"connected-exams", "connected-exam", "connect-exam", "add-mucdai-exam", "generated-exams", "studentregs", "rooms-for-slots", "rooms-for-exams", "self-invigilations", "invigilator-todos"},
+		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {

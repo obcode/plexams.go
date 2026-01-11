@@ -325,19 +325,19 @@ func (p *Plexams) ValidateZPAInvigilators() error {
 			for _, zpaExam := range plannedExamsFromZPA {
 				if room.Ancode == zpaExam.Ancode &&
 					roomNameOK(room.RoomName, zpaExam.RoomName) {
-					if zpaExam.ReserveSupervisor != reserveInvigilator.Shortname {
+					if zpaExam.ReserveSupervisor != shorterName(reserveInvigilator.Shortname) {
 						validationMessages = append(validationMessages,
 							aurora.Sprintf(aurora.Red("%d. %s (%s), %s %s: wrong reserve invigilator in zpa: %s, wanted: %s"),
 								aurora.Magenta(zpaExam.Ancode), aurora.Magenta(zpaExam.Module), aurora.Magenta(zpaExam.MainExamer),
 								aurora.Magenta(zpaExam.Date), aurora.Magenta(zpaExam.Starttime),
-								aurora.Cyan(zpaExam.ReserveSupervisor), aurora.Cyan(reserveInvigilator.Shortname)))
+								aurora.Cyan(zpaExam.ReserveSupervisor), aurora.Cyan(shorterName(reserveInvigilator.Shortname))))
 					}
-					if zpaExam.Supervisor != invigilator.Shortname {
+					if zpaExam.Supervisor != shorterName(invigilator.Shortname) {
 						validationMessages = append(validationMessages,
 							aurora.Sprintf(aurora.Red("%d. %s (%s), %s %s: wrong invigilator in zpa: %s, wanted: %s"),
 								aurora.Magenta(zpaExam.Ancode), aurora.Magenta(zpaExam.Module), aurora.Magenta(zpaExam.MainExamer),
 								aurora.Magenta(zpaExam.Date), aurora.Magenta(zpaExam.Starttime),
-								aurora.Magenta(zpaExam.Supervisor), aurora.Cyan(invigilator.Shortname)))
+								aurora.Magenta(zpaExam.Supervisor), aurora.Cyan(shorterName(invigilator.Shortname))))
 					}
 					found = true
 				}
@@ -389,4 +389,20 @@ func (p *Plexams) ValidateZPAInvigilators() error {
 func roomNameOK(roomPlexams, roomZPA string) bool {
 	return roomPlexams == roomZPA ||
 		(strings.HasPrefix(roomPlexams, "ONLINE") && roomZPA == "ONLINE")
+}
+
+func shorterName(name string) string {
+	parts := strings.Split(name, ",")
+	if len(parts) != 2 {
+		return name
+	}
+
+	lastname := strings.TrimSpace(parts[0])
+	firstname := strings.TrimSpace(parts[1])
+
+	if len(firstname) == 0 {
+		return lastname
+	}
+
+	return fmt.Sprintf("%s, %s.", lastname, string(firstname[0]))
 }

@@ -163,6 +163,11 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool) er
 			}
 		}
 
+		if len(exams) == 0 {
+			log.Info().Str("mtknr", nta.Mtknr).Str("name", nta.Name).Msg("no exams planned by me")
+			continue
+		}
+
 		var to, cc []string
 
 		examsWithRoom := make([]NTAEmailExamAndRoom, 0, len(exams))

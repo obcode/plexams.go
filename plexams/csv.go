@@ -209,6 +209,10 @@ func (p *Plexams) CsvForLBARepeater(filename string) error {
 			continue
 		}
 
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+
 		mainExamer, err := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID)
 		if err != nil {
 			log.Error().Err(err).Msg("cannot get main examiner")

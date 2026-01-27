@@ -15,6 +15,7 @@ var (
 		Use:   "email [subcommand]",
 		Short: "send email",
 		Long: `Send emails.
+exahm                                       --- send email about EXaHM and SEB exams NEXT semester
 primuss-data [all|<ancode>]   				--- send emails to teachers about primuss data and nta
 primuss-data-unplanned <program> <ancode> 	--- send emails to teachers about primuss data and nta
 constraints 				  				--- ask for constraints
@@ -34,6 +35,11 @@ cover-pages [all|<teacherid>] 				--- send emails with externally generated cove
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
+			case "exahm":
+				err := plexams.SendEmailExaHM(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
 			case "primuss-data":
 				if len(args) < 2 {
 					log.Fatal("need ancode or all")

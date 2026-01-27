@@ -14,6 +14,8 @@ import (
 
 //go:embed tmpl/constraintsEmail.tmpl
 //go:embed tmpl/constraintsEmailHTML.tmpl
+//go:embed tmpl/exahmEmail.tmpl
+//go:embed tmpl/exahmEmailHTML.tmpl
 //go:embed tmpl/coverPageEmail.tmpl
 //go:embed tmpl/coverPageEmailHTML.tmpl
 //go:embed tmpl/draftEmailFS.tmpl

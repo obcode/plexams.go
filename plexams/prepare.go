@@ -2,7 +2,6 @@ package plexams
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -48,12 +47,6 @@ func (p *Plexams) PrepareStudentRegs() error {
 				primussAncodesToZpaAncodes[programmAndAncode{primussExam.Program, primussExam.AnCode}] = ancode
 			}
 		}
-	}
-
-	// TODO: rm me
-	for program, ancodes := range plannedZpaAncodes {
-		fmt.Printf(">>> %s <<<\n", program)
-		fmt.Printf("   %v\n\n", ancodes)
 	}
 
 	for k, v := range primussAncodesToZpaAncodes {
@@ -137,6 +130,18 @@ func (p *Plexams) PrepareStudentRegs() error {
 				log.Debug().Err(err).Str("mtknr", mtknr).Msg("cannot get zpa student")
 			}
 
+			nta, ok := ntaMap[mtknr]
+			if ok {
+				if regs[0].studentReg.Program != nta.Program {
+					log.Warn().Str("mtknr", mtknr).
+						Str("name", regs[0].studentReg.Name).
+						Str("studentRegProgram", regs[0].studentReg.Program).
+						Str("ntaProgram", nta.Program).
+						Msg("mismatch between studentreg program and nta program => not setting nta")
+					nta = nil
+				}
+			}
+
 			studentRegsSlice = append(studentRegsSlice, &model.Student{
 				Mtknr:           mtknr,
 				Program:         regs[0].studentReg.Program,
@@ -144,7 +149,7 @@ func (p *Plexams) PrepareStudentRegs() error {
 				Name:            regs[0].studentReg.Name,
 				Regs:            ancodes,
 				RegsWithProgram: regsWithProgram,
-				Nta:             ntaMap[mtknr],
+				Nta:             nta,
 				ZpaStudent:      zpaStudent,
 			})
 		}

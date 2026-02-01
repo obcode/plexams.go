@@ -3,6 +3,7 @@ extend type Query {
   invigilatorsWithReq: [Invigilator!]!
   roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
   invigilatorsForDay(day: Int!): InvigilatorsForDay
+  invigilator(room: String!, day: Int!, time: Int!): Teacher
 }
 
 type Invigilation {

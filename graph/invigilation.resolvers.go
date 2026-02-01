@@ -29,3 +29,8 @@ func (r *queryResolver) RoomsWithInvigilationsForSlot(ctx context.Context, day i
 func (r *queryResolver) InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error) {
 	return r.plexams.InvigilatorsForDay(ctx, day)
 }
+
+// Invigilator is the resolver for the invigilator field.
+func (r *queryResolver) Invigilator(ctx context.Context, room string, day int, time int) (*model.Teacher, error) {
+	return r.plexams.Invigilator(ctx, room, day, time)
+}

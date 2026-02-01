@@ -759,3 +759,7 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 	}
 	return slot, nil
 }
+
+func (p *Plexams) Invigilator(ctx context.Context, room string, day int, time int) (*model.Teacher, error) {
+	return p.dbClient.GetInvigilatorForRoom(ctx, room, day, time)
+}

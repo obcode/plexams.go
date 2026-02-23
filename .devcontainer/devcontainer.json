@@ -76,6 +76,7 @@
     }
   },
   "postCreateCommand": "go install github.com/HenriBeck/gowatch@latest; sudo chown -R ubuntu:ubuntu /shared/bin ; sudo chown -R ubuntu:ubuntu /workspace/plexams.go",
+  "postStartCommand": "/shared/bin/gowatch",
   "remoteEnv": {
     "GOBIN": "/shared/bin",
     "PATH": "${containerEnv:PATH}:/shared/bin"

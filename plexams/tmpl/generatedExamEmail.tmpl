@@ -26,17 +26,17 @@ geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtig
 {{ range .Exam.PrimussExams }}
   {{ if ne (len .StudentRegs) 0 }}
   - Studiengang {{ .Exam.Program }}
-    
-      Anmeldungen:    
+
+      Anmeldungen:
         {{- range .StudentRegs }}
           - {{ .Name }}  {{ if ne .ZpaStudent nil }}({{ .ZpaStudent.Gender }}) <{{ .ZpaStudent.Email }}>{{ end }}
         {{- end}}
-      
+
       {{if ne (len .Ntas) 0 -}}
         Studierende mit Nachteilsausgleich im Studiengang {{ .Exam.Program }} (auch in der Liste aller Anmeldungen enthalten)
           {{ range .Ntas -}}
             - {{.Name}}: {{.Compensation}}
-          {{- end -}}      
+          {{- end -}}
       {{- else -}}
         Im Studiengang {{ .Exam.Program }} sind mir keine Nachteilsausgleiche für diese Prüfung bekannt.
       {{- end -}}
@@ -49,6 +49,5 @@ geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtig
 Mit freundlichen Grüßen
 {{ .PlanerName }}
 
--- 
+--
 Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
-

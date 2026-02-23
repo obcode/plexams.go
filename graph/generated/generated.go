@@ -4378,7 +4378,8 @@ type ZPAStudent {
   email: String!
   gender: String!
   group: String!
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 

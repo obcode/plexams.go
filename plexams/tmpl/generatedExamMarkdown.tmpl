@@ -10,7 +10,7 @@
 ### Studierende mit Nachteilsausgleich (auch in der Liste aller Anmeldungen enthalten)
 {{ range $i, $reg := .Ntas}}
 {{ add $i 1 }}. {{$reg.Name}}: {{$reg.Compensation}}
-{{- end -}}      
+{{- end -}}
 {{- else -}}
 Keine Nachteilsausgleiche bekannt.
 {{- end -}}

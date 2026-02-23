@@ -1,0 +1,33 @@
+minimum_pre_commit_version: "3.5.0"
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: gofmt
+        args: [-w]
+        language: system
+        types: [go]
+
+      - id: go-vet
+        name: go vet
+        entry: go vet ./...
+        language: system
+        pass_filenames: false
+        types: [go]
+
+      - id: golangci-lint-v2
+        name: golangci-lint-v2
+        entry: golangci-lint-v2 run
+        language: system
+        pass_filenames: false
+        types: [go]

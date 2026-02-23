@@ -60,7 +60,7 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 			for _, room := range exam.PlannedRooms {
 				var sb strings.Builder
 				if room.Handicap {
-					sb.WriteString(fmt.Sprintf("NTA %d Min., ", room.Duration))
+					fmt.Fprintf(&sb, "NTA %d Min., ", room.Duration)
 				}
 				if room.Reserve {
 					sb.WriteString("Reserveraum, nicht veröffentlichen, ")
@@ -68,7 +68,7 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 				if len(room.StudentsInRoom) == 1 {
 					sb.WriteString("1 Studierender eingeplant")
 				} else {
-					sb.WriteString(fmt.Sprintf("%d Studierende eingeplant", len(room.StudentsInRoom)))
+					fmt.Fprintf(&sb, "%d Studierende eingeplant", len(room.StudentsInRoom))
 				}
 				csvEntries = append(csvEntries, CsvExam{
 					Ancode:     primussAncode,

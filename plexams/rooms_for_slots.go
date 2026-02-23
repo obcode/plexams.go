@@ -240,9 +240,9 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms() (map[string]set.Set[SlotNumber]
 		for _, slot := range p.semesterConfig.Slots {
 			if entry.From.Before(slot.Starttime.Local()) &&
 				entry.Until.After(slot.Starttime.Local().Add(89*time.Minute)) {
-				sb.WriteString(fmt.Sprintf("(%d, %d), rooms: ", slot.DayNumber, slot.SlotNumber))
+				fmt.Fprintf(&sb, "(%d, %d), rooms: ", slot.DayNumber, slot.SlotNumber)
 				for _, roomName := range entry.Rooms {
-					sb.WriteString(fmt.Sprintf("%s, ", roomName))
+					fmt.Fprintf(&sb, "%s, ", roomName)
 					if _, ok := restrictedSlots[roomName]; !ok {
 						restrictedSlots[roomName] = set.NewSet[SlotNumber]()
 					}
@@ -336,7 +336,7 @@ func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[s
 						if slot.Starttime.Local().Year() == rawDate.Year() &&
 							slot.Starttime.Local().Month() == rawDate.Month() &&
 							slot.Starttime.Local().Day() == rawDate.Day() {
-							sb.WriteString(fmt.Sprintf("(%d, %d), ", slot.DayNumber, slot.SlotNumber))
+							fmt.Fprintf(&sb, "(%d, %d), ", slot.DayNumber, slot.SlotNumber)
 							notAllowedSlots.Add(SlotNumber{
 								day:  slot.DayNumber,
 								slot: slot.SlotNumber,

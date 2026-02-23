@@ -58,7 +58,7 @@ func (p *Plexams) ValidateStudentRegs() error {
 						Msg("cannot get zpa exam for student reg")
 					continue
 				}
-				sb.WriteString(fmt.Sprintf("%s/%d: %s (%s)\n", reg.Program, zpaExam.AnCode, zpaExam.Module, zpaExam.MainExamer))
+				fmt.Fprintf(&sb, "%s/%d: %s (%s)\n", reg.Program, zpaExam.AnCode, zpaExam.Module, zpaExam.MainExamer)
 			}
 
 			validationMessages = append(validationMessages, aurora.Sprintf(

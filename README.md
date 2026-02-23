@@ -103,3 +103,16 @@ bis hier
 14. Vorläufigen Plan ins ZPA und an Fachschaft
 15. Plan im ZPA veröffentlichen
 16. E-Mail Anforderungen an die Aufsichtenplanung
+
+## Semester-Config initialisieren
+
+Neue Semesterdatei interaktiv anlegen:
+
+```
+plexams.go init 2026-SS
+```
+
+- Schreibt am Ende `<semester>.yaml` in den konfigurierten `semester-path`.
+- Eingaben sind interaktiv; `Enter` übernimmt den angezeigten Default.
+- Bei Listenfeldern (z. B. `slots`, `forbiddenDays`, `additionalexamer`) löscht `-` den Default und speichert eine leere Liste.
+- `slots` haben als Fallback die Standardwerte `08:30,10:30,12:30,14:30,16:30`.

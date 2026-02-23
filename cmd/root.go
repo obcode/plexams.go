@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -85,11 +86,28 @@ func initConfig() {
 		viper.SetConfigName(semester)
 		err = viper.MergeInConfig()
 		if err != nil {
+			var notFound viper.ConfigFileNotFoundError
+			if isInitCommand() && errors.As(err, &notFound) {
+				return
+			}
 			panic(fmt.Errorf("%s: should be %s.yml", err, "plexams"))
 		}
 	} else {
+		var notFound viper.ConfigFileNotFoundError
+		if isInitCommand() && errors.As(err, &notFound) {
+			return
+		}
 		panic(fmt.Errorf("fatal error config file: %s", err))
 	}
+}
+
+func isInitCommand() bool {
+	for _, arg := range os.Args[1:] {
+		if arg == "init" {
+			return true
+		}
+	}
+	return false
 }
 
 func initPlexamsConfig() *plexams.Plexams {

@@ -31,8 +31,8 @@ FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+WORKDIR /app/
 
 COPY --from=builder /app/plexams.go .
 
-CMD ["./plexams.go"]
+ENTRYPOINT ["/app/plexams.go"]

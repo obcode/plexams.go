@@ -29,7 +29,7 @@ RUN go build -ldflags "\
 # Final stage
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app/
 

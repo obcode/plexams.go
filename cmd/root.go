@@ -69,10 +69,10 @@ func initConfig() {
 		er(err)
 	}
 
-	viper.AddConfigPath(home)
 	viper.SetConfigName(".plexams")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath(home)
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {
@@ -82,15 +82,28 @@ func initConfig() {
 		p := viper.GetString("semester-path")
 		p = os.ExpandEnv(p)      // $HOME, $USER, ...
 		p, _ = homedir.Expand(p) // ~ und ~user
-		viper.AddConfigPath(p)
-		viper.SetConfigName(semester)
-		err = viper.MergeInConfig()
+
+		semesterViper := viper.New()
+		semesterViper.SetConfigName(semester)
+		semesterViper.SetConfigType("yaml")
+		semesterViper.AddConfigPath(".")
+		semesterViper.AddConfigPath(home)
+		if p != "" {
+			semesterViper.AddConfigPath(p)
+		}
+
+		err = semesterViper.ReadInConfig()
 		if err != nil {
 			var notFound viper.ConfigFileNotFoundError
 			if isInitCommand() && errors.As(err, &notFound) {
 				return
 			}
 			panic(fmt.Errorf("%s: should be %s.yml", err, "plexams"))
+		}
+
+		err = viper.MergeConfigMap(semesterViper.AllSettings())
+		if err != nil {
+			panic(fmt.Errorf("cannot merge semester config: %w", err))
 		}
 	} else {
 		var notFound viper.ConfigFileNotFoundError

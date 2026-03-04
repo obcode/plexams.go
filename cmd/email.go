@@ -15,20 +15,20 @@ var (
 		Use:   "email [subcommand]",
 		Short: "send email",
 		Long: `Send emails.
-exahm                                       --- send email about EXaHM and SEB exams NEXT semester
-primuss-data [all|<ancode>]   				--- send emails to teachers about primuss data and nta
-primuss-data-unplanned <program> <ancode> 	--- send emails to teachers about primuss data and nta
-constraints 				  				--- ask for constraints
-prepared 						  			--- announce exams to plan and constraints
-draft 						  				--- announce draft plan
-published-exams 			  				--- announce published exams
-published-rooms 			  				--- announce published rooms
-invigilations 				  				--- send email requesting invigilations constraints
-published-invigilations       				--- announce published invigilations
-new-nta 				  				    --- send emails to examers about new nta
-nta-with-room-alone 		  				--- send emails to students with room alone before planning
-nta-planned 				  				--- send emails about rooms to all students with nta after planning
-cover-pages [all|<teacherid>] 				--- send emails with externally generated cover pages
+exahm                                         --- send email about EXaHM and SEB exams NEXT semester
+primuss-data [all|<ancode>]                   --- send emails to teachers about primuss data and nta
+primuss-data-unplanned <program> <ancode>     --- send emails to teachers about primuss data and nta
+constraints                                   --- ask for constraints
+prepared                                      --- announce exams to plan and constraints
+draft                                         --- announce draft plan
+published-exams                               --- announce published exams
+published-rooms                               --- announce published rooms
+invigilations                                 --- send email requesting invigilations constraints
+published-invigilations                       --- announce published invigilations
+new-nta                                       --- send emails to examers about new nta
+nta-with-room-alone                           --- send emails to students with room alone before planning
+nta-planned                                   --- send emails about rooms to all students with nta after planning
+cover-pages [all|<teacherid>]                 --- send emails with externally generated cover pages
 `,
 		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "constraints", "prepared", "draft", "published-exams", "published-rooms", "invigilations", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages"},
 		Args:      cobra.MinimumNArgs(1),

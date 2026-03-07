@@ -42,7 +42,7 @@ var (
 				t := true
 				exams, err := plexams.GetZPAExams(context.Background(), &t)
 				if err != nil {
-					log.Fatal().Err(err).Msg("cannot get teachers")
+					log.Fatal().Err(err).Msg("cannot get exams")
 				}
 				for _, exam := range exams {
 					fmt.Printf("%3d. %s (%s): %v\n", exam.AnCode, exam.Module, exam.MainExamer, exam.PrimussAncodes)

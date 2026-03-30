@@ -4,7 +4,7 @@ sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA
 <p>Hallo {{ .Teacher.Fullname }},</p>
 
 {{ if not .HasStudentRegs }}
-<p><b>Für Ihre Prüfung <b>{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}</b> liegen überhaupt keine Anmeldungen vor, daher werden wir sie nicht
+<p><b>Für Ihre Prüfung {{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }} liegen überhaupt keine Anmeldungen vor, daher werden wir sie nicht
 planen.</b> Falls die Prüfung dennoch eingeplant werden soll, teilen Sie uns das bitte unmittelbar
 mit.</p>
 

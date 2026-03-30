@@ -3,25 +3,25 @@
 Hallo {{ .Teacher.Fullname }},
 
 {{ if not .HasStudentRegs }}
-Für Ihre Prüfung "{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}" liegen überhaupt keine Anmeldungen vor, daher werde ich sie nicht
+Für Ihre Prüfung "{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}" liegen überhaupt keine Anmeldungen vor, daher werden wir sie nicht
 planen.
 
-Falls die Prüfung dennoch eingeplant werden soll, teilen Sie mir das bitte unmittelbar mit.
+Falls die Prüfung dennoch eingeplant werden soll, teilen Sie uns das bitte unmittelbar mit.
 {{ else }}
-Ihre Prüfung "{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}" plane ich auf Grundlage folgender Daten
+Ihre Prüfung "{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}" planen wir auf Grundlage folgender Daten
 (im Anhang als CSV und Markdown).
 
 Die Prüfung findet im Prüfungszeitraum vom {{ .FromFK07Date }} bis {{ .ToDate }} am Campus Lothstrasse statt.
 
 Sollten die Daten aus Ihrer Sicht fehlerhaft sein, nehmen Sie bitte umgehend mit
-mir Kontakt auf; insbesondere dann, wenn die Anzahl der Anmeldungen stark von der
+uns Kontakt auf; insbesondere dann, wenn die Anzahl der Anmeldungen stark von der
 tatsächlichen Anzahl zu Prüfenden abweicht (z.B. auf Grund des Nichtbestehens einer
 Zulassungsvoraussetzung).
 Öffnen Sie dazu ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13.
 
-Sofern mir bekannt, sind Studierende mit Nachteilsausgleich unten angegeben.
+Sofern uns bekannt, sind Studierende mit Nachteilsausgleich unten angegeben.
 Sollten Ihnen weitere Studierende mit Nachteilsausgleich bekannt sein oder bekannt werden,
-geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtigen kann.
+geben Sie uns bitte sofort Bescheid, damit wir sie in der Planung berücksichtigen können.
 
 {{ range .Exam.PrimussExams }}
   {{ if ne (len .StudentRegs) 0 }}
@@ -38,7 +38,7 @@ geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtig
             - {{.Name}}: {{.Compensation}}
           {{- end -}}
       {{- else -}}
-        Im Studiengang {{ .Exam.Program }} sind mir keine Nachteilsausgleiche für diese Prüfung bekannt.
+        Im Studiengang {{ .Exam.Program }} sind uns keine Nachteilsausgleiche für diese Prüfung bekannt.
       {{- end -}}
   {{- else -}}
   - Studiengang {{ .Exam.Program }}: Keine Anmeldungen

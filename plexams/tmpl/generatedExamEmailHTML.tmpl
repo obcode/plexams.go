@@ -4,26 +4,26 @@ sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA
 <p>Hallo {{ .Teacher.Fullname }},</p>
 
 {{ if not .HasStudentRegs }}
-<p><b>Für Ihre Prüfung <b>{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}</b> liegen überhaupt keine Anmeldungen vor, daher werde ich sie nicht
-planen.</b> Falls die Prüfung dennoch eingeplant werden soll, teilen Sie mir das bitte unmittelbar
+<p><b>Für Ihre Prüfung <b>{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}</b> liegen überhaupt keine Anmeldungen vor, daher werden wir sie nicht
+planen.</b> Falls die Prüfung dennoch eingeplant werden soll, teilen Sie uns das bitte unmittelbar
 mit.</p>
 
 {{ else }}
 
-<p>Ihre Prüfung <b>{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}</b> plane ich auf Grundlage folgender Daten (im Anhang als CSV und Markdown).</p>
+<p>Ihre Prüfung <b>{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}</b> planen wir auf Grundlage folgender Daten (im Anhang als CSV und Markdown).</p>
 
 <p>Die Prüfung findet im Prüfungszeitraum vom {{ .FromFK07Date }} bis {{ .ToDate }} am Campus Lothstrasse statt.</p>
 
 <p>Sollten die Daten aus Ihrer Sicht fehlerhaft sein, nehmen Sie bitte umgehend mit
-mir Kontakt auf; insbesondere dann, wenn die Anzahl der Anmeldungen stark von der
+uns Kontakt auf; insbesondere dann, wenn die Anzahl der Anmeldungen stark von der
 tatsächlichen Anzahl zu Prüfenden abweicht (z.B. auf Grund des Nichtbestehens einer
 Zulassungsvoraussetzung). Öffnen Sie dazu ein JIRA-Ticket unter
 <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">
 https://jira.cc.hm.edu/servicedesk/customer/portal/13</a></p>
 
-<p>Sofern mir bekannt, sind Studierende mit Nachteilsausgleich unten angegeben.
+<p>Sofern uns bekannt, sind Studierende mit Nachteilsausgleich unten angegeben.
 Sollten Ihnen weitere Studierende mit Nachteilsausgleich bekannt sein oder bekannt werden,
-geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtigen kann.</p>
+geben Sie uns bitte sofort Bescheid, damit wir sie in der Planung berücksichtigen können.</p>
 
 <ul>
 {{ range .Exam.PrimussExams -}}
@@ -60,7 +60,7 @@ geben Sie mir bitte sofort Bescheid, damit ich sie in der Planung berücksichtig
       {{ else }}
 
         <br/><br/>
-        Im Studiengang {{ .Exam.Program }} sind mir keine Nachteilsausgleiche für diese Prüfung bekannt.
+        Im Studiengang {{ .Exam.Program }} sind uns keine Nachteilsausgleiche für diese Prüfung bekannt.
         <br/><br/>
 
       {{ end }}

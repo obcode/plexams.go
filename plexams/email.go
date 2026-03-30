@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/smtp"
 	"net/textproto"
+	"strings"
 
 	// TODO: Ersetzen durch github.com/wneessen/go-mail
 
@@ -80,7 +81,11 @@ func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte
 	}
 
 	if noreply {
-		e.ReplyTo = []string{"obraun+noreply@hm.edu"}
+		replyTo := "noreply@hm.edu"
+		if localPart, domain, ok := strings.Cut(p.planer.Email, "@"); ok && localPart != "" && domain != "" {
+			replyTo = fmt.Sprintf("%s+pruefungsplanung_noreply@%s", localPart, domain)
+		}
+		e.ReplyTo = []string{replyTo}
 	}
 
 	err := e.SendWithStartTLS(fmt.Sprintf("%s:%d", p.email.server, p.email.port),

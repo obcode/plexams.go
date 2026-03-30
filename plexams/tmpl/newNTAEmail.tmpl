@@ -1,19 +1,19 @@
 Liebe Prüfende,
 
-anbei übersende ich Ihnen Informationen bzgl. eines Studierenden mit einem neuen
+anbei übersenden wir Ihnen Informationen bzgl. eines Studierenden mit einem neuen
 Anspruch auf Nachteilsausgleich.
 
 {{ .Student.Name }}
 {{ if ne .Student.ZpaStudent nil }}({{ .Student.ZpaStudent.Gender }}) <{{ .Student.ZpaStudent.Email }}>{{ end }}
 
 Der Nachteilsausgleich vom {{ .Student.Nta.From }}
-lautet sinngemäß "{{ .Student.Nta.Compensation }}" und beinhaltet für meine Planung:
+lautet sinngemäß "{{ .Student.Nta.Compensation }}" und beinhaltet für unsere Planung:
 
 {{ if ge .Student.Nta.DeltaDurationPercent 0 }}- {{ .Student.Nta.DeltaDurationPercent }}% Verlängerung{{ end }}
 {{ if .Student.Nta.NeedsRoomAlone }}- Prüfung in eigenem Raum{{ end }}
 {{ if .Student.Nta.NeedsHardware }}- Prüfung mit eigener/besonderer Hardware{{ end }}
 
-Der Studierende hat sich für folgende, von mir geplanten, Prüfungen angemeldet:
+Der Studierende hat sich für folgende, von uns geplanten, Prüfungen angemeldet:
 
 {{ range .Exams -}}
 - {{ .Ancode }}. {{ .ZpaExam.Module }} ({{ .ZpaExam.MainExamer }})

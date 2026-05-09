@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
 )
@@ -18,6 +20,7 @@ var (
 		Long: `Get info.
 semester-config		    --- print config
 exam [ancode]           --- print info about exam
+not-planned-by-me       --- print info about exams not planned by me
 samename                --- exams with same module name
 goslots                 --- info about slots for GO/GN
 request-rooms           --- which rooms to request
@@ -46,6 +49,28 @@ student name            --- get info for student.`,
 					log.Fatalf("got error: %v\n", err)
 				}
 				fmt.Println(str)
+			case "not-planned-by-me":
+				ctx := context.Background()
+				fromZPA := false
+				exams, err := p.GetZPAExams(ctx, &fromZPA)
+				if err != nil {
+					panic(err)
+				}
+				constraints, err := p.Constraints(ctx)
+				if err != nil {
+					panic(err)
+				}
+				examsNotPlannedByMe := make([]*model.ZPAExam, 0)
+				for _, exam := range exams {
+					for _, constraint := range constraints {
+						if exam.AnCode == constraint.Ancode && constraint.NotPlannedByMe {
+							examsNotPlannedByMe = append(examsNotPlannedByMe, exam)
+						}
+					}
+				}
+				for _, exam := range examsNotPlannedByMe {
+					fmt.Printf("%3d. %s (%s)\n", exam.AnCode, exam.Module, exam.MainExamer)
+				}
 			case "samename":
 				p.PrintSameName()
 			case "goslots":

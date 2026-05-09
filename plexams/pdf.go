@@ -1,6 +1,7 @@
 package plexams
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -33,6 +34,31 @@ func (p *Plexams) semesterFull() string {
 }
 
 func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) error {
+	m, err := p.generateExamsToPlanMaroto(ctx)
+	if err != nil {
+		return err
+	}
+	err = m.OutputFileAndClose(outfile)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not save PDF")
+		return err
+	}
+	return nil
+}
+
+func (p *Plexams) generateExamsToPlanBuffer(ctx context.Context) (*bytes.Buffer, error) {
+	m, err := p.generateExamsToPlanMaroto(ctx)
+	if err != nil {
+		return nil, err
+	}
+	buf, err := m.Output()
+	if err != nil {
+		return nil, err
+	}
+	return &buf, nil
+}
+
+func (p *Plexams) generateExamsToPlanMaroto(ctx context.Context) (pdf.Maroto, error) {
 	m := pdf.NewMaroto(consts.Portrait, consts.A4)
 	m.SetPageMargins(10, 15, 10)
 
@@ -76,6 +102,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 	exams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("error while getting exams")
+		return nil, err
 	}
 
 	grayColor := color.Color{
@@ -133,12 +160,7 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 		Line:                 false,
 	})
 
-	err = m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
+	return m, nil
 }
 
 func (p *Plexams) SameModulNames(ctx context.Context, outfile string) error {
@@ -239,7 +261,33 @@ func (p *Plexams) SameModulNames(ctx context.Context, outfile string) error {
 	}
 	return nil
 }
+
 func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
+	m, err := p.constraintsMaroto(ctx)
+	if err != nil {
+		return err
+	}
+	err = m.OutputFileAndClose(outfile)
+	if err != nil {
+		log.Error().Err(err).Msg("Could not save PDF")
+		return err
+	}
+	return nil
+}
+
+func (p *Plexams) constraintsBuffer(ctx context.Context) (*bytes.Buffer, error) {
+	m, err := p.constraintsMaroto(ctx)
+	if err != nil {
+		return nil, err
+	}
+	buf, err := m.Output()
+	if err != nil {
+		return nil, err
+	}
+	return &buf, nil
+}
+
+func (p *Plexams) constraintsMaroto(ctx context.Context) (pdf.Maroto, error) {
 	m := pdf.NewMaroto(consts.Landscape, consts.A4)
 	m.SetPageMargins(10, 15, 10)
 
@@ -283,22 +331,58 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 	m.Row(12, func() {
 		m.Col(12, func() {
 			m.Text(
-				`Für alle Prüfungen, die hier nicht enthalten sind, sind mir keine Einschränkungen für die Planung bekannt.`, props.Text{
+				`Für alle Prüfungen, die hier nicht enthalten sind, sind uns keine Einschränkungen für die Planung bekannt.`, props.Text{
 					Style: consts.Normal,
 					Align: consts.Center,
 				})
 		})
 	})
 
-	header := []string{"AnCode", "Prüfender", "Modul", "Gruppe(n)", "Form", "Constraints"}
+	m.Row(20, func() {
+		m.Col(12, func() {
+			m.Text(
+				"Sortiert nach dem Namen des Prüferenden.", props.Text{
+					Top:   5,
+					Style: consts.Bold,
+					Align: consts.Center,
+				})
+		})
+	})
 
-	exams, err := p.ZpaExamsToPlanWithConstraints(ctx)
+	header := []string{"AnCode", "Prüfender", "Modul", "Gruppe(n)", "Constraints"}
+
+	examsWithConstraints, err := p.ZpaExamsToPlanWithConstraints(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get zpa exams to plan")
+		return nil, err
+	}
+
+	examsByExamers := make(map[string][]*model.ZPAExamWithConstraints)
+	for _, exam := range examsWithConstraints {
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+		examsByExamer, ok := examsByExamers[exam.ZpaExam.MainExamer]
+		if !ok {
+			examsByExamer = make([]*model.ZPAExamWithConstraints, 0, 1)
+		}
+		examsByExamers[exam.ZpaExam.MainExamer] = append(examsByExamer, exam)
+	}
+
+	keys := make([]string, 0, len(examsByExamers))
+	for k := range examsByExamers {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	exams := make([]*model.ZPAExamWithConstraints, 0, len(examsWithConstraints))
+
+	for _, key := range keys {
+		exams = append(exams, examsByExamers[key]...)
 	}
 
 	contents := make([][]string, 0)
-	contents = append(contents, []string{"", "", "", "", ""})
+	contents = append(contents, []string{"", "", "", ""})
 
 	for _, exam := range exams {
 		if exam.Constraints != nil {
@@ -306,18 +390,17 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 			module := exam.ZpaExam.Module
 			examiner := exam.ZpaExam.MainExamer
 			group := fmt.Sprintf("%v", exam.ZpaExam.Groups)
-			examType := exam.ZpaExam.ExamTypeFull
 
-			contents = append(contents, []string{ancode, examiner, module, group, examType, ""})
+			contents = append(contents, []string{ancode, examiner, module, group, "Constraints:"})
 
 			constraints := exam.Constraints
 
 			if constraints.NotPlannedByMe {
-				contents = append(contents, []string{"", "", "", "", "", "Termin wird von anderer Fakultät vorgegeben"})
+				contents = append(contents, []string{"", "", "", "", "- Termin wird von anderer Fakultät vorgegeben"})
 			}
 
 			if constraints.Online {
-				contents = append(contents, []string{"", "", "", "", "", "Fernprüfung gem. BayFEV "})
+				contents = append(contents, []string{"", "", "", "", "- Fernprüfung gem. BayFEV "})
 			}
 
 			if len(constraints.ExcludeDays) > 0 {
@@ -330,7 +413,7 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 					}
 				}
 
-				contents = append(contents, []string{"", "", "", "", "", fmt.Sprintf("Nicht am %s", dayString)})
+				contents = append(contents, []string{"", "", "", "", fmt.Sprintf("- Nicht am %s", dayString)})
 			}
 
 			if len(constraints.PossibleDays) > 0 {
@@ -343,7 +426,7 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 					}
 				}
 
-				contents = append(contents, []string{"", "", "", "", "", fmt.Sprintf("Möglich am %s", dayString)})
+				contents = append(contents, []string{"", "", "", "", fmt.Sprintf("- Möglich am %s", dayString)})
 			}
 
 			if len(constraints.SameSlot) > 0 {
@@ -353,23 +436,23 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 						log.Error().Err(err).Int("ancode", exam.ZpaExam.AnCode).Int("other ancode", sameSlotAncode).
 							Msg("cannot got exam for other ancode")
 					}
-					contents = append(contents, []string{"", "", "", "", "",
-						fmt.Sprintf("zeitgleich: %d. %s, %s, %v", sameSlotAncode, otherExam.MainExamer, otherExam.Module, otherExam.Groups)})
+					contents = append(contents, []string{"", "", "", "",
+						fmt.Sprintf("- zeitgleich: %d. %s, %s, %v", sameSlotAncode, otherExam.MainExamer, otherExam.Module, otherExam.Groups)})
 				}
 			}
 
 			if constraints.RoomConstraints != nil {
 				if constraints.RoomConstraints.Seb {
-					contents = append(contents, []string{"", "", "", "", "", "SafeExamBrowser"})
+					contents = append(contents, []string{"", "", "", "", "- SafeExamBrowser"})
 				}
 				if constraints.RoomConstraints.Exahm {
-					contents = append(contents, []string{"", "", "", "", "", "EXaHM"})
+					contents = append(contents, []string{"", "", "", "", "- EXaHM"})
 				}
 				if constraints.RoomConstraints.Lab {
-					contents = append(contents, []string{"", "", "", "", "", "Labor"})
+					contents = append(contents, []string{"", "", "", "", "- Labor"})
 				}
 				if constraints.RoomConstraints.PlacesWithSocket {
-					contents = append(contents, []string{"", "", "", "", "", "Steckdosen an den Sitzplätzen"})
+					contents = append(contents, []string{"", "", "", "", "- Steckdosen an den Sitzplätzen"})
 				}
 			}
 
@@ -382,28 +465,23 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 			// 	contents = append(contents, []string{"", ancode, examiner, group, examType, ""})
 			// }
 
-			contents = append(contents, []string{"", "", "", "", ""})
+			contents = append(contents, []string{"", "", "", ""})
 		}
 	}
 
 	m.TableList(header, contents, props.TableList{
 		HeaderProp: props.TableListContent{
 			Size:      9,
-			GridSizes: []uint{1, 1, 2, 1, 2, 5},
+			GridSizes: []uint{1, 1, 3, 2, 5},
 		},
 		ContentProp: props.TableListContent{
 			Size:      8,
-			GridSizes: []uint{1, 1, 2, 1, 2, 5},
+			GridSizes: []uint{1, 1, 3, 2, 5},
 		},
 		Align:              consts.Left,
 		HeaderContentSpace: 1,
 		Line:               true,
 	})
 
-	err = m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
+	return m, nil
 }

@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"time"
 
+	"github.com/jordan-wright/email"
 	"github.com/logrusorgru/aurora"
 	"github.com/rs/zerolog/log"
 	"github.com/theckman/yacspin"
@@ -63,7 +64,7 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool) error {
 		return err
 	}
 
-	subject := fmt.Sprintf("[Prüfungsplanung %s] Informationen zu den zu planenden Prüfungen und Besonderheiten",
+	subject := fmt.Sprintf("[Prüfungsplanung %s] Informationen zu den zu planenden Prüfungen und Besonderheiten - Rückmeldungen ASAP",
 		p.semester)
 
 	err = spinner.Stop()
@@ -82,12 +83,38 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool) error {
 		to = []string{"galority@gmail.com"}
 	}
 
+	examsToPlan, err := p.generateExamsToPlanBuffer(ctx)
+	if err != nil {
+		panic(err)
+	}
+	constraints, err := p.constraintsBuffer(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	attachments := []*email.Attachment{
+		{
+			Filename:    "ExamsToPlan.pdf",
+			ContentType: "text/pdf; charset=\"utf-8\"",
+			Header:      map[string][]string{},
+			Content:     examsToPlan.Bytes(),
+			HTMLRelated: false,
+		},
+		{
+			Filename:    "Constraints.pdf",
+			ContentType: "text/pdf; charset=\"utf-8\"",
+			Header:      map[string][]string{},
+			Content:     constraints.Bytes(),
+			HTMLRelated: false,
+		},
+	}
+
 	return p.sendMail(to,
 		nil,
 		subject,
 		bufText.Bytes(),
 		bufHTML.Bytes(),
-		nil,
+		attachments,
 		true,
 	)
 }

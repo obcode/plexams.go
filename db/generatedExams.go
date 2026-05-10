@@ -79,7 +79,7 @@ func (db *DB) GetGeneratedExam(ctx context.Context, ancode int) (*model.Generate
 
 	res := collection.FindOne(ctx, bson.D{{Key: "ancode", Value: ancode}})
 	if res.Err() != nil {
-		log.Error().Err(res.Err()).Int("ancode", ancode).Msg("cannot get generated exam")
+		log.Debug().Err(res.Err()).Int("ancode", ancode).Msg("cannot get generated exam")
 		return nil, res.Err()
 	}
 

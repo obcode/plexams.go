@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -18,6 +19,7 @@ var (
 	pre-plan-exam ancode day slot                  --- move [ancode] to [day number] [slot number]
 	pre-plan-room ancode roomname [mtknr/reserve]  --- plan [room name] for [ancode]
 	move-to ancode day slot                        --- move [ancode] to [day number] [slot number]
+	other-fk ancode time                           --- plan [ancode] from other faculty to [time]
 	change-room ancode oldroom newroom             --- change room for [ancode] from [oldroom] to [newroom]
 	lock-exam ancode                               --- lock exam to slot
 	unlock-exam ancode                             --- unlock / allow moving
@@ -74,6 +76,33 @@ var (
 				}
 				if success {
 					fmt.Printf("successfully moved exam %d to (%d,%d)\n", ancode, day, slot)
+				}
+				str, err := plexams.ExamInfo(ancode)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+				fmt.Println(str)
+			case "other-fk":
+				if len(args) < 3 {
+					log.Fatal("need ancode, time")
+				}
+				ancode, err := strconv.Atoi(args[1])
+				if err != nil {
+					log.Fatalf("cannot convert %s to int", args[1])
+				}
+				slottime, err := time.ParseInLocation("02.01.06,15:04", args[2], time.Local)
+				if err != nil {
+					log.Fatalf("cannot convert \"%s\" to time, must be in format \"02.01.06,15:04\"\n", args[2])
+				}
+
+				success, err := plexams.AddExamToSlottime(context.Background(), ancode, slottime)
+
+				if err != nil {
+					fmt.Printf("error: %v\n", err)
+					os.Exit(1)
+				}
+				if success {
+					fmt.Printf("successfully moved exam %d to (%s)\n", ancode, slottime.String())
 				}
 				str, err := plexams.ExamInfo(ancode)
 				if err != nil {

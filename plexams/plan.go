@@ -11,6 +11,48 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, time time.Time) (bool, error) {
+	exam, err := p.GetZpaExamByAncode(ctx, ancode)
+	duration := 90 // good default
+	if err != nil {
+		// TODO: maybe external exam?
+	} else {
+		// ZPA exam
+		constraints, err := p.ConstraintForAncode(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).
+				Msg("error while trying to get constraints")
+			return false, err
+		}
+		if !constraints.NotPlannedByMe {
+			err := fmt.Errorf("add exam to slot time is only allowed for exams not planned by me")
+			return false, err
+		}
+		duration = exam.Duration
+	}
+	if exam == nil {
+		err = fmt.Errorf("exam with ancode %d not found", ancode)
+		return false, err
+	}
+	log.Debug().Str("module", exam.Module).Str("main-examer", exam.MainExamer).
+		Msg("found exam")
+	slot, err := p.getSlotForTime(time, duration)
+	if err != nil {
+		log.Error().Err(err).Time("slottime", time).
+			Msg("no slot for slottime found")
+	}
+	log.Debug().Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).
+		Msg("found slot")
+
+	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
+		DayNumber:    slot.DayNumber,
+		SlotNumber:   slot.SlotNumber,
+		ExternalTime: &time,
+		Ancode:       ancode,
+		Locked:       false,
+	})
+}
+
 func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int, force bool) (bool, error) {
 	var slot *model.Slot
 

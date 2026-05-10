@@ -337,6 +337,39 @@ func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
 	return time.Date(0, 0, 0, 0, 0, 0, 0, nil)
 }
 
+func (p *Plexams) getSlotForTime(starttime time.Time, duration int) (*model.Slot, error) {
+	var slotWithStarttimeInSlot, slotWithEndtimeInSlot *model.Slot
+	endtime := starttime.Add(time.Duration(duration) * time.Minute)
+	for _, slot := range p.semesterConfig.Slots {
+		if starttime.After(slot.Starttime.Add(-1*time.Minute)) &&
+			starttime.Before(slot.Starttime.Add(119*time.Minute)) {
+			slotWithStarttimeInSlot = slot
+		}
+		if endtime.After(slot.Starttime.Add(-1*time.Minute)) &&
+			endtime.Before(slot.Starttime.Add(119*time.Minute)) {
+			slotWithEndtimeInSlot = slot
+		}
+		if slotWithStarttimeInSlot != nil &&
+			slotWithEndtimeInSlot != nil {
+			break
+		}
+	}
+
+	if slotWithStarttimeInSlot == nil {
+		return slotWithEndtimeInSlot, nil
+	}
+	if slotWithEndtimeInSlot == nil {
+		return slotWithStarttimeInSlot, nil
+	}
+
+	minutesInEndtimeSlot := int(endtime.Sub(slotWithEndtimeInSlot.Starttime).Minutes())
+	if minutesInEndtimeSlot > duration/2 {
+		return slotWithEndtimeInSlot, nil
+	}
+
+	return slotWithStarttimeInSlot, nil
+}
+
 func (p *Plexams) PrintInfo() {
 	fmt.Println(aurora.Sprintf(aurora.Magenta(" ---   Planning Semester: %s   --- \n"), p.semester))
 }

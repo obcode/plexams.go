@@ -1,6 +1,7 @@
 extend type Query {
   rooms: [Room!]!
   prePlannedRooms: [PrePlannedRoom!]!
+  roomsForSlot(day: Int!, time: Int!): RoomsForSlot
   roomsForSlots: [RoomsForSlot!]!
   plannedRooms: [PlannedRoom!]!
   plannedRoomNames: [String!]

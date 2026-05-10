@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -96,6 +97,9 @@ func (db *DB) RoomsForSlot(ctx context.Context, day int, time int) (*model.Rooms
 
 	err := res.Decode(&roomsForSlot)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		log.Error().Err(err).Str("collection", collectionRoomsForSlots).
 			Int("day", day).Int("slot", time).
 			Msg("Cannot decode to rooms for slot")

@@ -407,6 +407,7 @@ type ComplexityRoot struct {
 		PrimussExams                  func(childComplexity int) int
 		PrimussExamsForAnCode         func(childComplexity int, ancode int) int
 		Rooms                         func(childComplexity int) int
+		RoomsForSlot                  func(childComplexity int, day int, time int) int
 		RoomsForSlots                 func(childComplexity int) int
 		RoomsWithInvigilationsForSlot func(childComplexity int, day int, time int) int
 		Semester                      func(childComplexity int) int
@@ -695,6 +696,7 @@ type QueryResolver interface {
 	StudentRegsForProgram(ctx context.Context, program string) ([]*model.StudentReg, error)
 	Rooms(ctx context.Context) ([]*model.Room, error)
 	PrePlannedRooms(ctx context.Context) ([]*model.PrePlannedRoom, error)
+	RoomsForSlot(ctx context.Context, day int, time int) (*model.RoomsForSlot, error)
 	RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error)
 	PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error)
 	PlannedRoomNames(ctx context.Context) ([]string, error)
@@ -2595,6 +2597,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Rooms(childComplexity), true
 
+	case "Query.roomsForSlot":
+		if e.complexity.Query.RoomsForSlot == nil {
+			break
+		}
+
+		args, err := ec.field_Query_roomsForSlot_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.RoomsForSlot(childComplexity, args["day"].(int), args["time"].(int)), true
+
 	case "Query.roomsForSlots":
 		if e.complexity.Query.RoomsForSlots == nil {
 			break
@@ -4153,6 +4167,7 @@ type ConflictsPerProgramAncode {
 	{Name: "../room.graphqls", Input: `extend type Query {
   rooms: [Room!]!
   prePlannedRooms: [PrePlannedRoom!]!
+  roomsForSlot(day: Int!, time: Int!): RoomsForSlot
   roomsForSlots: [RoomsForSlot!]!
   plannedRooms: [PlannedRoom!]!
   plannedRoomNames: [String!]
@@ -5779,6 +5794,57 @@ func (ec *executionContext) field_Query_primussExamsForAnCode_argsAncode(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
 	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_roomsForSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_roomsForSlot_argsDay(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["day"] = arg0
+	arg1, err := ec.field_Query_roomsForSlot_argsTime(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["time"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Query_roomsForSlot_argsDay(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["day"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+	if tmp, ok := rawArgs["day"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_roomsForSlot_argsTime(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["time"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("time"))
+	if tmp, ok := rawArgs["time"]; ok {
 		return ec.unmarshalNInt2int(ctx, tmp)
 	}
 
@@ -18296,6 +18362,66 @@ func (ec *executionContext) fieldContext_Query_prePlannedRooms(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_roomsForSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_roomsForSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().RoomsForSlot(rctx, fc.Args["day"].(int), fc.Args["time"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.RoomsForSlot)
+	fc.Result = res
+	return ec.marshalORoomsForSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomsForSlot(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_roomsForSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "day":
+				return ec.fieldContext_RoomsForSlot_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_RoomsForSlot_slot(ctx, field)
+			case "rooms":
+				return ec.fieldContext_RoomsForSlot_rooms(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoomsForSlot", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_roomsForSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_roomsForSlots(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_roomsForSlots(ctx, field)
 	if err != nil {
@@ -30714,6 +30840,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "roomsForSlot":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_roomsForSlot(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "roomsForSlots":
 			field := field
 
@@ -36304,6 +36449,13 @@ func (ec *executionContext) marshalORoomConstraints2ᚖgithubᚗcomᚋobcodeᚋp
 		return graphql.Null
 	}
 	return ec._RoomConstraints(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORoomsForSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomsForSlot(ctx context.Context, sel ast.SelectionSet, v *model.RoomsForSlot) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RoomsForSlot(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOSlot2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Slot) graphql.Marshaler {

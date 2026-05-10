@@ -19,7 +19,8 @@ var (
 		Long: `Prepare collections.
 	connected-exams                        --- prepare connected exams
 	connect-exam ancode program            --- connect an unconnected exam
-	add-mucdai-exam program primuss-ancode --- add an external add-mucdai-exam exam
+	add-mucdai-exam program primuss-ancode --- add an external mucdai-exam exam
+	add-mucdai-exams                       --- add all mucdai-exams
 	generated-exams                        --- generate exams from connected-exams and primuss-data
 	studentregs                            --- regs per exam & regs per student (needs connected-exams)
 	rooms-for-slots                        --- prepare rooms which are allowed to use
@@ -32,6 +33,41 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			switch args[0] {
+
+			case "add-mucdai-exams":
+				ctx := context.Background()
+				mucdaiExams, err := plexams.MucdaiExams(ctx)
+				if err != nil {
+					panic(err)
+				}
+
+				for _, mucdaiExam := range mucdaiExams {
+					if mucdaiExam.PlannedBy == "FK07" {
+						continue
+					}
+
+					if !confirm(fmt.Sprintf("add external exam %s/%d. %s (%s)?",
+						mucdaiExam.Program, mucdaiExam.PrimussAncode, mucdaiExam.Module, mucdaiExam.MainExamer), 10) {
+						continue
+					}
+
+					// generate Ancode == prefix + PrimussAncode
+					zpaAncode := viper.Get(fmt.Sprintf("externalExamsBase.%s", mucdaiExam.Program)).(int) + mucdaiExam.PrimussAncode
+					fmt.Printf("zpaAncode: %d\n", zpaAncode)
+
+					zpaExam, err := plexams.AddMucDaiExam(ctx, zpaAncode, mucdaiExam)
+					if err != nil {
+						os.Exit(1)
+					}
+					prettyJSON, err := json.MarshalIndent(zpaExam, "", "    ")
+					if err != nil {
+						fmt.Println("Failed to generate json", err)
+						return
+					}
+
+					// Print the pretty-printed JSON
+					fmt.Println(string(prettyJSON))
+				}
 
 			case "add-mucdai-exam":
 				if len(args) < 3 {

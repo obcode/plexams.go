@@ -367,13 +367,6 @@ func (p *Plexams) PreExamsInSlot(ctx context.Context, day int, time int) ([]*mod
 
 	preExams := make([]*model.PreExam, 0, len(planEntries))
 	for _, planEntry := range planEntries {
-
-		if planEntry.ExternalTime != nil {
-			fmt.Printf("External Time = %s\n", planEntry.ExternalTime.String())
-		} else {
-			fmt.Println("no external time")
-		}
-
 		exam, err := p.GetZPAExam(ctx, planEntry.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")

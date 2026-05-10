@@ -291,11 +291,12 @@ type ComplexityRoot struct {
 	}
 
 	PlanEntry struct {
-		Ancode     func(childComplexity int) int
-		DayNumber  func(childComplexity int) int
-		Locked     func(childComplexity int) int
-		SlotNumber func(childComplexity int) int
-		Starttime  func(childComplexity int) int
+		Ancode       func(childComplexity int) int
+		DayNumber    func(childComplexity int) int
+		ExternalTime func(childComplexity int) int
+		Locked       func(childComplexity int) int
+		SlotNumber   func(childComplexity int) int
+		Starttime    func(childComplexity int) int
 	}
 
 	PlannedExam struct {
@@ -1902,6 +1903,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PlanEntry.DayNumber(childComplexity), true
+
+	case "PlanEntry.externalTime":
+		if e.complexity.PlanEntry.ExternalTime == nil {
+			break
+		}
+
+		return e.complexity.PlanEntry.ExternalTime(childComplexity), true
 
 	case "PlanEntry.locked":
 		if e.complexity.PlanEntry.Locked == nil {
@@ -4069,6 +4077,7 @@ type PlanEntry {
   dayNumber: Int!
   slotNumber: Int!
   starttime: Time!
+  externalTime: Time # only for exams from other faculties
   ancode: Int!
   locked: Boolean!
 }
@@ -13860,6 +13869,47 @@ func (ec *executionContext) fieldContext_PlanEntry_starttime(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _PlanEntry_externalTime(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanEntry_externalTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExternalTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanEntry_externalTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PlanEntry_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PlanEntry_ancode(ctx, field)
 	if err != nil {
@@ -14499,6 +14549,8 @@ func (ec *executionContext) fieldContext_PlannedExam_planEntry(_ context.Context
 				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
+			case "externalTime":
+				return ec.fieldContext_PlanEntry_externalTime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
@@ -15251,6 +15303,8 @@ func (ec *executionContext) fieldContext_PreExam_planEntry(_ context.Context, fi
 				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
+			case "externalTime":
+				return ec.fieldContext_PlanEntry_externalTime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
@@ -24530,6 +24584,8 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_planEntry(_ cont
 				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
+			case "externalTime":
+				return ec.fieldContext_PlanEntry_externalTime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
@@ -29533,6 +29589,8 @@ func (ec *executionContext) _PlanEntry(ctx context.Context, sel ast.SelectionSet
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "externalTime":
+			out.Values[i] = ec._PlanEntry_externalTime(ctx, field, obj)
 		case "ancode":
 			out.Values[i] = ec._PlanEntry_ancode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

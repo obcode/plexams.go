@@ -28,7 +28,7 @@ func (p *Plexams) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 func (p *Plexams) PlannedExam(ctx context.Context, ancode int) (*model.PlannedExam, error) {
 	exam, err := p.GeneratedExam(ctx, ancode)
 	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
+		log.Debug().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
 		return nil, err
 	}
 

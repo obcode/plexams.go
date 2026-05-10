@@ -57,6 +57,7 @@ type PlanEntry {
   dayNumber: Int!
   slotNumber: Int!
   starttime: Time!
+  externalTime: Time # only for exams from other faculties
   ancode: Int!
   locked: Boolean!
 }

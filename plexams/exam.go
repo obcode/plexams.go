@@ -243,19 +243,44 @@ func (p *Plexams) ConnectExam(ancode int, program string) error {
 
 func (p *Plexams) ExamInfo(ancode int) (string, error) {
 	ctx := context.Background()
+	found := false
 	exam, err := p.PlannedExam(ctx, ancode)
+	module, mainExamer := "", ""
+	var planEntry *model.PlanEntry
 	if err != nil {
-		return "", err
+		exam, err := p.GetZpaExamByAncode(ctx, ancode)
+		if err != nil {
+			// TODO: maybe external exam?
+		} else {
+			found = true
+			module = exam.Module
+			mainExamer = exam.MainExamer
+			planEntry, err = p.dbClient.PlanEntry(ctx, ancode)
+			if err != nil {
+				log.Debug().Int("ancode", ancode).
+					Msg("not planned yet")
+			}
+		}
+	} else {
+		found = true
+		module = exam.ZpaExam.Module
+		mainExamer = exam.ZpaExam.MainExamer
+		planEntry = exam.PlanEntry
 	}
-	if exam == nil {
-		return "", fmt.Errorf("no planned exam for ancode %d", ancode)
+
+	if !found {
+		return fmt.Sprintf("no exam for ancode %d found", ancode), nil
 	}
+
 	var sb strings.Builder
 
-	fmt.Fprintf(&sb, "%5d. %s (%s)", exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer)
-	if exam.PlanEntry != nil {
-		starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-		fmt.Fprintf(&sb, "\n    Termin: %s (Tag %d / Slot %d)", starttime.Local().Format("02.01.06, 15:04 Uhr"), exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+	fmt.Fprintf(&sb, "%5d. %s (%s)", ancode, module, mainExamer)
+	if planEntry != nil {
+		starttime := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
+		if planEntry.ExternalTime != nil {
+			starttime = *planEntry.ExternalTime
+		}
+		fmt.Fprintf(&sb, "\n    Termin: %s (Tag %d / Slot %d)", starttime.Local().Format("02.01.06, 15:04 Uhr"), planEntry.DayNumber, planEntry.SlotNumber)
 	} else {
 		sb.WriteString("\n    Termin: fehlt")
 	}

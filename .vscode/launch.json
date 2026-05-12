@@ -11,10 +11,9 @@
       "mode": "debug",
       "program": "main.go",
       "args": [
-        "ics",
-        "export",
-        "DE",
-        "-o DE.ics"
+        "email",
+        "primuss-data",
+        "431",
       ]
     }
   ]

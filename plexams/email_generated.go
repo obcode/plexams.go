@@ -124,6 +124,8 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 		hasStudentRegs = hasStudentRegs || len(primussExam.StudentRegs) > 0
 	}
 
+	log.Debug().Int("ancode", exam.Ancode).Bool("hasStudentRegs", hasStudentRegs).Msg("found student regs for exam")
+
 	err = p.sendGeneratedExamMailToTeacher(to, &GeneratedExamMailData{
 		FromFK07Date:   p.semesterConfig.FromFk07.Format("02.01.2006"),
 		ToDate:         p.semesterConfig.Days[len(p.semesterConfig.Days)-1].Date.Format("02.01.2006"),
@@ -187,67 +189,71 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 			p.semester, generatedExamMailData.Exam.ZpaExam.Module)
 	}
 
-	attachments := make([]*email.Attachment, 0, 1)
-	var attachment *email.Attachment
+	var attachments []*email.Attachment
 
 	if generatedExamMailData.HasStudentRegs {
+		attachments = make([]*email.Attachment, 0, 1)
+		var attachment *email.Attachment
+
+		if generatedExamMailData.HasStudentRegs {
+			attachment = &email.Attachment{
+				Filename:    fmt.Sprintf("Anmeldungen-%d.csv", generatedExamMailData.Exam.Ancode),
+				ContentType: "text/csv; charset=\"utf-8\"",
+				Header:      map[string][]string{},
+				Content:     []byte("Mtknr;Name;Gender;E-Mail;Studiengang;Gruppe\n"),
+				HTMLRelated: false,
+			}
+
+			for _, primussExam := range generatedExamMailData.Exam.PrimussExams {
+				for _, studentReg := range primussExam.StudentRegs {
+					// force Excel/Numbers to treat the field as text with leading zeros:
+					// write the Mtknr as an Excel formula: ="000123"
+					gender := ""
+					email := ""
+
+					if studentReg.ZpaStudent != nil {
+						gender = studentReg.ZpaStudent.Gender
+						email = studentReg.ZpaStudent.Email
+					}
+
+					attachment.Content = append(attachment.Content,
+						[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s;%s;%s\n",
+							studentReg.Mtknr,
+							studentReg.Name,
+							gender,
+							email,
+							studentReg.Program,
+							studentReg.Group,
+						))...)
+				}
+			}
+
+		}
+		attachments = append(attachments, attachment)
+
+		txttmpl, err := txttmpl.New("generatedExamMarkdown.tmpl").Funcs(template.FuncMap{
+			"add": func(a, b int) int {
+				return a + b
+			},
+		}).ParseFS(emailTemplates, "tmpl/generatedExamMarkdown.tmpl")
+		if err != nil {
+			return err
+		}
+		bufMD := new(bytes.Buffer)
+		err = txttmpl.Execute(bufMD, generatedExamMailData)
+		if err != nil {
+			return err
+		}
+
 		attachment = &email.Attachment{
-			Filename:    fmt.Sprintf("Anmeldungen-%d.csv", generatedExamMailData.Exam.Ancode),
-			ContentType: "text/csv; charset=\"utf-8\"",
+			Filename:    fmt.Sprintf("Anmeldungen-%d.md", generatedExamMailData.Exam.Ancode),
+			ContentType: "text/plain; charset=\"utf-8\"",
 			Header:      map[string][]string{},
-			Content:     []byte("Mtknr;Name;Gender;E-Mail;Studiengang;Gruppe\n"),
+			Content:     bufMD.Bytes(),
 			HTMLRelated: false,
 		}
-
-		for _, primussExam := range generatedExamMailData.Exam.PrimussExams {
-			for _, studentReg := range primussExam.StudentRegs {
-				// force Excel/Numbers to treat the field as text with leading zeros:
-				// write the Mtknr as an Excel formula: ="000123"
-				gender := ""
-				email := ""
-
-				if studentReg.ZpaStudent != nil {
-					gender = studentReg.ZpaStudent.Gender
-					email = studentReg.ZpaStudent.Email
-				}
-
-				attachment.Content = append(attachment.Content,
-					[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s;%s;%s\n",
-						studentReg.Mtknr,
-						studentReg.Name,
-						gender,
-						email,
-						studentReg.Program,
-						studentReg.Group,
-					))...)
-			}
-		}
-
+		attachments = append(attachments, attachment)
 	}
-	attachments = append(attachments, attachment)
-
-	txttmpl, err := txttmpl.New("generatedExamMarkdown.tmpl").Funcs(template.FuncMap{
-		"add": func(a, b int) int {
-			return a + b
-		},
-	}).ParseFS(emailTemplates, "tmpl/generatedExamMarkdown.tmpl")
-	if err != nil {
-		return err
-	}
-	bufMD := new(bytes.Buffer)
-	err = txttmpl.Execute(bufMD, generatedExamMailData)
-	if err != nil {
-		return err
-	}
-
-	attachment = &email.Attachment{
-		Filename:    fmt.Sprintf("Anmeldungen-%d.md", generatedExamMailData.Exam.Ancode),
-		ContentType: "text/plain; charset=\"utf-8\"",
-		Header:      map[string][]string{},
-		Content:     bufMD.Bytes(),
-		HTMLRelated: false,
-	}
-	attachments = append(attachments, attachment)
 
 	return p.sendMail([]string{to},
 		nil,

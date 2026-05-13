@@ -15,7 +15,10 @@ func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, time time.T
 	exam, err := p.GetZpaExamByAncode(ctx, ancode)
 	duration := 90 // good default
 	if err != nil {
-		// TODO: maybe external exam?
+		exam, err = p.dbClient.NonZpaExam(ctx, ancode)
+		if err != nil {
+			return false, err
+		}
 	} else {
 		// ZPA exam
 		constraints, err := p.ConstraintForAncode(ctx, ancode)

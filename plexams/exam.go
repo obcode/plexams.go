@@ -51,7 +51,7 @@ func (p *Plexams) prepareConnectedZPAExam(ctx context.Context, ancode int, allPr
 	otherPrograms := make([]string, 0, len(allPrograms)-len(zpaExam.PrimussAncodes))
 OUTER:
 	for _, aP := range allPrograms {
-		for _, p := range zpaExam.PrimussAncodes {
+		for _, p := range primussExams {
 			if aP == p.Program {
 				continue OUTER
 			}

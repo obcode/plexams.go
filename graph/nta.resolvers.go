@@ -29,3 +29,8 @@ func (r *queryResolver) NtasWithRegs(ctx context.Context) ([]*model.Student, err
 func (r *queryResolver) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
 	return r.plexams.Nta(ctx, mtknr)
 }
+
+// ExamsWithNtas is the resolver for the examsWithNtas field.
+func (r *queryResolver) ExamsWithNtas(ctx context.Context) ([]*model.PlannedExam, error) {
+	return r.plexams.ExamsWithNtas(ctx)
+}

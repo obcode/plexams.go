@@ -107,7 +107,7 @@ func (db *DB) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
 	ntas := make([]*model.Student, 0)
 	err = cur.All(ctx, &ntas)
 	if err != nil {
-		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("Cannot decode to rooms")
+		log.Error().Err(err).Str("collection", collectionNameNTAs).Msg("Cannot decode to exams")
 		return nil, err
 	}
 

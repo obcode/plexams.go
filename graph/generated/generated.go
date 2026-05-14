@@ -382,6 +382,7 @@ type ComplexityRoot struct {
 		ConstraintForAncode           func(childComplexity int, ancode int) int
 		ExamerInPlan                  func(childComplexity int) int
 		ExamsInSlot                   func(childComplexity int, day int, time int) int
+		ExamsWithNtas                 func(childComplexity int) int
 		ExamsWithoutSlot              func(childComplexity int) int
 		Fk07programs                  func(childComplexity int) int
 		GeneratedExam                 func(childComplexity int, ancode int) int
@@ -683,6 +684,7 @@ type QueryResolver interface {
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
+	ExamsWithNtas(ctx context.Context) ([]*model.PlannedExam, error)
 	AllProgramsInPlan(ctx context.Context) ([]string, error)
 	AncodesInPlan(ctx context.Context) ([]int, error)
 	ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error)
@@ -2368,6 +2370,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.ExamsInSlot(childComplexity, args["day"].(int), args["time"].(int)), true
 
+	case "Query.examsWithNtas":
+		if e.complexity.Query.ExamsWithNtas == nil {
+			break
+		}
+
+		return e.complexity.Query.ExamsWithNtas(childComplexity), true
+
 	case "Query.examsWithoutSlot":
 		if e.complexity.Query.ExamsWithoutSlot == nil {
 			break
@@ -3961,6 +3970,7 @@ type RoomWithInvigilator {
   ntas: [NTA!]
   ntasWithRegs: [Student!]
   nta(mtknr: String!): NTAWithRegs
+  examsWithNtas: [PlannedExam!]!
 }
 
 extend type Mutation {
@@ -17592,6 +17602,74 @@ func (ec *executionContext) fieldContext_Query_nta(ctx context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_examsWithNtas(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_examsWithNtas(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExamsWithNtas(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PlannedExam)
+	fc.Result = res
+	return ec.marshalNPlannedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlannedExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_examsWithNtas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "zpaExam":
+				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_PlannedExam_mainExamer(ctx, field)
+			case "primussExams":
+				return ec.fieldContext_PlannedExam_primussExams(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PlannedExam_constraints(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_PlannedExam_conflicts(ctx, field)
+			case "studentRegsCount":
+				return ec.fieldContext_PlannedExam_studentRegsCount(ctx, field)
+			case "ntas":
+				return ec.fieldContext_PlannedExam_ntas(ctx, field)
+			case "maxDuration":
+				return ec.fieldContext_PlannedExam_maxDuration(ctx, field)
+			case "planEntry":
+				return ec.fieldContext_PlannedExam_planEntry(ctx, field)
+			case "plannedRooms":
+				return ec.fieldContext_PlannedExam_plannedRooms(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlannedExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_allProgramsInPlan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_allProgramsInPlan(ctx, field)
 	if err != nil {
@@ -30608,6 +30686,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_nta(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "examsWithNtas":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_examsWithNtas(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 

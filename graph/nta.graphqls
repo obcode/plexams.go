@@ -2,6 +2,7 @@ extend type Query {
   ntas: [NTA!]
   ntasWithRegs: [Student!]
   nta(mtknr: String!): NTAWithRegs
+  examsWithNtas: [PlannedExam!]!
 }
 
 extend type Mutation {

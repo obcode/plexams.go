@@ -287,3 +287,25 @@ func (p *Plexams) ExamInfo(ancode int) (string, error) {
 
 	return sb.String(), nil
 }
+
+func (p *Plexams) ExamsWithoutDuration() (string, error) {
+	ctx := context.Background()
+	exams, err := p.GeneratedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get zpa exams to plan")
+		return "", err
+	}
+	var sb strings.Builder
+
+	for _, exam := range exams {
+		if exam.MaxDuration > 0 {
+			continue
+		}
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+		fmt.Fprintf(&sb, "%5d. %s (%s) %v\n", exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, exam.ZpaExam.Groups)
+	}
+
+	return sb.String(), nil
+}

@@ -20,6 +20,7 @@ var (
 		Long: `Get info.
 semester-config		    --- print config
 exam [ancode]           --- print info about exam
+exams-without-duration  --- print exams with a duration of 0
 not-planned-by-me       --- print info about exams not planned by me
 samename                --- exams with same module name
 goslots                 --- info about slots for GO/GN
@@ -45,6 +46,12 @@ student name            --- get info for student.`,
 					log.Fatalf("cannot convert %s to int", args[1])
 				}
 				str, err := p.ExamInfo(ancode)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+				fmt.Println(str)
+			case "exams-without-duration":
+				str, err := p.ExamsWithoutDuration()
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

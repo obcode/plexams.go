@@ -11,9 +11,10 @@
       "mode": "debug",
       "program": "main.go",
       "args": [
-        "email",
-        "primuss-data",
-        "431",
+        "plan",
+        "other-fk",
+        "526",
+        "16.07.26,14:00"
       ]
     }
   ]

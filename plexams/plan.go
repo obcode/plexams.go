@@ -39,6 +39,7 @@ func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, time time.T
 	}
 	log.Debug().Str("module", exam.Module).Str("main-examer", exam.MainExamer).
 		Msg("found exam")
+	log.Debug().Time("time", time).Str("timestr", time.String()).Msg("calculating slot for time")
 	slot, err := p.getSlotForTime(time, duration)
 	if err != nil {
 		log.Error().Err(err).Time("slottime", time).

@@ -363,7 +363,7 @@ func (p *Plexams) getSlotForTime(starttime time.Time, duration int) (*model.Slot
 	}
 
 	minutesInEndtimeSlot := int(endtime.Sub(slotWithEndtimeInSlot.Starttime).Minutes())
-	if minutesInEndtimeSlot > duration/2 {
+	if minutesInEndtimeSlot >= duration/2 {
 		return slotWithEndtimeInSlot, nil
 	}
 

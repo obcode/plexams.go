@@ -150,22 +150,29 @@ func (p *Plexams) RequestRoomsInfo() error {
 			}
 
 			switch {
-			case studs < r1006.Seats:
+			case studs < r1006.Seats: // between 25 and 29
 				needsR1006 = true
-			case studs <= r1046.Seats:
+			case studs <= r1046.Seats: // between 30 and 57
 				needsR1046 = true
-			case studs <= r1049.Seats:
+			case studs <= r1049.Seats: // between 58 and 59
 				needsR1049 = true
-			case studs > r1046.Seats+25 && studs <= r1006.Seats+r1046.Seats:
+			case studs <= r1046.Seats+25: // between 60 and 82
+				needsR1046 = true
+			case studs <= r1049.Seats+25: // between 83 and 84
+				needsR1049 = true
+			case studs <= r1006.Seats+r1046.Seats: // between 85 and 87
 				needsR1006 = true
 				needsR1046 = true
-			case studs > r1049.Seats+25 && studs <= r1006.Seats+r1049.Seats:
+			case studs <= r1006.Seats+r1049.Seats: // between 88 and 89
 				needsR1006 = true
 				needsR1049 = true
-			case studs > r1049.Seats+30 && studs <= r1046.Seats+r1049.Seats:
+			case studs <= r1046.Seats+r1049.Seats: // between 90 and 116
 				needsR1046 = true
 				needsR1049 = true
-			case studs > r1046.Seats+r1049.Seats+25:
+			case studs <= r1046.Seats+r1049.Seats+25: // between 116 and 141
+				needsR1046 = true
+				needsR1049 = true
+			default: // more than 141
 				needsR1006 = true
 				needsR1046 = true
 				needsR1049 = true
@@ -183,7 +190,22 @@ func (p *Plexams) RequestRoomsInfo() error {
 			}
 
 			if needsR1046 && neededRooms.r1046.needed {
-				needsR1049 = true
+				if neededRooms.r1049.needed {
+					needsR1046 = false
+					needsR1006 = true
+				} else {
+					needsR1046 = false
+					needsR1049 = true
+				}
+			}
+			if needsR1006 && neededRooms.r1006.needed {
+				if !neededRooms.r1046.needed {
+					needsR1046 = true
+					needsR1006 = false
+				} else {
+					needsR1049 = true
+					needsR1006 = false
+				}
 			}
 
 			if needsR1049 {

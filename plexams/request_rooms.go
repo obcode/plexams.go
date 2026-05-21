@@ -7,18 +7,29 @@ import (
 	"strings"
 	"time"
 
+	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
 
 type needRoomWithMaxDuration struct {
-	needed bool
+	needed      bool
+	maxDuration int
+	exam        *model.PlannedExam
 }
 
 type needRooms struct {
 	r1006 needRoomWithMaxDuration
 	r1046 needRoomWithMaxDuration
 	r1049 needRoomWithMaxDuration
+}
+
+func (n *needRooms) allNeeded() bool {
+	return n.r1006.needed && n.r1046.needed && n.r1049.needed
+}
+
+func (n *needRooms) noneNeeded() bool {
+	return !n.r1006.needed && !n.r1046.needed && !n.r1049.needed
 }
 
 func (n *needRooms) needs(roomname string) bool {
@@ -31,6 +42,32 @@ func (n *needRooms) needs(roomname string) bool {
 		return n.r1049.needed
 	default:
 		return false
+	}
+}
+
+func (n *needRooms) duration(roomname string) int {
+	switch roomname {
+	case "R1.006":
+		return n.r1006.maxDuration
+	case "R1.046":
+		return n.r1046.maxDuration
+	case "R1.049":
+		return n.r1049.maxDuration
+	default:
+		return 0
+	}
+}
+
+func (n *needRooms) exam(roomname string) *model.PlannedExam {
+	switch roomname {
+	case "R1.006":
+		return n.r1006.exam
+	case "R1.046":
+		return n.r1046.exam
+	case "R1.049":
+		return n.r1049.exam
+	default:
+		return nil
 	}
 }
 
@@ -91,61 +128,103 @@ func (p *Plexams) RequestRoomsInfo() error {
 			continue
 		}
 
-		needsR1006, needsR1046, needsR1049 := 0, 0, 0
+		sort.Slice(examsWithoutRooms, func(i, j int) bool {
+			return examsWithoutRooms[i].StudentRegsCount > examsWithoutRooms[j].StudentRegsCount
+		})
+
 		for _, exam := range examsWithoutRooms {
+			needsR1006, needsR1046, needsR1049 := false, false, false
 			studs := exam.StudentRegsCount
-			// maxDuration := exam.MaxDuration
 
 			if studs <= 25 {
-				continue
+				log.Debug().Int("day", slot.DayNumber).
+					Int("slot", slot.SlotNumber).
+					Msg("no more exam needs a request room")
+				break
+			}
+
+			if neededRooms.allNeeded() {
+				log.Debug().Int("day", slot.DayNumber).
+					Int("slot", slot.SlotNumber).
+					Msg("all rooms already needed")
 			}
 
 			switch {
 			case studs < r1006.Seats:
-				needsR1006++
+				needsR1006 = true
 			case studs <= r1046.Seats:
-				needsR1046++
+				needsR1046 = true
 			case studs <= r1049.Seats:
-				needsR1049++
+				needsR1049 = true
 			case studs <= r1006.Seats+r1046.Seats:
-				needsR1006++
-				needsR1046++
+				needsR1006 = true
+				needsR1046 = true
 			case studs <= r1006.Seats+r1049.Seats:
-				needsR1006++
-				needsR1049++
+				needsR1006 = true
+				needsR1049 = true
 			case studs <= r1046.Seats+r1049.Seats:
-				needsR1046++
-				needsR1049++
+				needsR1046 = true
+				needsR1049 = true
 			default:
-				needsR1006++
-				needsR1046++
-				needsR1049++
+				needsR1006 = true
+				needsR1046 = true
+				needsR1049 = true
 			}
-		}
 
-		log.Debug().
-			Int("needsR1006", needsR1006).
-			Int("needsR1046", needsR1046).
-			Int("needsR1049", needsR1049).Msg("found the following needs")
+			maxDuration := exam.ZpaExam.Duration
+			for _, nta := range exam.Ntas {
+				if nta.NeedsRoomAlone {
+					continue
+				}
+				ntaDuration := (exam.ZpaExam.Duration * (nta.DeltaDurationPercent + 100)) / 100
+				if ntaDuration > maxDuration {
+					maxDuration = ntaDuration
+				}
+			}
 
-		if needsR1006+needsR1046+needsR1049 == 0 {
-			continue
-		}
-
-		if needsR1046+needsR1049 == 1 {
-			neededRooms.r1046.needed = true
-		}
-		if needsR1046+needsR1049 == 2 {
-			neededRooms.r1046.needed = true
-			neededRooms.r1049.needed = true
-		}
-		if needsR1006 > 0 {
-			neededRooms.r1006.needed = true
-		}
-		if needsR1006+needsR1046+needsR1049 > 3 {
-			neededRooms.r1006.needed = true
-			neededRooms.r1046.needed = true
-			neededRooms.r1049.needed = true
+			if needsR1049 {
+				if neededRooms.r1049.needed {
+					if needsR1046 {
+						needsR1006 = true
+					} else {
+						needsR1046 = true
+					}
+				} else {
+					maxD := maxDuration
+					if needsR1006 {
+						maxD = exam.ZpaExam.Duration
+					}
+					neededRooms.r1049 = needRoomWithMaxDuration{
+						needed:      true,
+						maxDuration: maxD,
+						exam:        exam,
+					}
+				}
+			}
+			if needsR1046 {
+				if neededRooms.r1046.needed {
+					needsR1006 = true
+				} else {
+					maxD := maxDuration
+					if needsR1006 {
+						maxD = exam.ZpaExam.Duration
+					}
+					neededRooms.r1046 = needRoomWithMaxDuration{
+						needed:      true,
+						maxDuration: maxD,
+						exam:        exam,
+					}
+				}
+			}
+			if needsR1006 {
+				if !neededRooms.r1006.needed {
+					neededRooms.r1006 = needRoomWithMaxDuration{
+						needed:      true,
+						maxDuration: maxDuration,
+						exam:        exam,
+					}
+				}
+			}
 		}
 
 		requestRoomsMap[slot.DayNumber][slot.SlotNumber] = neededRooms
@@ -157,15 +236,17 @@ func (p *Plexams) RequestRoomsInfo() error {
 
 	log.Debug().Interface("requestRoomsMap", requestRoomsMap).Msg("need request rooms")
 
-	return p.outputForRequestRooms(requestRoomsMap, []string{r1006name, r1046name, r1049name})
+	p.outputForRequestRooms(requestRoomsMap, []string{r1006name, r1046name, r1049name})
+	return nil
 }
 
-func (p *Plexams) outputForRequestRooms(requestRoomsMap map[int]map[int]*needRooms, roomNames []string) error {
+func (p *Plexams) outputForRequestRooms(requestRoomsMap map[int]map[int]*needRooms, roomNames []string) {
 	var builderEmail strings.Builder
+	var builderYaml strings.Builder
 
-	builderEmail.WriteString("\nFür E-Mail-Anfrage:")
 	for _, roomName := range roomNames {
 		fmt.Fprintf(&builderEmail, "\nAnfragen für Raum %s\n\n", roomName)
+		fmt.Fprintf(&builderYaml, "  %s:\n    reservations:\n", roomName)
 		for _, day := range p.semesterConfig.Days {
 			needRoomForDay := false
 			for _, needRooms := range requestRoomsMap[day.Number] {
@@ -180,169 +261,126 @@ func (p *Plexams) outputForRequestRooms(requestRoomsMap map[int]map[int]*needRoo
 				continue
 			}
 			fmt.Fprintf(&builderEmail, "- %s\n", day.Date.Format("02.01.06"))
-			for i, slot := range p.semesterConfig.Starttimes {
-				log.Debug().Int("i", i).Msg("checking slot")
-				needRooms, ok := requestRoomsMap[day.Number][i+1]
+			for _, slot := range p.semesterConfig.Slots {
+				if slot.DayNumber != day.Number {
+					continue
+				}
+				log.Debug().Int("i", slot.SlotNumber).Msg("checking slot")
+				needRooms, ok := requestRoomsMap[day.Number][slot.SlotNumber]
 				if !ok {
 					continue
 				}
 				if needRooms.needs(roomName) {
-					starttime, err := time.Parse("15:04", slot.Start)
-					if err != nil {
-						log.Error().Err(err).Str("time-string", slot.Start).Msg("cannot parse time")
-						return err
+					starttime := slot.Starttime
+					from := starttime.Add(-15 * time.Minute).Format("15:04")
+					untilRaw := starttime.Add((time.Duration(needRooms.duration(roomName)) + 15) * time.Minute)
+					// check if time is to long
+					toLongInfo := ""
+					roomInFollowingSlot, ok := requestRoomsMap[day.Number][slot.SlotNumber+1]
+					if ok && roomInFollowingSlot.needs(roomName) {
+						followingSlotStart := starttime.Add(105 * time.Minute)
+						if followingSlotStart.Before(untilRaw) {
+							untilRaw = followingSlotStart
+							toLongInfo = fmt.Sprintf(", Raum %s schon ab wieder %s benötigt",
+								roomName,
+								followingSlotStart.Format("15:04"),
+							)
+						} else if untilRaw.Before(followingSlotStart) {
+							untilRaw = followingSlotStart
+							toLongInfo = ", Zeit verlängert bis zum Beginn des folgenden Slots"
+						}
+					}
+					until := untilRaw.Format("15:04")
+					exam := needRooms.exam(roomName)
+					untilComment := fmt.Sprintf("Prüfungszeit %d", exam.ZpaExam.Duration)
+					if exam.ZpaExam.Duration < needRooms.duration(roomName) {
+						untilComment = fmt.Sprintf("Prüfungszeit / maximal: %d / %d",
+							exam.ZpaExam.Duration,
+							needRooms.duration(roomName),
+						)
 					}
 					fmt.Fprintf(&builderEmail, "  - %v - %v Uhr\n",
-						starttime.Add(-15*time.Minute).Format("15:04"),
-						starttime.Add(105*time.Minute).Format("15:04"))
+						from,
+						until)
+					fmt.Fprintf(&builderYaml,
+						`      - slot: [%d,%d] # %d. %s (%s) mit %d Anmeldungen
+        date: %s
+        from: %s
+        until: %s # %s%s
+        approved: false
+`,
+						slot.DayNumber, slot.SlotNumber,
+						exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+						exam.StudentRegsCount,
+						p.semesterConfig.Days[slot.DayNumber-1].Date.Format("2006-01-02"),
+						from,
+						until,
+						untilComment,
+						toLongInfo,
+					)
 				}
 			}
 		}
 	}
 
+	fmt.Println("---------------------------------------------------")
+	fmt.Println("\nFür E-Mail-Anfrage:")
+	fmt.Println()
 	fmt.Println(builderEmail.String())
-	return nil
+	fmt.Println("Überblick:")
+	fmt.Println()
+	p.outputTable(requestRoomsMap)
+	fmt.Println("---------------------------------------------------")
+	fmt.Println("\nFür Yaml:")
+	fmt.Println()
+	fmt.Println(builderYaml.String())
 }
 
-func (p *Plexams) RequestRooms() error {
-	ctx := context.Background()
-	// globalRooms, err := p.dbClient.GlobalRooms(ctx)
-	// if err != nil {
-	// 	log.Error().Err(err).Msg("cannot get global rooms")
-	// 	return err
-	// }
-
-	// dayNumber -> slotNumber -> number of needed rooms
-	needBigRooms := make(map[int]map[int]int)
-
-	for _, day := range p.semesterConfig.Days {
-		needBigRooms[day.Number] = make(map[int]int)
+func (p *Plexams) outputTable(requestRoomsMap map[int]map[int]*needRooms) {
+	fmt.Println("|   Datum  | Uhrzeit  | R1.006 | R1.046 | R1.049 |")
+	fmt.Println("|----------|----------|--------|--------|--------|")
+	forbiddenSlots := set.NewSet[int]()
+	forbiddenSlotsSlice := p.semesterConfig.ForbiddenSlots
+	for _, slot := range forbiddenSlotsSlice {
+		forbiddenSlots.Add(slot.DayNumber*10 + slot.SlotNumber)
 	}
-
+	lastDay := -1
 	for _, slot := range p.semesterConfig.Slots {
-		examsInSlot, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
-		if err != nil {
-			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Msg("cannot get exams in slot")
-			return err
-		}
-
-		for _, exam := range examsInSlot {
-			if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
-				continue
-			}
-			if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil &&
-				(exam.Constraints.RoomConstraints.Exahm || exam.Constraints.RoomConstraints.Lab ||
-					exam.Constraints.RoomConstraints.Seb || exam.Constraints.RoomConstraints.PlacesWithSocket) {
-				continue
-			}
-
-			reqs := exam.StudentRegsCount
-
-			if reqs >= 30 {
-				needBigRooms[slot.DayNumber][slot.SlotNumber]++
-			}
-			if reqs >= 85 {
-				needBigRooms[slot.DayNumber][slot.SlotNumber]++
-			}
-		}
-	}
-
-	// print for plexams.yaml
-	fmt.Println("  R1.046:\n    reservations:")
-	for _, slot := range p.semesterConfig.Slots {
-		if needBigRooms[slot.DayNumber][slot.SlotNumber] > 0 {
-			noOfRooms := "einen angefragt"
-			if needBigRooms[slot.DayNumber][slot.SlotNumber] > 1 {
-				noOfRooms = "beide angefragt"
-			}
-			fmt.Printf(`      - slot: [%d,%d] # %s
-        date: %s
-        from: %s
-        until: %s
-        approved: false
-`,
-				slot.DayNumber, slot.SlotNumber, noOfRooms,
-				p.semesterConfig.Days[slot.DayNumber-1].Date.Format("2006-01-02"),
-				slot.Starttime.Add(-15*time.Minute).Format("15:04"),
-				slot.Starttime.Add(105*time.Minute).Format("15:04"))
-		}
-	}
-	fmt.Println("  R1.049:\n    reservations:")
-	for _, slot := range p.semesterConfig.Slots {
-		if needBigRooms[slot.DayNumber][slot.SlotNumber] > 1 {
-			noOfRooms := "einen angefragt"
-			if needBigRooms[slot.DayNumber][slot.SlotNumber] > 1 {
-				noOfRooms = "beide angefragt"
-			}
-			fmt.Printf(`      - slot: [%d,%d] # %s
-        date: %s
-        from: %s
-        until: %s
-        approved: false
-`,
-				slot.DayNumber, slot.SlotNumber, noOfRooms,
-				p.semesterConfig.Days[slot.DayNumber-1].Date.Format("2006-01-02"),
-				slot.Starttime.Add(-15*time.Minute).Format("15:04"),
-				slot.Starttime.Add(105*time.Minute).Format("15:04"))
-		}
-	}
-
-	// print dates and times for request
-	fmt.Println("Für E-Mail-Anfrage:")
-	for _, day := range p.semesterConfig.Days {
-		if len(needBigRooms[day.Number]) == 0 {
+		if forbiddenSlots.Contains(slot.DayNumber*10 + slot.SlotNumber) {
 			continue
 		}
-		fmt.Printf("- %s\n", day.Date.Format("02.01.06"))
-		for i, slot := range p.semesterConfig.Starttimes {
-			if needBigRooms[day.Number][i+1] > 0 {
-				starttime, err := time.Parse("15:04", slot.Start)
-				if err != nil {
-					log.Error().Err(err).Str("time-string", slot.Start).Msg("cannot parse time")
-					return err
-				}
-				fmt.Printf("  - %v - %v Uhr: ",
-					starttime.Add(-15*time.Minute).Format("15:04"),
-					starttime.Add(105*time.Minute).Format("15:04"))
-				if needBigRooms[day.Number][i+1] > 1 {
-					fmt.Println("beide (R1.046 und R1.049)")
-				} else {
-					fmt.Println("einen (entweder R1.046 oder R1.049)")
-				}
-			}
+		if slot.DayNumber == lastDay {
+			fmt.Print("|          |")
+		} else {
+			fmt.Printf("| %s |", slot.Starttime.Format("02.01.06"))
+		}
+		lastDay = slot.DayNumber
+		fmt.Printf(" ab %s |", slot.Starttime.Add(-15*time.Minute).Format("15:04"))
+		day, ok := requestRoomsMap[slot.DayNumber]
+		if !ok || day == nil {
+			continue
+		}
+		needRooms, ok := day[slot.SlotNumber]
+		if !ok || needRooms == nil || needRooms.noneNeeded() {
+			fmt.Println("        |        |        |")
+			continue
+		}
+		if needRooms.r1006.needed {
+			fmt.Print("   X    |")
+		} else {
+			fmt.Print("        |")
+		}
+		if needRooms.r1046.needed {
+			fmt.Print("   X    |")
+		} else {
+			fmt.Print("        |")
+		}
+		if needRooms.r1049.needed {
+			fmt.Println("   X    |")
+		} else {
+			fmt.Println("        |")
 		}
 	}
-	// fmt.Println("- R1.049")
-	// for _, day := range p.semesterConfig.Days {
-	// 	if len(needBigRooms[day.Number]) == 0 {
-	// 		continue
-	// 	}
-	// 	needDay := false
-	// 	for i := range p.semesterConfig.Starttimes {
-	// 		if needBigRooms[day.Number][i+1] > 1 {
-	// 			needDay = true
-	// 		}
-	// 	}
-	// 	if !needDay {
-	// 		continue
-	// 	}
-
-	// 	fmt.Printf("  - %s\n", day.Date.Format("02.01.06"))
-	// 	for i, slot := range p.semesterConfig.Starttimes {
-	// 		if needBigRooms[day.Number][i+1] > 1 {
-	// 			starttime, err := time.Parse("15:04", slot.Start)
-	// 			if err != nil {
-	// 				log.Error().Err(err).Str("time-string", slot.Start).Msg("cannot parse time")
-	// 				return err
-	// 			}
-	// 			fmt.Printf("    - %v - %v\n",
-	// 				starttime.Add(-15*time.Minute).Format("15:04"),
-	// 				starttime.Add(105*time.Minute).Format("15:04"))
-	// 		}
-	// 	}
-	// }
-
-	return nil
 }
 
 // PlannedRoomInfo prints the planned room for a given room name.

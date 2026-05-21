@@ -156,16 +156,16 @@ func (p *Plexams) RequestRoomsInfo() error {
 				needsR1046 = true
 			case studs <= r1049.Seats:
 				needsR1049 = true
-			case studs <= r1006.Seats+r1046.Seats:
+			case studs > r1046.Seats+25 && studs <= r1006.Seats+r1046.Seats:
 				needsR1006 = true
 				needsR1046 = true
-			case studs <= r1006.Seats+r1049.Seats:
+			case studs > r1049.Seats+25 && studs <= r1006.Seats+r1049.Seats:
 				needsR1006 = true
 				needsR1049 = true
-			case studs <= r1046.Seats+r1049.Seats:
+			case studs > r1049.Seats+30 && studs <= r1046.Seats+r1049.Seats:
 				needsR1046 = true
 				needsR1049 = true
-			default:
+			case studs > r1046.Seats+r1049.Seats+25:
 				needsR1006 = true
 				needsR1046 = true
 				needsR1049 = true
@@ -180,6 +180,10 @@ func (p *Plexams) RequestRoomsInfo() error {
 				if ntaDuration > maxDuration {
 					maxDuration = ntaDuration
 				}
+			}
+
+			if needsR1046 && neededRooms.r1046.needed {
+				needsR1049 = true
 			}
 
 			if needsR1049 {

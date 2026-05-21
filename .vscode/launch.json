@@ -11,10 +11,9 @@
       "mode": "debug",
       "program": "main.go",
       "args": [
-        "plan",
-        "other-fk",
-        "526",
-        "16.07.26,14:00"
+        "info",
+        "request-rooms",
+        "-v",
       ]
     }
   ]

@@ -86,7 +86,7 @@ student name            --- get info for student.`,
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "request-rooms":
-				err := p.RequestRooms()
+				err := p.RequestRoomsInfo()
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

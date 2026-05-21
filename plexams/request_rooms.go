@@ -4,11 +4,205 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
+
+type needRoomWithMaxDuration struct {
+	needed bool
+}
+
+type needRooms struct {
+	r1006 needRoomWithMaxDuration
+	r1046 needRoomWithMaxDuration
+	r1049 needRoomWithMaxDuration
+}
+
+func (n *needRooms) needs(roomname string) bool {
+	switch roomname {
+	case "R1.006":
+		return n.r1006.needed
+	case "R1.046":
+		return n.r1046.needed
+	case "R1.049":
+		return n.r1049.needed
+	default:
+		return false
+	}
+}
+
+// special logic:
+// check slot:
+// 1. want all (R1.006, R1.046 and R1.049)
+// 2. entferne alle Prüfungen die roomConstraints haben
+func (p *Plexams) RequestRoomsInfo() error {
+	ctx := context.Background()
+	r1006name := "R1.006"
+	r1006, err := p.RoomByName(ctx, r1006name)
+	if err != nil {
+		return err
+	}
+	r1046name := "R1.046"
+	r1046, err := p.RoomByName(ctx, r1046name)
+	if err != nil {
+		return err
+	}
+	r1049name := "R1.049"
+	r1049, err := p.RoomByName(ctx, r1049name)
+	if err != nil {
+		return err
+	}
+
+	log.Debug().Str("name", r1006.Name).Int("seats", r1006.Seats).Msg("room has seats")
+	log.Debug().Str("name", r1046.Name).Int("seats", r1046.Seats).Msg("room has seats")
+	log.Debug().Str("name", r1049.Name).Int("seats", r1049.Seats).Msg("room has seats")
+
+	// dayNumber -> slotNumber -> set of room names
+	requestRoomsMap := make(map[int]map[int]*needRooms)
+
+	for _, day := range p.semesterConfig.Days {
+		requestRoomsMap[day.Number] = make(map[int]*needRooms)
+	}
+
+	for _, slot := range p.semesterConfig.Slots {
+		neededRooms := &needRooms{}
+		examsInSlot, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		if err != nil {
+			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Msg("cannot get exams in slot")
+			return err
+		}
+
+		examsWithoutRooms := make([]*model.PlannedExam, 0, len(examsInSlot))
+		for _, exam := range examsInSlot {
+			if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+				continue
+			}
+			if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil &&
+				(exam.Constraints.RoomConstraints.Exahm || exam.Constraints.RoomConstraints.Lab ||
+					exam.Constraints.RoomConstraints.Seb || exam.Constraints.RoomConstraints.PlacesWithSocket) {
+				continue
+			}
+			examsWithoutRooms = append(examsWithoutRooms, exam)
+		}
+		if len(examsWithoutRooms) == 0 {
+			continue
+		}
+
+		needsR1006, needsR1046, needsR1049 := 0, 0, 0
+		for _, exam := range examsWithoutRooms {
+			studs := exam.StudentRegsCount
+			// maxDuration := exam.MaxDuration
+
+			if studs <= 25 {
+				continue
+			}
+
+			switch {
+			case studs < r1006.Seats:
+				needsR1006++
+			case studs <= r1046.Seats:
+				needsR1046++
+			case studs <= r1049.Seats:
+				needsR1049++
+			case studs <= r1006.Seats+r1046.Seats:
+				needsR1006++
+				needsR1046++
+			case studs <= r1006.Seats+r1049.Seats:
+				needsR1006++
+				needsR1049++
+			case studs <= r1046.Seats+r1049.Seats:
+				needsR1046++
+				needsR1049++
+			default:
+				needsR1006++
+				needsR1046++
+				needsR1049++
+			}
+		}
+
+		log.Debug().
+			Int("needsR1006", needsR1006).
+			Int("needsR1046", needsR1046).
+			Int("needsR1049", needsR1049).Msg("found the following needs")
+
+		if needsR1006+needsR1046+needsR1049 == 0 {
+			continue
+		}
+
+		if needsR1046+needsR1049 == 1 {
+			neededRooms.r1046.needed = true
+		}
+		if needsR1046+needsR1049 == 2 {
+			neededRooms.r1046.needed = true
+			neededRooms.r1049.needed = true
+		}
+		if needsR1006 > 0 {
+			neededRooms.r1006.needed = true
+		}
+		if needsR1006+needsR1046+needsR1049 > 3 {
+			neededRooms.r1006.needed = true
+			neededRooms.r1046.needed = true
+			neededRooms.r1049.needed = true
+		}
+
+		requestRoomsMap[slot.DayNumber][slot.SlotNumber] = neededRooms
+		log.Debug().Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).
+			Interface("rooms", requestRoomsMap[slot.DayNumber][slot.SlotNumber]).
+			Interface("neededRooms", neededRooms).
+			Msg("need rooms in slot")
+	}
+
+	log.Debug().Interface("requestRoomsMap", requestRoomsMap).Msg("need request rooms")
+
+	return p.outputForRequestRooms(requestRoomsMap, []string{r1006name, r1046name, r1049name})
+}
+
+func (p *Plexams) outputForRequestRooms(requestRoomsMap map[int]map[int]*needRooms, roomNames []string) error {
+	var builderEmail strings.Builder
+
+	builderEmail.WriteString("\nFür E-Mail-Anfrage:")
+	for _, roomName := range roomNames {
+		fmt.Fprintf(&builderEmail, "\nAnfragen für Raum %s\n\n", roomName)
+		for _, day := range p.semesterConfig.Days {
+			needRoomForDay := false
+			for _, needRooms := range requestRoomsMap[day.Number] {
+				log.Debug().Str("needRooms", fmt.Sprintf("%v", needRooms)).Msg("needed rooms")
+				if needRooms.needs(roomName) {
+					needRoomForDay = true
+					break
+				}
+			}
+			if !needRoomForDay {
+				log.Debug().Int("day", day.Number).Str("name", roomName).Msg("no need for room on this day")
+				continue
+			}
+			fmt.Fprintf(&builderEmail, "- %s\n", day.Date.Format("02.01.06"))
+			for i, slot := range p.semesterConfig.Starttimes {
+				log.Debug().Int("i", i).Msg("checking slot")
+				needRooms, ok := requestRoomsMap[day.Number][i+1]
+				if !ok {
+					continue
+				}
+				if needRooms.needs(roomName) {
+					starttime, err := time.Parse("15:04", slot.Start)
+					if err != nil {
+						log.Error().Err(err).Str("time-string", slot.Start).Msg("cannot parse time")
+						return err
+					}
+					fmt.Fprintf(&builderEmail, "  - %v - %v Uhr\n",
+						starttime.Add(-15*time.Minute).Format("15:04"),
+						starttime.Add(105*time.Minute).Format("15:04"))
+				}
+			}
+		}
+	}
+
+	fmt.Println(builderEmail.String())
+	return nil
+}
 
 func (p *Plexams) RequestRooms() error {
 	ctx := context.Background()

@@ -3,41 +3,14 @@ package db
 import (
 	"context"
 	"strings"
-	"time"
 
+	"github.com/obcode/plexams.go/graph/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type AnnyBooking struct {
-	Number               string     `bson:"number"`
-	StartDate            time.Time  `bson:"start_date"`
-	EndDate              time.Time  `bson:"end_date"`
-	BlockerStartDate     time.Time  `bson:"blocker_start_date"`
-	BlockerEndDate       time.Time  `bson:"blocker_end_date"`
-	ChargedDuration      int        `bson:"charged_duration"`
-	Description          string     `bson:"description"`
-	CreatedAt            time.Time  `bson:"created_at"`
-	UpdatedAt            time.Time  `bson:"updated_at"`
-	CanceledAt           *time.Time `bson:"canceled_at,omitempty"`
-	Status               string     `bson:"status"`
-	StatusReason         any        `bson:"status_reason,omitempty"`
-	IsBlocker            bool       `bson:"is_blocker"`
-	CanEdit              bool       `bson:"can_edit"`
-	IsEditable           bool       `bson:"is_editable"`
-	ManuallyCreated      bool       `bson:"manually_created"`
-	Note                 string     `bson:"note"`
-	Room                 string     `bson:"room,omitempty"`
-	Self                 string     `bson:"self"`
-	PersonalizationName  string     `bson:"personalization_name"`
-	BookingGroupID       string     `bson:"booking_group_identifier,omitempty"`
-	CancelableUntil      *time.Time `bson:"cancelable_until,omitempty"`
-	HasCustomDescription bool       `bson:"has_custom_description"`
-	ResourceID           string     `bson:"resource_id,omitempty"`
-}
-
-func (db *DB) SaveAnnyBookings(ctx context.Context, bookings []*AnnyBooking) error {
+func (db *DB) SaveAnnyBookings(ctx context.Context, bookings []*model.AnnyBooking) error {
 	collection := db.Client.Database(db.databaseName).Collection(collectionAnnyBookings)
 
 	err := collection.Drop(ctx)
@@ -58,15 +31,15 @@ func (db *DB) SaveAnnyBookings(ctx context.Context, bookings []*AnnyBooking) err
 	return nil
 }
 
-func (db *DB) AnnyBookings(ctx context.Context, room *string) ([]*AnnyBooking, error) {
+func (db *DB) AnnyBookings(ctx context.Context, room *string) ([]*model.AnnyBooking, error) {
 	return db.annyBookings(ctx, room)
 }
 
-func (db *DB) AllAnnyBookings(ctx context.Context) ([]*AnnyBooking, error) {
+func (db *DB) AllAnnyBookings(ctx context.Context) ([]*model.AnnyBooking, error) {
 	return db.annyBookings(ctx, nil)
 }
 
-func (db *DB) annyBookings(ctx context.Context, room *string) ([]*AnnyBooking, error) {
+func (db *DB) annyBookings(ctx context.Context, room *string) ([]*model.AnnyBooking, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionAnnyBookings)
 
 	filter := bson.M{}
@@ -83,7 +56,7 @@ func (db *DB) annyBookings(ctx context.Context, room *string) ([]*AnnyBooking, e
 	}
 	defer cur.Close(ctx) //nolint:errcheck
 
-	bookings := make([]*AnnyBooking, 0)
+	bookings := make([]*model.AnnyBooking, 0)
 	if err := cur.All(ctx, &bookings); err != nil {
 		return nil, err
 	}

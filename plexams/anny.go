@@ -14,7 +14,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/obcode/plexams.go/db"
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/spf13/viper"
 )
 
@@ -225,7 +225,7 @@ func (p *Plexams) FetchFromAnny() error {
 		return fmt.Errorf("no database configured for saving anny bookings")
 	}
 
-	dbBookings := make([]*db.AnnyBooking, 0, len(bookings))
+	dbBookings := make([]*model.AnnyBooking, 0, len(bookings))
 	for _, booking := range bookings {
 		dbBookings = append(dbBookings, annyBookingToDBBooking(booking))
 	}
@@ -383,32 +383,32 @@ func extractResourceID(bookingGroupIdentifier string) string {
 	return matches[1]
 }
 
-func annyBookingToDBBooking(booking AnnyBooking) *db.AnnyBooking {
-	return &db.AnnyBooking{
-		Number:               booking.Number,
-		StartDate:            booking.StartDate,
-		EndDate:              booking.EndDate,
-		BlockerStartDate:     booking.BlockerStartDate,
-		BlockerEndDate:       booking.BlockerEndDate,
-		ChargedDuration:      booking.ChargedDuration,
-		Description:          booking.Description,
-		CreatedAt:            booking.CreatedAt,
-		UpdatedAt:            booking.UpdatedAt,
-		CanceledAt:           booking.CanceledAt,
-		Status:               booking.Status,
-		StatusReason:         booking.StatusReason,
-		IsBlocker:            booking.IsBlocker,
-		CanEdit:              booking.CanEdit,
-		IsEditable:           booking.IsEditable,
-		ManuallyCreated:      booking.ManuallyCreated,
-		Note:                 booking.Note,
-		Room:                 booking.Room,
-		Self:                 booking.Self,
-		PersonalizationName:  booking.PersonalizationName,
-		BookingGroupID:       booking.BookingGroupID,
-		CancelableUntil:      booking.CancelableUntil,
-		HasCustomDescription: booking.HasCustomDescription,
-		ResourceID:           booking.ResourceID,
+func annyBookingToDBBooking(booking AnnyBooking) *model.AnnyBooking {
+	return &model.AnnyBooking{
+		Number:                 booking.Number,
+		StartDate:              booking.StartDate,
+		EndDate:                booking.EndDate,
+		BlockerStartDate:       booking.BlockerStartDate,
+		BlockerEndDate:         booking.BlockerEndDate,
+		ChargedDuration:        booking.ChargedDuration,
+		Description:            booking.Description,
+		CreatedAt:              booking.CreatedAt,
+		UpdatedAt:              booking.UpdatedAt,
+		CanceledAt:             booking.CanceledAt,
+		Status:                 booking.Status,
+		StatusReason:           booking.StatusReason,
+		IsBlocker:              booking.IsBlocker,
+		CanEdit:                booking.CanEdit,
+		IsEditable:             booking.IsEditable,
+		ManuallyCreated:        booking.ManuallyCreated,
+		Note:                   booking.Note,
+		Room:                   booking.Room,
+		Self:                   booking.Self,
+		PersonalizationName:    booking.PersonalizationName,
+		BookingGroupIdentifier: booking.BookingGroupID,
+		CancelableUntil:        booking.CancelableUntil,
+		HasCustomDescription:   booking.HasCustomDescription,
+		ResourceID:             booking.ResourceID,
 	}
 }
 

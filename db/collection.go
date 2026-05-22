@@ -16,6 +16,7 @@ const (
 	collectionNameNTAs           = "nta"
 	collectionNamePlan           = "plan"
 	collectionNamePlanBackup     = "plan_backup"
+	collectionAnnyBookings       = "anny_bookings"
 
 	collectionStudentRegsPerStudentPlanned = "studentregs_per_student_planned"
 	collectionZpaStudents                  = "zpastudents"

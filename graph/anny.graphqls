@@ -1,0 +1,29 @@
+extend type Query {
+  annyBookings(room: String): [AnnyBooking!]!
+  allAnnyBookings: [AnnyBooking!]!
+}
+
+type AnnyBooking {
+  number: String!
+  startDate: Time!
+  endDate: Time!
+  blockerStartDate: Time!
+  blockerEndDate: Time!
+  chargedDuration: Int!
+  description: String!
+  createdAt: Time!
+  updatedAt: Time!
+  canceledAt: Time
+  status: String!
+  isBlocker: Boolean!
+  canEdit: Boolean!
+  isEditable: Boolean!
+  manuallyCreated: Boolean!
+  note: String!
+  room: String
+  self: String!
+  personalizationName: String!
+  bookingGroupIdentifier: String
+  cancelableUntil: Time
+  hasCustomDescription: Boolean!
+}

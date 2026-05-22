@@ -56,6 +56,31 @@ type ComplexityRoot struct {
 		Ancode func(childComplexity int) int
 	}
 
+	AnnyBooking struct {
+		BlockerEndDate         func(childComplexity int) int
+		BlockerStartDate       func(childComplexity int) int
+		BookingGroupIdentifier func(childComplexity int) int
+		CanEdit                func(childComplexity int) int
+		CancelableUntil        func(childComplexity int) int
+		CanceledAt             func(childComplexity int) int
+		ChargedDuration        func(childComplexity int) int
+		CreatedAt              func(childComplexity int) int
+		Description            func(childComplexity int) int
+		EndDate                func(childComplexity int) int
+		HasCustomDescription   func(childComplexity int) int
+		IsBlocker              func(childComplexity int) int
+		IsEditable             func(childComplexity int) int
+		ManuallyCreated        func(childComplexity int) int
+		Note                   func(childComplexity int) int
+		Number                 func(childComplexity int) int
+		PersonalizationName    func(childComplexity int) int
+		Room                   func(childComplexity int) int
+		Self                   func(childComplexity int) int
+		StartDate              func(childComplexity int) int
+		Status                 func(childComplexity int) int
+		UpdatedAt              func(childComplexity int) int
+	}
+
 	Conflict struct {
 		AnCode        func(childComplexity int) int
 		NumberOfStuds func(childComplexity int) int
@@ -371,10 +396,12 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		AllAnnyBookings               func(childComplexity int) int
 		AllProgramsInPlan             func(childComplexity int) int
 		AllSemesterNames              func(childComplexity int) int
 		AllowedSlots                  func(childComplexity int, ancode int) int
 		AncodesInPlan                 func(childComplexity int) int
+		AnnyBookings                  func(childComplexity int, room *string) int
 		AwkwardSlots                  func(childComplexity int, ancode int) int
 		ConflictingAncodes            func(childComplexity int, ancode int) int
 		ConnectedExam                 func(childComplexity int, ancode int) int
@@ -666,6 +693,8 @@ type QueryResolver interface {
 	AllSemesterNames(ctx context.Context) ([]*model.Semester, error)
 	Semester(ctx context.Context) (*model.Semester, error)
 	SemesterConfig(ctx context.Context) (*model.SemesterConfig, error)
+	AnnyBookings(ctx context.Context, room *string) ([]*model.AnnyBooking, error)
+	AllAnnyBookings(ctx context.Context) ([]*model.AnnyBooking, error)
 	ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error)
 	ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error)
 	ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error)
@@ -751,6 +780,160 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AnCode.Ancode(childComplexity), true
+
+	case "AnnyBooking.blockerEndDate":
+		if e.complexity.AnnyBooking.BlockerEndDate == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.BlockerEndDate(childComplexity), true
+
+	case "AnnyBooking.blockerStartDate":
+		if e.complexity.AnnyBooking.BlockerStartDate == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.BlockerStartDate(childComplexity), true
+
+	case "AnnyBooking.bookingGroupIdentifier":
+		if e.complexity.AnnyBooking.BookingGroupIdentifier == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.BookingGroupIdentifier(childComplexity), true
+
+	case "AnnyBooking.canEdit":
+		if e.complexity.AnnyBooking.CanEdit == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.CanEdit(childComplexity), true
+
+	case "AnnyBooking.cancelableUntil":
+		if e.complexity.AnnyBooking.CancelableUntil == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.CancelableUntil(childComplexity), true
+
+	case "AnnyBooking.canceledAt":
+		if e.complexity.AnnyBooking.CanceledAt == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.CanceledAt(childComplexity), true
+
+	case "AnnyBooking.chargedDuration":
+		if e.complexity.AnnyBooking.ChargedDuration == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.ChargedDuration(childComplexity), true
+
+	case "AnnyBooking.createdAt":
+		if e.complexity.AnnyBooking.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.CreatedAt(childComplexity), true
+
+	case "AnnyBooking.description":
+		if e.complexity.AnnyBooking.Description == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.Description(childComplexity), true
+
+	case "AnnyBooking.endDate":
+		if e.complexity.AnnyBooking.EndDate == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.EndDate(childComplexity), true
+
+	case "AnnyBooking.hasCustomDescription":
+		if e.complexity.AnnyBooking.HasCustomDescription == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.HasCustomDescription(childComplexity), true
+
+	case "AnnyBooking.isBlocker":
+		if e.complexity.AnnyBooking.IsBlocker == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.IsBlocker(childComplexity), true
+
+	case "AnnyBooking.isEditable":
+		if e.complexity.AnnyBooking.IsEditable == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.IsEditable(childComplexity), true
+
+	case "AnnyBooking.manuallyCreated":
+		if e.complexity.AnnyBooking.ManuallyCreated == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.ManuallyCreated(childComplexity), true
+
+	case "AnnyBooking.note":
+		if e.complexity.AnnyBooking.Note == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.Note(childComplexity), true
+
+	case "AnnyBooking.number":
+		if e.complexity.AnnyBooking.Number == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.Number(childComplexity), true
+
+	case "AnnyBooking.personalizationName":
+		if e.complexity.AnnyBooking.PersonalizationName == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.PersonalizationName(childComplexity), true
+
+	case "AnnyBooking.room":
+		if e.complexity.AnnyBooking.Room == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.Room(childComplexity), true
+
+	case "AnnyBooking.self":
+		if e.complexity.AnnyBooking.Self == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.Self(childComplexity), true
+
+	case "AnnyBooking.startDate":
+		if e.complexity.AnnyBooking.StartDate == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.StartDate(childComplexity), true
+
+	case "AnnyBooking.status":
+		if e.complexity.AnnyBooking.Status == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.Status(childComplexity), true
+
+	case "AnnyBooking.updatedAt":
+		if e.complexity.AnnyBooking.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.UpdatedAt(childComplexity), true
 
 	case "Conflict.ancode":
 		if e.complexity.Conflict.AnCode == nil {
@@ -2263,6 +2446,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PrimussExamWithCount.StudentRegsCount(childComplexity), true
 
+	case "Query.allAnnyBookings":
+		if e.complexity.Query.AllAnnyBookings == nil {
+			break
+		}
+
+		return e.complexity.Query.AllAnnyBookings(childComplexity), true
+
 	case "Query.allProgramsInPlan":
 		if e.complexity.Query.AllProgramsInPlan == nil {
 			break
@@ -2295,6 +2485,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.AncodesInPlan(childComplexity), true
+
+	case "Query.annyBookings":
+		if e.complexity.Query.AnnyBookings == nil {
+			break
+		}
+
+		args, err := ec.field_Query_annyBookings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AnnyBookings(childComplexity, args["room"].(*string)), true
 
 	case "Query.awkwardSlots":
 		if e.complexity.Query.AwkwardSlots == nil {
@@ -3747,6 +3949,35 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
+	{Name: "../anny.graphqls", Input: `extend type Query {
+  annyBookings(room: String): [AnnyBooking!]!
+  allAnnyBookings: [AnnyBooking!]!
+}
+
+type AnnyBooking {
+  number: String!
+  startDate: Time!
+  endDate: Time!
+  blockerStartDate: Time!
+  blockerEndDate: Time!
+  chargedDuration: Int!
+  description: String!
+  createdAt: Time!
+  updatedAt: Time!
+  canceledAt: Time
+  status: String!
+  isBlocker: Boolean!
+  canEdit: Boolean!
+  isEditable: Boolean!
+  manuallyCreated: Boolean!
+  note: String!
+  room: String
+  self: String!
+  personalizationName: String!
+  bookingGroupIdentifier: String
+  cancelableUntil: Time
+  hasCustomDescription: Boolean!
+}`, BuiltIn: false},
 	{Name: "../constraints.graphqls", Input: `scalar Time
 
 extend type Query {
@@ -5188,6 +5419,34 @@ func (ec *executionContext) field_Query_allowedSlots_argsAncode(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Query_annyBookings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_annyBookings_argsRoom(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["room"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_annyBookings_argsRoom(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["room"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("room"))
+	if tmp, ok := rawArgs["room"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query_awkwardSlots_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -6277,6 +6536,962 @@ func (ec *executionContext) fieldContext_AnCode_ancode(_ context.Context, field 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_number(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_number(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Number, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_number(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_startDate(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_startDate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartDate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_startDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_endDate(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_endDate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EndDate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_endDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_blockerStartDate(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_blockerStartDate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BlockerStartDate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_blockerStartDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_blockerEndDate(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_blockerEndDate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BlockerEndDate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_blockerEndDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_chargedDuration(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_chargedDuration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChargedDuration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_chargedDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_description(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_updatedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_canceledAt(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_canceledAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CanceledAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_canceledAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_status(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_status(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_isBlocker(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_isBlocker(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsBlocker, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_isBlocker(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_canEdit(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_canEdit(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CanEdit, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_canEdit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_isEditable(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_isEditable(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsEditable, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_isEditable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_manuallyCreated(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_manuallyCreated(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ManuallyCreated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_manuallyCreated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_note(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_note(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Note, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_room(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_room(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Room, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_room(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_self(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_self(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Self, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_self(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_personalizationName(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_personalizationName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PersonalizationName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_personalizationName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_bookingGroupIdentifier(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_bookingGroupIdentifier(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BookingGroupIdentifier, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_bookingGroupIdentifier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_cancelableUntil(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_cancelableUntil(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CancelableUntil, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_cancelableUntil(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_hasCustomDescription(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_hasCustomDescription(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasCustomDescription, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_hasCustomDescription(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -16466,6 +17681,197 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_emails(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_annyBookings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_annyBookings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().AnnyBookings(rctx, fc.Args["room"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.AnnyBooking)
+	fc.Result = res
+	return ec.marshalNAnnyBooking2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyBookingᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_annyBookings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "number":
+				return ec.fieldContext_AnnyBooking_number(ctx, field)
+			case "startDate":
+				return ec.fieldContext_AnnyBooking_startDate(ctx, field)
+			case "endDate":
+				return ec.fieldContext_AnnyBooking_endDate(ctx, field)
+			case "blockerStartDate":
+				return ec.fieldContext_AnnyBooking_blockerStartDate(ctx, field)
+			case "blockerEndDate":
+				return ec.fieldContext_AnnyBooking_blockerEndDate(ctx, field)
+			case "chargedDuration":
+				return ec.fieldContext_AnnyBooking_chargedDuration(ctx, field)
+			case "description":
+				return ec.fieldContext_AnnyBooking_description(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AnnyBooking_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AnnyBooking_updatedAt(ctx, field)
+			case "canceledAt":
+				return ec.fieldContext_AnnyBooking_canceledAt(ctx, field)
+			case "status":
+				return ec.fieldContext_AnnyBooking_status(ctx, field)
+			case "isBlocker":
+				return ec.fieldContext_AnnyBooking_isBlocker(ctx, field)
+			case "canEdit":
+				return ec.fieldContext_AnnyBooking_canEdit(ctx, field)
+			case "isEditable":
+				return ec.fieldContext_AnnyBooking_isEditable(ctx, field)
+			case "manuallyCreated":
+				return ec.fieldContext_AnnyBooking_manuallyCreated(ctx, field)
+			case "note":
+				return ec.fieldContext_AnnyBooking_note(ctx, field)
+			case "room":
+				return ec.fieldContext_AnnyBooking_room(ctx, field)
+			case "self":
+				return ec.fieldContext_AnnyBooking_self(ctx, field)
+			case "personalizationName":
+				return ec.fieldContext_AnnyBooking_personalizationName(ctx, field)
+			case "bookingGroupIdentifier":
+				return ec.fieldContext_AnnyBooking_bookingGroupIdentifier(ctx, field)
+			case "cancelableUntil":
+				return ec.fieldContext_AnnyBooking_cancelableUntil(ctx, field)
+			case "hasCustomDescription":
+				return ec.fieldContext_AnnyBooking_hasCustomDescription(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AnnyBooking", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_annyBookings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_allAnnyBookings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_allAnnyBookings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().AllAnnyBookings(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.AnnyBooking)
+	fc.Result = res
+	return ec.marshalNAnnyBooking2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyBookingᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_allAnnyBookings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "number":
+				return ec.fieldContext_AnnyBooking_number(ctx, field)
+			case "startDate":
+				return ec.fieldContext_AnnyBooking_startDate(ctx, field)
+			case "endDate":
+				return ec.fieldContext_AnnyBooking_endDate(ctx, field)
+			case "blockerStartDate":
+				return ec.fieldContext_AnnyBooking_blockerStartDate(ctx, field)
+			case "blockerEndDate":
+				return ec.fieldContext_AnnyBooking_blockerEndDate(ctx, field)
+			case "chargedDuration":
+				return ec.fieldContext_AnnyBooking_chargedDuration(ctx, field)
+			case "description":
+				return ec.fieldContext_AnnyBooking_description(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_AnnyBooking_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_AnnyBooking_updatedAt(ctx, field)
+			case "canceledAt":
+				return ec.fieldContext_AnnyBooking_canceledAt(ctx, field)
+			case "status":
+				return ec.fieldContext_AnnyBooking_status(ctx, field)
+			case "isBlocker":
+				return ec.fieldContext_AnnyBooking_isBlocker(ctx, field)
+			case "canEdit":
+				return ec.fieldContext_AnnyBooking_canEdit(ctx, field)
+			case "isEditable":
+				return ec.fieldContext_AnnyBooking_isEditable(ctx, field)
+			case "manuallyCreated":
+				return ec.fieldContext_AnnyBooking_manuallyCreated(ctx, field)
+			case "note":
+				return ec.fieldContext_AnnyBooking_note(ctx, field)
+			case "room":
+				return ec.fieldContext_AnnyBooking_room(ctx, field)
+			case "self":
+				return ec.fieldContext_AnnyBooking_self(ctx, field)
+			case "personalizationName":
+				return ec.fieldContext_AnnyBooking_personalizationName(ctx, field)
+			case "bookingGroupIdentifier":
+				return ec.fieldContext_AnnyBooking_bookingGroupIdentifier(ctx, field)
+			case "cancelableUntil":
+				return ec.fieldContext_AnnyBooking_cancelableUntil(ctx, field)
+			case "hasCustomDescription":
+				return ec.fieldContext_AnnyBooking_hasCustomDescription(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AnnyBooking", field.Name)
 		},
 	}
 	return fc, nil
@@ -27896,6 +29302,138 @@ func (ec *executionContext) _AnCode(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var annyBookingImplementors = []string{"AnnyBooking"}
+
+func (ec *executionContext) _AnnyBooking(ctx context.Context, sel ast.SelectionSet, obj *model.AnnyBooking) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, annyBookingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AnnyBooking")
+		case "number":
+			out.Values[i] = ec._AnnyBooking_number(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startDate":
+			out.Values[i] = ec._AnnyBooking_startDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "endDate":
+			out.Values[i] = ec._AnnyBooking_endDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "blockerStartDate":
+			out.Values[i] = ec._AnnyBooking_blockerStartDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "blockerEndDate":
+			out.Values[i] = ec._AnnyBooking_blockerEndDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "chargedDuration":
+			out.Values[i] = ec._AnnyBooking_chargedDuration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._AnnyBooking_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._AnnyBooking_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._AnnyBooking_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "canceledAt":
+			out.Values[i] = ec._AnnyBooking_canceledAt(ctx, field, obj)
+		case "status":
+			out.Values[i] = ec._AnnyBooking_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isBlocker":
+			out.Values[i] = ec._AnnyBooking_isBlocker(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "canEdit":
+			out.Values[i] = ec._AnnyBooking_canEdit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isEditable":
+			out.Values[i] = ec._AnnyBooking_isEditable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "manuallyCreated":
+			out.Values[i] = ec._AnnyBooking_manuallyCreated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._AnnyBooking_note(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "room":
+			out.Values[i] = ec._AnnyBooking_room(ctx, field, obj)
+		case "self":
+			out.Values[i] = ec._AnnyBooking_self(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "personalizationName":
+			out.Values[i] = ec._AnnyBooking_personalizationName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bookingGroupIdentifier":
+			out.Values[i] = ec._AnnyBooking_bookingGroupIdentifier(ctx, field, obj)
+		case "cancelableUntil":
+			out.Values[i] = ec._AnnyBooking_cancelableUntil(ctx, field, obj)
+		case "hasCustomDescription":
+			out.Values[i] = ec._AnnyBooking_hasCustomDescription(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var conflictImplementors = []string{"Conflict"}
 
 func (ec *executionContext) _Conflict(ctx context.Context, sel ast.SelectionSet, obj *model.Conflict) graphql.Marshaler {
@@ -30323,6 +31861,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_semesterConfig(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "annyBookings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_annyBookings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "allAnnyBookings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_allAnnyBookings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -33296,6 +34878,60 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 // endregion **************************** object.gotpl ****************************
 
 // region    ***************************** type.gotpl *****************************
+
+func (ec *executionContext) marshalNAnnyBooking2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyBookingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AnnyBooking) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAnnyBooking2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyBooking(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAnnyBooking2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyBooking(ctx context.Context, sel ast.SelectionSet, v *model.AnnyBooking) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AnnyBooking(ctx, sel, v)
+}
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
@@ -36661,6 +38297,18 @@ func (ec *executionContext) marshalOSlot2ᚕᚖgithubᚗcomᚋobcodeᚋplexams�
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOString2string(ctx context.Context, v any) (string, error) {
+	res, err := graphql.UnmarshalString(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {

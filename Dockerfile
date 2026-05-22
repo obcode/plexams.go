@@ -21,9 +21,10 @@ ARG BUILD_TIME
 
 # Build mit Version
 RUN go build -ldflags "\
-    -X 'github.com/obcode/plexams.go/cmd.Version=${VERSION}' \
-    -X 'github.com/obcode/plexams.go/cmd.BuildTime=${BUILD_TIME}' \
-    -X 'github.com/obcode/plexams.go/cmd.GitCommit=${GIT_COMMIT}'" \
+    -X main.version=${VERSION} \
+    -X main.commit=${GIT_COMMIT} \
+    -X main.date=${BUILD_TIME} \
+    -X main.builtBy=docker" \
     -o plexams.go .
 
 # Final stage

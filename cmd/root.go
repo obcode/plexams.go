@@ -101,9 +101,9 @@ func initConfig() error {
 			var notFound viper.ConfigFileNotFoundError
 			if errors.As(err, &notFound) {
 				if p != "" {
-					return fmt.Errorf("semester config '%s.yaml' nicht gefunden (gesucht in: ., %s, %s)", semester, home, p)
+					return fmt.Errorf("semester config '%s.yaml' not found (searched in: ., %s, %s)", semester, home, p)
 				}
-				return fmt.Errorf("semester config '%s.yaml' nicht gefunden (gesucht in: ., %s)", semester, home)
+				return fmt.Errorf("semester config '%s.yaml' not found (searched in: ., %s)", semester, home)
 			}
 			return fmt.Errorf("cannot read semester config '%s.yaml': %w", semester, err)
 		}
@@ -115,7 +115,7 @@ func initConfig() error {
 	} else {
 		var notFound viper.ConfigFileNotFoundError
 		if errors.As(err, &notFound) {
-			return fmt.Errorf("config '.plexams.yaml' nicht gefunden (gesucht in: ., %s). Starte 'plexams.go init'", home)
+			return fmt.Errorf("config '.plexams.yaml' not found (searched in: ., %s). Run 'plexams.go init'", home)
 		}
 		return fmt.Errorf("cannot read config '.plexams.yaml': %w", err)
 	}

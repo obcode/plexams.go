@@ -64,15 +64,31 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry
 			From:     booking.StartDate,
 			Until:    booking.EndDate,
 			Rooms:    []string{booking.Room},
-			Approved: booking.Status == "accepted",
+			Approved: isApprovedAnnyStatus(booking.Status),
 		})
 	}
 
 	return entries, nil
 }
 
+func isApprovedAnnyStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "accepted", "acceptet":
+		return true
+	default:
+		return false
+	}
+}
+
 func (p *Plexams) ExahmRoomsFromBooked() ([]BookedEntry, error) {
+	if !viper.IsSet("roomconstraints.booked") {
+		return []BookedEntry{}, nil
+	}
+
 	bookedInfo := viper.Get("roomconstraints.booked")
+	if bookedInfo == nil {
+		return []BookedEntry{}, nil
+	}
 
 	bookedInfoSlice, ok := bookedInfo.([]interface{})
 	if !ok {

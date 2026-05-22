@@ -301,10 +301,17 @@ func (p *Plexams) ValidateConstraints() error {
 	}
 
 	spinner.Message(aurora.Sprintf(aurora.Yellow(" get booked entries")))
-	bookedEntries, err := p.ExahmRoomsFromBooked()
+	bookedEntries, err := p.ExahmRoomsFromAnnyBookings(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get booked entries")
-		return err
+		log.Error().Err(err).Msg("cannot get entries from anny_bookings, fallback to booked entries in YAML")
+		bookedEntries = nil
+	}
+	if len(bookedEntries) == 0 {
+		bookedEntries, err = p.ExahmRoomsFromBooked()
+		if err != nil {
+			log.Error().Err(err).Msg("cannot get booked entries")
+			return err
+		}
 	}
 
 	for _, constraint := range constraints {
@@ -445,8 +452,16 @@ func (p *Plexams) ValidateConstraints() error {
 }
 
 func (p *Plexams) roomBookedDuringExamTime(bookedEntries []BookedEntry, slot *model.Slot) bool {
+	if slot == nil {
+		return false
+	}
+
+	examStart := slot.Starttime
+	examEnd := slot.Starttime.Add(90 * time.Minute)
+
 	for _, bookedEntry := range bookedEntries {
-		if bookedEntry.From.Before(slot.Starttime) && bookedEntry.Until.After(slot.Starttime.Add(90*time.Minute)) {
+		// Inclusive overlap: bookings starting/ending exactly at exam boundaries are valid.
+		if !bookedEntry.From.After(examStart) && !bookedEntry.Until.Before(examEnd) {
 			return true
 		}
 	}

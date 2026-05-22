@@ -2,16 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"runtime"
 
 	"github.com/spf13/cobra"
-)
-
-var (
-	// Version wird beim Build gesetzt
-	Version   = "dev"
-	BuildTime = "unknown"
-	GitCommit = "unknown"
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -20,12 +13,18 @@ func init() {
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print version information",
+	Short: "Print the version number of plexams.go",
+	Long:  `All software has versions. This is plexams.go'`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("plexams version %s\n", Version)
-		fmt.Printf("  Build time: %s\n", BuildTime)
-		fmt.Printf("  Git commit: %s\n", GitCommit)
-		fmt.Printf("  Go version: %s\n", runtime.Version())
-		fmt.Printf("  OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		if viper.GetString("Commit") == "none" {
+			fmt.Printf("plexams.go version %s\n", viper.GetString("Version"))
+		} else {
+			fmt.Printf("plexams.go version %s, commit %s, build date %s, build by %s\n",
+				viper.GetString("Version"),
+				viper.GetString("Commit"),
+				viper.GetString("Date"),
+				viper.GetString("BuiltBy"),
+			)
+		}
 	},
 }

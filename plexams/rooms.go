@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -68,7 +69,75 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry
 		})
 	}
 
-	return entries, nil
+	return mergeBookedEntriesByRoom(entries), nil
+}
+
+func mergeBookedEntriesByRoom(entries []BookedEntry) []BookedEntry {
+	if len(entries) < 2 {
+		return entries
+	}
+
+	sortedEntries := make([]BookedEntry, 0, len(entries))
+	for _, entry := range entries {
+		if len(entry.Rooms) != 1 {
+			sortedEntries = append(sortedEntries, entry)
+			continue
+		}
+		sortedEntries = append(sortedEntries, entry)
+	}
+
+	sort.Slice(sortedEntries, func(i, j int) bool {
+		roomI := ""
+		if len(sortedEntries[i].Rooms) > 0 {
+			roomI = strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(sortedEntries[i].Rooms[0]), " ", ""))
+		}
+		roomJ := ""
+		if len(sortedEntries[j].Rooms) > 0 {
+			roomJ = strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(sortedEntries[j].Rooms[0]), " ", ""))
+		}
+
+		if roomI != roomJ {
+			return roomI < roomJ
+		}
+		if sortedEntries[i].Approved != sortedEntries[j].Approved {
+			return sortedEntries[i].Approved && !sortedEntries[j].Approved
+		}
+		if !sortedEntries[i].From.Equal(sortedEntries[j].From) {
+			return sortedEntries[i].From.Before(sortedEntries[j].From)
+		}
+		return sortedEntries[i].Until.Before(sortedEntries[j].Until)
+	})
+
+	merged := make([]BookedEntry, 0, len(sortedEntries))
+	for _, current := range sortedEntries {
+		if len(merged) == 0 {
+			merged = append(merged, current)
+			continue
+		}
+
+		last := &merged[len(merged)-1]
+		if len(last.Rooms) != 1 || len(current.Rooms) != 1 {
+			merged = append(merged, current)
+			continue
+		}
+
+		lastRoom := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(last.Rooms[0]), " ", ""))
+		currentRoom := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(current.Rooms[0]), " ", ""))
+
+		// Merge adjacent or overlapping bookings for the same room and approval status.
+		if lastRoom == currentRoom &&
+			last.Approved == current.Approved &&
+			(current.From.Before(last.Until) || current.From.Equal(last.Until)) {
+			if current.Until.After(last.Until) {
+				last.Until = current.Until
+			}
+			continue
+		}
+
+		merged = append(merged, current)
+	}
+
+	return merged
 }
 
 func isApprovedAnnyStatus(status string) bool {

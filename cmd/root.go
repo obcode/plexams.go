@@ -45,11 +45,8 @@ var (
 	}
 )
 
-func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
-	}
+func Execute() error {
+	return rootCmd.Execute()
 }
 
 func init() {
@@ -124,7 +121,7 @@ func isInitCommand() bool {
 }
 
 func initPlexamsConfig() *plexams.Plexams {
-	fmt.Println(aurora.Sprintf(aurora.Cyan("Plexams.go version: %s\n"), Version))
+	fmt.Println(aurora.Sprintf(aurora.Cyan("Plexams.go version: %s\n"), viper.GetString("Version")))
 
 	if dbURI == "" {
 		dbURI = viper.GetString("db.uri")

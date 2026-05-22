@@ -204,11 +204,22 @@ func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room) (map[strin
 
 func (p *Plexams) restrictedSlotsForEXaHMRooms() (map[string]set.Set[SlotNumber], error) {
 	restrictedSlots := make(map[string]set.Set[SlotNumber])
-	// EXaHM rooms
-	bookedEntries, err := p.ExahmRoomsFromBooked()
+	// EXaHM rooms: prefer Anny bookings from DB, fall back to YAML booked entries
+	ctx := context.Background()
+	bookedEntries, err := p.ExahmRoomsFromAnnyBookings(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get exahm rooms from booked")
-		return nil, err
+		log.Error().Err(err).Msg("cannot get exahm rooms from anny bookings, falling back to booked in YAML")
+		bookedEntries = nil
+	}
+	if len(bookedEntries) == 0 {
+		log.Debug().Msg("no anny bookings found, reading booked entries from YAML")
+		bookedEntries, err = p.ExahmRoomsFromBooked()
+		if err != nil {
+			log.Error().Err(err).Msg("cannot get exahm rooms from booked")
+			return nil, err
+		}
+	} else {
+		log.Debug().Int("count", len(bookedEntries)).Msg("using anny bookings for EXaHM room slots")
 	}
 
 	for _, entry := range bookedEntries {

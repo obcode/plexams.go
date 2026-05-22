@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -32,6 +33,42 @@ type BookedEntry struct {
 	Until    time.Time
 	Rooms    []string
 	Approved bool
+}
+
+func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry, error) {
+	dbBookings, err := p.dbClient.AllAnnyBookings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get anny bookings from db: %w", err)
+	}
+	if len(dbBookings) == 0 {
+		return nil, nil
+	}
+
+	// Only consider rooms configured under anny.rooms
+	configRooms := viper.GetStringSlice("anny.rooms")
+	allowedRooms := make(map[string]struct{}, len(configRooms))
+	for _, r := range configRooms {
+		allowedRooms[strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(r), " ", ""))] = struct{}{}
+	}
+
+	entries := make([]BookedEntry, 0, len(dbBookings))
+	for _, booking := range dbBookings {
+		if booking.Room == "" {
+			continue
+		}
+		normalizedRoom := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(booking.Room), " ", ""))
+		if _, ok := allowedRooms[normalizedRoom]; !ok {
+			continue
+		}
+		entries = append(entries, BookedEntry{
+			From:     booking.StartDate,
+			Until:    booking.EndDate,
+			Rooms:    []string{booking.Room},
+			Approved: booking.Status == "accepted",
+		})
+	}
+
+	return entries, nil
 }
 
 func (p *Plexams) ExahmRoomsFromBooked() ([]BookedEntry, error) {

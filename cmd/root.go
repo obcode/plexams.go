@@ -28,7 +28,7 @@ var (
 			plexams := initPlexamsConfig()
 			graph.StartServer(plexams, viper.GetString("server.port"))
 		},
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 			output := zerolog.ConsoleWriter{Out: os.Stdout}
@@ -41,6 +41,12 @@ var (
 				zerolog.SetGlobalLevel(zerolog.InfoLevel)
 			}
 			log.Logger = zerolog.New(output).With().Caller().Timestamp().Logger()
+
+			if isConfigOptionalCommand(cmd) {
+				return nil
+			}
+
+			return initConfig()
 		},
 	}
 )
@@ -50,8 +56,6 @@ func Execute() error {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
 	rootCmd.PersistentFlags().StringVar(&dbURI, "db-uri", "",
 		"override db.uri from config file")
 	rootCmd.PersistentFlags().StringVar(&semester, "semester", "",
@@ -60,10 +64,10 @@ func init() {
 		"verbose output")
 }
 
-func initConfig() {
+func initConfig() error {
 	home, err := homedir.Dir()
 	if err != nil {
-		er(err)
+		return fmt.Errorf("cannot determine home directory: %w", err)
 	}
 
 	viper.SetConfigName(".plexams")
@@ -75,6 +79,9 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		if semester == "" {
 			semester = viper.GetString("semester")
+		}
+		if strings.TrimSpace(semester) == "" {
+			return fmt.Errorf("missing setting 'semester' in .plexams.yaml")
 		}
 		p := viper.GetString("semester-path")
 		p = os.ExpandEnv(p)      // $HOME, $USER, ...
@@ -92,28 +99,34 @@ func initConfig() {
 		err = semesterViper.ReadInConfig()
 		if err != nil {
 			var notFound viper.ConfigFileNotFoundError
-			if isInitCommand() && errors.As(err, &notFound) {
-				return
+			if errors.As(err, &notFound) {
+				if p != "" {
+					return fmt.Errorf("semester config '%s.yaml' nicht gefunden (gesucht in: ., %s, %s)", semester, home, p)
+				}
+				return fmt.Errorf("semester config '%s.yaml' nicht gefunden (gesucht in: ., %s)", semester, home)
 			}
-			panic(fmt.Errorf("%s: should be %s.yml", err, "plexams"))
+			return fmt.Errorf("cannot read semester config '%s.yaml': %w", semester, err)
 		}
 
 		err = viper.MergeConfigMap(semesterViper.AllSettings())
 		if err != nil {
-			panic(fmt.Errorf("cannot merge semester config: %w", err))
+			return fmt.Errorf("cannot merge semester config: %w", err)
 		}
 	} else {
 		var notFound viper.ConfigFileNotFoundError
-		if isInitCommand() && errors.As(err, &notFound) {
-			return
+		if errors.As(err, &notFound) {
+			return fmt.Errorf("config '.plexams.yaml' nicht gefunden (gesucht in: ., %s). Starte 'plexams.go init'", home)
 		}
-		panic(fmt.Errorf("fatal error config file: %s", err))
+		return fmt.Errorf("cannot read config '.plexams.yaml': %w", err)
 	}
+
+	return nil
 }
 
-func isInitCommand() bool {
-	for _, arg := range os.Args[1:] {
-		if arg == "init" {
+func isConfigOptionalCommand(cmd *cobra.Command) bool {
+	for c := cmd; c != nil; c = c.Parent() {
+		switch c.Name() {
+		case "init", "version":
 			return true
 		}
 	}
@@ -146,9 +159,4 @@ func initPlexamsConfig() *plexams.Plexams {
 
 	plexams.PrintInfo()
 	return plexams
-}
-
-func er(msg interface{}) {
-	fmt.Println("Error:", msg)
-	os.Exit(1)
 }

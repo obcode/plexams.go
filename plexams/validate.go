@@ -142,6 +142,11 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 				continue
 			}
 
+			oneIsMucdai := false
+			if exam1.Ancode > 999 || exam2.Ancode > 999 {
+				oneIsMucdai = true
+			}
+
 			log.Debug().Interface("exam1", exam1).Interface("exam2", exam2).Msg("found conflicting exams")
 			fmt.Printf("%s\n", aurora.Sprintf(aurora.Red("\n    # %s"), problemWithStudents.problem))
 			for _, exam := range []*model.PlannedExam{exam1, exam2} {
@@ -149,20 +154,26 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 				if exam.ZpaExam.IsRepeaterExam {
 					repeater = "-- Wiederholungsprüfung"
 				}
+
 				ancode := exam.Ancode
-				ancodeStr := fmt.Sprintf("%6d", ancode)
-				zpaAncode := "           "
-				if ancode > 999 {
-					primussAncode := ancode % 1000
-					base := ancode - primussAncode
-					program := mucdaiprogram[base]
-					ancodeStr = fmt.Sprintf("%s/%d", program, primussAncode)
-				} else {
-					for _, primussExam := range exam.PrimussExams {
-						if primussExam.Exam.AnCode != exam.Ancode {
-							ancodeStr = fmt.Sprintf("%6d", primussExam.Exam.AnCode)
-							zpaAncode = fmt.Sprintf(" (ZPA: %d)", exam.Ancode)
-							break
+				ancodeStr := fmt.Sprintf("%3d", ancode)
+				zpaAncode := ""
+				if oneIsMucdai {
+					ancodeStr = fmt.Sprintf("%6d", ancode)
+					zpaAncode = "           "
+
+					if ancode > 999 {
+						primussAncode := ancode % 1000
+						base := ancode - primussAncode
+						program := mucdaiprogram[base]
+						ancodeStr = fmt.Sprintf("%s/%d", program, primussAncode)
+					} else {
+						for _, primussExam := range exam.PrimussExams {
+							if primussExam.Exam.AnCode != exam.Ancode {
+								ancodeStr = fmt.Sprintf("%6d", primussExam.Exam.AnCode)
+								zpaAncode = fmt.Sprintf(" (ZPA: %d)", exam.Ancode)
+								break
+							}
 						}
 					}
 				}
@@ -173,9 +184,9 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 					time = *planEntry.ExternalTime
 				}
 
-				fmt.Printf("%s\n", aurora.Sprintf(aurora.Red("    # %s - %s. %s (%s): %s %s %s"),
+				fmt.Printf("%s\n", aurora.Sprintf(aurora.Red("    # %s: %s. %s (%s): %s %s %s"),
 					time.Local().Format("02.01.06, 15:04 Uhr"),
-					ancodeStr,
+					aurora.Magenta(ancodeStr),
 					aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
 					aurora.Yellow(exam.ZpaExam.Groups),
 					aurora.Cyan(repeater),

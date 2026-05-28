@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -26,8 +27,8 @@ type KnownConflict struct {
 }
 
 type conflictingAncodes struct {
-	smallerAncode int
-	largerAncode  int
+	ancode1 int
+	ancode2 int
 }
 type problemWithStudents struct {
 	problem  string
@@ -111,7 +112,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 			knownConflicts, ancode, &validationMessages)
 	}
 
-	conflictingAncodesSlice := p.sortConflictingAncodes(validationMessages)
+	conflictingAncodesSlice, normalizedValidationMessages := p.sortConflictingAncodes(validationMessages)
 
 	if len(validationMessages) > 0 {
 		mucdaiPrograms := viper.GetStringSlice("mucdaiprograms")
@@ -129,13 +130,13 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 		}
 		fmt.Printf("\nknownConflicts:\n  studentRegs:")
 		for _, conflictingAncodes := range conflictingAncodesSlice {
-			problemWithStudents := validationMessages[conflictingAncodes]
-			exam1, err := p.PlannedExam(ctx, conflictingAncodes.smallerAncode)
+			problemWithStudents := normalizedValidationMessages[conflictingAncodes]
+			exam1, err := p.PlannedExam(ctx, conflictingAncodes.ancode1)
 			if err != nil {
 				log.Debug().Err(err).Msg("cannot get planned exam")
 				continue
 			}
-			exam2, err := p.PlannedExam(ctx, conflictingAncodes.largerAncode)
+			exam2, err := p.PlannedExam(ctx, conflictingAncodes.ancode2)
 			if err != nil {
 				log.Debug().Err(err).Msg("cannot get planned exam")
 				continue
@@ -198,35 +199,83 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 	return nil
 }
 
-func (plexams *Plexams) sortConflictingAncodes(validationMessages map[conflictingAncodes]*problemWithStudents) []conflictingAncodes {
+func (plexams *Plexams) sortConflictingAncodes(validationMessages map[conflictingAncodes]*problemWithStudents) ([]conflictingAncodes, map[conflictingAncodes]*problemWithStudents) {
+	ctx := context.Background()
 	ca := make([]conflictingAncodes, 0, len(validationMessages))
+	examCache := make(map[int]*model.PlannedExam)
+	timeCache := make(map[int]time.Time)
+	normalizedValidationMessages := make(map[conflictingAncodes]*problemWithStudents, len(validationMessages))
+	pairStartTimes := make(map[conflictingAncodes][2]time.Time, len(validationMessages))
 
-	// 	planEntry1 := exam1.PlanEntry
-	// time1 := p.getSlotTime(planEntry1.DayNumber, planEntry1.SlotNumber)
-	// if planEntry1.ExternalTime != nil {
-	// 	time1 = *planEntry1.ExternalTime
-	// }
+	getExamStartTime := func(ancode int) (time.Time, error) {
+		if cachedTime, ok := timeCache[ancode]; ok {
+			return cachedTime, nil
+		}
 
-	// planEntry2 := exam2.PlanEntry
-	// time2 := p.getSlotTime(planEntry2.DayNumber, planEntry2.SlotNumber)
-	// if planEntry2.ExternalTime != nil {
-	// 	time2 = *planEntry2.ExternalTime
-	// }
+		exam, ok := examCache[ancode]
+		if !ok {
+			plannedExam, err := plexams.PlannedExam(ctx, ancode)
+			if err != nil {
+				return time.Time{}, err
+			}
+			exam = plannedExam
+			examCache[ancode] = exam
+		}
 
-	// if time2.Before(time1) {
-	// 	exam1, exam2 = exam2, exam1
-	// }
+		planEntry := exam.PlanEntry
+		startTime := plexams.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
+		if planEntry.ExternalTime != nil {
+			startTime = *planEntry.ExternalTime
+		}
 
-	// planEntry := exam.PlanEntry
-	// time := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
-	// if planEntry.ExternalTime != nil {
-	// 	time = *planEntry.ExternalTime
-	// }
-
-	for c := range validationMessages {
-		ca = append(ca, c)
+		timeCache[ancode] = startTime
+		return startTime, nil
 	}
-	return ca
+
+	for c, problem := range validationMessages {
+		exam1Time, err := getExamStartTime(c.ancode1)
+		if err != nil {
+			log.Debug().Err(err).Int("ancode", c.ancode1).Msg("cannot get planned exam for sorting")
+			ca = append(ca, c)
+			normalizedValidationMessages[c] = problem
+			pairStartTimes[c] = [2]time.Time{}
+			continue
+		}
+		exam2Time, err := getExamStartTime(c.ancode2)
+		if err != nil {
+			log.Debug().Err(err).Int("ancode", c.ancode2).Msg("cannot get planned exam for sorting")
+			ca = append(ca, c)
+			normalizedValidationMessages[c] = problem
+			pairStartTimes[c] = [2]time.Time{exam1Time, time.Time{}}
+			continue
+		}
+
+		normalized := c
+		if exam2Time.Before(exam1Time) || (exam1Time.Equal(exam2Time) && c.ancode2 < c.ancode1) {
+			normalized = conflictingAncodes{ancode1: c.ancode2, ancode2: c.ancode1}
+			exam1Time, exam2Time = exam2Time, exam1Time
+		}
+		ca = append(ca, normalized)
+		normalizedValidationMessages[normalized] = problem
+		pairStartTimes[normalized] = [2]time.Time{exam1Time, exam2Time}
+	}
+
+	sort.SliceStable(ca, func(i, j int) bool {
+		leftTimes := pairStartTimes[ca[i]]
+		rightTimes := pairStartTimes[ca[j]]
+		if !leftTimes[0].Equal(rightTimes[0]) {
+			return leftTimes[0].Before(rightTimes[0])
+		}
+		if !leftTimes[1].Equal(rightTimes[1]) {
+			return leftTimes[1].Before(rightTimes[1])
+		}
+		if ca[i].ancode1 != ca[j].ancode1 {
+			return ca[i].ancode1 < ca[j].ancode1
+		}
+		return ca[i].ancode2 < ca[j].ancode2
+	})
+
+	return ca, normalizedValidationMessages
 }
 
 func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanEntry,
@@ -305,8 +354,8 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 				}
 
 				conflictingAncodes := conflictingAncodes{
-					smallerAncode: smallerAncode,
-					largerAncode:  largerAncode,
+					ancode1: smallerAncode,
+					ancode2: largerAncode,
 				}
 
 				validationMessageForProblem, ok := (*validationMessages)[conflictingAncodes]

@@ -37,13 +37,17 @@ type NTAEmail struct {
 	PlanerName string
 }
 
-func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, run bool) error {
+func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr string, run bool) error {
 	ntas, err := p.NtasWithRegs(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get ntas")
 		return err
 	}
 	for _, nta := range ntas {
+		if mtknr != "all" && mtknr != nta.Mtknr {
+			log.Debug().Str("mtknr", mtknr).Msg("student with mtknr not found")
+			continue
+		}
 		if !nta.Nta.NeedsRoomAlone {
 			continue
 		}

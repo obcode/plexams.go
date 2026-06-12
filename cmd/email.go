@@ -120,7 +120,10 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "nta-with-room-alone":
-				err := plexams.SendHandicapsMailsNTARoomAlone(context.Background(), run)
+				if len(args) < 2 {
+					log.Fatal("need mtknr of nta or \"all\"")
+				}
+				err := plexams.SendHandicapsMailsNTARoomAlone(context.Background(), args[1], run)
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

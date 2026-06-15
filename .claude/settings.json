@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build *)",
+      "Bash(go vet *)",
+      "Read(//home/ubuntu/**)",
+      "Bash(env)",
+      "Bash(find / -name \"*.plexams.yaml\" -o -name \".plexams.yaml\")",
+      "Bash(find / -name \"2026-*.yaml\")",
+      "Bash(cd /workspace/plexams.go; echo \"=== /tmp config ===\"; grep -iv password /tmp/tmp.NlYWCJN3dA/.plexams.yaml; echo \"=== semester yaml db section ===\"; grep -iv -E \"password|secret|username\" /home/ubuntu/semester/2026-SS.yaml | grep -i -A3 -E \"^db|uri|database|semester\" | head -30)",
+      "Read(//tmp/tmp.NlYWCJN3dA/**)",
+      "Bash(go run *)",
+      "Bash(HOME=/home/ubuntu /tmp/roomcmp/plexams_new prepare __noop__)",
+      "Bash(HOME=/home/ubuntu /tmp/roomcmp/plexams_new prepare rooms-for-exams)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//tmp/roomcmp/**)",
+      "Bash(git stash *)",
+      "Bash(HOME=/home/ubuntu /tmp/roomcmp/plexams_old prepare rooms-for-exams)",
+      "Bash(sed -i 's#Database\\(\"2026-SS\"\\).Collection\\(\"rooms\"\\)#Database\\(\"plexams\"\\).Collection\\(\"rooms\"\\)#' cmd_roomsdump/main.go)",
+      "Bash(python3 -c \"import json;d=json.load\\(open\\('/tmp/roomcmp/rooms_info.json'\\)\\);print\\(len\\(d\\),'rooms; sample:',{k:d[0][k] for k in \\('name','seats'\\)}\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(go test *)",
+      "Bash(golangci-lint-v2 run *)"
+    ]
+  }
+}

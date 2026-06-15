@@ -528,119 +528,210 @@ func (p *Plexams) availableRoomsInSlot(ctx context.Context, prepareRoomsCfg *pre
 func (p *Plexams) setPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg) []*model.PlannedRoom {
 	examRooms := make([]*model.PlannedRoom, 0)
 
+	// Seats taken per room, tracked across all exams in the slot. A room that is
+	// pre-planned for more than one (concurrent) exam must not be overbooked, so
+	// the count has to be shared between exams instead of being reset per exam.
+	seatsTakenMap := make(map[string]int) // room.name -> seats taken
+
+	// Determine which rooms are pre-planned for more than one exam in this slot.
+	// These shared rooms are filled last (see below), so that every exam first
+	// fills its own (exclusive) rooms and only the leftover students end up in
+	// the shared room.
+	roomExams := make(map[string]set.Set[int]) // roomName -> set of ancodes
+	for _, exam := range prepareRoomsCfg.exams {
+		for _, prePlannedRoom := range prepareRoomsCfg.prePlannedRooms[exam.Exam.Ancode] {
+			if _, ok := roomExams[prePlannedRoom.RoomName]; !ok {
+				roomExams[prePlannedRoom.RoomName] = set.NewSet[int]()
+			}
+			roomExams[prePlannedRoom.RoomName].Add(exam.Exam.Ancode)
+		}
+	}
+	sharedRooms := set.NewSet[string]()
+	for roomName, ancodes := range roomExams {
+		if ancodes.Cardinality() > 1 {
+			sharedRooms.Add(roomName)
+		}
+	}
+
+	// isShared reports whether a pre-planned room must be deferred to the last
+	// pass. NTA rooms (Mtknr != nil) are always assigned in the first pass (the
+	// NTA has a fixed seat); their seats are still counted in seatsTakenMap so the
+	// shared pass sees the correct remaining capacity.
+	isShared := func(prePlannedRoom *model.PrePlannedRoom) bool {
+		return prePlannedRoom.Mtknr == nil && sharedRooms.Contains(prePlannedRoom.RoomName)
+	}
+
+	// Pass 1: exclusive pre-planned rooms (and all NTA rooms).
 	for _, exam := range prepareRoomsCfg.exams {
 		prePlannedRooms, ok := prepareRoomsCfg.prePlannedRooms[exam.Exam.Ancode]
 		if !ok {
 			continue
 		}
-		cfg := yacspin.Config{
-			Frequency: 100 * time.Millisecond,
-			CharSet:   yacspin.CharSets[69],
-			Suffix: aurora.Sprintf(aurora.Cyan("found preplanned rooms for %d. %s (%s)"),
-				aurora.Magenta(exam.Exam.Ancode),
-				aurora.Magenta(exam.Exam.ZpaExam.Module),
-				aurora.Magenta(exam.Exam.ZpaExam.MainExamer)),
-			SuffixAutoColon:   true,
-			StopCharacter:     "✓",
-			StopColors:        []string{"fgGreen"},
-			StopFailMessage:   "error",
-			StopFailCharacter: "✗",
-			StopFailColors:    []string{"fgRed"},
-		}
-
-		spinner, err := yacspin.New(cfg)
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot create spinner")
-		}
-		err = spinner.Start()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot start spinner")
-		}
-
-		seatsTakenMap := make(map[string]int) // room.name -> seats taken
-
+		exclusive := make([]*model.PrePlannedRoom, 0, len(prePlannedRooms))
 		for _, prePlannedRoom := range prePlannedRooms {
-			room, ok := prepareRoomsCfg.roomInfo[prePlannedRoom.RoomName]
-			if !ok {
-				log.Error().Str("roomName", prePlannedRoom.RoomName).Msg("pre-planned room not found in room info")
-				panic(fmt.Sprintf("pre-planned room %s not found in room info", prePlannedRoom.RoomName))
+			if !isShared(prePlannedRoom) {
+				exclusive = append(exclusive, prePlannedRoom)
+			}
+		}
+		examRooms = append(examRooms, p.assignPrePlannedRooms(prepareRoomsCfg, exam, exclusive, seatsTakenMap)...)
+	}
+
+	if sharedRooms.Cardinality() == 0 {
+		return examRooms
+	}
+
+	// Pass 2: shared pre-planned rooms last, larger exam (more remaining normal
+	// regs) first, so that if the shared room is too small the bigger exam gets
+	// the seats and the overflow of the smaller one falls through to the normal
+	// room allocation.
+	examsBySize := make([]*model.ExamWithRegsAndRooms, len(prepareRoomsCfg.exams))
+	copy(examsBySize, prepareRoomsCfg.exams)
+	sort.SliceStable(examsBySize, func(i, j int) bool {
+		return len(examsBySize[i].NormalRegsMtknr) > len(examsBySize[j].NormalRegsMtknr)
+	})
+
+	for _, exam := range examsBySize {
+		prePlannedRooms, ok := prepareRoomsCfg.prePlannedRooms[exam.Exam.Ancode]
+		if !ok {
+			continue
+		}
+		shared := make([]*model.PrePlannedRoom, 0)
+		for _, prePlannedRoom := range prePlannedRooms {
+			if isShared(prePlannedRoom) {
+				shared = append(shared, prePlannedRoom)
+			}
+		}
+		if len(shared) == 0 {
+			continue
+		}
+		examRooms = append(examRooms, p.assignPrePlannedRooms(prepareRoomsCfg, exam, shared, seatsTakenMap)...)
+	}
+
+	return examRooms
+}
+
+// assignPrePlannedRooms fills the given pre-planned rooms of a single exam,
+// honoring the slot-wide seatsTakenMap so that rooms shared between concurrent
+// exams are not overbooked.
+func (p *Plexams) assignPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg, exam *model.ExamWithRegsAndRooms,
+	prePlannedRooms []*model.PrePlannedRoom, seatsTakenMap map[string]int) []*model.PlannedRoom {
+	examRooms := make([]*model.PlannedRoom, 0, len(prePlannedRooms))
+	if len(prePlannedRooms) == 0 {
+		return examRooms
+	}
+
+	cfg := yacspin.Config{
+		Frequency: 100 * time.Millisecond,
+		CharSet:   yacspin.CharSets[69],
+		Suffix: aurora.Sprintf(aurora.Cyan("found preplanned rooms for %d. %s (%s)"),
+			aurora.Magenta(exam.Exam.Ancode),
+			aurora.Magenta(exam.Exam.ZpaExam.Module),
+			aurora.Magenta(exam.Exam.ZpaExam.MainExamer)),
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailMessage:   "error",
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	}
+
+	spinner, err := yacspin.New(cfg)
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot create spinner")
+	}
+	err = spinner.Start()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot start spinner")
+	}
+
+	for _, prePlannedRoom := range prePlannedRooms {
+		room, ok := prepareRoomsCfg.roomInfo[prePlannedRoom.RoomName]
+		if !ok {
+			log.Error().Str("roomName", prePlannedRoom.RoomName).Msg("pre-planned room not found in room info")
+			panic(fmt.Sprintf("pre-planned room %s not found in room info", prePlannedRoom.RoomName))
+		}
+
+		var examRoom *model.PlannedRoom
+		if prePlannedRoom.Mtknr == nil { // room for normal students
+			seatsTaken := seatsTakenMap[room.Name]
+			studentCountInRoom := room.Seats - seatsTaken
+			if studentCountInRoom < 0 {
+				studentCountInRoom = 0
+			}
+			if studentCountInRoom > len(exam.NormalRegsMtknr) {
+				studentCountInRoom = len(exam.NormalRegsMtknr)
 			}
 
-			var examRoom *model.PlannedRoom
-			if prePlannedRoom.Mtknr == nil { // room for normal students
-				seatsTaken, ok := seatsTakenMap[room.Name]
-				if !ok {
-					seatsTaken = 0
-				}
-				studentCountInRoom := room.Seats - seatsTaken
-				if studentCountInRoom > len(exam.NormalRegsMtknr) {
-					studentCountInRoom = len(exam.NormalRegsMtknr)
-				}
-
-				studentsInRoom := exam.NormalRegsMtknr[:studentCountInRoom]
-				exam.NormalRegsMtknr = exam.NormalRegsMtknr[studentCountInRoom:]
-
-				examRoom = &model.PlannedRoom{
-					Day:            exam.Exam.PlanEntry.DayNumber,
-					Slot:           exam.Exam.PlanEntry.SlotNumber,
-					RoomName:       room.Name,
-					Ancode:         exam.Exam.Ancode,
-					Duration:       exam.Exam.ZpaExam.Duration,
-					StudentsInRoom: studentsInRoom,
-					Reserve:        prePlannedRoom.Reserve,
-					PrePlanned:     true,
-				}
-				seatsTakenMap[room.Name] = seatsTaken + studentCountInRoom
-			} else { // room for NTA
-				foundNTA := false
-				for i, nta := range exam.NtasInNormalRooms {
-					if nta.Mtknr == *prePlannedRoom.Mtknr {
-						exam.NtasInNormalRooms = append(exam.NtasInNormalRooms[:i], exam.NtasInNormalRooms[i+1:]...)
-						foundNTA = true
-						break
-					}
-				}
-				for i, nta := range exam.NtasInAloneRooms {
-					if nta.Mtknr == *prePlannedRoom.Mtknr {
-						exam.NtasInAloneRooms = append(exam.NtasInAloneRooms[:i], exam.NtasInAloneRooms[i+1:]...)
-						foundNTA = true
-						break
-					}
-				}
-				if !foundNTA {
-					log.Error().Str("mtknr", *prePlannedRoom.Mtknr).Msg("NTA not found in exam")
-					continue
-				}
-				nta, err := p.dbClient.Nta(context.Background(), *prePlannedRoom.Mtknr)
-				if err != nil {
-					log.Debug().Err(err).Str("mtknr", *prePlannedRoom.Mtknr).Msg("cannot get NTA by MTKNR")
-					continue
-				}
-				duration := int(math.Ceil(float64(exam.Exam.ZpaExam.Duration*(100+nta.DeltaDurationPercent)) / 100))
-				examRoom = &model.PlannedRoom{
-					Day:               exam.Exam.PlanEntry.DayNumber,
-					Slot:              exam.Exam.PlanEntry.SlotNumber,
-					RoomName:          room.Name,
-					Ancode:            exam.Exam.Ancode,
-					Duration:          duration,
-					StudentsInRoom:    []string{nta.Mtknr},
-					Handicap:          true,
-					HandicapRoomAlone: nta.NeedsRoomAlone,
-					Reserve:           false,
-					NtaMtknr:          prePlannedRoom.Mtknr,
-					PrePlanned:        true,
-				}
-				seatsTakenMap[room.Name]++
+			// A shared room may already be full (taken by another exam) when this
+			// exam gets to it; don't create an empty room entry then (reserve rooms
+			// are intentional placeholders and are kept).
+			if studentCountInRoom == 0 && !prePlannedRoom.Reserve {
+				continue
 			}
-			p.addPlannedRoom(prepareRoomsCfg, exam, room, examRoom)
 
-			examRooms = append(examRooms, examRoom)
+			studentsInRoom := exam.NormalRegsMtknr[:studentCountInRoom]
+			exam.NormalRegsMtknr = exam.NormalRegsMtknr[studentCountInRoom:]
+
+			examRoom = &model.PlannedRoom{
+				Day:            exam.Exam.PlanEntry.DayNumber,
+				Slot:           exam.Exam.PlanEntry.SlotNumber,
+				RoomName:       room.Name,
+				Ancode:         exam.Exam.Ancode,
+				Duration:       exam.Exam.ZpaExam.Duration,
+				StudentsInRoom: studentsInRoom,
+				Reserve:        prePlannedRoom.Reserve,
+				PrePlanned:     true,
+			}
+			seatsTakenMap[room.Name] = seatsTaken + studentCountInRoom
+		} else { // room for NTA
+			foundNTA := false
+			for i, nta := range exam.NtasInNormalRooms {
+				if nta.Mtknr == *prePlannedRoom.Mtknr {
+					exam.NtasInNormalRooms = append(exam.NtasInNormalRooms[:i], exam.NtasInNormalRooms[i+1:]...)
+					foundNTA = true
+					break
+				}
+			}
+			for i, nta := range exam.NtasInAloneRooms {
+				if nta.Mtknr == *prePlannedRoom.Mtknr {
+					exam.NtasInAloneRooms = append(exam.NtasInAloneRooms[:i], exam.NtasInAloneRooms[i+1:]...)
+					foundNTA = true
+					break
+				}
+			}
+			if !foundNTA {
+				log.Error().Str("mtknr", *prePlannedRoom.Mtknr).Msg("NTA not found in exam")
+				continue
+			}
+			nta, err := p.dbClient.Nta(context.Background(), *prePlannedRoom.Mtknr)
+			if err != nil {
+				log.Debug().Err(err).Str("mtknr", *prePlannedRoom.Mtknr).Msg("cannot get NTA by MTKNR")
+				continue
+			}
+			duration := int(math.Ceil(float64(exam.Exam.ZpaExam.Duration*(100+nta.DeltaDurationPercent)) / 100))
+			examRoom = &model.PlannedRoom{
+				Day:               exam.Exam.PlanEntry.DayNumber,
+				Slot:              exam.Exam.PlanEntry.SlotNumber,
+				RoomName:          room.Name,
+				Ancode:            exam.Exam.Ancode,
+				Duration:          duration,
+				StudentsInRoom:    []string{nta.Mtknr},
+				Handicap:          true,
+				HandicapRoomAlone: nta.NeedsRoomAlone,
+				Reserve:           false,
+				NtaMtknr:          prePlannedRoom.Mtknr,
+				PrePlanned:        true,
+			}
+			seatsTakenMap[room.Name]++
 		}
-		spinner.StopMessage(aurora.Sprintf(aurora.Green("added %d room(s)"), len(prePlannedRooms)))
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
+		p.addPlannedRoom(prepareRoomsCfg, exam, room, examRoom)
+
+		examRooms = append(examRooms, examRoom)
+	}
+	spinner.StopMessage(aurora.Sprintf(aurora.Green("added %d room(s)"), len(prePlannedRooms)))
+	err = spinner.Stop()
+	if err != nil {
+		log.Debug().Err(err).Msg("cannot stop spinner")
 	}
 
 	return examRooms

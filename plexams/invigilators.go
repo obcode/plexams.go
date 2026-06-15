@@ -241,20 +241,13 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 
 	todos.TodoPerInvigilator = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+todos.SumOtherContributions) / adjustedInvigilatorCount))
 
-	sumOtherContributionsOvertimeCutted := 0
-	for _, invigilator := range reqs {
-		if invigilator.Requirements != nil {
-			if otherContributions := invigilator.Requirements.OralExamsContribution +
-				invigilator.Requirements.LiveCodingContribution +
-				invigilator.Requirements.MasterContribution; otherContributions > todos.TodoPerInvigilator {
-				sumOtherContributionsOvertimeCutted += todos.TodoPerInvigilator
-			} else {
-				sumOtherContributionsOvertimeCutted += otherContributions
-			}
-		}
-	}
-	todos.SumOtherContributionsOvertimeCutted = sumOtherContributionsOvertimeCutted
-	todos.TodoPerInvigilatorOvertimeCutted = int(math.Ceil(float64(todos.SumExamRooms+todos.SumReserve+sumOtherContributionsOvertimeCutted) / adjustedInvigilatorCount))
+	// Verteile nur die tatsächlich zu leistenden Minuten (SumExamRooms +
+	// SumReserve) faktorgewichtet auf die Aufsichten und rechne dabei die bereits
+	// erbrachten Beiträge an. Wer mehr beigetragen hat als seinen Anteil, fällt
+	// komplett heraus (Über-Beitrag ist "Schicksal" und lässt sich nicht auf die
+	// anderen umlegen) -- siehe fairTodoPerInvigilator.
+	todos.TodoPerInvigilatorOvertimeCutted, todos.SumOtherContributionsOvertimeCutted =
+		fairTodoPerInvigilator(todos.SumExamRooms+todos.SumReserve, reqs)
 
 	for _, invigilator := range todos.Invigilators {
 
@@ -307,6 +300,62 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 	}
 
 	return &todos, nil
+}
+
+// fairTodoPerInvigilator computes the factor-weighted invigilation minutes each
+// invigilator should be planned for, given workMinutes (= SumExamRooms +
+// SumReserve) of actual invigilation that must be covered and the already
+// credited other contributions (Beisitz, Live-Coding, Master, ...) of every
+// invigilator.
+//
+// It solves
+//
+//	Σ_active max(0, T·Factor_i − contributions_i) = workMinutes
+//
+// as a fixed point: an invigilator whose contributions already reach or exceed
+// their share (T·Factor_i) does no invigilation, so they drop out of *both*
+// numerator and denominator. Their over-contribution is "Schicksal" -- it
+// cannot be redistributed because only the workMinutes that actually exist can
+// be shared. Removing such an invigilator only raises T (and thus the
+// threshold), so the active set shrinks monotonically and the loop converges in
+// at most len(reqs) rounds.
+//
+// It returns the fair T (rounded up) and the sum of contributions that actually
+// count toward the workload (those of the still-active invigilators).
+func fairTodoPerInvigilator(workMinutes int, reqs []*model.Invigilator) (todoPerInvigilator, countedContributions int) {
+	active := make([]*model.Invigilator, 0, len(reqs))
+	for _, invigilator := range reqs {
+		if invigilator.Requirements != nil && invigilator.Requirements.Factor > 0 {
+			active = append(active, invigilator)
+		}
+	}
+
+	t := 0.0
+	for {
+		sumFactor := 0.0
+		sumContributions := 0
+		for _, invigilator := range active {
+			sumFactor += invigilator.Requirements.Factor
+			sumContributions += invigilator.Requirements.AllContributions
+		}
+		if sumFactor == 0 {
+			return 0, 0
+		}
+
+		t = (float64(workMinutes) + float64(sumContributions)) / sumFactor
+
+		stillActive := make([]*model.Invigilator, 0, len(active))
+		for _, invigilator := range active {
+			if float64(invigilator.Requirements.AllContributions) < t*invigilator.Requirements.Factor {
+				stillActive = append(stillActive, invigilator)
+			}
+		}
+
+		if len(stillActive) == len(active) {
+			return int(math.Ceil(t)), sumContributions
+		}
+		active = stillActive
+	}
 }
 
 func (p *Plexams) AddInvigilatorsToInvigilationTodos(ctx context.Context, todos *model.InvigilationTodos) error {

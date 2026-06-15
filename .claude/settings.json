@@ -20,7 +20,9 @@
       "Bash(python3 -c \"import json;d=json.load\\(open\\('/tmp/roomcmp/rooms_info.json'\\)\\);print\\(len\\(d\\),'rooms; sample:',{k:d[0][k] for k in \\('name','seats'\\)}\\)\")",
       "Bash(python3 -c ' *)",
       "Bash(go test *)",
-      "Bash(golangci-lint-v2 run *)"
+      "Bash(golangci-lint-v2 run *)",
+      "Bash(go generate *)",
+      "Bash(gofmt -w plexams/invigilators.go)"
     ]
   }
 }

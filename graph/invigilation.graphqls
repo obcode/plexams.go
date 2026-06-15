@@ -62,6 +62,12 @@ type InvigilatorRequirements {
   allContributions: Int!
   factor: Float!
   onlyInSlots: [Slot!]!
+  """
+  fromZpa is false if the invigilator has not yet entered their requirements in
+  the ZPA. In that case default requirements (full time, no contributions) are
+  used and the invigilator still has to provide their real requirements.
+  """
+  fromZpa: Boolean!
 }
 
 type InvigilatorTodos {

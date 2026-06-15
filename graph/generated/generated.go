@@ -222,6 +222,7 @@ type ComplexityRoot struct {
 		ExcludedDays           func(childComplexity int) int
 		Factor                 func(childComplexity int) int
 		FreeSemester           func(childComplexity int) int
+		FromZpa                func(childComplexity int) int
 		LiveCodingContribution func(childComplexity int) int
 		MasterContribution     func(childComplexity int) int
 		OnlyInSlots            func(childComplexity int) int
@@ -1536,6 +1537,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.InvigilatorRequirements.FreeSemester(childComplexity), true
+
+	case "InvigilatorRequirements.fromZpa":
+		if e.complexity.InvigilatorRequirements.FromZpa == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorRequirements.FromZpa(childComplexity), true
 
 	case "InvigilatorRequirements.liveCodingContribution":
 		if e.complexity.InvigilatorRequirements.LiveCodingContribution == nil {
@@ -3977,7 +3985,8 @@ type AnnyBooking {
   bookingGroupIdentifier: String
   cancelableUntil: Time
   hasCustomDescription: Boolean!
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 	{Name: "../constraints.graphqls", Input: `scalar Time
 
 extend type Query {
@@ -4179,6 +4188,12 @@ type InvigilatorRequirements {
   allContributions: Int!
   factor: Float!
   onlyInSlots: [Slot!]!
+  """
+  fromZpa is false if the invigilator has not yet entered their requirements in
+  the ZPA. In that case default requirements (full time, no contributions) are
+  used and the invigilator still has to provide their real requirements.
+  """
+  fromZpa: Boolean!
 }
 
 type InvigilatorTodos {
@@ -11386,6 +11401,8 @@ func (ec *executionContext) fieldContext_Invigilator_requirements(_ context.Cont
 				return ec.fieldContext_InvigilatorRequirements_factor(ctx, field)
 			case "onlyInSlots":
 				return ec.fieldContext_InvigilatorRequirements_onlyInSlots(ctx, field)
+			case "fromZpa":
+				return ec.fieldContext_InvigilatorRequirements_fromZpa(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type InvigilatorRequirements", field.Name)
 		},
@@ -12065,6 +12082,50 @@ func (ec *executionContext) fieldContext_InvigilatorRequirements_onlyInSlots(_ c
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Slot", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorRequirements_fromZpa(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorRequirements) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorRequirements_fromZpa(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FromZpa, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorRequirements_fromZpa(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorRequirements",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30511,6 +30572,11 @@ func (ec *executionContext) _InvigilatorRequirements(ctx context.Context, sel as
 			}
 		case "onlyInSlots":
 			out.Values[i] = ec._InvigilatorRequirements_onlyInSlots(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fromZpa":
+			out.Values[i] = ec._InvigilatorRequirements_fromZpa(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

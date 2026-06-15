@@ -10,6 +10,7 @@ import (
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -36,8 +37,16 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 			log.Error().Err(err).Str("teacher", teacher.Shortname).Msg("cannot get requirements for teacher")
 		}
 
+		// Requirements aus dem ZPA können noch fehlen. Dann planen wir mit
+		// Standard-Anforderungen (Vollzeit, keine angerechneten Beiträge) und
+		// merken uns über FromZpa, dass die echten Anforderungen noch fehlen.
+		fromZPA := reqs != nil
+		if reqs == nil {
+			reqs = &zpa.SupervisorRequirements{PartTime: 1.0}
+		}
+
 		var invigReqs *model.InvigilatorRequirements
-		if reqs != nil {
+		{
 			invigilatorConstraints := viper.Get(fmt.Sprintf("invigilatorConstraints.%d", teacher.ID))
 			var onlyInSlots []*model.Slot
 			if invigilatorConstraints != nil {
@@ -124,6 +133,7 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 				AllContributions:       reqs.OralExamsContribution + reqs.LivecodingContribution + reqs.MasterContribution,
 				Factor:                 factor,
 				OnlyInSlots:            onlyInSlots,
+				FromZpa:                fromZPA,
 			}
 		}
 

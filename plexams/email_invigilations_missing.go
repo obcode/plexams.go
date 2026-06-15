@@ -34,7 +34,7 @@ func (p *Plexams) SendEmailInvigilationReqMissing(ctx context.Context, run bool)
 
 	missing := make([]*model.Invigilator, 0)
 	for _, invigilator := range invigilationTodos.Invigilators {
-		if invigilator.Requirements == nil {
+		if invigilator.Requirements == nil || !invigilator.Requirements.FromZpa {
 			missing = append(missing, invigilator)
 		}
 	}

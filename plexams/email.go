@@ -44,6 +44,8 @@ import (
 //go:embed tmpl/publishedEmailInvigilationsHTML.tmpl
 //go:embed tmpl/invigilationEmail.tmpl
 //go:embed tmpl/invigilationEmailHTML.tmpl
+//go:embed tmpl/invigilationMissingEmail.tmpl
+//go:embed tmpl/invigilationMissingEmailHTML.tmpl
 //go:embed tmpl/unplannedExamEmail.tmpl
 //go:embed tmpl/unplannedExamEmailHTML.tmpl
 

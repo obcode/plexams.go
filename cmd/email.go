@@ -24,13 +24,14 @@ draft                                         --- announce draft plan
 published-exams                               --- announce published exams
 published-rooms                               --- announce published rooms
 invigilations                                 --- send email requesting invigilations constraints
+invigilations-missing                         --- send email to profs with missing invigilator requirements in ZPA
 published-invigilations                       --- announce published invigilations
 new-nta                                       --- send emails to examers about new nta
 nta-with-room-alone                           --- send emails to students with room alone before planning
 nta-planned                                   --- send emails about rooms to all students with nta after planning
 cover-pages [all|<teacherid>]                 --- send emails with externally generated cover pages
 `,
-		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "constraints", "prepared", "draft", "published-exams", "published-rooms", "invigilations", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages"},
+		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "constraints", "prepared", "draft", "published-exams", "published-rooms", "invigilations", "invigilations-missing", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -102,6 +103,11 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 				}
 			case "invigilations":
 				err := plexams.SendEmailInvigilations(context.Background(), run)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "invigilations-missing":
+				err := plexams.SendEmailInvigilationReqMissing(context.Background(), run)
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

@@ -684,28 +684,29 @@ func (p *Plexams) assignPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg, exam *
 			}
 			seatsTakenMap[room.Name] = seatsTaken + studentCountInRoom
 		} else { // room for NTA
-			foundNTA := false
-			for i, nta := range exam.NtasInNormalRooms {
-				if nta.Mtknr == *prePlannedRoom.Mtknr {
+			// Use the NTA that is already attached to the exam. It is the same
+			// (active) record the non-pre-planned path uses; re-fetching it via
+			// p.dbClient.Nta() can return a deactivated record with an outdated
+			// DeltaDurationPercent and thus a wrong duration.
+			var nta *model.NTA
+			for i, candidate := range exam.NtasInNormalRooms {
+				if candidate.Mtknr == *prePlannedRoom.Mtknr {
+					nta = candidate
 					exam.NtasInNormalRooms = append(exam.NtasInNormalRooms[:i], exam.NtasInNormalRooms[i+1:]...)
-					foundNTA = true
 					break
 				}
 			}
-			for i, nta := range exam.NtasInAloneRooms {
-				if nta.Mtknr == *prePlannedRoom.Mtknr {
-					exam.NtasInAloneRooms = append(exam.NtasInAloneRooms[:i], exam.NtasInAloneRooms[i+1:]...)
-					foundNTA = true
-					break
+			if nta == nil {
+				for i, candidate := range exam.NtasInAloneRooms {
+					if candidate.Mtknr == *prePlannedRoom.Mtknr {
+						nta = candidate
+						exam.NtasInAloneRooms = append(exam.NtasInAloneRooms[:i], exam.NtasInAloneRooms[i+1:]...)
+						break
+					}
 				}
 			}
-			if !foundNTA {
+			if nta == nil {
 				log.Error().Str("mtknr", *prePlannedRoom.Mtknr).Msg("NTA not found in exam")
-				continue
-			}
-			nta, err := p.dbClient.Nta(context.Background(), *prePlannedRoom.Mtknr)
-			if err != nil {
-				log.Debug().Err(err).Str("mtknr", *prePlannedRoom.Mtknr).Msg("cannot get NTA by MTKNR")
 				continue
 			}
 			duration := int(math.Ceil(float64(exam.Exam.ZpaExam.Duration*(100+nta.DeltaDurationPercent)) / 100))

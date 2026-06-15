@@ -108,27 +108,37 @@ func (p *Problem) BalanceSatisfied(plan *Plan) bool {
 	return true
 }
 
-// Weights scales the soft-constraint penalties. The minute balance is the
-// primary objective and therefore dominates; coverage (filling every position)
-// is treated as near-mandatory with a very high weight.
+// Weights scales the soft-constraint penalties. They are tiered so that
+// "minimum total cost" matches the intended priority order:
+//
+//	Coverage  ≫  BeyondTolerance  ≫  { Distribution, MaxDays, DaySpan, PreferExamDays }
+//
+// Coverage (filling every position) is near-mandatory. BeyondTolerance makes the
+// primary objective – everyone within ±tolerance of their target minutes –
+// dominate all remaining soft goals: it is applied linearly per minute outside
+// the tolerance, with a weight large enough that a single person outside the
+// band outranks the entire budget of the lower-tier constraints. MinuteBalance
+// is only a gentle quadratic centering *inside* the band.
 type Weights struct {
-	MinuteBalance  float64
-	Coverage       float64
-	MaxDays        float64
-	PreferExamDays float64
-	Distribution   float64
-	DaySpan        float64
+	MinuteBalance   float64 // gentle squared centering inside the tolerance band
+	BeyondTolerance float64 // linear, per minute outside the band (dominant)
+	Coverage        float64
+	MaxDays         float64
+	PreferExamDays  float64
+	Distribution    float64
+	DaySpan         float64
 }
 
 // DefaultWeights returns sensible starting weights; they are meant to be
 // overridable from config (invigilation.optimizer.weights.*).
 func DefaultWeights() Weights {
 	return Weights{
-		MinuteBalance:  1.0,
-		Coverage:       1_000_000.0,
-		MaxDays:        500.0,
-		PreferExamDays: 50.0,
-		Distribution:   200.0,
-		DaySpan:        100.0,
+		MinuteBalance:   0.02,
+		BeyondTolerance: 200_000.0,
+		Coverage:        1_000_000_000.0,
+		MaxDays:         500.0,
+		PreferExamDays:  50.0,
+		Distribution:    200.0,
+		DaySpan:         100.0,
 	}
 }

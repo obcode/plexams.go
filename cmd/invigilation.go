@@ -144,10 +144,39 @@ stored as a fixed assignment that the automatic invigilation planning respects.`
 			}
 		},
 	}
+
+	generateDryRun     bool
+	generateSeed       int64
+	generateIterations int
+
+	invigilationGenerateCmd = &cobra.Command{
+		Use:   "generate",
+		Short: "Generate the invigilations automatically",
+		Long: `Refresh self-invigilations and todos, then automatically assign invigilators
+to all rooms and reserves with a simulated-annealing optimizer that respects the
+hard constraints and balances the soft ones.
+
+The result is written to invigilations_other, replacing its previous content
+(self-invigilations and pre-planned invigilations are kept). To fix an
+assignment across runs, move it to the pre-planning (invigilation -p ...).`,
+		Args: cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			plexams := initPlexamsConfig()
+			opts := plexams.OptimizerOptionsFromConfig(generateSeed, generateIterations)
+			if err := plexams.GenerateInvigilations(context.Background(), generateDryRun, opts); err != nil {
+				log.Fatalf("got error: %v\n", err)
+			}
+		},
+	}
 )
 
 func init() {
 	rootCmd.AddCommand(invigilationCmd)
 	invigilationCmd.Flags().BoolVarP(&prePlanInvigilation, "pre-plan", "p", false, "pre-plan the invigilation instead of adding it")
 	invigilationCmd.AddCommand(invigilationProblemCmd)
+
+	invigilationGenerateCmd.Flags().BoolVar(&generateDryRun, "dry-run", false, "optimize and report only, do not write to the database")
+	invigilationGenerateCmd.Flags().Int64Var(&generateSeed, "seed", 0, "random seed (0 = config/default)")
+	invigilationGenerateCmd.Flags().IntVar(&generateIterations, "iterations", 0, "number of optimizer iterations (0 = config/default)")
+	invigilationCmd.AddCommand(invigilationGenerateCmd)
 }

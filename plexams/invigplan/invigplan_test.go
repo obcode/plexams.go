@@ -1,6 +1,7 @@
 package invigplan
 
 import (
+	"math/rand"
 	"testing"
 	"time"
 )
@@ -9,6 +10,8 @@ import (
 func start(hour, min int) time.Time {
 	return time.Date(2026, time.July, 6, hour, min, 0, 0, time.UTC)
 }
+
+func newRand() *rand.Rand { return rand.New(rand.NewSource(1)) }
 
 // newTestProblem builds a tiny but realistic problem:
 //
@@ -235,5 +238,72 @@ func TestRegistryAllowsCombinesHardConstraints(t *testing.T) {
 	}
 	if !r.Allows(p, plan, 0, 2) {
 		t.Error("registry must accept a feasible assignment")
+	}
+}
+
+// buildGridProblem builds a fully solvable problem: days × slotsPerDay slots,
+// each with roomsPerSlot rooms plus a reserve, and enough invigilators to cover
+// every slot one-per-person.
+func buildGridProblem(days, slotsPerDay, roomsPerSlot, invigilators int) *Problem {
+	starts := []time.Time{start(8, 0), start(10, 0), start(12, 0), start(14, 0)}
+	var pos []Position
+	totalMinutes := 0
+	for d := 1; d <= days; d++ {
+		for s := 1; s <= slotsPerDay; s++ {
+			for r := 1; r <= roomsPerSlot; r++ {
+				pos = append(pos, Position{
+					Day: d, Slot: s, Room: roomName(r),
+					Minutes: 90, Block: 90, Start: starts[s-1],
+				})
+				totalMinutes += 90
+			}
+			pos = append(pos, Position{
+				Day: d, Slot: s, IsReserve: true,
+				Minutes: 60, Block: 90, Start: starts[s-1],
+			})
+			totalMinutes += 60
+		}
+	}
+	target := totalMinutes / invigilators
+	invs := make([]Invigilator, 0, invigilators)
+	for i := 1; i <= invigilators; i++ {
+		invs = append(invs, Invigilator{ID: i, TargetMinutes: target})
+	}
+	p := &Problem{
+		Positions: pos, Invigilators: invs, Fixed: map[int]int{},
+		TimelagMin: 20, ToleranceMin: 90, MaxSpanHours: 8, Weights: DefaultWeights(),
+	}
+	p.Prepare()
+	return p
+}
+
+func roomName(r int) string { return "R" + string(rune('0'+r)) }
+
+func TestOptimizeIsFeasibleAndCovers(t *testing.T) {
+	p := buildGridProblem(2, 2, 2, 6) // 12 positions, 6 invigilators
+	reg := DefaultRegistry()
+	opts := DefaultOptions()
+	opts.Iterations = 50_000
+
+	best, result := Optimize(p, reg, opts)
+
+	if hv := reg.HardViolations(p, best); len(hv) != 0 {
+		t.Fatalf("expected no hard violations, got %d: %v", len(hv), hv)
+	}
+	if result.Unfilled != 0 {
+		t.Errorf("expected full coverage, %d positions unfilled", result.Unfilled)
+	}
+	if !result.BalanceSatisfied {
+		t.Errorf("expected balance satisfied within tolerance")
+	}
+}
+
+func TestGreedyRespectsFixed(t *testing.T) {
+	p := buildGridProblem(1, 1, 2, 4)
+	p.Fixed = map[int]int{0: 3} // first room fixed to invigilator 3
+	p.Prepare()
+	plan := Greedy(p, DefaultRegistry(), newRand())
+	if plan.Assign[0] != 3 {
+		t.Fatalf("greedy must keep fixed assignment, got %d", plan.Assign[0])
 	}
 }

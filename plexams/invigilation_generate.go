@@ -4,12 +4,210 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
+	"github.com/logrusorgru/aurora"
+	"github.com/obcode/plexams.go/db"
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/invigplan"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
+
+// GenerateInvigilations refreshes the self-invigilations and the todos, builds
+// the planning problem, optimizes it and (unless dryRun) writes the result to
+// invigilations_other, dropping the previous content. Self-invigilations stay
+// in invigilations_self; pre-planned invigilations are included as fixed seeds.
+// To fix an assignment across runs, move it to the pre-planning.
+func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts invigplan.Options) error {
+	fmt.Println("refreshing self-invigilations and todos ...")
+	if err := p.PrepareSelfInvigilation(); err != nil {
+		return fmt.Errorf("cannot prepare self invigilations: %w", err)
+	}
+	if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
+		return fmt.Errorf("cannot prepare invigilation todos: %w", err)
+	}
+
+	problem, err := p.buildInvigilationProblem(ctx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("optimizing (up to %d iterations, seed %d) ...\n", opts.Iterations, opts.Seed)
+	best, result := invigplan.Optimize(problem, invigplan.DefaultRegistry(), opts)
+	printInvigilationReport(problem, best, result, opts)
+
+	if dryRun {
+		fmt.Println("dry run: nothing written")
+		return nil
+	}
+
+	if result.Unfilled > 0 {
+		log.Warn().Int("open", result.Unfilled).Msg("writing plan with open positions")
+	}
+
+	toSave := make([]interface{}, 0, len(problem.Positions))
+	for posIdx, invigID := range best.Assign {
+		if invigID == invigplan.Unassigned {
+			continue
+		}
+		pos := problem.Positions[posIdx]
+		if pos.IsSelf {
+			continue // already stored in invigilations_self
+		}
+		var roomName *string
+		if !pos.IsReserve {
+			name := pos.Room
+			roomName = &name
+		}
+		toSave = append(toSave, model.Invigilation{
+			RoomName:      roomName,
+			Duration:      pos.Minutes,
+			InvigilatorID: invigID,
+			Slot: &model.Slot{
+				DayNumber:  pos.Day,
+				SlotNumber: pos.Slot,
+				Starttime:  pos.Start,
+			},
+			IsReserve:          pos.IsReserve,
+			IsSelfInvigilation: false,
+		})
+	}
+
+	otherCtx := context.WithValue(ctx, db.CollectionName("collectionName"), "invigilations_other")
+	if err := p.dbClient.DropAndSave(otherCtx, toSave); err != nil {
+		return fmt.Errorf("cannot save generated invigilations: %w", err)
+	}
+	fmt.Printf("wrote %d invigilations to invigilations_other\n", len(toSave))
+
+	fmt.Println("recalculating todos ...")
+	if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
+		return fmt.Errorf("cannot recalculate todos: %w", err)
+	}
+	fmt.Println("... done")
+	return nil
+}
+
+// printInvigilationReport prints a readable, colored report of the optimizer
+// outcome: the run status, whether the hard primary goals (balance, coverage)
+// are met, the minute balance, the fairness of the reserve/NTA distribution and
+// the breakdown of the soft-constraint cost.
+func printInvigilationReport(problem *invigplan.Problem, plan *invigplan.Plan, result invigplan.Result, opts invigplan.Options) {
+	stats := problem.Stats()
+	nInvig := len(problem.Invigilators)
+	m := problem.MinuteSummary(plan)
+
+	fmt.Println()
+	fmt.Println(aurora.Bold(aurora.Cyan(fmt.Sprintf("══ Invigilation plan  (seed %d, up to %d iterations) ══", opts.Seed, opts.Iterations))))
+
+	// run status
+	status := fmt.Sprintf("ran the full %d iterations", result.Iterations)
+	if result.StoppedEarly {
+		status = fmt.Sprintf("converged, stopped early after %d iterations", result.Iterations)
+	}
+	fmt.Printf("  %s %s\n", reportLabel("status"), status)
+
+	// balance: the primary objective (everyone within ±tolerance of their target).
+	if result.BalanceSatisfied {
+		fmt.Printf("  %s %s\n", reportLabel("balance"),
+			aurora.Green(fmt.Sprintf("✓ all %d invigilators within ±%d min of their target", nInvig, problem.ToleranceMin)))
+	} else {
+		fmt.Printf("  %s %s\n", reportLabel("balance"),
+			aurora.Red(fmt.Sprintf("✗ %d over / %d under tolerance (worst +%d / -%d min)", m.Over, m.Under, m.MaxOver, m.MaxUnder)))
+	}
+
+	// coverage: every room and reserve has an invigilator.
+	if result.Unfilled == 0 {
+		fmt.Printf("  %s %s\n", reportLabel("coverage"),
+			aurora.Green(fmt.Sprintf("✓ all %d positions filled", stats.Positions)))
+	} else {
+		fmt.Printf("  %s %s\n", reportLabel("coverage"),
+			aurora.Red(fmt.Sprintf("✗ %d of %d positions still open", result.Unfilled, stats.Positions)))
+	}
+
+	// minute detail: how the assigned minutes sit around each person's target.
+	fmt.Printf("  %s %s within ±%d min, %s over, %s under  %s\n", reportLabel("minutes"),
+		aurora.Green(fmt.Sprintf("%d", m.WithinTolerance)), problem.ToleranceMin,
+		colorCount(m.Over), colorCount(m.Under),
+		aurora.Gray(12, "(deviation of assigned vs. target minutes per person)"))
+
+	// fairness of the reserve / NTA distribution.
+	fmt.Printf("  %s %s\n", reportLabel("fairness"),
+		aurora.Gray(12, "(reading \"1:48\" = 48 invigilators do 1; lower max = fairer)"))
+	for _, kind := range []invigplan.Kind{invigplan.KindReserve, invigplan.KindNTA} {
+		d := problem.DistributionOf(plan, kind)
+		fmt.Printf("    %-9s %s  %s\n", kind.String()+":", distributionString(d),
+			aurora.Gray(12, fmt.Sprintf("(%d total, max %d/person)", d.Total, d.Max)))
+	}
+
+	// soft-constraint cost breakdown (internal score, lower is better).
+	fmt.Printf("  %s %s\n", reportLabel("soft cost"),
+		aurora.Sprintf(aurora.Gray(12, "total %.0f  (weighted penalty score, not minutes; lower is better)"), result.Cost))
+	type kv struct {
+		name string
+		cost float64
+	}
+	breakdown := make([]kv, 0, len(result.CostByConstraint))
+	for name, cost := range result.CostByConstraint {
+		if cost > 0 {
+			breakdown = append(breakdown, kv{name, cost})
+		}
+	}
+	sort.Slice(breakdown, func(i, j int) bool { return breakdown[i].cost > breakdown[j].cost })
+	for _, b := range breakdown {
+		fmt.Printf("    %-22s %8.0f\n", b.name, b.cost)
+	}
+}
+
+// reportLabel returns a fixed-width, bold label so the colored values line up.
+func reportLabel(s string) string {
+	return aurora.Bold(fmt.Sprintf("%-10s", s+":")).String()
+}
+
+// colorCount shows a count in green when it is zero, in yellow otherwise.
+func colorCount(n int) aurora.Value {
+	if n == 0 {
+		return aurora.Green(fmt.Sprintf("%d", n))
+	}
+	return aurora.Yellow(fmt.Sprintf("%d", n))
+}
+
+// distributionString renders a count histogram as "0:4  1:48  2:17".
+func distributionString(d invigplan.Distribution) string {
+	counts := make([]int, 0, len(d.ByCount))
+	for n := range d.ByCount {
+		counts = append(counts, n)
+	}
+	sort.Ints(counts)
+	parts := make([]string, 0, len(counts))
+	for _, n := range counts {
+		parts = append(parts, fmt.Sprintf("%d:%d", n, d.ByCount[n]))
+	}
+	return strings.Join(parts, "  ")
+}
+
+// OptimizerOptionsFromConfig builds the optimizer options from viper, applying
+// the given seed and iteration overrides (0 = keep config/default).
+func (p *Plexams) OptimizerOptionsFromConfig(seed int64, iterations int) invigplan.Options {
+	opts := invigplan.DefaultOptions()
+	if viper.IsSet("invigilation.optimizer.iterations") {
+		opts.Iterations = viper.GetInt("invigilation.optimizer.iterations")
+	}
+	if viper.IsSet("invigilation.optimizer.startTemp") {
+		opts.StartTemp = viper.GetFloat64("invigilation.optimizer.startTemp")
+	}
+	if viper.IsSet("invigilation.optimizer.endTemp") {
+		opts.EndTemp = viper.GetFloat64("invigilation.optimizer.endTemp")
+	}
+	if iterations > 0 {
+		opts.Iterations = iterations
+	}
+	if seed != 0 {
+		opts.Seed = seed
+	}
+	return opts
+}
 
 // ShowInvigilationProblem builds the invigilation snapshot from the DB and
 // prints a summary. It is read-only and meant to sanity-check the inputs before
@@ -211,9 +409,14 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context) (*invigplan.Prob
 			posIdx, ok = posIndexBySlotRoom[[3]any{pp.Day, pp.Slot, *pp.RoomName}]
 		}
 		if !ok {
-			log.Warn().Int("invigilator", pp.InvigilatorID).Int("day", pp.Day).Int("slot", pp.Slot).
-				Msg("pre-planned invigilation has no matching position (room/slot not planned); ignoring")
-			continue
+			room := "reserve"
+			if pp.RoomName != nil {
+				room = *pp.RoomName
+			}
+			log.Error().Int("invigilator", pp.InvigilatorID).Int("day", pp.Day).Int("slot", pp.Slot).Str("room", room).
+				Msg("pre-planned invigilation has no matching position (room/slot not planned)")
+			return nil, fmt.Errorf("pre-planned invigilation for invigilator %d has no matching position: %s in slot (%d,%d) is not planned",
+				pp.InvigilatorID, room, pp.Day, pp.Slot)
 		}
 		fixed[posIdx] = pp.InvigilatorID
 	}
@@ -279,6 +482,9 @@ func weightsFromConfig() invigplan.Weights {
 	w := invigplan.DefaultWeights()
 	if viper.IsSet("invigilation.optimizer.weights.minuteBalance") {
 		w.MinuteBalance = viper.GetFloat64("invigilation.optimizer.weights.minuteBalance")
+	}
+	if viper.IsSet("invigilation.optimizer.weights.beyondTolerance") {
+		w.BeyondTolerance = viper.GetFloat64("invigilation.optimizer.weights.beyondTolerance")
 	}
 	if viper.IsSet("invigilation.optimizer.weights.coverage") {
 		w.Coverage = viper.GetFloat64("invigilation.optimizer.weights.coverage")

@@ -11,23 +11,30 @@ type minuteBalanceSoft struct{}
 func (minuteBalanceSoft) Name() string { return "minute-balance" }
 
 func (c minuteBalanceSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
-	var penalty float64
+	var within, beyond float64
 	var vs []Violation
 	for i := range p.Invigilators {
 		in := &p.Invigilators[i]
-		dev := plan.DoingMinutes(in.ID) - in.TargetMinutes
-		penalty += float64(dev * dev)
-		if abs(dev) > p.ToleranceMin {
+		doing := plan.DoingMinutes(in.ID)
+		dev := doing - in.TargetMinutes
+		a := abs(dev)
+		if a > p.ToleranceMin {
+			// Dominant linear penalty for the minutes outside the band; the
+			// within-band part is capped so the gentle term stays bounded.
+			beyond += float64(a - p.ToleranceMin)
+			within += float64(p.ToleranceMin * p.ToleranceMin)
 			vs = append(vs, Violation{
 				Constraint:    c.Name(),
 				InvigilatorID: in.ID,
-				Penalty:       float64(dev * dev),
+				Penalty:       p.Weights.BeyondTolerance * float64(a-p.ToleranceMin),
 				Message: fmt.Sprintf("invigilator %d is %d min off target (%d/%d, tolerance %d)",
-					in.ID, dev, plan.DoingMinutes(in.ID), in.TargetMinutes, p.ToleranceMin),
+					in.ID, dev, doing, in.TargetMinutes, p.ToleranceMin),
 			})
+		} else {
+			within += float64(dev * dev)
 		}
 	}
-	return p.Weights.MinuteBalance * penalty, vs
+	return p.Weights.MinuteBalance*within + p.Weights.BeyondTolerance*beyond, vs
 }
 
 // coverageSoft penalizes every position that has no invigilator. It is weighted

@@ -422,8 +422,24 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context) (*invigplan.Prob
 	}
 
 	invigilators := make([]invigplan.Invigilator, 0, len(todos.Invigilators))
+	excluded := 0
 	for _, inv := range todos.Invigilators {
 		if inv.Teacher == nil {
+			continue
+		}
+		// Take invigilators completely out of the pool who should do no
+		// invigilation at all, so the balance criterion stays satisfiable and they
+		// are never assigned:
+		//   - free semester / not working (Factor <= 0),
+		//   - already contributed more than their fair share (Todos.Enough).
+		// Invigilators exactly at their fair share keep TargetMinutes 0 but stay in
+		// the pool: the ±tolerance lets them absorb a little if it helps the others.
+		if inv.Requirements != nil && inv.Requirements.Factor <= 0 {
+			excluded++
+			continue
+		}
+		if inv.Todos != nil && inv.Todos.Enough {
+			excluded++
 			continue
 		}
 		id := inv.Teacher.ID
@@ -470,6 +486,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context) (*invigplan.Prob
 		Int("positions", len(positions)).
 		Int("fixed", len(fixed)).
 		Int("invigilators", len(invigilators)).
+		Int("excluded", excluded).
 		Int("tolerance", problem.ToleranceMin).
 		Msg("built invigilation problem")
 

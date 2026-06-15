@@ -339,3 +339,40 @@ func TestDaySpanIncludesOwnExams(t *testing.T) {
 		t.Errorf("expected no penalty for a 1.5h invigilation alone, got %g", alone)
 	}
 }
+
+func TestMaxDaysCountsOwnExamDays(t *testing.T) {
+	// invigilations on days 8, 12, 14; own exams on 8, 11, 12 (none excluded)
+	// => present on 4 days {8,11,12,14} > 3 => penalty.
+	pos := []Position{
+		{Day: 8, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
+		{Day: 12, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
+		{Day: 14, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
+	}
+	p := &Problem{
+		Positions: pos,
+		Invigilators: []Invigilator{{
+			ID: 1, TargetMinutes: 270,
+			OwnExamDays:  map[int]bool{8: true, 11: true, 12: true},
+			ExcludedDays: map[int]bool{},
+		}},
+		Fixed: map[int]int{}, ToleranceMin: 60, MaxSpanHours: 8, Weights: DefaultWeights(),
+	}
+	p.Prepare()
+	plan := NewPlan(p)
+	for i := range pos {
+		plan.Set(i, 1)
+	}
+
+	penalty, vs := maxDaysSoft{}.Cost(p, plan)
+	if penalty == 0 || len(vs) == 0 {
+		t.Fatalf("expected penalty: present on 4 days (invig 8,12,14 + exam 11)")
+	}
+
+	// Excluding day 11 means the person is treated as not present there, so the
+	// attendance is {8,12,14} = 3 days => no penalty.
+	p.Invigilators[0].ExcludedDays = map[int]bool{11: true}
+	alone, _ := maxDaysSoft{}.Cost(p, plan)
+	if alone != 0 {
+		t.Errorf("expected no penalty when exam day 11 is excluded, got %g", alone)
+	}
+}

@@ -66,32 +66,47 @@ func (c coverageSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 	return p.Weights.Coverage * float64(len(open)), vs
 }
 
-// maxDaysSoft: a person should invigilate on at most 3 days when they have own
-// exams on at most 3 days.
+// maxDaysSoft: a person should be present on at most 3 days. Presence days are
+// the union of their invigilation days and their own-exam days – but an excluded
+// day does not count as presence (the person is treated as not there, even if an
+// exam is recorded). Because the non-excluded own-exam days are unavoidable, the
+// limit is raised to that count when it already exceeds 3, so only the *extra*
+// days caused by invigilation are penalized.
 type maxDaysSoft struct{}
 
 func (maxDaysSoft) Name() string { return "max-days" }
 
-const maxInvigilationDays = 3
+const maxAttendanceDays = 3
 
 func (c maxDaysSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 	var penalty float64
 	var vs []Violation
 	for i := range p.Invigilators {
 		in := &p.Invigilators[i]
-		if len(in.OwnExamDays) > maxInvigilationDays {
-			continue
+
+		attendance := make(map[int]bool)
+		for _, d := range plan.Days(in.ID) { // invigilation days are never excluded
+			attendance[d] = true
 		}
-		days := len(plan.Days(in.ID))
-		if days > maxInvigilationDays {
-			excess := days - maxInvigilationDays
+		examDays := 0
+		for d := range in.OwnExamDays {
+			if in.ExcludedDays[d] {
+				continue // excluded day: treated as not present
+			}
+			attendance[d] = true
+			examDays++
+		}
+
+		limit := max(maxAttendanceDays, examDays) // own exam days are unavoidable
+		if len(attendance) > limit {
+			excess := len(attendance) - limit
 			pen := p.Weights.MaxDays * float64(excess*excess)
 			penalty += pen
 			vs = append(vs, Violation{
 				Constraint:    c.Name(),
 				InvigilatorID: in.ID,
 				Penalty:       pen,
-				Message:       fmt.Sprintf("invigilator %d invigilates on %d days (max %d)", in.ID, days, maxInvigilationDays),
+				Message:       fmt.Sprintf("invigilator %d is present on %d days (max %d)", in.ID, len(attendance), limit),
 			})
 		}
 	}

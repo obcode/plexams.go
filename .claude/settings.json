@@ -22,7 +22,8 @@
       "Bash(go test *)",
       "Bash(golangci-lint-v2 run *)",
       "Bash(go generate *)",
-      "Bash(gofmt -w plexams/invigilators.go)"
+      "Bash(gofmt -w plexams/invigilators.go)",
+      "Bash(/tmp/plexams.go invigilation *)"
     ]
   }
 }

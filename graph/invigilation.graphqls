@@ -4,6 +4,29 @@ extend type Query {
   roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
   invigilatorsForDay(day: Int!): InvigilatorsForDay
   invigilator(room: String!, day: Int!, time: Int!): Teacher
+  prePlannedInvigilations: [PrePlannedInvigilation!]!
+}
+
+extend type Mutation {
+  prePlanInvigilation(
+    invigilatorID: Int!
+    day: Int!
+    slot: Int!
+    roomName: String
+  ): Boolean!
+}
+
+"""
+PrePlannedInvigilation fixes an invigilator for a room (or the reserve) in a
+slot before the automatic invigilation planning runs. roomName is null for a
+reserve invigilation.
+"""
+type PrePlannedInvigilation {
+  invigilatorID: Int!
+  day: Int!
+  slot: Int!
+  roomName: String
+  isReserve: Boolean!
 }
 
 type Invigilation {

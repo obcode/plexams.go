@@ -131,9 +131,23 @@ stored as a fixed assignment that the automatic invigilation planning respects.`
 		},
 	}
 	prePlanInvigilation bool
+
+	invigilationProblemCmd = &cobra.Command{
+		Use:   "problem",
+		Short: "Show the invigilation planning problem (read-only)",
+		Long:  `Build the invigilation planning snapshot from the database and print a summary.`,
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			plexams := initPlexamsConfig()
+			if err := plexams.ShowInvigilationProblem(context.Background()); err != nil {
+				log.Fatalf("got error: %v\n", err)
+			}
+		},
+	}
 )
 
 func init() {
 	rootCmd.AddCommand(invigilationCmd)
 	invigilationCmd.Flags().BoolVarP(&prePlanInvigilation, "pre-plan", "p", false, "pre-plan the invigilation instead of adding it")
+	invigilationCmd.AddCommand(invigilationProblemCmd)
 }

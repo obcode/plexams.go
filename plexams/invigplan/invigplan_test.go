@@ -307,3 +307,35 @@ func TestGreedyRespectsFixed(t *testing.T) {
 		t.Fatalf("greedy must keep fixed assignment, got %d", plan.Assign[0])
 	}
 }
+
+func TestDaySpanIncludesOwnExams(t *testing.T) {
+	// One invigilator with an own (multi-room) exam 08:00–09:30 they do NOT
+	// invigilate, plus an assigned invigilation 16:30–18:00 on the same day.
+	pos := []Position{
+		{Day: 1, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(16, 30)},
+	}
+	p := &Problem{
+		Positions: pos,
+		Invigilators: []Invigilator{{
+			ID: 1, TargetMinutes: 90,
+			OwnExams: []TimeSpan{{Day: 1, Start: start(8, 0), End: start(9, 30)}},
+		}},
+		Fixed: map[int]int{}, ToleranceMin: 60, MaxSpanHours: 8, Weights: DefaultWeights(),
+	}
+	p.Prepare()
+
+	plan := NewPlan(p)
+	plan.Set(0, 1)
+
+	penalty, vs := daySpanSoft{}.Cost(p, plan)
+	if penalty == 0 || len(vs) == 0 {
+		t.Fatalf("expected a day-span penalty: 08:00 exam + 18:00 invigilation = 10h > 8h")
+	}
+
+	// Without the own exam the single 1.5h invigilation must not be penalized.
+	p.Invigilators[0].OwnExams = nil
+	alone, _ := daySpanSoft{}.Cost(p, plan)
+	if alone != 0 {
+		t.Errorf("expected no penalty for a 1.5h invigilation alone, got %g", alone)
+	}
+}

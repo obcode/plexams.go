@@ -1,6 +1,9 @@
 package invigplan
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // minuteBalanceSoft is the primary objective: every invigilator's assigned
 // minutes should be close to their target. The cost is the squared deviation
@@ -168,24 +171,40 @@ func (c daySpanSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 	var vs []Violation
 	for i := range p.Invigilators {
 		in := &p.Invigilators[i]
-		byDay := make(map[int][]Position)
+
+		type span struct{ first, last time.Time }
+		byDay := make(map[int]*span)
+		fold := func(day int, start, end time.Time) {
+			if cur, ok := byDay[day]; ok {
+				if start.Before(cur.first) {
+					cur.first = start
+				}
+				if end.After(cur.last) {
+					cur.last = end
+				}
+				return
+			}
+			byDay[day] = &span{first: start, last: end}
+		}
+
+		// presence from assigned invigilations
 		for _, posIdx := range plan.Positions(in.ID) {
 			pos := p.Positions[posIdx]
-			byDay[pos.Day] = append(byDay[pos.Day], pos)
+			fold(pos.Day, pos.Start, pos.End())
 		}
-		for day, positions := range byDay {
-			first, last := positions[0].Start, positions[0].End()
-			for _, pos := range positions[1:] {
-				if pos.Start.Before(first) {
-					first = pos.Start
-				}
-				if pos.End().After(last) {
-					last = pos.End()
-				}
+		// presence from own exams, but only on days the person actually
+		// invigilates – on a pure exam day the span is fixed and cannot be
+		// reduced by the planner, so penalising it would be noise.
+		for _, ex := range in.OwnExams {
+			if _, invigilates := byDay[ex.Day]; invigilates {
+				fold(ex.Day, ex.Start, ex.End)
 			}
-			span := last.Sub(first).Hours()
-			if span > p.MaxSpanHours {
-				over := span - p.MaxSpanHours
+		}
+
+		for day, sp := range byDay {
+			hours := sp.last.Sub(sp.first).Hours()
+			if hours > p.MaxSpanHours {
+				over := hours - p.MaxSpanHours
 				pen := p.Weights.DaySpan * over * over
 				penalty += pen
 				vs = append(vs, Violation{
@@ -193,7 +212,7 @@ func (c daySpanSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 					InvigilatorID: in.ID,
 					Day:           day,
 					Penalty:       pen,
-					Message:       fmt.Sprintf("invigilator %d spans %.1fh on day %d (max %.0fh)", in.ID, span, day, p.MaxSpanHours),
+					Message:       fmt.Sprintf("invigilator %d spans %.1fh on day %d (max %.0fh)", in.ID, hours, day, p.MaxSpanHours),
 				})
 			}
 		}

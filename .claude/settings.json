@@ -29,7 +29,8 @@
       "Bash(/tmp/plexams.go)",
       "Bash(gofmt -w plexams/invigplan/ plexams/invigilation_generate.go)",
       "Bash(gofmt -w plexams/invigilation_generate.go)",
-      "Bash(/tmp/plexams.go validate *)"
+      "Bash(/tmp/plexams.go validate *)",
+      "Bash(gofmt -w plexams/invigplan/soft.go plexams/invigplan/model.go plexams/invigilation_generate.go)"
     ]
   }
 }

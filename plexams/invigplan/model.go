@@ -94,6 +94,19 @@ type Invigilator struct {
 
 	// OnlyInSlots restricts the person to these slots; empty means unrestricted.
 	OnlyInSlots map[[2]int]bool
+
+	// OwnExams are the time windows the person is present for their own exams –
+	// including multi-room exams they do *not* invigilate themselves. They count
+	// toward the daily presence span (daySpanSoft) so an early own exam plus a
+	// late invigilation is recognised as a long day.
+	OwnExams []TimeSpan
+}
+
+// TimeSpan is a presence interval on a given day.
+type TimeSpan struct {
+	Day   int
+	Start time.Time
+	End   time.Time
 }
 
 // Available reports whether the person may in principle invigilate in the slot

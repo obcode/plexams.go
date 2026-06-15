@@ -283,6 +283,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 
 	ownExamSlots := make(map[int]map[[2]int]bool)
 	ownExamDays := make(map[int]map[int]bool)
+	ownExamTimes := make(map[int][]invigplan.TimeSpan)
 	addOwnExam := func(examerID, day, slot int) {
 		if ownExamSlots[examerID] == nil {
 			ownExamSlots[examerID] = make(map[[2]int]bool)
@@ -324,15 +325,20 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 			}
 			examerID := exam.ZpaExam.MainExamerID
 			addOwnExam(examerID, day, sn)
-			if hasNext {
-				maxDur := 0
-				for _, room := range exam.PlannedRooms {
-					if room.Duration > maxDur {
-						maxDur = room.Duration
-					}
+
+			maxDur := 0
+			for _, room := range exam.PlannedRooms {
+				if room.Duration > maxDur {
+					maxDur = room.Duration
 				}
-				examEnd := slotStart[[2]int{day, sn}].Add(time.Duration(maxDur) * time.Minute)
-				if examEnd.After(nextStart) {
+			}
+			if maxDur > 0 {
+				examStart := slotStart[[2]int{day, sn}]
+				examEnd := examStart.Add(time.Duration(maxDur) * time.Minute)
+				ownExamTimes[examerID] = append(ownExamTimes[examerID],
+					invigplan.TimeSpan{Day: day, Start: examStart, End: examEnd})
+				// NTA exams running into the following slot block it too.
+				if hasNext && examEnd.After(nextStart) {
 					addOwnExam(examerID, day, sn+1)
 				}
 			}
@@ -455,6 +461,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 			OnlyInSlots:   make(map[[2]int]bool),
 			OwnExamSlots:  ownExamSlots[id],
 			OwnExamDays:   ownExamDays[id],
+			OwnExams:      ownExamTimes[id],
 		}
 		if gi.OwnExamSlots == nil {
 			gi.OwnExamSlots = make(map[[2]int]bool)

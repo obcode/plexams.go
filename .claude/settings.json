@@ -28,7 +28,8 @@
       "Bash(gofmt -w cmd/invigilation.go plexams/invigilation_generate.go)",
       "Bash(/tmp/plexams.go)",
       "Bash(gofmt -w plexams/invigplan/ plexams/invigilation_generate.go)",
-      "Bash(gofmt -w plexams/invigilation_generate.go)"
+      "Bash(gofmt -w plexams/invigilation_generate.go)",
+      "Bash(/tmp/plexams.go validate *)"
     ]
   }
 }

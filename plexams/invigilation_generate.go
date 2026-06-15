@@ -29,7 +29,7 @@ func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts i
 		return fmt.Errorf("cannot prepare invigilation todos: %w", err)
 	}
 
-	problem, err := p.buildInvigilationProblem(ctx)
+	problem, err := p.buildInvigilationProblem(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -213,7 +213,7 @@ func (p *Plexams) OptimizerOptionsFromConfig(seed int64, iterations int) invigpl
 // prints a summary. It is read-only and meant to sanity-check the inputs before
 // the optimizer (Phase 3) is run.
 func (p *Plexams) ShowInvigilationProblem(ctx context.Context) error {
-	problem, err := p.buildInvigilationProblem(ctx)
+	problem, err := p.buildInvigilationProblem(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -246,7 +246,12 @@ const noRoom = "No Room"
 // The returned Problem.Positions double as the write-back metadata: every
 // assigned position carries its day/slot/room so the result can be stored in
 // invigilations_other.
-func (p *Plexams) buildInvigilationProblem(ctx context.Context) (*invigplan.Problem, error) {
+//
+// With includeExcluded the over-contributed and free-semester invigilators are
+// kept in the pool as well (target 0). The optimizer must exclude them, but the
+// validation needs every assignable person so that lookups of an already
+// persisted invigilator never miss.
+func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded bool) (*invigplan.Problem, error) {
 	todos, err := p.GetInvigilationTodos(ctx)
 	if err != nil {
 		return nil, err
@@ -434,13 +439,13 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context) (*invigplan.Prob
 		//   - already contributed more than their fair share (Todos.Enough).
 		// Invigilators exactly at their fair share keep TargetMinutes 0 but stay in
 		// the pool: the ±tolerance lets them absorb a little if it helps the others.
-		if inv.Requirements != nil && inv.Requirements.Factor <= 0 {
+		overContributed := inv.Todos != nil && inv.Todos.Enough
+		freeSemester := inv.Requirements != nil && inv.Requirements.Factor <= 0
+		if overContributed || freeSemester {
 			excluded++
-			continue
-		}
-		if inv.Todos != nil && inv.Todos.Enough {
-			excluded++
-			continue
+			if !includeExcluded {
+				continue
+			}
 		}
 		id := inv.Teacher.ID
 		gi := invigplan.Invigilator{
@@ -482,7 +487,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context) (*invigplan.Prob
 	}
 	problem.Prepare()
 
-	log.Info().
+	log.Debug().
 		Int("positions", len(positions)).
 		Int("fixed", len(fixed)).
 		Int("invigilators", len(invigilators)).

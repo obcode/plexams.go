@@ -110,29 +110,43 @@ type Invigilator struct {
 // calendar date: an assigned position must start no earlier than From (if set)
 // and end no later than Until (if set). It is sub-slot granular and NTA-aware,
 // since Position.End() already includes the room's (possibly NTA-extended)
-// duration.
+// duration. Several windows may share a date – then the position only has to fit
+// into one of them (see AllowsTime), e.g. 08:00–11:00 and 14:00–open to keep
+// 11:00–14:00 free.
 type DayTimeWindow struct {
 	Date  time.Time // calendar date the window applies to
 	From  time.Time // earliest allowed start; zero = no lower bound
 	Until time.Time // latest allowed end; zero = no upper bound
 }
 
-// AllowsTime reports whether the position fits the person's time windows. A
-// position is checked only against a window on the same calendar date; with no
-// window for that date (or no windows at all) the position is allowed.
+// fits reports whether the position lies completely inside this window.
+func (w DayTimeWindow) fits(pos Position) bool {
+	if !w.From.IsZero() && pos.Start.Before(w.From) {
+		return false
+	}
+	if !w.Until.IsZero() && pos.End().After(w.Until) {
+		return false
+	}
+	return true
+}
+
+// AllowsTime reports whether the position fits the person's time windows. Only
+// windows on the position's calendar date are considered; if there are any, the
+// position must fit into at least one of them (windows on the same date are
+// OR-combined). With no window for that date (or no windows at all) the position
+// is allowed.
 func (in *Invigilator) AllowsTime(pos Position) bool {
+	hasWindowForDate := false
 	for _, w := range in.TimeWindows {
 		if !sameDate(w.Date, pos.Start) {
 			continue
 		}
-		if !w.From.IsZero() && pos.Start.Before(w.From) {
-			return false
-		}
-		if !w.Until.IsZero() && pos.End().After(w.Until) {
-			return false
+		hasWindowForDate = true
+		if w.fits(pos) {
+			return true
 		}
 	}
-	return true
+	return !hasWindowForDate
 }
 
 // sameDate reports whether a and b fall on the same calendar day.

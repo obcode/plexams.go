@@ -153,7 +153,30 @@ func TestTimeWindowHard(t *testing.T) {
 		t.Error("window on another date must leave this date unrestricted")
 	}
 
+	// Two windows on the same date are OR-combined: 08:00–09:00 and 12:00–open
+	// keep 09:00–12:00 free. A 08:00 invigilation ending 09:30 fits neither the
+	// first (ends after 09:00) nor the second (starts before 12:00) -> forbidden.
+	morningPos := Position{Day: 1, Slot: 1, Room: "R1", Minutes: 60, Block: 60, Start: start(8, 0)} // 08:00-09:00
+	afternoonPos := Position{Day: 1, Slot: 3, Room: "R1", Minutes: 90, Block: 90, Start: start(13, 0)}
+	p.Positions = []Position{pos[0], morningPos, afternoonPos}
+	p.Invigilators[0].TimeWindows = []DayTimeWindow{
+		{Date: start(0, 0), From: start(8, 0), Until: start(9, 0)},
+		{Date: start(0, 0), From: start(12, 0)},
+	}
+	p.Prepare()
+	plan = NewPlan(p)
+	if !c.Allows(p, plan, 1, 1) {
+		t.Error("08:00-09:00 invigilation fits the first window and must be allowed")
+	}
+	if !c.Allows(p, plan, 2, 1) {
+		t.Error("13:00 invigilation fits the open second window and must be allowed")
+	}
+	if c.Allows(p, plan, 0, 1) {
+		t.Error("08:00-09:30 invigilation fits neither window and must be forbidden")
+	}
+
 	// Check reports the violation for an assigned out-of-window position.
+	p.Positions = pos
 	p.Invigilators[0].TimeWindows = []DayTimeWindow{
 		{Date: start(0, 0), Until: start(9, 30)},
 	}

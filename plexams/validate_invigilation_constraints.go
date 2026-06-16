@@ -82,13 +82,53 @@ func (p *Plexams) ValidateInvigilationConstraints() error {
 		plan.Set(idx, inv.InvigilatorID)
 	}
 
+	// Check that every pre-planned invigilation is actually honored in the
+	// persisted plan (a later manual change could have overridden it).
+	prePlanned, err := p.PrePlannedInvigilations(ctx)
+	if err != nil {
+		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("cannot get pre-planned invigilations: %v"), err))
+		_ = spinner.StopFail()
+		return err
+	}
+	prePlanIssues := make([]string, 0)
+	for _, pp := range prePlanned {
+		room := "reserve"
+		if pp.RoomName != nil {
+			room = *pp.RoomName
+		}
+		idx, ok := index[positionKey(pp.Day, pp.Slot, pp.RoomName == nil, room)]
+		if !ok {
+			prePlanIssues = append(prePlanIssues, aurora.Sprintf(aurora.Red("pre-planned %s in slot (%d,%d) has no matching position (room/slot not planned)"),
+				aurora.Magenta(room), aurora.Cyan(pp.Day), aurora.Cyan(pp.Slot)))
+			continue
+		}
+		switch assigned := plan.Assign[idx]; {
+		case assigned == invigplan.Unassigned:
+			prePlanIssues = append(prePlanIssues, aurora.Sprintf(aurora.Red("pre-planned invigilator %d for %s in slot (%d,%d) is missing in the plan"),
+				aurora.Magenta(pp.InvigilatorID), aurora.Magenta(room), aurora.Cyan(pp.Day), aurora.Cyan(pp.Slot)))
+		case assigned != pp.InvigilatorID:
+			prePlanIssues = append(prePlanIssues, aurora.Sprintf(aurora.Red("pre-planned invigilator %d for %s in slot (%d,%d) was overridden by %d"),
+				aurora.Magenta(pp.InvigilatorID), aurora.Magenta(room), aurora.Cyan(pp.Day), aurora.Cyan(pp.Slot), aurora.Magenta(assigned)))
+		}
+	}
+
 	reg := invigplan.DefaultRegistry()
 	hard := reg.HardViolations(problem, plan)
 	_, costByConstraint, soft := reg.Cost(problem, plan)
 
 	spinner.Stop() //nolint:errcheck
 
-	// Report: hard violations first (must hold), then soft ones (should hold).
+	// Report: pre-planned adherence and hard violations first (must hold), then
+	// soft ones (should hold).
+	if len(prePlanIssues) == 0 {
+		fmt.Println(aurora.Sprintf(aurora.Green("  ✓ all pre-planned invigilations honored")))
+	} else {
+		fmt.Println(aurora.Sprintf(aurora.Red("  ✗ %d pre-planned invigilation(s) not honored:"), len(prePlanIssues)))
+		for _, msg := range prePlanIssues {
+			fmt.Printf("    %s %s\n", aurora.Red("✗"), msg)
+		}
+	}
+
 	if len(hard) == 0 {
 		fmt.Println(aurora.Sprintf(aurora.Green("  ✓ no hard-constraint violations")))
 	} else {

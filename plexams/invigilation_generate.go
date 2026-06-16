@@ -13,6 +13,7 @@ import (
 	"github.com/obcode/plexams.go/plexams/invigplan"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+	"github.com/theckman/yacspin"
 )
 
 // GenerateInvigilations refreshes the self-invigilations and the todos, builds
@@ -35,7 +36,29 @@ func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts i
 	}
 
 	fmt.Printf("optimizing (up to %d iterations, seed %d) ...\n", opts.Iterations, opts.Seed)
+	spinner, _ := yacspin.New(yacspin.Config{
+		Frequency:       100 * time.Millisecond,
+		CharSet:         yacspin.CharSets[69],
+		Suffix:          aurora.Sprintf(aurora.Cyan(" optimizing")),
+		SuffixAutoColon: true,
+		StopCharacter:   "✓",
+		StopColors:      []string{"fgGreen"},
+	})
+	_ = spinner.Start()
+	opts.ProgressEvery = max(1, opts.Iterations/200)
+	opts.OnProgress = func(pr invigplan.Progress) {
+		balance := aurora.Red("balance ✗")
+		if pr.Balance {
+			balance = aurora.Green("balance ✓")
+		}
+		spinner.Message(aurora.Sprintf(aurora.Cyan("%d/%d, best cost %.0f, %s, %d open"),
+			pr.Iteration, pr.Total, pr.BestCost, balance, pr.Unfilled))
+	}
+
 	best, result := invigplan.Optimize(problem, invigplan.DefaultRegistry(), opts)
+	spinner.StopMessage(aurora.Sprintf(aurora.Green("optimization done")))
+	_ = spinner.Stop()
+
 	printInvigilationReport(problem, best, result, opts)
 
 	if dryRun {

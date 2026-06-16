@@ -19,6 +19,21 @@ type Options struct {
 	// (distribution, days, span) still get optimized once the balance holds.
 	StopOnBalance   bool
 	StagnationLimit int
+
+	// OnProgress, if set, is called every ProgressEvery iterations with a
+	// snapshot of the current best plan. It is throttled on purpose: calling it
+	// per iteration would dominate the runtime with terminal I/O.
+	OnProgress    func(Progress)
+	ProgressEvery int
+}
+
+// Progress is a throttled snapshot of the optimizer state for UI feedback.
+type Progress struct {
+	Iteration int
+	Total     int
+	BestCost  float64
+	Balance   bool
+	Unfilled  int
 }
 
 // DefaultOptions returns sensible defaults. The temperatures are scaled to the
@@ -69,9 +84,20 @@ func Optimize(p *Problem, reg *Registry, opts Options) (*Plan, Result) {
 	movable := movablePositions(p)
 	result := Result{Iterations: opts.Iterations}
 
+	progressEnabled := opts.OnProgress != nil && opts.ProgressEvery > 0
+
 	if len(movable) > 0 && len(p.Invigilators) > 0 {
 		bestIter := 0
 		for it := 0; it < opts.Iterations; it++ {
+			if progressEnabled && it%opts.ProgressEvery == 0 {
+				opts.OnProgress(Progress{
+					Iteration: it,
+					Total:     opts.Iterations,
+					BestCost:  bestCost,
+					Balance:   p.BalanceSatisfied(best),
+					Unfilled:  len(best.Unfilled()),
+				})
+			}
 			// Stop early only when the search has actually converged: the
 			// temperature is near its floor (so "no improvement" is meaningful,
 			// not just high-temperature wandering), the best plan has not improved

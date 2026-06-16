@@ -154,6 +154,11 @@ type ComplexityRoot struct {
 		Number func(childComplexity int) int
 	}
 
+	ExamTime struct {
+		From  func(childComplexity int) int
+		Until func(childComplexity int) int
+	}
+
 	ExamWithRegsAndRooms struct {
 		Exam              func(childComplexity int) int
 		NormalRegsMtknr   func(childComplexity int) int
@@ -223,8 +228,8 @@ type ComplexityRoot struct {
 
 	InvigilatorRequirements struct {
 		AllContributions       func(childComplexity int) int
-		ExamDateTimes          func(childComplexity int) int
 		ExamDays               func(childComplexity int) int
+		ExamTimes              func(childComplexity int) int
 		ExcludedDates          func(childComplexity int) int
 		ExcludedDays           func(childComplexity int) int
 		Factor                 func(childComplexity int) int
@@ -1259,6 +1264,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamDay.Number(childComplexity), true
 
+	case "ExamTime.from":
+		if e.complexity.ExamTime.From == nil {
+			break
+		}
+
+		return e.complexity.ExamTime.From(childComplexity), true
+
+	case "ExamTime.until":
+		if e.complexity.ExamTime.Until == nil {
+			break
+		}
+
+		return e.complexity.ExamTime.Until(childComplexity), true
+
 	case "ExamWithRegsAndRooms.exam":
 		if e.complexity.ExamWithRegsAndRooms.Exam == nil {
 			break
@@ -1546,19 +1565,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.InvigilatorRequirements.AllContributions(childComplexity), true
 
-	case "InvigilatorRequirements.examDateTimes":
-		if e.complexity.InvigilatorRequirements.ExamDateTimes == nil {
-			break
-		}
-
-		return e.complexity.InvigilatorRequirements.ExamDateTimes(childComplexity), true
-
 	case "InvigilatorRequirements.examDays":
 		if e.complexity.InvigilatorRequirements.ExamDays == nil {
 			break
 		}
 
 		return e.complexity.InvigilatorRequirements.ExamDays(childComplexity), true
+
+	case "InvigilatorRequirements.examTimes":
+		if e.complexity.InvigilatorRequirements.ExamTimes == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorRequirements.ExamTimes(childComplexity), true
 
 	case "InvigilatorRequirements.excludedDates":
 		if e.complexity.InvigilatorRequirements.ExcludedDates == nil {
@@ -4329,7 +4348,7 @@ type Invigilator {
 type InvigilatorRequirements {
   excludedDates: [Time!]!
   excludedDays: [Int!]!
-  examDateTimes: [Time!]!
+  examTimes: [ExamTime!]!
   examDays: [Int!]!
   partTime: Float!
   oralExamsContribution: Int!
@@ -4348,6 +4367,16 @@ type InvigilatorRequirements {
   """
   fromZpa: Boolean!
   timeWindows: [InvigilationTimeWindow!]!
+}
+
+"""
+ExamTime is the time span of one exam an invigilator is the main examer of:
+from the start time of the slot until the end time (start + maxDuration of the
+exam, i.e. the longest exam in the slot including NTA extensions).
+"""
+type ExamTime {
+  from: Time!
+  until: Time!
 }
 
 """
@@ -9892,6 +9921,94 @@ func (ec *executionContext) fieldContext_ExamDay_date(_ context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _ExamTime_from(ctx context.Context, field graphql.CollectedField, obj *model.ExamTime) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamTime_from(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.From, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamTime_from(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamTime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamTime_until(ctx context.Context, field graphql.CollectedField, obj *model.ExamTime) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamTime_until(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Until, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamTime_until(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamTime",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ExamWithRegsAndRooms_exam(ctx context.Context, field graphql.CollectedField, obj *model.ExamWithRegsAndRooms) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ExamWithRegsAndRooms_exam(ctx, field)
 	if err != nil {
@@ -11885,8 +12002,8 @@ func (ec *executionContext) fieldContext_Invigilator_requirements(_ context.Cont
 				return ec.fieldContext_InvigilatorRequirements_excludedDates(ctx, field)
 			case "excludedDays":
 				return ec.fieldContext_InvigilatorRequirements_excludedDays(ctx, field)
-			case "examDateTimes":
-				return ec.fieldContext_InvigilatorRequirements_examDateTimes(ctx, field)
+			case "examTimes":
+				return ec.fieldContext_InvigilatorRequirements_examTimes(ctx, field)
 			case "examDays":
 				return ec.fieldContext_InvigilatorRequirements_examDays(ctx, field)
 			case "partTime":
@@ -12061,8 +12178,8 @@ func (ec *executionContext) fieldContext_InvigilatorRequirements_excludedDays(_ 
 	return fc, nil
 }
 
-func (ec *executionContext) _InvigilatorRequirements_examDateTimes(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorRequirements) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_InvigilatorRequirements_examDateTimes(ctx, field)
+func (ec *executionContext) _InvigilatorRequirements_examTimes(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorRequirements) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorRequirements_examTimes(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -12075,7 +12192,7 @@ func (ec *executionContext) _InvigilatorRequirements_examDateTimes(ctx context.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ExamDateTimes, nil
+		return obj.ExamTimes, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12087,19 +12204,25 @@ func (ec *executionContext) _InvigilatorRequirements_examDateTimes(ctx context.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*time.Time)
+	res := resTmp.([]*model.ExamTime)
 	fc.Result = res
-	return ec.marshalNTime2ᚕᚖtimeᚐTimeᚄ(ctx, field.Selections, res)
+	return ec.marshalNExamTime2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamTimeᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_InvigilatorRequirements_examDateTimes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_InvigilatorRequirements_examTimes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "InvigilatorRequirements",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
+			switch field.Name {
+			case "from":
+				return ec.fieldContext_ExamTime_from(ctx, field)
+			case "until":
+				return ec.fieldContext_ExamTime_until(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamTime", field.Name)
 		},
 	}
 	return fc, nil
@@ -30973,6 +31096,50 @@ func (ec *executionContext) _ExamDay(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var examTimeImplementors = []string{"ExamTime"}
+
+func (ec *executionContext) _ExamTime(ctx context.Context, sel ast.SelectionSet, obj *model.ExamTime) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, examTimeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExamTime")
+		case "from":
+			out.Values[i] = ec._ExamTime_from(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "until":
+			out.Values[i] = ec._ExamTime_until(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var examWithRegsAndRoomsImplementors = []string{"ExamWithRegsAndRooms"}
 
 func (ec *executionContext) _ExamWithRegsAndRooms(ctx context.Context, sel ast.SelectionSet, obj *model.ExamWithRegsAndRooms) graphql.Marshaler {
@@ -31510,8 +31677,8 @@ func (ec *executionContext) _InvigilatorRequirements(ctx context.Context, sel as
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "examDateTimes":
-			out.Values[i] = ec._InvigilatorRequirements_examDateTimes(ctx, field, obj)
+		case "examTimes":
+			out.Values[i] = ec._InvigilatorRequirements_examTimes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -36404,6 +36571,60 @@ func (ec *executionContext) marshalNExamDay2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._ExamDay(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExamTime2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamTimeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamTime) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNExamTime2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamTime(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNExamTime2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamTime(ctx context.Context, sel ast.SelectionSet, v *model.ExamTime) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExamTime(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExamerInPlan2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamerInPlan(ctx context.Context, sel ast.SelectionSet, v *model.ExamerInPlan) graphql.Marshaler {

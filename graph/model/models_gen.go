@@ -89,6 +89,14 @@ type ExamDay struct {
 	Date   time.Time `json:"date"`
 }
 
+// ExamTime is the time span of one exam an invigilator is the main examer of:
+// from the start time of the slot until the end time (start + maxDuration of the
+// exam, i.e. the longest exam in the slot including NTA extensions).
+type ExamTime struct {
+	From  time.Time `json:"from"`
+	Until time.Time `json:"until"`
+}
+
 type ExamWithRegsAndRooms struct {
 	Exam              *PlannedExam   `json:"exam"`
 	NormalRegsMtknr   []string       `json:"normalRegsMtknr"`
@@ -152,7 +160,7 @@ type Invigilator struct {
 type InvigilatorRequirements struct {
 	ExcludedDates          []*time.Time `json:"excludedDates"`
 	ExcludedDays           []int        `json:"excludedDays"`
-	ExamDateTimes          []*time.Time `json:"examDateTimes"`
+	ExamTimes              []*ExamTime  `json:"examTimes"`
 	ExamDays               []int        `json:"examDays"`
 	PartTime               float64      `json:"partTime"`
 	OralExamsContribution  int          `json:"oralExamsContribution"`

@@ -110,7 +110,8 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 					Msg("onlyInSlots computed from notInSlots")
 			}
 
-			examDateTimes := make([]*time.Time, 0)
+			examTimes := make([]*model.ExamTime, 0)
+			examStarttimes := make([]*time.Time, 0)
 			exams, err := p.GeneratedExamsForExamer(ctx, teacher.ID)
 			if err != nil {
 				log.Error().Err(err).Str("name", teacher.Shortname).Msg("cannit get exams by main examer")
@@ -122,7 +123,12 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 					}
 					if planEntry != nil {
 						starttime := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
-						examDateTimes = append(examDateTimes, &starttime)
+						endtime := starttime.Add(time.Duration(exam.MaxDuration) * time.Minute)
+						examTimes = append(examTimes, &model.ExamTime{
+							From:  starttime,
+							Until: endtime,
+						})
+						examStarttimes = append(examStarttimes, &starttime)
 					}
 				}
 			}
@@ -148,8 +154,8 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 			invigReqs = &model.InvigilatorRequirements{
 				ExcludedDates:          excludedDates,
 				ExcludedDays:           excludedDays,
-				ExamDateTimes:          examDateTimes,
-				ExamDays:               p.datesToDay(examDateTimes),
+				ExamTimes:              examTimes,
+				ExamDays:               p.datesToDay(examStarttimes),
 				PartTime:               reqs.PartTime,
 				OralExamsContribution:  reqs.OralExamsContribution,
 				LiveCodingContribution: reqs.LivecodingContribution,

@@ -80,7 +80,7 @@ type Invigilator {
 type InvigilatorRequirements {
   excludedDates: [Time!]!
   excludedDays: [Int!]!
-  examDateTimes: [Time!]!
+  examTimes: [ExamTime!]!
   examDays: [Int!]!
   partTime: Float!
   oralExamsContribution: Int!
@@ -99,6 +99,16 @@ type InvigilatorRequirements {
   """
   fromZpa: Boolean!
   timeWindows: [InvigilationTimeWindow!]!
+}
+
+"""
+ExamTime is the time span of one exam an invigilator is the main examer of:
+from the start time of the slot until the end time (start + maxDuration of the
+exam, i.e. the longest exam in the slot including NTA extensions).
+"""
+type ExamTime {
+  from: Time!
+  until: Time!
 }
 
 """

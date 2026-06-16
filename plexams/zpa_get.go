@@ -9,6 +9,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 func (p *Plexams) GetTeacher(ctx context.Context, id int) (*model.Teacher, error) {
@@ -52,6 +53,11 @@ func (p *Plexams) GetInvigilators(ctx context.Context) ([]*model.ZPAInvigilator,
 
 	invigilators := make([]*model.ZPAInvigilator, 0, len(justInvigilators))
 	for _, invig := range justInvigilators {
+		if viper.GetBool(fmt.Sprintf("invigilatorConstraints.%d.isNotInvigilator", invig.ID)) {
+			log.Debug().Str("name", invig.Shortname).Msg("is not invigilator")
+			continue
+		}
+
 		invigilator := model.ZPAInvigilator{
 			Teacher: invig,
 		}

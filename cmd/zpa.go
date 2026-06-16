@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -55,6 +56,27 @@ var (
 					log.Fatal().Err(err).Msg("cannot get imvigilator requirements")
 				}
 				fmt.Printf("fetched %d invigilator requirements\n", len(invigs))
+
+				invigilators, err := plexams.GetInvigilators(context.Background())
+				if err != nil {
+					log.Fatal().Err(err).Msg("cannot get invigilators")
+				}
+
+				missing := make([]*model.ZPAInvigilator, 0, len(invigilators))
+				for _, invigilator := range invigilators {
+					if !invigilator.HasSubmittedRequirements {
+						missing = append(missing, invigilator)
+					}
+				}
+
+				if len(missing) == 0 {
+					fmt.Println("all invigilators have submitted their requirements")
+				} else {
+					fmt.Printf("missing requirements from %d invigilator(s):\n", len(missing))
+					for _, invigilator := range missing {
+						fmt.Printf("  - %s (%s)\n", invigilator.Teacher.Fullname, invigilator.Teacher.Email)
+					}
+				}
 
 			case "students":
 				studentsFound, studentsNotFound, err := plexams.GetStudentsFromZPA(context.Background())

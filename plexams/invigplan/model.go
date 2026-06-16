@@ -100,6 +100,46 @@ type Invigilator struct {
 	// toward the daily presence span (daySpanSoft) so an early own exam plus a
 	// late invigilation is recognised as a long day.
 	OwnExams []TimeSpan
+
+	// TimeWindows restrict, per calendar date, the times the person may
+	// invigilate (see DayTimeWindow). Empty means unrestricted.
+	TimeWindows []DayTimeWindow
+}
+
+// DayTimeWindow restricts the times an invigilator may invigilate on one
+// calendar date: an assigned position must start no earlier than From (if set)
+// and end no later than Until (if set). It is sub-slot granular and NTA-aware,
+// since Position.End() already includes the room's (possibly NTA-extended)
+// duration.
+type DayTimeWindow struct {
+	Date  time.Time // calendar date the window applies to
+	From  time.Time // earliest allowed start; zero = no lower bound
+	Until time.Time // latest allowed end; zero = no upper bound
+}
+
+// AllowsTime reports whether the position fits the person's time windows. A
+// position is checked only against a window on the same calendar date; with no
+// window for that date (or no windows at all) the position is allowed.
+func (in *Invigilator) AllowsTime(pos Position) bool {
+	for _, w := range in.TimeWindows {
+		if !sameDate(w.Date, pos.Start) {
+			continue
+		}
+		if !w.From.IsZero() && pos.Start.Before(w.From) {
+			return false
+		}
+		if !w.Until.IsZero() && pos.End().After(w.Until) {
+			return false
+		}
+	}
+	return true
+}
+
+// sameDate reports whether a and b fall on the same calendar day.
+func sameDate(a, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+	return ay == by && am == bm && ad == bd
 }
 
 // TimeSpan is a presence interval on a given day.

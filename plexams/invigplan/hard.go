@@ -41,6 +41,51 @@ func (c availabilityHard) Check(p *Problem, plan *Plan) []Violation {
 	return vs
 }
 
+// timeWindowHard: a person may only take an invigilation that fits the
+// per-date time windows they configured (semester.yaml timeWindows). The check
+// uses the position's real start and end time, so an invigilation running long
+// because of an NTA extension is rejected if it would finish after the allowed
+// "until" – even when a normal-length invigilation in the same slot still fits.
+type timeWindowHard struct{}
+
+func (timeWindowHard) Name() string { return "time-window" }
+
+func (timeWindowHard) Allows(p *Problem, plan *Plan, posIdx, invigID int) bool {
+	in := p.Invigilator(invigID)
+	if in == nil {
+		return false
+	}
+	return in.AllowsTime(p.Positions[posIdx])
+}
+
+func (c timeWindowHard) Check(p *Problem, plan *Plan) []Violation {
+	var vs []Violation
+	for posIdx, invigID := range plan.Assign {
+		if invigID == Unassigned {
+			continue
+		}
+		in := p.Invigilator(invigID)
+		pos := p.Positions[posIdx]
+		if in == nil || in.AllowsTime(pos) {
+			continue
+		}
+		room := pos.Room
+		if room == "" {
+			room = "reserve"
+		}
+		vs = append(vs, Violation{
+			Constraint:    c.Name(),
+			InvigilatorID: invigID,
+			Day:           pos.Day,
+			Slot:          pos.Slot,
+			Message: fmt.Sprintf("invigilator %d assigned to %s in slot (%d,%d) running %s-%s, outside their allowed time window",
+				invigID, room, pos.Day, pos.Slot,
+				pos.Start.Format("15:04"), pos.End().Format("15:04")),
+		})
+	}
+	return vs
+}
+
 // ownExamHard: a person must not take a (non-self) invigilation in a slot in
 // which they have an own exam. For NTA exams the builder extends OwnExamSlots to
 // the following slot, so this also covers the "whole time during NTA" rule.

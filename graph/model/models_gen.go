@@ -121,6 +121,17 @@ type InvigilationSlot struct {
 	RoomsWithInvigilators []*RoomWithInvigilator `json:"roomsWithInvigilators"`
 }
 
+// InvigilationTimeWindow restricts, for one calendar date, the times an
+// invigilator may invigilate. An assigned invigilation must start no earlier than
+// from (if set) and end no later than until (if set). The check is sub-slot
+// granular and NTA-aware, since the end time includes the room's (possibly
+// NTA-extended) duration.
+type InvigilationTimeWindow struct {
+	Date  time.Time  `json:"date"`
+	From  *time.Time `json:"from,omitempty"`
+	Until *time.Time `json:"until,omitempty"`
+}
+
 type InvigilationTodos struct {
 	SumExamRooms                        int            `json:"sumExamRooms"`
 	SumReserve                          int            `json:"sumReserve"`
@@ -156,7 +167,8 @@ type InvigilatorRequirements struct {
 	// fromZpa is false if the invigilator has not yet entered their requirements in
 	// the ZPA. In that case default requirements (full time, no contributions) are
 	// used and the invigilator still has to provide their real requirements.
-	FromZpa bool `json:"fromZpa"`
+	FromZpa     bool                      `json:"fromZpa"`
+	TimeWindows []*InvigilationTimeWindow `json:"timeWindows"`
 }
 
 type InvigilatorTodos struct {

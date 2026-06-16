@@ -50,6 +50,7 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 			invigilatorConstraints := viper.Get(fmt.Sprintf("invigilatorConstraints.%d", teacher.ID))
 			var onlyInSlots []*model.Slot
 			var notInSlots []*model.Slot
+			var timeWindows []*model.InvigilationTimeWindow
 			if invigilatorConstraints != nil {
 				excludedDates := viper.GetStringSlice(fmt.Sprintf("invigilatorConstraints.%d.excludedDates", teacher.ID))
 				if len(excludedDates) > 0 {
@@ -73,6 +74,17 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 					return nil, fmt.Errorf(
 						"invigilatorConstraints für %s (%d): onlyInSlots und notInSlots dürfen nicht gleichzeitig gesetzt sein",
 						teacher.Shortname, teacher.ID)
+				}
+
+				timeWindowsCfg := viper.Get(fmt.Sprintf("invigilatorConstraints.%d.timeWindows", teacher.ID))
+				if timeWindowsCfg != nil {
+					timeWindows, err = timeWindowsFromConfig(timeWindowsCfg)
+					if err != nil {
+						return nil, fmt.Errorf(
+							"invigilatorConstraints für %s (%d): %w", teacher.Shortname, teacher.ID, err)
+					}
+					log.Debug().Interface("timeWindows", timeWindows).Str("name", teacher.Shortname).
+						Msg("timeWindows found")
 				}
 			}
 
@@ -149,6 +161,7 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 				Factor:                 factor,
 				OnlyInSlots:            onlyInSlots,
 				FromZpa:                fromZPA,
+				TimeWindows:            timeWindows,
 			}
 		}
 
@@ -175,6 +188,80 @@ func slotsFromConfig(cfg interface{}) []*model.Slot {
 		})
 	}
 	return slots
+}
+
+// timeWindowsFromConfig wandelt einen viper-Config-Wert der Form
+//
+//	[{date: DD.MM.YY, from: "HH:MM", until: "HH:MM"}, ...]
+//
+// in eine Liste von Zeitfenstern um. Pro Eintrag muss mindestens from oder until
+// gesetzt sein; from/until werden als Uhrzeit "HH:MM" geparst und auf das jeweilige
+// Datum gelegt.
+func timeWindowsFromConfig(cfg interface{}) ([]*model.InvigilationTimeWindow, error) {
+	loc, _ := time.LoadLocation("Europe/Berlin")
+	windowsSlice, ok := cfg.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("timeWindows muss eine Liste sein")
+	}
+
+	windows := make([]*model.InvigilationTimeWindow, 0, len(windowsSlice))
+	for _, w := range windowsSlice {
+		entry, ok := w.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("timeWindows-Eintrag muss date/from/until enthalten")
+		}
+
+		dateStr, ok := entry["date"].(string)
+		if !ok {
+			return nil, fmt.Errorf("timeWindows-Eintrag ohne gültiges date (DD.MM.YY)")
+		}
+		date, err := time.ParseInLocation("02.01.06", dateStr, loc)
+		if err != nil {
+			return nil, fmt.Errorf("timeWindows: kann date %q nicht parsen: %w", dateStr, err)
+		}
+
+		// parseClock liest eine Uhrzeit "HH:MM" und legt sie auf das Datum des
+		// Fensters. Ein fehlender Schlüssel liefert nil (= keine Schranke).
+		parseClock := func(key string) (*time.Time, error) {
+			raw, ok := entry[key]
+			if !ok || raw == nil {
+				return nil, nil
+			}
+			clock, ok := raw.(string)
+			if !ok {
+				return nil, fmt.Errorf("timeWindows: %s muss eine Uhrzeit \"HH:MM\" sein", key)
+			}
+			t, err := time.ParseInLocation("15:04", clock, loc)
+			if err != nil {
+				return nil, fmt.Errorf("timeWindows: kann %s %q nicht parsen: %w", key, clock, err)
+			}
+			full := time.Date(date.Year(), date.Month(), date.Day(), t.Hour(), t.Minute(), 0, 0, loc)
+			return &full, nil
+		}
+
+		from, err := parseClock("from")
+		if err != nil {
+			return nil, err
+		}
+		until, err := parseClock("until")
+		if err != nil {
+			return nil, err
+		}
+		if from == nil && until == nil {
+			return nil, fmt.Errorf("timeWindows für %s: mindestens from oder until muss gesetzt sein", dateStr)
+		}
+		if from != nil && until != nil && !until.After(*from) {
+			return nil, fmt.Errorf("timeWindows für %s: until muss nach from liegen", dateStr)
+		}
+
+		windows = append(windows, &model.InvigilationTimeWindow{
+			Date:  date,
+			From:  from,
+			Until: until,
+		})
+	}
+
+	return windows, nil
 }
 
 // onlyInSlotsFromNotInSlots berechnet aus den notInSlots die gegenteilige

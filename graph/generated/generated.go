@@ -198,6 +198,12 @@ type ComplexityRoot struct {
 		RoomsWithInvigilators func(childComplexity int) int
 	}
 
+	InvigilationTimeWindow struct {
+		Date  func(childComplexity int) int
+		From  func(childComplexity int) int
+		Until func(childComplexity int) int
+	}
+
 	InvigilationTodos struct {
 		InvigilatorCount                    func(childComplexity int) int
 		Invigilators                        func(childComplexity int) int
@@ -231,6 +237,7 @@ type ComplexityRoot struct {
 		OvertimeLastSemester   func(childComplexity int) int
 		OvertimeThisSemester   func(childComplexity int) int
 		PartTime               func(childComplexity int) int
+		TimeWindows            func(childComplexity int) int
 	}
 
 	InvigilatorTodos struct {
@@ -1434,6 +1441,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.InvigilationSlot.RoomsWithInvigilators(childComplexity), true
 
+	case "InvigilationTimeWindow.date":
+		if e.complexity.InvigilationTimeWindow.Date == nil {
+			break
+		}
+
+		return e.complexity.InvigilationTimeWindow.Date(childComplexity), true
+
+	case "InvigilationTimeWindow.from":
+		if e.complexity.InvigilationTimeWindow.From == nil {
+			break
+		}
+
+		return e.complexity.InvigilationTimeWindow.From(childComplexity), true
+
+	case "InvigilationTimeWindow.until":
+		if e.complexity.InvigilationTimeWindow.Until == nil {
+			break
+		}
+
+		return e.complexity.InvigilationTimeWindow.Until(childComplexity), true
+
 	case "InvigilationTodos.invigilatorCount":
 		if e.complexity.InvigilationTodos.InvigilatorCount == nil {
 			break
@@ -1615,6 +1643,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.InvigilatorRequirements.PartTime(childComplexity), true
+
+	case "InvigilatorRequirements.timeWindows":
+		if e.complexity.InvigilatorRequirements.TimeWindows == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorRequirements.TimeWindows(childComplexity), true
 
 	case "InvigilatorTodos.doingMinutes":
 		if e.complexity.InvigilatorTodos.DoingMinutes == nil {
@@ -4312,6 +4347,20 @@ type InvigilatorRequirements {
   used and the invigilator still has to provide their real requirements.
   """
   fromZpa: Boolean!
+  timeWindows: [InvigilationTimeWindow!]!
+}
+
+"""
+InvigilationTimeWindow restricts, for one calendar date, the times an
+invigilator may invigilate. An assigned invigilation must start no earlier than
+from (if set) and end no later than until (if set). The check is sub-slot
+granular and NTA-aware, since the end time includes the room's (possibly
+NTA-extended) duration.
+"""
+type InvigilationTimeWindow {
+  date: Time!
+  from: Time
+  until: Time
 }
 
 type InvigilatorTodos {
@@ -11242,6 +11291,132 @@ func (ec *executionContext) fieldContext_InvigilationSlot_roomsWithInvigilators(
 	return fc, nil
 }
 
+func (ec *executionContext) _InvigilationTimeWindow_date(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationTimeWindow) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationTimeWindow_date(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Date, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationTimeWindow_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationTimeWindow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationTimeWindow_from(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationTimeWindow) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationTimeWindow_from(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.From, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationTimeWindow_from(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationTimeWindow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationTimeWindow_until(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationTimeWindow) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationTimeWindow_until(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Until, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationTimeWindow_until(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationTimeWindow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _InvigilationTodos_sumExamRooms(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationTodos) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_InvigilationTodos_sumExamRooms(ctx, field)
 	if err != nil {
@@ -11736,6 +11911,8 @@ func (ec *executionContext) fieldContext_Invigilator_requirements(_ context.Cont
 				return ec.fieldContext_InvigilatorRequirements_onlyInSlots(ctx, field)
 			case "fromZpa":
 				return ec.fieldContext_InvigilatorRequirements_fromZpa(ctx, field)
+			case "timeWindows":
+				return ec.fieldContext_InvigilatorRequirements_timeWindows(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type InvigilatorRequirements", field.Name)
 		},
@@ -12459,6 +12636,58 @@ func (ec *executionContext) fieldContext_InvigilatorRequirements_fromZpa(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorRequirements_timeWindows(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorRequirements) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorRequirements_timeWindows(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimeWindows, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.InvigilationTimeWindow)
+	fc.Result = res
+	return ec.marshalNInvigilationTimeWindow2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTimeWindowᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorRequirements_timeWindows(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorRequirements",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "date":
+				return ec.fieldContext_InvigilationTimeWindow_date(ctx, field)
+			case "from":
+				return ec.fieldContext_InvigilationTimeWindow_from(ctx, field)
+			case "until":
+				return ec.fieldContext_InvigilationTimeWindow_until(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InvigilationTimeWindow", field.Name)
 		},
 	}
 	return fc, nil
@@ -31100,6 +31329,49 @@ func (ec *executionContext) _InvigilationSlot(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var invigilationTimeWindowImplementors = []string{"InvigilationTimeWindow"}
+
+func (ec *executionContext) _InvigilationTimeWindow(ctx context.Context, sel ast.SelectionSet, obj *model.InvigilationTimeWindow) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, invigilationTimeWindowImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InvigilationTimeWindow")
+		case "date":
+			out.Values[i] = ec._InvigilationTimeWindow_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "from":
+			out.Values[i] = ec._InvigilationTimeWindow_from(ctx, field, obj)
+		case "until":
+			out.Values[i] = ec._InvigilationTimeWindow_until(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var invigilationTodosImplementors = []string{"InvigilationTodos"}
 
 func (ec *executionContext) _InvigilationTodos(ctx context.Context, sel ast.SelectionSet, obj *model.InvigilationTodos) graphql.Marshaler {
@@ -31300,6 +31572,11 @@ func (ec *executionContext) _InvigilatorRequirements(ctx context.Context, sel as
 			}
 		case "fromZpa":
 			out.Values[i] = ec._InvigilatorRequirements_fromZpa(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "timeWindows":
+			out.Values[i] = ec._InvigilatorRequirements_timeWindows(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -36317,6 +36594,60 @@ func (ec *executionContext) marshalNInvigilation2ᚖgithubᚗcomᚋobcodeᚋplex
 		return graphql.Null
 	}
 	return ec._Invigilation(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNInvigilationTimeWindow2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTimeWindowᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InvigilationTimeWindow) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNInvigilationTimeWindow2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTimeWindow(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInvigilationTimeWindow2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTimeWindow(ctx context.Context, sel ast.SelectionSet, v *model.InvigilationTimeWindow) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InvigilationTimeWindow(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Invigilator) graphql.Marshaler {

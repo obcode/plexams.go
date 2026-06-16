@@ -101,6 +101,70 @@ func TestAvailabilityHard(t *testing.T) {
 	}
 }
 
+func TestTimeWindowHard(t *testing.T) {
+	// slot 1 at 08:00: a normal room (90 min -> ends 09:30) and an NTA room that
+	// runs long (99 min -> ends 09:39). The reserve (Block 99) covers the longest
+	// exam and therefore also ends 09:39.
+	pos := []Position{
+		{Day: 1, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
+		{Day: 1, Slot: 1, Room: "R2", Minutes: 99, Block: 99, Start: start(8, 0), IsNTA: true},
+		{Day: 1, Slot: 1, IsReserve: true, Minutes: 60, Block: 99, Start: start(8, 0)},
+	}
+	p := &Problem{
+		Positions:    pos,
+		Invigilators: []Invigilator{{ID: 1, TargetMinutes: 300}},
+		Fixed:        map[int]int{},
+		ToleranceMin: 60, MaxSpanHours: 8, Weights: DefaultWeights(),
+	}
+	// "until 09:30" on the test date: the normal room ends exactly 09:30 (allowed),
+	// the NTA room and the reserve run to 09:39 (forbidden).
+	p.Invigilators[0].TimeWindows = []DayTimeWindow{
+		{Date: start(0, 0), Until: start(9, 30)},
+	}
+	p.Prepare()
+	plan := NewPlan(p)
+
+	c := timeWindowHard{}
+	if !c.Allows(p, plan, 0, 1) {
+		t.Error("normal room ending exactly at the until time must be allowed")
+	}
+	if c.Allows(p, plan, 1, 1) {
+		t.Error("NTA room ending after the until time must be forbidden")
+	}
+	if c.Allows(p, plan, 2, 1) {
+		t.Error("reserve covering the long NTA exam must be forbidden")
+	}
+
+	// from-bound: an invigilation starting before "from" is forbidden.
+	p.Invigilators[0].TimeWindows = []DayTimeWindow{
+		{Date: start(0, 0), From: start(8, 30)},
+	}
+	p.Prepare()
+	if c.Allows(p, plan, 0, 1) {
+		t.Error("start 08:00 before from 08:30 must be forbidden")
+	}
+
+	// a window on a different calendar date must not affect this date.
+	p.Invigilators[0].TimeWindows = []DayTimeWindow{
+		{Date: time.Date(2026, time.July, 7, 0, 0, 0, 0, time.UTC), Until: start(8, 30)},
+	}
+	p.Prepare()
+	if !c.Allows(p, plan, 1, 1) {
+		t.Error("window on another date must leave this date unrestricted")
+	}
+
+	// Check reports the violation for an assigned out-of-window position.
+	p.Invigilators[0].TimeWindows = []DayTimeWindow{
+		{Date: start(0, 0), Until: start(9, 30)},
+	}
+	p.Prepare()
+	plan = NewPlan(p)
+	plan.Set(1, 1) // assign the NTA room
+	if vs := c.Check(p, plan); len(vs) != 1 {
+		t.Fatalf("expected 1 time-window violation, got %d: %v", len(vs), vs)
+	}
+}
+
 func TestOwnExamHard(t *testing.T) {
 	p := newTestProblem()
 	p.Invigilators[0].OwnExamSlots = map[[2]int]bool{{1, 1}: true}

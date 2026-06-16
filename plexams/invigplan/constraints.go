@@ -40,6 +40,7 @@ func DefaultRegistry() *Registry {
 	return &Registry{
 		Hard: []HardConstraint{
 			availabilityHard{},
+			timeWindowHard{},
 			ownExamHard{},
 			oneInvigilationPerSlotHard{},
 			timeGapHard{},

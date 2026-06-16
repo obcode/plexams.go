@@ -98,6 +98,20 @@ type InvigilatorRequirements {
   used and the invigilator still has to provide their real requirements.
   """
   fromZpa: Boolean!
+  timeWindows: [InvigilationTimeWindow!]!
+}
+
+"""
+InvigilationTimeWindow restricts, for one calendar date, the times an
+invigilator may invigilate. An assigned invigilation must start no earlier than
+from (if set) and end no later than until (if set). The check is sub-slot
+granular and NTA-aware, since the end time includes the room's (possibly
+NTA-extended) duration.
+"""
+type InvigilationTimeWindow {
+  date: Time!
+  from: Time
+  until: Time
 }
 
 type InvigilatorTodos {

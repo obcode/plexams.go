@@ -505,6 +505,19 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 			for _, slot := range inv.Requirements.OnlyInSlots {
 				gi.OnlyInSlots[[2]int{slot.DayNumber, slot.SlotNumber}] = true
 			}
+			for _, w := range inv.Requirements.TimeWindows {
+				if w == nil {
+					continue
+				}
+				dtw := invigplan.DayTimeWindow{Date: w.Date}
+				if w.From != nil {
+					dtw.From = *w.From
+				}
+				if w.Until != nil {
+					dtw.Until = *w.Until
+				}
+				gi.TimeWindows = append(gi.TimeWindows, dtw)
+			}
 		}
 		invigilators = append(invigilators, gi)
 	}

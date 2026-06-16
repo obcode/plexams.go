@@ -17,7 +17,14 @@ type DB struct {
 }
 
 func NewDB(uri, semester string, dbName *string) (*DB, error) {
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
+	// MongoDB stores all datetimes as UTC. Decode them back into the local
+	// timezone (Europe/Berlin, set in main.go via time.Local) so that the rest
+	// of plexams.go works with local time everywhere, matching the local times
+	// given in the semester YAML config.
+	client, err := mongo.Connect(context.Background(),
+		options.Client().
+			ApplyURI(uri).
+			SetBSONOptions(&options.BSONOptions{UseLocalTimeZone: true}))
 	if err != nil {
 		return nil, err
 	}

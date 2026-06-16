@@ -400,9 +400,12 @@ func semesterConfigYAMLDocument(cfg *model.SemesterConfig, forbiddenDays []time.
 
 	return map[string]any{
 		"semesterConfig": map[string]any{
-			"from":             cfg.From.Format("2006-01-02"),
-			"fromFK07":         cfg.FromFk07.Format("2006-01-02"),
-			"until":            cfg.Until.Format("2006-01-02"),
+			"from":     cfg.From.Format("2006-01-02"),
+			"fromFK07": cfg.FromFk07.Format("2006-01-02"),
+			"until":    cfg.Until.Format("2006-01-02"),
+			// dayNumberStart defaults to "fromFK07" (day 1 = fromFK07, no
+			// pre-period), so new semesters don't need to set it. Older semesters
+			// whose plan is stored with day 1 = from set dayNumberStart: from.
 			"slots":            slots,
 			"goDay0":           cfg.GoDay0.Format("2006-01-02"),
 			"forbiddenDays":    forbidden,

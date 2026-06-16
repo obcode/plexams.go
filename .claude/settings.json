@@ -31,7 +31,12 @@
       "Bash(gofmt -w plexams/invigilation_generate.go)",
       "Bash(/tmp/plexams.go validate *)",
       "Bash(gofmt -w plexams/invigplan/soft.go plexams/invigplan/model.go plexams/invigilation_generate.go)",
-      "Bash(go mod *)"
+      "Bash(go mod *)",
+      "Bash(find / -name \"2026-SS.yaml\")",
+      "Bash(find / -name \"*.yaml\")"
+    ],
+    "additionalDirectories": [
+      "/home/ubuntu/semester"
     ]
   }
 }

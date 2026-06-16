@@ -22,7 +22,15 @@
       "Bash(go test *)",
       "Bash(golangci-lint-v2 run *)",
       "Bash(go generate *)",
-      "Bash(gofmt -w plexams/invigilators.go)"
+      "Bash(gofmt -w plexams/invigilators.go)",
+      "Bash(/tmp/plexams.go invigilation *)",
+      "Bash(gofmt -w plexams/invigplan/optimizer.go)",
+      "Bash(gofmt -w cmd/invigilation.go plexams/invigilation_generate.go)",
+      "Bash(/tmp/plexams.go)",
+      "Bash(gofmt -w plexams/invigplan/ plexams/invigilation_generate.go)",
+      "Bash(gofmt -w plexams/invigilation_generate.go)",
+      "Bash(/tmp/plexams.go validate *)",
+      "Bash(gofmt -w plexams/invigplan/soft.go plexams/invigplan/model.go plexams/invigilation_generate.go)"
     ]
   }
 }

@@ -23,10 +23,11 @@ var (
 	db                 		--- data base entries
 	rooms              		--- check room constraints
 	zpa                		--- check if the plan on ZPA is the same here
-	invigilator-reqs.  		--- check if invigilator requirements are met
+	invigilator-reqs.  		--- check if invigilator requirements are met (incl. shared constraints)
 	invigilator-slots  		--- check if invigilator slots are okay
+	invigilator-constraints	--- check the persisted plan against the shared invigplan constraints
 `,
-		ValidArgs: []string{"all", "conflicts", "constraints", "preplanned-exahm-rooms", "studentregs", "db", "rooms", "zpa", "invigilator-reqs", "invigilator-slots"},
+		ValidArgs: []string{"all", "conflicts", "constraints", "preplanned-exahm-rooms", "studentregs", "db", "rooms", "zpa", "invigilator-reqs", "invigilator-slots", "invigilator-constraints"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -94,10 +95,14 @@ var (
 						plexams.ValidateInvigilatorRequirements,
 						plexams.ValidateInvigilationDups,
 						plexams.ValidateInvigilationsTimeDistance,
+						plexams.ValidateInvigilationConstraints,
 					)
 
 				case "invigilator-slots":
 					validations = append(validations, plexams.ValidateInvigilatorSlots)
+
+				case "invigilator-constraints":
+					validations = append(validations, plexams.ValidateInvigilationConstraints)
 
 				default:
 					fmt.Println("validate called with unknown sub command")

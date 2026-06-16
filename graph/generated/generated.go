@@ -258,24 +258,25 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddConstraints    func(childComplexity int, ancode int, constraints model.ConstraintsInput) int
-		AddExamToSlot     func(childComplexity int, day int, time int, ancode int) int
-		AddNta            func(childComplexity int, input model.NTAInput) int
-		AddZpaExamToPlan  func(childComplexity int, ancode int) int
-		Exahm             func(childComplexity int, ancode int) int
-		ExcludeDays       func(childComplexity int, ancode int, days []string) int
-		Lab               func(childComplexity int, ancode int) int
-		NotPlannedByMe    func(childComplexity int, ancode int) int
-		Online            func(childComplexity int, ancode int) int
-		PlacesWithSockets func(childComplexity int, ancode int) int
-		PossibleDays      func(childComplexity int, ancode int, days []string) int
-		PrePlanRoom       func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
-		RmConstraints     func(childComplexity int, ancode int) int
-		RmExamFromSlot    func(childComplexity int, ancode int) int
-		RmZpaExamFromPlan func(childComplexity int, ancode int) int
-		SameSlot          func(childComplexity int, ancode int, ancodes []int) int
-		Seb               func(childComplexity int, ancode int) int
-		ZpaExamsToPlan    func(childComplexity int, input []int) int
+		AddConstraints      func(childComplexity int, ancode int, constraints model.ConstraintsInput) int
+		AddExamToSlot       func(childComplexity int, day int, time int, ancode int) int
+		AddNta              func(childComplexity int, input model.NTAInput) int
+		AddZpaExamToPlan    func(childComplexity int, ancode int) int
+		Exahm               func(childComplexity int, ancode int) int
+		ExcludeDays         func(childComplexity int, ancode int, days []string) int
+		Lab                 func(childComplexity int, ancode int) int
+		NotPlannedByMe      func(childComplexity int, ancode int) int
+		Online              func(childComplexity int, ancode int) int
+		PlacesWithSockets   func(childComplexity int, ancode int) int
+		PossibleDays        func(childComplexity int, ancode int, days []string) int
+		PrePlanInvigilation func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
+		PrePlanRoom         func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
+		RmConstraints       func(childComplexity int, ancode int) int
+		RmExamFromSlot      func(childComplexity int, ancode int) int
+		RmZpaExamFromPlan   func(childComplexity int, ancode int) int
+		SameSlot            func(childComplexity int, ancode int, ancodes []int) int
+		Seb                 func(childComplexity int, ancode int) int
+		ZpaExamsToPlan      func(childComplexity int, input []int) int
 	}
 
 	NTA struct {
@@ -359,6 +360,14 @@ type ComplexityRoot struct {
 		ZpaExam     func(childComplexity int) int
 	}
 
+	PrePlannedInvigilation struct {
+		Day           func(childComplexity int) int
+		InvigilatorID func(childComplexity int) int
+		IsReserve     func(childComplexity int) int
+		RoomName      func(childComplexity int) int
+		Slot          func(childComplexity int) int
+	}
+
 	PrePlannedRoom struct {
 		Ancode   func(childComplexity int) int
 		Mtknr    func(childComplexity int) int
@@ -432,6 +441,7 @@ type ComplexityRoot struct {
 		PlannedRooms                  func(childComplexity int) int
 		PlannedRoomsInSlot            func(childComplexity int, day int, time int) int
 		PreExamsInSlot                func(childComplexity int, day int, time int) int
+		PrePlannedInvigilations       func(childComplexity int) int
 		PrePlannedRooms               func(childComplexity int) int
 		PrimussExam                   func(childComplexity int, program string, ancode int) int
 		PrimussExams                  func(childComplexity int) int
@@ -673,6 +683,7 @@ type MutationResolver interface {
 	Online(ctx context.Context, ancode int) (bool, error)
 	AddConstraints(ctx context.Context, ancode int, constraints model.ConstraintsInput) (*model.Constraints, error)
 	RmConstraints(ctx context.Context, ancode int) (bool, error)
+	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
@@ -711,6 +722,7 @@ type QueryResolver interface {
 	RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error)
 	InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error)
 	Invigilator(ctx context.Context, room string, day int, time int) (*model.Teacher, error)
+	PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedInvigilation, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
@@ -1838,6 +1850,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.PossibleDays(childComplexity, args["ancode"].(int), args["days"].([]string)), true
 
+	case "Mutation.prePlanInvigilation":
+		if e.complexity.Mutation.PrePlanInvigilation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_prePlanInvigilation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PrePlanInvigilation(childComplexity, args["invigilatorID"].(int), args["day"].(int), args["slot"].(int), args["roomName"].(*string)), true
+
 	case "Mutation.prePlanRoom":
 		if e.complexity.Mutation.PrePlanRoom == nil {
 			break
@@ -2299,6 +2323,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PreExam.ZpaExam(childComplexity), true
+
+	case "PrePlannedInvigilation.day":
+		if e.complexity.PrePlannedInvigilation.Day == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedInvigilation.Day(childComplexity), true
+
+	case "PrePlannedInvigilation.invigilatorID":
+		if e.complexity.PrePlannedInvigilation.InvigilatorID == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedInvigilation.InvigilatorID(childComplexity), true
+
+	case "PrePlannedInvigilation.isReserve":
+		if e.complexity.PrePlannedInvigilation.IsReserve == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedInvigilation.IsReserve(childComplexity), true
+
+	case "PrePlannedInvigilation.roomName":
+		if e.complexity.PrePlannedInvigilation.RoomName == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedInvigilation.RoomName(childComplexity), true
+
+	case "PrePlannedInvigilation.slot":
+		if e.complexity.PrePlannedInvigilation.Slot == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedInvigilation.Slot(childComplexity), true
 
 	case "PrePlannedRoom.ancode":
 		if e.complexity.PrePlannedRoom.Ancode == nil {
@@ -2778,6 +2837,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PreExamsInSlot(childComplexity, args["day"].(int), args["time"].(int)), true
+
+	case "Query.prePlannedInvigilations":
+		if e.complexity.Query.PrePlannedInvigilations == nil {
+			break
+		}
+
+		return e.complexity.Query.PrePlannedInvigilations(childComplexity), true
 
 	case "Query.prePlannedRooms":
 		if e.complexity.Query.PrePlannedRooms == nil {
@@ -4130,6 +4196,29 @@ type MucDaiExam {
   roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
   invigilatorsForDay(day: Int!): InvigilatorsForDay
   invigilator(room: String!, day: Int!, time: Int!): Teacher
+  prePlannedInvigilations: [PrePlannedInvigilation!]!
+}
+
+extend type Mutation {
+  prePlanInvigilation(
+    invigilatorID: Int!
+    day: Int!
+    slot: Int!
+    roomName: String
+  ): Boolean!
+}
+
+"""
+PrePlannedInvigilation fixes an invigilator for a room (or the reserve) in a
+slot before the automatic invigilation planning runs. roomName is null for a
+reserve invigilation.
+"""
+type PrePlannedInvigilation {
+  invigilatorID: Int!
+  day: Int!
+  slot: Int!
+  roomName: String
+  isReserve: Boolean!
 }
 
 type Invigilation {
@@ -5087,6 +5176,103 @@ func (ec *executionContext) field_Mutation_possibleDays_argsDays(
 	}
 
 	var zeroVal []string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_prePlanInvigilation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_prePlanInvigilation_argsInvigilatorID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["invigilatorID"] = arg0
+	arg1, err := ec.field_Mutation_prePlanInvigilation_argsDay(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["day"] = arg1
+	arg2, err := ec.field_Mutation_prePlanInvigilation_argsSlot(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["slot"] = arg2
+	arg3, err := ec.field_Mutation_prePlanInvigilation_argsRoomName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["roomName"] = arg3
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_prePlanInvigilation_argsInvigilatorID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["invigilatorID"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("invigilatorID"))
+	if tmp, ok := rawArgs["invigilatorID"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_prePlanInvigilation_argsDay(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["day"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+	if tmp, ok := rawArgs["day"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_prePlanInvigilation_argsSlot(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["slot"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slot"))
+	if tmp, ok := rawArgs["slot"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_prePlanInvigilation_argsRoomName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["roomName"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("roomName"))
+	if tmp, ok := rawArgs["roomName"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -13481,6 +13667,61 @@ func (ec *executionContext) fieldContext_Mutation_rmConstraints(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_prePlanInvigilation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_prePlanInvigilation(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().PrePlanInvigilation(rctx, fc.Args["invigilatorID"].(int), fc.Args["day"].(int), fc.Args["slot"].(int), fc.Args["roomName"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_prePlanInvigilation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_prePlanInvigilation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addNTA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_addNTA(ctx, field)
 	if err != nil {
@@ -16602,6 +16843,223 @@ func (ec *executionContext) fieldContext_PreExam_planEntry(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _PrePlannedInvigilation_invigilatorID(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedInvigilation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedInvigilation_invigilatorID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InvigilatorID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedInvigilation_invigilatorID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedInvigilation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PrePlannedInvigilation_day(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedInvigilation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedInvigilation_day(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Day, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedInvigilation_day(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedInvigilation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PrePlannedInvigilation_slot(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedInvigilation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedInvigilation_slot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedInvigilation_slot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedInvigilation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PrePlannedInvigilation_roomName(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedInvigilation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedInvigilation_roomName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedInvigilation_roomName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedInvigilation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PrePlannedInvigilation_isReserve(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedInvigilation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedInvigilation_isReserve(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsReserve, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedInvigilation_isReserve(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedInvigilation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrePlannedRoom_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedRoom) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrePlannedRoom_ancode(ctx, field)
 	if err != nil {
@@ -18879,6 +19337,62 @@ func (ec *executionContext) fieldContext_Query_invigilator(ctx context.Context, 
 	if fc.Args, err = ec.field_Query_invigilator_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_prePlannedInvigilations(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_prePlannedInvigilations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PrePlannedInvigilations(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PrePlannedInvigilation)
+	fc.Result = res
+	return ec.marshalNPrePlannedInvigilation2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrePlannedInvigilationᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_prePlannedInvigilations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "invigilatorID":
+				return ec.fieldContext_PrePlannedInvigilation_invigilatorID(ctx, field)
+			case "day":
+				return ec.fieldContext_PrePlannedInvigilation_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_PrePlannedInvigilation_slot(ctx, field)
+			case "roomName":
+				return ec.fieldContext_PrePlannedInvigilation_roomName(ctx, field)
+			case "isReserve":
+				return ec.fieldContext_PrePlannedInvigilation_isReserve(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PrePlannedInvigilation", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -30872,6 +31386,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "prePlanInvigilation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_prePlanInvigilation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addNTA":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addNTA(ctx, field)
@@ -31554,6 +32075,62 @@ func (ec *executionContext) _PreExam(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._PreExam_constraints(ctx, field, obj)
 		case "planEntry":
 			out.Values[i] = ec._PreExam_planEntry(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var prePlannedInvigilationImplementors = []string{"PrePlannedInvigilation"}
+
+func (ec *executionContext) _PrePlannedInvigilation(ctx context.Context, sel ast.SelectionSet, obj *model.PrePlannedInvigilation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, prePlannedInvigilationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PrePlannedInvigilation")
+		case "invigilatorID":
+			out.Values[i] = ec._PrePlannedInvigilation_invigilatorID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "day":
+			out.Values[i] = ec._PrePlannedInvigilation_day(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slot":
+			out.Values[i] = ec._PrePlannedInvigilation_slot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomName":
+			out.Values[i] = ec._PrePlannedInvigilation_roomName(ctx, field, obj)
+		case "isReserve":
+			out.Values[i] = ec._PrePlannedInvigilation_isReserve(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -32277,6 +32854,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_invigilator(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "prePlannedInvigilations":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_prePlannedInvigilations(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -35865,6 +36464,60 @@ func (ec *executionContext) marshalNPreExam2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._PreExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPrePlannedInvigilation2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrePlannedInvigilationᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PrePlannedInvigilation) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPrePlannedInvigilation2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrePlannedInvigilation(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPrePlannedInvigilation2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrePlannedInvigilation(ctx context.Context, sel ast.SelectionSet, v *model.PrePlannedInvigilation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PrePlannedInvigilation(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPrePlannedRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrePlannedRoomᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PrePlannedRoom) graphql.Marshaler {

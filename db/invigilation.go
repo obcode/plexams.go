@@ -247,3 +247,71 @@ func (db *DB) getMaxDurationForRoomInSlot(ctx context.Context, roomname string, 
 
 	return maxDuration
 }
+
+func (db *DB) PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedInvigilation, error) {
+	collection := db.getCollectionSemester(collectionInvigilationsPrePlanned)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).Msg("MongoDB Find")
+		return nil, err
+	}
+	defer cur.Close(ctx) //nolint:errcheck
+
+	invigilations := make([]*model.PrePlannedInvigilation, 0)
+	err = cur.All(ctx, &invigilations)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).Msg("Cannot decode to pre planned invigilations")
+		return nil, err
+	}
+
+	return invigilations, nil
+}
+
+func (db *DB) PrePlannedInvigilationsForInvigilator(ctx context.Context, invigilatorID int) ([]*model.PrePlannedInvigilation, error) {
+	collection := db.getCollectionSemester(collectionInvigilationsPrePlanned)
+
+	cur, err := collection.Find(ctx, bson.M{"invigilatorid": invigilatorID})
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).Msg("MongoDB Find")
+		return nil, err
+	}
+	defer cur.Close(ctx) //nolint:errcheck
+
+	invigilations := make([]*model.PrePlannedInvigilation, 0)
+	err = cur.All(ctx, &invigilations)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).Msg("Cannot decode to pre planned invigilations")
+		return nil, err
+	}
+
+	return invigilations, nil
+}
+
+func (db *DB) AddPrePlannedInvigilation(ctx context.Context, prePlannedInvigilation *model.PrePlannedInvigilation) (bool, error) {
+	collection := db.getCollectionSemester(collectionInvigilationsPrePlanned)
+	// Only one invigilator per room (or reserve) in a slot: delete any existing
+	// document with the same day, slot, and room before inserting the new one.
+	filter := bson.M{
+		"day":      prePlannedInvigilation.Day,
+		"slot":     prePlannedInvigilation.Slot,
+		"roomname": prePlannedInvigilation.RoomName,
+	}
+	_, err := collection.DeleteOne(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).
+			Int("day", prePlannedInvigilation.Day).Int("slot", prePlannedInvigilation.Slot).
+			Interface("roomname", prePlannedInvigilation.RoomName).
+			Msg("cannot delete existing pre planned invigilation")
+		return false, err
+	}
+	_, err = collection.InsertOne(ctx, prePlannedInvigilation)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).
+			Int("day", prePlannedInvigilation.Day).Int("slot", prePlannedInvigilation.Slot).
+			Int("invigilator-id", prePlannedInvigilation.InvigilatorID).
+			Msg("cannot insert pre planned invigilation")
+		return false, err
+	}
+	return true, nil
+}

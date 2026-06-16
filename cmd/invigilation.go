@@ -16,7 +16,10 @@ var (
 		Short: "Add an invigilation",
 		Long: `Add an invigilation.
 reserve    [daynumber] [slotnumber] [invigilator ID] --- add reserve for slot (daynumber,slotnumber).
-[roomname] [daynumber] [slotnumber] [invigilator ID] --- add invigilator for room in slot`,
+[roomname] [daynumber] [slotnumber] [invigilator ID] --- add invigilator for room in slot
+
+With --pre-plan/-p the invigilation is pre-planned instead of added, i.e. it is
+stored as a fixed assignment that the automatic invigilation planning respects.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -81,16 +84,36 @@ reserve    [daynumber] [slotnumber] [invigilator ID] --- add reserve for slot (d
 				os.Exit(1)
 			}
 
+			verb := "Add"
+			if prePlanInvigilation {
+				verb = "Pre-plan"
+			}
 			if oldInvigilator != nil {
-				if !confirm(fmt.Sprintf("Add \"%s\" and override existing invigilator \"%s\" in slot (%d,%d) for \"%s\"?",
-					newInvigilator.Teacher.Shortname, oldInvigilator.Shortname, day, slot, room), 1) {
+				if !confirm(fmt.Sprintf("%s \"%s\" and override existing invigilator \"%s\" in slot (%d,%d) for \"%s\"?",
+					verb, newInvigilator.Teacher.Shortname, oldInvigilator.Shortname, day, slot, room), 1) {
 					os.Exit(0)
 				}
 			} else {
-				if !confirm(fmt.Sprintf("Add \"%s\" for \"%s\" in slot (%d,%d)?",
-					newInvigilator.Teacher.Shortname, room, day, slot), 1) {
+				if !confirm(fmt.Sprintf("%s \"%s\" for \"%s\" in slot (%d,%d)?",
+					verb, newInvigilator.Teacher.Shortname, room, day, slot), 1) {
 					os.Exit(0)
 				}
+			}
+
+			if prePlanInvigilation {
+				var roomName *string
+				if room != "reserve" {
+					roomName = &room
+				}
+				success, err := plexams.PreAddInvigilation(context.Background(), invigilatorID, day, slot, roomName)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+				if success {
+					fmt.Printf("successfully pre-planned \"%s\" for \"%s\" in slot (%d,%d)\n",
+						newInvigilator.Teacher.Shortname, room, day, slot)
+				}
+				return
 			}
 
 			err = plexams.AddInvigilation(context.Background(), room, day, slot, invigilatorID)
@@ -107,8 +130,53 @@ reserve    [daynumber] [slotnumber] [invigilator ID] --- add reserve for slot (d
 
 		},
 	}
+	prePlanInvigilation bool
+
+	invigilationProblemCmd = &cobra.Command{
+		Use:   "problem",
+		Short: "Show the invigilation planning problem (read-only)",
+		Long:  `Build the invigilation planning snapshot from the database and print a summary.`,
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			plexams := initPlexamsConfig()
+			if err := plexams.ShowInvigilationProblem(context.Background()); err != nil {
+				log.Fatalf("got error: %v\n", err)
+			}
+		},
+	}
+
+	generateDryRun     bool
+	generateSeed       int64
+	generateIterations int
+
+	invigilationGenerateCmd = &cobra.Command{
+		Use:   "generate",
+		Short: "Generate the invigilations automatically",
+		Long: `Refresh self-invigilations and todos, then automatically assign invigilators
+to all rooms and reserves with a simulated-annealing optimizer that respects the
+hard constraints and balances the soft ones.
+
+The result is written to invigilations_other, replacing its previous content
+(self-invigilations and pre-planned invigilations are kept). To fix an
+assignment across runs, move it to the pre-planning (invigilation -p ...).`,
+		Args: cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			plexams := initPlexamsConfig()
+			opts := plexams.OptimizerOptionsFromConfig(generateSeed, generateIterations)
+			if err := plexams.GenerateInvigilations(context.Background(), generateDryRun, opts); err != nil {
+				log.Fatalf("got error: %v\n", err)
+			}
+		},
+	}
 )
 
 func init() {
 	rootCmd.AddCommand(invigilationCmd)
+	invigilationCmd.Flags().BoolVarP(&prePlanInvigilation, "pre-plan", "p", false, "pre-plan the invigilation instead of adding it")
+	invigilationCmd.AddCommand(invigilationProblemCmd)
+
+	invigilationGenerateCmd.Flags().BoolVar(&generateDryRun, "dry-run", false, "optimize and report only, do not write to the database")
+	invigilationGenerateCmd.Flags().Int64Var(&generateSeed, "seed", 0, "random seed (0 = config/default)")
+	invigilationGenerateCmd.Flags().IntVar(&generateIterations, "iterations", 0, "number of optimizer iterations (0 = config/default)")
+	invigilationCmd.AddCommand(invigilationGenerateCmd)
 }

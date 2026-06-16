@@ -220,6 +220,17 @@ type PreExam struct {
 	PlanEntry   *PlanEntry   `json:"planEntry,omitempty"`
 }
 
+// PrePlannedInvigilation fixes an invigilator for a room (or the reserve) in a
+// slot before the automatic invigilation planning runs. roomName is null for a
+// reserve invigilation.
+type PrePlannedInvigilation struct {
+	InvigilatorID int     `json:"invigilatorID"`
+	Day           int     `json:"day"`
+	Slot          int     `json:"slot"`
+	RoomName      *string `json:"roomName,omitempty"`
+	IsReserve     bool    `json:"isReserve"`
+}
+
 type PrePlannedRoom struct {
 	Ancode   int     `json:"ancode"`
 	RoomName string  `json:"roomName"`

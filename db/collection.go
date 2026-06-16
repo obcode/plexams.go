@@ -38,6 +38,7 @@ const (
 	collectionInvigilatorTodos        = "invigilator_todos"
 	collectionOtherInvigilations      = "invigilations_other"
 	collectionSelfInvigilations       = "invigilations_self"
+	collectionInvigilationsPrePlanned = "invigilations_pre_planned"
 )
 
 type PrimussType string

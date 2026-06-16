@@ -10,6 +10,11 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// PrePlanInvigilation is the resolver for the prePlanInvigilation field.
+func (r *mutationResolver) PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error) {
+	return r.plexams.PreAddInvigilation(ctx, invigilatorID, day, slot, roomName)
+}
+
 // InvigilatorTodos is the resolver for the invigilatorTodos field.
 func (r *queryResolver) InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error) {
 	return r.plexams.GetInvigilationTodos(ctx)
@@ -33,4 +38,9 @@ func (r *queryResolver) InvigilatorsForDay(ctx context.Context, day int) (*model
 // Invigilator is the resolver for the invigilator field.
 func (r *queryResolver) Invigilator(ctx context.Context, room string, day int, time int) (*model.Teacher, error) {
 	return r.plexams.Invigilator(ctx, room, day, time)
+}
+
+// PrePlannedInvigilations is the resolver for the prePlannedInvigilations field.
+func (r *queryResolver) PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedInvigilation, error) {
+	return r.plexams.PrePlannedInvigilations(ctx)
 }

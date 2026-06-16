@@ -231,7 +231,7 @@ PLANNEDROOM:
 		spinner.Message(aurora.Sprintf(aurora.Yellow("checking room  %s in slot (%d/%d)"),
 			plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot))
 
-		startTime := p.getSlotTime(plannedRoom.Day, plannedRoom.Slot).Local()
+		startTime := p.getSlotTime(plannedRoom.Day, plannedRoom.Slot)
 		endTime := startTime.Add(time.Duration(plannedRoom.Duration) * time.Minute)
 
 		for _, timerange := range roomTimetables[plannedRoom.RoomName] {

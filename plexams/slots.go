@@ -72,8 +72,8 @@ func CalculatedAllowedSlots(semesterConfigSlots []*model.Slot, goSlots [][]int, 
 			slotsWithoutExcludedDays := make([]*model.Slot, 0)
 			for _, excludeDay := range constraints.ExcludeDays {
 				for _, slot := range slots {
-					s := slot.Starttime.Local()
-					e := excludeDay.Local()
+					s := slot.Starttime
+					e := excludeDay
 					if constraints.Ancode == 204 {
 						fmt.Printf("slot %s -- excluded day %s\n", s.String(), e.String())
 					}

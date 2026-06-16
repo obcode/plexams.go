@@ -257,8 +257,8 @@ func (p *Plexams) slotsWithConflicts(ctx context.Context, exam *model.GeneratedE
 
 func getSlotForTime(slots []*model.Slot, time *time.Time) *model.Slot {
 	for _, slot := range slots {
-		if time.Local().Day() == slot.Starttime.Day() && time.Local().Month() == slot.Starttime.Month() &&
-			time.Local().Hour() == slot.Starttime.Local().Hour() && time.Local().Minute() == slot.Starttime.Local().Minute() {
+		if time.Day() == slot.Starttime.Day() && time.Month() == slot.Starttime.Month() &&
+			time.Hour() == slot.Starttime.Hour() && time.Minute() == slot.Starttime.Minute() {
 			return slot
 		}
 	}
@@ -269,7 +269,7 @@ func getSlotsForDay(allSlots []*model.Slot, day *time.Time) []*model.Slot {
 	slots := make([]*model.Slot, 0)
 
 	for _, slot := range allSlots {
-		if day.Local().Day() == slot.Starttime.Local().Day() && day.Local().Month() == slot.Starttime.Local().Month() {
+		if day.Day() == slot.Starttime.Day() && day.Month() == slot.Starttime.Month() {
 			slots = append(slots, slot)
 		}
 	}
@@ -280,7 +280,7 @@ func removeSlotsForDay(allSlots []*model.Slot, day *time.Time) []*model.Slot {
 	slots := make([]*model.Slot, 0)
 
 	for _, slot := range allSlots {
-		if day.Local().Day() != slot.Starttime.Local().Day() || day.Local().Month() != slot.Starttime.Local().Month() {
+		if day.Day() != slot.Starttime.Day() || day.Month() != slot.Starttime.Month() {
 			slots = append(slots, slot)
 		}
 	}

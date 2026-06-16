@@ -407,9 +407,9 @@ func (p *Plexams) constraintsMaroto(ctx context.Context) (pdf.Maroto, error) {
 				dayString := ""
 				for i, day := range constraints.ExcludeDays {
 					if i == 0 {
-						dayString = day.Local().Format("02.01.06")
+						dayString = day.Format("02.01.06")
 					} else {
-						dayString = fmt.Sprintf("%s, %s", dayString, day.Local().Format("02.01.06"))
+						dayString = fmt.Sprintf("%s, %s", dayString, day.Format("02.01.06"))
 					}
 				}
 
@@ -420,9 +420,9 @@ func (p *Plexams) constraintsMaroto(ctx context.Context) (pdf.Maroto, error) {
 				dayString := ""
 				for i, day := range constraints.PossibleDays {
 					if i == 0 {
-						dayString = day.Local().Format("02.01.06")
+						dayString = day.Format("02.01.06")
 					} else {
-						dayString = fmt.Sprintf("%s, %s", dayString, day.Local().Format("02.01.06"))
+						dayString = fmt.Sprintf("%s, %s", dayString, day.Format("02.01.06"))
 					}
 				}
 

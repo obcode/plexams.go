@@ -52,7 +52,7 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 		examDate := "fehlt"
 		if exam.PlanEntry != nil {
 			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			examDate = starttime.Local().Format("02.01.06, 15:04 Uhr")
+			examDate = starttime.Format("02.01.06, 15:04 Uhr")
 		}
 
 		if len(exam.PlannedRooms) > 0 {
@@ -140,7 +140,7 @@ func (p *Plexams) CsvForEXaHM(filename string) error {
 		examDate := "fehlt"
 		if exam.PlanEntry != nil {
 			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			examDate = starttime.Local().Format("02.01.06, 15:04 Uhr")
+			examDate = starttime.Format("02.01.06, 15:04 Uhr")
 		}
 
 		var rooms []string
@@ -226,7 +226,7 @@ func (p *Plexams) CsvForLBARepeater(filename string) error {
 		examDate := "fehlt"
 		if exam.PlanEntry != nil {
 			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			examDate = starttime.Local().Format("02.01.06, 15:04 Uhr")
+			examDate = starttime.Format("02.01.06, 15:04 Uhr")
 		}
 
 		invigilators, invigilatorEmails := "", ""

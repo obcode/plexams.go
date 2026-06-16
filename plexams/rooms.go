@@ -225,7 +225,7 @@ func (p *Plexams) SlotsWithRoomsFromBookedEntries(bookedEntries []BookedEntry) (
 
 	for _, slot := range p.semesterConfig.Slots {
 		for _, entry := range bookedEntries {
-			if entry.From.Before(slot.Starttime.Local()) && entry.Until.After(slot.Starttime.Local().Add(89*time.Minute)) {
+			if entry.From.Before(slot.Starttime) && entry.Until.After(slot.Starttime.Add(89*time.Minute)) {
 				rooms := make([]*model.Room, 0, len(entry.Rooms))
 				for _, roomName := range entry.Rooms {
 					room, ok := globalRoomsMap[roomName]

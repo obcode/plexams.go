@@ -303,8 +303,8 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		exams = append(exams, &model.ZPAExamPlan{
 			Semester:             p.semester,
 			AnCode:               exam.ZpaExam.AnCode,
-			Date:                 starttime.Local().Format("02.01.2006"),
-			Time:                 starttime.Local().Format("15:04"),
+			Date:                 starttime.Format("02.01.2006"),
+			Time:                 starttime.Format("15:04"),
 			StudentCount:         exam.StudentRegsCount,
 			ReserveInvigilatorID: reserveInvigilatorID,
 			Rooms:                rooms,

@@ -304,7 +304,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 
 	slotStart := make(map[[2]int]time.Time)
 	for _, slot := range p.semesterConfig.Slots {
-		slotStart[[2]int{slot.DayNumber, slot.SlotNumber}] = slot.Starttime.Local()
+		slotStart[[2]int{slot.DayNumber, slot.SlotNumber}] = slot.Starttime
 	}
 
 	ownExamSlots := make(map[int]map[[2]int]bool)

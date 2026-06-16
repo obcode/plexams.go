@@ -264,7 +264,7 @@ OUTER:
 			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 			contentsMap[ancode] =
 				[]string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-					r.Replace(starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr"))}
+					r.Replace(starttime.Format("Mon. 02.01.06, 15:04 Uhr"))}
 		}
 	}
 
@@ -418,7 +418,7 @@ func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto, sortByDate bo
 		planEntry := "fehlt noch"
 		if exam.PlanEntry != nil {
 			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			planEntry = r.Replace(starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr"))
+			planEntry = r.Replace(starttime.Format("Mon. 02.01.06, 15:04 Uhr"))
 		}
 
 		rooms := "fehlen noch"

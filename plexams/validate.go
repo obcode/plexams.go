@@ -185,7 +185,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 				}
 
 				fmt.Printf("%s\n", aurora.Sprintf(aurora.Red("    # %s: %s. %s (%s): %s %s %s"),
-					time.Local().Format("02.01.06, 15:04 Uhr"),
+					time.Format("02.01.06, 15:04 Uhr"),
 					aurora.Magenta(ancodeStr),
 					aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
 					aurora.Yellow(exam.ZpaExam.Groups),
@@ -487,7 +487,7 @@ func (p *Plexams) ValidateConstraints() error {
 			fixed := constraint.FixedTime
 			if fixed.Day() != slot.Starttime.Day() ||
 				fixed.Month() != slot.Starttime.Month() ||
-				fixed.Local().Hour() != slot.Starttime.Local().Hour() ||
+				fixed.Hour() != slot.Starttime.Hour() ||
 				fixed.Minute() != slot.Starttime.Minute() {
 				validationMessages = append(validationMessages,
 					aurora.Sprintf(aurora.Red("Exams %d has fixed slot %s, is %s"),
@@ -499,7 +499,7 @@ func (p *Plexams) ValidateConstraints() error {
 			if day.Equal(time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)) {
 				validationMessages = append(validationMessages,
 					aurora.Sprintf(aurora.Red("Exam %d planned on excluded day %s"),
-						aurora.Magenta(constraint.Ancode), aurora.Cyan(day.Local().Format("02.01.06"))))
+						aurora.Magenta(constraint.Ancode), aurora.Cyan(day.Format("02.01.06"))))
 			}
 		}
 

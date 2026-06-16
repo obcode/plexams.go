@@ -179,7 +179,7 @@ func (p *Plexams) tableForExams(name string, exams []*model.PlannedExam, m pdf.M
 		} else {
 			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 			contents = append(contents, []string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-				r.Replace(starttime.Local().Format("Mon. 02.01.06, 15:04 Uhr"))})
+				r.Replace(starttime.Format("Mon. 02.01.06, 15:04 Uhr"))})
 		}
 	}
 

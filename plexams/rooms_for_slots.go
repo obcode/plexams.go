@@ -249,8 +249,8 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms() (map[string]set.Set[SlotNumber]
 		}
 		var sb strings.Builder
 		for _, slot := range p.semesterConfig.Slots {
-			if entry.From.Before(slot.Starttime.Local()) &&
-				entry.Until.After(slot.Starttime.Local().Add(89*time.Minute)) {
+			if entry.From.Before(slot.Starttime) &&
+				entry.Until.After(slot.Starttime.Add(89*time.Minute)) {
 				fmt.Fprintf(&sb, "(%d, %d), rooms: ", slot.DayNumber, slot.SlotNumber)
 				for _, roomName := range entry.Rooms {
 					fmt.Fprintf(&sb, "%s, ", roomName)
@@ -344,9 +344,9 @@ func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[s
 							day:  slot.DayNumber,
 							slot: slot.SlotNumber,
 						})
-						if slot.Starttime.Local().Year() == rawDate.Year() &&
-							slot.Starttime.Local().Month() == rawDate.Month() &&
-							slot.Starttime.Local().Day() == rawDate.Day() {
+						if slot.Starttime.Year() == rawDate.Year() &&
+							slot.Starttime.Month() == rawDate.Month() &&
+							slot.Starttime.Day() == rawDate.Day() {
 							fmt.Fprintf(&sb, "(%d, %d), ", slot.DayNumber, slot.SlotNumber)
 							notAllowedSlots.Add(SlotNumber{
 								day:  slot.DayNumber,
@@ -463,8 +463,8 @@ func (p *Plexams) reservations2Slots(reservations []interface{}, roomName string
 
 		var sb strings.Builder
 		for _, slot := range p.semesterConfig.Slots {
-			if (fromUntil.From.Before(slot.Starttime.Local()) || fromUntil.From.Equal(slot.Starttime.Local())) &&
-				fromUntil.Until.After(slot.Starttime.Local().Add(89*time.Minute)) &&
+			if (fromUntil.From.Before(slot.Starttime) || fromUntil.From.Equal(slot.Starttime)) &&
+				fromUntil.Until.After(slot.Starttime.Add(89*time.Minute)) &&
 				fromUntil.DayNumber == slot.DayNumber &&
 				fromUntil.SlotNumber == slot.SlotNumber {
 				if !approvedOnly || fromUntil.Approved {

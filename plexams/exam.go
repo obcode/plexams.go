@@ -280,7 +280,7 @@ func (p *Plexams) ExamInfo(ancode int) (string, error) {
 		if planEntry.ExternalTime != nil {
 			starttime = *planEntry.ExternalTime
 		}
-		fmt.Fprintf(&sb, "\n    Termin: %s (Tag %d / Slot %d)", starttime.Local().Format("02.01.06, 15:04 Uhr"), planEntry.DayNumber, planEntry.SlotNumber)
+		fmt.Fprintf(&sb, "\n    Termin: %s (Tag %d / Slot %d)", starttime.Format("02.01.06, 15:04 Uhr"), planEntry.DayNumber, planEntry.SlotNumber)
 	} else {
 		sb.WriteString("\n    Termin: fehlt")
 	}

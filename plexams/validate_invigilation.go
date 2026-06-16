@@ -61,23 +61,6 @@ func (p *Plexams) ValidateInvigilatorRequirements() error {
 			}
 		}
 
-		// onlySlotsOk
-		if len(invigilator.Requirements.OnlyInSlots) > 0 {
-			for _, invigilation := range invigilator.Todos.Invigilations {
-				slotOk := false
-				for _, slot := range invigilator.Requirements.OnlyInSlots {
-					if invigilation.Slot.DayNumber == slot.DayNumber && invigilation.Slot.SlotNumber == slot.SlotNumber {
-						slotOk = true
-						break
-					}
-				}
-				if !slotOk {
-					validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("%s has invigilation not allowed slot (%d,%d)"),
-						aurora.Magenta(invigilator.Teacher.Fullname), aurora.Cyan(invigilation.Slot.DayNumber), aurora.Cyan(invigilation.Slot.SlotNumber)))
-				}
-			}
-		}
-
 		// nur ein Raum oder Reserve
 		invigilationSlots := set.NewSet[int]() // day * 10 + slot
 		for _, invigilation := range invigilator.Todos.Invigilations {

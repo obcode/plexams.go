@@ -92,9 +92,6 @@ type Invigilator struct {
 	OwnExamSlots map[[2]int]bool
 	OwnExamDays  map[int]bool
 
-	// OnlyInSlots restricts the person to these slots; empty means unrestricted.
-	OnlyInSlots map[[2]int]bool
-
 	// OwnExams are the time windows the person is present for their own exams –
 	// including multi-room exams they do *not* invigilate themselves. They count
 	// toward the daily presence span (daySpanSoft) so an early own exam plus a
@@ -164,17 +161,12 @@ type TimeSpan struct {
 }
 
 // Available reports whether the person may in principle invigilate in the slot
-// regarding their stated availability (excluded day/slot and onlyInSlots). The
-// own-exam restriction is handled separately by ownExamHard.
+// regarding their stated availability (excluded day/slot). Time-of-day
+// restrictions are handled by timeWindowHard, the own-exam restriction by
+// ownExamHard.
 func (in *Invigilator) Available(day, slot int) bool {
 	key := [2]int{day, slot}
-	if in.ExcludedDays[day] || in.ExcludedSlots[key] {
-		return false
-	}
-	if len(in.OnlyInSlots) > 0 && !in.OnlyInSlots[key] {
-		return false
-	}
-	return true
+	return !in.ExcludedDays[day] && !in.ExcludedSlots[key]
 }
 
 // Problem is the immutable snapshot the planner works on.

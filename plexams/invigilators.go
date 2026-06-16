@@ -48,32 +48,12 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 		var invigReqs *model.InvigilatorRequirements
 		{
 			invigilatorConstraints := viper.Get(fmt.Sprintf("invigilatorConstraints.%d", teacher.ID))
-			var onlyInSlots []*model.Slot
-			var notInSlots []*model.Slot
 			var timeWindows []*model.InvigilationTimeWindow
 			if invigilatorConstraints != nil {
 				excludedDates := viper.GetStringSlice(fmt.Sprintf("invigilatorConstraints.%d.excludedDates", teacher.ID))
 				if len(excludedDates) > 0 {
 					log.Debug().Interface("excludedDates", excludedDates).Str("name", teacher.Shortname).Msg("found in config")
 					reqs.ExcludedDates = append(reqs.ExcludedDates, excludedDates...)
-				}
-
-				onlyInSlotsCfg := viper.Get(fmt.Sprintf("invigilatorConstraints.%d.onlyInSlots", teacher.ID))
-				if onlyInSlotsCfg != nil {
-					onlyInSlots = slotsFromConfig(onlyInSlotsCfg)
-					log.Debug().Interface("slots", onlyInSlots).Str("name", teacher.Shortname).Msg("onlyInSlots found")
-				}
-
-				notInSlotsCfg := viper.Get(fmt.Sprintf("invigilatorConstraints.%d.notInSlots", teacher.ID))
-				if notInSlotsCfg != nil {
-					notInSlots = slotsFromConfig(notInSlotsCfg)
-					log.Debug().Interface("slots", notInSlots).Str("name", teacher.Shortname).Msg("notInSlots found")
-				}
-
-				if len(onlyInSlots) > 0 && len(notInSlots) > 0 {
-					return nil, fmt.Errorf(
-						"invigilatorConstraints für %s (%d): onlyInSlots und notInSlots dürfen nicht gleichzeitig gesetzt sein",
-						teacher.Shortname, teacher.ID)
 				}
 
 				timeWindowsCfg := viper.Get(fmt.Sprintf("invigilatorConstraints.%d.timeWindows", teacher.ID))
@@ -100,15 +80,6 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 			}
 
 			excludedDays := p.datesToDay(excludedDates)
-
-			// notInSlots wird in die gegenteilige onlyInSlots-Liste umgerechnet:
-			// alle Slots des Semesters außer den notInSlots und den Slots an
-			// ausgeschlossenen Tagen (excludedDates/excludedDays).
-			if len(notInSlots) > 0 {
-				onlyInSlots = p.onlyInSlotsFromNotInSlots(notInSlots, excludedDays)
-				log.Debug().Interface("slots", onlyInSlots).Str("name", teacher.Shortname).
-					Msg("onlyInSlots computed from notInSlots")
-			}
 
 			examTimes := make([]*model.ExamTime, 0)
 			examStarttimes := make([]*time.Time, 0)
@@ -165,7 +136,6 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 				OvertimeThisSemester:   reqs.OvertimeThisSemester,
 				AllContributions:       reqs.OralExamsContribution + reqs.LivecodingContribution + reqs.MasterContribution,
 				Factor:                 factor,
-				OnlyInSlots:            onlyInSlots,
 				FromZpa:                fromZPA,
 				TimeWindows:            timeWindows,
 			}
@@ -178,22 +148,6 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 	}
 
 	return invigilators, nil
-}
-
-// slotsFromConfig wandelt einen viper-Config-Wert der Form [[day, slot], ...]
-// in eine Liste von Slots um.
-func slotsFromConfig(cfg interface{}) []*model.Slot {
-	slotsSlice := cfg.([]interface{})
-	slots := make([]*model.Slot, 0, len(slotsSlice))
-	for _, slot := range slotsSlice {
-		slotSlice := slot.([]interface{})
-		slots = append(slots, &model.Slot{
-			DayNumber:  slotSlice[0].(int),
-			SlotNumber: slotSlice[1].(int),
-			Starttime:  time.Time{},
-		})
-	}
-	return slots
 }
 
 // timeWindowsFromConfig wandelt einen viper-Config-Wert der Form
@@ -268,30 +222,6 @@ func timeWindowsFromConfig(cfg interface{}) ([]*model.InvigilationTimeWindow, er
 	}
 
 	return windows, nil
-}
-
-// onlyInSlotsFromNotInSlots berechnet aus den notInSlots die gegenteilige
-// onlyInSlots-Liste: alle Slots des Semesters außer den notInSlots und außer
-// den Slots an ausgeschlossenen Tagen (excludedDays).
-func (p *Plexams) onlyInSlotsFromNotInSlots(notInSlots []*model.Slot, excludedDays []int) []*model.Slot {
-	notIn := make(map[[2]int]bool, len(notInSlots))
-	for _, slot := range notInSlots {
-		notIn[[2]int{slot.DayNumber, slot.SlotNumber}] = true
-	}
-
-	excludedDay := make(map[int]bool, len(excludedDays))
-	for _, day := range excludedDays {
-		excludedDay[day] = true
-	}
-
-	onlyInSlots := make([]*model.Slot, 0, len(p.semesterConfig.Slots))
-	for _, slot := range p.semesterConfig.Slots {
-		if notIn[[2]int{slot.DayNumber, slot.SlotNumber}] || excludedDay[slot.DayNumber] {
-			continue
-		}
-		onlyInSlots = append(onlyInSlots, slot)
-	}
-	return onlyInSlots
 }
 
 func (p *Plexams) datesToDay(dates []*time.Time) []int {

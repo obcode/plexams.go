@@ -85,7 +85,7 @@ func TestFixedPositionsAreImmutable(t *testing.T) {
 func TestAvailabilityHard(t *testing.T) {
 	p := newTestProblem()
 	p.Invigilators[0].ExcludedDays = map[int]bool{1: true}
-	p.Invigilators[1].OnlyInSlots = map[[2]int]bool{{1, 2}: true}
+	p.Invigilators[1].ExcludedSlots = map[[2]int]bool{{1, 1}: true}
 	p.Prepare()
 	plan := NewPlan(p)
 
@@ -94,10 +94,10 @@ func TestAvailabilityHard(t *testing.T) {
 		t.Error("excluded day should not be allowed")
 	}
 	if c.Allows(p, plan, 0, 2) {
-		t.Error("onlyInSlots should forbid slot 1 for invigilator 2")
+		t.Error("excluded slot should forbid slot 1 for invigilator 2")
 	}
 	if !c.Allows(p, plan, 3, 2) {
-		t.Error("onlyInSlots should allow slot 2 for invigilator 2")
+		t.Error("a non-excluded slot should stay allowed for invigilator 2")
 	}
 }
 

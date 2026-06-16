@@ -484,7 +484,6 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 			ID:            id,
 			ExcludedDays:  make(map[int]bool),
 			ExcludedSlots: make(map[[2]int]bool),
-			OnlyInSlots:   make(map[[2]int]bool),
 			OwnExamSlots:  ownExamSlots[id],
 			OwnExamDays:   ownExamDays[id],
 			OwnExams:      ownExamTimes[id],
@@ -501,9 +500,6 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		if inv.Requirements != nil {
 			for _, day := range inv.Requirements.ExcludedDays {
 				gi.ExcludedDays[day] = true
-			}
-			for _, slot := range inv.Requirements.OnlyInSlots {
-				gi.OnlyInSlots[[2]int{slot.DayNumber, slot.SlotNumber}] = true
 			}
 			for _, w := range inv.Requirements.TimeWindows {
 				if w == nil {

@@ -171,7 +171,6 @@ type InvigilatorRequirements struct {
 	OvertimeThisSemester   float64      `json:"overtimeThisSemester"`
 	AllContributions       int          `json:"allContributions"`
 	Factor                 float64      `json:"factor"`
-	OnlyInSlots            []*Slot      `json:"onlyInSlots"`
 	// fromZpa is false if the invigilator has not yet entered their requirements in
 	// the ZPA. In that case default requirements (full time, no contributions) are
 	// used and the invigilator still has to provide their real requirements.

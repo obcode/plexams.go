@@ -91,7 +91,6 @@ type InvigilatorRequirements {
   overtimeThisSemester: Float!
   allContributions: Int!
   factor: Float!
-  onlyInSlots: [Slot!]!
   """
   fromZpa is false if the invigilator has not yet entered their requirements in
   the ZPA. In that case default requirements (full time, no contributions) are

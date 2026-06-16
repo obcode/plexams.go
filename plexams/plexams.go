@@ -22,7 +22,14 @@ type Plexams struct {
 	planer         *Planer
 	email          *Email
 	semesterConfig *model.SemesterConfig
-	roomInfo       map[string]*model.Room
+	// allDays/allSlots hold the FULL list of days/slots from the numbering anchor
+	// (usually `from`) through `until`, numbered from day 1. semesterConfig.Days /
+	// .Slots only hold the planning window (date >= fromFK07). Code that resolves a
+	// stored day number (incl. days before fromFK07, e.g. external exams of other
+	// faculties) or indexes by day number must use these full lists.
+	allDays  []*model.ExamDay
+	allSlots []*model.Slot
+	roomInfo map[string]*model.Room
 }
 
 type ZPA struct {
@@ -136,9 +143,11 @@ func (p *Plexams) setGoSlots() {
 
 	p.semesterConfig.GoSlotsRaw = goSlotsII
 
-	// Calculate real slots
+	// Calculate real slots. The offset maps the GoDay0-relative day indices from
+	// the config onto real day numbers, so it must be computed against the full
+	// (anchor-based) day list, not the planning-window subset.
 	offset := 0
-	for i, day := range p.semesterConfig.Days {
+	for i, day := range p.allDays {
 		if p.semesterConfig.GoDay0.Year() == day.Date.Year() &&
 			p.semesterConfig.GoDay0.Month() == day.Date.Month() &&
 			p.semesterConfig.GoDay0.Day() == day.Date.Day() {
@@ -199,15 +208,31 @@ func (p *Plexams) GetSemester(ctx context.Context) *model.Semester {
 func (p *Plexams) setSemesterConfig() {
 	plan := viper.GetStringMap("semesterConfig")
 	if len(plan) > 0 {
-		// Days from ... until, no saturdays, no sundays
 		from := viper.GetTime("semesterConfig.from").Local()
+		fromFK07 := viper.GetTime("semesterConfig.fromFK07").Local()
 		until := viper.GetTime("semesterConfig.until").Local()
-		days := make([]*model.ExamDay, 0)
-		day := time.Date(from.Year(), from.Month(), from.Day(), 12, 0, 0, 0, time.Local)
+
+		// The planning window always starts at fromFK07. Exam/room/invigilation
+		// planning and the GraphQL API only ever see days inside this window.
+		//
+		// Day numbering starts at the anchor. By default the anchor is fromFK07,
+		// so day 1 = fromFK07 and the pre-period does not exist at all. A semester
+		// whose plan is already stored with day 1 = `from` (i.e. the pre-period
+		// days have numbers 1..) must opt into the legacy numbering by setting
+		// `semesterConfig.dayNumberStart: from`; the window then simply starts at
+		// a higher number while those stored numbers stay valid.
+		anchor := fromFK07
+		if viper.GetString("semesterConfig.dayNumberStart") == "from" {
+			anchor = from
+		}
+
+		// Full list of days from the anchor through until, no saturdays, no sundays.
+		allDays := make([]*model.ExamDay, 0)
+		day := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 12, 0, 0, 0, time.Local)
 		number := 1
 		for !day.After(until.Add(23 * time.Hour)) {
 			if day.Weekday() != time.Saturday && day.Weekday() != time.Sunday {
-				days = append(days, &model.ExamDay{
+				allDays = append(allDays, &model.ExamDay{
 					Number: number,
 					Date:   time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local),
 				})
@@ -225,21 +250,41 @@ func (p *Plexams) setSemesterConfig() {
 			})
 		}
 
-		slots := make([]*model.Slot, 0, len(days)*len(starttimes))
-		for _, day := range days {
+		allSlots := make([]*model.Slot, 0, len(allDays)*len(starttimes))
+		for _, day := range allDays {
 			for _, starttime := range starttimes {
 				start := strings.Split(starttime.Start, ":")
 				hour, _ := strconv.Atoi(start[0])
 				minute, _ := strconv.Atoi(start[1])
-				slots = append(slots, &model.Slot{
+				allSlots = append(allSlots, &model.Slot{
 					DayNumber:  day.Number,
 					SlotNumber: starttime.Number,
 					Starttime:  time.Date(day.Date.Year(), day.Date.Month(), day.Date.Day(), hour, minute, 0, 0, time.Local),
-					// day.Date.Add(time.Duration(hour)*time.Hour + time.Duration(minute)*time.Minute),
 				})
 			}
 		}
 
+		// Planning window: only days/slots on or after fromFK07.
+		fromFK07Day := time.Date(fromFK07.Year(), fromFK07.Month(), fromFK07.Day(), 0, 0, 0, 0, time.Local)
+		days := make([]*model.ExamDay, 0, len(allDays))
+		for _, d := range allDays {
+			if !d.Date.Before(fromFK07Day) {
+				days = append(days, d)
+			}
+		}
+		slots := make([]*model.Slot, 0, len(allSlots))
+		for _, s := range allSlots {
+			if !s.Starttime.Before(fromFK07Day) {
+				slots = append(slots, s)
+			}
+		}
+
+		p.allDays = allDays
+		p.allSlots = allSlots
+
+		// Forbidden slots are only meaningful inside the planning window; the
+		// pre-period is excluded by the window anyway, so forbiddenDays no longer
+		// need to list those days. forbiddenDays within the window still work.
 		forbiddenSlots := make([]*model.Slot, 0)
 		forbiddenDaysSlice := viper.Get("semesterConfig.forbiddenDays").([]interface{})
 		for _, forbiddenDayRaw := range forbiddenDaysSlice {
@@ -296,7 +341,7 @@ func (p *Plexams) setSemesterConfig() {
 			// GoSlotsRaw: [][]int{},
 			GoSlots:        slots,
 			From:           from,
-			FromFk07:       viper.GetTime("semesterConfig.fromFK07").Local(),
+			FromFk07:       fromFK07,
 			Until:          until,
 			ForbiddenSlots: forbiddenSlots,
 		}
@@ -319,7 +364,7 @@ func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {
 }
 
 func (p *Plexams) GetStarttime(dayNumber, slotNumber int) (*time.Time, error) {
-	for _, slot := range p.semesterConfig.Slots {
+	for _, slot := range p.allSlots {
 		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
 			time := slot.Starttime.Local()
 			return &time, nil
@@ -329,7 +374,7 @@ func (p *Plexams) GetStarttime(dayNumber, slotNumber int) (*time.Time, error) {
 }
 
 func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
-	for _, slot := range p.semesterConfig.Slots {
+	for _, slot := range p.allSlots {
 		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
 			return slot.Starttime.Local()
 		}
@@ -340,7 +385,7 @@ func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
 func (p *Plexams) getSlotForTime(starttime time.Time, duration int) (*model.Slot, error) {
 	var slotWithStarttimeInSlot, slotWithEndtimeInSlot *model.Slot
 	endtime := starttime.Add(time.Duration(duration) * time.Minute)
-	for _, slot := range p.semesterConfig.Slots {
+	for _, slot := range p.allSlots {
 		if starttime.After(slot.Starttime.Add(-1*time.Minute)) &&
 			starttime.Before(slot.Starttime.Add(119*time.Minute)) {
 			slotWithStarttimeInSlot = slot

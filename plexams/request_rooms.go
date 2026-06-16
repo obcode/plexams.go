@@ -338,7 +338,7 @@ func (p *Plexams) outputForRequestRooms(requestRoomsMap map[int]map[int]*needRoo
 						slot.DayNumber, slot.SlotNumber,
 						exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
 						exam.StudentRegsCount,
-						p.semesterConfig.Days[slot.DayNumber-1].Date.Format("2006-01-02"),
+						p.allDays[slot.DayNumber-1].Date.Format("2006-01-02"),
 						from,
 						until,
 						untilComment,

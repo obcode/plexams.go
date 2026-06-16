@@ -8,6 +8,7 @@ require (
 	github.com/99designs/gqlgen v0.17.76
 	github.com/arran4/golang-ical v0.3.2
 	github.com/deckarep/golang-set/v2 v2.8.0
+	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/gookit/color v1.5.4
 	github.com/johnfercher/maroto v1.0.0
@@ -30,7 +31,6 @@ require (
 	github.com/boombuler/barcode v1.0.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/fatih/color v1.14.1 // indirect
-	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect

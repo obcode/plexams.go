@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/logrusorgru/aurora"
 	"github.com/mitchellh/go-homedir"
 	"github.com/obcode/plexams.go/graph"
@@ -112,6 +113,19 @@ func initConfig() error {
 		if err != nil {
 			return fmt.Errorf("cannot merge semester config: %w", err)
 		}
+
+		// Beobachte die per-Semester-Config (enthält z.B. invigilatorConstraints),
+		// damit Änderungen ohne Neustart wirksam werden. viper liest die Datei vor
+		// dem Callback selbst neu ein, wir mergen die frischen Werte ins globale
+		// viper. Hinweis: Merge entfernt keine im File gelöschten Schlüssel – dafür
+		// ist weiterhin ein Neustart nötig.
+		semesterViper.OnConfigChange(func(e fsnotify.Event) {
+			log.Info().Str("file", e.Name).Msg("semester config changed, reloading")
+			if err := viper.MergeConfigMap(semesterViper.AllSettings()); err != nil {
+				log.Error().Err(err).Msg("cannot re-merge semester config after change")
+			}
+		})
+		semesterViper.WatchConfig()
 	} else {
 		var notFound viper.ConfigFileNotFoundError
 		if errors.As(err, &notFound) {

@@ -233,6 +233,28 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 	return nil
 }
 
+// SetInvigilationPrePlanned sets the prePlanned flag on the invigilation for a
+// room (roomName != nil) or the reserve (roomName == nil) in a slot in the
+// invigilations_other collection.
+func (db *DB) SetInvigilationPrePlanned(ctx context.Context, day, slot int, roomName *string, prePlanned bool) error {
+	collection := db.getCollectionSemester(collectionOtherInvigilations)
+	filter := bson.M{
+		"roomname":        roomName,
+		"isreserve":       roomName == nil,
+		"slot.daynumber":  day,
+		"slot.slotnumber": slot,
+	}
+	res, err := collection.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"preplanned": prePlanned}})
+	if err != nil {
+		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot set prePlanned on invigilation")
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return fmt.Errorf("no invigilation found to mark as pre-planned in slot (%d,%d)", day, slot)
+	}
+	return nil
+}
+
 func (db *DB) getMaxDurationForRoomInSlot(ctx context.Context, roomname string, day, slot int) int {
 	maxDuration := 0
 

@@ -14,6 +14,12 @@ extend type Mutation {
     slot: Int!
     roomName: String
   ): Boolean!
+  """
+  prePlanInvigilationInSlot promotes the invigilation currently planned for a
+  room (roomName) or the reserve (roomName == null) in a slot to a pre-planned,
+  fixed assignment, so it survives a re-run of the automatic planning.
+  """
+  prePlanInvigilationInSlot(day: Int!, slot: Int!, roomName: String): Boolean!
 }
 
 """
@@ -36,6 +42,7 @@ type Invigilation {
   slot: Slot!
   isReserve: Boolean!
   isSelfInvigilation: Boolean!
+  prePlanned: Boolean!
 }
 
 type InvigilationTodos {

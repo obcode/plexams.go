@@ -84,6 +84,8 @@ func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts i
 			name := pos.Room
 			roomName = &name
 		}
+		// A fixed non-self position comes from the pre-planning.
+		_, prePlanned := problem.Fixed[posIdx]
 		toSave = append(toSave, model.Invigilation{
 			RoomName:      roomName,
 			Duration:      pos.Minutes,
@@ -95,6 +97,7 @@ func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts i
 			},
 			IsReserve:          pos.IsReserve,
 			IsSelfInvigilation: false,
+			PrePlanned:         prePlanned,
 		})
 	}
 

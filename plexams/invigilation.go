@@ -109,6 +109,36 @@ func (p *Plexams) PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlan
 	return p.dbClient.PrePlannedInvigilations(ctx)
 }
 
+// PrePlanInvigilationInSlot promotes the invigilation currently planned for a
+// room (roomName != nil) or the reserve (roomName == nil) in a slot to a
+// pre-planned, fixed assignment. It looks up the assigned invigilator, stores a
+// pre-planned invigilation for them and marks the live invigilation as
+// pre-planned so the GUI can show it.
+func (p *Plexams) PrePlanInvigilationInSlot(ctx context.Context, day, slot int, roomName *string) (bool, error) {
+	room := "reserve"
+	if roomName != nil {
+		room = *roomName
+	}
+
+	teacher, err := p.dbClient.GetInvigilatorInSlot(ctx, room, day, slot)
+	if err != nil {
+		return false, err
+	}
+	if teacher == nil {
+		return false, fmt.Errorf("no invigilation for %s in slot (%d,%d) to pre-plan", room, day, slot)
+	}
+
+	ok, err := p.PreAddInvigilation(ctx, teacher.ID, day, slot, roomName)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	if err := p.dbClient.SetInvigilationPrePlanned(ctx, day, slot, roomName, true); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (p *Plexams) PrePlannedInvigilationsForInvigilator(ctx context.Context, invigilatorID int) ([]*model.PrePlannedInvigilation, error) {
 	return p.dbClient.PrePlannedInvigilationsForInvigilator(ctx, invigilatorID)
 }

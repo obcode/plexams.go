@@ -113,6 +113,7 @@ type Invigilation struct {
 	Slot               *Slot   `json:"slot"`
 	IsReserve          bool    `json:"isReserve"`
 	IsSelfInvigilation bool    `json:"isSelfInvigilation"`
+	PrePlanned         bool    `json:"prePlanned"`
 }
 
 type InvigilationSlot struct {

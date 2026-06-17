@@ -47,7 +47,9 @@
       "Bash(grep -E \"\\\\.\\(yaml|yml\\)$|plexams\\\\.go$\")",
       "Bash(grep -E \"\\\\.go$|middleware\")",
       "Bash(cat)",
-      "Bash(bash /tmp/count_graphql.sh)"
+      "Bash(bash /tmp/count_graphql.sh)",
+      "Read(//workspace/cmd/**)",
+      "Bash(xargs -I {} basename {} .go)"
     ],
     "additionalDirectories": [
       "/home/ubuntu/semester"

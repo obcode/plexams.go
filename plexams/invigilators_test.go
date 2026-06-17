@@ -15,7 +15,7 @@ func invig(factor float64, contributions int) *model.Invigilator {
 	}
 }
 
-func TestFairTodoPerInvigilator(t *testing.T) {
+func TestFairInvigilationTargets(t *testing.T) {
 	tests := []struct {
 		name             string
 		workMinutes      int
@@ -81,12 +81,39 @@ func TestFairTodoPerInvigilator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTodo, gotContrib := fairTodoPerInvigilator(tt.workMinutes, tt.reqs)
+			for i, in := range tt.reqs {
+				in.Teacher = &model.Teacher{ID: i + 1}
+			}
+
+			gotTodo, gotContrib, targets, enough := fairInvigilationTargets(tt.workMinutes, tt.reqs)
 			if gotTodo != tt.wantTodo {
 				t.Errorf("todoPerInvigilator = %d, want %d", gotTodo, tt.wantTodo)
 			}
 			if gotContrib != tt.wantContribCount {
 				t.Errorf("countedContributions = %d, want %d", gotContrib, tt.wantContribCount)
+			}
+
+			// The whole point of the largest-remainder rounding: the integer
+			// targets sum to exactly the work to be covered, so nothing stays
+			// phantom-"offen".
+			sum := 0
+			for _, in := range tt.reqs {
+				sum += targets[in.Teacher.ID]
+			}
+			if sum != tt.workMinutes {
+				t.Errorf("sum of targets = %d, want %d", sum, tt.workMinutes)
+			}
+
+			// An invigilator marked "enough" must have target 0, and vice versa
+			// every active invigilator (target > 0) must not be marked enough.
+			for _, in := range tt.reqs {
+				id := in.Teacher.ID
+				if enough[id] && targets[id] != 0 {
+					t.Errorf("invigilator %d is enough but has target %d", id, targets[id])
+				}
+				if targets[id] > 0 && enough[id] {
+					t.Errorf("invigilator %d has target %d but is marked enough", id, targets[id])
+				}
 			}
 		})
 	}

@@ -41,7 +41,9 @@
       "Bash(go env *)",
       "Bash(ls -la \"$\\(go env GOPATH\\)/bin/\")",
       "Bash(head -c4 \"$\\(go env GOPATH\\)/bin/plexams.go\")",
-      "Bash(xxd)"
+      "Bash(xxd)",
+      "Bash(ls /home/ubuntu/semester 2>/dev/null; echo \"---\"; find / -maxdepth 5 -type d -name \"plexams.gui\" 2>/dev/null | head; echo \"--- search gui dirs ---\"; find /home /workspace -maxdepth 4 -iname \"*gui*\" -type d 2>/dev/null | head)",
+      "Read(//home/**)"
     ],
     "additionalDirectories": [
       "/home/ubuntu/semester"

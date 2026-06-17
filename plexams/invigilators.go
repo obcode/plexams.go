@@ -283,6 +283,13 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 			roomMap := make(map[string]int)
 		OUTER:
 			for _, room := range roomsInSlot {
+				// "No Room" exams get no invigilation position in
+				// buildInvigilationProblem, so they are never assigned and never
+				// credited as doingMinutes. Counting their duration here would
+				// inflate the target sum and leave it permanently "offen".
+				if room.RoomName == noRoom {
+					continue
+				}
 				for _, selfInvigilation := range selfInvigilations {
 					if selfInvigilation.Slot.DayNumber == slot.DayNumber &&
 						selfInvigilation.Slot.SlotNumber == slot.SlotNumber &&
@@ -333,59 +340,21 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 	// SumReserve) faktorgewichtet auf die Aufsichten und rechne dabei die bereits
 	// erbrachten Beiträge an. Wer mehr beigetragen hat als seinen Anteil, fällt
 	// komplett heraus (Über-Beitrag ist "Schicksal" und lässt sich nicht auf die
-	// anderen umlegen) -- siehe fairTodoPerInvigilator.
-	todos.TodoPerInvigilatorOvertimeCutted, todos.SumOtherContributionsOvertimeCutted =
-		fairTodoPerInvigilator(todos.SumExamRooms+todos.SumReserve, reqs)
+	// anderen umlegen) -- siehe fairInvigilationTargets.
+	var targets map[int]int
+	var enough map[int]bool
+	todos.TodoPerInvigilatorOvertimeCutted, todos.SumOtherContributionsOvertimeCutted, targets, enough =
+		fairInvigilationTargets(todos.SumExamRooms+todos.SumReserve, reqs)
 
 	for _, invigilator := range todos.Invigilators {
-
-		enough := false
-		totalMinutes := todos.TodoPerInvigilatorOvertimeCutted
-		if invigilator.Requirements != nil {
-			totalMinutes = int(float64(totalMinutes) * invigilator.Requirements.Factor)
-		}
-
-		if invigilator.Requirements != nil {
-			totalMinutes -= invigilator.Requirements.AllContributions
-
-			if totalMinutes < 0 {
-				totalMinutes = 0
-				enough = true
-			}
-		}
-
 		invigilationsForInvigilator, err := p.dbClient.InvigilationsForInvigilator(ctx, invigilator.Teacher.ID)
 		if err != nil {
 			log.Error().Err(err).Str("invigilator", invigilator.Teacher.Shortname).
 				Msg("cannot get invigilations")
 		}
 
-		invigilationSet := set.NewSet[int]()
-		doingMinutes := 0
-
-		for _, invigilation := range invigilationsForInvigilator {
-			invigilationSet.Add(invigilation.Slot.DayNumber)
-			if !invigilation.IsSelfInvigilation {
-				if invigilation.IsReserve {
-					// reserves are credited with a fixed 60 min (matches
-					// SumReserve), not the slot's actual time block stored in
-					// Duration.
-					doingMinutes += 60
-				} else {
-					doingMinutes += invigilation.Duration
-				}
-			}
-		}
-		invigilationDays := invigilationSet.ToSlice()
-		sort.Ints(invigilationDays)
-
-		invigilator.Todos = &model.InvigilatorTodos{
-			TotalMinutes:     totalMinutes,
-			DoingMinutes:     doingMinutes,
-			Enough:           enough,
-			InvigilationDays: invigilationDays,
-			Invigilations:    invigilationsForInvigilator,
-		}
+		invigilator.Todos = invigilatorTodos(invigilationsForInvigilator,
+			targets[invigilator.Teacher.ID], enough[invigilator.Teacher.ID])
 	}
 
 	err = p.dbClient.CacheInvigilatorTodos(ctx, &todos)
@@ -397,7 +366,7 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 	return &todos, nil
 }
 
-// fairTodoPerInvigilator computes the factor-weighted invigilation minutes each
+// fairInvigilationTargets computes the factor-weighted invigilation minutes each
 // invigilator should be planned for, given workMinutes (= SumExamRooms +
 // SumReserve) of actual invigilation that must be covered and the already
 // credited other contributions (Beisitz, Live-Coding, Master, ...) of every
@@ -415,13 +384,36 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 // threshold), so the active set shrinks monotonically and the loop converges in
 // at most len(reqs) rounds.
 //
-// It returns the fair T (rounded up) and the sum of contributions that actually
-// count toward the workload (those of the still-active invigilators).
-func fairTodoPerInvigilator(workMinutes int, reqs []*model.Invigilator) (todoPerInvigilator, countedContributions int) {
+// It returns:
+//   - todoPerInvigilator: the fair T, rounded up (display value only),
+//   - countedContributions: the contributions of the still-active invigilators,
+//   - targets: the integer invigilation minutes each invigilator (by teacher ID)
+//     should be planned for, net of their other contributions. The float shares
+//     T·Factor_i − contributions_i sum to exactly workMinutes; they are rounded
+//     to integers with the largest-remainder method so the *sum of targets stays
+//     exactly workMinutes*. This is what keeps "Summe noch offen" at 0 once every
+//     position is filled -- rounding T up for everyone (as before) inflated the
+//     target sum and left a permanent phantom rest.
+//   - enough: invigilators who already contributed at least their fair share and
+//     therefore do no invigilation (target 0).
+func fairInvigilationTargets(workMinutes int, reqs []*model.Invigilator) (
+	todoPerInvigilator, countedContributions int,
+	targets map[int]int, enough map[int]bool,
+) {
+	targets = make(map[int]int, len(reqs))
+	enough = make(map[int]bool, len(reqs))
+	markEnough := func(invigilator *model.Invigilator) {
+		if invigilator.Teacher != nil {
+			enough[invigilator.Teacher.ID] = true
+		}
+	}
+
 	active := make([]*model.Invigilator, 0, len(reqs))
 	for _, invigilator := range reqs {
 		if invigilator.Requirements != nil && invigilator.Requirements.Factor > 0 {
 			active = append(active, invigilator)
+		} else {
+			markEnough(invigilator) // free semester / not working: no invigilation
 		}
 	}
 
@@ -434,7 +426,10 @@ func fairTodoPerInvigilator(workMinutes int, reqs []*model.Invigilator) (todoPer
 			sumContributions += invigilator.Requirements.AllContributions
 		}
 		if sumFactor == 0 {
-			return 0, 0
+			for _, invigilator := range active {
+				markEnough(invigilator)
+			}
+			return 0, 0, targets, enough
 		}
 
 		t = (float64(workMinutes) + float64(sumContributions)) / sumFactor
@@ -443,13 +438,76 @@ func fairTodoPerInvigilator(workMinutes int, reqs []*model.Invigilator) (todoPer
 		for _, invigilator := range active {
 			if float64(invigilator.Requirements.AllContributions) < t*invigilator.Requirements.Factor {
 				stillActive = append(stillActive, invigilator)
+			} else {
+				markEnough(invigilator) // over-contributed: drops out, target 0
 			}
 		}
 
 		if len(stillActive) == len(active) {
-			return int(math.Ceil(t)), sumContributions
+			countedContributions = sumContributions
+			break
 		}
 		active = stillActive
+	}
+
+	// Largest-remainder (Hamilton) rounding: floor every share, then hand the
+	// missing minutes to the largest fractional parts. Σ_active share_i ==
+	// workMinutes exactly (the fixed point), so the deficit is in [0, len(active))
+	// and the rounded targets sum to exactly workMinutes.
+	type share struct {
+		id    int
+		floor int
+		frac  float64
+	}
+	shares := make([]share, 0, len(active))
+	sumFloor := 0
+	for _, invigilator := range active {
+		raw := t*invigilator.Requirements.Factor - float64(invigilator.Requirements.AllContributions)
+		fl := int(math.Floor(raw))
+		shares = append(shares, share{id: invigilator.Teacher.ID, floor: fl, frac: raw - float64(fl)})
+		sumFloor += fl
+	}
+
+	sort.Slice(shares, func(i, j int) bool { return shares[i].frac > shares[j].frac })
+	deficit := workMinutes - sumFloor
+	for i, s := range shares {
+		target := s.floor
+		if i < deficit {
+			target++
+		}
+		targets[s.id] = target
+	}
+
+	return int(math.Ceil(t)), countedContributions, targets, enough
+}
+
+// invigilatorTodos builds the per-invigilator todos: the credited doingMinutes
+// (self invigilations count 0, reserves a fixed 60 min, see SumReserve), the set
+// of invigilation days and the given fair target.
+func invigilatorTodos(invigilations []*model.Invigilation, totalMinutes int, enough bool) *model.InvigilatorTodos {
+	invigilationSet := set.NewSet[int]()
+	doingMinutes := 0
+	for _, invigilation := range invigilations {
+		invigilationSet.Add(invigilation.Slot.DayNumber)
+		if !invigilation.IsSelfInvigilation {
+			if invigilation.IsReserve {
+				// reserves are credited with a fixed 60 min (matches SumReserve),
+				// not the slot's actual time block stored in Duration.
+				doingMinutes += 60
+			} else {
+				doingMinutes += invigilation.Duration
+			}
+		}
+	}
+	invigilationDays := invigilationSet.ToSlice()
+	sort.Ints(invigilationDays)
+
+	return &model.InvigilatorTodos{
+		TotalMinutes:     totalMinutes,
+		DoingMinutes:     doingMinutes,
+		Enough:           enough,
+		InvigilationDays: invigilationDays,
+		Invigilations:    invigilations,
 	}
 }
 
@@ -462,23 +520,15 @@ func (p *Plexams) AddInvigilatorsToInvigilationTodos(ctx context.Context, todos 
 
 	todos.Invigilators = reqs
 
+	// Re-derive the fair targets from the cached work minutes and the current
+	// requirements, so the per-invigilator targets sum to exactly the work to be
+	// covered (see fairInvigilationTargets).
+	todoPerInvigilator, countedContributions, targets, enough :=
+		fairInvigilationTargets(todos.SumExamRooms+todos.SumReserve, reqs)
+	todos.TodoPerInvigilatorOvertimeCutted = todoPerInvigilator
+	todos.SumOtherContributionsOvertimeCutted = countedContributions
+
 	for _, invigilator := range todos.Invigilators {
-
-		enough := false
-		totalMinutes := todos.TodoPerInvigilatorOvertimeCutted
-		if invigilator.Requirements != nil {
-			totalMinutes = int(float64(totalMinutes) * invigilator.Requirements.Factor)
-		}
-
-		if invigilator.Requirements != nil {
-			totalMinutes -= invigilator.Requirements.AllContributions
-
-			if totalMinutes < 0 {
-				totalMinutes = 0
-				enough = true
-			}
-		}
-
 		invigilationsForInvigilator, err := p.dbClient.InvigilationsForInvigilator(ctx, invigilator.Teacher.ID)
 		if err != nil {
 			log.Error().Err(err).Str("invigilator", invigilator.Teacher.Shortname).
@@ -486,32 +536,8 @@ func (p *Plexams) AddInvigilatorsToInvigilationTodos(ctx context.Context, todos 
 			return err
 		}
 
-		invigilationSet := set.NewSet[int]()
-		doingMinutes := 0
-
-		for _, invigilation := range invigilationsForInvigilator {
-			invigilationSet.Add(invigilation.Slot.DayNumber)
-			if !invigilation.IsSelfInvigilation {
-				if invigilation.IsReserve {
-					// reserves are credited with a fixed 60 min (matches
-					// SumReserve), not the slot's actual time block stored in
-					// Duration.
-					doingMinutes += 60
-				} else {
-					doingMinutes += invigilation.Duration
-				}
-			}
-		}
-		invigilationDays := invigilationSet.ToSlice()
-		sort.Ints(invigilationDays)
-
-		invigilator.Todos = &model.InvigilatorTodos{
-			TotalMinutes:     totalMinutes,
-			DoingMinutes:     doingMinutes,
-			Enough:           enough,
-			InvigilationDays: invigilationDays,
-			Invigilations:    invigilationsForInvigilator,
-		}
+		invigilator.Todos = invigilatorTodos(invigilationsForInvigilator,
+			targets[invigilator.Teacher.ID], enough[invigilator.Teacher.ID])
 	}
 
 	return nil

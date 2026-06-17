@@ -91,6 +91,34 @@ func (r *mutationResolver) AddExamToSlot(ctx context.Context, day, time, ancode 
 Workflow: Schema in `graph/*.graphqls` ergänzen → `go generate ./...` → Einzeiler füllen.
 Aufwand: niedrig pro Mutation, größter sichtbarer Fortschritt.
 
+## Phase 2b — Validierung ins GUI (read-only, additiv, hoher Nutzen)
+
+Live-Validierung beim Planen ist einer der wertvollsten GUI-Gewinne. ABER: die 17
+`Validate*`-Methoden geben heute nur `error` zurück und DRUCKEN Befunde auf die Konsole
+(yacspin-Spinner, aurora-Farben, intern `validationMessages []string`). Für das GUI müssen
+sie strukturierte Ergebnisse ZURÜCKGEBEN statt zu drucken.
+
+Muster:
+```go
+type ValidationResult struct {
+    Validator string                // "constraints", "conflicts", "rooms-per-slot", ...
+    Findings  []*ValidationFinding
+}
+type ValidationFinding struct {
+    Level   string                  // error | warning | info
+    Ancode  *int
+    Message string
+}
+```
+- Jede `Validate*` baut `[]*ValidationFinding` auf und gibt sie zurück.
+- CLI druckt aus dem Slice (eine Druckstelle, Farben/Spinner bleiben) → CLI unverändert nutzbar.
+- GraphQL: read-only Queries — `validateConstraints`, `validateConflicts(...)`, `validateRooms`,
+  `validateInvigilation`, `validateAll`.
+- `--sleep`/Watch-Mode → GUI-Validierungs-Panel, das auf Knopfdruck oder automatisch nach
+  jeder Planungs-Mutation neu lädt (sofortiges Konflikt-Feedback beim Verschieben).
+- Read-only → sicher während laufender Planung. Aufwand: mittel (17× print→return-Refactor,
+  mechanisch); Nebeneffekt: saubere Trennung Logik/Ausgabe in der CLI.
+
 ## Phase 3 — Datei-Output (PDF/CSV/ICS/JSON)
 
 REST-Endpunkte am chi-Router in `graph/server.go`:

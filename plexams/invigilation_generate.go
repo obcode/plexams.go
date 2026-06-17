@@ -87,8 +87,12 @@ func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts i
 		// A fixed non-self position comes from the pre-planning.
 		_, prePlanned := problem.Fixed[posIdx]
 		toSave = append(toSave, model.Invigilation{
-			RoomName:      roomName,
-			Duration:      pos.Minutes,
+			RoomName: roomName,
+			// Duration is the actual time block (longest invigilation in the
+			// slot), not the credited minutes. For a reserve pos.Minutes is the
+			// credited 60 min while pos.Block holds the slot's max duration; the
+			// 60-min crediting happens in PrepareInvigilationTodos.
+			Duration:      pos.Block,
 			InvigilatorID: invigID,
 			Slot: &model.Slot{
 				DayNumber:  pos.Day,

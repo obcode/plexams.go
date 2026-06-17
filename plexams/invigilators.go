@@ -366,7 +366,14 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 		for _, invigilation := range invigilationsForInvigilator {
 			invigilationSet.Add(invigilation.Slot.DayNumber)
 			if !invigilation.IsSelfInvigilation {
-				doingMinutes += invigilation.Duration
+				if invigilation.IsReserve {
+					// reserves are credited with a fixed 60 min (matches
+					// SumReserve), not the slot's actual time block stored in
+					// Duration.
+					doingMinutes += 60
+				} else {
+					doingMinutes += invigilation.Duration
+				}
 			}
 		}
 		invigilationDays := invigilationSet.ToSlice()
@@ -485,7 +492,14 @@ func (p *Plexams) AddInvigilatorsToInvigilationTodos(ctx context.Context, todos 
 		for _, invigilation := range invigilationsForInvigilator {
 			invigilationSet.Add(invigilation.Slot.DayNumber)
 			if !invigilation.IsSelfInvigilation {
-				doingMinutes += invigilation.Duration
+				if invigilation.IsReserve {
+					// reserves are credited with a fixed 60 min (matches
+					// SumReserve), not the slot's actual time block stored in
+					// Duration.
+					doingMinutes += 60
+				} else {
+					doingMinutes += invigilation.Duration
+				}
 			}
 		}
 		invigilationDays := invigilationSet.ToSlice()

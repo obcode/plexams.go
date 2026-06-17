@@ -35,7 +35,13 @@
       "Bash(find / -name \"2026-SS.yaml\")",
       "Bash(find / -name \"*.yaml\")",
       "Bash(awk '{print $2}')",
-      "Bash(xargs perl -i -pe ' *)"
+      "Bash(xargs perl -i -pe ' *)",
+      "Bash(awk 'NR>=400 && NR<=476 && /^func /{print NR\": \"$0}' plexams/invigilators.go)",
+      "Bash(gofmt -w plexams/invigilation_generate.go plexams/invigilators.go)",
+      "Bash(go env *)",
+      "Bash(ls -la \"$\\(go env GOPATH\\)/bin/\")",
+      "Bash(head -c4 \"$\\(go env GOPATH\\)/bin/plexams.go\")",
+      "Bash(xxd)"
     ],
     "additionalDirectories": [
       "/home/ubuntu/semester"

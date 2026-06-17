@@ -180,8 +180,9 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 	collection := db.getCollectionSemester(collectionOtherInvigilations)
 
 	var filter primitive.M
-	// default is reserve
-	duration := 60 // FIXME: Reserve counts 60
+	// default is reserve: its duration is the slot's longest invigilation (not
+	// the credited 60 min, which is applied in PrepareInvigilationTodos).
+	duration := db.getMaxDurationInSlot(ctx, day, slot)
 	isReserve := true
 	var roomname *string
 	if room == "reserve" {
@@ -262,6 +263,23 @@ func (db *DB) getMaxDurationForRoomInSlot(ctx context.Context, roomname string, 
 	for _, exam := range examsInSlot {
 		for _, room := range exam.PlannedRooms {
 			if roomname == room.RoomName && maxDuration < room.Duration {
+				maxDuration = room.Duration
+			}
+		}
+	}
+
+	return maxDuration
+}
+
+// getMaxDurationInSlot returns the longest invigilation (room duration) across
+// all rooms in the slot, used as the time block for a reserve invigilation.
+func (db *DB) getMaxDurationInSlot(ctx context.Context, day, slot int) int {
+	maxDuration := 0
+
+	examsInSlot, _ := db.ExamsInSlot(ctx, day, slot)
+	for _, exam := range examsInSlot {
+		for _, room := range exam.PlannedRooms {
+			if maxDuration < room.Duration {
 				maxDuration = room.Duration
 			}
 		}

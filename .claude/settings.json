@@ -43,7 +43,11 @@
       "Bash(head -c4 \"$\\(go env GOPATH\\)/bin/plexams.go\")",
       "Bash(xxd)",
       "Bash(ls /home/ubuntu/semester 2>/dev/null; echo \"---\"; find / -maxdepth 5 -type d -name \"plexams.gui\" 2>/dev/null | head; echo \"--- search gui dirs ---\"; find /home /workspace -maxdepth 4 -iname \"*gui*\" -type d 2>/dev/null | head)",
-      "Read(//home/**)"
+      "Read(//home/**)",
+      "Bash(grep -E \"\\\\.\\(yaml|yml\\)$|plexams\\\\.go$\")",
+      "Bash(grep -E \"\\\\.go$|middleware\")",
+      "Bash(cat)",
+      "Bash(bash /tmp/count_graphql.sh)"
     ],
     "additionalDirectories": [
       "/home/ubuntu/semester"

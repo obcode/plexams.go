@@ -40,7 +40,7 @@ func TestFairInvigilationTargets(t *testing.T) {
 				invig(1, 0), invig(1, 0), invig(1, 0), invig(1, 0),
 				invig(1, 0), invig(1, 0), invig(1, 0), invig(1, 0), invig(1, 0),
 			},
-			wantTodo:         334, // ceil(3000 / 9), nicht (3000+360)/10
+			wantTodo:         333, // round(3000 / 9), nicht (3000+360)/10
 			wantContribCount: 0,
 		},
 		{

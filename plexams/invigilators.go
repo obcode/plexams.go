@@ -385,7 +385,9 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 // at most len(reqs) rounds.
 //
 // It returns:
-//   - todoPerInvigilator: the fair T, rounded up (display value only),
+//   - todoPerInvigilator: the fair T, rounded to the nearest integer (display
+//     value only). It is rounded (not ceiled) so the headline matches the actual
+//     target of a factor-1.0 invigilator instead of being one minute above it.
 //   - countedContributions: the contributions of the still-active invigilators,
 //   - targets: the integer invigilation minutes each invigilator (by teacher ID)
 //     should be planned for, net of their other contributions. The float shares
@@ -478,7 +480,7 @@ func fairInvigilationTargets(workMinutes int, reqs []*model.Invigilator) (
 		targets[s.id] = target
 	}
 
-	return int(math.Ceil(t)), countedContributions, targets, enough
+	return int(math.Round(t)), countedContributions, targets, enough
 }
 
 // invigilatorTodos builds the per-invigilator todos: the credited doingMinutes

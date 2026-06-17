@@ -21,11 +21,28 @@ func (c minuteBalanceSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 		doing := plan.DoingMinutes(in.ID)
 		dev := doing - in.TargetMinutes
 		a := abs(dev)
+
+		// Centering inside the band, scaled by the relative deviation: the band
+		// edge of a person who has to do little is reached at a much smaller
+		// absolute deviation than for a person with a large workload, so the same
+		// absolute deviation costs proportionally more for the small-workload
+		// person. Being under target is penalized harder than being over.
+		eff := a
+		if eff > p.ToleranceMin {
+			eff = p.ToleranceMin // cap so the gentle term stays below the dominant tier
+		}
+		scale := in.TargetMinutes
+		if scale < p.ToleranceMin {
+			scale = p.ToleranceMin // floor avoids div-by-zero and over-penalizing tiny targets
+		}
+		rel := float64(eff) / float64(scale)
+		if dev < 0 {
+			rel *= p.Weights.NegativeBalanceFactor
+		}
+		within += rel
+
 		if a > p.ToleranceMin {
-			// Dominant linear penalty for the minutes outside the band; the
-			// within-band part is capped so the gentle term stays bounded.
 			beyond += float64(a - p.ToleranceMin)
-			within += float64(p.ToleranceMin * p.ToleranceMin)
 			vs = append(vs, Violation{
 				Constraint:    c.Name(),
 				InvigilatorID: in.ID,
@@ -33,8 +50,6 @@ func (c minuteBalanceSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 				Message: fmt.Sprintf("invigilator %d is %d min off target (%d/%d, tolerance %d)",
 					in.ID, dev, doing, in.TargetMinutes, p.ToleranceMin),
 			})
-		} else {
-			within += float64(dev * dev)
 		}
 	}
 	return p.Weights.MinuteBalance*within + p.Weights.BeyondTolerance*beyond, vs

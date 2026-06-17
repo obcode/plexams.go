@@ -463,3 +463,43 @@ func TestMaxDaysCountsOwnExamDays(t *testing.T) {
 		t.Errorf("expected no penalty when exam day 11 is excluded, got %g", alone)
 	}
 }
+
+// balProblem builds a one-invigilator, one-position problem so the invigilator's
+// assigned minutes equal posMinutes (=> deviation posMinutes-target).
+func balProblem(target, posMinutes int) (*Problem, *Plan) {
+	p := &Problem{
+		Positions:    []Position{{Day: 1, Slot: 1, Room: "R1", Minutes: posMinutes, Block: posMinutes, Start: start(8, 0)}},
+		Invigilators: []Invigilator{{ID: 1, TargetMinutes: target}},
+		Fixed:        map[int]int{}, ToleranceMin: 60, MaxSpanHours: 8, Weights: DefaultWeights(),
+	}
+	p.Prepare()
+	plan := NewPlan(p)
+	plan.Set(0, 1)
+	return p, plan
+}
+
+func TestMinuteBalanceScalesWithTarget(t *testing.T) {
+	// Same +30 deviation: the low-target person (120) must cost more than the
+	// high-target person (240) – roughly twice as much.
+	lowP, lowPlan := balProblem(120, 150)
+	highP, highPlan := balProblem(240, 270)
+	low, _ := minuteBalanceSoft{}.Cost(lowP, lowPlan)
+	high, _ := minuteBalanceSoft{}.Cost(highP, highPlan)
+	if !(low > high) {
+		t.Fatalf("low-target deviation (%g) should cost more than high-target (%g)", low, high)
+	}
+	if r := low / high; r < 1.9 || r > 2.1 {
+		t.Errorf("expected ~2x, got %.2fx (low %g, high %g)", r, low, high)
+	}
+}
+
+func TestMinuteBalancePenalizesUnderMore(t *testing.T) {
+	// Same |30| deviation, same target: being under target must cost more.
+	overP, overPlan := balProblem(120, 150)  // +30
+	underP, underPlan := balProblem(120, 90) // -30
+	over, _ := minuteBalanceSoft{}.Cost(overP, overPlan)
+	under, _ := minuteBalanceSoft{}.Cost(underP, underPlan)
+	if !(under > over) {
+		t.Fatalf("under-target (%g) should cost more than over-target (%g)", under, over)
+	}
+}

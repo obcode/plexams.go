@@ -49,7 +49,8 @@
       "Bash(cat)",
       "Bash(bash /tmp/count_graphql.sh)",
       "Read(//workspace/cmd/**)",
-      "Bash(xargs -I {} basename {} .go)"
+      "Bash(xargs -I {} basename {} .go)",
+      "Bash(gofmt -w plexams/invigplan/invigplan_test.go)"
     ],
     "additionalDirectories": [
       "/home/ubuntu/semester"

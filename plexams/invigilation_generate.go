@@ -554,6 +554,9 @@ func weightsFromConfig() invigplan.Weights {
 	if viper.IsSet("invigilation.optimizer.weights.beyondTolerance") {
 		w.BeyondTolerance = viper.GetFloat64("invigilation.optimizer.weights.beyondTolerance")
 	}
+	if viper.IsSet("invigilation.optimizer.weights.negativeBalanceFactor") {
+		w.NegativeBalanceFactor = viper.GetFloat64("invigilation.optimizer.weights.negativeBalanceFactor")
+	}
 	if viper.IsSet("invigilation.optimizer.weights.coverage") {
 		w.Coverage = viper.GetFloat64("invigilation.optimizer.weights.coverage")
 	}

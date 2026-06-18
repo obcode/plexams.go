@@ -20,10 +20,10 @@ func (r *subscriptionResolver) runZPA(
 	ch := make(chan *model.LogLine, 256)
 	reporter := newStreamReporter(ctx, ch)
 
-	if !r.plexams.WritesAllowed() {
+	if !r.plexams.TryBeginZPATransfer() {
 		go func() {
 			defer close(ch)
-			reporter.emit(model.LogLevelError, "error: writes are blocked while a validation is running")
+			reporter.emit(model.LogLevelError, "error: another validation or ZPA transfer is running, cannot start now")
 			reporter.emit(model.LogLevelDone, "done")
 		}()
 		return ch
@@ -31,6 +31,7 @@ func (r *subscriptionResolver) runZPA(
 
 	go func() {
 		defer close(ch)
+		defer r.plexams.EndZPATransfer()
 		if err := fn(reporter); err != nil {
 			log.Error().Err(err).Msg("zpa transfer failed")
 			reporter.emit(model.LogLevelError, "error: "+err.Error())

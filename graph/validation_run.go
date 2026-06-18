@@ -20,7 +20,15 @@ func (r *subscriptionResolver) runValidation(
 ) <-chan *model.LogLine {
 	ch := make(chan *model.LogLine, 256)
 	reporter := newStreamReporter(ctx, ch)
-	r.plexams.BeginValidation()
+
+	if !r.plexams.TryBeginValidation() {
+		go func() {
+			defer close(ch)
+			reporter.emit(model.LogLevelError, "error: a ZPA transfer is running, cannot validate now")
+			reporter.emit(model.LogLevelDone, "done")
+		}()
+		return ch
+	}
 
 	go func() {
 		defer close(ch)

@@ -11,6 +11,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/gookit/color v1.5.4
+	github.com/gorilla/websocket v1.5.0
 	github.com/johnfercher/maroto v1.0.0
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/jszwec/csvutil v1.10.0
@@ -34,7 +35,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jung-kurt/gofpdf v1.16.2 // indirect

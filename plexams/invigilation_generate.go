@@ -13,7 +13,6 @@ import (
 	"github.com/obcode/plexams.go/plexams/invigplan"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/theckman/yacspin"
 )
 
 // GenerateInvigilations refreshes the self-invigilations and the todos, builds
@@ -21,52 +20,36 @@ import (
 // invigilations_other, dropping the previous content. Self-invigilations stay
 // in invigilations_self; pre-planned invigilations are included as fixed seeds.
 // To fix an assignment across runs, move it to the pre-planning.
-func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts invigplan.Options) error {
-	fmt.Println("refreshing self-invigilations and todos ...")
+func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts invigplan.Options, reporter Reporter) (*model.InvigilationReport, error) {
+	reporter.Println("refreshing self-invigilations and todos ...")
 	if err := p.PrepareSelfInvigilation(); err != nil {
-		return fmt.Errorf("cannot prepare self invigilations: %w", err)
+		return nil, fmt.Errorf("cannot prepare self invigilations: %w", err)
 	}
 	if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
-		return fmt.Errorf("cannot prepare invigilation todos: %w", err)
+		return nil, fmt.Errorf("cannot prepare invigilation todos: %w", err)
 	}
 
 	problem, err := p.buildInvigilationProblem(ctx, false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	fmt.Printf("optimizing (up to %d iterations, seed %d) ...\n", opts.Iterations, opts.Seed)
-	spinner, _ := yacspin.New(yacspin.Config{
-		Frequency:       100 * time.Millisecond,
-		CharSet:         yacspin.CharSets[69],
-		Suffix:          aurora.Sprintf(aurora.Cyan(" optimizing")),
-		SuffixAutoColon: true,
-		StopCharacter:   "✓",
-		StopColors:      []string{"fgGreen"},
-	})
-	_ = spinner.Start()
+	reporter.Printf("optimizing (up to %d iterations, seed %d) ...\n", opts.Iterations, opts.Seed)
 	opts.ProgressEvery = max(1, opts.Iterations/200)
-	opts.OnProgress = func(pr invigplan.Progress) {
-		balance := aurora.Red("balance ✗")
-		if pr.Balance {
-			balance = aurora.Green("balance ✓")
-		}
-		spinner.Message(aurora.Sprintf(aurora.Cyan("%d/%d, best cost %.0f, %s, %d open"),
-			pr.Iteration, pr.Total, pr.BestCost, balance, pr.Unfilled))
-	}
+	opts.OnProgress = reporter.Progress
 
 	best, result := invigplan.Optimize(problem, invigplan.DefaultRegistry(), opts)
-	spinner.StopMessage(aurora.Sprintf(aurora.Green("optimization done")))
-	_ = spinner.Stop()
+	reporter.StopProgress(aurora.Sprintf(aurora.Green("optimization done")))
 
-	printInvigilationReport(problem, best, result, opts)
+	report := printInvigilationReport(reporter, problem, best, result, opts)
 
 	if dryRun {
-		fmt.Println("dry run: nothing written")
-		return nil
+		reporter.Println("dry run: nothing written")
+		return report, nil
 	}
 
 	if result.Unfilled > 0 {
+		reporter.Warnf("writing plan with open positions: %d open", result.Unfilled)
 		log.Warn().Int("open", result.Unfilled).Msg("writing plan with open positions")
 	}
 
@@ -107,74 +90,80 @@ func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts i
 
 	otherCtx := context.WithValue(ctx, db.CollectionName("collectionName"), "invigilations_other")
 	if err := p.dbClient.DropAndSave(otherCtx, toSave); err != nil {
-		return fmt.Errorf("cannot save generated invigilations: %w", err)
+		return report, fmt.Errorf("cannot save generated invigilations: %w", err)
 	}
-	fmt.Printf("wrote %d invigilations to invigilations_other\n", len(toSave))
+	reporter.Printf("wrote %d invigilations to invigilations_other\n", len(toSave))
 
-	fmt.Println("recalculating todos ...")
+	reporter.Println("recalculating todos ...")
 	if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
-		return fmt.Errorf("cannot recalculate todos: %w", err)
+		return report, fmt.Errorf("cannot recalculate todos: %w", err)
 	}
-	fmt.Println("... done")
-	return nil
+	reporter.Println("... done")
+	return report, nil
 }
 
 // printInvigilationReport prints a readable, colored report of the optimizer
 // outcome: the run status, whether the hard primary goals (balance, coverage)
 // are met, the minute balance, the fairness of the reserve/NTA distribution and
 // the breakdown of the soft-constraint cost.
-func printInvigilationReport(problem *invigplan.Problem, plan *invigplan.Plan, result invigplan.Result, opts invigplan.Options) {
+// printInvigilationReport writes the readable, colored report to the reporter
+// and returns the same outcome as structured data, so a GraphQL client can
+// render it as a panel instead of parsing the text. The structured report is
+// built even on a dry run.
+func printInvigilationReport(reporter Reporter, problem *invigplan.Problem, plan *invigplan.Plan, result invigplan.Result, opts invigplan.Options) *model.InvigilationReport {
 	stats := problem.Stats()
 	nInvig := len(problem.Invigilators)
 	m := problem.MinuteSummary(plan)
 
-	fmt.Println()
-	fmt.Println(aurora.Bold(aurora.Cyan(fmt.Sprintf("══ Invigilation plan  (seed %d, up to %d iterations) ══", opts.Seed, opts.Iterations))))
+	reporter.Println()
+	reporter.Println(aurora.Bold(aurora.Cyan(fmt.Sprintf("══ Invigilation plan  (seed %d, up to %d iterations) ══", opts.Seed, opts.Iterations))))
 
 	// run status
 	status := fmt.Sprintf("ran the full %d iterations", result.Iterations)
 	if result.StoppedEarly {
 		status = fmt.Sprintf("converged, stopped early after %d iterations", result.Iterations)
 	}
-	fmt.Printf("  %s %s\n", reportLabel("status"), status)
+	reporter.Printf("  %s %s\n", reportLabel("status"), status)
 
 	// balance: the primary objective (everyone within ±tolerance of their target).
 	if result.BalanceSatisfied {
-		fmt.Printf("  %s %s\n", reportLabel("balance"),
+		reporter.Printf("  %s %s\n", reportLabel("balance"),
 			aurora.Green(fmt.Sprintf("✓ all %d invigilators within ±%d min of their target", nInvig, problem.ToleranceMin)))
 	} else {
-		fmt.Printf("  %s %s\n", reportLabel("balance"),
+		reporter.Printf("  %s %s\n", reportLabel("balance"),
 			aurora.Red(fmt.Sprintf("✗ %d over / %d under tolerance (worst +%d / -%d min)", m.Over, m.Under, m.MaxOver, m.MaxUnder)))
 	}
 
 	// coverage: every room and reserve has an invigilator.
 	if result.Unfilled == 0 {
-		fmt.Printf("  %s %s\n", reportLabel("coverage"),
+		reporter.Printf("  %s %s\n", reportLabel("coverage"),
 			aurora.Green(fmt.Sprintf("✓ all %d positions filled", stats.Positions)))
 	} else {
-		fmt.Printf("  %s %s\n", reportLabel("coverage"),
+		reporter.Printf("  %s %s\n", reportLabel("coverage"),
 			aurora.Red(fmt.Sprintf("✗ %d of %d positions still open", result.Unfilled, stats.Positions)))
 	}
 
 	// minute detail: how the assigned minutes sit around each person's target.
-	fmt.Printf("  %s %s within ±%d min, %s over, %s under  %s\n", reportLabel("minutes"),
+	reporter.Printf("  %s %s within ±%d min, %s over, %s under  %s\n", reportLabel("minutes"),
 		aurora.Green(fmt.Sprintf("%d", m.WithinTolerance)), problem.ToleranceMin,
 		colorCount(m.Over), colorCount(m.Under),
 		aurora.Gray(12, "(deviation of assigned vs. target minutes per person)"))
 
-	printDeviationOutliers(problem, plan)
+	outliers := printDeviationOutliers(reporter, problem, plan)
 
 	// fairness of the reserve / NTA distribution.
-	fmt.Printf("  %s %s\n", reportLabel("fairness"),
+	reporter.Printf("  %s %s\n", reportLabel("fairness"),
 		aurora.Gray(12, "(reading \"1:48\" = 48 invigilators do 1; lower max = fairer)"))
+	fairness := make([]*model.FairnessDistribution, 0, 2)
 	for _, kind := range []invigplan.Kind{invigplan.KindReserve, invigplan.KindNTA} {
 		d := problem.DistributionOf(plan, kind)
-		fmt.Printf("    %-9s %s  %s\n", kind.String()+":", distributionString(d),
+		reporter.Printf("    %-9s %s  %s\n", kind.String()+":", distributionString(d),
 			aurora.Gray(12, fmt.Sprintf("(%d total, max %d/person)", d.Total, d.Max)))
+		fairness = append(fairness, fairnessModel(d))
 	}
 
 	// soft-constraint cost breakdown (internal score, lower is better).
-	fmt.Printf("  %s %s\n", reportLabel("soft cost"),
+	reporter.Printf("  %s %s\n", reportLabel("soft cost"),
 		aurora.Sprintf(aurora.Gray(12, "total %.0f  (weighted penalty score, not minutes; lower is better)"), result.Cost))
 	type kv struct {
 		name string
@@ -187,15 +176,70 @@ func printInvigilationReport(problem *invigplan.Problem, plan *invigplan.Plan, r
 		}
 	}
 	sort.Slice(breakdown, func(i, j int) bool { return breakdown[i].cost > breakdown[j].cost })
+	costItems := make([]*model.SoftCostItem, 0, len(breakdown))
 	for _, b := range breakdown {
-		fmt.Printf("    %-22s %8.0f\n", b.name, b.cost)
+		reporter.Printf("    %-22s %8.0f\n", b.name, b.cost)
+		costItems = append(costItems, &model.SoftCostItem{Name: b.name, Cost: b.cost})
+	}
+
+	return &model.InvigilationReport{
+		Seed:          int(opts.Seed),
+		Iterations:    opts.Iterations,
+		IterationsRun: result.Iterations,
+		StoppedEarly:  result.StoppedEarly,
+		Balance: &model.BalanceReport{
+			Satisfied:       result.BalanceSatisfied,
+			Invigilators:    nInvig,
+			ToleranceMin:    problem.ToleranceMin,
+			WithinTolerance: m.WithinTolerance,
+			Over:            m.Over,
+			Under:           m.Under,
+			MaxOver:         m.MaxOver,
+			MaxUnder:        m.MaxUnder,
+		},
+		Coverage: &model.CoverageReport{
+			Positions: stats.Positions,
+			Unfilled:  result.Unfilled,
+		},
+		Minutes: &model.MinutesReport{
+			WithinTolerance: m.WithinTolerance,
+			Over:            m.Over,
+			Under:           m.Under,
+			ToleranceMin:    problem.ToleranceMin,
+		},
+		Outliers: outliers,
+		Fairness: fairness,
+		SoftCost: &model.SoftCostReport{
+			Total:     result.Cost,
+			Breakdown: costItems,
+		},
+	}
+}
+
+// fairnessModel converts an invigplan distribution into the GraphQL model,
+// keeping the buckets sorted by count for a stable display.
+func fairnessModel(d invigplan.Distribution) *model.FairnessDistribution {
+	counts := make([]int, 0, len(d.ByCount))
+	for n := range d.ByCount {
+		counts = append(counts, n)
+	}
+	sort.Ints(counts)
+	buckets := make([]*model.DistributionBucket, 0, len(counts))
+	for _, n := range counts {
+		buckets = append(buckets, &model.DistributionBucket{Count: n, Invigilators: d.ByCount[n]})
+	}
+	return &model.FairnessDistribution{
+		Kind:    d.Kind.String(),
+		Total:   d.Total,
+		Max:     d.Max,
+		Buckets: buckets,
 	}
 }
 
 // printDeviationOutliers lists the invigilators whose assigned minutes are
 // furthest from their target *relative to their workload*, so low-workload
 // people that are still far off (especially under target) are easy to spot.
-func printDeviationOutliers(problem *invigplan.Problem, plan *invigplan.Plan) {
+func printDeviationOutliers(reporter Reporter, problem *invigplan.Problem, plan *invigplan.Plan) []*model.InvigilatorOutlier {
 	type devInfo struct {
 		id, doing, target, dev int
 		rel                    float64
@@ -219,12 +263,13 @@ func printDeviationOutliers(problem *invigplan.Problem, plan *invigplan.Plan) {
 		devs = append(devs, devInfo{in.ID, doing, in.TargetMinutes, dev, float64(d) / float64(scale)})
 	}
 	if len(devs) == 0 {
-		return
+		return nil
 	}
 	sort.Slice(devs, func(i, j int) bool { return devs[i].rel > devs[j].rel })
 
-	fmt.Printf("  %s %s\n", reportLabel("outliers"),
+	reporter.Printf("  %s %s\n", reportLabel("outliers"),
 		aurora.Gray(12, "(noch offen = target − done, relative to workload; negative = did too much)"))
+	outliers := make([]*model.InvigilatorOutlier, 0, 5)
 	for i, d := range devs {
 		if i >= 5 {
 			break
@@ -236,11 +281,19 @@ func printDeviationOutliers(problem *invigplan.Problem, plan *invigplan.Plan) {
 		}
 		line := fmt.Sprintf("invig %d: %d/%d min, noch offen %+d (%+.0f%%)", d.id, d.doing, d.target, open, pct)
 		if open < 0 { // did too much – the side we now penalize harder
-			fmt.Printf("    %s\n", aurora.Yellow(line))
+			reporter.Printf("    %s\n", aurora.Yellow(line))
 		} else {
-			fmt.Printf("    %s\n", aurora.Gray(16, line))
+			reporter.Printf("    %s\n", aurora.Gray(16, line))
 		}
+		outliers = append(outliers, &model.InvigilatorOutlier{
+			InvigilatorID: d.id,
+			Doing:         d.doing,
+			Target:        d.target,
+			Open:          open,
+			Percent:       pct,
+		})
 	}
+	return outliers
 }
 
 // reportLabel returns a fixed-width, bold label so the colored values line up.

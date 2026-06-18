@@ -1,0 +1,129 @@
+"""
+LogLevel classifies a streamed LogLine. PROGRESS lines are throttled optimizer
+snapshots and should be rendered in-place (like a spinner) instead of appended.
+DONE marks the final line of a stream.
+"""
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  PROGRESS
+  RESULT
+  DONE
+}
+
+"""
+OptimizerProgress is the structured payload of a PROGRESS LogLine, mirroring the
+simulated-annealing optimizer snapshot.
+"""
+type OptimizerProgress {
+  iteration: Int!
+  total: Int!
+  bestCost: Float!
+  balance: Boolean!
+  unfilled: Int!
+}
+
+"""
+LogLine is one streamed line of output. text carries the rendered line including
+ANSI color codes, so a terminal-like frontend can display it verbatim. progress
+is only set when level is PROGRESS; report is only set on the final RESULT line
+of an invigilation generation and carries the structured outcome.
+"""
+type LogLine {
+  level: LogLevel!
+  text: String!
+  progress: OptimizerProgress
+  report: InvigilationReport
+}
+
+"""
+InvigilationReport is the structured outcome of an invigilation generation run,
+mirroring the textual report. It is delivered once on the final RESULT line of
+the generateInvigilations subscription (also for dryRun, where nothing is
+written to the database).
+"""
+type InvigilationReport {
+  seed: Int!
+  iterations: Int!
+  iterationsRun: Int!
+  stoppedEarly: Boolean!
+  balance: BalanceReport!
+  coverage: CoverageReport!
+  minutes: MinutesReport!
+  outliers: [InvigilatorOutlier!]!
+  fairness: [FairnessDistribution!]!
+  softCost: SoftCostReport!
+}
+
+"""BalanceReport: are all invigilators within ±tolerance of their target minutes."""
+type BalanceReport {
+  satisfied: Boolean!
+  invigilators: Int!
+  toleranceMin: Int!
+  withinTolerance: Int!
+  over: Int!
+  under: Int!
+  maxOver: Int!
+  maxUnder: Int!
+}
+
+"""CoverageReport: how many positions are filled."""
+type CoverageReport {
+  positions: Int!
+  unfilled: Int!
+}
+
+"""MinutesReport: distribution of assigned vs. target minutes around the tolerance band."""
+type MinutesReport {
+  withinTolerance: Int!
+  over: Int!
+  under: Int!
+  toleranceMin: Int!
+}
+
+"""InvigilatorOutlier: a person whose assigned minutes are furthest from target."""
+type InvigilatorOutlier {
+  invigilatorID: Int!
+  doing: Int!
+  target: Int!
+  open: Int!
+  percent: Float!
+}
+
+"""
+FairnessDistribution: per-invigilator count histogram for one kind (reserve/nta).
+buckets reads as "count:invigilators", e.g. count 1 / invigilators 48.
+"""
+type FairnessDistribution {
+  kind: String!
+  total: Int!
+  max: Int!
+  buckets: [DistributionBucket!]!
+}
+
+type DistributionBucket {
+  count: Int!
+  invigilators: Int!
+}
+
+"""SoftCostReport: the weighted soft-constraint penalty score (lower is better)."""
+type SoftCostReport {
+  total: Float!
+  breakdown: [SoftCostItem!]!
+}
+
+type SoftCostItem {
+  name: String!
+  cost: Float!
+}
+
+type Subscription {
+  """
+  generateInvigilations runs the automatic invigilation planning and streams its
+  output line by line (terminal style). With dryRun the optimizer only reports;
+  nothing is written to the database. seed and iterations override the config
+  defaults (0/null = keep config/default). The stream ends with a DONE line.
+  """
+  generateInvigilations(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
+}

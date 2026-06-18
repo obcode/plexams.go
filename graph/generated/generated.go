@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -46,6 +47,7 @@ type ResolverRoot interface {
 	PlannedRoom() PlannedRoomResolver
 	Query() QueryResolver
 	RoomsForSlot() RoomsForSlotResolver
+	Subscription() SubscriptionResolver
 }
 
 type DirectiveRoot struct {
@@ -79,6 +81,17 @@ type ComplexityRoot struct {
 		StartDate              func(childComplexity int) int
 		Status                 func(childComplexity int) int
 		UpdatedAt              func(childComplexity int) int
+	}
+
+	BalanceReport struct {
+		Invigilators    func(childComplexity int) int
+		MaxOver         func(childComplexity int) int
+		MaxUnder        func(childComplexity int) int
+		Over            func(childComplexity int) int
+		Satisfied       func(childComplexity int) int
+		ToleranceMin    func(childComplexity int) int
+		Under           func(childComplexity int) int
+		WithinTolerance func(childComplexity int) int
 	}
 
 	Conflict struct {
@@ -121,6 +134,16 @@ type ComplexityRoot struct {
 		PossibleDays    func(childComplexity int) int
 		RoomConstraints func(childComplexity int) int
 		SameSlot        func(childComplexity int) int
+	}
+
+	CoverageReport struct {
+		Positions func(childComplexity int) int
+		Unfilled  func(childComplexity int) int
+	}
+
+	DistributionBucket struct {
+		Count        func(childComplexity int) int
+		Invigilators func(childComplexity int) int
 	}
 
 	Emails struct {
@@ -176,6 +199,13 @@ type ComplexityRoot struct {
 		Name func(childComplexity int) int
 	}
 
+	FairnessDistribution struct {
+		Buckets func(childComplexity int) int
+		Kind    func(childComplexity int) int
+		Max     func(childComplexity int) int
+		Total   func(childComplexity int) int
+	}
+
 	GeneratedExam struct {
 		Ancode           func(childComplexity int) int
 		Conflicts        func(childComplexity int) int
@@ -196,6 +226,19 @@ type ComplexityRoot struct {
 		PrePlanned         func(childComplexity int) int
 		RoomName           func(childComplexity int) int
 		Slot               func(childComplexity int) int
+	}
+
+	InvigilationReport struct {
+		Balance       func(childComplexity int) int
+		Coverage      func(childComplexity int) int
+		Fairness      func(childComplexity int) int
+		Iterations    func(childComplexity int) int
+		IterationsRun func(childComplexity int) int
+		Minutes       func(childComplexity int) int
+		Outliers      func(childComplexity int) int
+		Seed          func(childComplexity int) int
+		SoftCost      func(childComplexity int) int
+		StoppedEarly  func(childComplexity int) int
 	}
 
 	InvigilationSlot struct {
@@ -224,6 +267,14 @@ type ComplexityRoot struct {
 		Requirements func(childComplexity int) int
 		Teacher      func(childComplexity int) int
 		Todos        func(childComplexity int) int
+	}
+
+	InvigilatorOutlier struct {
+		Doing         func(childComplexity int) int
+		InvigilatorID func(childComplexity int) int
+		Open          func(childComplexity int) int
+		Percent       func(childComplexity int) int
+		Target        func(childComplexity int) int
 	}
 
 	InvigilatorRequirements struct {
@@ -255,6 +306,20 @@ type ComplexityRoot struct {
 	InvigilatorsForDay struct {
 		Can  func(childComplexity int) int
 		Want func(childComplexity int) int
+	}
+
+	LogLine struct {
+		Level    func(childComplexity int) int
+		Progress func(childComplexity int) int
+		Report   func(childComplexity int) int
+		Text     func(childComplexity int) int
+	}
+
+	MinutesReport struct {
+		Over            func(childComplexity int) int
+		ToleranceMin    func(childComplexity int) int
+		Under           func(childComplexity int) int
+		WithinTolerance func(childComplexity int) int
 	}
 
 	MucDaiExam struct {
@@ -328,6 +393,14 @@ type ComplexityRoot struct {
 	NTAWithRegsByExamAndTeacher struct {
 		Exams   func(childComplexity int) int
 		Teacher func(childComplexity int) int
+	}
+
+	OptimizerProgress struct {
+		Balance   func(childComplexity int) int
+		BestCost  func(childComplexity int) int
+		Iteration func(childComplexity int) int
+		Total     func(childComplexity int) int
+		Unfilled  func(childComplexity int) int
 	}
 
 	PlanEntry struct {
@@ -559,6 +632,16 @@ type ComplexityRoot struct {
 		Starttime  func(childComplexity int) int
 	}
 
+	SoftCostItem struct {
+		Cost func(childComplexity int) int
+		Name func(childComplexity int) int
+	}
+
+	SoftCostReport struct {
+		Breakdown func(childComplexity int) int
+		Total     func(childComplexity int) int
+	}
+
 	Starttime struct {
 		Number func(childComplexity int) int
 		Start  func(childComplexity int) int
@@ -598,6 +681,10 @@ type ComplexityRoot struct {
 	StudentRegsPerStudent struct {
 		Ancodes func(childComplexity int) int
 		Student func(childComplexity int) int
+	}
+
+	Subscription struct {
+		GenerateInvigilations func(childComplexity int, dryRun bool, seed *int, iterations *int) int
 	}
 
 	Teacher struct {
@@ -781,6 +868,9 @@ type QueryResolver interface {
 type RoomsForSlotResolver interface {
 	Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error)
 }
+type SubscriptionResolver interface {
+	GenerateInvigilations(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error)
+}
 
 type executableSchema struct {
 	schema     *ast.Schema
@@ -962,6 +1052,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AnnyBooking.UpdatedAt(childComplexity), true
 
+	case "BalanceReport.invigilators":
+		if e.complexity.BalanceReport.Invigilators == nil {
+			break
+		}
+
+		return e.complexity.BalanceReport.Invigilators(childComplexity), true
+
+	case "BalanceReport.maxOver":
+		if e.complexity.BalanceReport.MaxOver == nil {
+			break
+		}
+
+		return e.complexity.BalanceReport.MaxOver(childComplexity), true
+
+	case "BalanceReport.maxUnder":
+		if e.complexity.BalanceReport.MaxUnder == nil {
+			break
+		}
+
+		return e.complexity.BalanceReport.MaxUnder(childComplexity), true
+
+	case "BalanceReport.over":
+		if e.complexity.BalanceReport.Over == nil {
+			break
+		}
+
+		return e.complexity.BalanceReport.Over(childComplexity), true
+
+	case "BalanceReport.satisfied":
+		if e.complexity.BalanceReport.Satisfied == nil {
+			break
+		}
+
+		return e.complexity.BalanceReport.Satisfied(childComplexity), true
+
+	case "BalanceReport.toleranceMin":
+		if e.complexity.BalanceReport.ToleranceMin == nil {
+			break
+		}
+
+		return e.complexity.BalanceReport.ToleranceMin(childComplexity), true
+
+	case "BalanceReport.under":
+		if e.complexity.BalanceReport.Under == nil {
+			break
+		}
+
+		return e.complexity.BalanceReport.Under(childComplexity), true
+
+	case "BalanceReport.withinTolerance":
+		if e.complexity.BalanceReport.WithinTolerance == nil {
+			break
+		}
+
+		return e.complexity.BalanceReport.WithinTolerance(childComplexity), true
+
 	case "Conflict.ancode":
 		if e.complexity.Conflict.AnCode == nil {
 			break
@@ -1129,6 +1275,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Constraints.SameSlot(childComplexity), true
+
+	case "CoverageReport.positions":
+		if e.complexity.CoverageReport.Positions == nil {
+			break
+		}
+
+		return e.complexity.CoverageReport.Positions(childComplexity), true
+
+	case "CoverageReport.unfilled":
+		if e.complexity.CoverageReport.Unfilled == nil {
+			break
+		}
+
+		return e.complexity.CoverageReport.Unfilled(childComplexity), true
+
+	case "DistributionBucket.count":
+		if e.complexity.DistributionBucket.Count == nil {
+			break
+		}
+
+		return e.complexity.DistributionBucket.Count(childComplexity), true
+
+	case "DistributionBucket.invigilators":
+		if e.complexity.DistributionBucket.Invigilators == nil {
+			break
+		}
+
+		return e.complexity.DistributionBucket.Invigilators(childComplexity), true
 
 	case "Emails.additionalExamer":
 		if e.complexity.Emails.AdditionalExamer == nil {
@@ -1333,6 +1507,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.FK07Program.Name(childComplexity), true
 
+	case "FairnessDistribution.buckets":
+		if e.complexity.FairnessDistribution.Buckets == nil {
+			break
+		}
+
+		return e.complexity.FairnessDistribution.Buckets(childComplexity), true
+
+	case "FairnessDistribution.kind":
+		if e.complexity.FairnessDistribution.Kind == nil {
+			break
+		}
+
+		return e.complexity.FairnessDistribution.Kind(childComplexity), true
+
+	case "FairnessDistribution.max":
+		if e.complexity.FairnessDistribution.Max == nil {
+			break
+		}
+
+		return e.complexity.FairnessDistribution.Max(childComplexity), true
+
+	case "FairnessDistribution.total":
+		if e.complexity.FairnessDistribution.Total == nil {
+			break
+		}
+
+		return e.complexity.FairnessDistribution.Total(childComplexity), true
+
 	case "GeneratedExam.ancode":
 		if e.complexity.GeneratedExam.Ancode == nil {
 			break
@@ -1445,6 +1647,76 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Invigilation.Slot(childComplexity), true
 
+	case "InvigilationReport.balance":
+		if e.complexity.InvigilationReport.Balance == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.Balance(childComplexity), true
+
+	case "InvigilationReport.coverage":
+		if e.complexity.InvigilationReport.Coverage == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.Coverage(childComplexity), true
+
+	case "InvigilationReport.fairness":
+		if e.complexity.InvigilationReport.Fairness == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.Fairness(childComplexity), true
+
+	case "InvigilationReport.iterations":
+		if e.complexity.InvigilationReport.Iterations == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.Iterations(childComplexity), true
+
+	case "InvigilationReport.iterationsRun":
+		if e.complexity.InvigilationReport.IterationsRun == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.IterationsRun(childComplexity), true
+
+	case "InvigilationReport.minutes":
+		if e.complexity.InvigilationReport.Minutes == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.Minutes(childComplexity), true
+
+	case "InvigilationReport.outliers":
+		if e.complexity.InvigilationReport.Outliers == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.Outliers(childComplexity), true
+
+	case "InvigilationReport.seed":
+		if e.complexity.InvigilationReport.Seed == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.Seed(childComplexity), true
+
+	case "InvigilationReport.softCost":
+		if e.complexity.InvigilationReport.SoftCost == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.SoftCost(childComplexity), true
+
+	case "InvigilationReport.stoppedEarly":
+		if e.complexity.InvigilationReport.StoppedEarly == nil {
+			break
+		}
+
+		return e.complexity.InvigilationReport.StoppedEarly(childComplexity), true
+
 	case "InvigilationSlot.reserve":
 		if e.complexity.InvigilationSlot.Reserve == nil {
 			break
@@ -1556,6 +1828,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Invigilator.Todos(childComplexity), true
+
+	case "InvigilatorOutlier.doing":
+		if e.complexity.InvigilatorOutlier.Doing == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorOutlier.Doing(childComplexity), true
+
+	case "InvigilatorOutlier.invigilatorID":
+		if e.complexity.InvigilatorOutlier.InvigilatorID == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorOutlier.InvigilatorID(childComplexity), true
+
+	case "InvigilatorOutlier.open":
+		if e.complexity.InvigilatorOutlier.Open == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorOutlier.Open(childComplexity), true
+
+	case "InvigilatorOutlier.percent":
+		if e.complexity.InvigilatorOutlier.Percent == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorOutlier.Percent(childComplexity), true
+
+	case "InvigilatorOutlier.target":
+		if e.complexity.InvigilatorOutlier.Target == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorOutlier.Target(childComplexity), true
 
 	case "InvigilatorRequirements.allContributions":
 		if e.complexity.InvigilatorRequirements.AllContributions == nil {
@@ -1710,6 +2017,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.InvigilatorsForDay.Want(childComplexity), true
+
+	case "LogLine.level":
+		if e.complexity.LogLine.Level == nil {
+			break
+		}
+
+		return e.complexity.LogLine.Level(childComplexity), true
+
+	case "LogLine.progress":
+		if e.complexity.LogLine.Progress == nil {
+			break
+		}
+
+		return e.complexity.LogLine.Progress(childComplexity), true
+
+	case "LogLine.report":
+		if e.complexity.LogLine.Report == nil {
+			break
+		}
+
+		return e.complexity.LogLine.Report(childComplexity), true
+
+	case "LogLine.text":
+		if e.complexity.LogLine.Text == nil {
+			break
+		}
+
+		return e.complexity.LogLine.Text(childComplexity), true
+
+	case "MinutesReport.over":
+		if e.complexity.MinutesReport.Over == nil {
+			break
+		}
+
+		return e.complexity.MinutesReport.Over(childComplexity), true
+
+	case "MinutesReport.toleranceMin":
+		if e.complexity.MinutesReport.ToleranceMin == nil {
+			break
+		}
+
+		return e.complexity.MinutesReport.ToleranceMin(childComplexity), true
+
+	case "MinutesReport.under":
+		if e.complexity.MinutesReport.Under == nil {
+			break
+		}
+
+		return e.complexity.MinutesReport.Under(childComplexity), true
+
+	case "MinutesReport.withinTolerance":
+		if e.complexity.MinutesReport.WithinTolerance == nil {
+			break
+		}
+
+		return e.complexity.MinutesReport.WithinTolerance(childComplexity), true
 
 	case "MucDaiExam.duration":
 		if e.complexity.MucDaiExam.Duration == nil {
@@ -2174,6 +2537,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.NTAWithRegsByExamAndTeacher.Teacher(childComplexity), true
+
+	case "OptimizerProgress.balance":
+		if e.complexity.OptimizerProgress.Balance == nil {
+			break
+		}
+
+		return e.complexity.OptimizerProgress.Balance(childComplexity), true
+
+	case "OptimizerProgress.bestCost":
+		if e.complexity.OptimizerProgress.BestCost == nil {
+			break
+		}
+
+		return e.complexity.OptimizerProgress.BestCost(childComplexity), true
+
+	case "OptimizerProgress.iteration":
+		if e.complexity.OptimizerProgress.Iteration == nil {
+			break
+		}
+
+		return e.complexity.OptimizerProgress.Iteration(childComplexity), true
+
+	case "OptimizerProgress.total":
+		if e.complexity.OptimizerProgress.Total == nil {
+			break
+		}
+
+		return e.complexity.OptimizerProgress.Total(childComplexity), true
+
+	case "OptimizerProgress.unfilled":
+		if e.complexity.OptimizerProgress.Unfilled == nil {
+			break
+		}
+
+		return e.complexity.OptimizerProgress.Unfilled(childComplexity), true
 
 	case "PlanEntry.ancode":
 		if e.complexity.PlanEntry.Ancode == nil {
@@ -3472,6 +3870,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Slot.Starttime(childComplexity), true
 
+	case "SoftCostItem.cost":
+		if e.complexity.SoftCostItem.Cost == nil {
+			break
+		}
+
+		return e.complexity.SoftCostItem.Cost(childComplexity), true
+
+	case "SoftCostItem.name":
+		if e.complexity.SoftCostItem.Name == nil {
+			break
+		}
+
+		return e.complexity.SoftCostItem.Name(childComplexity), true
+
+	case "SoftCostReport.breakdown":
+		if e.complexity.SoftCostReport.Breakdown == nil {
+			break
+		}
+
+		return e.complexity.SoftCostReport.Breakdown(childComplexity), true
+
+	case "SoftCostReport.total":
+		if e.complexity.SoftCostReport.Total == nil {
+			break
+		}
+
+		return e.complexity.SoftCostReport.Total(childComplexity), true
+
 	case "Starttime.number":
 		if e.complexity.Starttime.Number == nil {
 			break
@@ -3632,6 +4058,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StudentRegsPerStudent.Student(childComplexity), true
+
+	case "Subscription.generateInvigilations":
+		if e.complexity.Subscription.GenerateInvigilations == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_generateInvigilations_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.GenerateInvigilations(childComplexity, args["dryRun"].(bool), args["seed"].(*int), args["iterations"].(*int)), true
 
 	case "Teacher.email":
 		if e.complexity.Teacher.Email == nil {
@@ -4037,6 +4475,23 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
 			data := ec._Mutation(ctx, opCtx.Operation.SelectionSet)
 			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
+	case ast.Subscription:
+		next := ec._Subscription(ctx, opCtx.Operation.SelectionSet)
+
+		var buf bytes.Buffer
+		return func(ctx context.Context) *graphql.Response {
+			buf.Reset()
+			data := next(ctx)
+
+			if data == nil {
+				return nil
+			}
 			data.MarshalGQL(&buf)
 
 			return &graphql.Response{
@@ -4708,6 +5163,136 @@ type SemesterConfig {
   fromFK07: Time!
   until: Time!
   emails: Emails!
+}
+`, BuiltIn: false},
+	{Name: "../stream.graphqls", Input: `"""
+LogLevel classifies a streamed LogLine. PROGRESS lines are throttled optimizer
+snapshots and should be rendered in-place (like a spinner) instead of appended.
+DONE marks the final line of a stream.
+"""
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  PROGRESS
+  RESULT
+  DONE
+}
+
+"""
+OptimizerProgress is the structured payload of a PROGRESS LogLine, mirroring the
+simulated-annealing optimizer snapshot.
+"""
+type OptimizerProgress {
+  iteration: Int!
+  total: Int!
+  bestCost: Float!
+  balance: Boolean!
+  unfilled: Int!
+}
+
+"""
+LogLine is one streamed line of output. text carries the rendered line including
+ANSI color codes, so a terminal-like frontend can display it verbatim. progress
+is only set when level is PROGRESS; report is only set on the final RESULT line
+of an invigilation generation and carries the structured outcome.
+"""
+type LogLine {
+  level: LogLevel!
+  text: String!
+  progress: OptimizerProgress
+  report: InvigilationReport
+}
+
+"""
+InvigilationReport is the structured outcome of an invigilation generation run,
+mirroring the textual report. It is delivered once on the final RESULT line of
+the generateInvigilations subscription (also for dryRun, where nothing is
+written to the database).
+"""
+type InvigilationReport {
+  seed: Int!
+  iterations: Int!
+  iterationsRun: Int!
+  stoppedEarly: Boolean!
+  balance: BalanceReport!
+  coverage: CoverageReport!
+  minutes: MinutesReport!
+  outliers: [InvigilatorOutlier!]!
+  fairness: [FairnessDistribution!]!
+  softCost: SoftCostReport!
+}
+
+"""BalanceReport: are all invigilators within ±tolerance of their target minutes."""
+type BalanceReport {
+  satisfied: Boolean!
+  invigilators: Int!
+  toleranceMin: Int!
+  withinTolerance: Int!
+  over: Int!
+  under: Int!
+  maxOver: Int!
+  maxUnder: Int!
+}
+
+"""CoverageReport: how many positions are filled."""
+type CoverageReport {
+  positions: Int!
+  unfilled: Int!
+}
+
+"""MinutesReport: distribution of assigned vs. target minutes around the tolerance band."""
+type MinutesReport {
+  withinTolerance: Int!
+  over: Int!
+  under: Int!
+  toleranceMin: Int!
+}
+
+"""InvigilatorOutlier: a person whose assigned minutes are furthest from target."""
+type InvigilatorOutlier {
+  invigilatorID: Int!
+  doing: Int!
+  target: Int!
+  open: Int!
+  percent: Float!
+}
+
+"""
+FairnessDistribution: per-invigilator count histogram for one kind (reserve/nta).
+buckets reads as "count:invigilators", e.g. count 1 / invigilators 48.
+"""
+type FairnessDistribution {
+  kind: String!
+  total: Int!
+  max: Int!
+  buckets: [DistributionBucket!]!
+}
+
+type DistributionBucket {
+  count: Int!
+  invigilators: Int!
+}
+
+"""SoftCostReport: the weighted soft-constraint penalty score (lower is better)."""
+type SoftCostReport {
+  total: Float!
+  breakdown: [SoftCostItem!]!
+}
+
+type SoftCostItem {
+  name: String!
+  cost: Float!
+}
+
+type Subscription {
+  """
+  generateInvigilations runs the automatic invigilation planning and streams its
+  output line by line (terminal style). With dryRun the optimizer only reports;
+  nothing is written to the database. seed and iterations override the config
+  defaults (0/null = keep config/default). The stream ends with a DONE line.
+  """
+  generateInvigilations(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
 }
 `, BuiltIn: false},
 	{Name: "../studentregs.graphqls", Input: `extend type Query {
@@ -6750,6 +7335,80 @@ func (ec *executionContext) field_Query_zpaExams_argsFromZpa(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Subscription_generateInvigilations_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_generateInvigilations_argsDryRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["dryRun"] = arg0
+	arg1, err := ec.field_Subscription_generateInvigilations_argsSeed(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["seed"] = arg1
+	arg2, err := ec.field_Subscription_generateInvigilations_argsIterations(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["iterations"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_generateInvigilations_argsDryRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["dryRun"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
+	if tmp, ok := rawArgs["dryRun"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_generateInvigilations_argsSeed(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["seed"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("seed"))
+	if tmp, ok := rawArgs["seed"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_generateInvigilations_argsIterations(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["iterations"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("iterations"))
+	if tmp, ok := rawArgs["iterations"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field___Directive_args_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7865,6 +8524,358 @@ func (ec *executionContext) fieldContext_AnnyBooking_hasCustomDescription(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BalanceReport_satisfied(ctx context.Context, field graphql.CollectedField, obj *model.BalanceReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BalanceReport_satisfied(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Satisfied, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BalanceReport_satisfied(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BalanceReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BalanceReport_invigilators(ctx context.Context, field graphql.CollectedField, obj *model.BalanceReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BalanceReport_invigilators(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Invigilators, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BalanceReport_invigilators(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BalanceReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BalanceReport_toleranceMin(ctx context.Context, field graphql.CollectedField, obj *model.BalanceReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BalanceReport_toleranceMin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ToleranceMin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BalanceReport_toleranceMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BalanceReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BalanceReport_withinTolerance(ctx context.Context, field graphql.CollectedField, obj *model.BalanceReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BalanceReport_withinTolerance(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WithinTolerance, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BalanceReport_withinTolerance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BalanceReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BalanceReport_over(ctx context.Context, field graphql.CollectedField, obj *model.BalanceReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BalanceReport_over(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Over, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BalanceReport_over(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BalanceReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BalanceReport_under(ctx context.Context, field graphql.CollectedField, obj *model.BalanceReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BalanceReport_under(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Under, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BalanceReport_under(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BalanceReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BalanceReport_maxOver(ctx context.Context, field graphql.CollectedField, obj *model.BalanceReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BalanceReport_maxOver(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxOver, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BalanceReport_maxOver(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BalanceReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BalanceReport_maxUnder(ctx context.Context, field graphql.CollectedField, obj *model.BalanceReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BalanceReport_maxUnder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxUnder, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BalanceReport_maxUnder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BalanceReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -8994,6 +10005,182 @@ func (ec *executionContext) fieldContext_Constraints_roomConstraints(_ context.C
 				return ec.fieldContext_RoomConstraints_comments(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RoomConstraints", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CoverageReport_positions(ctx context.Context, field graphql.CollectedField, obj *model.CoverageReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CoverageReport_positions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Positions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CoverageReport_positions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CoverageReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CoverageReport_unfilled(ctx context.Context, field graphql.CollectedField, obj *model.CoverageReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CoverageReport_unfilled(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Unfilled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CoverageReport_unfilled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CoverageReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistributionBucket_count(ctx context.Context, field graphql.CollectedField, obj *model.DistributionBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistributionBucket_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistributionBucket_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistributionBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DistributionBucket_invigilators(ctx context.Context, field graphql.CollectedField, obj *model.DistributionBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DistributionBucket_invigilators(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Invigilators, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DistributionBucket_invigilators(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DistributionBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -10456,6 +11643,188 @@ func (ec *executionContext) fieldContext_FK07Program_name(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _FairnessDistribution_kind(ctx context.Context, field graphql.CollectedField, obj *model.FairnessDistribution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FairnessDistribution_kind(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Kind, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FairnessDistribution_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FairnessDistribution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FairnessDistribution_total(ctx context.Context, field graphql.CollectedField, obj *model.FairnessDistribution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FairnessDistribution_total(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Total, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FairnessDistribution_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FairnessDistribution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FairnessDistribution_max(ctx context.Context, field graphql.CollectedField, obj *model.FairnessDistribution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FairnessDistribution_max(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Max, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FairnessDistribution_max(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FairnessDistribution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FairnessDistribution_buckets(ctx context.Context, field graphql.CollectedField, obj *model.FairnessDistribution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FairnessDistribution_buckets(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Buckets, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.DistributionBucket)
+	fc.Result = res
+	return ec.marshalNDistributionBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDistributionBucketᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FairnessDistribution_buckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FairnessDistribution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "count":
+				return ec.fieldContext_DistributionBucket_count(ctx, field)
+			case "invigilators":
+				return ec.fieldContext_DistributionBucket_invigilators(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DistributionBucket", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GeneratedExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GeneratedExam_ancode(ctx, field)
 	if err != nil {
@@ -11278,6 +12647,508 @@ func (ec *executionContext) fieldContext_Invigilation_prePlanned(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _InvigilationReport_seed(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_seed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_seed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationReport_iterations(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_iterations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Iterations, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_iterations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationReport_iterationsRun(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_iterationsRun(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IterationsRun, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_iterationsRun(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationReport_stoppedEarly(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_stoppedEarly(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StoppedEarly, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_stoppedEarly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationReport_balance(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_balance(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Balance, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.BalanceReport)
+	fc.Result = res
+	return ec.marshalNBalanceReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBalanceReport(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_balance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "satisfied":
+				return ec.fieldContext_BalanceReport_satisfied(ctx, field)
+			case "invigilators":
+				return ec.fieldContext_BalanceReport_invigilators(ctx, field)
+			case "toleranceMin":
+				return ec.fieldContext_BalanceReport_toleranceMin(ctx, field)
+			case "withinTolerance":
+				return ec.fieldContext_BalanceReport_withinTolerance(ctx, field)
+			case "over":
+				return ec.fieldContext_BalanceReport_over(ctx, field)
+			case "under":
+				return ec.fieldContext_BalanceReport_under(ctx, field)
+			case "maxOver":
+				return ec.fieldContext_BalanceReport_maxOver(ctx, field)
+			case "maxUnder":
+				return ec.fieldContext_BalanceReport_maxUnder(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BalanceReport", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationReport_coverage(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_coverage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Coverage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.CoverageReport)
+	fc.Result = res
+	return ec.marshalNCoverageReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐCoverageReport(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_coverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "positions":
+				return ec.fieldContext_CoverageReport_positions(ctx, field)
+			case "unfilled":
+				return ec.fieldContext_CoverageReport_unfilled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CoverageReport", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationReport_minutes(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_minutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Minutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MinutesReport)
+	fc.Result = res
+	return ec.marshalNMinutesReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMinutesReport(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_minutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "withinTolerance":
+				return ec.fieldContext_MinutesReport_withinTolerance(ctx, field)
+			case "over":
+				return ec.fieldContext_MinutesReport_over(ctx, field)
+			case "under":
+				return ec.fieldContext_MinutesReport_under(ctx, field)
+			case "toleranceMin":
+				return ec.fieldContext_MinutesReport_toleranceMin(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MinutesReport", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationReport_outliers(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_outliers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Outliers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.InvigilatorOutlier)
+	fc.Result = res
+	return ec.marshalNInvigilatorOutlier2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorOutlierᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_outliers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "invigilatorID":
+				return ec.fieldContext_InvigilatorOutlier_invigilatorID(ctx, field)
+			case "doing":
+				return ec.fieldContext_InvigilatorOutlier_doing(ctx, field)
+			case "target":
+				return ec.fieldContext_InvigilatorOutlier_target(ctx, field)
+			case "open":
+				return ec.fieldContext_InvigilatorOutlier_open(ctx, field)
+			case "percent":
+				return ec.fieldContext_InvigilatorOutlier_percent(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InvigilatorOutlier", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationReport_fairness(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_fairness(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Fairness, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.FairnessDistribution)
+	fc.Result = res
+	return ec.marshalNFairnessDistribution2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐFairnessDistributionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_fairness(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "kind":
+				return ec.fieldContext_FairnessDistribution_kind(ctx, field)
+			case "total":
+				return ec.fieldContext_FairnessDistribution_total(ctx, field)
+			case "max":
+				return ec.fieldContext_FairnessDistribution_max(ctx, field)
+			case "buckets":
+				return ec.fieldContext_FairnessDistribution_buckets(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FairnessDistribution", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilationReport_softCost(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationReport_softCost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SoftCost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.SoftCostReport)
+	fc.Result = res
+	return ec.marshalNSoftCostReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSoftCostReport(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationReport_softCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "total":
+				return ec.fieldContext_SoftCostReport_total(ctx, field)
+			case "breakdown":
+				return ec.fieldContext_SoftCostReport_breakdown(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SoftCostReport", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _InvigilationSlot_reserve(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationSlot) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_InvigilationSlot_reserve(ctx, field)
 	if err != nil {
@@ -12074,6 +13945,226 @@ func (ec *executionContext) fieldContext_Invigilator_todos(_ context.Context, fi
 				return ec.fieldContext_InvigilatorTodos_invigilations(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type InvigilatorTodos", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorOutlier_invigilatorID(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorOutlier) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorOutlier_invigilatorID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InvigilatorID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorOutlier_invigilatorID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorOutlier",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorOutlier_doing(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorOutlier) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorOutlier_doing(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Doing, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorOutlier_doing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorOutlier",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorOutlier_target(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorOutlier) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorOutlier_target(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Target, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorOutlier_target(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorOutlier",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorOutlier_open(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorOutlier) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorOutlier_open(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Open, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorOutlier_open(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorOutlier",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorOutlier_percent(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorOutlier) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorOutlier_percent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Percent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorOutlier_percent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorOutlier",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -13082,6 +15173,386 @@ func (ec *executionContext) fieldContext_InvigilatorsForDay_can(_ context.Contex
 				return ec.fieldContext_Invigilator_todos(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Invigilator", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogLine_level(ctx context.Context, field graphql.CollectedField, obj *model.LogLine) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogLine_level(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Level, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.LogLevel)
+	fc.Result = res
+	return ec.marshalNLogLevel2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLevel(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogLine_level(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogLine",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type LogLevel does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogLine_text(ctx context.Context, field graphql.CollectedField, obj *model.LogLine) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogLine_text(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogLine_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogLine",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogLine_progress(ctx context.Context, field graphql.CollectedField, obj *model.LogLine) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogLine_progress(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Progress, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.OptimizerProgress)
+	fc.Result = res
+	return ec.marshalOOptimizerProgress2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐOptimizerProgress(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogLine_progress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogLine",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "iteration":
+				return ec.fieldContext_OptimizerProgress_iteration(ctx, field)
+			case "total":
+				return ec.fieldContext_OptimizerProgress_total(ctx, field)
+			case "bestCost":
+				return ec.fieldContext_OptimizerProgress_bestCost(ctx, field)
+			case "balance":
+				return ec.fieldContext_OptimizerProgress_balance(ctx, field)
+			case "unfilled":
+				return ec.fieldContext_OptimizerProgress_unfilled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OptimizerProgress", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogLine_report(ctx context.Context, field graphql.CollectedField, obj *model.LogLine) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogLine_report(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Report, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.InvigilationReport)
+	fc.Result = res
+	return ec.marshalOInvigilationReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationReport(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogLine_report(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogLine",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "seed":
+				return ec.fieldContext_InvigilationReport_seed(ctx, field)
+			case "iterations":
+				return ec.fieldContext_InvigilationReport_iterations(ctx, field)
+			case "iterationsRun":
+				return ec.fieldContext_InvigilationReport_iterationsRun(ctx, field)
+			case "stoppedEarly":
+				return ec.fieldContext_InvigilationReport_stoppedEarly(ctx, field)
+			case "balance":
+				return ec.fieldContext_InvigilationReport_balance(ctx, field)
+			case "coverage":
+				return ec.fieldContext_InvigilationReport_coverage(ctx, field)
+			case "minutes":
+				return ec.fieldContext_InvigilationReport_minutes(ctx, field)
+			case "outliers":
+				return ec.fieldContext_InvigilationReport_outliers(ctx, field)
+			case "fairness":
+				return ec.fieldContext_InvigilationReport_fairness(ctx, field)
+			case "softCost":
+				return ec.fieldContext_InvigilationReport_softCost(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InvigilationReport", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MinutesReport_withinTolerance(ctx context.Context, field graphql.CollectedField, obj *model.MinutesReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MinutesReport_withinTolerance(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WithinTolerance, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MinutesReport_withinTolerance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MinutesReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MinutesReport_over(ctx context.Context, field graphql.CollectedField, obj *model.MinutesReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MinutesReport_over(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Over, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MinutesReport_over(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MinutesReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MinutesReport_under(ctx context.Context, field graphql.CollectedField, obj *model.MinutesReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MinutesReport_under(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Under, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MinutesReport_under(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MinutesReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MinutesReport_toleranceMin(ctx context.Context, field graphql.CollectedField, obj *model.MinutesReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MinutesReport_toleranceMin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ToleranceMin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MinutesReport_toleranceMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MinutesReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -15752,6 +18223,226 @@ func (ec *executionContext) fieldContext_NTAWithRegsByExamAndTeacher_exams(_ con
 				return ec.fieldContext_NTAWithRegsByExam_ntas(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTAWithRegsByExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerProgress_iteration(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerProgress) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerProgress_iteration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Iteration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerProgress_iteration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerProgress",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerProgress_total(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerProgress) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerProgress_total(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Total, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerProgress_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerProgress",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerProgress_bestCost(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerProgress) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerProgress_bestCost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BestCost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerProgress_bestCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerProgress",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerProgress_balance(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerProgress) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerProgress_balance(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Balance, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerProgress_balance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerProgress",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerProgress_unfilled(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerProgress) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerProgress_unfilled(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Unfilled, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerProgress_unfilled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerProgress",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -24709,6 +27400,188 @@ func (ec *executionContext) fieldContext_Slot_starttime(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _SoftCostItem_name(ctx context.Context, field graphql.CollectedField, obj *model.SoftCostItem) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SoftCostItem_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SoftCostItem_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SoftCostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SoftCostItem_cost(ctx context.Context, field graphql.CollectedField, obj *model.SoftCostItem) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SoftCostItem_cost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SoftCostItem_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SoftCostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SoftCostReport_total(ctx context.Context, field graphql.CollectedField, obj *model.SoftCostReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SoftCostReport_total(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Total, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SoftCostReport_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SoftCostReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SoftCostReport_breakdown(ctx context.Context, field graphql.CollectedField, obj *model.SoftCostReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SoftCostReport_breakdown(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Breakdown, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.SoftCostItem)
+	fc.Result = res
+	return ec.marshalNSoftCostItem2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSoftCostItemᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SoftCostReport_breakdown(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SoftCostReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_SoftCostItem_name(ctx, field)
+			case "cost":
+				return ec.fieldContext_SoftCostItem_cost(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SoftCostItem", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Starttime_number(ctx context.Context, field graphql.CollectedField, obj *model.Starttime) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Starttime_number(ctx, field)
 	if err != nil {
@@ -25801,6 +28674,85 @@ func (ec *executionContext) fieldContext_StudentRegsPerStudent_ancodes(_ context
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_generateInvigilations(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_generateInvigilations(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().GenerateInvigilations(rctx, fc.Args["dryRun"].(bool), fc.Args["seed"].(*int), fc.Args["iterations"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_generateInvigilations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_generateInvigilations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -30502,6 +33454,80 @@ func (ec *executionContext) _AnnyBooking(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var balanceReportImplementors = []string{"BalanceReport"}
+
+func (ec *executionContext) _BalanceReport(ctx context.Context, sel ast.SelectionSet, obj *model.BalanceReport) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, balanceReportImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BalanceReport")
+		case "satisfied":
+			out.Values[i] = ec._BalanceReport_satisfied(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "invigilators":
+			out.Values[i] = ec._BalanceReport_invigilators(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "toleranceMin":
+			out.Values[i] = ec._BalanceReport_toleranceMin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "withinTolerance":
+			out.Values[i] = ec._BalanceReport_withinTolerance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "over":
+			out.Values[i] = ec._BalanceReport_over(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "under":
+			out.Values[i] = ec._BalanceReport_under(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxOver":
+			out.Values[i] = ec._BalanceReport_maxOver(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxUnder":
+			out.Values[i] = ec._BalanceReport_maxUnder(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var conflictImplementors = []string{"Conflict"}
 
 func (ec *executionContext) _Conflict(ctx context.Context, sel ast.SelectionSet, obj *model.Conflict) graphql.Marshaler {
@@ -30782,6 +33808,94 @@ func (ec *executionContext) _Constraints(ctx context.Context, sel ast.SelectionS
 			}
 		case "roomConstraints":
 			out.Values[i] = ec._Constraints_roomConstraints(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var coverageReportImplementors = []string{"CoverageReport"}
+
+func (ec *executionContext) _CoverageReport(ctx context.Context, sel ast.SelectionSet, obj *model.CoverageReport) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, coverageReportImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CoverageReport")
+		case "positions":
+			out.Values[i] = ec._CoverageReport_positions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unfilled":
+			out.Values[i] = ec._CoverageReport_unfilled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var distributionBucketImplementors = []string{"DistributionBucket"}
+
+func (ec *executionContext) _DistributionBucket(ctx context.Context, sel ast.SelectionSet, obj *model.DistributionBucket) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, distributionBucketImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DistributionBucket")
+		case "count":
+			out.Values[i] = ec._DistributionBucket_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "invigilators":
+			out.Values[i] = ec._DistributionBucket_invigilators(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -31219,6 +34333,60 @@ func (ec *executionContext) _FK07Program(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var fairnessDistributionImplementors = []string{"FairnessDistribution"}
+
+func (ec *executionContext) _FairnessDistribution(ctx context.Context, sel ast.SelectionSet, obj *model.FairnessDistribution) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fairnessDistributionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FairnessDistribution")
+		case "kind":
+			out.Values[i] = ec._FairnessDistribution_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "total":
+			out.Values[i] = ec._FairnessDistribution_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "max":
+			out.Values[i] = ec._FairnessDistribution_max(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "buckets":
+			out.Values[i] = ec._FairnessDistribution_buckets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var generatedExamImplementors = []string{"GeneratedExam"}
 
 func (ec *executionContext) _GeneratedExam(ctx context.Context, sel ast.SelectionSet, obj *model.GeneratedExam) graphql.Marshaler {
@@ -31366,6 +34534,90 @@ func (ec *executionContext) _Invigilation(ctx context.Context, sel ast.Selection
 			}
 		case "prePlanned":
 			out.Values[i] = ec._Invigilation_prePlanned(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var invigilationReportImplementors = []string{"InvigilationReport"}
+
+func (ec *executionContext) _InvigilationReport(ctx context.Context, sel ast.SelectionSet, obj *model.InvigilationReport) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, invigilationReportImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InvigilationReport")
+		case "seed":
+			out.Values[i] = ec._InvigilationReport_seed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "iterations":
+			out.Values[i] = ec._InvigilationReport_iterations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "iterationsRun":
+			out.Values[i] = ec._InvigilationReport_iterationsRun(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stoppedEarly":
+			out.Values[i] = ec._InvigilationReport_stoppedEarly(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "balance":
+			out.Values[i] = ec._InvigilationReport_balance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "coverage":
+			out.Values[i] = ec._InvigilationReport_coverage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "minutes":
+			out.Values[i] = ec._InvigilationReport_minutes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "outliers":
+			out.Values[i] = ec._InvigilationReport_outliers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fairness":
+			out.Values[i] = ec._InvigilationReport_fairness(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "softCost":
+			out.Values[i] = ec._InvigilationReport_softCost(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -31593,6 +34845,65 @@ func (ec *executionContext) _Invigilator(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var invigilatorOutlierImplementors = []string{"InvigilatorOutlier"}
+
+func (ec *executionContext) _InvigilatorOutlier(ctx context.Context, sel ast.SelectionSet, obj *model.InvigilatorOutlier) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, invigilatorOutlierImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InvigilatorOutlier")
+		case "invigilatorID":
+			out.Values[i] = ec._InvigilatorOutlier_invigilatorID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "doing":
+			out.Values[i] = ec._InvigilatorOutlier_doing(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "target":
+			out.Values[i] = ec._InvigilatorOutlier_target(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "open":
+			out.Values[i] = ec._InvigilatorOutlier_open(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "percent":
+			out.Values[i] = ec._InvigilatorOutlier_percent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var invigilatorRequirementsImplementors = []string{"InvigilatorRequirements"}
 
 func (ec *executionContext) _InvigilatorRequirements(ctx context.Context, sel ast.SelectionSet, obj *model.InvigilatorRequirements) graphql.Marshaler {
@@ -31773,6 +35084,108 @@ func (ec *executionContext) _InvigilatorsForDay(ctx context.Context, sel ast.Sel
 			}
 		case "can":
 			out.Values[i] = ec._InvigilatorsForDay_can(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var logLineImplementors = []string{"LogLine"}
+
+func (ec *executionContext) _LogLine(ctx context.Context, sel ast.SelectionSet, obj *model.LogLine) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, logLineImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LogLine")
+		case "level":
+			out.Values[i] = ec._LogLine_level(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "text":
+			out.Values[i] = ec._LogLine_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "progress":
+			out.Values[i] = ec._LogLine_progress(ctx, field, obj)
+		case "report":
+			out.Values[i] = ec._LogLine_report(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var minutesReportImplementors = []string{"MinutesReport"}
+
+func (ec *executionContext) _MinutesReport(ctx context.Context, sel ast.SelectionSet, obj *model.MinutesReport) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, minutesReportImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MinutesReport")
+		case "withinTolerance":
+			out.Values[i] = ec._MinutesReport_withinTolerance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "over":
+			out.Values[i] = ec._MinutesReport_over(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "under":
+			out.Values[i] = ec._MinutesReport_under(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "toleranceMin":
+			out.Values[i] = ec._MinutesReport_toleranceMin(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -32304,6 +35717,65 @@ func (ec *executionContext) _NTAWithRegsByExamAndTeacher(ctx context.Context, se
 			}
 		case "exams":
 			out.Values[i] = ec._NTAWithRegsByExamAndTeacher_exams(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var optimizerProgressImplementors = []string{"OptimizerProgress"}
+
+func (ec *executionContext) _OptimizerProgress(ctx context.Context, sel ast.SelectionSet, obj *model.OptimizerProgress) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, optimizerProgressImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OptimizerProgress")
+		case "iteration":
+			out.Values[i] = ec._OptimizerProgress_iteration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "total":
+			out.Values[i] = ec._OptimizerProgress_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bestCost":
+			out.Values[i] = ec._OptimizerProgress_bestCost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "balance":
+			out.Values[i] = ec._OptimizerProgress_balance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unfilled":
+			out.Values[i] = ec._OptimizerProgress_unfilled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -34904,6 +38376,94 @@ func (ec *executionContext) _Slot(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
+var softCostItemImplementors = []string{"SoftCostItem"}
+
+func (ec *executionContext) _SoftCostItem(ctx context.Context, sel ast.SelectionSet, obj *model.SoftCostItem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, softCostItemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SoftCostItem")
+		case "name":
+			out.Values[i] = ec._SoftCostItem_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cost":
+			out.Values[i] = ec._SoftCostItem_cost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var softCostReportImplementors = []string{"SoftCostReport"}
+
+func (ec *executionContext) _SoftCostReport(ctx context.Context, sel ast.SelectionSet, obj *model.SoftCostReport) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, softCostReportImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SoftCostReport")
+		case "total":
+			out.Values[i] = ec._SoftCostReport_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "breakdown":
+			out.Values[i] = ec._SoftCostReport_breakdown(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var starttimeImplementors = []string{"Starttime"}
 
 func (ec *executionContext) _Starttime(ctx context.Context, sel ast.SelectionSet, obj *model.Starttime) graphql.Marshaler {
@@ -35215,6 +38775,26 @@ func (ec *executionContext) _StudentRegsPerStudent(ctx context.Context, sel ast.
 	}
 
 	return out
+}
+
+var subscriptionImplementors = []string{"Subscription"}
+
+func (ec *executionContext) _Subscription(ctx context.Context, sel ast.SelectionSet) func(ctx context.Context) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subscriptionImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Subscription",
+	})
+	if len(fields) != 1 {
+		ec.Errorf(ctx, "must subscribe to exactly one stream")
+		return nil
+	}
+
+	switch fields[0].Name {
+	case "generateInvigilations":
+		return ec._Subscription_generateInvigilations(ctx, fields[0])
+	default:
+		panic("unknown field " + strconv.Quote(fields[0].Name))
+	}
 }
 
 var teacherImplementors = []string{"Teacher"}
@@ -36190,6 +39770,16 @@ func (ec *executionContext) marshalNAnnyBooking2ᚖgithubᚗcomᚋobcodeᚋplexa
 	return ec._AnnyBooking(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNBalanceReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBalanceReport(ctx context.Context, sel ast.SelectionSet, v *model.BalanceReport) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BalanceReport(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -36331,6 +39921,70 @@ func (ec *executionContext) marshalNConstraints2ᚖgithubᚗcomᚋobcodeᚋplexa
 func (ec *executionContext) unmarshalNConstraintsInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraintsInput(ctx context.Context, v any) (model.ConstraintsInput, error) {
 	res, err := ec.unmarshalInputConstraintsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCoverageReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐCoverageReport(ctx context.Context, sel ast.SelectionSet, v *model.CoverageReport) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CoverageReport(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDistributionBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDistributionBucketᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DistributionBucket) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDistributionBucket2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDistributionBucket(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNDistributionBucket2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDistributionBucket(ctx context.Context, sel ast.SelectionSet, v *model.DistributionBucket) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DistributionBucket(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNEmails2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmails(ctx context.Context, sel ast.SelectionSet, v *model.Emails) graphql.Marshaler {
@@ -36623,6 +40277,60 @@ func (ec *executionContext) marshalNFK07Program2ᚖgithubᚗcomᚋobcodeᚋplexa
 	return ec._FK07Program(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNFairnessDistribution2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐFairnessDistributionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.FairnessDistribution) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFairnessDistribution2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐFairnessDistribution(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFairnessDistribution2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐFairnessDistribution(ctx context.Context, sel ast.SelectionSet, v *model.FairnessDistribution) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FairnessDistribution(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -36855,6 +40563,94 @@ func (ec *executionContext) marshalNInvigilator2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._Invigilator(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNInvigilatorOutlier2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorOutlierᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InvigilatorOutlier) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNInvigilatorOutlier2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorOutlier(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInvigilatorOutlier2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorOutlier(ctx context.Context, sel ast.SelectionSet, v *model.InvigilatorOutlier) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InvigilatorOutlier(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNLogLevel2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLevel(ctx context.Context, v any) (model.LogLevel, error) {
+	var res model.LogLevel
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNLogLevel2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLevel(ctx context.Context, sel ast.SelectionSet, v model.LogLevel) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNLogLine2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx context.Context, sel ast.SelectionSet, v model.LogLine) graphql.Marshaler {
+	return ec._LogLine(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx context.Context, sel ast.SelectionSet, v *model.LogLine) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LogLine(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMinutesReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMinutesReport(ctx context.Context, sel ast.SelectionSet, v *model.MinutesReport) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MinutesReport(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNMucDaiExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMucDaiExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MucDaiExam) graphql.Marshaler {
@@ -37892,6 +41688,70 @@ func (ec *executionContext) marshalNSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgo
 		return graphql.Null
 	}
 	return ec._Slot(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSoftCostItem2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSoftCostItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SoftCostItem) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSoftCostItem2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSoftCostItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSoftCostItem2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSoftCostItem(ctx context.Context, sel ast.SelectionSet, v *model.SoftCostItem) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SoftCostItem(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSoftCostReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSoftCostReport(ctx context.Context, sel ast.SelectionSet, v *model.SoftCostReport) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SoftCostReport(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNStarttime2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStarttimeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Starttime) graphql.Marshaler {
@@ -39210,6 +43070,13 @@ func (ec *executionContext) marshalOInvigilation2ᚕᚖgithubᚗcomᚋobcodeᚋp
 	return ret
 }
 
+func (ec *executionContext) marshalOInvigilationReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationReport(ctx context.Context, sel ast.SelectionSet, v *model.InvigilationReport) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._InvigilationReport(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOInvigilationSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationSlot(ctx context.Context, sel ast.SelectionSet, v *model.InvigilationSlot) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -39398,6 +43265,13 @@ func (ec *executionContext) marshalONTAWithRegsByExam2ᚕᚖgithubᚗcomᚋobcod
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOOptimizerProgress2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐOptimizerProgress(ctx context.Context, sel ast.SelectionSet, v *model.OptimizerProgress) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._OptimizerProgress(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPlanEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanEntry(ctx context.Context, sel ast.SelectionSet, v *model.PlanEntry) graphql.Marshaler {

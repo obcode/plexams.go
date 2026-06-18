@@ -1,0 +1,42 @@
+# ZPA up- and downloads as mutations: discrete actions with a result, and
+# (being mutations) automatically blocked while a validation runs, so an upload
+# and the ZPA validation that checks it stay cleanly separate.
+
+"""ZPAUploadResult summarizes an exam-plan upload to ZPA."""
+type ZPAUploadResult {
+  dryRun: Boolean!
+  posted: Int!
+  ancodes: [Int!]!
+}
+
+"""ZPAStudentRegsResult summarizes a student-registration upload to ZPA."""
+type ZPAStudentRegsResult {
+  posted: Int!
+  errors: Int!
+}
+
+"""ZPAStudentsImportResult summarizes a student import from ZPA."""
+type ZPAStudentsImportResult {
+  found: Int!
+  notFound: Int!
+}
+
+extend type Mutation {
+  "Upload the planned exams to ZPA without rooms or invigilators (dryRun = build only, do not post)."
+  uploadExamsToZPA(dryRun: Boolean!): ZPAUploadResult!
+  "Upload the planned exams to ZPA including planned rooms."
+  uploadExamsWithRoomsToZPA(dryRun: Boolean!): ZPAUploadResult!
+  "Upload the planned exams to ZPA including planned rooms and invigilators."
+  uploadExamsWithInvigilatorsToZPA(dryRun: Boolean!): ZPAUploadResult!
+  "Upload the student registrations to ZPA."
+  uploadStudentRegsToZPA: ZPAStudentRegsResult!
+
+  "Fetch teachers from ZPA and cache them; returns the number fetched."
+  importTeachersFromZPA: Int!
+  "Fetch exams from ZPA and cache them; returns the number fetched."
+  importExamsFromZPA: Int!
+  "Fetch invigilator requirements from ZPA and cache them; returns the number fetched."
+  importInvigilatorRequirementsFromZPA: Int!
+  "Fetch the ZPA infos of students with registrations."
+  importStudentsFromZPA: ZPAStudentsImportResult!
+}

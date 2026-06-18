@@ -57,15 +57,19 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 	regsWithErrors := make([]*model.RegWithError, 0)
 	chunkSize := 77
 
-	zpaStudentRegsJson, err := json.MarshalIndent(zpaStudentRegs, "", " ")
-	if err != nil {
-		log.Error().Err(err).Msg("cannot marshal studentregs into json")
-	}
-	err = os.WriteFile(jsonOutputFile, zpaStudentRegsJson, 0644)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot write studentregs to file")
-	} else {
-		fmt.Printf(" saved copy to %s\n", jsonOutputFile)
+	// Writing a local JSON copy is optional: the CLI passes a filename, the
+	// GraphQL mutation passes "" to skip it.
+	if jsonOutputFile != "" {
+		zpaStudentRegsJson, err := json.MarshalIndent(zpaStudentRegs, "", " ")
+		if err != nil {
+			log.Error().Err(err).Msg("cannot marshal studentregs into json")
+		}
+		err = os.WriteFile(jsonOutputFile, zpaStudentRegsJson, 0644)
+		if err != nil {
+			log.Error().Err(err).Msg("cannot write studentregs to file")
+		} else {
+			fmt.Printf(" saved copy to %s\n", jsonOutputFile)
+		}
 	}
 
 	cfg := yacspin.Config{

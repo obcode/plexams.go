@@ -695,6 +695,9 @@ type ComplexityRoot struct {
 		ValidateRoomsPerExam              func(childComplexity int) int
 		ValidateRoomsPerSlot              func(childComplexity int) int
 		ValidateRoomsTimeDistance         func(childComplexity int) int
+		ValidateZPADateTimes              func(childComplexity int) int
+		ValidateZPAInvigilators           func(childComplexity int) int
+		ValidateZPARooms                  func(childComplexity int) int
 	}
 
 	Teacher struct {
@@ -909,6 +912,9 @@ type SubscriptionResolver interface {
 	ValidateRoomsNeedRequest(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateRoomsPerExam(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateRoomsTimeDistance(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateZPADateTimes(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateZPARooms(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateZPAInvigilators(ctx context.Context) (<-chan *model.LogLine, error)
 }
 
 type executableSchema struct {
@@ -4180,6 +4186,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.ValidateRoomsTimeDistance(childComplexity), true
 
+	case "Subscription.validateZPADateTimes":
+		if e.complexity.Subscription.ValidateZPADateTimes == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ValidateZPADateTimes(childComplexity), true
+
+	case "Subscription.validateZPAInvigilators":
+		if e.complexity.Subscription.ValidateZPAInvigilators == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ValidateZPAInvigilators(childComplexity), true
+
+	case "Subscription.validateZPARooms":
+		if e.complexity.Subscription.ValidateZPARooms == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ValidateZPARooms(childComplexity), true
+
 	case "Teacher.email":
 		if e.complexity.Teacher.Email == nil {
 			break
@@ -5593,6 +5620,10 @@ extend type Subscription {
   validateRoomsNeedRequest: LogLine!
   validateRoomsPerExam: LogLine!
   validateRoomsTimeDistance: LogLine!
+
+  validateZPADateTimes: LogLine!
+  validateZPARooms: LogLine!
+  validateZPAInvigilators: LogLine!
 }
 `, BuiltIn: false},
 	{Name: "../zpa.graphqls", Input: `extend type Query {
@@ -29704,6 +29735,216 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsTimeDistance(
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_validateZPADateTimes(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateZPADateTimes(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ValidateZPADateTimes(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_validateZPADateTimes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_validateZPARooms(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateZPARooms(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ValidateZPARooms(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_validateZPARooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_validateZPAInvigilators(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateZPAInvigilators(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ValidateZPAInvigilators(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_validateZPAInvigilators(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Teacher_shortname(ctx context.Context, field graphql.CollectedField, obj *model.Teacher) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Teacher_shortname(ctx, field)
 	if err != nil {
@@ -40374,6 +40615,12 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_validateRoomsPerExam(ctx, fields[0])
 	case "validateRoomsTimeDistance":
 		return ec._Subscription_validateRoomsTimeDistance(ctx, fields[0])
+	case "validateZPADateTimes":
+		return ec._Subscription_validateZPADateTimes(ctx, fields[0])
+	case "validateZPARooms":
+		return ec._Subscription_validateZPARooms(ctx, fields[0])
+	case "validateZPAInvigilators":
+		return ec._Subscription_validateZPAInvigilators(ctx, fields[0])
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}

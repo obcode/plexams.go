@@ -74,18 +74,18 @@ var (
 						}...)
 
 				case "zpa":
-					err := plexams.ValidateZPADateTimes()
+					_, err := plexams.ValidateZPADateTimes(plx.NewConsoleReporter())
 					if err != nil {
 						log.Fatal(err)
 					}
 					if Rooms || Invigilators {
-						err := plexams.ValidateZPARooms()
+						_, err := plexams.ValidateZPARooms(plx.NewConsoleReporter())
 						if err != nil {
 							log.Fatal(err)
 						}
 					}
 					if Invigilators {
-						err := plexams.ValidateZPAInvigilators()
+						_, err := plexams.ValidateZPAInvigilators(plx.NewConsoleReporter())
 						if err != nil {
 							log.Fatal(err)
 						}

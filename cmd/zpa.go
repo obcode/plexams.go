@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/obcode/plexams.go/graph/model"
+	plx "github.com/obcode/plexams.go/plexams"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -138,7 +139,7 @@ var (
 				}
 
 				// validate
-				err = plexams.ValidateZPADateTimes()
+				_, err = plexams.ValidateZPADateTimes(plx.NewConsoleReporter())
 				if err != nil {
 					log.Error().Err(err).Msg("error when validating")
 				}

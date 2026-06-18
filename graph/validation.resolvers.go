@@ -54,3 +54,18 @@ func (r *subscriptionResolver) ValidateRoomsPerExam(ctx context.Context) (<-chan
 func (r *subscriptionResolver) ValidateRoomsTimeDistance(ctx context.Context) (<-chan *model.LogLine, error) {
 	return r.runValidation(ctx, "rooms-time-distance", r.plexams.ValidateRoomsTimeDistance), nil
 }
+
+// ValidateZPADateTimes is the resolver for the validateZPADateTimes field.
+func (r *subscriptionResolver) ValidateZPADateTimes(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "zpa-date-times", r.plexams.ValidateZPADateTimes), nil
+}
+
+// ValidateZPARooms is the resolver for the validateZPARooms field.
+func (r *subscriptionResolver) ValidateZPARooms(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "zpa-rooms", r.plexams.ValidateZPARooms), nil
+}
+
+// ValidateZPAInvigilators is the resolver for the validateZPAInvigilators field.
+func (r *subscriptionResolver) ValidateZPAInvigilators(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "zpa-invigilators", r.plexams.ValidateZPAInvigilators), nil
+}

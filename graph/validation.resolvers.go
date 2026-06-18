@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams"
 )
 
 // ValidateInvigilatorRequirements is the resolver for the validateInvigilatorRequirements field.
@@ -68,4 +69,31 @@ func (r *subscriptionResolver) ValidateZPARooms(ctx context.Context) (<-chan *mo
 // ValidateZPAInvigilators is the resolver for the validateZPAInvigilators field.
 func (r *subscriptionResolver) ValidateZPAInvigilators(ctx context.Context) (<-chan *model.LogLine, error) {
 	return r.runValidation(ctx, "zpa-invigilators", r.plexams.ValidateZPAInvigilators), nil
+}
+
+// ValidateConflicts is the resolver for the validateConflicts field.
+func (r *subscriptionResolver) ValidateConflicts(ctx context.Context, onlyPlannedByMe bool, ancode int) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "conflicts", func(reporter plexams.Reporter) (*model.ValidationReport, error) {
+		return r.plexams.ValidateConflicts(onlyPlannedByMe, ancode, reporter)
+	}), nil
+}
+
+// ValidateConstraints is the resolver for the validateConstraints field.
+func (r *subscriptionResolver) ValidateConstraints(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "constraints", r.plexams.ValidateConstraints), nil
+}
+
+// ValidateStudentRegs is the resolver for the validateStudentRegs field.
+func (r *subscriptionResolver) ValidateStudentRegs(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "student-regs", r.plexams.ValidateStudentRegs), nil
+}
+
+// ValidateDb is the resolver for the validateDB field.
+func (r *subscriptionResolver) ValidateDb(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "db", r.plexams.ValidateDB), nil
+}
+
+// ValidatePrePlannedExahmRooms is the resolver for the validatePrePlannedExahmRooms field.
+func (r *subscriptionResolver) ValidatePrePlannedExahmRooms(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "preplanned-exahm-rooms", r.plexams.ValidatePrePlannedExahmRooms), nil
 }

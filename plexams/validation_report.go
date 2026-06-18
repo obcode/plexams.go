@@ -98,6 +98,28 @@ func (v *validation) finish() *model.ValidationReport {
 	}
 }
 
+// report returns the structured report from the accumulated findings without
+// streaming a summary or the findings. Use it when a validator does its own
+// custom terminal output instead of the flat list finish produces.
+func (v *validation) report() *model.ValidationReport {
+	var errs, warns int
+	for _, f := range v.findings {
+		switch f.Level {
+		case model.ValidationLevelError:
+			errs++
+		case model.ValidationLevelWarning:
+			warns++
+		}
+	}
+	return &model.ValidationReport{
+		Name:         v.name,
+		Ok:           errs == 0,
+		ErrorCount:   errs,
+		WarningCount: warns,
+		Findings:     v.findings,
+	}
+}
+
 // renderFinding formats a finding as a colored terminal line.
 func renderFinding(f *model.ValidationFinding) string {
 	switch f.Level {

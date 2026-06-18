@@ -38,9 +38,12 @@ var (
 				switch arg {
 				case "all":
 					validations = append(validations, []func() error{
-						plexams.ValidateDB,
-						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe, Ancode) },
-						plexams.ValidateConstraints,
+						func() error { _, err := plexams.ValidateDB(plx.NewConsoleReporter()); return err },
+						func() error {
+							_, err := plexams.ValidateConflicts(OnlyPlannedByMe, Ancode, plx.NewConsoleReporter())
+							return err
+						},
+						func() error { _, err := plexams.ValidateConstraints(plx.NewConsoleReporter()); return err },
 						func() error { _, err := plexams.ValidateRoomsPerSlot(plx.NewConsoleReporter()); return err },
 						func() error { _, err := plexams.ValidateRoomsNeedRequest(plx.NewConsoleReporter()); return err },
 						func() error { _, err := plexams.ValidateRoomsPerExam(plx.NewConsoleReporter()); return err },
@@ -49,20 +52,27 @@ var (
 
 				case "conflicts":
 					validations = append(validations,
-						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe, Ancode) },
+						func() error {
+							_, err := plexams.ValidateConflicts(OnlyPlannedByMe, Ancode, plx.NewConsoleReporter())
+							return err
+						},
 					)
 
 				case "constraints":
-					validations = append(validations, plexams.ValidateConstraints)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateConstraints(plx.NewConsoleReporter()); return err })
 
 				case "studentregs":
-					validations = append(validations, plexams.ValidateStudentRegs)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateStudentRegs(plx.NewConsoleReporter()); return err })
 
 				case "db":
-					validations = append(validations, plexams.ValidateDB)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateDB(plx.NewConsoleReporter()); return err })
 
 				case "preplanned-exahm-rooms":
-					validations = append(validations, plexams.ValidatePrePlannedExahmRooms)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidatePrePlannedExahmRooms(plx.NewConsoleReporter()); return err })
 
 				case "rooms":
 					validations = append(validations,

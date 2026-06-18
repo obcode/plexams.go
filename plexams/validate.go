@@ -7,20 +7,15 @@ import (
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
-	"github.com/gookit/color"
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/theckman/yacspin"
 )
 
 // TODO: Validate if all NTAs have MTKNR
 
-var (
-	count               = 0
-	knownConflictsCount = 0
-)
+var knownConflictsCount = 0
 
 type KnownConflict struct {
 	Mtknr, Ancode1, Ancode2 string
@@ -35,38 +30,18 @@ type problemWithStudents struct {
 	students []string
 }
 
-func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
-	count = 0
+func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter Reporter) (*model.ValidationReport, error) {
 	knownConflictsCount = 0
 	ctx := context.Background()
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" validating conflicts")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+	v := newValidation(reporter, "conflicts", "validating conflicts")
 
 	validationMessages := make(map[conflictingAncodes]*problemWithStudents)
 
-	spinner.Message(aurora.Sprintf(aurora.Yellow(" get planned ancodes")))
+	v.step("get planned ancodes")
 	planAncodeEntries, err := p.dbClient.PlannedAncodes(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get plan entries")
-		return err
+		return nil, err
 	}
 
 	planAncodeEntriesNotPlannedByMe := set.NewSet[int]()
@@ -74,23 +49,23 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 		constraints, err := p.dbClient.GetConstraintsForAncode(ctx, entry.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", entry.Ancode).Msg("cannot get constraints for ancode")
-			return err
+			return nil, err
 		}
 		if constraints != nil && constraints.NotPlannedByMe {
 			planAncodeEntriesNotPlannedByMe.Add(entry.Ancode)
 		}
 	}
 
-	spinner.Message(aurora.Sprintf(aurora.Yellow(" get student regs")))
+	v.step("get student regs")
 	students, err := p.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get student registries per student")
-		return err
+		return nil, err
 	}
 
 	knownConflicts := set.NewSet[KnownConflict]()
 
-	spinner.Message(aurora.Sprintf(aurora.Yellow(" get known conflicts")))
+	v.step("get known conflicts")
 	knownConflictsConf := viper.Get("knownConflicts.studentRegs")
 	if knownConflictsConf != nil {
 		knownConflictsSlice := knownConflictsConf.([]interface{})
@@ -106,13 +81,20 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 
 	log.Debug().Int("count", knownConflicts.Cardinality()).Interface("conflicts", knownConflicts).Msg("found known conflicts")
 
-	spinner.Message(aurora.Sprintf(aurora.Yellow(" validating students")))
+	v.step("validating students")
 	for _, student := range students {
 		p.validateStudentReg(student, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe,
 			knownConflicts, ancode, &validationMessages)
 	}
 
 	conflictingAncodesSlice, normalizedValidationMessages := p.sortConflictingAncodes(validationMessages)
+
+	// One structured finding per conflicting exam pair.
+	for _, ca := range conflictingAncodesSlice {
+		problem := normalizedValidationMessages[ca]
+		v.errorf(ref{Ancode: ptr(ca.ancode1), RelatedAncodes: []int{ca.ancode2}},
+			"%s: %d student(s) affected between exam %d and %d", problem.problem, len(problem.students), ca.ancode1, ca.ancode2)
+	}
 
 	if len(validationMessages) > 0 {
 		mucdaiPrograms := viper.GetStringSlice("mucdaiprograms")
@@ -122,13 +104,13 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 			mucdaiprogram[base] = p
 		}
 
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d known conflicts, but %d problems found"),
+		v.reporter.StopProgressFail(aurora.Sprintf(aurora.Red("%d known conflicts, but %d problems found"),
 			knownConflictsCount, len(validationMessages)))
-		err = spinner.StopFail()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-		fmt.Printf("\nknownConflicts:\n  studentRegs:")
+
+		// Stream the copy-pasteable knownConflicts YAML snippet, like the CLI.
+		v.reporter.Println("")
+		v.reporter.Println("knownConflicts:")
+		v.reporter.Println("  studentRegs:")
 		for _, conflictingAncodes := range conflictingAncodesSlice {
 			problemWithStudents := normalizedValidationMessages[conflictingAncodes]
 			exam1, err := p.PlannedExam(ctx, conflictingAncodes.ancode1)
@@ -148,7 +130,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 			}
 
 			log.Debug().Interface("exam1", exam1).Interface("exam2", exam2).Msg("found conflicting exams")
-			fmt.Printf("%s\n", aurora.Sprintf(aurora.Red("\n    # %s"), problemWithStudents.problem))
+			v.reporter.Printf("%s", aurora.Sprintf(aurora.Red("\n    # %s"), problemWithStudents.problem))
 			for _, exam := range []*model.PlannedExam{exam1, exam2} {
 				repeater := ""
 				if exam.ZpaExam.IsRepeaterExam {
@@ -184,7 +166,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 					time = *planEntry.ExternalTime
 				}
 
-				fmt.Printf("%s\n", aurora.Sprintf(aurora.Red("    # %s: %s. %s (%s): %s %s %s"),
+				v.reporter.Printf("%s", aurora.Sprintf(aurora.Red("    # %s: %s. %s (%s): %s %s %s"),
 					time.Format("02.01.06, 15:04 Uhr"),
 					aurora.Magenta(ancodeStr),
 					aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
@@ -194,20 +176,16 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int) error {
 				))
 			}
 			for _, studentStr := range problemWithStudents.students {
-				fmt.Printf("%s\n", studentStr)
+				v.reporter.Printf("%s", studentStr)
 			}
 		}
 
 	} else {
-		spinner.StopMessage(aurora.Sprintf(aurora.Green("%d known conflicts, no further problems found"),
+		v.reporter.StopProgress(aurora.Sprintf(aurora.Green("%d known conflicts, no further problems found"),
 			knownConflictsCount))
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
 	}
 
-	return nil
+	return v.report(), nil
 }
 
 func (plexams *Plexams) sortConflictingAncodes(validationMessages map[conflictingAncodes]*problemWithStudents) ([]conflictingAncodes, map[conflictingAncodes]*problemWithStudents) {
@@ -387,33 +365,11 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 	}
 }
 
-func (p *Plexams) ValidateConstraints() error {
-	count = 0
+func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" validating constraints")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
+	v := newValidation(reporter, "constraints", "validating constraints")
 
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
-
-	validationMessages := make([]string, 0)
-
-	spinner.Message(aurora.Sprintf(aurora.Yellow(" get constraints")))
+	v.step("get constraints")
 	constraints, err := p.Constraints(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get constraints")
@@ -424,7 +380,7 @@ func (p *Plexams) ValidateConstraints() error {
 		constraintsMap[constraint.Ancode] = constraint
 	}
 
-	spinner.Message(aurora.Sprintf(aurora.Yellow(" get booked entries")))
+	v.step("get booked entries")
 	bookedEntries, err := p.ExahmRoomsFromAnnyBookings(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get entries from anny_bookings, fallback to booked entries in YAML")
@@ -434,13 +390,12 @@ func (p *Plexams) ValidateConstraints() error {
 		bookedEntries, err = p.ExahmRoomsFromBooked()
 		if err != nil {
 			log.Error().Err(err).Msg("cannot get booked entries")
-			return err
+			return nil, err
 		}
 	}
 
 	for _, constraint := range constraints {
-		count++
-		spinner.Message(aurora.Sprintf(aurora.Yellow(" check constraints for exam %d"), aurora.Magenta(constraint.Ancode)))
+		v.step("check constraints for exam %d", constraint.Ancode)
 		slot, err := p.SlotForAncode(ctx, constraint.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", constraint.Ancode).Msg("cannot get slot for ancode")
@@ -450,7 +405,6 @@ func (p *Plexams) ValidateConstraints() error {
 			continue
 		}
 
-		// if len(constraint.SameSlot) > 0 {
 		for _, otherAncode := range constraint.SameSlot {
 			log.Debug().Int("ancode", constraint.Ancode).Int("other ancode", otherAncode).Msg("checking same slot")
 			otherSlot, err := p.SlotForAncode(ctx, otherAncode)
@@ -464,22 +418,19 @@ func (p *Plexams) ValidateConstraints() error {
 					continue
 				}
 
-				validationMessages = append(validationMessages,
-					aurora.Sprintf(aurora.Red("Exams %d and %d must be in the same slot, are %v and %v"),
-						aurora.Magenta(constraint.Ancode), aurora.Magenta(otherAncode), aurora.Cyan(slot), aurora.Cyan(otherSlot)))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}},
+					"Exams %d and %d must be in the same slot, are %v and %v", constraint.Ancode, otherAncode, slot, otherSlot)
 				continue
 			}
 
 			if *slot != *otherSlot {
-				validationMessages = append(validationMessages,
-					aurora.Sprintf(aurora.Red("Exams %d and %d must be in the same slot, are %v and %v"),
-						aurora.Magenta(constraint.Ancode), aurora.Magenta(otherAncode), aurora.Cyan(slot), aurora.Cyan(otherSlot)))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}},
+					"Exams %d and %d must be in the same slot, are %v and %v", constraint.Ancode, otherAncode, slot, otherSlot)
 			}
 		}
-		// }
 
 		if constraint.FixedDay != nil {
-			color.Red.Println("FIXME: FixedDay")
+			log.Debug().Int("ancode", constraint.Ancode).Msg("FIXME: FixedDay not validated yet")
 		}
 
 		if constraint.FixedTime != nil {
@@ -489,17 +440,15 @@ func (p *Plexams) ValidateConstraints() error {
 				fixed.Month() != slot.Starttime.Month() ||
 				fixed.Hour() != slot.Starttime.Hour() ||
 				fixed.Minute() != slot.Starttime.Minute() {
-				validationMessages = append(validationMessages,
-					aurora.Sprintf(aurora.Red("Exams %d has fixed slot %s, is %s"),
-						aurora.Magenta(constraint.Ancode), aurora.Magenta(fixed.Format("02.01.06 15:04")), aurora.Cyan(constraint.FixedTime.Format("02.01.06 15:04"))))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+					"Exam %d has fixed slot %s, is %s", constraint.Ancode, fixed.Format("02.01.06 15:04"), constraint.FixedTime.Format("02.01.06 15:04"))
 			}
 		}
 
 		for _, day := range constraint.ExcludeDays {
 			if day.Equal(time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)) {
-				validationMessages = append(validationMessages,
-					aurora.Sprintf(aurora.Red("Exam %d planned on excluded day %s"),
-						aurora.Magenta(constraint.Ancode), aurora.Cyan(day.Format("02.01.06"))))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+					"Exam %d planned on excluded day %s", constraint.Ancode, day.Format("02.01.06"))
 			}
 		}
 
@@ -514,17 +463,19 @@ func (p *Plexams) ValidateConstraints() error {
 				}
 			}
 			if !possibleDaysOk {
-				validationMessages = append(validationMessages,
-					aurora.Sprintf(aurora.Red("Exam %d planned on day %s which is not a possible day"),
-						aurora.Magenta(constraint.Ancode), aurora.Cyan(dayPlanned.Format("02.01.06"))))
+				dayStr := "-"
+				if dayPlanned != nil {
+					dayStr = dayPlanned.Format("02.01.06")
+				}
+				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+					"Exam %d planned on day %s which is not a possible day", constraint.Ancode, dayStr)
 			}
 		}
 
 		if constraint.RoomConstraints != nil && (constraint.RoomConstraints.Exahm || constraint.RoomConstraints.Seb) {
 			if !p.roomBookedDuringExamTime(bookedEntries, slot) {
-				validationMessages = append(validationMessages,
-					aurora.Sprintf(aurora.Red("Exam %d planned at %s, but no room booked"),
-						aurora.Magenta(constraint.Ancode), aurora.Cyan(slot.Starttime.Format("02.01.06 15:04"))))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+					"Exam %d planned at %s, but no room booked", constraint.Ancode, slot.Starttime.Format("02.01.06 15:04"))
 			}
 		}
 
@@ -539,40 +490,18 @@ func (p *Plexams) ValidateConstraints() error {
 			}
 			for _, room := range plannedRooms {
 				if !allowedRooms.Contains(room.RoomName) {
-					validationMessages = append(validationMessages,
-						aurora.Sprintf(aurora.Red("Exam %d planned in room %s, but allowed rooms are %s"),
-							aurora.Magenta(constraint.Ancode), aurora.Cyan(room.RoomName), aurora.Cyan(constraint.RoomConstraints.AllowedRooms)))
+					v.errorf(ref{Ancode: ptr(constraint.Ancode), Room: ptr(room.RoomName)},
+						"Exam %d planned in room %s, but allowed rooms are %s", constraint.Ancode, room.RoomName, constraint.RoomConstraints.AllowedRooms)
 				}
 			}
 			if len(plannedRooms) == 0 {
-				validationMessages = append(validationMessages,
-					aurora.Sprintf(aurora.Red("Exam %d planned in no room, but allowed rooms are %s"),
-						aurora.Magenta(constraint.Ancode), aurora.Cyan(constraint.RoomConstraints.AllowedRooms)))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+					"Exam %d planned in no room, but allowed rooms are %s", constraint.Ancode, constraint.RoomConstraints.AllowedRooms)
 			}
 		}
 	}
 
-	if len(validationMessages) > 0 {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d known constraints, but %d problems found"),
-			count, len(validationMessages)))
-		err = spinner.StopFail()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-		for _, msg := range validationMessages {
-			fmt.Printf("%s\n", msg)
-		}
-
-	} else {
-		spinner.StopMessage(aurora.Sprintf(aurora.Green("%d known constraints, no problems found"),
-			count))
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-	}
-
-	return nil
+	return v.finish(), nil
 }
 
 func (p *Plexams) roomBookedDuringExamTime(bookedEntries []BookedEntry, slot *model.Slot) bool {

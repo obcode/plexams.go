@@ -54,4 +54,10 @@ extend type Subscription {
   validateZPADateTimes: LogLine!
   validateZPARooms: LogLine!
   validateZPAInvigilators: LogLine!
+
+  validateConflicts(onlyPlannedByMe: Boolean!, ancode: Int!): LogLine!
+  validateConstraints: LogLine!
+  validateStudentRegs: LogLine!
+  validateDB: LogLine!
+  validatePrePlannedExahmRooms: LogLine!
 }

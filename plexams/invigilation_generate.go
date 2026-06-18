@@ -162,6 +162,8 @@ func printInvigilationReport(problem *invigplan.Problem, plan *invigplan.Plan, r
 		colorCount(m.Over), colorCount(m.Under),
 		aurora.Gray(12, "(deviation of assigned vs. target minutes per person)"))
 
+	printDeviationOutliers(problem, plan)
+
 	// fairness of the reserve / NTA distribution.
 	fmt.Printf("  %s %s\n", reportLabel("fairness"),
 		aurora.Gray(12, "(reading \"1:48\" = 48 invigilators do 1; lower max = fairer)"))
@@ -187,6 +189,57 @@ func printInvigilationReport(problem *invigplan.Problem, plan *invigplan.Plan, r
 	sort.Slice(breakdown, func(i, j int) bool { return breakdown[i].cost > breakdown[j].cost })
 	for _, b := range breakdown {
 		fmt.Printf("    %-22s %8.0f\n", b.name, b.cost)
+	}
+}
+
+// printDeviationOutliers lists the invigilators whose assigned minutes are
+// furthest from their target *relative to their workload*, so low-workload
+// people that are still far off (especially under target) are easy to spot.
+func printDeviationOutliers(problem *invigplan.Problem, plan *invigplan.Plan) {
+	type devInfo struct {
+		id, doing, target, dev int
+		rel                    float64
+	}
+	devs := make([]devInfo, 0, len(problem.Invigilators))
+	for i := range problem.Invigilators {
+		in := &problem.Invigilators[i]
+		doing := plan.DoingMinutes(in.ID)
+		dev := doing - in.TargetMinutes
+		if dev == 0 {
+			continue
+		}
+		scale := in.TargetMinutes
+		if scale < problem.ToleranceMin {
+			scale = problem.ToleranceMin
+		}
+		d := dev
+		if d < 0 {
+			d = -d
+		}
+		devs = append(devs, devInfo{in.ID, doing, in.TargetMinutes, dev, float64(d) / float64(scale)})
+	}
+	if len(devs) == 0 {
+		return
+	}
+	sort.Slice(devs, func(i, j int) bool { return devs[i].rel > devs[j].rel })
+
+	fmt.Printf("  %s %s\n", reportLabel("outliers"),
+		aurora.Gray(12, "(noch offen = target − done, relative to workload; negative = did too much)"))
+	for i, d := range devs {
+		if i >= 5 {
+			break
+		}
+		open := -d.dev // "noch offen" = target − done
+		pct := 0.0
+		if d.target > 0 {
+			pct = float64(open) / float64(d.target) * 100
+		}
+		line := fmt.Sprintf("invig %d: %d/%d min, noch offen %+d (%+.0f%%)", d.id, d.doing, d.target, open, pct)
+		if open < 0 { // did too much – the side we now penalize harder
+			fmt.Printf("    %s\n", aurora.Yellow(line))
+		} else {
+			fmt.Printf("    %s\n", aurora.Gray(16, line))
+		}
 	}
 }
 
@@ -554,8 +607,8 @@ func weightsFromConfig() invigplan.Weights {
 	if viper.IsSet("invigilation.optimizer.weights.beyondTolerance") {
 		w.BeyondTolerance = viper.GetFloat64("invigilation.optimizer.weights.beyondTolerance")
 	}
-	if viper.IsSet("invigilation.optimizer.weights.negativeBalanceFactor") {
-		w.NegativeBalanceFactor = viper.GetFloat64("invigilation.optimizer.weights.negativeBalanceFactor")
+	if viper.IsSet("invigilation.optimizer.weights.overTargetFactor") {
+		w.OverTargetFactor = viper.GetFloat64("invigilation.optimizer.weights.overTargetFactor")
 	}
 	if viper.IsSet("invigilation.optimizer.weights.coverage") {
 		w.Coverage = viper.GetFloat64("invigilation.optimizer.weights.coverage")

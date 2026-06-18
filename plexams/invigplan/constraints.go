@@ -119,9 +119,14 @@ func (p *Problem) BalanceSatisfied(plan *Plan) bool {
 // dominate all remaining soft goals: it is applied linearly per minute outside
 // the tolerance, with a weight large enough that a single person outside the
 // band outranks the entire budget of the lower-tier constraints. MinuteBalance
-// is the gentle centering *inside* the band; it is scaled by the *relative*
-// deviation (deviation / target) so that people who only have to do little are
-// pulled closer to their target than people with a large workload.
+// is the centering *inside* the band; it is scaled by the *relative* deviation
+// (deviation / target) so that people who only have to do little are pulled
+// closer to their target than people with a large workload. It is weighted
+// *above* the distribution/days/span constraints, so getting the low-workload
+// people close to zero takes priority over an even reserve/NTA distribution.
+//
+// Tier order: Coverage ≫ BeyondTolerance ≫ MinuteBalance ≫ {Distribution,
+// MaxDays, DaySpan, PreferExamDays}.
 type Weights struct {
 	MinuteBalance   float64 // centering inside the band, scaled by relative deviation
 	BeyondTolerance float64 // linear, per minute outside the band (dominant)
@@ -131,23 +136,24 @@ type Weights struct {
 	Distribution    float64
 	DaySpan         float64
 
-	// NegativeBalanceFactor multiplies the centering penalty when a person is
-	// *under* their target (doing too little); >1 prefers slightly over to
-	// slightly under, especially for low-workload invigilators.
-	NegativeBalanceFactor float64
+	// OverTargetFactor multiplies the centering penalty when a person is *over*
+	// their target (doing more than they have to – "noch offen" negative); >1
+	// prefers leaving someone slightly under their target to pushing them over,
+	// especially for low-workload invigilators.
+	OverTargetFactor float64
 }
 
 // DefaultWeights returns sensible starting weights; they are meant to be
 // overridable from config (invigilation.optimizer.weights.*).
 func DefaultWeights() Weights {
 	return Weights{
-		MinuteBalance:         100.0,
-		BeyondTolerance:       200_000.0,
-		Coverage:              1_000_000_000.0,
-		MaxDays:               500.0,
-		PreferExamDays:        50.0,
-		Distribution:          200.0,
-		DaySpan:               100.0,
-		NegativeBalanceFactor: 2.0,
+		MinuteBalance:    10_000.0,
+		BeyondTolerance:  10_000_000.0,
+		Coverage:         100_000_000_000.0,
+		MaxDays:          500.0,
+		PreferExamDays:   50.0,
+		Distribution:     200.0,
+		DaySpan:          100.0,
+		OverTargetFactor: 2.0,
 	}
 }

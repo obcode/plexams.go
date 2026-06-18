@@ -493,13 +493,14 @@ func TestMinuteBalanceScalesWithTarget(t *testing.T) {
 	}
 }
 
-func TestMinuteBalancePenalizesUnderMore(t *testing.T) {
-	// Same |30| deviation, same target: being under target must cost more.
-	overP, overPlan := balProblem(120, 150)  // +30
-	underP, underPlan := balProblem(120, 90) // -30
+func TestMinuteBalancePenalizesOverMore(t *testing.T) {
+	// Same |30| deviation, same target: being over target ("noch offen" < 0) must
+	// cost more than being under.
+	overP, overPlan := balProblem(120, 150)  // +30 over target
+	underP, underPlan := balProblem(120, 90) // -30 under target
 	over, _ := minuteBalanceSoft{}.Cost(overP, overPlan)
 	under, _ := minuteBalanceSoft{}.Cost(underP, underPlan)
-	if !(under > over) {
-		t.Fatalf("under-target (%g) should cost more than over-target (%g)", under, over)
+	if !(over > under) {
+		t.Fatalf("over-target (%g) should cost more than under-target (%g)", over, under)
 	}
 }

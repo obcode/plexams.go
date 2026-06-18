@@ -36,8 +36,8 @@ func (c minuteBalanceSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 			scale = p.ToleranceMin // floor avoids div-by-zero and over-penalizing tiny targets
 		}
 		rel := float64(eff) / float64(scale)
-		if dev < 0 {
-			rel *= p.Weights.NegativeBalanceFactor
+		if dev > 0 {
+			rel *= p.Weights.OverTargetFactor // doing more than the target ("noch offen" < 0) is worse
 		}
 		within += rel
 

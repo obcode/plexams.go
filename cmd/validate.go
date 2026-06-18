@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"time"
 
+	plx "github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
 )
 
@@ -37,54 +38,64 @@ var (
 				switch arg {
 				case "all":
 					validations = append(validations, []func() error{
-						plexams.ValidateDB,
-						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe, Ancode) },
-						plexams.ValidateConstraints,
-						plexams.ValidateRoomsPerSlot,
-						plexams.ValidateRoomsNeedRequest,
-						plexams.ValidateRoomsPerExam,
-						plexams.ValidateRoomsTimeDistance,
+						func() error { _, err := plexams.ValidateDB(plx.NewConsoleReporter()); return err },
+						func() error {
+							_, err := plexams.ValidateConflicts(OnlyPlannedByMe, Ancode, plx.NewConsoleReporter())
+							return err
+						},
+						func() error { _, err := plexams.ValidateConstraints(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateRoomsPerSlot(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateRoomsNeedRequest(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateRoomsPerExam(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateRoomsTimeDistance(plx.NewConsoleReporter()); return err },
 					}...)
 
 				case "conflicts":
 					validations = append(validations,
-						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe, Ancode) },
+						func() error {
+							_, err := plexams.ValidateConflicts(OnlyPlannedByMe, Ancode, plx.NewConsoleReporter())
+							return err
+						},
 					)
 
 				case "constraints":
-					validations = append(validations, plexams.ValidateConstraints)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateConstraints(plx.NewConsoleReporter()); return err })
 
 				case "studentregs":
-					validations = append(validations, plexams.ValidateStudentRegs)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateStudentRegs(plx.NewConsoleReporter()); return err })
 
 				case "db":
-					validations = append(validations, plexams.ValidateDB)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateDB(plx.NewConsoleReporter()); return err })
 
 				case "preplanned-exahm-rooms":
-					validations = append(validations, plexams.ValidatePrePlannedExahmRooms)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidatePrePlannedExahmRooms(plx.NewConsoleReporter()); return err })
 
 				case "rooms":
 					validations = append(validations,
 						[]func() error{
-							plexams.ValidateRoomsPerSlot,
-							plexams.ValidateRoomsNeedRequest,
-							plexams.ValidateRoomsPerExam,
-							plexams.ValidateRoomsTimeDistance,
+							func() error { _, err := plexams.ValidateRoomsPerSlot(plx.NewConsoleReporter()); return err },
+							func() error { _, err := plexams.ValidateRoomsNeedRequest(plx.NewConsoleReporter()); return err },
+							func() error { _, err := plexams.ValidateRoomsPerExam(plx.NewConsoleReporter()); return err },
+							func() error { _, err := plexams.ValidateRoomsTimeDistance(plx.NewConsoleReporter()); return err },
 						}...)
 
 				case "zpa":
-					err := plexams.ValidateZPADateTimes()
+					_, err := plexams.ValidateZPADateTimes(plx.NewConsoleReporter())
 					if err != nil {
 						log.Fatal(err)
 					}
 					if Rooms || Invigilators {
-						err := plexams.ValidateZPARooms()
+						_, err := plexams.ValidateZPARooms(plx.NewConsoleReporter())
 						if err != nil {
 							log.Fatal(err)
 						}
 					}
 					if Invigilators {
-						err := plexams.ValidateZPAInvigilators()
+						_, err := plexams.ValidateZPAInvigilators(plx.NewConsoleReporter())
 						if err != nil {
 							log.Fatal(err)
 						}
@@ -92,17 +103,22 @@ var (
 
 				case "invigilator-reqs":
 					validations = append(validations,
-						plexams.ValidateInvigilatorRequirements,
-						plexams.ValidateInvigilationDups,
-						plexams.ValidateInvigilationsTimeDistance,
-						plexams.ValidateInvigilationConstraints,
+						func() error { _, err := plexams.ValidateInvigilatorRequirements(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateInvigilationDups(plx.NewConsoleReporter()); return err },
+						func() error {
+							_, err := plexams.ValidateInvigilationsTimeDistance(plx.NewConsoleReporter())
+							return err
+						},
+						func() error { _, err := plexams.ValidateInvigilationConstraints(plx.NewConsoleReporter()); return err },
 					)
 
 				case "invigilator-slots":
-					validations = append(validations, plexams.ValidateInvigilatorSlots)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateInvigilatorSlots(plx.NewConsoleReporter()); return err })
 
 				case "invigilator-constraints":
-					validations = append(validations, plexams.ValidateInvigilationConstraints)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateInvigilationConstraints(plx.NewConsoleReporter()); return err })
 
 				default:
 					fmt.Println("validate called with unknown sub command")

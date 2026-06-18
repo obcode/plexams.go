@@ -6,17 +6,15 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	set "github.com/deckarep/golang-set/v2"
-	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile string) ([]*model.ZPAStudentReg, []*model.RegWithError, error) {
+func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile string, reporter Reporter) ([]*model.ZPAStudentReg, []*model.RegWithError, error) {
+	reporter.Step("collecting student registrations")
 	if err := p.SetZPA(); err != nil {
 		return nil, nil, err
 	}
@@ -57,38 +55,22 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 	regsWithErrors := make([]*model.RegWithError, 0)
 	chunkSize := 77
 
-	zpaStudentRegsJson, err := json.MarshalIndent(zpaStudentRegs, "", " ")
-	if err != nil {
-		log.Error().Err(err).Msg("cannot marshal studentregs into json")
-	}
-	err = os.WriteFile(jsonOutputFile, zpaStudentRegsJson, 0644)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot write studentregs to file")
-	} else {
-		fmt.Printf(" saved copy to %s\n", jsonOutputFile)
-	}
-
-	cfg := yacspin.Config{
-		Frequency: 100 * time.Millisecond,
-		CharSet:   yacspin.CharSets[69],
-		Suffix: aurora.Sprintf(aurora.Cyan(" uploading %d student regs in chunks of %d to ZPA"),
-			len(zpaStudentRegs), chunkSize),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
+	// Writing a local JSON copy is optional: the CLI passes a filename, the
+	// GraphQL mutation passes "" to skip it.
+	if jsonOutputFile != "" {
+		zpaStudentRegsJson, err := json.MarshalIndent(zpaStudentRegs, "", " ")
+		if err != nil {
+			log.Error().Err(err).Msg("cannot marshal studentregs into json")
+		}
+		err = os.WriteFile(jsonOutputFile, zpaStudentRegsJson, 0644)
+		if err != nil {
+			log.Error().Err(err).Msg("cannot write studentregs to file")
+		} else {
+			fmt.Printf(" saved copy to %s\n", jsonOutputFile)
+		}
 	}
 
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+	reporter.Step(fmt.Sprintf("uploading %d student regs in chunks of %d to ZPA", len(zpaStudentRegs), chunkSize))
 
 	for from := 0; from <= len(zpaStudentRegs); from += chunkSize {
 		to := from + chunkSize
@@ -96,7 +78,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 			to = len(zpaStudentRegs)
 		}
 
-		spinner.Message(aurora.Sprintf(aurora.Yellow(" Uploading chunk of regs. %d-%d"), from, to-1))
+		reporter.Step(fmt.Sprintf("uploading chunk of regs %d-%d", from, to-1))
 
 		_, body, err := p.zpa.client.PostStudentRegsToZPA(zpaStudentRegs[from:to])
 		if err != nil {
@@ -128,12 +110,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 		return nil, nil, err
 	}
 
-	spinner.StopMessage(aurora.Sprintf(aurora.Green("uploaded %d regs, %d with errors"),
-		len(zpaStudentRegs), len(regsWithErrors)))
-	err = spinner.Stop()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
-	}
+	reporter.StopProgress(fmt.Sprintf("uploaded %d regs, %d with errors", len(zpaStudentRegs), len(regsWithErrors)))
 
 	return zpaStudentRegs, regsWithErrors, nil
 }
@@ -146,7 +123,15 @@ func noZPAStudRegError(zpaStudentRegError *model.ZPAStudentRegError) bool {
 		len(zpaStudentRegError.Program) == 0
 }
 
-func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, upload bool) ([]*model.ZPAExamPlan, error) {
+func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, upload bool, reporter Reporter) ([]*model.ZPAExamPlan, error) {
+	what := "exams"
+	if withInvigilators {
+		what = "exams with rooms and invigilators"
+	} else if withRooms {
+		what = "exams with rooms"
+	}
+	reporter.Step("building plan: " + what)
+
 	if err := p.SetZPA(); err != nil {
 		return nil, err
 	}
@@ -159,7 +144,7 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 
 	doNotPublish := viper.GetIntSlice("donotpublish")
 	for _, ancodeNotToPublish := range doNotPublish {
-		fmt.Printf("do not publish: %d\n", ancodeNotToPublish)
+		reporter.Printf("do not publish: %d", ancodeNotToPublish)
 	}
 
 	exams := make([]*model.ZPAExamPlan, 0)
@@ -361,21 +346,23 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 	}
 
 	for _, exam := range additionalExams {
-		fmt.Printf("additional exam: %d. %s. %s\n", exam.AnCode, exam.Date, exam.Time)
+		reporter.Printf("additional exam: %d. %s. %s", exam.AnCode, exam.Date, exam.Time)
 		exams = append(exams, exam)
 	}
 
 	if upload {
 		// post to ZPA
+		reporter.Step(fmt.Sprintf("posting %d exams to ZPA", len(exams)))
 		status, body, err := p.zpa.client.PostExams(exams)
 		if err != nil {
 			log.Error().Err(err).Msg("error while posting exams on zpa")
 		}
 
 		log.Info().Str("status", status).Msg("exams posted to zpa")
-		fmt.Println(string(body))
+		reporter.StopProgress(fmt.Sprintf("uploaded %d exams to ZPA (status %s)", len(exams), status))
+		reporter.Println(string(body))
 	} else {
-		log.Info().Msg("not uploaded to zpa")
+		reporter.StopProgress(fmt.Sprintf("dry run: %d exams prepared, nothing uploaded", len(exams)))
 	}
 
 	return exams, err

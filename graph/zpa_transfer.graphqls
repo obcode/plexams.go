@@ -1,0 +1,23 @@
+# ZPA up- and downloads as subscriptions: they stream their progress the same way
+# as the command line (and as generation/validation). Each refuses to run while a
+# validation is in progress, so an upload and the ZPA validation that checks it
+# stay cleanly separate. Every stream ends with a DONE line.
+extend type Subscription {
+  "Upload the planned exams to ZPA without rooms or invigilators (dryRun = build only, do not post)."
+  uploadExamsToZPA(dryRun: Boolean!): LogLine!
+  "Upload the planned exams to ZPA including planned rooms."
+  uploadExamsWithRoomsToZPA(dryRun: Boolean!): LogLine!
+  "Upload the planned exams to ZPA including planned rooms and invigilators."
+  uploadExamsWithInvigilatorsToZPA(dryRun: Boolean!): LogLine!
+  "Upload the student registrations to ZPA."
+  uploadStudentRegsToZPA: LogLine!
+
+  "Fetch teachers from ZPA and cache them."
+  importTeachersFromZPA: LogLine!
+  "Fetch exams from ZPA and cache them."
+  importExamsFromZPA: LogLine!
+  "Fetch invigilator requirements from ZPA and cache them."
+  importInvigilatorRequirementsFromZPA: LogLine!
+  "Fetch the ZPA infos of students with registrations and cache them."
+  importStudentsFromZPA: LogLine!
+}

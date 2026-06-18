@@ -47,6 +47,16 @@ func (r *streamReporter) Warnf(format string, a ...any) {
 	r.emit(model.LogLevelWarn, fmt.Sprintf(format, a...))
 }
 
+func (r *streamReporter) Step(msg string) {
+	r.send(&model.LogLine{Level: model.LogLevelProgress, Text: msg})
+}
+
+func (r *streamReporter) StopProgressFail(finalMsg string) {
+	if finalMsg != "" {
+		r.emit(model.LogLevelError, finalMsg)
+	}
+}
+
 func (r *streamReporter) Progress(p invigplan.Progress) {
 	balance := aurora.Red("balance ✗")
 	if p.Balance {

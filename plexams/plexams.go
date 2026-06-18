@@ -30,6 +30,7 @@ type Plexams struct {
 	allDays  []*model.ExamDay
 	allSlots []*model.Slot
 	roomInfo map[string]*model.Room
+	guard    *opGuard
 }
 
 type ZPA struct {
@@ -96,6 +97,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 			username: viper.GetString("smtp.username"),
 			password: viper.GetString("smtp.password"),
 		},
+		guard: &opGuard{},
 	}
 
 	plexams.setSemesterConfig()

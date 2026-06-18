@@ -19,11 +19,15 @@ type Reporter interface {
 	// Printf / Println emit a normal output line (may contain ANSI color codes).
 	Printf(format string, a ...any)
 	Println(a ...any)
-	// Progress emits a throttled optimizer snapshot. Consumers should render it
-	// in-place (spinner style) instead of appending a new line each time.
+	// Step emits a transient status message. Consumers should render it in-place
+	// (spinner style) instead of appending a new line each time.
+	Step(msg string)
+	// Progress emits a throttled optimizer snapshot, rendered in-place like Step.
 	Progress(p invigplan.Progress)
-	// StopProgress ends the current progress display with a final message.
+	// StopProgress ends the current progress display with a success message.
 	StopProgress(finalMsg string)
+	// StopProgressFail ends the current progress display with a failure message.
+	StopProgressFail(finalMsg string)
 	// Warnf emits a warning line.
 	Warnf(format string, a ...any)
 }
@@ -47,18 +51,31 @@ func (r *ConsoleReporter) Warnf(format string, a ...any) {
 	fmt.Println(aurora.Sprintf(aurora.Yellow(format), a...))
 }
 
-func (r *ConsoleReporter) Progress(p invigplan.Progress) {
-	if r.spinner == nil {
-		r.spinner, _ = yacspin.New(yacspin.Config{
-			Frequency:       100 * time.Millisecond,
-			CharSet:         yacspin.CharSets[69],
-			Suffix:          aurora.Sprintf(aurora.Cyan(" optimizing")),
-			SuffixAutoColon: true,
-			StopCharacter:   "✓",
-			StopColors:      []string{"fgGreen"},
-		})
-		_ = r.spinner.Start()
+// ensureSpinner lazily creates and starts a generic spinner used for both Step
+// and Progress messages.
+func (r *ConsoleReporter) ensureSpinner() {
+	if r.spinner != nil {
+		return
 	}
+	r.spinner, _ = yacspin.New(yacspin.Config{
+		Frequency:         100 * time.Millisecond,
+		CharSet:           yacspin.CharSets[69],
+		SuffixAutoColon:   true,
+		StopCharacter:     "✓",
+		StopColors:        []string{"fgGreen"},
+		StopFailCharacter: "✗",
+		StopFailColors:    []string{"fgRed"},
+	})
+	_ = r.spinner.Start()
+}
+
+func (r *ConsoleReporter) Step(msg string) {
+	r.ensureSpinner()
+	r.spinner.Message(msg)
+}
+
+func (r *ConsoleReporter) Progress(p invigplan.Progress) {
+	r.ensureSpinner()
 	balance := aurora.Red("balance ✗")
 	if p.Balance {
 		balance = aurora.Green("balance ✓")
@@ -78,5 +95,19 @@ func (r *ConsoleReporter) StopProgress(finalMsg string) {
 		r.spinner.StopMessage(finalMsg)
 	}
 	_ = r.spinner.Stop()
+	r.spinner = nil
+}
+
+func (r *ConsoleReporter) StopProgressFail(finalMsg string) {
+	if r.spinner == nil {
+		if finalMsg != "" {
+			fmt.Println(finalMsg)
+		}
+		return
+	}
+	if finalMsg != "" {
+		r.spinner.StopFailMessage(finalMsg)
+	}
+	_ = r.spinner.StopFail()
 	r.spinner = nil
 }

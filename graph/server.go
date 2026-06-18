@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
@@ -19,6 +20,7 @@ import (
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // allowedOrigins are the local dev frontends permitted for CORS and websocket
@@ -46,6 +48,16 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		},
 	})
 	srv.Use(extension.Introspection{})
+
+	// Block write mutations while any validation subscription is running, so the
+	// GUI cannot mutate the plan underneath a running check.
+	srv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+		oc := graphql.GetOperationContext(ctx)
+		if oc.Operation != nil && oc.Operation.Operation == ast.Mutation && !plexams.WritesAllowed() {
+			return graphql.OneShot(graphql.ErrorResponse(ctx, "writes are blocked while a validation is running"))
+		}
+		return next(ctx)
+	})
 
 	// srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: plexamsResolver}))
 

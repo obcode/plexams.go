@@ -2,46 +2,21 @@ package plexams
 
 import (
 	"context"
-	"fmt"
-	"time"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) ValidatePrePlannedExahmRooms() error {
+func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" validating pre-planned exahm rooms (booked and enough seats)")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
-
-	validationMessages := make([]string, 0)
+	v := newValidation(reporter, "preplanned-exahm-rooms", "validating pre-planned exahm rooms (booked and enough seats)")
 
 	exams := make([]*model.GeneratedExam, 0)
 	generatedExams, err := p.dbClient.GetGeneratedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).
 			Msg("cannot get generated exams")
-		return err
+		return nil, err
 	}
 
 	for _, exam := range generatedExams {
@@ -71,13 +46,15 @@ func (p *Plexams) ValidatePrePlannedExahmRooms() error {
 		for _, prePlannedRoom := range prePlannedRooms {
 			room := roomsMap[prePlannedRoom.RoomName]
 			if exam.Constraints.RoomConstraints.Seb && !room.Seb {
-				validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Room %s for %d. %s (%s) is not SEB-Room"),
-					aurora.Magenta(room.Name), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer)))
+				v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.Name)},
+					"Room %s for %d. %s (%s) is not SEB-Room",
+					room.Name, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer)
 			}
 
 			if exam.Constraints.RoomConstraints.Exahm && !room.Exahm {
-				validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Room %s for %d. %s (%s) is not EXaHM-Room"),
-					aurora.Magenta(room.Name), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer)))
+				v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.Name)},
+					"Room %s for %d. %s (%s) is not EXaHM-Room",
+					room.Name, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer)
 			}
 		}
 
@@ -89,8 +66,9 @@ func (p *Plexams) ValidatePrePlannedExahmRooms() error {
 				Msg("cannot get plan entry for exam")
 		}
 		if planEntry == nil {
-			validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Exam %d. %s (%s) has no plan entry yet"),
-				aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer)))
+			v.errorf(ref{Ancode: ptr(exam.Ancode)},
+				"Exam %d. %s (%s) has no plan entry yet",
+				exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer)
 		} else {
 			roomsForSlot, err := p.RoomsForSlot(ctx, planEntry.DayNumber, planEntry.SlotNumber)
 			if err != nil {
@@ -108,9 +86,10 @@ func (p *Plexams) ValidatePrePlannedExahmRooms() error {
 					}
 				}
 				if !found {
-					validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Room %s for Exam %d. %s (%s) in slot (%d/%d) is not allowed"),
-						aurora.Magenta(prePlannedRoom.RoomName), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-						aurora.Blue(planEntry.DayNumber), aurora.Blue(planEntry.SlotNumber)))
+					v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(prePlannedRoom.RoomName), Day: ptr(planEntry.DayNumber), Slot: ptr(planEntry.SlotNumber)},
+						"Room %s for Exam %d. %s (%s) in slot (%d/%d) is not allowed",
+						prePlannedRoom.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+						planEntry.DayNumber, planEntry.SlotNumber)
 				}
 			}
 		}
@@ -122,28 +101,11 @@ func (p *Plexams) ValidatePrePlannedExahmRooms() error {
 			seats += room.Seats
 		}
 		if seats < exam.StudentRegsCount {
-			validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Not enough seats for Exam %d. %s (%s): %d seats planned, but %d students"),
-				aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-				aurora.Cyan(seats), aurora.Cyan(exam.StudentRegsCount)))
+			v.errorf(ref{Ancode: ptr(exam.Ancode)},
+				"Not enough seats for Exam %d. %s (%s): %d seats planned, but %d students",
+				exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, seats, exam.StudentRegsCount)
 		}
 	}
 
-	if len(validationMessages) > 0 {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"), len(validationMessages)))
-		err = spinner.StopFail()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-		for _, msg := range validationMessages {
-			fmt.Printf("    ↪ %s\n", msg)
-		}
-
-	} else {
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-	}
-
-	return nil
+	return v.finish(), nil
 }

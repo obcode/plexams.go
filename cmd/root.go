@@ -163,6 +163,7 @@ func initPlexamsConfig() *plexams.Plexams {
 		viper.GetString("zpa.baseurl"),
 		viper.GetString("zpa.username"),
 		viper.GetString("zpa.password"),
+		viper.GetString("zpa.token"),
 		viper.GetStringSlice("zpa.fk07programs"),
 		viper.GetStringSlice("zpa.oldprograms"),
 	)

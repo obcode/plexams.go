@@ -38,6 +38,7 @@ type ZPA struct {
 	baseurl      string
 	username     string
 	password     string
+	token        string
 	fk07programs []string
 	oldprograms  []string
 }
@@ -54,7 +55,7 @@ type Email struct {
 	password string
 }
 
-func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk07programs, oldprograms []string) (*Plexams, error) {
+func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken string, fk07programs, oldprograms []string) (*Plexams, error) {
 
 	var client *db.DB
 	var err error
@@ -84,6 +85,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 			baseurl:      zpaBaseurl,
 			username:     zpaUsername,
 			password:     zpaPassword,
+			token:        zpaToken,
 			fk07programs: fk07programs,
 			oldprograms:  oldprograms,
 		},
@@ -113,7 +115,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword string, fk
 
 func (p *Plexams) SetZPA() error {
 	if p.zpa.client == nil {
-		zpaClient, err := zpa.NewZPA(p.zpa.baseurl, p.zpa.username, p.zpa.password, p.semester)
+		zpaClient, err := zpa.NewZPA(p.zpa.baseurl, p.zpa.username, p.zpa.password, p.zpa.token, p.semester)
 		if err != nil {
 			return err
 		}

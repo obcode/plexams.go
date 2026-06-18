@@ -20,6 +20,7 @@ func main() {
 		viper.GetString("zpa.baseurl"),
 		viper.GetString("zpa.username"),
 		viper.GetString("zpa.password"),
+		viper.GetString("zpa.token"),
 		viper.GetString("semester"),
 	)
 	if err != nil {

@@ -50,7 +50,9 @@
       "Bash(bash /tmp/count_graphql.sh)",
       "Read(//workspace/cmd/**)",
       "Bash(xargs -I {} basename {} .go)",
-      "Bash(gofmt -w plexams/invigplan/invigplan_test.go)"
+      "Bash(gofmt -w plexams/invigplan/invigplan_test.go)",
+      "Bash(cd /workspace/plexams.go; echo \"=== gqlgen.yml ===\"; cat gqlgen.yml; echo; echo \"=== GenerateInvigilations signature + head ===\"; grep -n \"func \\(p \\\\*Plexams\\) GenerateInvigilations\" plexams/invigilation_generate.go; echo \"=== plexams.gui repo vorhanden? ===\"; ls /home/ubuntu/semester 2>/dev/null | head; ls ../plexams.gui 2>/dev/null | head; find / -maxdepth 4 -name \"*.svelte\" 2>/dev/null | head)",
+      "Read(//workspace/**)"
     ],
     "additionalDirectories": [
       "/home/ubuntu/semester"

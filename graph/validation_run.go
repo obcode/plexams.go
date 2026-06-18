@@ -15,6 +15,7 @@ import (
 // so it finishes cleanly even if the client disconnects.
 func (r *subscriptionResolver) runValidation(
 	ctx context.Context,
+	name string,
 	fn func(reporter plexams.Reporter) (*model.ValidationReport, error),
 ) <-chan *model.LogLine {
 	ch := make(chan *model.LogLine, 256)
@@ -28,6 +29,20 @@ func (r *subscriptionResolver) runValidation(
 		if err != nil {
 			log.Error().Err(err).Msg("validation failed")
 			reporter.emit(model.LogLevelError, "error: "+err.Error())
+			// A validator that aborts with an error produces no report. Synthesize
+			// a failing one so the GUI shows the validation as red instead of
+			// defaulting to "passed".
+			if report == nil {
+				report = &model.ValidationReport{
+					Name:       name,
+					Ok:         false,
+					ErrorCount: 1,
+					Findings: []*model.ValidationFinding{{
+						Level:   model.ValidationLevelError,
+						Message: err.Error(),
+					}},
+				}
+			}
 		}
 		if report != nil {
 			reporter.send(&model.LogLine{Level: model.LogLevelResult, Text: "report", Validation: report})

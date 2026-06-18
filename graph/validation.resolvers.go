@@ -12,45 +12,45 @@ import (
 
 // ValidateInvigilatorRequirements is the resolver for the validateInvigilatorRequirements field.
 func (r *subscriptionResolver) ValidateInvigilatorRequirements(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, r.plexams.ValidateInvigilatorRequirements), nil
+	return r.runValidation(ctx, "invigilator-requirements", r.plexams.ValidateInvigilatorRequirements), nil
 }
 
 // ValidateInvigilationDuplicates is the resolver for the validateInvigilationDuplicates field.
 func (r *subscriptionResolver) ValidateInvigilationDuplicates(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, r.plexams.ValidateInvigilationDups), nil
+	return r.runValidation(ctx, "invigilation-duplicates", r.plexams.ValidateInvigilationDups), nil
 }
 
 // ValidateInvigilatorSlots is the resolver for the validateInvigilatorSlots field.
 func (r *subscriptionResolver) ValidateInvigilatorSlots(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, r.plexams.ValidateInvigilatorSlots), nil
+	return r.runValidation(ctx, "invigilator-slots", r.plexams.ValidateInvigilatorSlots), nil
 }
 
 // ValidateInvigilationsTimeDistance is the resolver for the validateInvigilationsTimeDistance field.
 func (r *subscriptionResolver) ValidateInvigilationsTimeDistance(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, r.plexams.ValidateInvigilationsTimeDistance), nil
+	return r.runValidation(ctx, "invigilations-time-distance", r.plexams.ValidateInvigilationsTimeDistance), nil
 }
 
 // ValidateInvigilationConstraints is the resolver for the validateInvigilationConstraints field.
 func (r *subscriptionResolver) ValidateInvigilationConstraints(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, r.plexams.ValidateInvigilationConstraints), nil
+	return r.runValidation(ctx, "invigilation-constraints", r.plexams.ValidateInvigilationConstraints), nil
 }
 
 // ValidateRoomsPerSlot is the resolver for the validateRoomsPerSlot field.
 func (r *subscriptionResolver) ValidateRoomsPerSlot(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, r.plexams.ValidateRoomsPerSlot), nil
+	return r.runValidation(ctx, "rooms-per-slot", r.plexams.ValidateRoomsPerSlot), nil
 }
 
 // ValidateRoomsNeedRequest is the resolver for the validateRoomsNeedRequest field.
 func (r *subscriptionResolver) ValidateRoomsNeedRequest(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, r.plexams.ValidateRoomsNeedRequest), nil
+	return r.runValidation(ctx, "rooms-need-request", r.plexams.ValidateRoomsNeedRequest), nil
 }
 
 // ValidateRoomsPerExam is the resolver for the validateRoomsPerExam field.
 func (r *subscriptionResolver) ValidateRoomsPerExam(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, r.plexams.ValidateRoomsPerExam), nil
+	return r.runValidation(ctx, "rooms-per-exam", r.plexams.ValidateRoomsPerExam), nil
 }
 
 // ValidateRoomsTimeDistance is the resolver for the validateRoomsTimeDistance field.
 func (r *subscriptionResolver) ValidateRoomsTimeDistance(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, r.plexams.ValidateRoomsTimeDistance), nil
+	return r.runValidation(ctx, "rooms-time-distance", r.plexams.ValidateRoomsTimeDistance), nil
 }

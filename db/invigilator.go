@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/zpa"
@@ -79,6 +78,13 @@ func (db *DB) getInvigilatorForRoom(ctx context.Context, collectionName, name st
 func (db *DB) CacheInvigilatorTodos(ctx context.Context, todos *model.InvigilationTodos) error {
 	collection := db.Client.Database(db.databaseName).Collection(collectionInvigilatorTodos)
 
+	// Serialize the drop+insert: GetInvigilationTodos re-caches on every read, so
+	// parallel validation subscriptions call this concurrently. Without the lock
+	// their drops and inserts can interleave (A drop, B drop, A insert, B insert)
+	// and leave two documents behind, which then breaks every reader.
+	db.todosMu.Lock()
+	defer db.todosMu.Unlock()
+
 	err := collection.Drop(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot drop invigilator todos collection")
@@ -114,9 +120,10 @@ func (db *DB) GetInvigilationTodos(ctx context.Context) (*model.InvigilationTodo
 		return nil, nil
 	}
 	if len(todos) > 1 {
-		err := fmt.Errorf("found more than one todo")
-		log.Error().Err(err).Msg("cannot decode invigilator todos")
-		return nil, err
+		// Stale duplicates from an earlier interleaved cache write. Tolerate them
+		// and return the first; the caller re-caches (drop+insert) and thereby
+		// heals the collection back to a single document.
+		log.Warn().Int("count", len(todos)).Msg("found more than one invigilator todos document, using the first and healing on next cache")
 	}
 
 	return todos[0], nil

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,6 +15,10 @@ type DB struct {
 	Client       *mongo.Client
 	semester     string
 	databaseName string
+	// todosMu serializes the drop+insert in CacheInvigilatorTodos so concurrent
+	// callers (e.g. parallel validation subscriptions) cannot interleave their
+	// drops and inserts and leave more than one todos document behind.
+	todosMu sync.Mutex
 }
 
 func NewDB(uri, semester string, dbName *string) (*DB, error) {

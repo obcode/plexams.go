@@ -48,6 +48,10 @@ func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts i
 		return report, nil
 	}
 
+	if !p.WritesAllowed() {
+		return report, fmt.Errorf("writes are blocked while a validation is running")
+	}
+
 	if result.Unfilled > 0 {
 		reporter.Warnf("writing plan with open positions: %d open", result.Unfilled)
 		log.Warn().Int("open", result.Unfilled).Msg("writing plan with open positions")

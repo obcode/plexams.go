@@ -1,0 +1,48 @@
+"""ValidationLevel classifies a single validation finding."""
+enum ValidationLevel {
+  INFO
+  WARNING
+  ERROR
+}
+
+"""
+ValidationFinding is one problem (or note) found by a validator. message is clean
+text (no ANSI); the optional reference fields let the GUI link a finding to the
+affected exam / room / slot / invigilator / student and render it as a row.
+"""
+type ValidationFinding {
+  level: ValidationLevel!
+  message: String!
+  ancode: Int
+  relatedAncodes: [Int!]
+  room: String
+  day: Int
+  slot: Int
+  invigilatorID: Int
+  studentMtknr: String
+}
+
+"""
+ValidationReport is the structured outcome of one validator. It is delivered on
+the final RESULT line of the validator's subscription (in LogLine.validation),
+while the human-readable lines stream before it.
+"""
+type ValidationReport {
+  name: String!
+  ok: Boolean!
+  errorCount: Int!
+  warningCount: Int!
+  findings: [ValidationFinding!]!
+}
+
+# Each validator is its own subscription so the GUI can start them individually
+# (and in parallel). While any validation runs, write mutations are rejected. Every
+# subscription streams human-readable LogLines and ends with a RESULT line carrying
+# the structured ValidationReport, then a DONE line.
+extend type Subscription {
+  validateInvigilatorRequirements: LogLine!
+  validateInvigilationDuplicates: LogLine!
+  validateInvigilatorSlots: LogLine!
+  validateInvigilationsTimeDistance: LogLine!
+  validateInvigilationConstraints: LogLine!
+}

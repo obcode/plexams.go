@@ -35,6 +35,7 @@ type LogLine {
   text: String!
   progress: OptimizerProgress
   report: InvigilationReport
+  validation: ValidationReport
 }
 
 """

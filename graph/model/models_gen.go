@@ -258,10 +258,11 @@ type InvigilatorsForDay struct {
 // is only set when level is PROGRESS; report is only set on the final RESULT line
 // of an invigilation generation and carries the structured outcome.
 type LogLine struct {
-	Level    LogLevel            `json:"level"`
-	Text     string              `json:"text"`
-	Progress *OptimizerProgress  `json:"progress,omitempty"`
-	Report   *InvigilationReport `json:"report,omitempty"`
+	Level      LogLevel            `json:"level"`
+	Text       string              `json:"text"`
+	Progress   *OptimizerProgress  `json:"progress,omitempty"`
+	Report     *InvigilationReport `json:"report,omitempty"`
+	Validation *ValidationReport   `json:"validation,omitempty"`
 }
 
 // MinutesReport: distribution of assigned vs. target minutes around the tolerance band.
@@ -490,6 +491,32 @@ type StudentRegsPerStudent struct {
 type Subscription struct {
 }
 
+// ValidationFinding is one problem (or note) found by a validator. message is clean
+// text (no ANSI); the optional reference fields let the GUI link a finding to the
+// affected exam / room / slot / invigilator / student and render it as a row.
+type ValidationFinding struct {
+	Level          ValidationLevel `json:"level"`
+	Message        string          `json:"message"`
+	Ancode         *int            `json:"ancode,omitempty"`
+	RelatedAncodes []int           `json:"relatedAncodes,omitempty"`
+	Room           *string         `json:"room,omitempty"`
+	Day            *int            `json:"day,omitempty"`
+	Slot           *int            `json:"slot,omitempty"`
+	InvigilatorID  *int            `json:"invigilatorID,omitempty"`
+	StudentMtknr   *string         `json:"studentMtknr,omitempty"`
+}
+
+// ValidationReport is the structured outcome of one validator. It is delivered on
+// the final RESULT line of the validator's subscription (in LogLine.validation),
+// while the human-readable lines stream before it.
+type ValidationReport struct {
+	Name         string               `json:"name"`
+	Ok           bool                 `json:"ok"`
+	ErrorCount   int                  `json:"errorCount"`
+	WarningCount int                  `json:"warningCount"`
+	Findings     []*ValidationFinding `json:"findings"`
+}
+
 type ZPAConflict struct {
 	Ancode         int                  `json:"ancode"`
 	NumberOfStuds  int                  `json:"numberOfStuds"`
@@ -573,6 +600,64 @@ func (e *LogLevel) UnmarshalJSON(b []byte) error {
 }
 
 func (e LogLevel) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// ValidationLevel classifies a single validation finding.
+type ValidationLevel string
+
+const (
+	ValidationLevelInfo    ValidationLevel = "INFO"
+	ValidationLevelWarning ValidationLevel = "WARNING"
+	ValidationLevelError   ValidationLevel = "ERROR"
+)
+
+var AllValidationLevel = []ValidationLevel{
+	ValidationLevelInfo,
+	ValidationLevelWarning,
+	ValidationLevelError,
+}
+
+func (e ValidationLevel) IsValid() bool {
+	switch e {
+	case ValidationLevelInfo, ValidationLevelWarning, ValidationLevelError:
+		return true
+	}
+	return false
+}
+
+func (e ValidationLevel) String() string {
+	return string(e)
+}
+
+func (e *ValidationLevel) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ValidationLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ValidationLevel", str)
+	}
+	return nil
+}
+
+func (e ValidationLevel) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ValidationLevel) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ValidationLevel) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

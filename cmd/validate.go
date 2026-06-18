@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"time"
 
+	plx "github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
 )
 
@@ -92,17 +93,22 @@ var (
 
 				case "invigilator-reqs":
 					validations = append(validations,
-						plexams.ValidateInvigilatorRequirements,
-						plexams.ValidateInvigilationDups,
-						plexams.ValidateInvigilationsTimeDistance,
-						plexams.ValidateInvigilationConstraints,
+						func() error { _, err := plexams.ValidateInvigilatorRequirements(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateInvigilationDups(plx.NewConsoleReporter()); return err },
+						func() error {
+							_, err := plexams.ValidateInvigilationsTimeDistance(plx.NewConsoleReporter())
+							return err
+						},
+						func() error { _, err := plexams.ValidateInvigilationConstraints(plx.NewConsoleReporter()); return err },
 					)
 
 				case "invigilator-slots":
-					validations = append(validations, plexams.ValidateInvigilatorSlots)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateInvigilatorSlots(plx.NewConsoleReporter()); return err })
 
 				case "invigilator-constraints":
-					validations = append(validations, plexams.ValidateInvigilationConstraints)
+					validations = append(validations,
+						func() error { _, err := plexams.ValidateInvigilationConstraints(plx.NewConsoleReporter()); return err })
 
 				default:
 					fmt.Println("validate called with unknown sub command")

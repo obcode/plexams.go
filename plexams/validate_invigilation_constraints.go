@@ -4,35 +4,17 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"time"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/invigplan"
-	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
 )
 
 // ValidateInvigilationConstraints checks the persisted invigilation plan
 // (invigilations_self + invigilations_other) against the shared invigplan
 // constraints – the exact same hard and soft rules the automatic generator
 // uses. It runs in addition to the hand-written invigilator validations.
-func (p *Plexams) ValidateInvigilationConstraints() error {
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" validating invigilation constraints (shared rules)")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	_ = spinner.Start()
+func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.ValidationReport, error) {
+	v := newValidation(reporter, "invigilation-constraints", "validating invigilation constraints (shared rules)")
 
 	ctx := context.Background()
 
@@ -40,9 +22,8 @@ func (p *Plexams) ValidateInvigilationConstraints() error {
 	// invigilator never miss.
 	problem, err := p.buildInvigilationProblem(ctx, true)
 	if err != nil {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("cannot build problem: %v"), err))
-		_ = spinner.StopFail()
-		return err
+		reporter.StopProgressFail(fmt.Sprintf("cannot build problem: %v", err))
+		return nil, err
 	}
 
 	// Build the plan from what is actually persisted, not from the fixed seeds.
@@ -56,12 +37,10 @@ func (p *Plexams) ValidateInvigilationConstraints() error {
 
 	invigilations, err := p.dbClient.GetAllInvigilations(ctx)
 	if err != nil {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("cannot get invigilations: %v"), err))
-		_ = spinner.StopFail()
-		return err
+		reporter.StopProgressFail(fmt.Sprintf("cannot get invigilations: %v", err))
+		return nil, err
 	}
 
-	orphans := make([]string, 0)
 	for _, inv := range invigilations {
 		isReserve := inv.RoomName == nil
 		room := ""
@@ -75,8 +54,9 @@ func (p *Plexams) ValidateInvigilationConstraints() error {
 			if isReserve {
 				where = "reserve"
 			}
-			orphans = append(orphans, aurora.Sprintf(aurora.Yellow("invigilation for %s in slot (%d,%d) has no matching position (room/slot not planned)"),
-				aurora.Magenta(where), aurora.Cyan(inv.Slot.DayNumber), aurora.Cyan(inv.Slot.SlotNumber)))
+			v.warnf(ref{Room: inv.RoomName, Day: ptr(inv.Slot.DayNumber), Slot: ptr(inv.Slot.SlotNumber), InvigilatorID: ptr(inv.InvigilatorID)},
+				"invigilation for %s in slot (%d,%d) has no matching position (room/slot not planned)",
+				where, inv.Slot.DayNumber, inv.Slot.SlotNumber)
 			continue
 		}
 		plan.Set(idx, inv.InvigilatorID)
@@ -86,11 +66,9 @@ func (p *Plexams) ValidateInvigilationConstraints() error {
 	// persisted plan (a later manual change could have overridden it).
 	prePlanned, err := p.PrePlannedInvigilations(ctx)
 	if err != nil {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("cannot get pre-planned invigilations: %v"), err))
-		_ = spinner.StopFail()
-		return err
+		reporter.StopProgressFail(fmt.Sprintf("cannot get pre-planned invigilations: %v", err))
+		return nil, err
 	}
-	prePlanIssues := make([]string, 0)
 	for _, pp := range prePlanned {
 		room := "reserve"
 		if pp.RoomName != nil {
@@ -98,17 +76,20 @@ func (p *Plexams) ValidateInvigilationConstraints() error {
 		}
 		idx, ok := index[positionKey(pp.Day, pp.Slot, pp.RoomName == nil, room)]
 		if !ok {
-			prePlanIssues = append(prePlanIssues, aurora.Sprintf(aurora.Red("pre-planned %s in slot (%d,%d) has no matching position (room/slot not planned)"),
-				aurora.Magenta(room), aurora.Cyan(pp.Day), aurora.Cyan(pp.Slot)))
+			v.errorf(ref{Room: pp.RoomName, Day: ptr(pp.Day), Slot: ptr(pp.Slot), InvigilatorID: ptr(pp.InvigilatorID)},
+				"pre-planned %s in slot (%d,%d) has no matching position (room/slot not planned)",
+				room, pp.Day, pp.Slot)
 			continue
 		}
 		switch assigned := plan.Assign[idx]; {
 		case assigned == invigplan.Unassigned:
-			prePlanIssues = append(prePlanIssues, aurora.Sprintf(aurora.Red("pre-planned invigilator %d for %s in slot (%d,%d) is missing in the plan"),
-				aurora.Magenta(pp.InvigilatorID), aurora.Magenta(room), aurora.Cyan(pp.Day), aurora.Cyan(pp.Slot)))
+			v.errorf(ref{Room: pp.RoomName, Day: ptr(pp.Day), Slot: ptr(pp.Slot), InvigilatorID: ptr(pp.InvigilatorID)},
+				"pre-planned invigilator %d for %s in slot (%d,%d) is missing in the plan",
+				pp.InvigilatorID, room, pp.Day, pp.Slot)
 		case assigned != pp.InvigilatorID:
-			prePlanIssues = append(prePlanIssues, aurora.Sprintf(aurora.Red("pre-planned invigilator %d for %s in slot (%d,%d) was overridden by %d"),
-				aurora.Magenta(pp.InvigilatorID), aurora.Magenta(room), aurora.Cyan(pp.Day), aurora.Cyan(pp.Slot), aurora.Magenta(assigned)))
+			v.errorf(ref{Room: pp.RoomName, Day: ptr(pp.Day), Slot: ptr(pp.Slot), InvigilatorID: ptr(pp.InvigilatorID)},
+				"pre-planned invigilator %d for %s in slot (%d,%d) was overridden by %d",
+				pp.InvigilatorID, room, pp.Day, pp.Slot, assigned)
 		}
 	}
 
@@ -116,55 +97,30 @@ func (p *Plexams) ValidateInvigilationConstraints() error {
 	hard := reg.HardViolations(problem, plan)
 	_, costByConstraint, soft := reg.Cost(problem, plan)
 
-	spinner.Stop() //nolint:errcheck
-
-	// Report: pre-planned adherence and hard violations first (must hold), then
-	// soft ones (should hold).
-	if len(prePlanIssues) == 0 {
-		fmt.Println(aurora.Sprintf(aurora.Green("  ✓ all pre-planned invigilations honored")))
-	} else {
-		fmt.Println(aurora.Sprintf(aurora.Red("  ✗ %d pre-planned invigilation(s) not honored:"), len(prePlanIssues)))
-		for _, msg := range prePlanIssues {
-			fmt.Printf("    %s %s\n", aurora.Red("✗"), msg)
-		}
+	for _, viol := range hard {
+		v.errorf(ref{}, "[%s] %s", viol.Constraint, viol.Message)
+	}
+	for _, viol := range soft {
+		v.warnf(ref{}, "[%s] %s", viol.Constraint, viol.Message)
 	}
 
-	if len(hard) == 0 {
-		fmt.Println(aurora.Sprintf(aurora.Green("  ✓ no hard-constraint violations")))
-	} else {
-		fmt.Println(aurora.Sprintf(aurora.Red("  ✗ %d hard-constraint violation(s):"), len(hard)))
-		for _, v := range hard {
-			fmt.Printf("    %s %s\n", aurora.Red("✗"), aurora.Sprintf(aurora.Red("[%s] %s"), v.Constraint, v.Message))
-		}
-	}
+	report := v.finish()
 
-	for _, msg := range orphans {
-		fmt.Printf("    %s %s\n", aurora.Yellow("!"), msg)
-	}
-
-	if len(soft) == 0 {
-		fmt.Println(aurora.Sprintf(aurora.Green("  ✓ no soft-constraint violations")))
-	} else {
-		fmt.Println(aurora.Sprintf(aurora.Yellow("  %d soft-constraint note(s):"), len(soft)))
-		for _, v := range soft {
-			fmt.Printf("    %s %s\n", aurora.Yellow("·"), aurora.Sprintf(aurora.Yellow("[%s] %s"), v.Constraint, v.Message))
-		}
-	}
-
-	// Cost breakdown (internal score, lower is better).
+	// Stream the soft-constraint cost breakdown as informational text (internal
+	// score, lower is better); it is not part of the structured findings.
 	names := make([]string, 0, len(costByConstraint))
 	for name := range costByConstraint {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	fmt.Println(aurora.Gray(12, "  soft-constraint cost (weighted penalty, not minutes):").String())
+	reporter.Println("soft-constraint cost (weighted penalty, not minutes):")
 	for _, name := range names {
 		if cost := costByConstraint[name]; cost > 0 {
-			fmt.Printf("    %s\n", aurora.Gray(12, fmt.Sprintf("%-22s %8.0f", name, cost)))
+			reporter.Printf("    %-22s %8.0f\n", name, cost)
 		}
 	}
 
-	return nil
+	return report, nil
 }
 
 // positionKey is the lookup key matching a persisted invigilation to a problem

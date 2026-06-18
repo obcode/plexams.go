@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
 )
 
@@ -161,9 +162,9 @@ The result is written to invigilations_other, replacing its previous content
 assignment across runs, move it to the pre-planning (invigilation -p ...).`,
 		Args: cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			plexams := initPlexamsConfig()
-			opts := plexams.OptimizerOptionsFromConfig(generateSeed, generateIterations)
-			if err := plexams.GenerateInvigilations(context.Background(), generateDryRun, opts); err != nil {
+			plxms := initPlexamsConfig()
+			opts := plxms.OptimizerOptionsFromConfig(generateSeed, generateIterations)
+			if _, err := plxms.GenerateInvigilations(context.Background(), generateDryRun, opts, plexams.NewConsoleReporter()); err != nil {
 				log.Fatalf("got error: %v\n", err)
 			}
 		},

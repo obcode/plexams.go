@@ -3,11 +3,27 @@
 package model
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
 	"time"
 )
 
 type AnCode struct {
 	Ancode int `json:"ancode"`
+}
+
+// BalanceReport: are all invigilators within ±tolerance of their target minutes.
+type BalanceReport struct {
+	Satisfied       bool `json:"satisfied"`
+	Invigilators    int  `json:"invigilators"`
+	ToleranceMin    int  `json:"toleranceMin"`
+	WithinTolerance int  `json:"withinTolerance"`
+	Over            int  `json:"over"`
+	Under           int  `json:"under"`
+	MaxOver         int  `json:"maxOver"`
+	MaxUnder        int  `json:"maxUnder"`
 }
 
 type ConflictPerProgram struct {
@@ -56,6 +72,17 @@ type ConstraintsInput struct {
 	KdpJiraURL       *string      `json:"kdpJiraURL,omitempty"`
 	MaxStudents      *int         `json:"maxStudents,omitempty"`
 	Comments         *string      `json:"comments,omitempty"`
+}
+
+// CoverageReport: how many positions are filled.
+type CoverageReport struct {
+	Positions int `json:"positions"`
+	Unfilled  int `json:"unfilled"`
+}
+
+type DistributionBucket struct {
+	Count        int `json:"count"`
+	Invigilators int `json:"invigilators"`
 }
 
 type Emails struct {
@@ -114,6 +141,15 @@ type FK07Program struct {
 	Name string `json:"name"`
 }
 
+// FairnessDistribution: per-invigilator count histogram for one kind (reserve/nta).
+// buckets reads as "count:invigilators", e.g. count 1 / invigilators 48.
+type FairnessDistribution struct {
+	Kind    string                `json:"kind"`
+	Total   int                   `json:"total"`
+	Max     int                   `json:"max"`
+	Buckets []*DistributionBucket `json:"buckets"`
+}
+
 type Invigilation struct {
 	RoomName           *string `json:"roomName,omitempty"`
 	Duration           int     `json:"duration"`
@@ -122,6 +158,23 @@ type Invigilation struct {
 	IsReserve          bool    `json:"isReserve"`
 	IsSelfInvigilation bool    `json:"isSelfInvigilation"`
 	PrePlanned         bool    `json:"prePlanned"`
+}
+
+// InvigilationReport is the structured outcome of an invigilation generation run,
+// mirroring the textual report. It is delivered once on the final RESULT line of
+// the generateInvigilations subscription (also for dryRun, where nothing is
+// written to the database).
+type InvigilationReport struct {
+	Seed          int                     `json:"seed"`
+	Iterations    int                     `json:"iterations"`
+	IterationsRun int                     `json:"iterationsRun"`
+	StoppedEarly  bool                    `json:"stoppedEarly"`
+	Balance       *BalanceReport          `json:"balance"`
+	Coverage      *CoverageReport         `json:"coverage"`
+	Minutes       *MinutesReport          `json:"minutes"`
+	Outliers      []*InvigilatorOutlier   `json:"outliers"`
+	Fairness      []*FairnessDistribution `json:"fairness"`
+	SoftCost      *SoftCostReport         `json:"softCost"`
 }
 
 type InvigilationSlot struct {
@@ -157,6 +210,15 @@ type Invigilator struct {
 	Todos        *InvigilatorTodos        `json:"todos,omitempty"`
 }
 
+// InvigilatorOutlier: a person whose assigned minutes are furthest from target.
+type InvigilatorOutlier struct {
+	InvigilatorID int     `json:"invigilatorID"`
+	Doing         int     `json:"doing"`
+	Target        int     `json:"target"`
+	Open          int     `json:"open"`
+	Percent       float64 `json:"percent"`
+}
+
 type InvigilatorRequirements struct {
 	ExcludedDates          []*time.Time `json:"excludedDates"`
 	ExcludedDays           []int        `json:"excludedDays"`
@@ -189,6 +251,25 @@ type InvigilatorTodos struct {
 type InvigilatorsForDay struct {
 	Want []*Invigilator `json:"want"`
 	Can  []*Invigilator `json:"can"`
+}
+
+// LogLine is one streamed line of output. text carries the rendered line including
+// ANSI color codes, so a terminal-like frontend can display it verbatim. progress
+// is only set when level is PROGRESS; report is only set on the final RESULT line
+// of an invigilation generation and carries the structured outcome.
+type LogLine struct {
+	Level    LogLevel            `json:"level"`
+	Text     string              `json:"text"`
+	Progress *OptimizerProgress  `json:"progress,omitempty"`
+	Report   *InvigilationReport `json:"report,omitempty"`
+}
+
+// MinutesReport: distribution of assigned vs. target minutes around the tolerance band.
+type MinutesReport struct {
+	WithinTolerance int `json:"withinTolerance"`
+	Over            int `json:"over"`
+	Under           int `json:"under"`
+	ToleranceMin    int `json:"toleranceMin"`
 }
 
 type MucDaiExam struct {
@@ -232,6 +313,16 @@ type NTAWithRegsByExam struct {
 type NTAWithRegsByExamAndTeacher struct {
 	Teacher *Teacher             `json:"teacher"`
 	Exams   []*NTAWithRegsByExam `json:"exams,omitempty"`
+}
+
+// OptimizerProgress is the structured payload of a PROGRESS LogLine, mirroring the
+// simulated-annealing optimizer snapshot.
+type OptimizerProgress struct {
+	Iteration int     `json:"iteration"`
+	Total     int     `json:"total"`
+	BestCost  float64 `json:"bestCost"`
+	Balance   bool    `json:"balance"`
+	Unfilled  int     `json:"unfilled"`
 }
 
 type PreExam struct {
@@ -353,6 +444,17 @@ type Slot struct {
 	Starttime  time.Time `json:"starttime"`
 }
 
+type SoftCostItem struct {
+	Name string  `json:"name"`
+	Cost float64 `json:"cost"`
+}
+
+// SoftCostReport: the weighted soft-constraint penalty score (lower is better).
+type SoftCostReport struct {
+	Total     float64         `json:"total"`
+	Breakdown []*SoftCostItem `json:"breakdown"`
+}
+
 type Starttime struct {
 	Number int    `json:"number"`
 	Start  string `json:"start"`
@@ -385,6 +487,9 @@ type StudentRegsPerStudent struct {
 	Ancodes []int    `json:"ancodes"`
 }
 
+type Subscription struct {
+}
+
 type ZPAConflict struct {
 	Ancode         int                  `json:"ancode"`
 	NumberOfStuds  int                  `json:"numberOfStuds"`
@@ -405,4 +510,70 @@ type ZPAExamsForType struct {
 type ZPAInvigilator struct {
 	Teacher                  *Teacher `json:"teacher"`
 	HasSubmittedRequirements bool     `json:"hasSubmittedRequirements"`
+}
+
+// LogLevel classifies a streamed LogLine. PROGRESS lines are throttled optimizer
+// snapshots and should be rendered in-place (like a spinner) instead of appended.
+// DONE marks the final line of a stream.
+type LogLevel string
+
+const (
+	LogLevelInfo     LogLevel = "INFO"
+	LogLevelWarn     LogLevel = "WARN"
+	LogLevelError    LogLevel = "ERROR"
+	LogLevelProgress LogLevel = "PROGRESS"
+	LogLevelResult   LogLevel = "RESULT"
+	LogLevelDone     LogLevel = "DONE"
+)
+
+var AllLogLevel = []LogLevel{
+	LogLevelInfo,
+	LogLevelWarn,
+	LogLevelError,
+	LogLevelProgress,
+	LogLevelResult,
+	LogLevelDone,
+}
+
+func (e LogLevel) IsValid() bool {
+	switch e {
+	case LogLevelInfo, LogLevelWarn, LogLevelError, LogLevelProgress, LogLevelResult, LogLevelDone:
+		return true
+	}
+	return false
+}
+
+func (e LogLevel) String() string {
+	return string(e)
+}
+
+func (e *LogLevel) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = LogLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid LogLevel", str)
+	}
+	return nil
+}
+
+func (e LogLevel) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *LogLevel) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e LogLevel) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

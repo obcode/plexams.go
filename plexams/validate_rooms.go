@@ -7,37 +7,14 @@ import (
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
-	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) ValidateRoomsPerSlot() error {
+func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" validating rooms per slot (allowed and enough seats)")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
-
-	validationMessages := make([]string, 0)
+	v := newValidation(reporter, "rooms-per-slot", "validating rooms per slot (allowed and enough seats)")
 
 	slots := p.semesterConfig.Slots
 
@@ -49,7 +26,7 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 				Int("day", slot.DayNumber).
 				Int("time", slot.SlotNumber).
 				Msg("error while getting exams planned in slot")
-			return err
+			return nil, err
 		}
 
 		plannedRooms := make([]*model.PlannedRoom, 0)
@@ -57,8 +34,8 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 			plannedRooms = append(plannedRooms, plannedExam.PlannedRooms...)
 		}
 
-		spinner.Message(aurora.Sprintf(aurora.Yellow("checking slot (%d/%d) with %d rooms in %d exams"),
-			slot.DayNumber, slot.SlotNumber, len(plannedRooms), len(plannedExams)))
+		v.step("checking slot (%d/%d) with %d rooms in %d exams",
+			slot.DayNumber, slot.SlotNumber, len(plannedRooms), len(plannedExams))
 
 		allowedRooms, err := p.RoomsForSlot(ctx, slot.DayNumber, slot.SlotNumber)
 		if err != nil {
@@ -66,7 +43,7 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 				Int("day", slot.DayNumber).
 				Int("time", slot.SlotNumber).
 				Msg("error while getting allowed rooms for slot")
-			return err
+			return nil, err
 		}
 		allAllowedRooms, err := p.RoomsFromRoomNames(ctx, allowedRooms.RoomNames)
 		if err != nil {
@@ -74,10 +51,6 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 				Interface("room names", allowedRooms.RoomNames).
 				Msg("error while getting rooms from names")
 		}
-		// append(allowedRooms.NormalRooms,
-		// 	append(allowedRooms.LabRooms,
-		// 		append(allowedRooms.ExahmRooms,
-		// 			allowedRooms.NtaRooms...)...)...)
 
 		for _, plannedRoom := range plannedRooms {
 			if plannedRoom.RoomName == "ONLINE" {
@@ -85,8 +58,8 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 			}
 
 			if plannedRoom.RoomName == "No Room" {
-				validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("No Room for %d students in slot (%d/%d)"),
-					aurora.Magenta(len(plannedRoom.StudentsInRoom)), aurora.Blue(slot.DayNumber), aurora.Blue(slot.SlotNumber)))
+				v.errorf(ref{Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
+					"No Room for %d students in slot (%d/%d)", len(plannedRoom.StudentsInRoom), slot.DayNumber, slot.SlotNumber)
 				continue
 			}
 
@@ -98,8 +71,8 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 				}
 			}
 			if !isAllowed {
-				validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Room %s is not allowed in slot (%d/%d)"),
-					aurora.Magenta(plannedRoom.RoomName), aurora.Blue(slot.DayNumber), aurora.Blue(slot.SlotNumber)))
+				v.errorf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
+					"Room %s is not allowed in slot (%d/%d)", plannedRoom.RoomName, slot.DayNumber, slot.SlotNumber)
 			}
 		}
 
@@ -125,63 +98,25 @@ func (p *Plexams) ValidateRoomsPerSlot() error {
 
 		for roomName, roomSeats := range seats {
 			if roomSeats.seatsPlanned > roomSeats.seats {
-				validationMessages = append(validationMessages,
-					aurora.Sprintf(aurora.Red("Room %s is overbooked in slot (%d/%d): %d seats planned, but only %d available"),
-						aurora.Magenta(roomName), aurora.Blue(slot.DayNumber), aurora.Blue(slot.SlotNumber),
-						aurora.Cyan(roomSeats.seatsPlanned), aurora.Cyan(roomSeats.seats)))
+				v.errorf(ref{Room: ptr(roomName), Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
+					"Room %s is overbooked in slot (%d/%d): %d seats planned, but only %d available",
+					roomName, slot.DayNumber, slot.SlotNumber, roomSeats.seatsPlanned, roomSeats.seats)
 			}
 		}
 
 	}
 
-	if len(validationMessages) > 0 {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"), len(validationMessages)))
-		err = spinner.StopFail()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-		for _, msg := range validationMessages {
-			fmt.Printf("    ↪ %s\n", msg)
-		}
-
-	} else {
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-	}
-
-	return nil
+	return v.finish(), nil
 }
-func (p *Plexams) ValidateRoomsNeedRequest() error {
+
+func (p *Plexams) ValidateRoomsNeedRequest(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" validating rooms which needs requests")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
-
-	validationMessages := make([]string, 0)
+	v := newValidation(reporter, "rooms-need-request", "validating rooms which need requests")
 
 	roomTimetables, err := p.GetReservations()
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get reservations")
-		return err
+		return nil, err
 	}
 
 	bookedEntries, err := p.ExahmRoomsFromAnnyBookings(ctx)
@@ -193,7 +128,7 @@ func (p *Plexams) ValidateRoomsNeedRequest() error {
 		bookedEntries, err = p.ExahmRoomsFromBooked()
 		if err != nil {
 			log.Error().Err(err).Msg("cannot get booked entries")
-			return err
+			return nil, err
 		}
 	}
 
@@ -218,8 +153,6 @@ func (p *Plexams) ValidateRoomsNeedRequest() error {
 		log.Error().Err(err).Msg("cannot get all planned rooms")
 	}
 
-	reservationFound := 0
-
 PLANNEDROOM:
 	for _, plannedRoom := range plannedRooms {
 
@@ -228,8 +161,7 @@ PLANNEDROOM:
 			continue
 		}
 
-		spinner.Message(aurora.Sprintf(aurora.Yellow("checking room  %s in slot (%d/%d)"),
-			plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot))
+		v.step("checking room %s in slot (%d/%d)", plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot)
 
 		startTime := p.getSlotTime(plannedRoom.Day, plannedRoom.Slot)
 		endTime := startTime.Add(time.Duration(plannedRoom.Duration) * time.Minute)
@@ -237,66 +169,28 @@ PLANNEDROOM:
 		for _, timerange := range roomTimetables[plannedRoom.RoomName] {
 			if timerange.From.Before(startTime) && timerange.Until.After(endTime) {
 				log.Debug().Str("room", plannedRoom.RoomName).Msg("found reservation")
-				reservationFound++
 
 				if !timerange.Approved {
-					validationMessages = append(validationMessages, aurora.Sprintf(aurora.Yellow("Reservation for room %s found in slot (%d/%d) is not yet approved"),
-						aurora.Magenta(plannedRoom.RoomName), aurora.Blue(plannedRoom.Day), aurora.Blue(plannedRoom.Slot)))
+					v.warnf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(plannedRoom.Day), Slot: ptr(plannedRoom.Slot)},
+						"Reservation for room %s found in slot (%d/%d) is not yet approved",
+						plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot)
 				}
 
 				continue PLANNEDROOM
 			}
 		}
 
-		validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("No Reservation for room %s found in slot (%d/%d)"),
-			aurora.Magenta(plannedRoom.RoomName), aurora.Blue(plannedRoom.Day), aurora.Blue(plannedRoom.Slot)))
+		v.errorf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(plannedRoom.Day), Slot: ptr(plannedRoom.Slot)},
+			"No Reservation for room %s found in slot (%d/%d)",
+			plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot)
 	}
 
-	if len(validationMessages) > 0 {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"), len(validationMessages)))
-		err = spinner.StopFail()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-		for _, msg := range validationMessages {
-			fmt.Printf("    ↪ %s\n", msg)
-		}
-
-	} else {
-		spinner.StopMessage(aurora.Sprintf(aurora.Green("found %d reservations"), reservationFound))
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-	}
-
-	return nil
+	return v.finish(), nil
 }
 
-func (p *Plexams) ValidateRoomsPerExam() error {
+func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" validating rooms per exam")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
-
-	validationMessages := make([]string, 0)
+	v := newValidation(reporter, "rooms-per-exam", "validating rooms per exam")
 
 	exams, err := p.PlannedExams(ctx)
 	if err != nil {
@@ -312,19 +206,13 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 			continue
 		}
 
-		spinner.Message(aurora.Sprintf(aurora.Yellow("checking rooms for %d. %s (%s) with %d students and %d ntas"),
-			exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, exam.StudentRegsCount, len(exam.Ntas)))
+		v.step("checking rooms for %d. %s (%s) with %d students and %d ntas",
+			exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, exam.StudentRegsCount, len(exam.Ntas))
 		// check if each student has a room
 		allStudentRegs := make([]*model.EnhancedStudentReg, 0)
 		for _, primussExam := range exam.PrimussExams {
 			allStudentRegs = append(allStudentRegs, primussExam.StudentRegs...)
 		}
-
-		// rooms, err := p.dbClient.RoomsForAncode(ctx, exam.Exam.Ancode)
-		// if err != nil {
-		// 	log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get rooms for ancode")
-		// 	return err
-		// }
 
 		allStudentsInRooms := make([]string, 0)
 		for _, room := range exam.PlannedRooms {
@@ -342,9 +230,10 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 				}
 			}
 			if !studentHasSeat {
-				validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Student %s (%s) has no seat for exam %d. %s (%s) in slot (%d,%d)"),
-					aurora.Magenta(studentReg.Name), aurora.Magenta(studentReg.Mtknr), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-					aurora.BrightBlue(exam.PlanEntry.DayNumber), aurora.BrightBlue(exam.PlanEntry.SlotNumber)))
+				v.errorf(ref{Ancode: ptr(exam.Ancode), StudentMtknr: ptr(studentReg.Mtknr), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
+					"Student %s (%s) has no seat for exam %d. %s (%s) in slot (%d,%d)",
+					studentReg.Name, studentReg.Mtknr, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+					exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 			}
 		}
 
@@ -357,45 +246,50 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 				}
 				for _, room := range exam.PlannedRooms {
 					if !allowedRooms.Contains(room.RoomName) {
-						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Room %s is not allowed for exam %d. %s (%s) in slot (%d,%d)"),
-							aurora.Magenta(room.RoomName), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-							aurora.BrightBlue(exam.PlanEntry.DayNumber), aurora.BrightBlue(exam.PlanEntry.SlotNumber)))
+						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
+							"Room %s is not allowed for exam %d. %s (%s) in slot (%d,%d)",
+							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 					}
 				}
 			}
 			if exam.Constraints.RoomConstraints.Exahm {
 				for _, room := range exam.PlannedRooms {
 					if !p.GetRoomInfo(room.RoomName).Exahm {
-						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Is not an exahm room %s for exam %d. %s (%s) in slot (%d,%d)"),
-							aurora.Magenta(room.RoomName), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-							aurora.BrightBlue(exam.PlanEntry.DayNumber), aurora.BrightBlue(exam.PlanEntry.SlotNumber)))
+						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
+							"Is not an exahm room %s for exam %d. %s (%s) in slot (%d,%d)",
+							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 					}
 				}
 			}
 			if exam.Constraints.RoomConstraints.Seb {
 				for _, room := range exam.PlannedRooms {
 					if !p.GetRoomInfo(room.RoomName).Seb {
-						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Is not a seb room %s for exam %d. %s (%s) in slot (%d,%d)"),
-							aurora.Magenta(room.RoomName), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-							aurora.BrightBlue(exam.PlanEntry.DayNumber), aurora.BrightBlue(exam.PlanEntry.SlotNumber)))
+						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
+							"Is not a seb room %s for exam %d. %s (%s) in slot (%d,%d)",
+							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 					}
 				}
 			}
 			if exam.Constraints.RoomConstraints.Lab {
 				for _, room := range exam.PlannedRooms {
 					if !p.GetRoomInfo(room.RoomName).Lab {
-						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Is not a lab %s for exam %d. %s (%s) in slot (%d,%d)"),
-							aurora.Magenta(room.RoomName), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-							aurora.BrightBlue(exam.PlanEntry.DayNumber), aurora.BrightBlue(exam.PlanEntry.SlotNumber)))
+						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
+							"Is not a lab %s for exam %d. %s (%s) in slot (%d,%d)",
+							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 					}
 				}
 			}
 			if exam.Constraints.RoomConstraints.PlacesWithSocket {
 				for _, room := range exam.PlannedRooms {
 					if !p.GetRoomInfo(room.RoomName).PlacesWithSocket && !p.GetRoomInfo(room.RoomName).Lab {
-						validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("Is not a room with places with sockets %s for exam %d. %s (%s) in slot (%d,%d)"),
-							aurora.Magenta(room.RoomName), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-							aurora.BrightBlue(exam.PlanEntry.DayNumber), aurora.BrightBlue(exam.PlanEntry.SlotNumber)))
+						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
+							"Is not a room with places with sockets %s for exam %d. %s (%s) in slot (%d,%d)",
+							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 					}
 				}
 			}
@@ -404,7 +298,7 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 		// check rooms for NTAs
 		// - needsRoomAlone okay
 		if len(exam.Ntas) > 0 {
-			spinner.Message(aurora.Sprintf(aurora.Yellow("checking rooms for ntas")))
+			v.step("checking rooms for ntas")
 			for _, nta := range exam.Ntas {
 				if nta.NeedsRoomAlone {
 					var roomForNta *model.PlannedRoom
@@ -419,9 +313,10 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 						if room.RoomName == roomForNta.RoomName {
 							for _, mtknr := range room.StudentsInRoom {
 								if mtknr != nta.Mtknr {
-									validationMessages = append(validationMessages, aurora.Sprintf(aurora.Red("NTA %s has room %s not alone for exam %d. %s (%s) in slot (%d,%d)"),
-										aurora.Magenta(nta.Name), aurora.Magenta(room.RoomName), aurora.Cyan(exam.Ancode), aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-										aurora.BrightBlue(exam.PlanEntry.DayNumber), aurora.BrightBlue(exam.PlanEntry.SlotNumber)))
+									v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), StudentMtknr: ptr(nta.Mtknr), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
+										"NTA %s has room %s not alone for exam %d. %s (%s) in slot (%d,%d)",
+										nta.Name, room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+										exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 									break OUTER
 								}
 							}
@@ -432,54 +327,18 @@ func (p *Plexams) ValidateRoomsPerExam() error {
 		}
 	}
 
-	if len(validationMessages) > 0 {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"), len(validationMessages)))
-		err = spinner.StopFail()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-		for _, msg := range validationMessages {
-			fmt.Printf("    ↪ %s\n", msg)
-		}
-
-	} else {
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-	}
-	return nil
+	return v.finish(), nil
 }
 
-func (p *Plexams) ValidateRoomsTimeDistance() error {
+func (p *Plexams) ValidateRoomsTimeDistance(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
 	timelag := viper.GetInt("rooms.timelag")
 
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" validating time lag of planned rooms (%d minutes)"), timelag),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
-
-	validationMessages := make([]string, 0)
+	v := newValidation(reporter, "rooms-time-distance",
+		fmt.Sprintf("validating time lag of planned rooms (%d minutes)", timelag))
 
 	for _, day := range p.semesterConfig.Days {
-		spinner.Message(aurora.Sprintf(aurora.Yellow("checking day %d (%s)"), day.Number, day.Date.Format("02.01.06")))
+		v.step("checking day %d (%s)", day.Number, day.Date.Format("02.01.06"))
 
 		for i := range p.semesterConfig.Starttimes {
 			if i == len(p.semesterConfig.Days)-1 {
@@ -494,7 +353,7 @@ func (p *Plexams) ValidateRoomsTimeDistance() error {
 					Int("day", day.Number).
 					Int("time", slot1).
 					Msg("error while getting rooms planned in slot")
-				return err
+				return nil, err
 			}
 
 			rooms1 := make(map[string]int)
@@ -515,7 +374,7 @@ func (p *Plexams) ValidateRoomsTimeDistance() error {
 					Int("day", day.Number).
 					Int("time", slot2).
 					Msg("error while getting rooms planned in slot")
-				return err
+				return nil, err
 			}
 
 			rooms2 := set.NewSet[string]()
@@ -528,14 +387,14 @@ func (p *Plexams) ValidateRoomsTimeDistance() error {
 					start, err := time.Parse("15:04", p.semesterConfig.Starttimes[i].Start)
 					if err != nil {
 						log.Error().Err(err).Str("starttime", p.semesterConfig.Starttimes[i].Start).Msg("cannot parse starttime")
-						return err
+						return nil, err
 					}
 					endSlot1 := start.Add(time.Duration(maxDuration) * time.Minute)
 
 					startSlot2, err := time.Parse("15:04", p.semesterConfig.Starttimes[i+1].Start)
 					if err != nil {
 						log.Error().Err(err).Str("starttime", p.semesterConfig.Starttimes[i].Start).Msg("cannot parse starttime")
-						return err
+						return nil, err
 					}
 					log.Debug().Str("room", roomName).Int("max duration", maxDuration).
 						Str("starttime slot 1", p.semesterConfig.Starttimes[i].Start).
@@ -546,34 +405,16 @@ func (p *Plexams) ValidateRoomsTimeDistance() error {
 					diff := time.Duration(timelag) * time.Minute
 
 					if startSlot2.Before(endSlot1.Add(diff)) {
-						validationMessages = append(validationMessages, aurora.Sprintf(
+						v.errorf(ref{Room: ptr(roomName), Day: ptr(day.Number), Slot: ptr(slot2)},
 							"Not enough time in room %s between slot (%d/%d) ends %s and slot (%d/%d) begins %s: %g minutes between",
-							aurora.Magenta(roomName), aurora.BrightBlue(day.Number), aurora.BrightBlue(slot1), aurora.Magenta(endSlot1.Format("15:04")),
-							aurora.BrightBlue(day.Number), aurora.BrightBlue(slot2), aurora.Magenta(startSlot2.Format("15:04")),
-							aurora.Magenta(startSlot2.Sub(endSlot1).Minutes()),
-						))
+							roomName, day.Number, slot1, endSlot1.Format("15:04"),
+							day.Number, slot2, startSlot2.Format("15:04"),
+							startSlot2.Sub(endSlot1).Minutes())
 					}
 				}
 			}
 		}
 	}
 
-	if len(validationMessages) > 0 {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red("%d problems found"), len(validationMessages)))
-		err = spinner.StopFail()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-		for _, msg := range validationMessages {
-			fmt.Printf("    ↪ %s\n", msg)
-		}
-
-	} else {
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-	}
-
-	return nil
+	return v.finish(), nil
 }

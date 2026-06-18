@@ -8,39 +8,7 @@ import (
 	"context"
 
 	"github.com/obcode/plexams.go/graph/model"
-	"github.com/obcode/plexams.go/plexams"
-	"github.com/rs/zerolog/log"
 )
-
-// runValidation runs a single validator and streams its output. It registers the
-// validation with the write-guard (blocking mutations while it runs), streams the
-// human-readable lines, then emits the structured ValidationReport on the final
-// RESULT line followed by a DONE line. The validator runs on a background context
-// so it finishes cleanly even if the client disconnects.
-func (r *subscriptionResolver) runValidation(
-	ctx context.Context,
-	fn func(reporter plexams.Reporter) (*model.ValidationReport, error),
-) <-chan *model.LogLine {
-	ch := make(chan *model.LogLine, 256)
-	reporter := newStreamReporter(ctx, ch)
-	r.plexams.BeginValidation()
-
-	go func() {
-		defer close(ch)
-		defer r.plexams.EndValidation()
-		report, err := fn(reporter)
-		if err != nil {
-			log.Error().Err(err).Msg("validation failed")
-			reporter.emit(model.LogLevelError, "error: "+err.Error())
-		}
-		if report != nil {
-			reporter.send(&model.LogLine{Level: model.LogLevelResult, Text: "report", Validation: report})
-		}
-		reporter.emit(model.LogLevelDone, "done")
-	}()
-
-	return ch
-}
 
 // ValidateInvigilatorRequirements is the resolver for the validateInvigilatorRequirements field.
 func (r *subscriptionResolver) ValidateInvigilatorRequirements(ctx context.Context) (<-chan *model.LogLine, error) {
@@ -65,4 +33,24 @@ func (r *subscriptionResolver) ValidateInvigilationsTimeDistance(ctx context.Con
 // ValidateInvigilationConstraints is the resolver for the validateInvigilationConstraints field.
 func (r *subscriptionResolver) ValidateInvigilationConstraints(ctx context.Context) (<-chan *model.LogLine, error) {
 	return r.runValidation(ctx, r.plexams.ValidateInvigilationConstraints), nil
+}
+
+// ValidateRoomsPerSlot is the resolver for the validateRoomsPerSlot field.
+func (r *subscriptionResolver) ValidateRoomsPerSlot(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, r.plexams.ValidateRoomsPerSlot), nil
+}
+
+// ValidateRoomsNeedRequest is the resolver for the validateRoomsNeedRequest field.
+func (r *subscriptionResolver) ValidateRoomsNeedRequest(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, r.plexams.ValidateRoomsNeedRequest), nil
+}
+
+// ValidateRoomsPerExam is the resolver for the validateRoomsPerExam field.
+func (r *subscriptionResolver) ValidateRoomsPerExam(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, r.plexams.ValidateRoomsPerExam), nil
+}
+
+// ValidateRoomsTimeDistance is the resolver for the validateRoomsTimeDistance field.
+func (r *subscriptionResolver) ValidateRoomsTimeDistance(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, r.plexams.ValidateRoomsTimeDistance), nil
 }

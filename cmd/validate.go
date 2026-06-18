@@ -41,10 +41,10 @@ var (
 						plexams.ValidateDB,
 						func() error { return plexams.ValidateConflicts(OnlyPlannedByMe, Ancode) },
 						plexams.ValidateConstraints,
-						plexams.ValidateRoomsPerSlot,
-						plexams.ValidateRoomsNeedRequest,
-						plexams.ValidateRoomsPerExam,
-						plexams.ValidateRoomsTimeDistance,
+						func() error { _, err := plexams.ValidateRoomsPerSlot(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateRoomsNeedRequest(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateRoomsPerExam(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateRoomsTimeDistance(plx.NewConsoleReporter()); return err },
 					}...)
 
 				case "conflicts":
@@ -67,10 +67,10 @@ var (
 				case "rooms":
 					validations = append(validations,
 						[]func() error{
-							plexams.ValidateRoomsPerSlot,
-							plexams.ValidateRoomsNeedRequest,
-							plexams.ValidateRoomsPerExam,
-							plexams.ValidateRoomsTimeDistance,
+							func() error { _, err := plexams.ValidateRoomsPerSlot(plx.NewConsoleReporter()); return err },
+							func() error { _, err := plexams.ValidateRoomsNeedRequest(plx.NewConsoleReporter()); return err },
+							func() error { _, err := plexams.ValidateRoomsPerExam(plx.NewConsoleReporter()); return err },
+							func() error { _, err := plexams.ValidateRoomsTimeDistance(plx.NewConsoleReporter()); return err },
 						}...)
 
 				case "zpa":

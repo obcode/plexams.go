@@ -45,4 +45,9 @@ extend type Subscription {
   validateInvigilatorSlots: LogLine!
   validateInvigilationsTimeDistance: LogLine!
   validateInvigilationConstraints: LogLine!
+
+  validateRoomsPerSlot: LogLine!
+  validateRoomsNeedRequest: LogLine!
+  validateRoomsPerExam: LogLine!
+  validateRoomsTimeDistance: LogLine!
 }

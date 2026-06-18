@@ -8,73 +8,70 @@ import (
 	"context"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams"
 )
 
 // UploadExamsToZpa is the resolver for the uploadExamsToZPA field.
-func (r *mutationResolver) UploadExamsToZpa(ctx context.Context, dryRun bool) (*model.ZPAUploadResult, error) {
-	return r.uploadResult(ctx, false, false, dryRun)
+func (r *subscriptionResolver) UploadExamsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error) {
+	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+		_, err := r.plexams.UploadPlan(ctx, false, false, !dryRun, reporter)
+		return err
+	}), nil
 }
 
 // UploadExamsWithRoomsToZpa is the resolver for the uploadExamsWithRoomsToZPA field.
-func (r *mutationResolver) UploadExamsWithRoomsToZpa(ctx context.Context, dryRun bool) (*model.ZPAUploadResult, error) {
-	return r.uploadResult(ctx, true, false, dryRun)
+func (r *subscriptionResolver) UploadExamsWithRoomsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error) {
+	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+		_, err := r.plexams.UploadPlan(ctx, true, false, !dryRun, reporter)
+		return err
+	}), nil
 }
 
 // UploadExamsWithInvigilatorsToZpa is the resolver for the uploadExamsWithInvigilatorsToZPA field.
-func (r *mutationResolver) UploadExamsWithInvigilatorsToZpa(ctx context.Context, dryRun bool) (*model.ZPAUploadResult, error) {
-	return r.uploadResult(ctx, true, true, dryRun)
+func (r *subscriptionResolver) UploadExamsWithInvigilatorsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error) {
+	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+		_, err := r.plexams.UploadPlan(ctx, true, true, !dryRun, reporter)
+		return err
+	}), nil
 }
 
 // UploadStudentRegsToZpa is the resolver for the uploadStudentRegsToZPA field.
-func (r *mutationResolver) UploadStudentRegsToZpa(ctx context.Context) (*model.ZPAStudentRegsResult, error) {
-	// Empty path: skip writing a local JSON copy (that is a CLI-only convenience).
-	posted, withErrors, err := r.plexams.PostStudentRegsToZPA(ctx, "")
-	if err != nil {
-		return nil, err
-	}
-	return &model.ZPAStudentRegsResult{
-		Posted: len(posted),
-		Errors: len(withErrors),
-	}, nil
+func (r *subscriptionResolver) UploadStudentRegsToZpa(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+		// Empty path: skip writing a local JSON copy (a CLI-only convenience).
+		_, _, err := r.plexams.PostStudentRegsToZPA(ctx, "", reporter)
+		return err
+	}), nil
 }
 
 // ImportTeachersFromZpa is the resolver for the importTeachersFromZPA field.
-func (r *mutationResolver) ImportTeachersFromZpa(ctx context.Context) (int, error) {
-	fromZPA := true
-	teachers, err := r.plexams.GetTeachers(ctx, &fromZPA)
-	if err != nil {
-		return 0, err
-	}
-	return len(teachers), nil
+func (r *subscriptionResolver) ImportTeachersFromZpa(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+		_, err := r.plexams.ImportTeachersFromZPA(ctx, reporter)
+		return err
+	}), nil
 }
 
 // ImportExamsFromZpa is the resolver for the importExamsFromZPA field.
-func (r *mutationResolver) ImportExamsFromZpa(ctx context.Context) (int, error) {
-	fromZPA := true
-	exams, err := r.plexams.GetZPAExams(ctx, &fromZPA)
-	if err != nil {
-		return 0, err
-	}
-	return len(exams), nil
+func (r *subscriptionResolver) ImportExamsFromZpa(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+		_, err := r.plexams.ImportExamsFromZPA(ctx, reporter)
+		return err
+	}), nil
 }
 
 // ImportInvigilatorRequirementsFromZpa is the resolver for the importInvigilatorRequirementsFromZPA field.
-func (r *mutationResolver) ImportInvigilatorRequirementsFromZpa(ctx context.Context) (int, error) {
-	reqs, err := r.plexams.GetSupervisorRequirements(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return len(reqs), nil
+func (r *subscriptionResolver) ImportInvigilatorRequirementsFromZpa(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+		_, err := r.plexams.ImportInvigilatorRequirementsFromZPA(ctx, reporter)
+		return err
+	}), nil
 }
 
 // ImportStudentsFromZpa is the resolver for the importStudentsFromZPA field.
-func (r *mutationResolver) ImportStudentsFromZpa(ctx context.Context) (*model.ZPAStudentsImportResult, error) {
-	found, notFound, err := r.plexams.GetStudentsFromZPA(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &model.ZPAStudentsImportResult{
-		Found:    found,
-		NotFound: notFound,
-	}, nil
+func (r *subscriptionResolver) ImportStudentsFromZpa(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+		_, _, err := r.plexams.GetStudentsFromZPA(ctx, reporter)
+		return err
+	}), nil
 }

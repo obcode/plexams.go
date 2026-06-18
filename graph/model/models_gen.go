@@ -539,25 +539,6 @@ type ZPAInvigilator struct {
 	HasSubmittedRequirements bool     `json:"hasSubmittedRequirements"`
 }
 
-// ZPAStudentRegsResult summarizes a student-registration upload to ZPA.
-type ZPAStudentRegsResult struct {
-	Posted int `json:"posted"`
-	Errors int `json:"errors"`
-}
-
-// ZPAStudentsImportResult summarizes a student import from ZPA.
-type ZPAStudentsImportResult struct {
-	Found    int `json:"found"`
-	NotFound int `json:"notFound"`
-}
-
-// ZPAUploadResult summarizes an exam-plan upload to ZPA.
-type ZPAUploadResult struct {
-	DryRun  bool  `json:"dryRun"`
-	Posted  int   `json:"posted"`
-	Ancodes []int `json:"ancodes"`
-}
-
 // LogLevel classifies a streamed LogLine. PROGRESS lines are throttled optimizer
 // snapshots and should be rendered in-place (like a spinner) instead of appended.
 // DONE marks the final line of a stream.

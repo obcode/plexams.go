@@ -2,14 +2,12 @@ package plexams
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	set "github.com/deckarep/golang-set/v2"
-	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
 )
 
 func (p *Plexams) GetZPAExam(ctx context.Context, ancode int) (*model.ZPAExam, error) {
@@ -20,27 +18,8 @@ func (p *Plexams) GetZPAStudents(ctx context.Context) ([]*model.ZPAStudent, erro
 	return p.dbClient.GetZPAStudents(ctx)
 }
 
-func (p *Plexams) GetStudentsFromZPA(ctx context.Context) (studentsFound int, studentsNotFound int, err error) {
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" getting students from ZPA...")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+func (p *Plexams) GetStudentsFromZPA(ctx context.Context, reporter Reporter) (studentsFound int, studentsNotFound int, err error) {
+	reporter.Step("getting students from ZPA...")
 
 	programs, err := p.dbClient.GetPrograms(ctx)
 	if err != nil {
@@ -51,7 +30,7 @@ func (p *Plexams) GetStudentsFromZPA(ctx context.Context) (studentsFound int, st
 	mtknrs := set.NewSet[string]()
 
 	for _, program := range programs {
-		spinner.Message(aurora.Sprintf(aurora.Magenta("getting student regs for program %s..."), program))
+		reporter.Step(fmt.Sprintf("getting student regs for program %s...", program))
 		studentRegs, err := p.dbClient.StudentRegsForProgram(ctx, program)
 		if err != nil {
 			log.Error().Err(err).Str("program", program).Msg("cannot get studentregs for program")
@@ -69,7 +48,7 @@ func (p *Plexams) GetStudentsFromZPA(ctx context.Context) (studentsFound int, st
 	}
 
 	for i, mtknr := range mtknrs.ToSlice() {
-		spinner.Message(aurora.Sprintf(aurora.Magenta("getting student with mtknr %s (%d of %d to go)..."), mtknr, mtknrs.Cardinality()-i, mtknrs.Cardinality()))
+		reporter.Step(fmt.Sprintf("getting student with mtknr %s (%d of %d to go)...", mtknr, mtknrs.Cardinality()-i, mtknrs.Cardinality()))
 		zpaStudents, err := p.zpa.client.GetStudents(mtknr)
 		if err != nil {
 			return 0, 0, err
@@ -87,7 +66,7 @@ func (p *Plexams) GetStudentsFromZPA(ctx context.Context) (studentsFound int, st
 		}
 	}
 
-	spinner.Message(aurora.Sprintf(aurora.Magenta("preparing to save %d students..."), studentsFound))
+	reporter.Step(fmt.Sprintf("preparing to save %d students...", studentsFound))
 	toSave := make([]interface{}, 0, len(zpaStudentsSlice))
 	for _, student := range zpaStudentsSlice {
 		if student == nil {
@@ -96,16 +75,12 @@ func (p *Plexams) GetStudentsFromZPA(ctx context.Context) (studentsFound int, st
 		toSave = append(toSave, student)
 	}
 
-	spinner.Message(aurora.Sprintf(aurora.Magenta("saving %d students..."), len(toSave)))
+	reporter.Step(fmt.Sprintf("saving %d students...", len(toSave)))
 	err = p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "zpastudents"), toSave)
 	if err != nil {
 		return studentsFound, studentsNotFound, err
 	}
 
-	spinner.StopMessage(aurora.Sprintf(aurora.Green("%d students found, %d students not found"), studentsFound, studentsNotFound))
-	err = spinner.Stop()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
-	}
+	reporter.StopProgress(fmt.Sprintf("%d students found, %d students not found", studentsFound, studentsNotFound))
 	return studentsFound, studentsNotFound, nil
 }

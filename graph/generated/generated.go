@@ -336,34 +336,26 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddConstraints                       func(childComplexity int, ancode int, constraints model.ConstraintsInput) int
-		AddExamToSlot                        func(childComplexity int, day int, time int, ancode int) int
-		AddNta                               func(childComplexity int, input model.NTAInput) int
-		AddZpaExamToPlan                     func(childComplexity int, ancode int) int
-		Exahm                                func(childComplexity int, ancode int) int
-		ExcludeDays                          func(childComplexity int, ancode int, days []string) int
-		ImportExamsFromZpa                   func(childComplexity int) int
-		ImportInvigilatorRequirementsFromZpa func(childComplexity int) int
-		ImportStudentsFromZpa                func(childComplexity int) int
-		ImportTeachersFromZpa                func(childComplexity int) int
-		Lab                                  func(childComplexity int, ancode int) int
-		NotPlannedByMe                       func(childComplexity int, ancode int) int
-		Online                               func(childComplexity int, ancode int) int
-		PlacesWithSockets                    func(childComplexity int, ancode int) int
-		PossibleDays                         func(childComplexity int, ancode int, days []string) int
-		PrePlanInvigilation                  func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
-		PrePlanInvigilationInSlot            func(childComplexity int, day int, slot int, roomName *string) int
-		PrePlanRoom                          func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
-		RmConstraints                        func(childComplexity int, ancode int) int
-		RmExamFromSlot                       func(childComplexity int, ancode int) int
-		RmZpaExamFromPlan                    func(childComplexity int, ancode int) int
-		SameSlot                             func(childComplexity int, ancode int, ancodes []int) int
-		Seb                                  func(childComplexity int, ancode int) int
-		UploadExamsToZpa                     func(childComplexity int, dryRun bool) int
-		UploadExamsWithInvigilatorsToZpa     func(childComplexity int, dryRun bool) int
-		UploadExamsWithRoomsToZpa            func(childComplexity int, dryRun bool) int
-		UploadStudentRegsToZpa               func(childComplexity int) int
-		ZpaExamsToPlan                       func(childComplexity int, input []int) int
+		AddConstraints            func(childComplexity int, ancode int, constraints model.ConstraintsInput) int
+		AddExamToSlot             func(childComplexity int, day int, time int, ancode int) int
+		AddNta                    func(childComplexity int, input model.NTAInput) int
+		AddZpaExamToPlan          func(childComplexity int, ancode int) int
+		Exahm                     func(childComplexity int, ancode int) int
+		ExcludeDays               func(childComplexity int, ancode int, days []string) int
+		Lab                       func(childComplexity int, ancode int) int
+		NotPlannedByMe            func(childComplexity int, ancode int) int
+		Online                    func(childComplexity int, ancode int) int
+		PlacesWithSockets         func(childComplexity int, ancode int) int
+		PossibleDays              func(childComplexity int, ancode int, days []string) int
+		PrePlanInvigilation       func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
+		PrePlanInvigilationInSlot func(childComplexity int, day int, slot int, roomName *string) int
+		PrePlanRoom               func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
+		RmConstraints             func(childComplexity int, ancode int) int
+		RmExamFromSlot            func(childComplexity int, ancode int) int
+		RmZpaExamFromPlan         func(childComplexity int, ancode int) int
+		SameSlot                  func(childComplexity int, ancode int, ancodes []int) int
+		Seb                       func(childComplexity int, ancode int) int
+		ZpaExamsToPlan            func(childComplexity int, input []int) int
 	}
 
 	NTA struct {
@@ -693,19 +685,27 @@ type ComplexityRoot struct {
 	}
 
 	Subscription struct {
-		GenerateInvigilations             func(childComplexity int, dryRun bool, seed *int, iterations *int) int
-		ValidateInvigilationConstraints   func(childComplexity int) int
-		ValidateInvigilationDuplicates    func(childComplexity int) int
-		ValidateInvigilationsTimeDistance func(childComplexity int) int
-		ValidateInvigilatorRequirements   func(childComplexity int) int
-		ValidateInvigilatorSlots          func(childComplexity int) int
-		ValidateRoomsNeedRequest          func(childComplexity int) int
-		ValidateRoomsPerExam              func(childComplexity int) int
-		ValidateRoomsPerSlot              func(childComplexity int) int
-		ValidateRoomsTimeDistance         func(childComplexity int) int
-		ValidateZPADateTimes              func(childComplexity int) int
-		ValidateZPAInvigilators           func(childComplexity int) int
-		ValidateZPARooms                  func(childComplexity int) int
+		GenerateInvigilations                func(childComplexity int, dryRun bool, seed *int, iterations *int) int
+		ImportExamsFromZpa                   func(childComplexity int) int
+		ImportInvigilatorRequirementsFromZpa func(childComplexity int) int
+		ImportStudentsFromZpa                func(childComplexity int) int
+		ImportTeachersFromZpa                func(childComplexity int) int
+		UploadExamsToZpa                     func(childComplexity int, dryRun bool) int
+		UploadExamsWithInvigilatorsToZpa     func(childComplexity int, dryRun bool) int
+		UploadExamsWithRoomsToZpa            func(childComplexity int, dryRun bool) int
+		UploadStudentRegsToZpa               func(childComplexity int) int
+		ValidateInvigilationConstraints      func(childComplexity int) int
+		ValidateInvigilationDuplicates       func(childComplexity int) int
+		ValidateInvigilationsTimeDistance    func(childComplexity int) int
+		ValidateInvigilatorRequirements      func(childComplexity int) int
+		ValidateInvigilatorSlots             func(childComplexity int) int
+		ValidateRoomsNeedRequest             func(childComplexity int) int
+		ValidateRoomsPerExam                 func(childComplexity int) int
+		ValidateRoomsPerSlot                 func(childComplexity int) int
+		ValidateRoomsTimeDistance            func(childComplexity int) int
+		ValidateZPADateTimes                 func(childComplexity int) int
+		ValidateZPAInvigilators              func(childComplexity int) int
+		ValidateZPARooms                     func(childComplexity int) int
 	}
 
 	Teacher struct {
@@ -807,22 +807,6 @@ type ComplexityRoot struct {
 		Program  func(childComplexity int) int
 		Semester func(childComplexity int) int
 	}
-
-	ZPAStudentRegsResult struct {
-		Errors func(childComplexity int) int
-		Posted func(childComplexity int) int
-	}
-
-	ZPAStudentsImportResult struct {
-		Found    func(childComplexity int) int
-		NotFound func(childComplexity int) int
-	}
-
-	ZPAUploadResult struct {
-		Ancodes func(childComplexity int) int
-		DryRun  func(childComplexity int) int
-		Posted  func(childComplexity int) int
-	}
 }
 
 type GeneratedExamResolver interface {
@@ -849,14 +833,6 @@ type MutationResolver interface {
 	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
-	UploadExamsToZpa(ctx context.Context, dryRun bool) (*model.ZPAUploadResult, error)
-	UploadExamsWithRoomsToZpa(ctx context.Context, dryRun bool) (*model.ZPAUploadResult, error)
-	UploadExamsWithInvigilatorsToZpa(ctx context.Context, dryRun bool) (*model.ZPAUploadResult, error)
-	UploadStudentRegsToZpa(ctx context.Context) (*model.ZPAStudentRegsResult, error)
-	ImportTeachersFromZpa(ctx context.Context) (int, error)
-	ImportExamsFromZpa(ctx context.Context) (int, error)
-	ImportInvigilatorRequirementsFromZpa(ctx context.Context) (int, error)
-	ImportStudentsFromZpa(ctx context.Context) (*model.ZPAStudentsImportResult, error)
 }
 type PlanEntryResolver interface {
 	Starttime(ctx context.Context, obj *model.PlanEntry) (*time.Time, error)
@@ -947,6 +923,14 @@ type SubscriptionResolver interface {
 	ValidateZPADateTimes(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateZPARooms(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateZPAInvigilators(ctx context.Context) (<-chan *model.LogLine, error)
+	UploadExamsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error)
+	UploadExamsWithRoomsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error)
+	UploadExamsWithInvigilatorsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error)
+	UploadStudentRegsToZpa(ctx context.Context) (<-chan *model.LogLine, error)
+	ImportTeachersFromZpa(ctx context.Context) (<-chan *model.LogLine, error)
+	ImportExamsFromZpa(ctx context.Context) (<-chan *model.LogLine, error)
+	ImportInvigilatorRequirementsFromZpa(ctx context.Context) (<-chan *model.LogLine, error)
+	ImportStudentsFromZpa(ctx context.Context) (<-chan *model.LogLine, error)
 }
 
 type executableSchema struct {
@@ -2293,34 +2277,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ExcludeDays(childComplexity, args["ancode"].(int), args["days"].([]string)), true
 
-	case "Mutation.importExamsFromZPA":
-		if e.complexity.Mutation.ImportExamsFromZpa == nil {
-			break
-		}
-
-		return e.complexity.Mutation.ImportExamsFromZpa(childComplexity), true
-
-	case "Mutation.importInvigilatorRequirementsFromZPA":
-		if e.complexity.Mutation.ImportInvigilatorRequirementsFromZpa == nil {
-			break
-		}
-
-		return e.complexity.Mutation.ImportInvigilatorRequirementsFromZpa(childComplexity), true
-
-	case "Mutation.importStudentsFromZPA":
-		if e.complexity.Mutation.ImportStudentsFromZpa == nil {
-			break
-		}
-
-		return e.complexity.Mutation.ImportStudentsFromZpa(childComplexity), true
-
-	case "Mutation.importTeachersFromZPA":
-		if e.complexity.Mutation.ImportTeachersFromZpa == nil {
-			break
-		}
-
-		return e.complexity.Mutation.ImportTeachersFromZpa(childComplexity), true
-
 	case "Mutation.lab":
 		if e.complexity.Mutation.Lab == nil {
 			break
@@ -2476,49 +2432,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Seb(childComplexity, args["ancode"].(int)), true
-
-	case "Mutation.uploadExamsToZPA":
-		if e.complexity.Mutation.UploadExamsToZpa == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_uploadExamsToZPA_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UploadExamsToZpa(childComplexity, args["dryRun"].(bool)), true
-
-	case "Mutation.uploadExamsWithInvigilatorsToZPA":
-		if e.complexity.Mutation.UploadExamsWithInvigilatorsToZpa == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_uploadExamsWithInvigilatorsToZPA_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UploadExamsWithInvigilatorsToZpa(childComplexity, args["dryRun"].(bool)), true
-
-	case "Mutation.uploadExamsWithRoomsToZPA":
-		if e.complexity.Mutation.UploadExamsWithRoomsToZpa == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_uploadExamsWithRoomsToZPA_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UploadExamsWithRoomsToZpa(childComplexity, args["dryRun"].(bool)), true
-
-	case "Mutation.uploadStudentRegsToZPA":
-		if e.complexity.Mutation.UploadStudentRegsToZpa == nil {
-			break
-		}
-
-		return e.complexity.Mutation.UploadStudentRegsToZpa(childComplexity), true
 
 	case "Mutation.zpaExamsToPlan":
 		if e.complexity.Mutation.ZpaExamsToPlan == nil {
@@ -4226,6 +4139,77 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.GenerateInvigilations(childComplexity, args["dryRun"].(bool), args["seed"].(*int), args["iterations"].(*int)), true
 
+	case "Subscription.importExamsFromZPA":
+		if e.complexity.Subscription.ImportExamsFromZpa == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ImportExamsFromZpa(childComplexity), true
+
+	case "Subscription.importInvigilatorRequirementsFromZPA":
+		if e.complexity.Subscription.ImportInvigilatorRequirementsFromZpa == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ImportInvigilatorRequirementsFromZpa(childComplexity), true
+
+	case "Subscription.importStudentsFromZPA":
+		if e.complexity.Subscription.ImportStudentsFromZpa == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ImportStudentsFromZpa(childComplexity), true
+
+	case "Subscription.importTeachersFromZPA":
+		if e.complexity.Subscription.ImportTeachersFromZpa == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ImportTeachersFromZpa(childComplexity), true
+
+	case "Subscription.uploadExamsToZPA":
+		if e.complexity.Subscription.UploadExamsToZpa == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_uploadExamsToZPA_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.UploadExamsToZpa(childComplexity, args["dryRun"].(bool)), true
+
+	case "Subscription.uploadExamsWithInvigilatorsToZPA":
+		if e.complexity.Subscription.UploadExamsWithInvigilatorsToZpa == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_uploadExamsWithInvigilatorsToZPA_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.UploadExamsWithInvigilatorsToZpa(childComplexity, args["dryRun"].(bool)), true
+
+	case "Subscription.uploadExamsWithRoomsToZPA":
+		if e.complexity.Subscription.UploadExamsWithRoomsToZpa == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_uploadExamsWithRoomsToZPA_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.UploadExamsWithRoomsToZpa(childComplexity, args["dryRun"].(bool)), true
+
+	case "Subscription.uploadStudentRegsToZPA":
+		if e.complexity.Subscription.UploadStudentRegsToZpa == nil {
+			break
+		}
+
+		return e.complexity.Subscription.UploadStudentRegsToZpa(childComplexity), true
+
 	case "Subscription.validateInvigilationConstraints":
 		if e.complexity.Subscription.ValidateInvigilationConstraints == nil {
 			break
@@ -4757,55 +4741,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ZPAStudentRegError.Semester(childComplexity), true
-
-	case "ZPAStudentRegsResult.errors":
-		if e.complexity.ZPAStudentRegsResult.Errors == nil {
-			break
-		}
-
-		return e.complexity.ZPAStudentRegsResult.Errors(childComplexity), true
-
-	case "ZPAStudentRegsResult.posted":
-		if e.complexity.ZPAStudentRegsResult.Posted == nil {
-			break
-		}
-
-		return e.complexity.ZPAStudentRegsResult.Posted(childComplexity), true
-
-	case "ZPAStudentsImportResult.found":
-		if e.complexity.ZPAStudentsImportResult.Found == nil {
-			break
-		}
-
-		return e.complexity.ZPAStudentsImportResult.Found(childComplexity), true
-
-	case "ZPAStudentsImportResult.notFound":
-		if e.complexity.ZPAStudentsImportResult.NotFound == nil {
-			break
-		}
-
-		return e.complexity.ZPAStudentsImportResult.NotFound(childComplexity), true
-
-	case "ZPAUploadResult.ancodes":
-		if e.complexity.ZPAUploadResult.Ancodes == nil {
-			break
-		}
-
-		return e.complexity.ZPAUploadResult.Ancodes(childComplexity), true
-
-	case "ZPAUploadResult.dryRun":
-		if e.complexity.ZPAUploadResult.DryRun == nil {
-			break
-		}
-
-		return e.complexity.ZPAUploadResult.DryRun(childComplexity), true
-
-	case "ZPAUploadResult.posted":
-		if e.complexity.ZPAUploadResult.Posted == nil {
-			break
-		}
-
-		return e.complexity.ZPAUploadResult.Posted(childComplexity), true
 
 	}
 	return 0, false
@@ -5877,47 +5812,28 @@ type ZPAStudent {
   group: String!
 }
 `, BuiltIn: false},
-	{Name: "../zpa_transfer.graphqls", Input: `# ZPA up- and downloads as mutations: discrete actions with a result, and
-# (being mutations) automatically blocked while a validation runs, so an upload
-# and the ZPA validation that checks it stay cleanly separate.
-
-"""ZPAUploadResult summarizes an exam-plan upload to ZPA."""
-type ZPAUploadResult {
-  dryRun: Boolean!
-  posted: Int!
-  ancodes: [Int!]!
-}
-
-"""ZPAStudentRegsResult summarizes a student-registration upload to ZPA."""
-type ZPAStudentRegsResult {
-  posted: Int!
-  errors: Int!
-}
-
-"""ZPAStudentsImportResult summarizes a student import from ZPA."""
-type ZPAStudentsImportResult {
-  found: Int!
-  notFound: Int!
-}
-
-extend type Mutation {
+	{Name: "../zpa_transfer.graphqls", Input: `# ZPA up- and downloads as subscriptions: they stream their progress the same way
+# as the command line (and as generation/validation). Each refuses to run while a
+# validation is in progress, so an upload and the ZPA validation that checks it
+# stay cleanly separate. Every stream ends with a DONE line.
+extend type Subscription {
   "Upload the planned exams to ZPA without rooms or invigilators (dryRun = build only, do not post)."
-  uploadExamsToZPA(dryRun: Boolean!): ZPAUploadResult!
+  uploadExamsToZPA(dryRun: Boolean!): LogLine!
   "Upload the planned exams to ZPA including planned rooms."
-  uploadExamsWithRoomsToZPA(dryRun: Boolean!): ZPAUploadResult!
+  uploadExamsWithRoomsToZPA(dryRun: Boolean!): LogLine!
   "Upload the planned exams to ZPA including planned rooms and invigilators."
-  uploadExamsWithInvigilatorsToZPA(dryRun: Boolean!): ZPAUploadResult!
+  uploadExamsWithInvigilatorsToZPA(dryRun: Boolean!): LogLine!
   "Upload the student registrations to ZPA."
-  uploadStudentRegsToZPA: ZPAStudentRegsResult!
+  uploadStudentRegsToZPA: LogLine!
 
-  "Fetch teachers from ZPA and cache them; returns the number fetched."
-  importTeachersFromZPA: Int!
-  "Fetch exams from ZPA and cache them; returns the number fetched."
-  importExamsFromZPA: Int!
-  "Fetch invigilator requirements from ZPA and cache them; returns the number fetched."
-  importInvigilatorRequirementsFromZPA: Int!
-  "Fetch the ZPA infos of students with registrations."
-  importStudentsFromZPA: ZPAStudentsImportResult!
+  "Fetch teachers from ZPA and cache them."
+  importTeachersFromZPA: LogLine!
+  "Fetch exams from ZPA and cache them."
+  importExamsFromZPA: LogLine!
+  "Fetch invigilator requirements from ZPA and cache them."
+  importInvigilatorRequirementsFromZPA: LogLine!
+  "Fetch the ZPA infos of students with registrations and cache them."
+  importStudentsFromZPA: LogLine!
 }
 `, BuiltIn: false},
 }
@@ -6778,90 +6694,6 @@ func (ec *executionContext) field_Mutation_seb_argsAncode(
 	}
 
 	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_uploadExamsToZPA_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_uploadExamsToZPA_argsDryRun(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["dryRun"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_uploadExamsToZPA_argsDryRun(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (bool, error) {
-	if _, ok := rawArgs["dryRun"]; !ok {
-		var zeroVal bool
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
-	if tmp, ok := rawArgs["dryRun"]; ok {
-		return ec.unmarshalNBoolean2bool(ctx, tmp)
-	}
-
-	var zeroVal bool
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_uploadExamsWithInvigilatorsToZPA_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_uploadExamsWithInvigilatorsToZPA_argsDryRun(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["dryRun"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_uploadExamsWithInvigilatorsToZPA_argsDryRun(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (bool, error) {
-	if _, ok := rawArgs["dryRun"]; !ok {
-		var zeroVal bool
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
-	if tmp, ok := rawArgs["dryRun"]; ok {
-		return ec.unmarshalNBoolean2bool(ctx, tmp)
-	}
-
-	var zeroVal bool
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_uploadExamsWithRoomsToZPA_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_uploadExamsWithRoomsToZPA_argsDryRun(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["dryRun"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_uploadExamsWithRoomsToZPA_argsDryRun(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (bool, error) {
-	if _, ok := rawArgs["dryRun"]; !ok {
-		var zeroVal bool
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
-	if tmp, ok := rawArgs["dryRun"]; ok {
-		return ec.unmarshalNBoolean2bool(ctx, tmp)
-	}
-
-	var zeroVal bool
 	return zeroVal, nil
 }
 
@@ -7978,6 +7810,90 @@ func (ec *executionContext) field_Subscription_generateInvigilations_argsIterati
 	}
 
 	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_uploadExamsToZPA_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_uploadExamsToZPA_argsDryRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["dryRun"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_uploadExamsToZPA_argsDryRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["dryRun"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
+	if tmp, ok := rawArgs["dryRun"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_uploadExamsWithInvigilatorsToZPA_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_uploadExamsWithInvigilatorsToZPA_argsDryRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["dryRun"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_uploadExamsWithInvigilatorsToZPA_argsDryRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["dryRun"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
+	if tmp, ok := rawArgs["dryRun"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_uploadExamsWithRoomsToZPA_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_uploadExamsWithRoomsToZPA_argsDryRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["dryRun"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_uploadExamsWithRoomsToZPA_argsDryRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["dryRun"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
+	if tmp, ok := rawArgs["dryRun"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
 	return zeroVal, nil
 }
 
@@ -17746,427 +17662,6 @@ func (ec *executionContext) fieldContext_Mutation_rmZpaExamFromPlan(ctx context.
 	if fc.Args, err = ec.field_Mutation_rmZpaExamFromPlan_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_uploadExamsToZPA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_uploadExamsToZPA(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UploadExamsToZpa(rctx, fc.Args["dryRun"].(bool))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.ZPAUploadResult)
-	fc.Result = res
-	return ec.marshalNZPAUploadResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAUploadResult(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_uploadExamsToZPA(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "dryRun":
-				return ec.fieldContext_ZPAUploadResult_dryRun(ctx, field)
-			case "posted":
-				return ec.fieldContext_ZPAUploadResult_posted(ctx, field)
-			case "ancodes":
-				return ec.fieldContext_ZPAUploadResult_ancodes(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAUploadResult", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_uploadExamsToZPA_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_uploadExamsWithRoomsToZPA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_uploadExamsWithRoomsToZPA(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UploadExamsWithRoomsToZpa(rctx, fc.Args["dryRun"].(bool))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.ZPAUploadResult)
-	fc.Result = res
-	return ec.marshalNZPAUploadResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAUploadResult(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_uploadExamsWithRoomsToZPA(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "dryRun":
-				return ec.fieldContext_ZPAUploadResult_dryRun(ctx, field)
-			case "posted":
-				return ec.fieldContext_ZPAUploadResult_posted(ctx, field)
-			case "ancodes":
-				return ec.fieldContext_ZPAUploadResult_ancodes(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAUploadResult", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_uploadExamsWithRoomsToZPA_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_uploadExamsWithInvigilatorsToZPA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_uploadExamsWithInvigilatorsToZPA(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UploadExamsWithInvigilatorsToZpa(rctx, fc.Args["dryRun"].(bool))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.ZPAUploadResult)
-	fc.Result = res
-	return ec.marshalNZPAUploadResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAUploadResult(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_uploadExamsWithInvigilatorsToZPA(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "dryRun":
-				return ec.fieldContext_ZPAUploadResult_dryRun(ctx, field)
-			case "posted":
-				return ec.fieldContext_ZPAUploadResult_posted(ctx, field)
-			case "ancodes":
-				return ec.fieldContext_ZPAUploadResult_ancodes(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAUploadResult", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_uploadExamsWithInvigilatorsToZPA_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_uploadStudentRegsToZPA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_uploadStudentRegsToZPA(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UploadStudentRegsToZpa(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.ZPAStudentRegsResult)
-	fc.Result = res
-	return ec.marshalNZPAStudentRegsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentRegsResult(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_uploadStudentRegsToZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "posted":
-				return ec.fieldContext_ZPAStudentRegsResult_posted(ctx, field)
-			case "errors":
-				return ec.fieldContext_ZPAStudentRegsResult_errors(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAStudentRegsResult", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_importTeachersFromZPA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_importTeachersFromZPA(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ImportTeachersFromZpa(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_importTeachersFromZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_importExamsFromZPA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_importExamsFromZPA(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ImportExamsFromZpa(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_importExamsFromZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_importInvigilatorRequirementsFromZPA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_importInvigilatorRequirementsFromZPA(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ImportInvigilatorRequirementsFromZpa(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_importInvigilatorRequirementsFromZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_importStudentsFromZPA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_importStudentsFromZPA(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ImportStudentsFromZpa(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.ZPAStudentsImportResult)
-	fc.Result = res
-	return ec.marshalNZPAStudentsImportResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentsImportResult(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_importStudentsFromZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "found":
-				return ec.fieldContext_ZPAStudentsImportResult_found(ctx, field)
-			case "notFound":
-				return ec.fieldContext_ZPAStudentsImportResult_notFound(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAStudentsImportResult", field.Name)
-		},
 	}
 	return fc, nil
 }
@@ -30645,6 +30140,599 @@ func (ec *executionContext) fieldContext_Subscription_validateZPAInvigilators(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_uploadExamsToZPA(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_uploadExamsToZPA(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().UploadExamsToZpa(rctx, fc.Args["dryRun"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_uploadExamsToZPA(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_uploadExamsToZPA_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_uploadExamsWithRoomsToZPA(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_uploadExamsWithRoomsToZPA(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().UploadExamsWithRoomsToZpa(rctx, fc.Args["dryRun"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_uploadExamsWithRoomsToZPA(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_uploadExamsWithRoomsToZPA_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_uploadExamsWithInvigilatorsToZPA(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_uploadExamsWithInvigilatorsToZPA(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().UploadExamsWithInvigilatorsToZpa(rctx, fc.Args["dryRun"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_uploadExamsWithInvigilatorsToZPA(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_uploadExamsWithInvigilatorsToZPA_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_uploadStudentRegsToZPA(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_uploadStudentRegsToZPA(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().UploadStudentRegsToZpa(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_uploadStudentRegsToZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_importTeachersFromZPA(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_importTeachersFromZPA(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ImportTeachersFromZpa(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_importTeachersFromZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_importExamsFromZPA(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_importExamsFromZPA(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ImportExamsFromZpa(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_importExamsFromZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_importInvigilatorRequirementsFromZPA(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_importInvigilatorRequirementsFromZPA(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ImportInvigilatorRequirementsFromZpa(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_importInvigilatorRequirementsFromZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_importStudentsFromZPA(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_importStudentsFromZPA(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ImportStudentsFromZpa(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_importStudentsFromZPA(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Teacher_shortname(ctx context.Context, field graphql.CollectedField, obj *model.Teacher) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Teacher_shortname(ctx, field)
 	if err != nil {
@@ -33573,314 +33661,6 @@ func (ec *executionContext) fieldContext_ZPAStudentRegError_program(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAStudentRegsResult_posted(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentRegsResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudentRegsResult_posted(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Posted, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAStudentRegsResult_posted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAStudentRegsResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAStudentRegsResult_errors(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentRegsResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudentRegsResult_errors(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Errors, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAStudentRegsResult_errors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAStudentRegsResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAStudentsImportResult_found(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentsImportResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudentsImportResult_found(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Found, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAStudentsImportResult_found(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAStudentsImportResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAStudentsImportResult_notFound(ctx context.Context, field graphql.CollectedField, obj *model.ZPAStudentsImportResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAStudentsImportResult_notFound(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.NotFound, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAStudentsImportResult_notFound(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAStudentsImportResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAUploadResult_dryRun(ctx context.Context, field graphql.CollectedField, obj *model.ZPAUploadResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAUploadResult_dryRun(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DryRun, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAUploadResult_dryRun(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAUploadResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAUploadResult_posted(ctx context.Context, field graphql.CollectedField, obj *model.ZPAUploadResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAUploadResult_posted(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Posted, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAUploadResult_posted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAUploadResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAUploadResult_ancodes(ctx context.Context, field graphql.CollectedField, obj *model.ZPAUploadResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAUploadResult_ancodes(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Ancodes, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]int)
-	fc.Result = res
-	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAUploadResult_ancodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAUploadResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -38260,62 +38040,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "uploadExamsToZPA":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_uploadExamsToZPA(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "uploadExamsWithRoomsToZPA":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_uploadExamsWithRoomsToZPA(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "uploadExamsWithInvigilatorsToZPA":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_uploadExamsWithInvigilatorsToZPA(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "uploadStudentRegsToZPA":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_uploadStudentRegsToZPA(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "importTeachersFromZPA":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_importTeachersFromZPA(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "importExamsFromZPA":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_importExamsFromZPA(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "importInvigilatorRequirementsFromZPA":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_importInvigilatorRequirementsFromZPA(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "importStudentsFromZPA":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_importStudentsFromZPA(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -41685,6 +41409,22 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_validateZPARooms(ctx, fields[0])
 	case "validateZPAInvigilators":
 		return ec._Subscription_validateZPAInvigilators(ctx, fields[0])
+	case "uploadExamsToZPA":
+		return ec._Subscription_uploadExamsToZPA(ctx, fields[0])
+	case "uploadExamsWithRoomsToZPA":
+		return ec._Subscription_uploadExamsWithRoomsToZPA(ctx, fields[0])
+	case "uploadExamsWithInvigilatorsToZPA":
+		return ec._Subscription_uploadExamsWithInvigilatorsToZPA(ctx, fields[0])
+	case "uploadStudentRegsToZPA":
+		return ec._Subscription_uploadStudentRegsToZPA(ctx, fields[0])
+	case "importTeachersFromZPA":
+		return ec._Subscription_importTeachersFromZPA(ctx, fields[0])
+	case "importExamsFromZPA":
+		return ec._Subscription_importExamsFromZPA(ctx, fields[0])
+	case "importInvigilatorRequirementsFromZPA":
+		return ec._Subscription_importInvigilatorRequirementsFromZPA(ctx, fields[0])
+	case "importStudentsFromZPA":
+		return ec._Subscription_importStudentsFromZPA(ctx, fields[0])
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}
@@ -42365,143 +42105,6 @@ func (ec *executionContext) _ZPAStudentRegError(ctx context.Context, sel ast.Sel
 			}
 		case "program":
 			out.Values[i] = ec._ZPAStudentRegError_program(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var zPAStudentRegsResultImplementors = []string{"ZPAStudentRegsResult"}
-
-func (ec *executionContext) _ZPAStudentRegsResult(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAStudentRegsResult) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, zPAStudentRegsResultImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ZPAStudentRegsResult")
-		case "posted":
-			out.Values[i] = ec._ZPAStudentRegsResult_posted(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "errors":
-			out.Values[i] = ec._ZPAStudentRegsResult_errors(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var zPAStudentsImportResultImplementors = []string{"ZPAStudentsImportResult"}
-
-func (ec *executionContext) _ZPAStudentsImportResult(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAStudentsImportResult) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, zPAStudentsImportResultImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ZPAStudentsImportResult")
-		case "found":
-			out.Values[i] = ec._ZPAStudentsImportResult_found(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "notFound":
-			out.Values[i] = ec._ZPAStudentsImportResult_notFound(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var zPAUploadResultImplementors = []string{"ZPAUploadResult"}
-
-func (ec *executionContext) _ZPAUploadResult(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAUploadResult) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, zPAUploadResultImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ZPAUploadResult")
-		case "dryRun":
-			out.Values[i] = ec._ZPAUploadResult_dryRun(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "posted":
-			out.Values[i] = ec._ZPAUploadResult_posted(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "ancodes":
-			out.Values[i] = ec._ZPAUploadResult_ancodes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -45689,48 +45292,6 @@ func (ec *executionContext) marshalNZPAStudentRegError2ᚖgithubᚗcomᚋobcode�
 		return graphql.Null
 	}
 	return ec._ZPAStudentRegError(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNZPAStudentRegsResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentRegsResult(ctx context.Context, sel ast.SelectionSet, v model.ZPAStudentRegsResult) graphql.Marshaler {
-	return ec._ZPAStudentRegsResult(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNZPAStudentRegsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentRegsResult(ctx context.Context, sel ast.SelectionSet, v *model.ZPAStudentRegsResult) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ZPAStudentRegsResult(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNZPAStudentsImportResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentsImportResult(ctx context.Context, sel ast.SelectionSet, v model.ZPAStudentsImportResult) graphql.Marshaler {
-	return ec._ZPAStudentsImportResult(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNZPAStudentsImportResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudentsImportResult(ctx context.Context, sel ast.SelectionSet, v *model.ZPAStudentsImportResult) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ZPAStudentsImportResult(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNZPAUploadResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAUploadResult(ctx context.Context, sel ast.SelectionSet, v model.ZPAUploadResult) graphql.Marshaler {
-	return ec._ZPAUploadResult(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNZPAUploadResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAUploadResult(ctx context.Context, sel ast.SelectionSet, v *model.ZPAUploadResult) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ZPAUploadResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {

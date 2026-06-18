@@ -1,42 +1,23 @@
-# ZPA up- and downloads as mutations: discrete actions with a result, and
-# (being mutations) automatically blocked while a validation runs, so an upload
-# and the ZPA validation that checks it stay cleanly separate.
-
-"""ZPAUploadResult summarizes an exam-plan upload to ZPA."""
-type ZPAUploadResult {
-  dryRun: Boolean!
-  posted: Int!
-  ancodes: [Int!]!
-}
-
-"""ZPAStudentRegsResult summarizes a student-registration upload to ZPA."""
-type ZPAStudentRegsResult {
-  posted: Int!
-  errors: Int!
-}
-
-"""ZPAStudentsImportResult summarizes a student import from ZPA."""
-type ZPAStudentsImportResult {
-  found: Int!
-  notFound: Int!
-}
-
-extend type Mutation {
+# ZPA up- and downloads as subscriptions: they stream their progress the same way
+# as the command line (and as generation/validation). Each refuses to run while a
+# validation is in progress, so an upload and the ZPA validation that checks it
+# stay cleanly separate. Every stream ends with a DONE line.
+extend type Subscription {
   "Upload the planned exams to ZPA without rooms or invigilators (dryRun = build only, do not post)."
-  uploadExamsToZPA(dryRun: Boolean!): ZPAUploadResult!
+  uploadExamsToZPA(dryRun: Boolean!): LogLine!
   "Upload the planned exams to ZPA including planned rooms."
-  uploadExamsWithRoomsToZPA(dryRun: Boolean!): ZPAUploadResult!
+  uploadExamsWithRoomsToZPA(dryRun: Boolean!): LogLine!
   "Upload the planned exams to ZPA including planned rooms and invigilators."
-  uploadExamsWithInvigilatorsToZPA(dryRun: Boolean!): ZPAUploadResult!
+  uploadExamsWithInvigilatorsToZPA(dryRun: Boolean!): LogLine!
   "Upload the student registrations to ZPA."
-  uploadStudentRegsToZPA: ZPAStudentRegsResult!
+  uploadStudentRegsToZPA: LogLine!
 
-  "Fetch teachers from ZPA and cache them; returns the number fetched."
-  importTeachersFromZPA: Int!
-  "Fetch exams from ZPA and cache them; returns the number fetched."
-  importExamsFromZPA: Int!
-  "Fetch invigilator requirements from ZPA and cache them; returns the number fetched."
-  importInvigilatorRequirementsFromZPA: Int!
-  "Fetch the ZPA infos of students with registrations."
-  importStudentsFromZPA: ZPAStudentsImportResult!
+  "Fetch teachers from ZPA and cache them."
+  importTeachersFromZPA: LogLine!
+  "Fetch exams from ZPA and cache them."
+  importExamsFromZPA: LogLine!
+  "Fetch invigilator requirements from ZPA and cache them."
+  importInvigilatorRequirementsFromZPA: LogLine!
+  "Fetch the ZPA infos of students with registrations and cache them."
+  importStudentsFromZPA: LogLine!
 }

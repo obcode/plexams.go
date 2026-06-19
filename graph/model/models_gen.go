@@ -85,6 +85,19 @@ type DistributionBucket struct {
 	Invigilators int `json:"invigilators"`
 }
 
+// EmailAttachmentInfo describes one uploaded attachment (without its binary data).
+// kind is e.g. "cover-page" or "invigilation-image"; key is the teacher /
+// invigilator id the attachment belongs to. The binaries themselves are uploaded
+// via the REST endpoints /upload/email-attachment and /upload/email-attachments-zip.
+type EmailAttachmentInfo struct {
+	Kind        string    `json:"kind"`
+	Key         string    `json:"key"`
+	Filename    string    `json:"filename"`
+	ContentType string    `json:"contentType"`
+	Size        int       `json:"size"`
+	UploadedAt  time.Time `json:"uploadedAt"`
+}
+
 type Emails struct {
 	Profs            string   `json:"profs"`
 	Lbas             string   `json:"lbas"`

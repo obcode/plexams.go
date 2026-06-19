@@ -76,6 +76,11 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", srv)
 
+	// Binary uploads (browser-generated PNGs, cover-page PDF ZIPs) for email
+	// attachments; the send subscriptions read them back from the DB.
+	router.Post("/upload/email-attachment", plexams.HTTPUploadEmailAttachment)
+	router.Post("/upload/email-attachments-zip", plexams.HTTPUploadEmailAttachmentsZip)
+
 	server := &http.Server{Addr: fmt.Sprintf(":%s", port), Handler: router}
 	defer server.Shutdown(context.Background()) // nolint:errcheck
 

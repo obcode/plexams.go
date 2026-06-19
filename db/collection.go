@@ -39,6 +39,8 @@ const (
 	collectionOtherInvigilations      = "invigilations_other"
 	collectionSelfInvigilations       = "invigilations_self"
 	collectionInvigilationsPrePlanned = "invigilations_pre_planned"
+
+	collectionEmailAttachments = "email_attachments"
 )
 
 type PrimussType string

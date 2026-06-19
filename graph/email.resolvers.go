@@ -11,6 +11,16 @@ import (
 	"github.com/obcode/plexams.go/plexams"
 )
 
+// ClearEmailAttachments is the resolver for the clearEmailAttachments field.
+func (r *mutationResolver) ClearEmailAttachments(ctx context.Context, kind string) (int, error) {
+	return r.plexams.ClearEmailAttachments(ctx, kind)
+}
+
+// EmailAttachments is the resolver for the emailAttachments field.
+func (r *queryResolver) EmailAttachments(ctx context.Context, kind string) ([]*model.EmailAttachmentInfo, error) {
+	return r.plexams.EmailAttachmentInfos(ctx, kind)
+}
+
 // SendEmailExaHm is the resolver for the sendEmailExaHM field.
 func (r *subscriptionResolver) SendEmailExaHm(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
 	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {

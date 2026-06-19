@@ -146,6 +146,15 @@ type ComplexityRoot struct {
 		Invigilators func(childComplexity int) int
 	}
 
+	EmailAttachmentInfo struct {
+		ContentType func(childComplexity int) int
+		Filename    func(childComplexity int) int
+		Key         func(childComplexity int) int
+		Kind        func(childComplexity int) int
+		Size        func(childComplexity int) int
+		UploadedAt  func(childComplexity int) int
+	}
+
 	Emails struct {
 		AdditionalExamer func(childComplexity int) int
 		Fs               func(childComplexity int) int
@@ -340,6 +349,7 @@ type ComplexityRoot struct {
 		AddExamToSlot             func(childComplexity int, day int, time int, ancode int) int
 		AddNta                    func(childComplexity int, input model.NTAInput) int
 		AddZpaExamToPlan          func(childComplexity int, ancode int) int
+		ClearEmailAttachments     func(childComplexity int, kind string) int
 		Exahm                     func(childComplexity int, ancode int) int
 		ExcludeDays               func(childComplexity int, ancode int, days []string) int
 		Lab                       func(childComplexity int, ancode int) int
@@ -504,6 +514,7 @@ type ComplexityRoot struct {
 		ConnectedExam                 func(childComplexity int, ancode int) int
 		ConnectedExams                func(childComplexity int) int
 		ConstraintForAncode           func(childComplexity int, ancode int) int
+		EmailAttachments              func(childComplexity int, kind string) int
 		ExamerInPlan                  func(childComplexity int) int
 		ExamsInSlot                   func(childComplexity int, day int, time int) int
 		ExamsWithNtas                 func(childComplexity int) int
@@ -837,6 +848,7 @@ type MutationResolver interface {
 	Online(ctx context.Context, ancode int) (bool, error)
 	AddConstraints(ctx context.Context, ancode int, constraints model.ConstraintsInput) (*model.Constraints, error)
 	RmConstraints(ctx context.Context, ancode int) (bool, error)
+	ClearEmailAttachments(ctx context.Context, kind string) (int, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	PrePlanInvigilationInSlot(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
@@ -864,6 +876,7 @@ type QueryResolver interface {
 	AllAnnyBookings(ctx context.Context) ([]*model.AnnyBooking, error)
 	ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error)
 	ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error)
+	EmailAttachments(ctx context.Context, kind string) ([]*model.EmailAttachmentInfo, error)
 	ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
 	GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error)
@@ -1390,6 +1403,48 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DistributionBucket.Invigilators(childComplexity), true
+
+	case "EmailAttachmentInfo.contentType":
+		if e.complexity.EmailAttachmentInfo.ContentType == nil {
+			break
+		}
+
+		return e.complexity.EmailAttachmentInfo.ContentType(childComplexity), true
+
+	case "EmailAttachmentInfo.filename":
+		if e.complexity.EmailAttachmentInfo.Filename == nil {
+			break
+		}
+
+		return e.complexity.EmailAttachmentInfo.Filename(childComplexity), true
+
+	case "EmailAttachmentInfo.key":
+		if e.complexity.EmailAttachmentInfo.Key == nil {
+			break
+		}
+
+		return e.complexity.EmailAttachmentInfo.Key(childComplexity), true
+
+	case "EmailAttachmentInfo.kind":
+		if e.complexity.EmailAttachmentInfo.Kind == nil {
+			break
+		}
+
+		return e.complexity.EmailAttachmentInfo.Kind(childComplexity), true
+
+	case "EmailAttachmentInfo.size":
+		if e.complexity.EmailAttachmentInfo.Size == nil {
+			break
+		}
+
+		return e.complexity.EmailAttachmentInfo.Size(childComplexity), true
+
+	case "EmailAttachmentInfo.uploadedAt":
+		if e.complexity.EmailAttachmentInfo.UploadedAt == nil {
+			break
+		}
+
+		return e.complexity.EmailAttachmentInfo.UploadedAt(childComplexity), true
 
 	case "Emails.additionalExamer":
 		if e.complexity.Emails.AdditionalExamer == nil {
@@ -2278,6 +2333,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.AddZpaExamToPlan(childComplexity, args["ancode"].(int)), true
+
+	case "Mutation.clearEmailAttachments":
+		if e.complexity.Mutation.ClearEmailAttachments == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_clearEmailAttachments_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ClearEmailAttachments(childComplexity, args["kind"].(string)), true
 
 	case "Mutation.exahm":
 		if e.complexity.Mutation.Exahm == nil {
@@ -3179,6 +3246,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.ConstraintForAncode(childComplexity, args["ancode"].(int)), true
+
+	case "Query.emailAttachments":
+		if e.complexity.Query.EmailAttachments == nil {
+			break
+		}
+
+		args, err := ec.field_Query_emailAttachments_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.EmailAttachments(childComplexity, args["kind"].(string)), true
 
 	case "Query.examerInPlan":
 		if e.complexity.Query.ExamerInPlan == nil {
@@ -5136,6 +5215,29 @@ extend type Subscription {
   sendEmailInvigilations(run: Boolean!): LogLine!
   sendEmailInvigilationsMissing(run: Boolean!): LogLine!
 }
+
+"""
+EmailAttachmentInfo describes one uploaded attachment (without its binary data).
+kind is e.g. "cover-page" or "invigilation-image"; key is the teacher /
+invigilator id the attachment belongs to. The binaries themselves are uploaded
+via the REST endpoints /upload/email-attachment and /upload/email-attachments-zip.
+"""
+type EmailAttachmentInfo {
+  kind: String!
+  key: String!
+  filename: String!
+  contentType: String!
+  size: Int!
+  uploadedAt: Time!
+}
+
+extend type Query {
+  emailAttachments(kind: String!): [EmailAttachmentInfo!]!
+}
+
+extend type Mutation {
+  clearEmailAttachments(kind: String!): Int!
+}
 `, BuiltIn: false},
 	{Name: "../exam.graphqls", Input: `extend type Query {
   connectedExam(ancode: Int!): ConnectedExam
@@ -6207,6 +6309,34 @@ func (ec *executionContext) field_Mutation_addZpaExamToPlan_argsAncode(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_clearEmailAttachments_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_clearEmailAttachments_argsKind(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_clearEmailAttachments_argsKind(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["kind"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
+	if tmp, ok := rawArgs["kind"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_exahm_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7101,6 +7231,34 @@ func (ec *executionContext) field_Query_constraintForAncode_argsAncode(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_emailAttachments_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_emailAttachments_argsKind(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_emailAttachments_argsKind(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["kind"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
+	if tmp, ok := rawArgs["kind"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -11127,6 +11285,270 @@ func (ec *executionContext) fieldContext_DistributionBucket_invigilators(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailAttachmentInfo_kind(ctx context.Context, field graphql.CollectedField, obj *model.EmailAttachmentInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailAttachmentInfo_kind(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Kind, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailAttachmentInfo_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailAttachmentInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailAttachmentInfo_key(ctx context.Context, field graphql.CollectedField, obj *model.EmailAttachmentInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailAttachmentInfo_key(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailAttachmentInfo_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailAttachmentInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailAttachmentInfo_filename(ctx context.Context, field graphql.CollectedField, obj *model.EmailAttachmentInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailAttachmentInfo_filename(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Filename, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailAttachmentInfo_filename(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailAttachmentInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailAttachmentInfo_contentType(ctx context.Context, field graphql.CollectedField, obj *model.EmailAttachmentInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailAttachmentInfo_contentType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ContentType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailAttachmentInfo_contentType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailAttachmentInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailAttachmentInfo_size(ctx context.Context, field graphql.CollectedField, obj *model.EmailAttachmentInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailAttachmentInfo_size(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Size, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailAttachmentInfo_size(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailAttachmentInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailAttachmentInfo_uploadedAt(ctx context.Context, field graphql.CollectedField, obj *model.EmailAttachmentInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailAttachmentInfo_uploadedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UploadedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailAttachmentInfo_uploadedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailAttachmentInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -17575,6 +17997,61 @@ func (ec *executionContext) fieldContext_Mutation_rmConstraints(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_clearEmailAttachments(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_clearEmailAttachments(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ClearEmailAttachments(rctx, fc.Args["kind"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_clearEmailAttachments(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_clearEmailAttachments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_prePlanInvigilation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_prePlanInvigilation(ctx, field)
 	if err != nil {
@@ -22699,6 +23176,75 @@ func (ec *executionContext) fieldContext_Query_zpaExamsToPlanWithConstraints(_ c
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExamWithConstraints", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_emailAttachments(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_emailAttachments(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().EmailAttachments(rctx, fc.Args["kind"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.EmailAttachmentInfo)
+	fc.Result = res
+	return ec.marshalNEmailAttachmentInfo2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailAttachmentInfoᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_emailAttachments(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "kind":
+				return ec.fieldContext_EmailAttachmentInfo_kind(ctx, field)
+			case "key":
+				return ec.fieldContext_EmailAttachmentInfo_key(ctx, field)
+			case "filename":
+				return ec.fieldContext_EmailAttachmentInfo_filename(ctx, field)
+			case "contentType":
+				return ec.fieldContext_EmailAttachmentInfo_contentType(ctx, field)
+			case "size":
+				return ec.fieldContext_EmailAttachmentInfo_size(ctx, field)
+			case "uploadedAt":
+				return ec.fieldContext_EmailAttachmentInfo_uploadedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EmailAttachmentInfo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_emailAttachments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -37977,6 +38523,70 @@ func (ec *executionContext) _DistributionBucket(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var emailAttachmentInfoImplementors = []string{"EmailAttachmentInfo"}
+
+func (ec *executionContext) _EmailAttachmentInfo(ctx context.Context, sel ast.SelectionSet, obj *model.EmailAttachmentInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, emailAttachmentInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EmailAttachmentInfo")
+		case "kind":
+			out.Values[i] = ec._EmailAttachmentInfo_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "key":
+			out.Values[i] = ec._EmailAttachmentInfo_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "filename":
+			out.Values[i] = ec._EmailAttachmentInfo_filename(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "contentType":
+			out.Values[i] = ec._EmailAttachmentInfo_contentType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "size":
+			out.Values[i] = ec._EmailAttachmentInfo_size(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "uploadedAt":
+			out.Values[i] = ec._EmailAttachmentInfo_uploadedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var emailsImplementors = []string{"Emails"}
 
 func (ec *executionContext) _Emails(ctx context.Context, sel ast.SelectionSet, obj *model.Emails) graphql.Marshaler {
@@ -39444,6 +40054,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "clearEmailAttachments":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_clearEmailAttachments(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "prePlanInvigilation":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_prePlanInvigilation(ctx, field)
@@ -40713,6 +41330,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_zpaExamsToPlanWithConstraints(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "emailAttachments":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_emailAttachments(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -44228,6 +44867,60 @@ func (ec *executionContext) marshalNDistributionBucket2ᚖgithubᚗcomᚋobcode�
 		return graphql.Null
 	}
 	return ec._DistributionBucket(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEmailAttachmentInfo2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailAttachmentInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EmailAttachmentInfo) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNEmailAttachmentInfo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailAttachmentInfo(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNEmailAttachmentInfo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailAttachmentInfo(ctx context.Context, sel ast.SelectionSet, v *model.EmailAttachmentInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EmailAttachmentInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNEmails2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmails(ctx context.Context, sel ast.SelectionSet, v *model.Emails) graphql.Marshaler {

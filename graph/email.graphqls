@@ -12,3 +12,26 @@ extend type Subscription {
   sendEmailInvigilations(run: Boolean!): LogLine!
   sendEmailInvigilationsMissing(run: Boolean!): LogLine!
 }
+
+"""
+EmailAttachmentInfo describes one uploaded attachment (without its binary data).
+kind is e.g. "cover-page" or "invigilation-image"; key is the teacher /
+invigilator id the attachment belongs to. The binaries themselves are uploaded
+via the REST endpoints /upload/email-attachment and /upload/email-attachments-zip.
+"""
+type EmailAttachmentInfo {
+  kind: String!
+  key: String!
+  filename: String!
+  contentType: String!
+  size: Int!
+  uploadedAt: Time!
+}
+
+extend type Query {
+  emailAttachments(kind: String!): [EmailAttachmentInfo!]!
+}
+
+extend type Mutation {
+  clearEmailAttachments(kind: String!): Int!
+}

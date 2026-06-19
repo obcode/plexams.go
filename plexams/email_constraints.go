@@ -6,10 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"time"
-
-	"github.com/logrusorgru/aurora"
-	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
 )
 
 type ConstraintsEmail struct {
@@ -20,26 +16,8 @@ type ConstraintsEmail struct {
 	PlanerName   string
 }
 
-func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email asking for constraints")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error happend",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool, reporter Reporter) error {
+	reporter.Step("sending email asking for constraints")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
 
@@ -74,28 +52,13 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool) error {
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Besonderheiten für die Prüfungsplanung - Rückmeldung bis spätestens %s",
 		p.semester, feedbackDate)
 
-	err = spinner.Stop()
+	realRecipients := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
+	realRecipients = append(realRecipients, p.semesterConfig.Emails.AdditionalExamer...)
+	to := p.mailTo(run, realRecipients...)
 
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
+	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+		return err
 	}
-
-	var to []string
-	if run {
-		to = []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
-		if len(p.semesterConfig.Emails.AdditionalExamer) > 0 {
-			to = append(to, p.semesterConfig.Emails.AdditionalExamer...)
-		}
-	} else {
-		to = []string{"galority@gmail.com"}
-	}
-
-	return p.sendMail(to,
-		nil,
-		subject,
-		bufText.Bytes(),
-		bufHTML.Bytes(),
-		nil,
-		true,
-	)
+	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	return nil
 }

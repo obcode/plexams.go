@@ -117,7 +117,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool)
 	if run {
 		to = []string{teacher.Email}
 	} else {
-		to = []string{"galority@gmail.com"}
+		to = []string{p.planer.Email}
 	}
 
 	err = p.sendMail(to,

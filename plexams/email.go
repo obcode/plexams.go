@@ -69,6 +69,16 @@ func (p *Plexams) SendTestMail() error {
 		})
 }
 
+// mailTo returns the actual recipients for a send. On a dry run (run == false)
+// everything goes to the planner instead of the real recipients, so a dry run
+// only ever mails the planner.
+func (p *Plexams) mailTo(run bool, recipients ...string) []string {
+	if run {
+		return recipients
+	}
+	return []string{p.planer.Email}
+}
+
 func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, noreply bool) error {
 	e := &email.Email{
 		To:          to,

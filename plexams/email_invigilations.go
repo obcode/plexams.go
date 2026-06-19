@@ -6,32 +6,10 @@ import (
 	"fmt"
 	"html/template"
 	"time"
-
-	"github.com/logrusorgru/aurora"
-	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool) error {
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email requesting invigilations constraints")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error happend",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool, reporter Reporter) error {
+	reporter.Step("sending email requesting invigilations constraints")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
 
@@ -66,25 +44,11 @@ func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool) error {
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Anforderungen an die Planung der Prüfungsaufsichten - Rückmeldung bis spätestens %s",
 		p.semester, feedbackDate)
 
-	err = spinner.Stop()
+	to := p.mailTo(run, p.semesterConfig.Emails.Profs)
 
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
+	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+		return err
 	}
-
-	var to []string
-	if run {
-		to = []string{p.semesterConfig.Emails.Profs}
-	} else {
-		to = []string{"galority@gmail.com"}
-	}
-
-	return p.sendMail(to,
-		nil,
-		subject,
-		bufText.Bytes(),
-		bufHTML.Bytes(),
-		nil,
-		true,
-	)
+	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	return nil
 }

@@ -1,0 +1,14 @@
+# Email sends as streaming subscriptions, like ZPA transfers: they stream their
+# progress line by line and end with a DONE line. run = false is a dry run that
+# only mails the planner. As exclusive operations they are blocked while a
+# validation or another transfer/email runs.
+extend type Subscription {
+  sendEmailExaHM(run: Boolean!): LogLine!
+  sendEmailConstraints(run: Boolean!): LogLine!
+  sendEmailPrepared(run: Boolean!): LogLine!
+  sendEmailDraft(run: Boolean!): LogLine!
+  sendEmailPublishedExams(run: Boolean!): LogLine!
+  sendEmailPublishedRooms(run: Boolean!): LogLine!
+  sendEmailInvigilations(run: Boolean!): LogLine!
+  sendEmailInvigilationsMissing(run: Boolean!): LogLine!
+}

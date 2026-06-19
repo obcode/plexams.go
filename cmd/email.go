@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 
+	plx "github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +38,7 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 			plexams := initPlexamsConfig()
 			switch args[0] {
 			case "exahm":
-				err := plexams.SendEmailExaHM(context.Background(), run)
+				err := plexams.SendEmailExaHM(context.Background(), run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
@@ -77,22 +78,22 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "constraints":
-				err := plexams.SendEmailConstraints(context.Background(), run)
+				err := plexams.SendEmailConstraints(context.Background(), run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "prepared":
-				err := plexams.SendEmailPrepared(context.Background(), run)
+				err := plexams.SendEmailPrepared(context.Background(), run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "published-exams":
-				err := plexams.SendEmailPublishedExams(context.Background(), run)
+				err := plexams.SendEmailPublishedExams(context.Background(), run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "published-rooms":
-				err := plexams.SendEmailPublishedRooms(context.Background(), run)
+				err := plexams.SendEmailPublishedRooms(context.Background(), run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
@@ -102,17 +103,17 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "invigilations":
-				err := plexams.SendEmailInvigilations(context.Background(), run)
+				err := plexams.SendEmailInvigilations(context.Background(), run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "invigilations-missing":
-				err := plexams.SendEmailInvigilationReqMissing(context.Background(), run)
+				err := plexams.SendEmailInvigilationReqMissing(context.Background(), run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "draft":
-				err := plexams.SendEmailDraft(run)
+				err := plexams.SendEmailDraft(run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

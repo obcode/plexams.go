@@ -13,7 +13,7 @@ import (
 
 // UploadExamsToZpa is the resolver for the uploadExamsToZPA field.
 func (r *subscriptionResolver) UploadExamsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error) {
-	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
 		_, err := r.plexams.UploadPlan(ctx, false, false, !dryRun, reporter)
 		return err
 	}), nil
@@ -21,7 +21,7 @@ func (r *subscriptionResolver) UploadExamsToZpa(ctx context.Context, dryRun bool
 
 // UploadExamsWithRoomsToZpa is the resolver for the uploadExamsWithRoomsToZPA field.
 func (r *subscriptionResolver) UploadExamsWithRoomsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error) {
-	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
 		_, err := r.plexams.UploadPlan(ctx, true, false, !dryRun, reporter)
 		return err
 	}), nil
@@ -29,7 +29,7 @@ func (r *subscriptionResolver) UploadExamsWithRoomsToZpa(ctx context.Context, dr
 
 // UploadExamsWithInvigilatorsToZpa is the resolver for the uploadExamsWithInvigilatorsToZPA field.
 func (r *subscriptionResolver) UploadExamsWithInvigilatorsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error) {
-	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
 		_, err := r.plexams.UploadPlan(ctx, true, true, !dryRun, reporter)
 		return err
 	}), nil
@@ -37,7 +37,7 @@ func (r *subscriptionResolver) UploadExamsWithInvigilatorsToZpa(ctx context.Cont
 
 // UploadStudentRegsToZpa is the resolver for the uploadStudentRegsToZPA field.
 func (r *subscriptionResolver) UploadStudentRegsToZpa(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
 		// Empty path: skip writing a local JSON copy (a CLI-only convenience).
 		_, _, err := r.plexams.PostStudentRegsToZPA(ctx, "", reporter)
 		return err
@@ -46,7 +46,7 @@ func (r *subscriptionResolver) UploadStudentRegsToZpa(ctx context.Context) (<-ch
 
 // ImportTeachersFromZpa is the resolver for the importTeachersFromZPA field.
 func (r *subscriptionResolver) ImportTeachersFromZpa(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
 		_, err := r.plexams.ImportTeachersFromZPA(ctx, reporter)
 		return err
 	}), nil
@@ -54,7 +54,7 @@ func (r *subscriptionResolver) ImportTeachersFromZpa(ctx context.Context) (<-cha
 
 // ImportExamsFromZpa is the resolver for the importExamsFromZPA field.
 func (r *subscriptionResolver) ImportExamsFromZpa(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
 		_, err := r.plexams.ImportExamsFromZPA(ctx, reporter)
 		return err
 	}), nil
@@ -62,7 +62,7 @@ func (r *subscriptionResolver) ImportExamsFromZpa(ctx context.Context) (<-chan *
 
 // ImportInvigilatorRequirementsFromZpa is the resolver for the importInvigilatorRequirementsFromZPA field.
 func (r *subscriptionResolver) ImportInvigilatorRequirementsFromZpa(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
 		_, err := r.plexams.ImportInvigilatorRequirementsFromZPA(ctx, reporter)
 		return err
 	}), nil
@@ -70,7 +70,7 @@ func (r *subscriptionResolver) ImportInvigilatorRequirementsFromZpa(ctx context.
 
 // ImportStudentsFromZpa is the resolver for the importStudentsFromZPA field.
 func (r *subscriptionResolver) ImportStudentsFromZpa(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runZPA(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
 		_, _, err := r.plexams.GetStudentsFromZPA(ctx, reporter)
 		return err
 	}), nil

@@ -115,7 +115,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 	if run {
 		to = teacher.Email
 	} else {
-		to = "galority@gmail.com"
+		to = p.planer.Email
 	}
 
 	hasStudentRegs := false
@@ -347,7 +347,7 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 		if run {
 			to = emailAddress
 		} else {
-			to = "galority@gmail.com"
+			to = p.planer.Email
 		}
 
 		return p.sendMail([]string{to},

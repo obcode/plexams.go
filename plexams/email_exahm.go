@@ -3,38 +3,16 @@ package plexams
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"html/template"
-	"time"
-
-	"github.com/logrusorgru/aurora"
-	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
 )
 
 type ExahmEmail struct {
 	PlanerName string
 }
 
-func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool) error {
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email asking for exahm and seb exams")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error happend",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool, reporter Reporter) error {
+	reporter.Step("sending email asking for exahm and seb exams")
 
 	contraintsEmailData := &ExahmEmail{
 		PlanerName: p.planer.Name,
@@ -62,25 +40,11 @@ func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool) error {
 
 	subject := "[Prüfungsplanung nächstes Semester] Prüfungen mit EXaHM und SEB - Rückmeldung bis so schnell wie möglich"
 
-	err = spinner.Stop()
+	to := p.mailTo(run, p.semesterConfig.Emails.Profs)
 
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
+	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+		return err
 	}
-
-	var to []string
-	if run {
-		to = []string{p.semesterConfig.Emails.Profs}
-	} else {
-		to = []string{"galority@gmail.com"}
-	}
-
-	return p.sendMail(to,
-		nil,
-		subject,
-		bufText.Bytes(),
-		bufHTML.Bytes(),
-		nil,
-		true,
-	)
+	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	return nil
 }

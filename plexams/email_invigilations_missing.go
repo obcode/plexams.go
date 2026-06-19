@@ -5,12 +5,9 @@ import (
 	"context"
 	"fmt"
 	"html/template"
-	"time"
 
-	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
 )
 
 type InvigilationMissingMailData struct {
@@ -25,7 +22,8 @@ type InvigilationMissingMailData struct {
 // Planung der Prüfungsaufsichten") in the ZPA. They are warned that, without
 // these requirements, they have to be planned with the full amount of
 // invigilation duty (100%).
-func (p *Plexams) SendEmailInvigilationReqMissing(ctx context.Context, run bool) error {
+func (p *Plexams) SendEmailInvigilationReqMissing(ctx context.Context, run bool, reporter Reporter) error {
+	reporter.Step("checking invigilators with missing requirements")
 	invigilationTodos, err := p.GetInvigilationTodos(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get invigilation todos")
@@ -40,45 +38,31 @@ func (p *Plexams) SendEmailInvigilationReqMissing(ctx context.Context, run bool)
 	}
 
 	if len(missing) == 0 {
-		fmt.Println(aurora.Sprintf(aurora.Red("no invigilators with missing requirements")))
+		reporter.StopProgress("no invigilators with missing requirements")
 		return nil
 	}
 
-	fmt.Println(aurora.Sprintf(aurora.Cyan("%d invigilators with missing requirements"), len(missing)))
+	reporter.Printf("%d invigilators with missing requirements", len(missing))
 
+	sent := 0
 	for _, invigilator := range missing {
-		err := p.sendEmailInvigilationReqMissing(ctx, invigilator, run)
+		err := p.sendEmailInvigilationReqMissing(ctx, invigilator, run, reporter)
 		if err != nil {
 			log.Error().Err(err).Str("teacher", invigilator.Teacher.Shortname).
 				Msg("cannot send email about missing invigilator requirements")
+		} else {
+			sent++
 		}
 	}
 
+	reporter.StopProgress(fmt.Sprintf("sent %d of %d emails", sent, len(missing)))
 	return nil
 }
 
-func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilator *model.Invigilator, run bool) error {
+func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilator *model.Invigilator, run bool, reporter Reporter) error {
 	teacher := invigilator.Teacher
 
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Magenta(" sending email about missing invigilator requirements to %s"), teacher.Fullname),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error happend",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+	reporter.Step(fmt.Sprintf("sending email about missing invigilator requirements to %s", teacher.Fullname))
 
 	minutes := 0
 	if invigilator.Todos != nil {
@@ -115,34 +99,13 @@ func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilat
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Fehlende Anforderungen an die Planung der Prüfungsaufsichten",
 		p.semester)
 
-	var to []string
-	if run {
-		to = []string{teacher.Email}
-	} else {
-		to = []string{"galority@gmail.com"}
-	}
+	to := p.mailTo(run, teacher.Email)
 
-	err = p.sendMail(to,
-		nil,
-		subject,
-		bufText.Bytes(),
-		bufHTML.Bytes(),
-		nil,
-		true,
-	)
-
-	if err != nil {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red(" error while sending email to %s"), teacher.Fullname))
-		spinner.StopFail() //nolint:errcheck
+	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+		reporter.Warnf("error while sending email to %s", teacher.Fullname)
 		return err
 	}
 
-	spinner.StopMessage(aurora.Sprintf(aurora.Cyan(" successfully send to %s (%d minutes)"), teacher.Fullname, minutes))
-
-	err = spinner.Stop()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
-	}
-
+	reporter.Printf("  ✓ sent to %s (%d minutes)", teacher.Fullname, minutes)
 	return nil
 }

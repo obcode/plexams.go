@@ -8,18 +8,16 @@ import (
 	"time"
 
 	"github.com/jordan-wright/email"
-	"github.com/logrusorgru/aurora"
 	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) SendEmailDraft(run bool) error {
-	err := p.sendEmailDraftZPA(run)
+func (p *Plexams) SendEmailDraft(run bool, reporter Reporter) error {
+	err := p.sendEmailDraftZPA(run, reporter)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot send email draft for ZPA")
 		return err
 	}
-	err = p.sendEmailDraftFS(run)
+	err = p.sendEmailDraftFS(run, reporter)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot send email draft for FS")
 		return err
@@ -27,26 +25,8 @@ func (p *Plexams) SendEmailDraft(run bool) error {
 	return nil
 }
 
-func (p *Plexams) sendEmailDraftZPA(run bool) error {
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email announcing the draft plan in ZPA")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error happend",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
+	reporter.Step("sending email announcing the draft plan in ZPA")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
 
@@ -81,52 +61,23 @@ func (p *Plexams) sendEmailDraftZPA(run bool) error {
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Vorläufiger Prüfungsplan  - Rückmeldung bis spätestens %s",
 		p.semester, feedbackDate)
 
-	err = spinner.Stop()
-
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
-	}
-
-	to := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
-	if len(p.semesterConfig.Emails.AdditionalExamer) > 0 {
-		to = append(to, p.semesterConfig.Emails.AdditionalExamer...)
-	}
+	realTo := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
+	realTo = append(realTo, p.semesterConfig.Emails.AdditionalExamer...)
 
 	if !run {
-		subject = "[TEST EMAIL] " + subject + " (Würde an: " + fmt.Sprintf("%v", to) + ")"
-		to = []string{"galority@gmail.com"}
+		subject = "[TEST EMAIL] " + subject + " (Würde an: " + fmt.Sprintf("%v", realTo) + ")"
 	}
+	to := p.mailTo(run, realTo...)
 
-	return p.sendMail(to,
-		nil,
-		subject,
-		bufText.Bytes(),
-		bufHTML.Bytes(),
-		nil,
-		true,
-	)
+	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+		return err
+	}
+	reporter.StopProgress(fmt.Sprintf("draft (ZPA) email sent to %v", to))
+	return nil
 }
 
-func (p *Plexams) sendEmailDraftFS(run bool) error {
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email announcing the draft plan to FS")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error happend",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
+	reporter.Step("sending email announcing the draft plan to FS")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
 
@@ -161,18 +112,7 @@ func (p *Plexams) sendEmailDraftFS(run bool) error {
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Vorläufiger Prüfungsplan - Rückmeldung bis spätestens %s",
 		p.semester, feedbackDate)
 
-	err = spinner.Stop()
-
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
-	}
-
-	var to []string
-	if run {
-		to = []string{p.semesterConfig.Emails.Fs}
-	} else {
-		to = []string{"galority@gmail.com"}
-	}
+	to := p.mailTo(run, p.semesterConfig.Emails.Fs)
 
 	// Generate the PDF draft
 	bufMD, err := p.DraftFSBytes(context.Background())
@@ -193,12 +133,9 @@ func (p *Plexams) sendEmailDraftFS(run bool) error {
 		},
 	}
 
-	return p.sendMail(to,
-		nil,
-		subject,
-		bufText.Bytes(),
-		bufHTML.Bytes(),
-		attachments,
-		false,
-	)
+	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, false); err != nil {
+		return err
+	}
+	reporter.StopProgress(fmt.Sprintf("draft (FS) email sent to %v", to))
+	return nil
 }

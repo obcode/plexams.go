@@ -27,8 +27,20 @@ const (
 
 // trailingDigits extracts the trailing integer of a base filename (without
 // extension), e.g. "cover-12345.pdf" -> "12345". Used to derive the attachment
-// key when bulk-importing a ZIP.
+// key from a filename.
 var trailingDigits = regexp.MustCompile(`(\d+)$`)
+
+// keyFromFilename derives the attachment key from a filename by taking the
+// trailing integer of its base name (e.g. "Deckblatt_12345.pdf" -> "12345").
+// Returns "" if the name has no trailing digits.
+func keyFromFilename(filename string) string {
+	base := filepath.Base(filename)
+	name := strings.TrimSuffix(base, filepath.Ext(base))
+	if m := trailingDigits.FindStringSubmatch(name); m != nil {
+		return m[1]
+	}
+	return ""
+}
 
 // SaveEmailAttachment stores one uploaded attachment for later sending.
 func (p *Plexams) SaveEmailAttachment(ctx context.Context, kind, key, filename, contentType string, data []byte) error {
@@ -97,9 +109,8 @@ func (p *Plexams) HTTPUploadEmailAttachment(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	kind := r.FormValue("kind")
-	key := r.FormValue("key")
-	if kind == "" || key == "" {
-		http.Error(w, "kind and key are required", http.StatusBadRequest)
+	if kind == "" {
+		http.Error(w, "kind is required", http.StatusBadRequest)
 		return
 	}
 	file, header, err := r.FormFile("file")
@@ -108,6 +119,18 @@ func (p *Plexams) HTTPUploadEmailAttachment(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	defer file.Close() // nolint:errcheck
+
+	// key is optional: if omitted, derive it from the filename's trailing digits,
+	// so a single late attachment (e.g. one cover-page PDF) can be supplemented
+	// without knowing/typing the id.
+	key := r.FormValue("key")
+	if key == "" {
+		key = keyFromFilename(header.Filename)
+	}
+	if key == "" {
+		http.Error(w, "key is required (or a filename ending in the id, e.g. ..._12345.pdf)", http.StatusBadRequest)
+		return
+	}
 
 	data, err := io.ReadAll(file)
 	if err != nil {
@@ -171,13 +194,11 @@ func (p *Plexams) HTTPUploadEmailAttachmentsZip(w http.ResponseWriter, r *http.R
 		if strings.HasPrefix(base, ".") || strings.HasPrefix(base, "__MACOSX") {
 			continue
 		}
-		name := strings.TrimSuffix(base, filepath.Ext(base))
-		m := trailingDigits.FindStringSubmatch(name)
-		if m == nil {
+		key := keyFromFilename(base)
+		if key == "" {
 			skipped = append(skipped, base+" (no key in filename)")
 			continue
 		}
-		key := m[1]
 
 		rc, err := f.Open()
 		if err != nil {

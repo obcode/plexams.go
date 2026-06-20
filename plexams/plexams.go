@@ -53,6 +53,9 @@ type Email struct {
 	port     int
 	username string
 	password string
+	// testMail is the recipient used for dry-run sends (run == false). Configured
+	// via smtp.testmail; falls back to the planner's address when empty.
+	testMail string
 }
 
 func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken string, fk07programs, oldprograms []string) (*Plexams, error) {
@@ -98,6 +101,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			port:     viper.GetInt("smtp.server.port"),
 			username: viper.GetString("smtp.username"),
 			password: viper.GetString("smtp.password"),
+			testMail: viper.GetString("smtp.testmail"),
 		},
 		guard: &opGuard{},
 	}

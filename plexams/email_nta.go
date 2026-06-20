@@ -64,7 +64,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 			}
 		}
 
-		to := []string{p.planer.Email}
+		to := []string{p.dryRunRecipient()}
 		cc := []string{}
 		if run && nta.Nta.Email != nil {
 			to = []string{*nta.Nta.Email}
@@ -209,7 +209,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool) er
 		cc = ccSet.ToSlice()
 
 		if !run {
-			to = []string{p.planer.Email}
+			to = []string{p.dryRunRecipient()}
 			log.Debug().Interface("cc", cc).Msg("not sending cc")
 			cc = []string{}
 		}
@@ -326,7 +326,7 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool) er
 	}
 
 	if !run {
-		to = []string{p.planer.Email}
+		to = []string{p.dryRunRecipient()}
 	}
 
 	return p.sendMail(to,

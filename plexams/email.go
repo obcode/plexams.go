@@ -69,14 +69,23 @@ func (p *Plexams) SendTestMail() error {
 		})
 }
 
+// dryRunRecipient is the address all dry-run mails go to: the configured test
+// address (smtp.testmail), or the planner's address when none is configured.
+func (p *Plexams) dryRunRecipient() string {
+	if p.email.testMail != "" {
+		return p.email.testMail
+	}
+	return p.planer.Email
+}
+
 // mailTo returns the actual recipients for a send. On a dry run (run == false)
-// everything goes to the planner instead of the real recipients, so a dry run
-// only ever mails the planner.
+// everything goes to the dry-run recipient instead of the real recipients, so a
+// dry run never reaches the real addressees.
 func (p *Plexams) mailTo(run bool, recipients ...string) []string {
 	if run {
 		return recipients
 	}
-	return []string{p.planer.Email}
+	return []string{p.dryRunRecipient()}
 }
 
 func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, noreply bool) error {

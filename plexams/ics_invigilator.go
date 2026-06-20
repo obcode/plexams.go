@@ -33,8 +33,15 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 			log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("ics: cannot get exams in slot")
 			exams = nil
 		}
-		examsInSlot[key] = exams
-		return exams
+		plannedByMe := make([]*model.PlannedExam, 0, len(exams))
+		for _, exam := range exams {
+			if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+				continue
+			}
+			plannedByMe = append(plannedByMe, exam)
+		}
+		examsInSlot[key] = plannedByMe
+		return plannedByMe
 	}
 	invigName := func(room string, day, slot int) string {
 		t, err := p.GetInvigilatorInSlot(ctx, room, day, slot)
@@ -184,6 +191,9 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 	}
 	for _, exam := range exams {
 		if exam.PlanEntry == nil {
+			continue
+		}
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
 		}
 		day, slot := exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber

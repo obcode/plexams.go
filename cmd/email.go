@@ -144,7 +144,7 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 					log.Fatal("need teacher id or all")
 				}
 				if args[1] == "all" {
-					err := plexams.SendCoverPagesMails(context.Background(), run)
+					err := plexams.SendCoverPagesMails(context.Background(), run, plx.NewConsoleReporter())
 					if err != nil {
 						log.Fatalf("got error: %v\n", err)
 					}
@@ -154,7 +154,7 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 						fmt.Printf("cannot use %s as teacher id", args[1])
 						os.Exit(1)
 					}
-					err = plexams.SendCoverPageMail(context.Background(), teacherID, run)
+					err = plexams.SendCoverPageMail(context.Background(), teacherID, run, plx.NewConsoleReporter())
 					if err != nil {
 						log.Fatalf("got error: %v\n", err)
 					}

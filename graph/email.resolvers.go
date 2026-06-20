@@ -76,3 +76,17 @@ func (r *subscriptionResolver) SendEmailInvigilationsMissing(ctx context.Context
 		return r.plexams.SendEmailInvigilationReqMissing(ctx, run, reporter)
 	}), nil
 }
+
+// SendEmailCoverPages is the resolver for the sendEmailCoverPages field.
+func (r *subscriptionResolver) SendEmailCoverPages(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+		return r.plexams.SendCoverPagesMails(ctx, run, reporter)
+	}), nil
+}
+
+// SendEmailCoverPage is the resolver for the sendEmailCoverPage field.
+func (r *subscriptionResolver) SendEmailCoverPage(ctx context.Context, teacherID int, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+		return r.plexams.SendCoverPageMail(ctx, teacherID, run, reporter)
+	}), nil
+}

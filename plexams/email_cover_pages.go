@@ -6,16 +6,13 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"strconv"
 	"strings"
-	"time"
 
-	set "github.com/deckarep/golang-set/v2"
 	"github.com/jordan-wright/email"
-	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/theckman/yacspin"
 )
 
 type CoverMailData struct {
@@ -24,63 +21,60 @@ type CoverMailData struct {
 	GeneratorName string
 }
 
-func (p *Plexams) SendCoverPagesMails(ctx context.Context, run bool) error {
-	plannedExams, err := p.PlannedExams(ctx)
+// coverPagePDF returns the cover-page PDF for an examer: first from the uploaded
+// attachment store (kind cover-page, key = examer id), then falling back to the
+// configured coverPages.dir so the CLI keeps working without an upload. The
+// returned source is a short label for logging/streaming.
+func (p *Plexams) coverPagePDF(ctx context.Context, examerID int) (data []byte, source string, err error) {
+	att, err := p.GetEmailAttachment(ctx, AttachmentKindCoverPage, strconv.Itoa(examerID))
+	if err != nil {
+		log.Error().Err(err).Int("examerID", examerID).Msg("cannot read cover page from store")
+	}
+	if att != nil && len(att.Data) > 0 {
+		return att.Data, "upload", nil
+	}
+
+	dir := viper.GetString("coverPages.dir")
+	prefix := viper.GetString("coverPages.prefix")
+	filename := fmt.Sprintf("%s/%s%d.pdf", dir, prefix, examerID)
+	data, err = os.ReadFile(filename)
+	if err != nil {
+		return nil, "", fmt.Errorf("no uploaded cover page and file not found: %s", filename)
+	}
+	return data, "coverPages.dir", nil
+}
+
+func (p *Plexams) SendCoverPagesMails(ctx context.Context, run bool, reporter Reporter) error {
+	teachers, err := p.ExamersWithExamsPlannedByMe(ctx)
 	if err != nil {
 		return err
 	}
 
-	examerIDs := set.NewSet[int]()
-	for _, exam := range plannedExams {
-		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
-			continue
+	sent := 0
+	for _, teacher := range teachers {
+		if err := p.SendCoverPageMail(ctx, teacher.ID, run, reporter); err != nil {
+			log.Error().Err(err).Int("examerID", teacher.ID).Msg("cannot send cover page mail")
+		} else {
+			sent++
 		}
-		examerIDs.Add(exam.ZpaExam.MainExamerID)
 	}
 
-	for examerID := range examerIDs.Iter() {
-		p.SendCoverPageMail(ctx, examerID, run) //nolint:errcheck
-	}
-
+	reporter.Println(fmt.Sprintf("sent %d of %d cover-page emails", sent, len(teachers)))
 	return nil
 }
 
-func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool) error {
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email with cover pages for %4d"), examerID),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error happend",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
-
+func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool, reporter Reporter) error {
 	teacher, err := p.GetTeacher(ctx, examerID)
 	if err != nil {
 		log.Debug().Err(err).Msg("cannot get teacher by ID")
 		return err
 	}
 
-	dir := viper.GetString("coverPages.dir")
-	prefix := viper.GetString("coverPages.prefix")
-	filename := fmt.Sprintf("%s/%s%d.pdf", dir, prefix, examerID)
+	reporter.Step(fmt.Sprintf("cover pages for %s (%d)", teacher.Fullname, examerID))
 
-	pdfData, err := os.ReadFile(filename)
+	pdfData, source, err := p.coverPagePDF(ctx, examerID)
 	if err != nil {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red(" %s: file not found: %s"),
-			aurora.Magenta(teacher.Fullname), aurora.Magenta(filename)))
-		spinner.StopFail() //nolint:errcheck
+		reporter.StopProgressFail(fmt.Sprintf("%s: %v", teacher.Fullname, err))
 		return err
 	}
 
@@ -113,12 +107,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool)
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Deckblätter für Ihre Prüfungen",
 		p.semester)
 
-	var to []string
-	if run {
-		to = []string{teacher.Email}
-	} else {
-		to = []string{p.planer.Email}
-	}
+	to := p.mailTo(run, teacher.Email)
 
 	err = p.sendMail(to,
 		nil,
@@ -134,19 +123,11 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool)
 		}},
 		false,
 	)
-
 	if err != nil {
-		spinner.StopFailMessage(aurora.Sprintf(aurora.Red(" error while sending email to %s"), teacher.Fullname))
+		reporter.StopProgressFail(fmt.Sprintf("error while sending email to %s", teacher.Fullname))
 		return err
 	}
 
-	spinner.StopMessage(aurora.Sprintf(aurora.Cyan(" successfully send to %s"), teacher.Fullname))
-
-	err = spinner.Stop()
-
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
-	}
-
+	reporter.StopProgress(fmt.Sprintf("✓ sent to %s %v [%s]", teacher.Fullname, to, source))
 	return nil
 }

@@ -11,6 +11,11 @@ extend type Subscription {
   sendEmailPublishedRooms(run: Boolean!): LogLine!
   sendEmailInvigilations(run: Boolean!): LogLine!
   sendEmailInvigilationsMissing(run: Boolean!): LogLine!
+
+  "Send cover-page emails to all examers with exams planned by me."
+  sendEmailCoverPages(run: Boolean!): LogLine!
+  "Send the cover-page email to a single examer."
+  sendEmailCoverPage(teacherID: Int!, run: Boolean!): LogLine!
 }
 
 """

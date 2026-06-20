@@ -15,6 +15,13 @@ import (
 	"github.com/spf13/viper"
 )
 
+// isNotInvigilator reports whether the teacher is excluded from invigilation
+// duty via invigilatorConstraints.<id>.isNotInvigilator in the semester config.
+// This is the single source of truth for that exclusion.
+func (p *Plexams) isNotInvigilator(teacherID int) bool {
+	return viper.GetBool(fmt.Sprintf("invigilatorConstraints.%d.isNotInvigilator", teacherID))
+}
+
 func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error) {
 	teachers, err := p.getInvigilators(ctx)
 	if err != nil {
@@ -24,130 +31,162 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 
 	invigilators := make([]*model.Invigilator, 0, len(teachers))
 	for _, teacher := range teachers {
-		invigilatorConstraints := viper.Get(fmt.Sprintf("invigilatorConstraints.%d", teacher.ID))
-		if invigilatorConstraints != nil {
-			if viper.GetBool(fmt.Sprintf("invigilatorConstraints.%d.isNotInvigilator", teacher.ID)) {
-				log.Debug().Str("name", teacher.Shortname).Msg("is not invigilator")
-				continue
-			}
+		if p.isNotInvigilator(teacher.ID) {
+			log.Debug().Str("name", teacher.Shortname).Msg("is not invigilator")
+			continue
 		}
 
-		reqs, err := p.dbClient.GetInvigilatorRequirements(ctx, teacher.ID)
+		invigilator, err := p.buildInvigilator(ctx, teacher)
 		if err != nil {
-			log.Error().Err(err).Str("teacher", teacher.Shortname).Msg("cannot get requirements for teacher")
+			return nil, err
 		}
-
-		// Requirements aus dem ZPA können noch fehlen. Dann planen wir mit
-		// Standard-Anforderungen (Vollzeit, keine angerechneten Beiträge) und
-		// merken uns über FromZpa, dass die echten Anforderungen noch fehlen.
-		fromZPA := reqs != nil
-		if reqs == nil {
-			reqs = &zpa.SupervisorRequirements{PartTime: 1.0}
-		}
-
-		var invigReqs *model.InvigilatorRequirements
-		{
-			invigilatorConstraints := viper.Get(fmt.Sprintf("invigilatorConstraints.%d", teacher.ID))
-			var timeWindows []*model.InvigilationTimeWindow
-			if invigilatorConstraints != nil {
-				excludedDates := viper.GetStringSlice(fmt.Sprintf("invigilatorConstraints.%d.excludedDates", teacher.ID))
-				if len(excludedDates) > 0 {
-					log.Debug().Interface("excludedDates", excludedDates).Str("name", teacher.Shortname).Msg("found in config")
-					reqs.ExcludedDates = append(reqs.ExcludedDates, excludedDates...)
-				}
-
-				timeWindowsCfg := viper.Get(fmt.Sprintf("invigilatorConstraints.%d.timeWindows", teacher.ID))
-				if timeWindowsCfg != nil {
-					timeWindows, err = timeWindowsFromConfig(timeWindowsCfg)
-					if err != nil {
-						return nil, fmt.Errorf(
-							"invigilatorConstraints für %s (%d): %w", teacher.Shortname, teacher.ID, err)
-					}
-					log.Debug().Interface("timeWindows", timeWindows).Str("name", teacher.Shortname).
-						Msg("timeWindows found")
-				}
-			}
-
-			excludedDates := make([]*time.Time, 0, len(reqs.ExcludedDates))
-			for _, day := range reqs.ExcludedDates {
-				loc, _ := time.LoadLocation("Europe/Berlin")
-				t, err := time.ParseInLocation("02.01.06", day, loc)
-				if err != nil {
-					log.Error().Err(err).Str("day", day).Msg("cannot parse date")
-				} else {
-					excludedDates = append(excludedDates, &t)
-				}
-			}
-
-			excludedDays := p.datesToDay(excludedDates)
-
-			examTimes := make([]*model.ExamTime, 0)
-			examStarttimes := make([]*time.Time, 0)
-			exams, err := p.GeneratedExamsForExamer(ctx, teacher.ID)
-			if err != nil {
-				log.Error().Err(err).Str("name", teacher.Shortname).Msg("cannit get exams by main examer")
-			} else {
-				for _, exam := range exams {
-					planEntry, err := p.dbClient.PlanEntry(ctx, exam.Ancode)
-					if err != nil {
-						log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get plan entry for ancode")
-					}
-					if planEntry != nil {
-						starttime := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
-						endtime := starttime.Add(time.Duration(exam.MaxDuration) * time.Minute)
-						examTimes = append(examTimes, &model.ExamTime{
-							From:  starttime,
-							Until: endtime,
-						})
-						examStarttimes = append(examStarttimes, &starttime)
-					}
-				}
-			}
-
-			factor := 1.0 * reqs.PartTime
-
-			if reqs.OvertimeThisSemester != 0 {
-				factor *= reqs.OvertimeThisSemester
-			}
-
-			if reqs.FreeSemester == 0.5 {
-				factor *= 0.5
-			}
-
-			if reqs.FreeSemester == 1.0 ||
-				reqs.OvertimeLastSemester != 0 && reqs.FreeSemester == 0.5 {
-				factor = 0.0
-			}
-
-			log.Debug().Str("name", teacher.Shortname).Float64("faktor", factor).
-				Msg("Faktor für Aufsichten")
-
-			invigReqs = &model.InvigilatorRequirements{
-				ExcludedDates:          excludedDates,
-				ExcludedDays:           excludedDays,
-				ExamTimes:              examTimes,
-				ExamDays:               p.datesToDay(examStarttimes),
-				PartTime:               reqs.PartTime,
-				OralExamsContribution:  reqs.OralExamsContribution,
-				LiveCodingContribution: reqs.LivecodingContribution,
-				MasterContribution:     reqs.MasterContribution,
-				FreeSemester:           reqs.FreeSemester,
-				OvertimeLastSemester:   reqs.OvertimeLastSemester,
-				OvertimeThisSemester:   reqs.OvertimeThisSemester,
-				AllContributions:       reqs.OralExamsContribution + reqs.LivecodingContribution + reqs.MasterContribution,
-				Factor:                 factor,
-				FromZpa:                fromZPA,
-				TimeWindows:            timeWindows,
-			}
-		}
-
-		invigilators = append(invigilators, &model.Invigilator{
-			Teacher:      teacher,
-			Requirements: invigReqs,
-		})
+		invigilators = append(invigilators, invigilator)
 	}
 
 	return invigilators, nil
+}
+
+// InvigilatorsExcludedByConfig returns the invigilators who WOULD do invigilation
+// duty (they are in the pool and their computed factor is > 0) but are excluded
+// solely because invigilatorConstraints.<id>.isNotInvigilator is set in the
+// semester config. People who are out anyway (factor 0, e.g. full free semester)
+// are not returned here.
+func (p *Plexams) InvigilatorsExcludedByConfig(ctx context.Context) ([]*model.Invigilator, error) {
+	teachers, err := p.getInvigilators(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get teachers")
+		return nil, err
+	}
+
+	excluded := make([]*model.Invigilator, 0)
+	for _, teacher := range teachers {
+		if !p.isNotInvigilator(teacher.ID) {
+			continue
+		}
+		invigilator, err := p.buildInvigilator(ctx, teacher)
+		if err != nil {
+			return nil, err
+		}
+		if invigilator.Requirements != nil && invigilator.Requirements.Factor > 0 {
+			excluded = append(excluded, invigilator)
+		}
+	}
+
+	return excluded, nil
+}
+
+// buildInvigilator assembles the full invigilator (requirements, factor, exam
+// times, config time windows) for one teacher, independent of whether the
+// teacher is excluded by config.
+func (p *Plexams) buildInvigilator(ctx context.Context, teacher *model.Teacher) (*model.Invigilator, error) {
+	reqs, err := p.dbClient.GetInvigilatorRequirements(ctx, teacher.ID)
+	if err != nil {
+		log.Error().Err(err).Str("teacher", teacher.Shortname).Msg("cannot get requirements for teacher")
+	}
+
+	// Requirements aus dem ZPA können noch fehlen. Dann planen wir mit
+	// Standard-Anforderungen (Vollzeit, keine angerechneten Beiträge) und
+	// merken uns über FromZpa, dass die echten Anforderungen noch fehlen.
+	fromZPA := reqs != nil
+	if reqs == nil {
+		reqs = &zpa.SupervisorRequirements{PartTime: 1.0}
+	}
+
+	invigilatorConstraints := viper.Get(fmt.Sprintf("invigilatorConstraints.%d", teacher.ID))
+	var timeWindows []*model.InvigilationTimeWindow
+	if invigilatorConstraints != nil {
+		excludedDates := viper.GetStringSlice(fmt.Sprintf("invigilatorConstraints.%d.excludedDates", teacher.ID))
+		if len(excludedDates) > 0 {
+			log.Debug().Interface("excludedDates", excludedDates).Str("name", teacher.Shortname).Msg("found in config")
+			reqs.ExcludedDates = append(reqs.ExcludedDates, excludedDates...)
+		}
+
+		timeWindowsCfg := viper.Get(fmt.Sprintf("invigilatorConstraints.%d.timeWindows", teacher.ID))
+		if timeWindowsCfg != nil {
+			timeWindows, err = timeWindowsFromConfig(timeWindowsCfg)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"invigilatorConstraints für %s (%d): %w", teacher.Shortname, teacher.ID, err)
+			}
+			log.Debug().Interface("timeWindows", timeWindows).Str("name", teacher.Shortname).
+				Msg("timeWindows found")
+		}
+	}
+
+	excludedDates := make([]*time.Time, 0, len(reqs.ExcludedDates))
+	for _, day := range reqs.ExcludedDates {
+		loc, _ := time.LoadLocation("Europe/Berlin")
+		t, err := time.ParseInLocation("02.01.06", day, loc)
+		if err != nil {
+			log.Error().Err(err).Str("day", day).Msg("cannot parse date")
+		} else {
+			excludedDates = append(excludedDates, &t)
+		}
+	}
+
+	excludedDays := p.datesToDay(excludedDates)
+
+	examTimes := make([]*model.ExamTime, 0)
+	examStarttimes := make([]*time.Time, 0)
+	exams, err := p.GeneratedExamsForExamer(ctx, teacher.ID)
+	if err != nil {
+		log.Error().Err(err).Str("name", teacher.Shortname).Msg("cannit get exams by main examer")
+	} else {
+		for _, exam := range exams {
+			planEntry, err := p.dbClient.PlanEntry(ctx, exam.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get plan entry for ancode")
+			}
+			if planEntry != nil {
+				starttime := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
+				endtime := starttime.Add(time.Duration(exam.MaxDuration) * time.Minute)
+				examTimes = append(examTimes, &model.ExamTime{
+					From:  starttime,
+					Until: endtime,
+				})
+				examStarttimes = append(examStarttimes, &starttime)
+			}
+		}
+	}
+
+	factor := 1.0 * reqs.PartTime
+
+	if reqs.OvertimeThisSemester != 0 {
+		factor *= reqs.OvertimeThisSemester
+	}
+
+	if reqs.FreeSemester == 0.5 {
+		factor *= 0.5
+	}
+
+	if reqs.FreeSemester == 1.0 ||
+		reqs.OvertimeLastSemester != 0 && reqs.FreeSemester == 0.5 {
+		factor = 0.0
+	}
+
+	log.Debug().Str("name", teacher.Shortname).Float64("faktor", factor).
+		Msg("Faktor für Aufsichten")
+
+	return &model.Invigilator{
+		Teacher: teacher,
+		Requirements: &model.InvigilatorRequirements{
+			ExcludedDates:          excludedDates,
+			ExcludedDays:           excludedDays,
+			ExamTimes:              examTimes,
+			ExamDays:               p.datesToDay(examStarttimes),
+			PartTime:               reqs.PartTime,
+			OralExamsContribution:  reqs.OralExamsContribution,
+			LiveCodingContribution: reqs.LivecodingContribution,
+			MasterContribution:     reqs.MasterContribution,
+			FreeSemester:           reqs.FreeSemester,
+			OvertimeLastSemester:   reqs.OvertimeLastSemester,
+			OvertimeThisSemester:   reqs.OvertimeThisSemester,
+			AllContributions:       reqs.OralExamsContribution + reqs.LivecodingContribution + reqs.MasterContribution,
+			Factor:                 factor,
+			FromZpa:                fromZPA,
+			TimeWindows:            timeWindows,
+		},
+	}, nil
 }
 
 // timeWindowsFromConfig wandelt einen viper-Config-Wert der Form

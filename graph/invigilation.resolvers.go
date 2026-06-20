@@ -30,6 +30,11 @@ func (r *queryResolver) InvigilatorsWithReq(ctx context.Context) ([]*model.Invig
 	return r.plexams.InvigilatorsWithReq(ctx)
 }
 
+// InvigilatorsExcludedByConfig is the resolver for the invigilatorsExcludedByConfig field.
+func (r *queryResolver) InvigilatorsExcludedByConfig(ctx context.Context) ([]*model.Invigilator, error) {
+	return r.plexams.InvigilatorsExcludedByConfig(ctx)
+}
+
 // RoomsWithInvigilationsForSlot is the resolver for the roomsWithInvigilationsForSlot field.
 func (r *queryResolver) RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error) {
 	return r.plexams.RoomsWithInvigilationsForSlot(ctx, day, time)

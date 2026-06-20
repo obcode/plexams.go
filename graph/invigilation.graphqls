@@ -1,6 +1,12 @@
 extend type Query {
   invigilatorTodos: InvigilationTodos
   invigilatorsWithReq: [Invigilator!]!
+  """
+  invigilatorsExcludedByConfig returns the invigilators who would do invigilation
+  duty (factor > 0) but are excluded only because invigilatorConstraints.<id>.isNotInvigilator
+  is set in the semester config. People who are out anyway are not listed.
+  """
+  invigilatorsExcludedByConfig: [Invigilator!]!
   roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
   invigilatorsForDay(day: Int!): InvigilatorsForDay
   invigilator(room: String!, day: Int!, time: Int!): Teacher

@@ -66,7 +66,7 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 	// roomLine renders one planned room with optional invigilator and its NTA.
 	roomLine := func(exam *model.PlannedExam, room *model.PlannedRoom, withInvigilator bool) string {
 		var b strings.Builder
-		fmt.Fprintf(&b, "%s (%d min)", room.RoomName, room.Duration)
+		fmt.Fprintf(&b, "%s (%d min, %d Stud.)", room.RoomName, room.Duration, len(room.StudentsInRoom))
 		if withInvigilator {
 			fmt.Fprintf(&b, ", Aufsicht: %s", invigName(room.RoomName, room.Day, room.Slot))
 		}

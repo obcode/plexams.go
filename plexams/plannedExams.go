@@ -116,7 +116,6 @@ func (p *Plexams) PlannedExamsByExamer(ctx context.Context, examerID int) ([]*mo
 		}
 		if plannedExam.ZpaExam.MainExamerID == examerID {
 			plannedExamsForExamer = append(plannedExamsForExamer, plannedExam)
-			break
 		}
 	}
 

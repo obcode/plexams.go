@@ -77,6 +77,13 @@ func (r *subscriptionResolver) SendEmailInvigilationsMissing(ctx context.Context
 	}), nil
 }
 
+// SendEmailPublishedInvigilations is the resolver for the sendEmailPublishedInvigilations field.
+func (r *subscriptionResolver) SendEmailPublishedInvigilations(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+		return r.plexams.SendEmailPublishedInvigilations(ctx, run, reporter)
+	}), nil
+}
+
 // SendEmailCoverPages is the resolver for the sendEmailCoverPages field.
 func (r *subscriptionResolver) SendEmailCoverPages(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
 	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {

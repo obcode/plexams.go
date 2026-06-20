@@ -12,6 +12,9 @@ extend type Subscription {
   sendEmailInvigilations(run: Boolean!): LogLine!
   sendEmailInvigilationsMissing(run: Boolean!): LogLine!
 
+  "Send an individual published-invigilations email (with the personal plan PNG) to each invigilator."
+  sendEmailPublishedInvigilations(run: Boolean!): LogLine!
+
   "Send cover-page emails to all examers with exams planned by me."
   sendEmailCoverPages(run: Boolean!): LogLine!
   "Send the cover-page email to a single examer."

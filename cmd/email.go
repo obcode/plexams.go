@@ -98,7 +98,7 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 					log.Fatalf("got error: %v\n", err)
 				}
 			case "published-invigilations":
-				err := plexams.SendEmailPublishedInvigilations(context.Background(), run)
+				err := plexams.SendEmailPublishedInvigilations(context.Background(), run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

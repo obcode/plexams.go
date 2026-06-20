@@ -712,6 +712,7 @@ type ComplexityRoot struct {
 		SendEmailInvigilationsMissing        func(childComplexity int, run bool) int
 		SendEmailPrepared                    func(childComplexity int, run bool) int
 		SendEmailPublishedExams              func(childComplexity int, run bool) int
+		SendEmailPublishedInvigilations      func(childComplexity int, run bool) int
 		SendEmailPublishedRooms              func(childComplexity int, run bool) int
 		UploadExamsToZpa                     func(childComplexity int, dryRun bool) int
 		UploadExamsWithInvigilatorsToZpa     func(childComplexity int, dryRun bool) int
@@ -951,6 +952,7 @@ type SubscriptionResolver interface {
 	SendEmailPublishedRooms(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailInvigilations(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailInvigilationsMissing(ctx context.Context, run bool) (<-chan *model.LogLine, error)
+	SendEmailPublishedInvigilations(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailCoverPages(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailCoverPage(ctx context.Context, teacherID int, run bool) (<-chan *model.LogLine, error)
 	ValidateInvigilatorRequirements(ctx context.Context) (<-chan *model.LogLine, error)
@@ -4402,6 +4404,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.SendEmailPublishedExams(childComplexity, args["run"].(bool)), true
 
+	case "Subscription.sendEmailPublishedInvigilations":
+		if e.complexity.Subscription.SendEmailPublishedInvigilations == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_sendEmailPublishedInvigilations_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.SendEmailPublishedInvigilations(childComplexity, args["run"].(bool)), true
+
 	case "Subscription.sendEmailPublishedRooms":
 		if e.complexity.Subscription.SendEmailPublishedRooms == nil {
 			break
@@ -5260,6 +5274,9 @@ extend type Subscription {
   sendEmailPublishedRooms(run: Boolean!): LogLine!
   sendEmailInvigilations(run: Boolean!): LogLine!
   sendEmailInvigilationsMissing(run: Boolean!): LogLine!
+
+  "Send an individual published-invigilations email (with the personal plan PNG) to each invigilator."
+  sendEmailPublishedInvigilations(run: Boolean!): LogLine!
 
   "Send cover-page emails to all examers with exams planned by me."
   sendEmailCoverPages(run: Boolean!): LogLine!
@@ -8474,6 +8491,34 @@ func (ec *executionContext) field_Subscription_sendEmailPublishedExams_args(ctx 
 	return args, nil
 }
 func (ec *executionContext) field_Subscription_sendEmailPublishedExams_argsRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["run"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("run"))
+	if tmp, ok := rawArgs["run"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailPublishedInvigilations_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_sendEmailPublishedInvigilations_argsRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["run"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_sendEmailPublishedInvigilations_argsRun(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (bool, error) {
@@ -31213,6 +31258,87 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailInvigilationsMiss
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_sendEmailPublishedInvigilations(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_sendEmailPublishedInvigilations(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().SendEmailPublishedInvigilations(rctx, fc.Args["run"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_sendEmailPublishedInvigilations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_sendEmailPublishedInvigilations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Subscription_sendEmailCoverPages(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	fc, err := ec.fieldContext_Subscription_sendEmailCoverPages(ctx, field)
 	if err != nil {
@@ -43974,6 +44100,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_sendEmailInvigilations(ctx, fields[0])
 	case "sendEmailInvigilationsMissing":
 		return ec._Subscription_sendEmailInvigilationsMissing(ctx, fields[0])
+	case "sendEmailPublishedInvigilations":
+		return ec._Subscription_sendEmailPublishedInvigilations(ctx, fields[0])
 	case "sendEmailCoverPages":
 		return ec._Subscription_sendEmailCoverPages(ctx, fields[0])
 	case "sendEmailCoverPage":

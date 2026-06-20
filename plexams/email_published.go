@@ -5,11 +5,17 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/logrusorgru/aurora"
+	set "github.com/deckarep/golang-set/v2"
+	"github.com/jordan-wright/email"
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
+	"github.com/spf13/viper"
 )
 
 func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporter Reporter) error {
@@ -115,28 +121,37 @@ type InvigilationsEmail struct {
 	MaxDeviation        int
 	MinDeviation        int
 	PlanerName          string
+	Teacher             *model.Teacher
 }
 
-func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool) error {
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" sending email announcing published invigilations")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error happend",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-	spinner, err := yacspin.New(cfg)
+// invigilationImagePNG returns the personal invigilation-plan PNG for an
+// invigilator: first from the uploaded attachment store (kind invigilation-image,
+// key = invigilator id), then falling back to invigilationStats.dir so the CLI
+// works without an upload. source is a short label for logging/streaming.
+func (p *Plexams) invigilationImagePNG(ctx context.Context, invigilatorID int) (data []byte, source string, err error) {
+	att, err := p.GetEmailAttachment(ctx, AttachmentKindInvigilationImage, strconv.Itoa(invigilatorID))
 	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
+		log.Error().Err(err).Int("invigilatorID", invigilatorID).Msg("cannot read invigilation image from store")
 	}
-	err = spinner.Start()
+	if att != nil && len(att.Data) > 0 {
+		return att.Data, "upload", nil
+	}
+
+	dir := viper.GetString("invigilationStats.dir")
+	prefix := viper.GetString("invigilationStats.prefix")
+	filename := fmt.Sprintf("%s/%s%d.png", dir, prefix, invigilatorID)
+	data, err = os.ReadFile(filename)
 	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
+		return nil, "", fmt.Errorf("no uploaded invigilation image and file not found: %s", filename)
 	}
+	return data, "invigilationStats.dir", nil
+}
+
+// SendEmailPublishedInvigilations sends one individual email per invigilator who
+// has at least one invigilation, attaching that invigilator's personal plan PNG
+// (from the upload store or invigilationStats.dir).
+func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool, reporter Reporter) error {
+	reporter.Step("preparing published-invigilation emails")
 
 	invigilationTodos, err := p.GetInvigilationTodos(ctx)
 	if err != nil {
@@ -144,7 +159,6 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool)
 	}
 
 	maxDeviation, minDeviation := 0, 0
-
 	for _, invigilator := range invigilationTodos.Invigilators {
 		deviation := invigilator.Todos.TotalMinutes - invigilator.Todos.DoingMinutes
 		if deviation > 0 {
@@ -158,7 +172,7 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool)
 		}
 	}
 
-	contraintsEmailData := &InvigilationsEmail{
+	stats := InvigilationsEmail{
 		PlanerName:          p.planer.Name,
 		NoOfInvigilators:    invigilationTodos.InvigilatorCount,
 		InvigilationInRooms: invigilationTodos.SumExamRooms,
@@ -169,43 +183,84 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool)
 		MinDeviation:        -minDeviation,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/publishedEmailInvigilations.tmpl")
+	textTmpl, err := template.ParseFS(emailTemplates, "tmpl/publishedInvigilationPersonalEmail.tmpl")
 	if err != nil {
 		return err
 	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, contraintsEmailData)
-	if err != nil {
-		return err
-	}
-
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/publishedEmailInvigilationsHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, contraintsEmailData)
+	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/publishedInvigilationPersonalEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}
 
-	subject := fmt.Sprintf("[Prüfungsplanung %s] Aufsichtenplanung im ZPA verfügbar",
-		p.semester)
-
-	err = spinner.Stop()
-
+	// recipients: everyone with at least one invigilation assigned.
+	invigilations, err := p.dbClient.GetAllInvigilations(ctx)
 	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
+		return err
+	}
+	invigilatorIDs := set.NewSet[int]()
+	for _, inv := range invigilations {
+		invigilatorIDs.Add(inv.InvigilatorID)
+	}
+	ids := invigilatorIDs.ToSlice()
+	sort.Ints(ids)
+
+	subject := fmt.Sprintf("[Prüfungsplanung %s] Ihr Aufsichtenplan", p.semester)
+
+	sent := 0
+	for _, id := range ids {
+		teacher, err := p.GetTeacher(ctx, id)
+		if err != nil {
+			log.Error().Err(err).Int("invigilatorID", id).Msg("cannot get teacher")
+			reporter.Warnf("cannot get teacher %d: %v", id, err)
+			continue
+		}
+
+		reporter.Step(fmt.Sprintf("invigilation plan for %s (%d)", teacher.Fullname, id))
+
+		pngData, source, err := p.invigilationImagePNG(ctx, id)
+		if err != nil {
+			reporter.Warnf("%s: %v", teacher.Fullname, err)
+			continue
+		}
+
+		data := stats
+		data.Teacher = teacher
+
+		bufText := new(bytes.Buffer)
+		if err := textTmpl.Execute(bufText, data); err != nil {
+			reporter.Warnf("%s: cannot render text: %v", teacher.Fullname, err)
+			continue
+		}
+		bufHTML := new(bytes.Buffer)
+		if err := htmlTmpl.Execute(bufHTML, data); err != nil {
+			reporter.Warnf("%s: cannot render html: %v", teacher.Fullname, err)
+			continue
+		}
+
+		to := p.mailTo(run, teacher.Email)
+		err = p.sendMail(to,
+			nil,
+			subject,
+			bufText.Bytes(),
+			bufHTML.Bytes(),
+			[]*email.Attachment{{
+				Filename:    strings.ReplaceAll(fmt.Sprintf("%s_Aufsichtenplan_%s.png", p.semester, teacher.Fullname), " ", "_"),
+				ContentType: "image/png",
+				Header:      map[string][]string{},
+				Content:     pngData,
+				HTMLRelated: false,
+			}},
+			true,
+		)
+		if err != nil {
+			reporter.Warnf("error while sending email to %s", teacher.Fullname)
+			continue
+		}
+
+		reporter.Printf("  ✓ sent to %s %v [%s]", teacher.Fullname, to, source)
+		sent++
 	}
 
-	to := p.mailTo(run, p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Sekr)
-
-	return p.sendMail(to,
-		nil,
-		subject,
-		bufText.Bytes(),
-		bufHTML.Bytes(),
-		nil,
-		true,
-	)
+	reporter.StopProgress(fmt.Sprintf("sent %d of %d invigilation-plan emails", sent, len(ids)))
+	return nil
 }

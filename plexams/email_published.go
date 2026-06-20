@@ -294,19 +294,36 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 			continue
 		}
 
+		baseName := strings.ReplaceAll(fmt.Sprintf("%s_Aufsichtenplan_%s", p.semester, teacher.Fullname), " ", "_")
+		attachments := []*email.Attachment{{
+			Filename:    baseName + ".png",
+			ContentType: "image/png",
+			Header:      map[string][]string{},
+			Content:     pngData,
+			HTMLRelated: false,
+		}}
+
+		// Attach an ICS with the same appointments (own exams, invigilations,
+		// reserves). A failure here must not stop the mail.
+		if icsData, err := p.InvigilatorICS(ctx, id); err != nil {
+			reporter.Warnf("%s: cannot build ICS: %v", teacher.Fullname, err)
+		} else {
+			attachments = append(attachments, &email.Attachment{
+				Filename:    baseName + ".ics",
+				ContentType: "text/calendar; charset=utf-8",
+				Header:      map[string][]string{},
+				Content:     icsData,
+				HTMLRelated: false,
+			})
+		}
+
 		to := p.mailTo(run, teacher.Email)
 		err = p.sendMail(to,
 			nil,
 			subject,
 			bufText.Bytes(),
 			bufHTML.Bytes(),
-			[]*email.Attachment{{
-				Filename:    strings.ReplaceAll(fmt.Sprintf("%s_Aufsichtenplan_%s.png", p.semester, teacher.Fullname), " ", "_"),
-				ContentType: "image/png",
-				Header:      map[string][]string{},
-				Content:     pngData,
-				HTMLRelated: false,
-			}},
+			attachments,
 			true,
 		)
 		if err != nil {

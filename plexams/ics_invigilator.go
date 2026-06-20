@@ -92,10 +92,30 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 		return lines
 	}
 
+	examerShortCache := make(map[int]string)
+	examerShort := func(exam *model.PlannedExam) string {
+		if exam.ZpaExam == nil {
+			return ""
+		}
+		id := exam.ZpaExam.MainExamerID
+		if s, ok := examerShortCache[id]; ok {
+			return s
+		}
+		s := exam.ZpaExam.MainExamer
+		if t, err := p.GetTeacher(ctx, id); err == nil && t != nil && t.Shortname != "" {
+			s = t.Shortname
+		}
+		examerShortCache[id] = s
+		return s
+	}
+
 	examHeader := func(exam *model.PlannedExam) string {
 		module := ""
 		if exam.ZpaExam != nil {
 			module = exam.ZpaExam.Module
+		}
+		if short := examerShort(exam); short != "" {
+			return fmt.Sprintf("%d. %s (%s)", exam.Ancode, module, short)
 		}
 		return fmt.Sprintf("%d. %s", exam.Ancode, module)
 	}

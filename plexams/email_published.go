@@ -147,9 +147,48 @@ func (p *Plexams) invigilationImagePNG(ctx context.Context, invigilatorID int) (
 	return data, "invigilationStats.dir", nil
 }
 
+// invigilationImageKeys returns the invigilator ids that have a personal plan
+// PNG available, as the union of the upload store (kind invigilation-image) and
+// the files in invigilationStats.dir, sorted ascending.
+func (p *Plexams) invigilationImageKeys(ctx context.Context) ([]int, error) {
+	keys := set.NewSet[int]()
+
+	infos, err := p.EmailAttachmentInfos(ctx, AttachmentKindInvigilationImage)
+	if err != nil {
+		return nil, err
+	}
+	for _, info := range infos {
+		if id, err := strconv.Atoi(info.Key); err == nil {
+			keys.Add(id)
+		}
+	}
+
+	if dir := viper.GetString("invigilationStats.dir"); dir != "" {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			log.Debug().Err(err).Str("dir", dir).Msg("cannot read invigilationStats.dir")
+		} else {
+			for _, e := range entries {
+				if e.IsDir() {
+					continue
+				}
+				if key := keyFromFilename(e.Name()); key != "" {
+					if id, err := strconv.Atoi(key); err == nil {
+						keys.Add(id)
+					}
+				}
+			}
+		}
+	}
+
+	ids := keys.ToSlice()
+	sort.Ints(ids)
+	return ids, nil
+}
+
 // SendEmailPublishedInvigilations sends one individual email per invigilator who
-// has at least one invigilation, attaching that invigilator's personal plan PNG
-// (from the upload store or invigilationStats.dir).
+// has a personal plan PNG (upload store or invigilationStats.dir), attaching it.
+// Invigilators that have an assignment but no calendar are reported and skipped.
 func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool, reporter Reporter) error {
 	reporter.Step("preparing published-invigilation emails")
 
@@ -192,17 +231,35 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		return err
 	}
 
-	// recipients: everyone with at least one invigilation assigned.
+	// recipients: everyone with a personal plan PNG (upload store or dir).
+	ids, err := p.invigilationImageKeys(ctx)
+	if err != nil {
+		return err
+	}
+	withCalendar := set.NewSet[int]()
+	for _, id := range ids {
+		withCalendar.Add(id)
+	}
+
+	// Safety net: warn about invigilators that have an assignment but no
+	// uploaded/available calendar, so missing uploads are noticed.
 	invigilations, err := p.dbClient.GetAllInvigilations(ctx)
 	if err != nil {
 		return err
 	}
-	invigilatorIDs := set.NewSet[int]()
+	assigned := set.NewSet[int]()
 	for _, inv := range invigilations {
-		invigilatorIDs.Add(inv.InvigilatorID)
+		assigned.Add(inv.InvigilatorID)
 	}
-	ids := invigilatorIDs.ToSlice()
-	sort.Ints(ids)
+	missing := assigned.Difference(withCalendar).ToSlice()
+	sort.Ints(missing)
+	for _, id := range missing {
+		if teacher, err := p.GetTeacher(ctx, id); err == nil {
+			reporter.Warnf("no calendar for %s (%d) — has invigilations but no PNG, not mailed", teacher.Fullname, id)
+		} else {
+			reporter.Warnf("no calendar for invigilator %d — has invigilations but no PNG, not mailed", id)
+		}
+	}
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Ihr Aufsichtenplan", p.semester)
 

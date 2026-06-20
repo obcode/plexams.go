@@ -23,77 +23,77 @@ func (r *queryResolver) EmailAttachments(ctx context.Context, kind string) ([]*m
 
 // SendEmailExaHm is the resolver for the sendEmailExaHM field.
 func (r *subscriptionResolver) SendEmailExaHm(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailExaHM(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailConstraints is the resolver for the sendEmailConstraints field.
 func (r *subscriptionResolver) SendEmailConstraints(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailConstraints(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailPrepared is the resolver for the sendEmailPrepared field.
 func (r *subscriptionResolver) SendEmailPrepared(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailPrepared(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailDraft is the resolver for the sendEmailDraft field.
 func (r *subscriptionResolver) SendEmailDraft(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailDraft(run, reporter)
 	}), nil
 }
 
 // SendEmailPublishedExams is the resolver for the sendEmailPublishedExams field.
 func (r *subscriptionResolver) SendEmailPublishedExams(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailPublishedExams(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailPublishedRooms is the resolver for the sendEmailPublishedRooms field.
 func (r *subscriptionResolver) SendEmailPublishedRooms(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailPublishedRooms(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailInvigilations is the resolver for the sendEmailInvigilations field.
 func (r *subscriptionResolver) SendEmailInvigilations(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailInvigilations(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailInvigilationsMissing is the resolver for the sendEmailInvigilationsMissing field.
 func (r *subscriptionResolver) SendEmailInvigilationsMissing(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailInvigilationReqMissing(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailPublishedInvigilations is the resolver for the sendEmailPublishedInvigilations field.
 func (r *subscriptionResolver) SendEmailPublishedInvigilations(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailPublishedInvigilations(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailCoverPages is the resolver for the sendEmailCoverPages field.
 func (r *subscriptionResolver) SendEmailCoverPages(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendCoverPagesMails(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailCoverPage is the resolver for the sendEmailCoverPage field.
 func (r *subscriptionResolver) SendEmailCoverPage(ctx context.Context, teacherID int, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(reporter plexams.Reporter) error {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendCoverPageMail(ctx, teacherID, run, reporter)
 	}), nil
 }

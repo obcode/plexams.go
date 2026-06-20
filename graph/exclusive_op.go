@@ -10,12 +10,18 @@ import (
 
 // runExclusiveOp runs an exclusive operation (ZPA transfer or email send) and
 // streams its output the same way the command line shows it. It refuses to run
-// while a validation or another exclusive operation is in progress, runs the
-// operation on a background context so it finishes even if the client
-// disconnects, and ends the stream with a DONE line.
+// while a validation or another exclusive operation is in progress and ends the
+// stream with a DONE line.
+//
+// The operation runs on a context DETACHED from the subscription (ctx values are
+// kept, cancellation is not): when the client leaves the page the websocket
+// closes and the subscription ctx is canceled, but the operation keeps running
+// to completion. fn therefore receives opCtx and must use it (not the
+// subscription ctx) for its work; the reporter still uses the subscription ctx so
+// streaming stops once the client is gone.
 func (r *subscriptionResolver) runExclusiveOp(
 	ctx context.Context,
-	fn func(reporter plexams.Reporter) error,
+	fn func(opCtx context.Context, reporter plexams.Reporter) error,
 ) <-chan *model.LogLine {
 	ch := make(chan *model.LogLine, 256)
 	reporter := newStreamReporter(ctx, ch)
@@ -29,10 +35,11 @@ func (r *subscriptionResolver) runExclusiveOp(
 		return ch
 	}
 
+	opCtx := context.WithoutCancel(ctx)
 	go func() {
 		defer close(ch)
 		defer r.plexams.EndExclusiveOp()
-		if err := fn(reporter); err != nil {
+		if err := fn(opCtx, reporter); err != nil {
 			log.Error().Err(err).Msg("exclusive operation failed")
 			reporter.emit(model.LogLevelError, "error: "+err.Error())
 		}

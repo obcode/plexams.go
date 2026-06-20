@@ -3,14 +3,52 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
+	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
 
 func (p *Plexams) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {
 	return p.dbClient.ExamerInPlan(ctx)
+}
+
+// ExamersWithExamsPlannedByMe returns the main examers of all planned exams that
+// are planned by me (i.e. not flagged NotPlannedByMe), as full teachers, sorted
+// by short name. This is the set of examers the planner is responsible for (e.g.
+// for cover-page mails).
+func (p *Plexams) ExamersWithExamsPlannedByMe(ctx context.Context) ([]*model.Teacher, error) {
+	plannedExams, err := p.PlannedExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	examerIDs := set.NewSet[int]()
+	for _, exam := range plannedExams {
+		if exam.PlanEntry == nil {
+			continue
+		}
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+		examerIDs.Add(exam.ZpaExam.MainExamerID)
+	}
+
+	teachers := make([]*model.Teacher, 0, examerIDs.Cardinality())
+	for examerID := range examerIDs.Iter() {
+		teacher, err := p.GetTeacher(ctx, examerID)
+		if err != nil {
+			log.Error().Err(err).Int("examerID", examerID).Msg("cannot get teacher")
+			continue
+		}
+		teachers = append(teachers, teacher)
+	}
+
+	sort.Slice(teachers, func(i, j int) bool { return teachers[i].Shortname < teachers[j].Shortname })
+
+	return teachers, nil
 }
 
 func (p *Plexams) prepareConnectedZPAExam(ctx context.Context, ancode int, allPrograms []string) (*model.ConnectedExam, error) {

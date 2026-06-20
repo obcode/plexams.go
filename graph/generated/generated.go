@@ -516,6 +516,7 @@ type ComplexityRoot struct {
 		ConstraintForAncode           func(childComplexity int, ancode int) int
 		EmailAttachments              func(childComplexity int, kind string) int
 		ExamerInPlan                  func(childComplexity int) int
+		ExamersWithExamsPlannedByMe   func(childComplexity int) int
 		ExamsInSlot                   func(childComplexity int, day int, time int) int
 		ExamsWithNtas                 func(childComplexity int) int
 		ExamsWithoutSlot              func(childComplexity int) int
@@ -900,6 +901,7 @@ type QueryResolver interface {
 	AllProgramsInPlan(ctx context.Context) ([]string, error)
 	AncodesInPlan(ctx context.Context) ([]int, error)
 	ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error)
+	ExamersWithExamsPlannedByMe(ctx context.Context) ([]*model.Teacher, error)
 	PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.PreExam, error)
 	ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error)
 	ExamsWithoutSlot(ctx context.Context) ([]*model.PlannedExam, error)
@@ -3268,6 +3270,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.ExamerInPlan(childComplexity), true
 
+	case "Query.examersWithExamsPlannedByMe":
+		if e.complexity.Query.ExamersWithExamsPlannedByMe == nil {
+			break
+		}
+
+		return e.complexity.Query.ExamersWithExamsPlannedByMe(childComplexity), true
+
 	case "Query.examsInSlot":
 		if e.complexity.Query.ExamsInSlot == nil {
 			break
@@ -5535,6 +5544,11 @@ type NTAWithRegsByExam {
   allProgramsInPlan: [String!]
   ancodesInPlan: [Int!]
   examerInPlan: [ExamerInPlan!]
+  """
+  examersWithExamsPlannedByMe returns the main examers of all planned exams that
+  are planned by me (not flagged NotPlannedByMe).
+  """
+  examersWithExamsPlannedByMe: [Teacher!]!
 
   preExamsInSlot(day: Int!, time: Int!): [PreExam!]
 
@@ -24576,6 +24590,74 @@ func (ec *executionContext) fieldContext_Query_examerInPlan(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_examersWithExamsPlannedByMe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_examersWithExamsPlannedByMe(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExamersWithExamsPlannedByMe(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Teacher)
+	fc.Result = res
+	return ec.marshalNTeacher2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacherᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_examersWithExamsPlannedByMe(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "shortname":
+				return ec.fieldContext_Teacher_shortname(ctx, field)
+			case "fullname":
+				return ec.fieldContext_Teacher_fullname(ctx, field)
+			case "isProf":
+				return ec.fieldContext_Teacher_isProf(ctx, field)
+			case "isLBA":
+				return ec.fieldContext_Teacher_isLBA(ctx, field)
+			case "isProfHC":
+				return ec.fieldContext_Teacher_isProfHC(ctx, field)
+			case "isStaff":
+				return ec.fieldContext_Teacher_isStaff(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_Teacher_lastSemester(ctx, field)
+			case "fk":
+				return ec.fieldContext_Teacher_fk(ctx, field)
+			case "id":
+				return ec.fieldContext_Teacher_id(ctx, field)
+			case "email":
+				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_preExamsInSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_preExamsInSlot(ctx, field)
 	if err != nil {
@@ -41864,6 +41946,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_examerInPlan(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "examersWithExamsPlannedByMe":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_examersWithExamsPlannedByMe(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 

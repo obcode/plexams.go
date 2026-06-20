@@ -43,6 +43,11 @@ func (r *queryResolver) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan
 	return r.plexams.ExamerInPlan(ctx)
 }
 
+// ExamersWithExamsPlannedByMe is the resolver for the examersWithExamsPlannedByMe field.
+func (r *queryResolver) ExamersWithExamsPlannedByMe(ctx context.Context) ([]*model.Teacher, error) {
+	return r.plexams.ExamersWithExamsPlannedByMe(ctx)
+}
+
 // PreExamsInSlot is the resolver for the preExamsInSlot field.
 func (r *queryResolver) PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.PreExam, error) {
 	return r.plexams.PreExamsInSlot(ctx, day, time)

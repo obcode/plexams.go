@@ -2,6 +2,11 @@ extend type Query {
   allProgramsInPlan: [String!]
   ancodesInPlan: [Int!]
   examerInPlan: [ExamerInPlan!]
+  """
+  examersWithExamsPlannedByMe returns the main examers of all planned exams that
+  are planned by me (not flagged NotPlannedByMe).
+  """
+  examersWithExamsPlannedByMe: [Teacher!]!
 
   preExamsInSlot(day: Int!, time: Int!): [PreExam!]
 

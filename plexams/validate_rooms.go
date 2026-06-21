@@ -217,7 +217,7 @@ func (p *Plexams) ValidateRoomsBlocked(reporter Reporter) (*model.ValidationRepo
 	for _, b := range blocks {
 		v.step("checking block %s in slot (%d/%d)", b.Room, b.Day, b.Slot)
 		if planned[slotRoom{b.Room, b.Day, b.Slot}] {
-			v.warnf(ref{Room: ptr(b.Room), Day: ptr(b.Day), Slot: ptr(b.Slot)},
+			v.errorf(ref{Room: ptr(b.Room), Day: ptr(b.Day), Slot: ptr(b.Slot)},
 				"room %s is blocked in slot (%d/%d) but still planned there; regenerate rooms for exams",
 				b.Room, b.Day, b.Slot)
 		}

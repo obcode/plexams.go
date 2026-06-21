@@ -94,6 +94,13 @@ type ComplexityRoot struct {
 		WithinTolerance func(childComplexity int) int
 	}
 
+	BlockedRoom struct {
+		Day    func(childComplexity int) int
+		Reason func(childComplexity int) int
+		Room   func(childComplexity int) int
+		Slot   func(childComplexity int) int
+	}
+
 	Conflict struct {
 		AnCode        func(childComplexity int) int
 		NumberOfStuds func(childComplexity int) int
@@ -353,6 +360,7 @@ type ComplexityRoot struct {
 		AddRoomRequest                func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
 		AddZpaExamToPlan              func(childComplexity int, ancode int) int
 		ApplyRoomRequestsPreview      func(childComplexity int, force bool) int
+		BlockRoomForSlot              func(childComplexity int, room string, day int, slot int, reason *string) int
 		ClearEmailAttachments         func(childComplexity int, kind string) int
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
@@ -366,6 +374,7 @@ type ComplexityRoot struct {
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
+		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
 		RmConstraints                 func(childComplexity int, ancode int) int
 		RmExamFromSlot                func(childComplexity int, ancode int) int
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
@@ -375,6 +384,7 @@ type ComplexityRoot struct {
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
 		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
+		UnblockRoomForSlot            func(childComplexity int, room string, day int, slot int) int
 		UpdateNta                     func(childComplexity int, input model.NTAInput) int
 		UpdateRoom                    func(childComplexity int, input model.RoomInput) int
 		UpdateRoomRequestTime         func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
@@ -515,6 +525,7 @@ type ComplexityRoot struct {
 		AncodesInPlan                 func(childComplexity int) int
 		AnnyBookings                  func(childComplexity int, room *string) int
 		AwkwardSlots                  func(childComplexity int, ancode int) int
+		BlockedRooms                  func(childComplexity int) int
 		ConflictingAncodes            func(childComplexity int, ancode int) int
 		ConnectedExam                 func(childComplexity int, ancode int) int
 		ConnectedExams                func(childComplexity int) int
@@ -897,6 +908,9 @@ type MutationResolver interface {
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
 	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string) (bool, error)
+	RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error)
+	BlockRoomForSlot(ctx context.Context, room string, day int, slot int, reason *string) (*model.BlockedRoom, error)
+	UnblockRoomForSlot(ctx context.Context, room string, day int, slot int) (bool, error)
 	SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error)
 	AddRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
 	UpdateRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
@@ -970,6 +984,7 @@ type QueryResolver interface {
 	PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error)
 	PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedRoom, error)
 	PlannedRoomForStudent(ctx context.Context, ancode int, mtknr string) (*model.PlannedRoom, error)
+	BlockedRooms(ctx context.Context) ([]*model.BlockedRoom, error)
 	RoomRequests(ctx context.Context) ([]*model.RoomRequest, error)
 	RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
@@ -1269,6 +1284,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BalanceReport.WithinTolerance(childComplexity), true
+
+	case "BlockedRoom.day":
+		if e.complexity.BlockedRoom.Day == nil {
+			break
+		}
+
+		return e.complexity.BlockedRoom.Day(childComplexity), true
+
+	case "BlockedRoom.reason":
+		if e.complexity.BlockedRoom.Reason == nil {
+			break
+		}
+
+		return e.complexity.BlockedRoom.Reason(childComplexity), true
+
+	case "BlockedRoom.room":
+		if e.complexity.BlockedRoom.Room == nil {
+			break
+		}
+
+		return e.complexity.BlockedRoom.Room(childComplexity), true
+
+	case "BlockedRoom.slot":
+		if e.complexity.BlockedRoom.Slot == nil {
+			break
+		}
+
+		return e.complexity.BlockedRoom.Slot(childComplexity), true
 
 	case "Conflict.ancode":
 		if e.complexity.Conflict.AnCode == nil {
@@ -2439,6 +2482,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ApplyRoomRequestsPreview(childComplexity, args["force"].(bool)), true
 
+	case "Mutation.blockRoomForSlot":
+		if e.complexity.Mutation.BlockRoomForSlot == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_blockRoomForSlot_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BlockRoomForSlot(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["reason"].(*string)), true
+
 	case "Mutation.clearEmailAttachments":
 		if e.complexity.Mutation.ClearEmailAttachments == nil {
 			break
@@ -2585,6 +2640,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string)), true
 
+	case "Mutation.removePrePlannedRoom":
+		if e.complexity.Mutation.RemovePrePlannedRoom == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removePrePlannedRoom_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemovePrePlannedRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["mtknr"].(*string)), true
+
 	case "Mutation.rmConstraints":
 		if e.complexity.Mutation.RmConstraints == nil {
 			break
@@ -2692,6 +2759,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetRoomRequestApproved(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["approved"].(bool)), true
+
+	case "Mutation.unblockRoomForSlot":
+		if e.complexity.Mutation.UnblockRoomForSlot == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unblockRoomForSlot_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnblockRoomForSlot(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int)), true
 
 	case "Mutation.updateNTA":
 		if e.complexity.Mutation.UpdateNta == nil {
@@ -3371,6 +3450,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.AwkwardSlots(childComplexity, args["ancode"].(int)), true
+
+	case "Query.blockedRooms":
+		if e.complexity.Query.BlockedRooms == nil {
+			break
+		}
+
+		return e.complexity.Query.BlockedRooms(childComplexity), true
 
 	case "Query.conflictingAncodes":
 		if e.complexity.Query.ConflictingAncodes == nil {
@@ -6093,6 +6179,8 @@ type ConflictsPerProgramAncode {
   plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
   plannedRoomsInSlot(day: Int!, time: Int!): [PlannedRoom!]
   plannedRoomForStudent(ancode: Int!, mtknr: String!): PlannedRoom
+  "All rooms blocked for a specific slot (not usable there, e.g. otherwise occupied)."
+  blockedRooms: [BlockedRoom!]!
 }
 
 extend type Mutation {
@@ -6102,6 +6190,12 @@ extend type Mutation {
     reserve: Boolean!
     mtknr: String
   ): Boolean!
+  "Remove a pre-planned room from an exam (key: ancode/roomName/mtknr). mtknr null = the room for normal students."
+  removePrePlannedRoom(ancode: Int!, roomName: String!, mtknr: String): Boolean!
+  "Block a room for a slot so it is not used for planning there (e.g. otherwise occupied). reason is an optional note."
+  blockRoomForSlot(room: String!, day: Int!, slot: Int!, reason: String): BlockedRoom!
+  "Remove a room block for a slot (key: room/day/slot)."
+  unblockRoomForSlot(room: String!, day: Int!, slot: Int!): Boolean!
   "Activate/deactivate a room (key: name). A deactivated room is not used for planning."
   setRoomActive(name: String!, active: Boolean!): Room!
   "Create a new room (key: name). Errors if a room with that name already exists."
@@ -6191,6 +6285,14 @@ type PrePlannedRoom {
   roomName: String!
   mtknr: String
   reserve: Boolean!
+}
+
+"A room blocked for one slot (not usable for planning there)."
+type BlockedRoom {
+  room: String!
+  day: Int!
+  slot: Int!
+  reason: String
 }
 
 type RoomAndExam {
@@ -7001,6 +7103,103 @@ func (ec *executionContext) field_Mutation_applyRoomRequestsPreview_argsForce(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_blockRoomForSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_blockRoomForSlot_argsRoom(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["room"] = arg0
+	arg1, err := ec.field_Mutation_blockRoomForSlot_argsDay(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["day"] = arg1
+	arg2, err := ec.field_Mutation_blockRoomForSlot_argsSlot(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["slot"] = arg2
+	arg3, err := ec.field_Mutation_blockRoomForSlot_argsReason(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg3
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_blockRoomForSlot_argsRoom(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["room"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("room"))
+	if tmp, ok := rawArgs["room"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_blockRoomForSlot_argsDay(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["day"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+	if tmp, ok := rawArgs["day"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_blockRoomForSlot_argsSlot(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["slot"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slot"))
+	if tmp, ok := rawArgs["slot"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_blockRoomForSlot_argsReason(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["reason"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("reason"))
+	if tmp, ok := rawArgs["reason"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_clearEmailAttachments_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7539,6 +7738,80 @@ func (ec *executionContext) field_Mutation_prePlanRoom_argsMtknr(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_removePrePlannedRoom_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_removePrePlannedRoom_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg0
+	arg1, err := ec.field_Mutation_removePrePlannedRoom_argsRoomName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["roomName"] = arg1
+	arg2, err := ec.field_Mutation_removePrePlannedRoom_argsMtknr(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mtknr"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_removePrePlannedRoom_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removePrePlannedRoom_argsRoomName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["roomName"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("roomName"))
+	if tmp, ok := rawArgs["roomName"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removePrePlannedRoom_argsMtknr(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["mtknr"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_rmConstraints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7995,6 +8268,80 @@ func (ec *executionContext) field_Mutation_setRoomRequestApproved_argsApproved(
 	}
 
 	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_unblockRoomForSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_unblockRoomForSlot_argsRoom(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["room"] = arg0
+	arg1, err := ec.field_Mutation_unblockRoomForSlot_argsDay(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["day"] = arg1
+	arg2, err := ec.field_Mutation_unblockRoomForSlot_argsSlot(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["slot"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_unblockRoomForSlot_argsRoom(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["room"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("room"))
+	if tmp, ok := rawArgs["room"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_unblockRoomForSlot_argsDay(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["day"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+	if tmp, ok := rawArgs["day"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_unblockRoomForSlot_argsSlot(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["slot"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slot"))
+	if tmp, ok := rawArgs["slot"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
 	return zeroVal, nil
 }
 
@@ -11279,6 +11626,179 @@ func (ec *executionContext) fieldContext_BalanceReport_maxUnder(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BlockedRoom_room(ctx context.Context, field graphql.CollectedField, obj *model.BlockedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BlockedRoom_room(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Room, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BlockedRoom_room(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BlockedRoom_day(ctx context.Context, field graphql.CollectedField, obj *model.BlockedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BlockedRoom_day(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Day, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BlockedRoom_day(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BlockedRoom_slot(ctx context.Context, field graphql.CollectedField, obj *model.BlockedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BlockedRoom_slot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BlockedRoom_slot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BlockedRoom_reason(ctx context.Context, field graphql.CollectedField, obj *model.BlockedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BlockedRoom_reason(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Reason, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BlockedRoom_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -19905,6 +20425,181 @@ func (ec *executionContext) fieldContext_Mutation_prePlanRoom(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_removePrePlannedRoom(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removePrePlannedRoom(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemovePrePlannedRoom(rctx, fc.Args["ancode"].(int), fc.Args["roomName"].(string), fc.Args["mtknr"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removePrePlannedRoom(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removePrePlannedRoom_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_blockRoomForSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_blockRoomForSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().BlockRoomForSlot(rctx, fc.Args["room"].(string), fc.Args["day"].(int), fc.Args["slot"].(int), fc.Args["reason"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.BlockedRoom)
+	fc.Result = res
+	return ec.marshalNBlockedRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBlockedRoom(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_blockRoomForSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "room":
+				return ec.fieldContext_BlockedRoom_room(ctx, field)
+			case "day":
+				return ec.fieldContext_BlockedRoom_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_BlockedRoom_slot(ctx, field)
+			case "reason":
+				return ec.fieldContext_BlockedRoom_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BlockedRoom", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_blockRoomForSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unblockRoomForSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unblockRoomForSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnblockRoomForSlot(rctx, fc.Args["room"].(string), fc.Args["day"].(int), fc.Args["slot"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unblockRoomForSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unblockRoomForSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_setRoomActive(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_setRoomActive(ctx, field)
 	if err != nil {
@@ -27692,6 +28387,60 @@ func (ec *executionContext) fieldContext_Query_plannedRoomForStudent(ctx context
 	if fc.Args, err = ec.field_Query_plannedRoomForStudent_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_blockedRooms(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_blockedRooms(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().BlockedRooms(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.BlockedRoom)
+	fc.Result = res
+	return ec.marshalNBlockedRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBlockedRoomᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_blockedRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "room":
+				return ec.fieldContext_BlockedRoom_room(ctx, field)
+			case "day":
+				return ec.fieldContext_BlockedRoom_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_BlockedRoom_slot(ctx, field)
+			case "reason":
+				return ec.fieldContext_BlockedRoom_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BlockedRoom", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -41774,6 +42523,57 @@ func (ec *executionContext) _BalanceReport(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var blockedRoomImplementors = []string{"BlockedRoom"}
+
+func (ec *executionContext) _BlockedRoom(ctx context.Context, sel ast.SelectionSet, obj *model.BlockedRoom) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, blockedRoomImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BlockedRoom")
+		case "room":
+			out.Values[i] = ec._BlockedRoom_room(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "day":
+			out.Values[i] = ec._BlockedRoom_day(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slot":
+			out.Values[i] = ec._BlockedRoom_slot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._BlockedRoom_reason(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var conflictImplementors = []string{"Conflict"}
 
 func (ec *executionContext) _Conflict(ctx context.Context, sel ast.SelectionSet, obj *model.Conflict) graphql.Marshaler {
@@ -43760,6 +44560,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "prePlanRoom":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_prePlanRoom(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removePrePlannedRoom":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removePrePlannedRoom(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "blockRoomForSlot":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_blockRoomForSlot(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unblockRoomForSlot":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unblockRoomForSlot(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -45854,6 +46675,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_plannedRoomForStudent(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "blockedRooms":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_blockedRooms(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -48595,6 +49438,64 @@ func (ec *executionContext) marshalNBalanceReport2ᚖgithubᚗcomᚋobcodeᚋple
 		return graphql.Null
 	}
 	return ec._BalanceReport(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNBlockedRoom2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBlockedRoom(ctx context.Context, sel ast.SelectionSet, v model.BlockedRoom) graphql.Marshaler {
+	return ec._BlockedRoom(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBlockedRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBlockedRoomᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.BlockedRoom) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNBlockedRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBlockedRoom(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNBlockedRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBlockedRoom(ctx context.Context, sel ast.SelectionSet, v *model.BlockedRoom) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BlockedRoom(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {

@@ -17,6 +17,21 @@ func (r *mutationResolver) PrePlanRoom(ctx context.Context, ancode int, roomName
 	return r.plexams.PreAddRoomToExam(ctx, ancode, roomName, mtknr, reserve)
 }
 
+// RemovePrePlannedRoom is the resolver for the removePrePlannedRoom field.
+func (r *mutationResolver) RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error) {
+	return r.plexams.RemovePrePlannedRoom(ctx, ancode, roomName, mtknr)
+}
+
+// BlockRoomForSlot is the resolver for the blockRoomForSlot field.
+func (r *mutationResolver) BlockRoomForSlot(ctx context.Context, room string, day int, slot int, reason *string) (*model.BlockedRoom, error) {
+	return r.plexams.BlockRoomForSlot(ctx, room, day, slot, reason)
+}
+
+// UnblockRoomForSlot is the resolver for the unblockRoomForSlot field.
+func (r *mutationResolver) UnblockRoomForSlot(ctx context.Context, room string, day int, slot int) (bool, error) {
+	return r.plexams.UnblockRoomForSlot(ctx, room, day, slot)
+}
+
 // SetRoomActive is the resolver for the setRoomActive field.
 func (r *mutationResolver) SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error) {
 	return r.plexams.SetRoomActive(ctx, name, active)
@@ -85,6 +100,11 @@ func (r *queryResolver) PlannedRoomsInSlot(ctx context.Context, day int, time in
 // PlannedRoomForNta is the resolver for the plannedRoomForNTA field.
 func (r *queryResolver) PlannedRoomForStudent(ctx context.Context, ancode int, mtknr string) (*model.PlannedRoom, error) {
 	return r.plexams.PlannedRoomForStudent(ctx, ancode, mtknr)
+}
+
+// BlockedRooms is the resolver for the blockedRooms field.
+func (r *queryResolver) BlockedRooms(ctx context.Context) ([]*model.BlockedRoom, error) {
+	return r.plexams.BlockedRooms(ctx)
 }
 
 // Rooms is the resolver for the rooms field.

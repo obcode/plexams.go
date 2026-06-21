@@ -18,13 +18,16 @@ var (
 		Long: `Manipulate the plan.
 	pre-plan-exam ancode day slot                  --- move [ancode] to [day number] [slot number]
 	pre-plan-room ancode roomname [mtknr/reserve]  --- plan [room name] for [ancode]
+	rm-pre-plan-room ancode roomname [mtknr]       --- remove pre-planned [room name] from [ancode]
+	block-room room day slot [reason]              --- block [room] for slot (day,slot), e.g. otherwise occupied
+	unblock-room room day slot                     --- remove a room block for slot (day,slot)
 	move-to ancode day slot                        --- move [ancode] to [day number] [slot number]
 	other-fk ancode time                           --- plan [ancode] from other faculty to [time]
 	change-room ancode oldroom newroom             --- change room for [ancode] from [oldroom] to [newroom]
 	lock-exam ancode                               --- lock exam to slot
 	unlock-exam ancode                             --- unlock / allow moving
 	lock                                           --- lock the whole plan`,
-		ValidArgs: []string{"pre-plan-exam", "pre-plan-room", "move-to", "change-room", "lock-exam", "unlock-exam", "lock", "fixslotsindb"},
+		ValidArgs: []string{"pre-plan-exam", "pre-plan-room", "rm-pre-plan-room", "block-room", "unblock-room", "move-to", "change-room", "lock-exam", "unlock-exam", "lock", "fixslotsindb"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -136,6 +139,72 @@ var (
 				if success {
 					fmt.Printf("successfully moved exam %d to room %s\n", ancode, roomName)
 				}
+
+			case "rm-pre-plan-room":
+				if len(args) < 3 {
+					log.Fatal("need ancode and room name and optional mtknr")
+				}
+				ancode, err := strconv.Atoi(args[1])
+				if err != nil {
+					log.Fatalf("cannot convert %s to int", args[1])
+				}
+				roomName := args[2]
+				var mtknr *string
+				if len(args) > 3 && args[3] != "" {
+					mtknr = &args[3]
+				}
+				success, err := plexams.RemovePrePlannedRoom(context.Background(), ancode, roomName, mtknr)
+				if err != nil {
+					fmt.Printf("error: %v\n", err)
+					os.Exit(1)
+				}
+				if success {
+					fmt.Printf("removed pre-planned room %s from exam %d\n", roomName, ancode)
+				}
+
+			case "block-room":
+				if len(args) < 4 {
+					log.Fatal("need room, day and slot (and optional reason)")
+				}
+				roomName := args[1]
+				day, err := strconv.Atoi(args[2])
+				if err != nil {
+					log.Fatalf("cannot convert %s to int", args[2])
+				}
+				slot, err := strconv.Atoi(args[3])
+				if err != nil {
+					log.Fatalf("cannot convert %s to int", args[3])
+				}
+				var reason *string
+				if len(args) > 4 && args[4] != "" {
+					reason = &args[4]
+				}
+				block, err := plexams.BlockRoomForSlot(context.Background(), roomName, day, slot, reason)
+				if err != nil {
+					fmt.Printf("error: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Printf("blocked room %s for slot (%d,%d)\n", block.Room, block.Day, block.Slot)
+
+			case "unblock-room":
+				if len(args) < 4 {
+					log.Fatal("need room, day and slot")
+				}
+				roomName := args[1]
+				day, err := strconv.Atoi(args[2])
+				if err != nil {
+					log.Fatalf("cannot convert %s to int", args[2])
+				}
+				slot, err := strconv.Atoi(args[3])
+				if err != nil {
+					log.Fatalf("cannot convert %s to int", args[3])
+				}
+				_, err = plexams.UnblockRoomForSlot(context.Background(), roomName, day, slot)
+				if err != nil {
+					fmt.Printf("error: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Printf("unblocked room %s for slot (%d,%d)\n", roomName, day, slot)
 
 			case "fixslotsindb":
 				planEntries, err := plexams.PlanEntries(context.TODO())

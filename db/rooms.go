@@ -271,6 +271,25 @@ func (db *DB) AddPrePlannedRoomToExam(ctx context.Context, prePlannedRoom *model
 	return true, nil
 }
 
+// RemovePrePlannedRoomFromExam deletes a pre-planned room from an exam (key:
+// ancode/roomName/mtknr). It reports whether a document was actually removed.
+func (db *DB) RemovePrePlannedRoomFromExam(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error) {
+	collection := db.getCollectionSemester(collectionRoomsPrePlanned)
+	filter := bson.M{
+		"ancode":   ancode,
+		"roomname": roomName,
+		"mtknr":    mtknr,
+	}
+	res, err := collection.DeleteOne(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionRoomsPrePlanned).
+			Int("ancode", ancode).Str("roomname", roomName).Interface("mtknr", mtknr).
+			Msg("cannot delete pre planned room")
+		return false, err
+	}
+	return res.DeletedCount > 0, nil
+}
+
 func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	collection := db.getCollectionSemester(collectionRoomsPlanned)
 

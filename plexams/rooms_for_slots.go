@@ -11,7 +11,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 func (p *Plexams) RoomsFromRoomNames(ctx context.Context, roomNames []string) ([]*model.Room, error) {
@@ -91,6 +90,12 @@ func (p *Plexams) PrepareRoomsForSlots(ctx context.Context, reporter Reporter) e
 		}
 	}
 
+	// remove rooms that are blocked for a slot (e.g. otherwise occupied); warn if
+	// a blocked room is currently planned in that slot.
+	if err := p.applyRoomBlocks(ctx, slotsWithRoomNames, reporter); err != nil {
+		return err
+	}
+
 	roomsForSlots := make([]*model.RoomsForSlot, 0, len(slotsWithRoomNames))
 	for slot, roomNames := range slotsWithRoomNames {
 		roomNames := roomNames.ToSlice()
@@ -130,7 +135,7 @@ func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room, reporter R
 	}
 
 	// Add other room with restricted slots
-	restrictedSlotsForOtherRooms, err := p.restrictedSlotsForOtherRooms(globalRooms, reporter)
+	restrictedSlotsForOtherRooms, err := p.restrictedSlotsForOtherRooms(globalRooms)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get allowed slots for other rooms")
 		return nil, err
@@ -192,10 +197,11 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]se
 	return restrictedSlots, nil
 }
 
-func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room, reporter Reporter) (map[string]set.Set[SlotNumber], error) {
-	allSlots := p.semesterConfig.Slots
-
-	// building-management room requests now come from the DB (active ones only);
+// restrictedSlotsForOtherRooms restricts building-management request rooms to
+// the slots they were actually requested for. (Per-slot room blocks are applied
+// separately, see applyRoomBlocks, so they also cover non-request rooms.)
+func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[string]set.Set[SlotNumber], error) {
+	// building-management room requests come from the DB (active ones only);
 	// a requested room is restricted to the slots it was requested for.
 	dbReservations, err := p.GetReservations()
 	if err != nil {
@@ -212,50 +218,6 @@ func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room, report
 				}
 			}
 			restrictedSlots[room.Name] = reservedSlots
-		}
-
-		roomConstraints := viper.Get(fmt.Sprintf("roomConstraints.%s", room.Name))
-		if roomConstraints != nil {
-			notAvailable := viper.Get(fmt.Sprintf("roomConstraints.%s.notAvailable", room.Name))
-			if notAvailable != nil {
-				notAvailableSlice, ok := notAvailable.([]interface{})
-				if !ok {
-					log.Error().Interface("notAvailable", notAvailable).Msg("cannot convert notAvailable to slice")
-					return nil, fmt.Errorf("cannot convert notAvailable to slice")
-				}
-				notAllowedSlots := set.NewSet[SlotNumber]()
-				allSlotsSet := set.NewSet[SlotNumber]()
-				for _, notAvailableEntry := range notAvailableSlice {
-					rawDate, ok := notAvailableEntry.(time.Time)
-					if !ok {
-						log.Error().Interface("notAvailableEntry", notAvailableEntry).Msg("cannot convert notAvailable entry to time")
-						return nil, fmt.Errorf("cannot convert notAvailable entry to time")
-					}
-					reporter.Step(aurora.Sprintf(aurora.Cyan("found not available day for %s on %s"),
-						aurora.Magenta(room.Name),
-						aurora.Magenta(rawDate.Format("02.01.06")),
-					))
-
-					var sb strings.Builder
-					for _, slot := range allSlots {
-						allSlotsSet.Add(SlotNumber{
-							day:  slot.DayNumber,
-							slot: slot.SlotNumber,
-						})
-						if slot.Starttime.Year() == rawDate.Year() &&
-							slot.Starttime.Month() == rawDate.Month() &&
-							slot.Starttime.Day() == rawDate.Day() {
-							fmt.Fprintf(&sb, "(%d, %d), ", slot.DayNumber, slot.SlotNumber)
-							notAllowedSlots.Add(SlotNumber{
-								day:  slot.DayNumber,
-								slot: slot.SlotNumber,
-							})
-						}
-					}
-					reporter.Println(aurora.Sprintf(aurora.Red("removed: %s"), aurora.Yellow(sb.String())))
-				}
-				restrictedSlots[room.Name] = allSlotsSet.Difference(notAllowedSlots)
-			}
 		}
 	}
 

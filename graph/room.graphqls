@@ -8,6 +8,8 @@ extend type Query {
   plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
   plannedRoomsInSlot(day: Int!, time: Int!): [PlannedRoom!]
   plannedRoomForStudent(ancode: Int!, mtknr: String!): PlannedRoom
+  "All rooms blocked for a specific slot (not usable there, e.g. otherwise occupied)."
+  blockedRooms: [BlockedRoom!]!
 }
 
 extend type Mutation {
@@ -17,6 +19,12 @@ extend type Mutation {
     reserve: Boolean!
     mtknr: String
   ): Boolean!
+  "Remove a pre-planned room from an exam (key: ancode/roomName/mtknr). mtknr null = the room for normal students."
+  removePrePlannedRoom(ancode: Int!, roomName: String!, mtknr: String): Boolean!
+  "Block a room for a slot so it is not used for planning there (e.g. otherwise occupied). reason is an optional note."
+  blockRoomForSlot(room: String!, day: Int!, slot: Int!, reason: String): BlockedRoom!
+  "Remove a room block for a slot (key: room/day/slot)."
+  unblockRoomForSlot(room: String!, day: Int!, slot: Int!): Boolean!
   "Activate/deactivate a room (key: name). A deactivated room is not used for planning."
   setRoomActive(name: String!, active: Boolean!): Room!
   "Create a new room (key: name). Errors if a room with that name already exists."
@@ -106,6 +114,14 @@ type PrePlannedRoom {
   roomName: String!
   mtknr: String
   reserve: Boolean!
+}
+
+"A room blocked for one slot (not usable for planning there)."
+type BlockedRoom {
+  room: String!
+  day: Int!
+  slot: Int!
+  reason: String
 }
 
 type RoomAndExam {

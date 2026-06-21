@@ -20,6 +20,11 @@ func (r *mutationResolver) UpdateNta(ctx context.Context, input model.NTAInput) 
 	return r.plexams.UpdateNta(ctx, input)
 }
 
+// SetNTAActive is the resolver for the setNTAActive field.
+func (r *mutationResolver) SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error) {
+	return r.plexams.SetNTAActive(ctx, mtknr, active)
+}
+
 // Ntas is the resolver for the ntas field.
 func (r *queryResolver) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return r.plexams.Ntas(ctx)

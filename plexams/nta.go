@@ -39,6 +39,19 @@ func (p *Plexams) UpdateNta(ctx context.Context, input model.NTAInput) (*model.N
 	return p.dbClient.ReplaceNta(ctx, updated)
 }
 
+// SetNTAActive activates/deactivates an NTA (key: mtknr). A deactivated NTA is
+// not added to exams during prepare/generate. Errors if the mtknr does not exist.
+func (p *Plexams) SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error) {
+	nta, err := p.dbClient.SetNtaDeactivated(ctx, mtknr, !active)
+	if err != nil {
+		return nil, err
+	}
+	if nta == nil {
+		return nil, fmt.Errorf("no nta with mtknr %s", mtknr)
+	}
+	return nta, nil
+}
+
 func (p *Plexams) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	return p.dbClient.Ntas(ctx)
 }

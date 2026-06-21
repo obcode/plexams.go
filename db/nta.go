@@ -36,6 +36,24 @@ func (db *DB) ReplaceNta(ctx context.Context, nta *model.NTA) (*model.NTA, error
 	return db.Nta(ctx, nta.Mtknr)
 }
 
+// SetNtaDeactivated sets the deactivated flag of the NTA identified by mtknr.
+// Returns nil if no NTA with that mtknr exists.
+func (db *DB) SetNtaDeactivated(ctx context.Context, mtknr string, deactivated bool) (*model.NTA, error) {
+	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+
+	res, err := collection.UpdateOne(ctx,
+		bson.D{{Key: "mtknr", Value: mtknr}},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "deactivated", Value: deactivated}}}})
+	if err != nil {
+		log.Error().Err(err).Str("mtknr", mtknr).Msg("cannot set nta deactivated flag")
+		return nil, err
+	}
+	if res.MatchedCount == 0 {
+		return nil, nil
+	}
+	return db.Nta(ctx, mtknr)
+}
+
 func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTA, error) {
 	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
 

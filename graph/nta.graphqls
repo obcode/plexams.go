@@ -9,6 +9,8 @@ extend type Mutation {
   addNTA(input: NTAInput!): NTA!
   "Update the editable fields of an existing NTA (key: mtknr). Errors if it does not exist."
   updateNTA(input: NTAInput!): NTA!
+  "Activate/deactivate an NTA (key: mtknr). A deactivated NTA is not applied to exams."
+  setNTAActive(mtknr: String!, active: Boolean!): NTA!
 }
 
 type NTA {

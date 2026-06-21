@@ -12,6 +12,9 @@ type ExahmEmail struct {
 }
 
 func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condExahmRequested, run); err != nil {
+		return err
+	}
 	reporter.Step("sending email asking for exahm and seb exams")
 
 	contraintsEmailData := &ExahmEmail{
@@ -44,6 +47,9 @@ func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool, reporter Reporte
 
 	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
+	}
+	if run {
+		p.markCondition(ctx, condExahmRequested)
 	}
 	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
 	return nil

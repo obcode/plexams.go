@@ -22,6 +22,48 @@ Grundsätzliches zur aktuellen Architektur:
 
 ---
 
+## Zustandsmodell: Phasen, Meilensteine, Gates
+
+Der Ablauf wird als **Bedingungs-/Ereignis-Petrinetz** abgebildet (1-sicher):
+jede Phase hat eine Reihe von **Bedingungen** (Meilensteinen). Eine Bedingung kann
+
+- **automatisch** gesetzt werden, wenn eine Operation erfolgreich durchläuft
+  (z.B. „Räume für Prüfungen generiert", „Terminplan veröffentlicht"), oder
+- **von Hand** an-/abgehakt werden.
+
+Das Modell ist im Code definiert (`plexams/planning_state.go`) und dort
+erweiterbar; der Zustand liegt pro Semester in der DB (`planning_state`). Im GUI
+wird es auf der **Startseite** als Checkliste pro Phase angezeigt
+(GraphQL: Query `planningState`, Mutation `setPlanningCondition`).
+
+**Gates (Sperren).** Manche Bedingungen sperren, solange sie gesetzt sind, die
+zugehörigen **Generierungen** (Inhibitor-Kante):
+
+| Bedingung (gesetzt = veröffentlicht) | sperrt |
+|---|---|
+| `roomPlanPublished` | `generateRoomsForSlots`/`-Exams`, `applyRoomRequestsPreview` |
+| `invigilationPlanPublished` | `generateInvigilations` |
+
+„Veröffentlicht" heißt: die **Veröffentlichungs-E-Mail** wurde verschickt — *nicht*
+der ZPA-Upload. Immer erlaubt bleiben: **ZPA-Upload**, **Anny-Import** und alle
+**expliziten Änderungen** (Raum blocken/freigeben, vor-/entplanen, `change-room`,
+Requests genehmigen/deaktivieren, `move-to`). Kleine Korrekturen nach der
+Veröffentlichung: explizit ändern und erneut ins ZPA laden (ohne neue Sammel-Mail),
+oder das Häkchen kurz zurücksetzen, neu generieren, wieder setzen.
+
+**Einmalige E-Mails.** Die meisten Workflow-E-Mails dürfen nur **einmal** verschickt
+werden. Ist die zugehörige Bedingung gesetzt, ist ein echter Versand (`run: true`)
+gesperrt — nur der **Probelauf** (`run: false`) geht noch. Zum erneuten Versenden
+das Häkchen zurücksetzen. Betroffen sind: EXaHM-Abfrage (`exahmRequested`),
+Constraints (`constraintsRequested`), „zu planende Prüfungen" (`examsPrepared`),
+Draft (`draftSent`), Terminplan/Räume/Aufsichten veröffentlicht
+(`examPlanPublished`/`roomPlanPublished`/`invigilationPlanPublished`),
+Raum-Anfragen (`roomRequestsSent`), Aufsichts-Anforderungsabfrage
+(`invigilationsRequested`). **Nicht** einmalig (wiederholbar): Primuss-Daten,
+fehlende Anforderungen, NTA-E-Mails, Deckblätter.
+
+---
+
 ## Phase -1: noch im vorherigen Semester
 
 - **Abfrage per E-Mail, wer SEB oder EXaHM plant** — `email exahm` (Probelauf),

@@ -9,6 +9,9 @@ import (
 )
 
 func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condInvigilationsRequested, run); err != nil {
+		return err
+	}
 	reporter.Step("sending email requesting invigilations constraints")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
@@ -48,6 +51,9 @@ func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool, reporter
 
 	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
+	}
+	if run {
+		p.markCondition(ctx, condInvigilationsRequested)
 	}
 	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
 	return nil

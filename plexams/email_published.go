@@ -19,6 +19,9 @@ import (
 )
 
 func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condExamPlanPublished, run); err != nil {
+		return err
+	}
 	reporter.Step("sending email announcing published exams")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
@@ -69,6 +72,9 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 }
 
 func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condRoomPlanPublished, run); err != nil {
+		return err
+	}
 	reporter.Step("sending email announcing published rooms")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
@@ -196,6 +202,9 @@ func (p *Plexams) invigilationImageKeys(ctx context.Context) ([]int, error) {
 // has a personal plan PNG (upload store or invigilationStats.dir), attaching it.
 // Invigilators that have an assignment but no calendar are reported and skipped.
 func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condInvigilationPlanPublished, run); err != nil {
+		return err
+	}
 	reporter.Step("preparing published-invigilation emails")
 
 	invigilationTodos, err := p.GetInvigilationTodos(ctx)

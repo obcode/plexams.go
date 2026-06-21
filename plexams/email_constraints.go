@@ -17,6 +17,9 @@ type ConstraintsEmail struct {
 }
 
 func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condConstraintsRequested, run); err != nil {
+		return err
+	}
 	reporter.Step("sending email asking for constraints")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")

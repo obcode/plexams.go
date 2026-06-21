@@ -30,6 +30,7 @@ type planningConditionDef struct {
 }
 
 var planningPhaseDefs = []planningPhaseDef{
+	{"phaseMinus1", "Phase -1: noch im vorherigen Semester"},
 	{"phase0", "Phase 0: Vorbereitung"},
 	{"phase1", "Phase 1: Terminplanung"},
 	{"phase2", "Phase 2: Raumplanung"},
@@ -38,33 +39,41 @@ var planningPhaseDefs = []planningPhaseDef{
 
 // planning condition keys (use the constants when marking from operations).
 const (
+	condExahmRequested            = "exahmRequested"
 	condZPAImported               = "zpaImported"
 	condConstraintsRequested      = "constraintsRequested"
 	condConnectedExams            = "connectedExams"
 	condGeneratedExams            = "generatedExams"
 	condStudentRegs               = "studentRegs"
 	condStudentRegsUploaded       = "studentRegsUploaded"
+	condExamsPrepared             = "examsPrepared"
+	condDraftSent                 = "draftSent"
 	condExamPlanPublished         = "examPlanPublished"
 	condRoomRequestsSent          = "roomRequestsSent"
 	condRoomsGenerated            = "roomsGenerated"
 	condRoomPlanPublished         = "roomPlanPublished"
 	condInvigReqsImported         = "invigReqsImported"
+	condInvigilationsRequested    = "invigilationsRequested"
 	condInvigilationsGenerated    = "invigilationsGenerated"
 	condInvigilationPlanPublished = "invigilationPlanPublished"
 )
 
 var planningConditionDefs = []planningConditionDef{
+	{condExahmRequested, "EXaHM/SEB-Abfrage verschickt", "phaseMinus1", ""},
 	{condZPAImported, "Prüfungen & Personen aus ZPA importiert", "phase0", ""},
 	{condConstraintsRequested, "Constraints-Abfrage verschickt", "phase0", ""},
 	{condConnectedExams, "ConnectedExams erstellt", "phase1", ""},
 	{condGeneratedExams, "GeneratedExams erstellt", "phase1", ""},
 	{condStudentRegs, "StudentRegs erstellt", "phase1", ""},
 	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase1", ""},
+	{condExamsPrepared, "Ankündigung 'zu planende Prüfungen' verschickt", "phase1", ""},
+	{condDraftSent, "Draft-Plan verschickt", "phase1", ""},
 	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", ""},
 	{condRoomRequestsSent, "Raum-Anfragen ans Gebäudemanagement verschickt", "phase2", ""},
 	{condRoomsGenerated, "Räume für Prüfungen generiert", "phase2", ""},
 	{condRoomPlanPublished, "Raumplan veröffentlicht (E-Mail)", "phase2", model.PlanningGateRooms},
 	{condInvigReqsImported, "Aufsichts-Anforderungen importiert", "phase3", ""},
+	{condInvigilationsRequested, "Aufsichts-Anforderungsabfrage verschickt", "phase3", ""},
 	{condInvigilationsGenerated, "Aufsichten generiert", "phase3", ""},
 	{condInvigilationPlanPublished, "Aufsichtenplan veröffentlicht (E-Mail)", "phase3", model.PlanningGateInvigilations},
 }
@@ -139,6 +148,28 @@ func (p *Plexams) markCondition(ctx context.Context, key string) {
 	if err := p.dbClient.SetPlanningCondition(ctx, key, true); err != nil {
 		log.Error().Err(err).Str("key", key).Msg("cannot auto-mark planning condition")
 	}
+}
+
+// emailSendAllowed enforces that a "send once" email is sent at most once: while
+// its condition is set, a real send (run==true) is refused; a dry run
+// (run==false) is always allowed. On a successful real send the caller marks the
+// condition. To resend, the condition has to be unset by hand.
+func (p *Plexams) emailSendAllowed(ctx context.Context, condKey string, run bool) error {
+	if !run {
+		return nil
+	}
+	setKeys, err := p.dbClient.PlanningConditionsSet(ctx)
+	if err != nil {
+		return err
+	}
+	for _, key := range setKeys {
+		if key == condKey {
+			def, _ := planningConditionDefByKey(condKey)
+			return fmt.Errorf("email already sent (%s: %s); unset the planning condition to send it again",
+				condKey, def.title)
+		}
+	}
+	return nil
 }
 
 // generationAllowed reports whether generation for the given area is allowed, i.e.

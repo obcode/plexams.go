@@ -52,6 +52,9 @@ type RoomRequestEmail struct {
 // by day, with their (buffered) time ranges. run == false is a dry run that only
 // mails the dry-run recipient.
 func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condRoomRequestsSent, run); err != nil {
+		return err
+	}
 	reporter.Step("collecting active room requests")
 
 	requests, err := p.RoomRequests(ctx)

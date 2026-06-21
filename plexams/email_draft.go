@@ -12,6 +12,10 @@ import (
 )
 
 func (p *Plexams) SendEmailDraft(run bool, reporter Reporter) error {
+	ctx := context.Background()
+	if err := p.emailSendAllowed(ctx, condDraftSent, run); err != nil {
+		return err
+	}
 	err := p.sendEmailDraftZPA(run, reporter)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot send email draft for ZPA")
@@ -21,6 +25,9 @@ func (p *Plexams) SendEmailDraft(run bool, reporter Reporter) error {
 	if err != nil {
 		log.Error().Err(err).Msg("cannot send email draft for FS")
 		return err
+	}
+	if run {
+		p.markCondition(ctx, condDraftSent)
 	}
 	return nil
 }

@@ -41,6 +41,8 @@ const (
 	collectionInvigilationsPrePlanned = "invigilations_pre_planned"
 
 	collectionEmailAttachments = "email_attachments"
+
+	collectionRoomRequests = "room_requests"
 )
 
 type PrimussType string

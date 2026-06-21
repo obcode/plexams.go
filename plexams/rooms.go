@@ -355,7 +355,38 @@ type TimeRange struct {
 	Approved   bool
 }
 
+// GetReservations returns the active building-management room requests as time
+// ranges per room, read from the DB (collection room_requests). It feeds room
+// planning (restrictedSlotsForOtherRooms) and the needs-request validation;
+// inactive requests are excluded so they no longer count for planning.
 func (p *Plexams) GetReservations() (map[string][]TimeRange, error) {
+	ctx := context.Background()
+	requests, err := p.dbClient.RoomRequests(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get room requests")
+		return nil, err
+	}
+
+	reservations := make(map[string][]TimeRange)
+	for _, r := range requests {
+		if !r.Active {
+			continue
+		}
+		reservations[r.Room] = append(reservations[r.Room], TimeRange{
+			From:       r.From,
+			Until:      r.Until,
+			DayNumber:  r.Day,
+			SlotNumber: r.Slot,
+			Approved:   r.Approved,
+		})
+	}
+	return reservations, nil
+}
+
+// reservationsFromConfig reads the room reservations from the semester config
+// (roomConstraints.<room>.reservations). Used only for the one-time migration
+// into the DB.
+func (p *Plexams) reservationsFromConfig() (map[string][]TimeRange, error) {
 	ctx := context.Background()
 	rooms, err := p.Rooms(ctx)
 	if err != nil {

@@ -442,6 +442,16 @@ type RoomInput struct {
 	HmebSeats        *int            `json:"hmebSeats,omitempty"`
 }
 
+type RoomRequest struct {
+	Room     string    `json:"room"`
+	Day      int       `json:"day"`
+	Slot     int       `json:"slot"`
+	From     time.Time `json:"from"`
+	Until    time.Time `json:"until"`
+	Approved bool      `json:"approved"`
+	Active   bool      `json:"active"`
+}
+
 type RoomWithInvigilator struct {
 	Name         string         `json:"name"`
 	MaxDuration  int            `json:"maxDuration"`

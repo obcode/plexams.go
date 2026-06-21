@@ -286,27 +286,27 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms() (map[string]set.Set[SlotNumber]
 func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[string]set.Set[SlotNumber], error) {
 	allSlots := p.semesterConfig.Slots
 
+	// building-management room requests now come from the DB (active ones only);
+	// a requested room is restricted to the slots it was requested for.
+	dbReservations, err := p.GetReservations()
+	if err != nil {
+		return nil, err
+	}
+
 	restrictedSlots := make(map[string]set.Set[SlotNumber])
 	for _, room := range globalRooms {
-		roomConstraints := viper.Get(fmt.Sprintf("roomConstraints.%s", room.Name))
-		if roomConstraints != nil {
-			restrictedSlots[room.Name] = set.NewSet[SlotNumber]()
-			reservations := viper.Get(fmt.Sprintf("roomConstraints.%s.reservations", room.Name))
-			if reservations != nil {
-				reservationsSlice, ok := reservations.([]interface{})
-				if !ok {
-					log.Error().Interface("reservations", reservations).Msg("cannot convert reservations to slice")
-					return nil, fmt.Errorf("cannot convert reservations to slice")
-				}
-				reservedSlots, err := p.reservations2Slots(reservationsSlice, room.Name, false)
-				if err != nil {
-					log.Error().Err(err).Msg("cannot convert reservations to slots")
-					return nil, err
-				}
-				for slot := range reservedSlots.Iter() {
-					restrictedSlots[room.Name].Add(slot)
+		if timeRanges := dbReservations[room.Name]; len(timeRanges) > 0 {
+			reservedSlots := set.NewSet[SlotNumber]()
+			for _, tr := range timeRanges {
+				if tr.DayNumber > 0 && tr.SlotNumber > 0 {
+					reservedSlots.Add(SlotNumber{day: tr.DayNumber, slot: tr.SlotNumber})
 				}
 			}
+			restrictedSlots[room.Name] = reservedSlots
+		}
+
+		roomConstraints := viper.Get(fmt.Sprintf("roomConstraints.%s", room.Name))
+		if roomConstraints != nil {
 			notAvailable := viper.Get(fmt.Sprintf("roomConstraints.%s.notAvailable", room.Name))
 			if notAvailable != nil {
 				notAvailableSlice, ok := notAvailable.([]interface{})
@@ -431,65 +431,4 @@ func fromUntil(dateEntry interface{}) (fromUntil *TimeRange, err error) {
 		SlotNumber: slotNumber,
 		Approved:   approved,
 	}, nil
-}
-
-func (p *Plexams) reservations2Slots(reservations []interface{}, roomName string, approvedOnly bool) (set.Set[SlotNumber], error) {
-	slots := set.NewSet[SlotNumber]()
-	for _, reservation := range reservations {
-		fromUntil, err := fromUntil(reservation)
-		if err != nil {
-			log.Error().Err(err).Interface("reservation", reservation).Msg("cannot convert reservation to time")
-			return nil, err
-		}
-
-		cfg := yacspin.Config{
-			Frequency: 100 * time.Millisecond,
-			CharSet:   yacspin.CharSets[69],
-			Suffix: aurora.Sprintf(aurora.Cyan(" found reservation for %s from %s until %s (%d,%d)"),
-				aurora.Magenta(roomName),
-				aurora.Magenta(fromUntil.From.Format("02.01.06 15:04")),
-				aurora.Magenta(fromUntil.Until.Format("02.01.06 15:04")),
-				aurora.Magenta(fromUntil.DayNumber),
-				aurora.Magenta(fromUntil.SlotNumber),
-			),
-			SuffixAutoColon:   true,
-			StopCharacter:     "✓",
-			StopColors:        []string{"fgGreen"},
-			StopFailMessage:   "error",
-			StopFailCharacter: "✗",
-			StopFailColors:    []string{"fgRed"},
-		}
-
-		spinner, err := yacspin.New(cfg)
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot create spinner")
-		}
-		err = spinner.Start()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot start spinner")
-		}
-
-		var sb strings.Builder
-		for _, slot := range p.semesterConfig.Slots {
-			if (fromUntil.From.Before(slot.Starttime) || fromUntil.From.Equal(slot.Starttime)) &&
-				fromUntil.Until.After(slot.Starttime.Add(89*time.Minute)) &&
-				fromUntil.DayNumber == slot.DayNumber &&
-				fromUntil.SlotNumber == slot.SlotNumber {
-				if !approvedOnly || fromUntil.Approved {
-					sb.WriteString(aurora.Sprintf(aurora.Green("%s (%d, %d)"), roomName, slot.DayNumber, slot.SlotNumber))
-					slots.Add(SlotNumber{slot.DayNumber, slot.SlotNumber})
-				} else {
-					sb.WriteString(aurora.Sprintf(aurora.Red("%s (%d, %d) ---> not yet approved"), roomName, slot.DayNumber, slot.SlotNumber))
-				}
-			}
-		}
-
-		spinner.StopMessage(aurora.Sprintf(aurora.Green("added: %s"), aurora.Yellow(sb.String())))
-
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
-	}
-	return slots, nil
 }

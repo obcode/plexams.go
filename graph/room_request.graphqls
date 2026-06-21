@@ -1,0 +1,28 @@
+# Building-management room requests (per semester). A request reserves a room for
+# the exam in one slot (day/slot) with a concrete time range. approved is set once
+# the building management granted it; active = false takes it out of room
+# planning (room-for-exams). Anny (T-building) rooms have their own source and are
+# not represented here.
+type RoomRequest {
+  room: String!
+  day: Int!
+  slot: Int!
+  from: Time!
+  until: Time!
+  approved: Boolean!
+  active: Boolean!
+}
+
+extend type Query {
+  "All building-management room requests of the semester."
+  roomRequests: [RoomRequest!]!
+}
+
+extend type Mutation {
+  "Set the approved flag of a room request (key: room/day/slot)."
+  setRoomRequestApproved(room: String!, day: Int!, slot: Int!, approved: Boolean!): RoomRequest!
+  "Activate/deactivate a room request; inactive requests are not used for room planning."
+  setRoomRequestActive(room: String!, day: Int!, slot: Int!, active: Boolean!): RoomRequest!
+  "One-time import of roomConstraints.<room>.reservations from the semester config into the DB. Returns the number imported."
+  migrateRoomRequestsFromConfig: Int!
+}

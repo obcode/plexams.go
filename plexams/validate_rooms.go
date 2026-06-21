@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -219,6 +220,52 @@ func (p *Plexams) ValidateRoomsBlocked(reporter Reporter) (*model.ValidationRepo
 			v.warnf(ref{Room: ptr(b.Room), Day: ptr(b.Day), Slot: ptr(b.Slot)},
 				"room %s is blocked in slot (%d/%d) but still planned there; regenerate rooms for exams",
 				b.Room, b.Day, b.Slot)
+		}
+	}
+
+	return v.finish(), nil
+}
+
+// ValidateRoomsForSlotsFresh warns when the stored rooms-for-slots cache differs
+// from a fresh recompute, i.e. it is stale after editing rooms, room requests or
+// blocks and rooms-for-exams should be regenerated.
+func (p *Plexams) ValidateRoomsForSlotsFresh(reporter Reporter) (*model.ValidationReport, error) {
+	ctx := context.Background()
+	v := newValidation(reporter, "rooms-for-slots-fresh", "validating that the rooms-for-slots cache is up to date")
+
+	v.step("recomputing rooms for slots")
+	computed, err := p.computeRoomsForSlots(ctx, newDiscardReporter())
+	if err != nil {
+		return nil, err
+	}
+	stored, err := p.dbClient.RoomsForSlots(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	roomsKey := func(rfs []*model.RoomsForSlot) map[SlotNumber]string {
+		m := make(map[SlotNumber]string, len(rfs))
+		for _, r := range rfs {
+			names := make([]string, len(r.RoomNames))
+			copy(names, r.RoomNames)
+			sort.Strings(names)
+			m[SlotNumber{day: r.Day, slot: r.Slot}] = strings.Join(names, ",")
+		}
+		return m
+	}
+	computedMap := roomsKey(computed)
+	storedMap := roomsKey(stored)
+
+	for slot, want := range computedMap {
+		if got, ok := storedMap[slot]; !ok || got != want {
+			v.warnf(ref{Day: ptr(slot.day), Slot: ptr(slot.slot)},
+				"rooms for slot (%d/%d) are out of date; regenerate rooms for exams", slot.day, slot.slot)
+		}
+	}
+	for slot := range storedMap {
+		if _, ok := computedMap[slot]; !ok {
+			v.warnf(ref{Day: ptr(slot.day), Slot: ptr(slot.slot)},
+				"slot (%d/%d) is in the cache but no longer computed; regenerate rooms for exams", slot.day, slot.slot)
 		}
 	}
 

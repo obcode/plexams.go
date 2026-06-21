@@ -51,6 +51,7 @@ extend type Subscription {
   validateRoomsPerExam: LogLine!
   validateRoomsTimeDistance: LogLine!
   validateRoomsBlocked: LogLine!
+  validateRoomsForSlotsFresh: LogLine!
 
   validateZPADateTimes: LogLine!
   validateZPARooms: LogLine!

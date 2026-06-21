@@ -32,6 +32,16 @@ func (r *mutationResolver) UnblockRoomForSlot(ctx context.Context, room string, 
 	return r.plexams.UnblockRoomForSlot(ctx, room, day, slot)
 }
 
+// BlockRoomForSlots is the resolver for the blockRoomForSlots field.
+func (r *mutationResolver) BlockRoomForSlots(ctx context.Context, room string, slots []*model.SlotInput, reason *string) ([]*model.BlockedRoom, error) {
+	return r.plexams.BlockRoomForSlots(ctx, room, slots, reason)
+}
+
+// UnblockRoomForSlots is the resolver for the unblockRoomForSlots field.
+func (r *mutationResolver) UnblockRoomForSlots(ctx context.Context, room string, slots []*model.SlotInput) (int, error) {
+	return r.plexams.UnblockRoomForSlots(ctx, room, slots)
+}
+
 // SetRoomActive is the resolver for the setRoomActive field.
 func (r *mutationResolver) SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error) {
 	return r.plexams.SetRoomActive(ctx, name, active)

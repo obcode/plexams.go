@@ -25,6 +25,10 @@ extend type Mutation {
   blockRoomForSlot(room: String!, day: Int!, slot: Int!, reason: String): BlockedRoom!
   "Remove a room block for a slot (key: room/day/slot)."
   unblockRoomForSlot(room: String!, day: Int!, slot: Int!): Boolean!
+  "Block a room for several slots at once (e.g. a whole day or a time range). Returns the stored blocks."
+  blockRoomForSlots(room: String!, slots: [SlotInput!]!, reason: String): [BlockedRoom!]!
+  "Remove the room blocks for several slots at once. Returns how many blocks were removed."
+  unblockRoomForSlots(room: String!, slots: [SlotInput!]!): Int!
   "Activate/deactivate a room (key: name). A deactivated room is not used for planning."
   setRoomActive(name: String!, active: Boolean!): Room!
   "Create a new room (key: name). Errors if a room with that name already exists."
@@ -46,6 +50,12 @@ extend type Subscription {
   generateRoomsForExams: LogLine!
   "Fetch the room bookings from anny.eu and store them (used for the EXaHM room slots). Streams its output."
   importAnnyBookings: LogLine!
+}
+
+"A day/slot pair, used to block a room for several slots at once."
+input SlotInput {
+  day: Int!
+  slot: Int!
 }
 
 input RoomInput {

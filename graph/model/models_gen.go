@@ -513,6 +513,12 @@ type Slot struct {
 	Starttime  time.Time `json:"starttime"`
 }
 
+// A day/slot pair, used to block a room for several slots at once.
+type SlotInput struct {
+	Day  int `json:"day"`
+	Slot int `json:"slot"`
+}
+
 type SoftCostItem struct {
 	Name string  `json:"name"`
 	Cost float64 `json:"cost"`

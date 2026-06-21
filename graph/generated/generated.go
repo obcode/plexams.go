@@ -361,6 +361,7 @@ type ComplexityRoot struct {
 		AddZpaExamToPlan              func(childComplexity int, ancode int) int
 		ApplyRoomRequestsPreview      func(childComplexity int, force bool) int
 		BlockRoomForSlot              func(childComplexity int, room string, day int, slot int, reason *string) int
+		BlockRoomForSlots             func(childComplexity int, room string, slots []*model.SlotInput, reason *string) int
 		ClearEmailAttachments         func(childComplexity int, kind string) int
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
@@ -385,6 +386,7 @@ type ComplexityRoot struct {
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
 		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
 		UnblockRoomForSlot            func(childComplexity int, room string, day int, slot int) int
+		UnblockRoomForSlots           func(childComplexity int, room string, slots []*model.SlotInput) int
 		UpdateNta                     func(childComplexity int, input model.NTAInput) int
 		UpdateRoom                    func(childComplexity int, input model.RoomInput) int
 		UpdateRoomRequestTime         func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
@@ -775,6 +777,7 @@ type ComplexityRoot struct {
 		ValidateInvigilatorSlots             func(childComplexity int) int
 		ValidatePrePlannedExahmRooms         func(childComplexity int) int
 		ValidateRoomsBlocked                 func(childComplexity int) int
+		ValidateRoomsForSlotsFresh           func(childComplexity int) int
 		ValidateRoomsNeedRequest             func(childComplexity int) int
 		ValidateRoomsPerExam                 func(childComplexity int) int
 		ValidateRoomsPerSlot                 func(childComplexity int) int
@@ -913,6 +916,8 @@ type MutationResolver interface {
 	RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error)
 	BlockRoomForSlot(ctx context.Context, room string, day int, slot int, reason *string) (*model.BlockedRoom, error)
 	UnblockRoomForSlot(ctx context.Context, room string, day int, slot int) (bool, error)
+	BlockRoomForSlots(ctx context.Context, room string, slots []*model.SlotInput, reason *string) ([]*model.BlockedRoom, error)
+	UnblockRoomForSlots(ctx context.Context, room string, slots []*model.SlotInput) (int, error)
 	SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error)
 	AddRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
 	UpdateRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
@@ -1035,6 +1040,7 @@ type SubscriptionResolver interface {
 	ValidateRoomsPerExam(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateRoomsTimeDistance(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateRoomsBlocked(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateRoomsForSlotsFresh(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateZPADateTimes(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateZPARooms(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateZPAInvigilators(ctx context.Context) (<-chan *model.LogLine, error)
@@ -2498,6 +2504,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.BlockRoomForSlot(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["reason"].(*string)), true
 
+	case "Mutation.blockRoomForSlots":
+		if e.complexity.Mutation.BlockRoomForSlots == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_blockRoomForSlots_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BlockRoomForSlots(childComplexity, args["room"].(string), args["slots"].([]*model.SlotInput), args["reason"].(*string)), true
+
 	case "Mutation.clearEmailAttachments":
 		if e.complexity.Mutation.ClearEmailAttachments == nil {
 			break
@@ -2775,6 +2793,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UnblockRoomForSlot(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int)), true
+
+	case "Mutation.unblockRoomForSlots":
+		if e.complexity.Mutation.UnblockRoomForSlots == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unblockRoomForSlots_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnblockRoomForSlots(childComplexity, args["room"].(string), args["slots"].([]*model.SlotInput)), true
 
 	case "Mutation.updateNTA":
 		if e.complexity.Mutation.UpdateNta == nil {
@@ -4974,6 +5004,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.ValidateRoomsBlocked(childComplexity), true
 
+	case "Subscription.validateRoomsForSlotsFresh":
+		if e.complexity.Subscription.ValidateRoomsForSlotsFresh == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ValidateRoomsForSlotsFresh(childComplexity), true
+
 	case "Subscription.validateRoomsNeedRequest":
 		if e.complexity.Subscription.ValidateRoomsNeedRequest == nil {
 			break
@@ -5490,6 +5527,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputNTAInput,
 		ec.unmarshalInputPrimussExamInput,
 		ec.unmarshalInputRoomInput,
+		ec.unmarshalInputSlotInput,
 	)
 	first := true
 
@@ -6214,6 +6252,10 @@ extend type Mutation {
   blockRoomForSlot(room: String!, day: Int!, slot: Int!, reason: String): BlockedRoom!
   "Remove a room block for a slot (key: room/day/slot)."
   unblockRoomForSlot(room: String!, day: Int!, slot: Int!): Boolean!
+  "Block a room for several slots at once (e.g. a whole day or a time range). Returns the stored blocks."
+  blockRoomForSlots(room: String!, slots: [SlotInput!]!, reason: String): [BlockedRoom!]!
+  "Remove the room blocks for several slots at once. Returns how many blocks were removed."
+  unblockRoomForSlots(room: String!, slots: [SlotInput!]!): Int!
   "Activate/deactivate a room (key: name). A deactivated room is not used for planning."
   setRoomActive(name: String!, active: Boolean!): Room!
   "Create a new room (key: name). Errors if a room with that name already exists."
@@ -6235,6 +6277,12 @@ extend type Subscription {
   generateRoomsForExams: LogLine!
   "Fetch the room bookings from anny.eu and store them (used for the EXaHM room slots). Streams its output."
   importAnnyBookings: LogLine!
+}
+
+"A day/slot pair, used to block a room for several slots at once."
+input SlotInput {
+  day: Int!
+  slot: Int!
 }
 
 input RoomInput {
@@ -6625,6 +6673,7 @@ extend type Subscription {
   validateRoomsPerExam: LogLine!
   validateRoomsTimeDistance: LogLine!
   validateRoomsBlocked: LogLine!
+  validateRoomsForSlotsFresh: LogLine!
 
   validateZPADateTimes: LogLine!
   validateZPARooms: LogLine!
@@ -7204,6 +7253,80 @@ func (ec *executionContext) field_Mutation_blockRoomForSlot_argsSlot(
 }
 
 func (ec *executionContext) field_Mutation_blockRoomForSlot_argsReason(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["reason"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("reason"))
+	if tmp, ok := rawArgs["reason"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_blockRoomForSlots_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_blockRoomForSlots_argsRoom(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["room"] = arg0
+	arg1, err := ec.field_Mutation_blockRoomForSlots_argsSlots(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["slots"] = arg1
+	arg2, err := ec.field_Mutation_blockRoomForSlots_argsReason(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_blockRoomForSlots_argsRoom(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["room"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("room"))
+	if tmp, ok := rawArgs["room"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_blockRoomForSlots_argsSlots(
+	ctx context.Context,
+	rawArgs map[string]any,
+) ([]*model.SlotInput, error) {
+	if _, ok := rawArgs["slots"]; !ok {
+		var zeroVal []*model.SlotInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slots"))
+	if tmp, ok := rawArgs["slots"]; ok {
+		return ec.unmarshalNSlotInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotInputᚄ(ctx, tmp)
+	}
+
+	var zeroVal []*model.SlotInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_blockRoomForSlots_argsReason(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (*string, error) {
@@ -8363,6 +8486,57 @@ func (ec *executionContext) field_Mutation_unblockRoomForSlot_argsSlot(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_unblockRoomForSlots_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_unblockRoomForSlots_argsRoom(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["room"] = arg0
+	arg1, err := ec.field_Mutation_unblockRoomForSlots_argsSlots(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["slots"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_unblockRoomForSlots_argsRoom(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["room"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("room"))
+	if tmp, ok := rawArgs["room"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_unblockRoomForSlots_argsSlots(
+	ctx context.Context,
+	rawArgs map[string]any,
+) ([]*model.SlotInput, error) {
+	if _, ok := rawArgs["slots"]; !ok {
+		var zeroVal []*model.SlotInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slots"))
+	if tmp, ok := rawArgs["slots"]; ok {
+		return ec.unmarshalNSlotInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotInputᚄ(ctx, tmp)
+	}
+
+	var zeroVal []*model.SlotInput
 	return zeroVal, nil
 }
 
@@ -20615,6 +20789,126 @@ func (ec *executionContext) fieldContext_Mutation_unblockRoomForSlot(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_unblockRoomForSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_blockRoomForSlots(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_blockRoomForSlots(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().BlockRoomForSlots(rctx, fc.Args["room"].(string), fc.Args["slots"].([]*model.SlotInput), fc.Args["reason"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.BlockedRoom)
+	fc.Result = res
+	return ec.marshalNBlockedRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBlockedRoomᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_blockRoomForSlots(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "room":
+				return ec.fieldContext_BlockedRoom_room(ctx, field)
+			case "day":
+				return ec.fieldContext_BlockedRoom_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_BlockedRoom_slot(ctx, field)
+			case "reason":
+				return ec.fieldContext_BlockedRoom_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BlockedRoom", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_blockRoomForSlots_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unblockRoomForSlots(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unblockRoomForSlots(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnblockRoomForSlots(rctx, fc.Args["room"].(string), fc.Args["slots"].([]*model.SlotInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unblockRoomForSlots(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unblockRoomForSlots_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -36037,6 +36331,76 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsBlocked(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_validateRoomsForSlotsFresh(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateRoomsForSlotsFresh(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ValidateRoomsForSlotsFresh(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_validateRoomsForSlotsFresh(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Subscription_validateZPADateTimes(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	fc, err := ec.fieldContext_Subscription_validateZPADateTimes(ctx, field)
 	if err != nil {
@@ -42431,6 +42795,40 @@ func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSlotInput(ctx context.Context, obj any) (model.SlotInput, error) {
+	var it model.SlotInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"day", "slot"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "day":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Day = data
+		case "slot":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slot"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slot = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -44742,6 +45140,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "unblockRoomForSlot":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_unblockRoomForSlot(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "blockRoomForSlots":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_blockRoomForSlots(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unblockRoomForSlots":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unblockRoomForSlots(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -48468,6 +48880,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_validateRoomsTimeDistance(ctx, fields[0])
 	case "validateRoomsBlocked":
 		return ec._Subscription_validateRoomsBlocked(ctx, fields[0])
+	case "validateRoomsForSlotsFresh":
+		return ec._Subscription_validateRoomsForSlotsFresh(ctx, fields[0])
 	case "validateZPADateTimes":
 		return ec._Subscription_validateZPADateTimes(ctx, fields[0])
 	case "validateZPARooms":
@@ -51698,6 +52112,26 @@ func (ec *executionContext) marshalNSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgo
 		return graphql.Null
 	}
 	return ec._Slot(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSlotInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotInputᚄ(ctx context.Context, v any) ([]*model.SlotInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.SlotInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNSlotInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNSlotInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotInput(ctx context.Context, v any) (*model.SlotInput, error) {
+	res, err := ec.unmarshalInputSlotInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNSoftCostItem2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSoftCostItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SoftCostItem) graphql.Marshaler {

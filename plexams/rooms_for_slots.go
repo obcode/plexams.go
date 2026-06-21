@@ -36,11 +36,26 @@ func (p *Plexams) RoomsFromRoomNames(ctx context.Context, roomNames []string) ([
 // PrepareRoomForExams, but can also be triggered on its own to preview the
 // allowed rooms per slot.
 func (p *Plexams) PrepareRoomsForSlots(ctx context.Context, reporter Reporter) error {
+	roomsForSlots, err := p.computeRoomsForSlots(ctx, reporter)
+	if err != nil {
+		return err
+	}
+	if err := p.dbClient.SaveRoomsForSlots(ctx, roomsForSlots); err != nil {
+		return err
+	}
+	reporter.StopProgress(fmt.Sprintf("rooms for %d slots prepared", len(roomsForSlots)))
+	return nil
+}
+
+// computeRoomsForSlots computes the allowed rooms per slot from the current
+// state, without storing anything. PrepareRoomsForSlots saves the result; the
+// staleness validation compares it against the stored cache.
+func (p *Plexams) computeRoomsForSlots(ctx context.Context, reporter Reporter) ([]*model.RoomsForSlot, error) {
 	reporter.Step("getting global rooms")
 	allRooms, err := p.dbClient.Rooms(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get global rooms")
-		return err
+		return nil, err
 	}
 	// deactivated rooms must not be used for planning
 	globalRooms := make([]*model.Room, 0, len(allRooms))
@@ -54,7 +69,7 @@ func (p *Plexams) PrepareRoomsForSlots(ctx context.Context, reporter Reporter) e
 	roomsWithRestrictedSlots, err := p.roomsWithRestrictedSlots(globalRooms, reporter)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get restricted slots for rooms")
-		return err
+		return nil, err
 	}
 
 	slotsWithRoomNames := make(map[SlotNumber]set.Set[string])
@@ -93,7 +108,7 @@ func (p *Plexams) PrepareRoomsForSlots(ctx context.Context, reporter Reporter) e
 	// remove rooms that are blocked for a slot (e.g. otherwise occupied); warn if
 	// a blocked room is currently planned in that slot.
 	if err := p.applyRoomBlocks(ctx, slotsWithRoomNames, reporter); err != nil {
-		return err
+		return nil, err
 	}
 
 	roomsForSlots := make([]*model.RoomsForSlot, 0, len(slotsWithRoomNames))
@@ -107,11 +122,7 @@ func (p *Plexams) PrepareRoomsForSlots(ctx context.Context, reporter Reporter) e
 		})
 	}
 
-	if err := p.dbClient.SaveRoomsForSlots(ctx, roomsForSlots); err != nil {
-		return err
-	}
-	reporter.StopProgress(fmt.Sprintf("rooms for %d slots prepared", len(roomsForSlots)))
-	return nil
+	return roomsForSlots, nil
 }
 
 func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room, reporter Reporter) (map[string]set.Set[SlotNumber], error) {

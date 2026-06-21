@@ -282,6 +282,7 @@ type prepareRoomsCfg struct {
 	availableRooms            []*model.Room
 	plannedRoomsWithFreeSeats map[string]*plannedRoomsWithFreeSeats // key is room name
 	roomsNotUsableInSlot      set.Set[string]
+	blockedRooms              map[SlotNumber]set.Set[string] // slot -> blocked room names
 }
 
 type plannedRoomsWithFreeSeats struct {
@@ -301,10 +302,25 @@ func (p *Plexams) prepareRoomsCfg(ctx context.Context) (*prepareRoomsCfg, error)
 		roomInfo[room.Name] = room
 	}
 
+	blocks, err := p.dbClient.BlockedRooms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get blocked rooms")
+		return nil, err
+	}
+	blockedRooms := make(map[SlotNumber]set.Set[string])
+	for _, b := range blocks {
+		key := SlotNumber{day: b.Day, slot: b.Slot}
+		if _, ok := blockedRooms[key]; !ok {
+			blockedRooms[key] = set.NewSet[string]()
+		}
+		blockedRooms[key].Add(b.Room)
+	}
+
 	prepareRoomsCfg := &prepareRoomsCfg{
 		roomInfo:        roomInfo,
 		prePlannedRooms: p.prePlannedRooms(ctx, roomInfo),
 		additionalSeats: additionalSeats(),
+		blockedRooms:    blockedRooms,
 	}
 
 	log.Info().Interface("prePlannedRooms", prepareRoomsCfg.prePlannedRooms).Msg("prepareRoomsCfg initialized")
@@ -573,6 +589,15 @@ func (p *Plexams) assignPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg, exam *
 		if !ok {
 			log.Error().Str("roomName", prePlannedRoom.RoomName).Msg("pre-planned room not found in room info")
 			panic(fmt.Sprintf("pre-planned room %s not found in room info", prePlannedRoom.RoomName))
+		}
+
+		// a room blocked for this slot wins over the pre-planning: skip it.
+		slotKey := SlotNumber{day: exam.Exam.PlanEntry.DayNumber, slot: exam.Exam.PlanEntry.SlotNumber}
+		if blocked, ok := prepareRoomsCfg.blockedRooms[slotKey]; ok && blocked.Contains(prePlannedRoom.RoomName) {
+			reporter.Warnf(aurora.Sprintf(
+				aurora.Red("pre-planned room %s for %d is blocked in slot (%d,%d); skipped"),
+				prePlannedRoom.RoomName, exam.Exam.Ancode, slotKey.day, slotKey.slot))
+			continue
 		}
 
 		var examRoom *model.PlannedRoom

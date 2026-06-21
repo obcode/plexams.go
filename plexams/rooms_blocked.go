@@ -38,6 +38,43 @@ func (p *Plexams) BlockRoomForSlot(ctx context.Context, room string, day, slot i
 	return block, nil
 }
 
+// BlockRoomForSlots blocks a room for several slots at once (e.g. a whole day or
+// a time range). Returns the stored blocks.
+func (p *Plexams) BlockRoomForSlots(ctx context.Context, room string, slots []*model.SlotInput, reason *string) ([]*model.BlockedRoom, error) {
+	dbRoom, err := p.dbClient.RoomByName(ctx, room)
+	if err != nil {
+		return nil, err
+	}
+	if dbRoom == nil {
+		return nil, fmt.Errorf("room %s not found", room)
+	}
+	blocks := make([]*model.BlockedRoom, 0, len(slots))
+	for _, s := range slots {
+		block := &model.BlockedRoom{Room: room, Day: s.Day, Slot: s.Slot, Reason: reason}
+		if err := p.dbClient.BlockRoomForSlot(ctx, block); err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, block)
+	}
+	return blocks, nil
+}
+
+// UnblockRoomForSlots removes the room blocks for several slots at once. Returns
+// how many blocks were actually removed.
+func (p *Plexams) UnblockRoomForSlots(ctx context.Context, room string, slots []*model.SlotInput) (int, error) {
+	removed := 0
+	for _, s := range slots {
+		wasRemoved, err := p.dbClient.UnblockRoomForSlot(ctx, room, s.Day, s.Slot)
+		if err != nil {
+			return removed, err
+		}
+		if wasRemoved {
+			removed++
+		}
+	}
+	return removed, nil
+}
+
 // UnblockRoomForSlot removes a room-slot block. Errors if no such block exists.
 func (p *Plexams) UnblockRoomForSlot(ctx context.Context, room string, day, slot int) (bool, error) {
 	removed, err := p.dbClient.UnblockRoomForSlot(ctx, room, day, slot)

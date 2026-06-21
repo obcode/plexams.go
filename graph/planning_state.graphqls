@@ -1,0 +1,43 @@
+# The planning state is a condition/event model of the planning workflow: per
+# phase a set of conditions (milestones). Some are set automatically when an
+# operation finishes, all can be toggled by hand. A condition with a gate locks
+# the matching generation operations while it is set (e.g. roomPlanPublished
+# blocks regenerating the rooms); explicit changes stay allowed.
+
+type PlanningCondition {
+  key: String!
+  title: String!
+  phase: String!
+  "true when the condition (milestone) is reached."
+  done: Boolean!
+  "If set, the area this condition gates while done (e.g. ROOMS, INVIGILATIONS); null if it is not a gate."
+  gate: PlanningGate
+}
+
+type PlanningPhase {
+  key: String!
+  title: String!
+  conditions: [PlanningCondition!]!
+}
+
+type PlanningState {
+  phases: [PlanningPhase!]!
+  "Areas whose generation is currently locked because a gate condition is set."
+  blockedAreas: [PlanningGate!]!
+}
+
+"Areas that can be locked by a published gate."
+enum PlanningGate {
+  ROOMS
+  INVIGILATIONS
+}
+
+extend type Query {
+  "The planning state (phases, conditions, currently locked areas)."
+  planningState: PlanningState!
+}
+
+extend type Mutation {
+  "Set or clear a planning condition by hand (e.g. mark/unmark a plan as published). Returns the new state."
+  setPlanningCondition(key: String!, done: Boolean!): PlanningState!
+}

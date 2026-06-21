@@ -122,6 +122,9 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
 		return err
 	}
+	if run {
+		p.markCondition(ctx, condRoomRequestsSent)
+	}
 	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
 	return nil
 }

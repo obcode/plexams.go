@@ -61,6 +61,9 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
 	}
+	if run {
+		p.markCondition(ctx, condExamPlanPublished)
+	}
 	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
 	return nil
 }
@@ -107,6 +110,9 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 
 	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
+	}
+	if run {
+		p.markCondition(ctx, condRoomPlanPublished)
 	}
 	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
 	return nil
@@ -335,6 +341,9 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		sent++
 	}
 
+	if run {
+		p.markCondition(ctx, condInvigilationPlanPublished)
+	}
 	reporter.StopProgress(fmt.Sprintf("sent %d of %d invigilation-plan emails", sent, len(ids)))
 	return nil
 }

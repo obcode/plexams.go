@@ -33,6 +33,7 @@ func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (in
 	for _, exam := range exams {
 		reporter.Printf("%3d. %s (%s): %v", exam.AnCode, exam.Module, exam.MainExamer, exam.PrimussAncodes)
 	}
+	p.markCondition(ctx, condZPAImported)
 	reporter.StopProgress(fmt.Sprintf("fetched %d exams", len(exams)))
 	return len(exams), nil
 }
@@ -65,5 +66,6 @@ func (p *Plexams) ImportInvigilatorRequirementsFromZPA(ctx context.Context, repo
 	} else {
 		reporter.StopProgressFail(fmt.Sprintf("%d requirements fetched, %d invigilator(s) still missing", len(reqs), missing))
 	}
+	p.markCondition(ctx, condInvigReqsImported)
 	return len(reqs), nil
 }

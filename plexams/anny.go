@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -235,6 +236,12 @@ func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
 
 	annySummary(bookings, personalizationName, reporter)
 	reporter.StopProgress(fmt.Sprintf("saved %d anny bookings to the database", len(dbBookings)))
+
+	// Anny bookings feed the EXaHM room slots, so the rooms-for-slots cache may now
+	// be stale. Run the freshness check so it is visible right away.
+	if _, err := p.ValidateRoomsForSlotsFresh(reporter); err != nil {
+		log.Error().Err(err).Msg("cannot validate rooms-for-slots freshness after anny import")
+	}
 
 	return nil
 }

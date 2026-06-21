@@ -59,6 +59,9 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool, reporter R
 	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
 	}
+	if run {
+		p.markCondition(ctx, condConstraintsRequested)
+	}
 	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
 	return nil
 }

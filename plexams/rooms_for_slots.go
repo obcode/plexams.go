@@ -36,6 +36,9 @@ func (p *Plexams) RoomsFromRoomNames(ctx context.Context, roomNames []string) ([
 // PrepareRoomForExams, but can also be triggered on its own to preview the
 // allowed rooms per slot.
 func (p *Plexams) PrepareRoomsForSlots(ctx context.Context, reporter Reporter) error {
+	if err := p.generationAllowed(ctx, model.PlanningGateRooms); err != nil {
+		return err
+	}
 	roomsForSlots, err := p.computeRoomsForSlots(ctx, reporter)
 	if err != nil {
 		return err

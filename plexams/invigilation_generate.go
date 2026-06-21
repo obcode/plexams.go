@@ -21,6 +21,9 @@ import (
 // in invigilations_self; pre-planned invigilations are included as fixed seeds.
 // To fix an assignment across runs, move it to the pre-planning.
 func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts invigplan.Options, reporter Reporter) (*model.InvigilationReport, error) {
+	if err := p.generationAllowed(ctx, model.PlanningGateInvigilations); err != nil {
+		return nil, err
+	}
 	reporter.Println("refreshing self-invigilations and todos ...")
 	if err := p.PrepareSelfInvigilation(); err != nil {
 		return nil, fmt.Errorf("cannot prepare self invigilations: %w", err)
@@ -102,6 +105,7 @@ func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts i
 	if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
 		return report, fmt.Errorf("cannot recalculate todos: %w", err)
 	}
+	p.markCondition(ctx, condInvigilationsGenerated)
 	reporter.Println("... done")
 	return report, nil
 }

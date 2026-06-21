@@ -75,6 +75,9 @@ func (p *Plexams) SetRoomRequestActive(ctx context.Context, room string, day, sl
 // approved (e.g. this semester's migrated data), it refuses to overwrite
 // existing requests unless force is true. Returns the number written.
 func (p *Plexams) ApplyRoomRequestsPreview(ctx context.Context, force bool) (int, error) {
+	if err := p.generationAllowed(ctx, model.PlanningGateRooms); err != nil {
+		return 0, err
+	}
 	existing, err := p.dbClient.RoomRequests(ctx)
 	if err != nil {
 		return 0, err

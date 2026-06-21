@@ -18,6 +18,9 @@ import (
 // (PrepareRoomsForSlots), so that step no longer has to be run separately: the
 // room-for-exams generation always works on an up-to-date rooms-for-slots cache.
 func (p *Plexams) PrepareRoomForExams(ctx context.Context, reporter Reporter) error {
+	if err := p.generationAllowed(ctx, model.PlanningGateRooms); err != nil {
+		return err
+	}
 	reporter.Println(aurora.Sprintf(aurora.Cyan("preparing rooms for slots")))
 	if err := p.PrepareRoomsForSlots(ctx, reporter); err != nil {
 		log.Error().Err(err).Msg("cannot prepare rooms for slots")
@@ -46,6 +49,7 @@ func (p *Plexams) PrepareRoomForExams(ctx context.Context, reporter Reporter) er
 	if err := p.dbClient.ReplacePlannedRooms(ctx, examRooms); err != nil {
 		return err
 	}
+	p.markCondition(ctx, condRoomsGenerated)
 	reporter.StopProgress(fmt.Sprintf("%d planned rooms written", len(examRooms)))
 	return nil
 }

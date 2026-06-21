@@ -110,6 +110,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 		return nil, nil, err
 	}
 
+	p.markCondition(ctx, condStudentRegsUploaded)
 	reporter.StopProgress(fmt.Sprintf("uploaded %d regs, %d with errors", len(zpaStudentRegs), len(regsWithErrors)))
 
 	return zpaStudentRegs, regsWithErrors, nil

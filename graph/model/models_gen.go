@@ -349,6 +349,28 @@ type OptimizerProgress struct {
 	Unfilled  int     `json:"unfilled"`
 }
 
+type PlanningCondition struct {
+	Key   string `json:"key"`
+	Title string `json:"title"`
+	Phase string `json:"phase"`
+	// true when the condition (milestone) is reached.
+	Done bool `json:"done"`
+	// If set, the area this condition gates while done (e.g. ROOMS, INVIGILATIONS); null if it is not a gate.
+	Gate *PlanningGate `json:"gate,omitempty"`
+}
+
+type PlanningPhase struct {
+	Key        string               `json:"key"`
+	Title      string               `json:"title"`
+	Conditions []*PlanningCondition `json:"conditions"`
+}
+
+type PlanningState struct {
+	Phases []*PlanningPhase `json:"phases"`
+	// Areas whose generation is currently locked because a gate condition is set.
+	BlockedAreas []PlanningGate `json:"blockedAreas"`
+}
+
 type PreExam struct {
 	ZpaExam     *ZPAExam     `json:"zpaExam"`
 	Constraints *Constraints `json:"constraints,omitempty"`
@@ -674,6 +696,62 @@ func (e *LogLevel) UnmarshalJSON(b []byte) error {
 }
 
 func (e LogLevel) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Areas that can be locked by a published gate.
+type PlanningGate string
+
+const (
+	PlanningGateRooms         PlanningGate = "ROOMS"
+	PlanningGateInvigilations PlanningGate = "INVIGILATIONS"
+)
+
+var AllPlanningGate = []PlanningGate{
+	PlanningGateRooms,
+	PlanningGateInvigilations,
+}
+
+func (e PlanningGate) IsValid() bool {
+	switch e {
+	case PlanningGateRooms, PlanningGateInvigilations:
+		return true
+	}
+	return false
+}
+
+func (e PlanningGate) String() string {
+	return string(e)
+}
+
+func (e *PlanningGate) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = PlanningGate(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid PlanningGate", str)
+	}
+	return nil
+}
+
+func (e PlanningGate) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *PlanningGate) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e PlanningGate) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

@@ -310,7 +310,11 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		}
 	}
 
-	return p.dbClient.CacheGeneratedExams(ctx, exams)
+	if err := p.dbClient.CacheGeneratedExams(ctx, exams); err != nil {
+		return err
+	}
+	p.markCondition(ctx, condGeneratedExams)
+	return nil
 }
 
 func (p *Plexams) primussToEnhanced(ctx context.Context, exam *model.PrimussExam, ntaMap map[string]*model.NTA, zpaStudents map[string]*model.ZPAStudent) (*model.EnhancedPrimussExam, error) {

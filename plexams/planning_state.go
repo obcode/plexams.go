@@ -1,0 +1,163 @@
+package plexams
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
+)
+
+// The planning state is a condition/event model (a 1-safe Petri net): per phase a
+// set of conditions (milestones). A condition can be set automatically when an
+// operation finishes (markCondition) or by hand (SetPlanningCondition). A
+// condition with a gate locks the matching generation operations while it is set
+// (generationAllowed); explicit changes stay allowed.
+//
+// The net is defined declaratively here and is meant to be extended in code.
+
+type planningPhaseDef struct {
+	key   string
+	title string
+}
+
+type planningConditionDef struct {
+	key   string
+	title string
+	phase string
+	// gate, if not empty, is the area locked while this condition is set.
+	gate model.PlanningGate
+}
+
+var planningPhaseDefs = []planningPhaseDef{
+	{"phase0", "Phase 0: Vorbereitung"},
+	{"phase1", "Phase 1: Terminplanung"},
+	{"phase2", "Phase 2: Raumplanung"},
+	{"phase3", "Phase 3: Aufsichtenplanung"},
+}
+
+// planning condition keys (use the constants when marking from operations).
+const (
+	condZPAImported               = "zpaImported"
+	condConstraintsRequested      = "constraintsRequested"
+	condConnectedExams            = "connectedExams"
+	condGeneratedExams            = "generatedExams"
+	condStudentRegs               = "studentRegs"
+	condStudentRegsUploaded       = "studentRegsUploaded"
+	condExamPlanPublished         = "examPlanPublished"
+	condRoomRequestsSent          = "roomRequestsSent"
+	condRoomsGenerated            = "roomsGenerated"
+	condRoomPlanPublished         = "roomPlanPublished"
+	condInvigReqsImported         = "invigReqsImported"
+	condInvigilationsGenerated    = "invigilationsGenerated"
+	condInvigilationPlanPublished = "invigilationPlanPublished"
+)
+
+var planningConditionDefs = []planningConditionDef{
+	{condZPAImported, "Prüfungen & Personen aus ZPA importiert", "phase0", ""},
+	{condConstraintsRequested, "Constraints-Abfrage verschickt", "phase0", ""},
+	{condConnectedExams, "ConnectedExams erstellt", "phase1", ""},
+	{condGeneratedExams, "GeneratedExams erstellt", "phase1", ""},
+	{condStudentRegs, "StudentRegs erstellt", "phase1", ""},
+	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase1", ""},
+	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", ""},
+	{condRoomRequestsSent, "Raum-Anfragen ans Gebäudemanagement verschickt", "phase2", ""},
+	{condRoomsGenerated, "Räume für Prüfungen generiert", "phase2", ""},
+	{condRoomPlanPublished, "Raumplan veröffentlicht (E-Mail)", "phase2", model.PlanningGateRooms},
+	{condInvigReqsImported, "Aufsichts-Anforderungen importiert", "phase3", ""},
+	{condInvigilationsGenerated, "Aufsichten generiert", "phase3", ""},
+	{condInvigilationPlanPublished, "Aufsichtenplan veröffentlicht (E-Mail)", "phase3", model.PlanningGateInvigilations},
+}
+
+func planningConditionDefByKey(key string) (planningConditionDef, bool) {
+	for _, def := range planningConditionDefs {
+		if def.key == key {
+			return def, true
+		}
+	}
+	return planningConditionDef{}, false
+}
+
+// PlanningState assembles the current planning state from the declarative net and
+// the conditions stored as set in the DB.
+func (p *Plexams) PlanningState(ctx context.Context) (*model.PlanningState, error) {
+	setKeys, err := p.dbClient.PlanningConditionsSet(ctx)
+	if err != nil {
+		return nil, err
+	}
+	done := make(map[string]bool, len(setKeys))
+	for _, key := range setKeys {
+		done[key] = true
+	}
+
+	phaseByKey := make(map[string]*model.PlanningPhase)
+	phases := make([]*model.PlanningPhase, 0, len(planningPhaseDefs))
+	for _, pd := range planningPhaseDefs {
+		phase := &model.PlanningPhase{Key: pd.key, Title: pd.title, Conditions: []*model.PlanningCondition{}}
+		phaseByKey[pd.key] = phase
+		phases = append(phases, phase)
+	}
+
+	blocked := make([]model.PlanningGate, 0)
+	for _, cd := range planningConditionDefs {
+		cond := &model.PlanningCondition{
+			Key:   cd.key,
+			Title: cd.title,
+			Phase: cd.phase,
+			Done:  done[cd.key],
+		}
+		if cd.gate != "" {
+			gate := cd.gate
+			cond.Gate = &gate
+			if cond.Done {
+				blocked = append(blocked, gate)
+			}
+		}
+		if phase, ok := phaseByKey[cd.phase]; ok {
+			phase.Conditions = append(phase.Conditions, cond)
+		}
+	}
+
+	return &model.PlanningState{Phases: phases, BlockedAreas: blocked}, nil
+}
+
+// SetPlanningCondition sets or clears a condition by hand. Errors on an unknown
+// key.
+func (p *Plexams) SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error) {
+	if _, ok := planningConditionDefByKey(key); !ok {
+		return nil, fmt.Errorf("unknown planning condition %q", key)
+	}
+	if err := p.dbClient.SetPlanningCondition(ctx, key, done); err != nil {
+		return nil, err
+	}
+	return p.PlanningState(ctx)
+}
+
+// markCondition sets a condition as done. It is best-effort: a failure is logged
+// but never fails the operation that triggered it.
+func (p *Plexams) markCondition(ctx context.Context, key string) {
+	if err := p.dbClient.SetPlanningCondition(ctx, key, true); err != nil {
+		log.Error().Err(err).Str("key", key).Msg("cannot auto-mark planning condition")
+	}
+}
+
+// generationAllowed reports whether generation for the given area is allowed, i.e.
+// no gate condition for that area is set. Returns an error describing the lock
+// otherwise.
+func (p *Plexams) generationAllowed(ctx context.Context, area model.PlanningGate) error {
+	setKeys, err := p.dbClient.PlanningConditionsSet(ctx)
+	if err != nil {
+		return err
+	}
+	set := make(map[string]bool, len(setKeys))
+	for _, key := range setKeys {
+		set[key] = true
+	}
+	for _, cd := range planningConditionDefs {
+		if cd.gate == area && set[cd.key] {
+			return fmt.Errorf("%s is published (%s); generation is locked. "+
+				"Make explicit changes instead, or unset the condition to regenerate", cd.title, cd.key)
+		}
+	}
+	return nil
+}

@@ -382,6 +382,7 @@ type ComplexityRoot struct {
 		SameSlot                      func(childComplexity int, ancode int, ancodes []int) int
 		Seb                           func(childComplexity int, ancode int) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
+		SetPlanningCondition          func(childComplexity int, key string, done bool) int
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
 		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
@@ -466,6 +467,25 @@ type ComplexityRoot struct {
 		Room              func(childComplexity int) int
 		Slot              func(childComplexity int) int
 		StudentsInRoom    func(childComplexity int) int
+	}
+
+	PlanningCondition struct {
+		Done  func(childComplexity int) int
+		Gate  func(childComplexity int) int
+		Key   func(childComplexity int) int
+		Phase func(childComplexity int) int
+		Title func(childComplexity int) int
+	}
+
+	PlanningPhase struct {
+		Conditions func(childComplexity int) int
+		Key        func(childComplexity int) int
+		Title      func(childComplexity int) int
+	}
+
+	PlanningState struct {
+		BlockedAreas func(childComplexity int) int
+		Phases       func(childComplexity int) int
 	}
 
 	PreExam struct {
@@ -558,6 +578,7 @@ type ComplexityRoot struct {
 		PlannedRoomNamesInSlot        func(childComplexity int, day int, time int) int
 		PlannedRooms                  func(childComplexity int) int
 		PlannedRoomsInSlot            func(childComplexity int, day int, time int) int
+		PlanningState                 func(childComplexity int) int
 		PreExamsInSlot                func(childComplexity int, day int, time int) int
 		PrePlannedInvigilations       func(childComplexity int) int
 		PrePlannedRooms               func(childComplexity int) int
@@ -912,6 +933,7 @@ type MutationResolver interface {
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
+	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
 	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string) (bool, error)
 	RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error)
 	BlockRoomForSlot(ctx context.Context, room string, day int, slot int, reason *string) (*model.BlockedRoom, error)
@@ -978,6 +1000,7 @@ type QueryResolver interface {
 	ExamsWithoutSlot(ctx context.Context) ([]*model.PlannedExam, error)
 	AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
 	AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
+	PlanningState(ctx context.Context) (*model.PlanningState, error)
 	PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error)
 	PrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error)
 	PrimussExamsForAnCode(ctx context.Context, ancode int) ([]*model.PrimussExam, error)
@@ -2746,6 +2769,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetNTAActive(childComplexity, args["mtknr"].(string), args["active"].(bool)), true
 
+	case "Mutation.setPlanningCondition":
+		if e.complexity.Mutation.SetPlanningCondition == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setPlanningCondition_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetPlanningCondition(childComplexity, args["key"].(string), args["done"].(bool)), true
+
 	case "Mutation.setRoomActive":
 		if e.complexity.Mutation.SetRoomActive == nil {
 			break
@@ -3210,6 +3245,76 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PlannedRoom.StudentsInRoom(childComplexity), true
+
+	case "PlanningCondition.done":
+		if e.complexity.PlanningCondition.Done == nil {
+			break
+		}
+
+		return e.complexity.PlanningCondition.Done(childComplexity), true
+
+	case "PlanningCondition.gate":
+		if e.complexity.PlanningCondition.Gate == nil {
+			break
+		}
+
+		return e.complexity.PlanningCondition.Gate(childComplexity), true
+
+	case "PlanningCondition.key":
+		if e.complexity.PlanningCondition.Key == nil {
+			break
+		}
+
+		return e.complexity.PlanningCondition.Key(childComplexity), true
+
+	case "PlanningCondition.phase":
+		if e.complexity.PlanningCondition.Phase == nil {
+			break
+		}
+
+		return e.complexity.PlanningCondition.Phase(childComplexity), true
+
+	case "PlanningCondition.title":
+		if e.complexity.PlanningCondition.Title == nil {
+			break
+		}
+
+		return e.complexity.PlanningCondition.Title(childComplexity), true
+
+	case "PlanningPhase.conditions":
+		if e.complexity.PlanningPhase.Conditions == nil {
+			break
+		}
+
+		return e.complexity.PlanningPhase.Conditions(childComplexity), true
+
+	case "PlanningPhase.key":
+		if e.complexity.PlanningPhase.Key == nil {
+			break
+		}
+
+		return e.complexity.PlanningPhase.Key(childComplexity), true
+
+	case "PlanningPhase.title":
+		if e.complexity.PlanningPhase.Title == nil {
+			break
+		}
+
+		return e.complexity.PlanningPhase.Title(childComplexity), true
+
+	case "PlanningState.blockedAreas":
+		if e.complexity.PlanningState.BlockedAreas == nil {
+			break
+		}
+
+		return e.complexity.PlanningState.BlockedAreas(childComplexity), true
+
+	case "PlanningState.phases":
+		if e.complexity.PlanningState.Phases == nil {
+			break
+		}
+
+		return e.complexity.PlanningState.Phases(childComplexity), true
 
 	case "PreExam.constraints":
 		if e.complexity.PreExam.Constraints == nil {
@@ -3766,6 +3871,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PlannedRoomsInSlot(childComplexity, args["day"].(int), args["time"].(int)), true
+
+	case "Query.planningState":
+		if e.complexity.Query.PlanningState == nil {
+			break
+		}
+
+		return e.complexity.Query.PlanningState(childComplexity), true
 
 	case "Query.preExamsInSlot":
 		if e.complexity.Query.PreExamsInSlot == nil {
@@ -6134,6 +6246,50 @@ type PlanEntry {
   locked: Boolean!
 }
 `, BuiltIn: false},
+	{Name: "../planning_state.graphqls", Input: `# The planning state is a condition/event model of the planning workflow: per
+# phase a set of conditions (milestones). Some are set automatically when an
+# operation finishes, all can be toggled by hand. A condition with a gate locks
+# the matching generation operations while it is set (e.g. roomPlanPublished
+# blocks regenerating the rooms); explicit changes stay allowed.
+
+type PlanningCondition {
+  key: String!
+  title: String!
+  phase: String!
+  "true when the condition (milestone) is reached."
+  done: Boolean!
+  "If set, the area this condition gates while done (e.g. ROOMS, INVIGILATIONS); null if it is not a gate."
+  gate: PlanningGate
+}
+
+type PlanningPhase {
+  key: String!
+  title: String!
+  conditions: [PlanningCondition!]!
+}
+
+type PlanningState {
+  phases: [PlanningPhase!]!
+  "Areas whose generation is currently locked because a gate condition is set."
+  blockedAreas: [PlanningGate!]!
+}
+
+"Areas that can be locked by a published gate."
+enum PlanningGate {
+  ROOMS
+  INVIGILATIONS
+}
+
+extend type Query {
+  "The planning state (phases, conditions, currently locked areas)."
+  planningState: PlanningState!
+}
+
+extend type Mutation {
+  "Set or clear a planning condition by hand (e.g. mark/unmark a plan as published). Returns the new state."
+  setPlanningCondition(key: String!, done: Boolean!): PlanningState!
+}
+`, BuiltIn: false},
 	{Name: "../primuss.graphqls", Input: `extend type Query {
   primussExams: [PrimussExamByProgram]
   primussExam(program: String!, ancode: Int!): PrimussExam!
@@ -8163,6 +8319,57 @@ func (ec *executionContext) field_Mutation_setNTAActive_argsActive(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("active"))
 	if tmp, ok := rawArgs["active"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPlanningCondition_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setPlanningCondition_argsKey(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["key"] = arg0
+	arg1, err := ec.field_Mutation_setPlanningCondition_argsDone(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["done"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setPlanningCondition_argsKey(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["key"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+	if tmp, ok := rawArgs["key"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPlanningCondition_argsDone(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["done"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("done"))
+	if tmp, ok := rawArgs["done"]; ok {
 		return ec.unmarshalNBoolean2bool(ctx, tmp)
 	}
 
@@ -20565,6 +20772,67 @@ func (ec *executionContext) fieldContext_Mutation_rmExamFromSlot(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setPlanningCondition(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setPlanningCondition(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetPlanningCondition(rctx, fc.Args["key"].(string), fc.Args["done"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PlanningState)
+	fc.Result = res
+	return ec.marshalNPlanningState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningState(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setPlanningCondition(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "phases":
+				return ec.fieldContext_PlanningState_phases(ctx, field)
+			case "blockedAreas":
+				return ec.fieldContext_PlanningState_blockedAreas(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlanningState", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setPlanningCondition_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_prePlanRoom(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_prePlanRoom(ctx, field)
 	if err != nil {
@@ -24270,6 +24538,463 @@ func (ec *executionContext) fieldContext_PlannedRoom_prePlanned(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _PlanningCondition_key(ctx context.Context, field graphql.CollectedField, obj *model.PlanningCondition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningCondition_key(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningCondition_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanningCondition_title(ctx context.Context, field graphql.CollectedField, obj *model.PlanningCondition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningCondition_title(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Title, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningCondition_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanningCondition_phase(ctx context.Context, field graphql.CollectedField, obj *model.PlanningCondition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningCondition_phase(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Phase, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningCondition_phase(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanningCondition_done(ctx context.Context, field graphql.CollectedField, obj *model.PlanningCondition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningCondition_done(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Done, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningCondition_done(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanningCondition_gate(ctx context.Context, field graphql.CollectedField, obj *model.PlanningCondition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningCondition_gate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Gate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.PlanningGate)
+	fc.Result = res
+	return ec.marshalOPlanningGate2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGate(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningCondition_gate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PlanningGate does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanningPhase_key(ctx context.Context, field graphql.CollectedField, obj *model.PlanningPhase) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningPhase_key(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningPhase_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningPhase",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanningPhase_title(ctx context.Context, field graphql.CollectedField, obj *model.PlanningPhase) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningPhase_title(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Title, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningPhase_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningPhase",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanningPhase_conditions(ctx context.Context, field graphql.CollectedField, obj *model.PlanningPhase) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningPhase_conditions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Conditions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PlanningCondition)
+	fc.Result = res
+	return ec.marshalNPlanningCondition2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningConditionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningPhase_conditions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningPhase",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_PlanningCondition_key(ctx, field)
+			case "title":
+				return ec.fieldContext_PlanningCondition_title(ctx, field)
+			case "phase":
+				return ec.fieldContext_PlanningCondition_phase(ctx, field)
+			case "done":
+				return ec.fieldContext_PlanningCondition_done(ctx, field)
+			case "gate":
+				return ec.fieldContext_PlanningCondition_gate(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlanningCondition", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanningState_phases(ctx context.Context, field graphql.CollectedField, obj *model.PlanningState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningState_phases(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Phases, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PlanningPhase)
+	fc.Result = res
+	return ec.marshalNPlanningPhase2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningPhaseᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningState_phases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_PlanningPhase_key(ctx, field)
+			case "title":
+				return ec.fieldContext_PlanningPhase_title(ctx, field)
+			case "conditions":
+				return ec.fieldContext_PlanningPhase_conditions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlanningPhase", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanningState_blockedAreas(ctx context.Context, field graphql.CollectedField, obj *model.PlanningState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningState_blockedAreas(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BlockedAreas, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.PlanningGate)
+	fc.Result = res
+	return ec.marshalNPlanningGate2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGateᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningState_blockedAreas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PlanningGate does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreExam_zpaExam(ctx context.Context, field graphql.CollectedField, obj *model.PreExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreExam_zpaExam(ctx, field)
 	if err != nil {
@@ -27903,6 +28628,56 @@ func (ec *executionContext) fieldContext_Query_awkwardSlots(ctx context.Context,
 	if fc.Args, err = ec.field_Query_awkwardSlots_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_planningState(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_planningState(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PlanningState(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PlanningState)
+	fc.Result = res
+	return ec.marshalNPlanningState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningState(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_planningState(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "phases":
+				return ec.fieldContext_PlanningState_phases(ctx, field)
+			case "blockedAreas":
+				return ec.fieldContext_PlanningState_blockedAreas(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlanningState", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -45116,6 +45891,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setPlanningCondition":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setPlanningCondition(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "prePlanRoom":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_prePlanRoom(ctx, field)
@@ -45838,6 +46620,155 @@ func (ec *executionContext) _PlannedRoom(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._PlannedRoom_prePlanned(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var planningConditionImplementors = []string{"PlanningCondition"}
+
+func (ec *executionContext) _PlanningCondition(ctx context.Context, sel ast.SelectionSet, obj *model.PlanningCondition) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, planningConditionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlanningCondition")
+		case "key":
+			out.Values[i] = ec._PlanningCondition_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._PlanningCondition_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "phase":
+			out.Values[i] = ec._PlanningCondition_phase(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "done":
+			out.Values[i] = ec._PlanningCondition_done(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "gate":
+			out.Values[i] = ec._PlanningCondition_gate(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var planningPhaseImplementors = []string{"PlanningPhase"}
+
+func (ec *executionContext) _PlanningPhase(ctx context.Context, sel ast.SelectionSet, obj *model.PlanningPhase) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, planningPhaseImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlanningPhase")
+		case "key":
+			out.Values[i] = ec._PlanningPhase_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._PlanningPhase_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "conditions":
+			out.Values[i] = ec._PlanningPhase_conditions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var planningStateImplementors = []string{"PlanningState"}
+
+func (ec *executionContext) _PlanningState(ctx context.Context, sel ast.SelectionSet, obj *model.PlanningState) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, planningStateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlanningState")
+		case "phases":
+			out.Values[i] = ec._PlanningState_phases(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "blockedAreas":
+			out.Values[i] = ec._PlanningState_blockedAreas(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -46983,6 +47914,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_awkwardSlots(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "planningState":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_planningState(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -51249,6 +52202,197 @@ func (ec *executionContext) marshalNPlannedRoom2ᚖgithubᚗcomᚋobcodeᚋplexa
 	return ec._PlannedRoom(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPlanningCondition2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningConditionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PlanningCondition) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPlanningCondition2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningCondition(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPlanningCondition2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningCondition(ctx context.Context, sel ast.SelectionSet, v *model.PlanningCondition) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlanningCondition(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNPlanningGate2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGate(ctx context.Context, v any) (model.PlanningGate, error) {
+	var res model.PlanningGate
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPlanningGate2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGate(ctx context.Context, sel ast.SelectionSet, v model.PlanningGate) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNPlanningGate2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGateᚄ(ctx context.Context, v any) ([]model.PlanningGate, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]model.PlanningGate, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPlanningGate2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGate(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNPlanningGate2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGateᚄ(ctx context.Context, sel ast.SelectionSet, v []model.PlanningGate) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPlanningGate2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGate(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPlanningPhase2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningPhaseᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PlanningPhase) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPlanningPhase2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningPhase(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPlanningPhase2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningPhase(ctx context.Context, sel ast.SelectionSet, v *model.PlanningPhase) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlanningPhase(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPlanningState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningState(ctx context.Context, sel ast.SelectionSet, v model.PlanningState) graphql.Marshaler {
+	return ec._PlanningState(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPlanningState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningState(ctx context.Context, sel ast.SelectionSet, v *model.PlanningState) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlanningState(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPreExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreExam(ctx context.Context, sel ast.SelectionSet, v *model.PreExam) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -53895,6 +55039,22 @@ func (ec *executionContext) marshalOPlannedRoom2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._PlannedRoom(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPlanningGate2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGate(ctx context.Context, v any) (*model.PlanningGate, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.PlanningGate)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOPlanningGate2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanningGate(ctx context.Context, sel ast.SelectionSet, v *model.PlanningGate) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOPreExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreExam) graphql.Marshaler {

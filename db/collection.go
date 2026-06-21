@@ -44,6 +44,8 @@ const (
 	collectionEmailAttachments = "email_attachments"
 
 	collectionRoomRequests = "room_requests"
+
+	collectionPlanningState = "planning_state"
 )
 
 type PrimussType string

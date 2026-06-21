@@ -162,12 +162,14 @@ var (
 			case "rooms-for-slots":
 				err := plexams.PrepareRoomsForSlots(context.Background(), plx.NewConsoleReporter())
 				if err != nil {
+					fmt.Printf("error: %v\n", err)
 					os.Exit(1)
 				}
 
 			case "rooms-for-exams":
 				err := plexams.PrepareRoomForExams(context.Background(), plx.NewConsoleReporter())
 				if err != nil {
+					fmt.Printf("error: %v\n", err)
 					os.Exit(1)
 				}
 

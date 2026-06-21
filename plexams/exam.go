@@ -199,6 +199,7 @@ func (p *Plexams) PrepareConnectedExams() error {
 		return err
 	}
 
+	p.markCondition(ctx, condConnectedExams)
 	return nil
 }
 

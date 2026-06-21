@@ -114,7 +114,7 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Raumanfrage für die Prüfungsplanung", p.semester)
 
-	to := p.mailTo(run, p.semesterConfig.Emails.Management)
+	to := p.mailTo(run, p.semesterConfig.Emails.RoomManagement)
 	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
 		return err
 	}

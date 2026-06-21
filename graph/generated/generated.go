@@ -160,8 +160,8 @@ type ComplexityRoot struct {
 		Fs               func(childComplexity int) int
 		Lbas             func(childComplexity int) int
 		LbasLastSemester func(childComplexity int) int
-		Management       func(childComplexity int) int
 		Profs            func(childComplexity int) int
+		RoomManagement   func(childComplexity int) int
 		Sekr             func(childComplexity int) int
 	}
 
@@ -1532,19 +1532,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Emails.LbasLastSemester(childComplexity), true
 
-	case "Emails.management":
-		if e.complexity.Emails.Management == nil {
-			break
-		}
-
-		return e.complexity.Emails.Management(childComplexity), true
-
 	case "Emails.profs":
 		if e.complexity.Emails.Profs == nil {
 			break
 		}
 
 		return e.complexity.Emails.Profs(childComplexity), true
+
+	case "Emails.roomManagement":
+		if e.complexity.Emails.RoomManagement == nil {
+			break
+		}
+
+		return e.complexity.Emails.RoomManagement(childComplexity), true
 
 	case "Emails.sekr":
 		if e.complexity.Emails.Sekr == nil {
@@ -5935,7 +5935,7 @@ type Emails {
   fs: String!
   sekr: String!
   "Recipient for building-management room requests (Gebäudemanagement)."
-  management: String!
+  roomManagement: String!
 }
 
 type ExamDay {
@@ -13088,8 +13088,8 @@ func (ec *executionContext) fieldContext_Emails_sekr(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Emails_management(ctx context.Context, field graphql.CollectedField, obj *model.Emails) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Emails_management(ctx, field)
+func (ec *executionContext) _Emails_roomManagement(ctx context.Context, field graphql.CollectedField, obj *model.Emails) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Emails_roomManagement(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13102,7 +13102,7 @@ func (ec *executionContext) _Emails_management(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Management, nil
+		return obj.RoomManagement, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13119,7 +13119,7 @@ func (ec *executionContext) _Emails_management(ctx context.Context, field graphq
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Emails_management(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Emails_roomManagement(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Emails",
 		Field:      field,
@@ -31858,8 +31858,8 @@ func (ec *executionContext) fieldContext_SemesterConfig_emails(_ context.Context
 				return ec.fieldContext_Emails_fs(ctx, field)
 			case "sekr":
 				return ec.fieldContext_Emails_sekr(ctx, field)
-			case "management":
-				return ec.fieldContext_Emails_management(ctx, field)
+			case "roomManagement":
+				return ec.fieldContext_Emails_roomManagement(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Emails", field.Name)
 		},
@@ -42101,8 +42101,8 @@ func (ec *executionContext) _Emails(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "management":
-			out.Values[i] = ec._Emails_management(ctx, field, obj)
+		case "roomManagement":
+			out.Values[i] = ec._Emails_roomManagement(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

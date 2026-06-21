@@ -50,6 +50,8 @@ import (
 //go:embed tmpl/invigilationMissingEmailHTML.tmpl
 //go:embed tmpl/unplannedExamEmail.tmpl
 //go:embed tmpl/unplannedExamEmailHTML.tmpl
+//go:embed tmpl/roomRequestEmail.tmpl
+//go:embed tmpl/roomRequestEmailHTML.tmpl
 
 var emailTemplates embed.FS
 

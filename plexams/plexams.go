@@ -334,9 +334,9 @@ func (p *Plexams) setSemesterConfig() {
 		if !ok {
 			log.Error().Interface("emails", emailsMap).Msg("cannot get sekr emails from config")
 		}
-		emails.Management, ok = emailsMap["management"]
+		emails.RoomManagement, ok = emailsMap["roommanagement"]
 		if !ok {
-			log.Error().Interface("emails", emailsMap).Msg("cannot get management emails from config")
+			log.Error().Interface("emails", emailsMap).Msg("cannot get roommanagement emails from config")
 		}
 
 		emails.AdditionalExamer = viper.GetStringSlice("semesterConfig.additionalexamer")

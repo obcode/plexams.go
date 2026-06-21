@@ -134,7 +134,7 @@ requests are managed in the DB (collection `room_requests`, per semester):
 3. Approve / deactivate individual requests as the management responds.
 4. Send the request email: `email room-requests` (CLI) or the
    `sendEmailRoomRequests` subscription (GUI). Requires
-   `semesterConfig.emails.management`.
+   `semesterConfig.emails.roomManagement`.
 
 Stored time ranges include a 15-minute buffer before and after the exam for
 setup and teardown.

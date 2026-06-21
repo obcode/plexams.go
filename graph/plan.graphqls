@@ -30,7 +30,7 @@ type Emails {
   fs: String!
   sekr: String!
   "Recipient for building-management room requests (Gebäudemanagement)."
-  management: String!
+  roomManagement: String!
 }
 
 type ExamDay {

@@ -33,7 +33,6 @@ func (p *Plexams) UpdateNta(ctx context.Context, input model.NTAInput) (*model.N
 
 	updated := model.NtaInputToNta(input)
 	// keep server-managed fields
-	updated.Exams = existing.Exams
 	updated.Deactivated = existing.Deactivated
 	updated.LastSemester = existing.LastSemester
 

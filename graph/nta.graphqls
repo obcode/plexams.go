@@ -11,13 +11,6 @@ extend type Mutation {
   updateNTA(input: NTAInput!): NTA!
 }
 
-type NTAExam {
-  semester: String!
-  ancode: String!
-  module: String!
-  mainExamer: String!
-}
-
 type NTA {
   name: String!
   email: String
@@ -30,7 +23,6 @@ type NTA {
   from: String!
   until: String!
   lastSemester: String
-  exams: [NTAExam!]!
   deactivated: Boolean!
 }
 

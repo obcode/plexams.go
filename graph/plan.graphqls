@@ -29,6 +29,8 @@ type Emails {
   additionalExamer: [String!]!
   fs: String!
   sekr: String!
+  "Recipient for building-management room requests (Gebäudemanagement)."
+  management: String!
 }
 
 type ExamDay {

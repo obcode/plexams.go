@@ -31,8 +31,9 @@ new-nta                                       --- send emails to examers about n
 nta-with-room-alone                           --- send emails to students with room alone before planning
 nta-planned                                   --- send emails about rooms to all students with nta after planning
 cover-pages [all|<teacherid>]                 --- send emails with externally generated cover pages
+room-requests                                 --- send the request for the active building-management rooms
 `,
-		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "constraints", "prepared", "draft", "published-exams", "published-rooms", "invigilations", "invigilations-missing", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages"},
+		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "constraints", "prepared", "draft", "published-exams", "published-rooms", "invigilations", "invigilations-missing", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages", "room-requests"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -158,6 +159,11 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 					if err != nil {
 						log.Fatalf("got error: %v\n", err)
 					}
+				}
+			case "room-requests":
+				err := plexams.SendEmailRoomRequests(context.Background(), run, plx.NewConsoleReporter())
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
 				}
 			default:
 				fmt.Println("email called with unknown sub command")

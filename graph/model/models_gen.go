@@ -105,6 +105,8 @@ type Emails struct {
 	AdditionalExamer []string `json:"additionalExamer"`
 	Fs               string   `json:"fs"`
 	Sekr             string   `json:"sekr"`
+	// Recipient for building-management room requests (Gebäudemanagement).
+	Management string `json:"management"`
 }
 
 type EnhancedPrimussExam struct {

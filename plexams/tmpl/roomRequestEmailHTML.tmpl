@@ -1,0 +1,25 @@
+<p>Sehr geehrte Damen und Herren,</p>
+
+<p>für die Prüfungsplanung der Fakultät 07 im Semester {{ .SemesterName }}
+benötigen wir die folgenden Räume zu den angegebenen Zeiten.</p>
+
+<p>Die Zeiten enthalten jeweils ca. 15 Minuten Vor- und Nachlauf für Auf- und Abbau.</p>
+
+{{ range .Rooms }}
+<p><b>Raum {{ .Room }}{{ if .Seats }} ({{ .Seats }} Plätze){{ end }}:</b></p>
+<ul>
+{{ range .Slots }}<li>{{ .Date }}, {{ .From }} - {{ .Until }} Uhr</li>
+{{ end }}</ul>
+{{ end }}
+
+<p>Vielen Dank im Voraus.</p>
+
+<p>Mit freundlichen Grüßen</p>
+<p>{{ .PlanerName }}<br />
+Prüfungsplanung der FK07
+</p>
+
+<pre>
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
+</pre>

@@ -97,3 +97,10 @@ func (r *subscriptionResolver) SendEmailCoverPage(ctx context.Context, teacherID
 		return r.plexams.SendCoverPageMail(ctx, teacherID, run, reporter)
 	}), nil
 }
+
+// SendEmailRoomRequests is the resolver for the sendEmailRoomRequests field.
+func (r *subscriptionResolver) SendEmailRoomRequests(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendEmailRoomRequests(ctx, run, reporter)
+	}), nil
+}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"html/template"
 	"sort"
+
+	"github.com/obcode/plexams.go/graph/model"
 )
 
 // German weekday abbreviations for the request email.
@@ -13,16 +15,30 @@ var weekdayShortDE = map[int]string{
 	0: "So", 1: "Mo", 2: "Di", 3: "Mi", 4: "Do", 5: "Fr", 6: "Sa",
 }
 
-type roomRequestEmailSlot struct {
-	Date  string
+// lastDay returns the day block for date within room, reusing the last one if it
+// already matches (the requests are sorted by time) or appending a new one.
+func lastDay(room *roomRequestEmailRoom, date string) *roomRequestEmailDay {
+	if len(room.Days) > 0 && room.Days[len(room.Days)-1].Date == date {
+		return room.Days[len(room.Days)-1]
+	}
+	day := &roomRequestEmailDay{Date: date}
+	room.Days = append(room.Days, day)
+	return day
+}
+
+type roomRequestEmailTime struct {
 	From  string
 	Until string
 }
 
+type roomRequestEmailDay struct {
+	Date  string
+	Times []*roomRequestEmailTime
+}
+
 type roomRequestEmailRoom struct {
-	Room  string
-	Seats int
-	Slots []*roomRequestEmailSlot
+	Room string
+	Days []*roomRequestEmailDay
 }
 
 type RoomRequestEmail struct {
@@ -32,8 +48,8 @@ type RoomRequestEmail struct {
 }
 
 // SendEmailRoomRequests sends the request for building-management rooms to the
-// Gebäudemanagement. It lists all active room requests grouped by room with
-// their dates and (buffered) time ranges. run == false is a dry run that only
+// Gebäudemanagement. It lists all active room requests grouped by room and then
+// by day, with their (buffered) time ranges. run == false is a dry run that only
 // mails the dry-run recipient.
 func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter Reporter) error {
 	reporter.Step("collecting active room requests")
@@ -43,48 +59,36 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 		return err
 	}
 
-	roomSeats := make(map[string]int)
-	if rooms, err := p.Rooms(ctx); err == nil {
-		for _, room := range rooms {
-			roomSeats[room.Name] = room.Seats
-		}
-	}
-
-	byRoom := make(map[string][]*roomRequestEmailSlot)
-	roomNames := make([]string, 0)
+	active := make([]*model.RoomRequest, 0, len(requests))
 	for _, req := range requests {
-		if !req.Active {
-			continue
+		if req.Active {
+			active = append(active, req)
 		}
-		if _, ok := byRoom[req.Room]; !ok {
-			roomNames = append(roomNames, req.Room)
-		}
-		byRoom[req.Room] = append(byRoom[req.Room], &roomRequestEmailSlot{
-			Date:  fmt.Sprintf("%s, %s", weekdayShortDE[int(req.From.Weekday())], req.From.Format("02.01.2006")),
-			From:  req.From.Format("15:04"),
-			Until: req.Until.Format("15:04"),
-		})
 	}
 
-	if len(roomNames) == 0 {
+	if len(active) == 0 {
 		reporter.StopProgress("no active room requests, nothing to send")
 		return nil
 	}
 
-	sort.Strings(roomNames)
-	rooms := make([]*roomRequestEmailRoom, 0, len(roomNames))
-	for _, name := range roomNames {
-		slots := byRoom[name]
-		sort.SliceStable(slots, func(i, j int) bool {
-			if slots[i].Date != slots[j].Date {
-				return slots[i].Date < slots[j].Date
-			}
-			return slots[i].From < slots[j].From
-		})
-		rooms = append(rooms, &roomRequestEmailRoom{
-			Room:  name,
-			Seats: roomSeats[name],
-			Slots: slots,
+	sort.SliceStable(active, func(i, j int) bool {
+		if active[i].Room != active[j].Room {
+			return active[i].Room < active[j].Room
+		}
+		return active[i].From.Before(active[j].From)
+	})
+
+	rooms := make([]*roomRequestEmailRoom, 0)
+	for _, req := range active {
+		if len(rooms) == 0 || rooms[len(rooms)-1].Room != req.Room {
+			rooms = append(rooms, &roomRequestEmailRoom{Room: req.Room})
+		}
+		room := rooms[len(rooms)-1]
+		date := fmt.Sprintf("%s, %s", weekdayShortDE[int(req.From.Weekday())], req.From.Format("02.01.2006"))
+		day := lastDay(room, date)
+		day.Times = append(day.Times, &roomRequestEmailTime{
+			From:  req.From.Format("15:04"),
+			Until: req.Until.Format("15:04"),
 		})
 	}
 

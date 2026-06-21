@@ -3,11 +3,12 @@ Sehr geehrte Damen und Herren,
 für die Prüfungsplanung der Fakultät 07 im Semester {{ .SemesterName }}
 benötigen wir die folgenden Räume zu den angegebenen Zeiten.
 
-Die Zeiten enthalten jeweils ca. 15 Minuten Vor- und Nachlauf für Auf- und Abbau.
+Die Zeiten enthalten jeweils ca. 15 Minuten Vor- und Nachlauf.
 {{ range .Rooms }}
-Raum {{ .Room }}{{ if .Seats }} ({{ .Seats }} Plätze){{ end }}:
-{{ range .Slots }}  - {{ .Date }}, {{ .From }} - {{ .Until }} Uhr
-{{ end }}{{ end }}
+Raum {{ .Room }}:
+{{ range .Days }}  - {{ .Date }}
+{{ range .Times }}      - {{ .From }} - {{ .Until }} Uhr
+{{ end }}{{ end }}{{ end }}
 Vielen Dank im Voraus.
 
 Mit freundlichen Grüßen

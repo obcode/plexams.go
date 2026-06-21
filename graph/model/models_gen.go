@@ -408,6 +408,7 @@ type Room struct {
 	Seb              bool   `json:"seb"`
 	SebSeats         *int   `json:"sebSeats,omitempty"`
 	HmebSeats        *int   `json:"hmebSeats,omitempty"`
+	Deactivated      bool   `json:"deactivated"`
 }
 
 type RoomAndExam struct {

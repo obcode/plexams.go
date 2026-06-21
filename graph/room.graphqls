@@ -17,6 +17,8 @@ extend type Mutation {
     reserve: Boolean!
     mtknr: String
   ): Boolean!
+  "Activate/deactivate a room (key: name). A deactivated room is not used for planning."
+  setRoomActive(name: String!, active: Boolean!): Room!
 }
 
 type Room {
@@ -30,6 +32,7 @@ type Room {
   seb: Boolean!
   sebSeats: Int
   hmebSeats: Int
+  deactivated: Boolean!
 }
 
 type RoomsForSlot {

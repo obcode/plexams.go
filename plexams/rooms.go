@@ -417,6 +417,13 @@ func (p *Plexams) Rooms(ctx context.Context) ([]*model.Room, error) {
 	return p.dbClient.Rooms(ctx)
 }
 
+// SetRoomActive activates/deactivates a room (key: name). A deactivated room is
+// not used when computing the rooms available for planning. Errors if the room
+// does not exist.
+func (p *Plexams) SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error) {
+	return p.dbClient.SetRoomDeactivated(ctx, name, !active)
+}
+
 func (p *Plexams) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) {
 	return p.dbClient.RoomsForSlots(ctx)
 }

@@ -366,6 +366,7 @@ type ComplexityRoot struct {
 		SameSlot                  func(childComplexity int, ancode int, ancodes []int) int
 		Seb                       func(childComplexity int, ancode int) int
 		SetNTAActive              func(childComplexity int, mtknr string, active bool) int
+		SetRoomActive             func(childComplexity int, name string, active bool) int
 		UpdateNta                 func(childComplexity int, input model.NTAInput) int
 		ZpaExamsToPlan            func(childComplexity int, input []int) int
 	}
@@ -574,6 +575,7 @@ type ComplexityRoot struct {
 	}
 
 	Room struct {
+		Deactivated      func(childComplexity int) int
 		Exahm            func(childComplexity int) int
 		Handicap         func(childComplexity int) int
 		HmebSeats        func(childComplexity int) int
@@ -856,6 +858,7 @@ type MutationResolver interface {
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
 	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string) (bool, error)
+	SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error)
 	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
@@ -2544,6 +2547,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetNTAActive(childComplexity, args["mtknr"].(string), args["active"].(bool)), true
 
+	case "Mutation.setRoomActive":
+		if e.complexity.Mutation.SetRoomActive == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setRoomActive_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetRoomActive(childComplexity, args["name"].(string), args["active"].(bool)), true
+
 	case "Mutation.updateNTA":
 		if e.complexity.Mutation.UpdateNta == nil {
 			break
@@ -3750,6 +3765,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RegWithProgram.Reg(childComplexity), true
+
+	case "Room.deactivated":
+		if e.complexity.Room.Deactivated == nil {
+			break
+		}
+
+		return e.complexity.Room.Deactivated(childComplexity), true
 
 	case "Room.exahm":
 		if e.complexity.Room.Exahm == nil {
@@ -5750,6 +5772,8 @@ extend type Mutation {
     reserve: Boolean!
     mtknr: String
   ): Boolean!
+  "Activate/deactivate a room (key: name). A deactivated room is not used for planning."
+  setRoomActive(name: String!, active: Boolean!): Room!
 }
 
 type Room {
@@ -5763,6 +5787,7 @@ type Room {
   seb: Boolean!
   sebSeats: Int
   hmebSeats: Int
+  deactivated: Boolean!
 }
 
 type RoomsForSlot {
@@ -7104,6 +7129,57 @@ func (ec *executionContext) field_Mutation_setNTAActive_argsMtknr(
 }
 
 func (ec *executionContext) field_Mutation_setNTAActive_argsActive(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["active"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("active"))
+	if tmp, ok := rawArgs["active"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setRoomActive_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setRoomActive_argsName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	arg1, err := ec.field_Mutation_setRoomActive_argsActive(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["active"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setRoomActive_argsName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["name"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+	if tmp, ok := rawArgs["name"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setRoomActive_argsActive(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (bool, error) {
@@ -18808,6 +18884,85 @@ func (ec *executionContext) fieldContext_Mutation_prePlanRoom(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setRoomActive(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setRoomActive(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetRoomActive(rctx, fc.Args["name"].(string), fc.Args["active"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Room)
+	fc.Result = res
+	return ec.marshalNRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoom(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setRoomActive(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Room_name(ctx, field)
+			case "seats":
+				return ec.fieldContext_Room_seats(ctx, field)
+			case "handicap":
+				return ec.fieldContext_Room_handicap(ctx, field)
+			case "lab":
+				return ec.fieldContext_Room_lab(ctx, field)
+			case "placesWithSocket":
+				return ec.fieldContext_Room_placesWithSocket(ctx, field)
+			case "needsRequest":
+				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "exahm":
+				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
+			case "sebSeats":
+				return ec.fieldContext_Room_sebSeats(ctx, field)
+			case "hmebSeats":
+				return ec.fieldContext_Room_hmebSeats(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_Room_deactivated(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setRoomActive_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_zpaExamsToPlan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_zpaExamsToPlan(ctx, field)
 	if err != nil {
@@ -21125,6 +21280,8 @@ func (ec *executionContext) fieldContext_PlannedRoom_room(_ context.Context, fie
 				return ec.fieldContext_Room_sebSeats(ctx, field)
 			case "hmebSeats":
 				return ec.fieldContext_Room_hmebSeats(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_Room_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -25425,6 +25582,8 @@ func (ec *executionContext) fieldContext_Query_rooms(_ context.Context, field gr
 				return ec.fieldContext_Room_sebSeats(ctx, field)
 			case "hmebSeats":
 				return ec.fieldContext_Room_hmebSeats(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_Room_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -27644,6 +27803,50 @@ func (ec *executionContext) fieldContext_Room_hmebSeats(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Room_deactivated(ctx context.Context, field graphql.CollectedField, obj *model.Room) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Room_deactivated(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Deactivated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Room_deactivated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Room",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RoomAndExam_room(ctx context.Context, field graphql.CollectedField, obj *model.RoomAndExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoomAndExam_room(ctx, field)
 	if err != nil {
@@ -28516,6 +28719,8 @@ func (ec *executionContext) fieldContext_RoomsForSlot_rooms(_ context.Context, f
 				return ec.fieldContext_Room_sebSeats(ctx, field)
 			case "hmebSeats":
 				return ec.fieldContext_Room_hmebSeats(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_Room_deactivated(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -40640,6 +40845,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setRoomActive":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setRoomActive(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "zpaExamsToPlan":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_zpaExamsToPlan(ctx, field)
@@ -43161,6 +43373,11 @@ func (ec *executionContext) _Room(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Room_sebSeats(ctx, field, obj)
 		case "hmebSeats":
 			out.Values[i] = ec._Room_hmebSeats(ctx, field, obj)
+		case "deactivated":
+			out.Values[i] = ec._Room_deactivated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

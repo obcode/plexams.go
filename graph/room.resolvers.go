@@ -16,6 +16,11 @@ func (r *mutationResolver) PrePlanRoom(ctx context.Context, ancode int, roomName
 	return r.plexams.PreAddRoomToExam(ctx, ancode, roomName, mtknr, reserve)
 }
 
+// SetRoomActive is the resolver for the setRoomActive field.
+func (r *mutationResolver) SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error) {
+	return r.plexams.SetRoomActive(ctx, name, active)
+}
+
 // Room is the resolver for the room field.
 func (r *plannedRoomResolver) Room(ctx context.Context, obj *model.PlannedRoom) (*model.Room, error) {
 	return r.plexams.RoomByName(ctx, obj.RoomName)

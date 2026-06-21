@@ -54,10 +54,18 @@ func (p *Plexams) PrepareRoomsForSlots(approvedOnly bool) error {
 	}
 
 	spinner.Message(aurora.Sprintf(aurora.Yellow("getting global rooms...")))
-	globalRooms, err := p.dbClient.Rooms(ctx)
+	allRooms, err := p.dbClient.Rooms(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get global rooms")
 		return err
+	}
+	// deactivated rooms must not be used for planning
+	globalRooms := make([]*model.Room, 0, len(allRooms))
+	for _, room := range allRooms {
+		if room.Deactivated {
+			continue
+		}
+		globalRooms = append(globalRooms, room)
 	}
 
 	err = spinner.Stop()

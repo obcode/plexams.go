@@ -37,6 +37,24 @@ func (db *DB) RoomByName(ctx context.Context, roomName string) (*model.Room, err
 	return &room, nil
 }
 
+// SetRoomDeactivated sets the deactivated flag of the room identified by name.
+// Returns an error if no room with that name exists.
+func (db *DB) SetRoomDeactivated(ctx context.Context, name string, deactivated bool) (*model.Room, error) {
+	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+
+	res, err := collection.UpdateOne(ctx,
+		bson.M{"name": name},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "deactivated", Value: deactivated}}}})
+	if err != nil {
+		log.Error().Err(err).Str("room", name).Msg("cannot set room deactivated flag")
+		return nil, err
+	}
+	if res.MatchedCount == 0 {
+		return nil, fmt.Errorf("cannot find room %s", name)
+	}
+	return db.RoomByName(ctx, name)
+}
+
 func (db *DB) Rooms(ctx context.Context) ([]*model.Room, error) {
 	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
 

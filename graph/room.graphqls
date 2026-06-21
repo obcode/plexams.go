@@ -27,6 +27,17 @@ extend type Mutation {
   migrateRoomsRequestWith: Int!
 }
 
+# Room generation as streaming subscriptions (like the other generators): they
+# stream their terminal-style output line by line and end with a DONE line. As
+# exclusive operations they are blocked while a validation or another
+# transfer/email/generation runs.
+extend type Subscription {
+  "Recompute the allowed rooms per slot (rooms-for-slots) and stream the output. Writes only the derived slot→rooms cache; useful to preview it after editing rooms or room requests."
+  generateRoomsForSlots: LogLine!
+  "Assign rooms to all exams (rooms-for-exams) and stream the output. Recomputes rooms-for-slots first, then writes the planned rooms; no separate rooms-for-slots step needed."
+  generateRoomsForExams: LogLine!
+}
+
 input RoomInput {
   name: String!
   seats: Int!

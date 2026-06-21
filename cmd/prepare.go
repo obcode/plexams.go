@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	plx "github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -159,13 +160,13 @@ var (
 				}
 
 			case "rooms-for-slots":
-				err := plexams.PrepareRoomsForSlots(approvedOnly)
+				err := plexams.PrepareRoomsForSlots(context.Background(), plx.NewConsoleReporter())
 				if err != nil {
 					os.Exit(1)
 				}
 
 			case "rooms-for-exams":
-				err := plexams.PrepareRoomForExams()
+				err := plexams.PrepareRoomForExams(context.Background(), plx.NewConsoleReporter())
 				if err != nil {
 					os.Exit(1)
 				}
@@ -187,10 +188,8 @@ var (
 			}
 		},
 	}
-	approvedOnly bool
 )
 
 func init() {
 	rootCmd.AddCommand(prepareCmd)
-	prepareCmd.Flags().BoolVarP(&approvedOnly, "approvedOnly", "a", false, "use only already approved rooms for planning")
 }

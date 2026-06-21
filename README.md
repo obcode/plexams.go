@@ -111,8 +111,9 @@ have an equivalent in the GUI.
    `prepare generated-exams` and `prepare studentregs`.
 5. **Schedule** — place exams into slots (`plan move-to`, `plan pre-plan-exam`,
    …), check with `validate conflicts` / `validate constraints`.
-6. **Rooms** — `prepare rooms-for-slots`, then `prepare rooms-for-exams`;
-   request building-management rooms (see below).
+6. **Rooms** — `prepare rooms-for-exams` (it recomputes the allowed rooms per
+   slot first, so `prepare rooms-for-slots` is only needed to preview that
+   slot→rooms map on its own); request building-management rooms (see below).
 7. **Validate & upload** — `validate all`, then `zpa upload-plan`; publish the
    plan and send the announcement emails.
 8. **Invigilations** — collect requirements, generate the invigilation plan,

@@ -12,7 +12,6 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/theckman/yacspin"
 )
 
 func (p *Plexams) RoomsFromRoomNames(ctx context.Context, roomNames []string) ([]*model.Room, error) {
@@ -30,30 +29,15 @@ func (p *Plexams) RoomsFromRoomNames(ctx context.Context, roomNames []string) ([
 	return rooms, nil
 }
 
-func (p *Plexams) PrepareRoomsForSlots(approvedOnly bool) error {
-	ctx := context.Background()
-	cfg := yacspin.Config{
-		Frequency:         100 * time.Millisecond,
-		CharSet:           yacspin.CharSets[69],
-		Suffix:            aurora.Sprintf(aurora.Cyan(" preparing rooms for slots...")),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "error",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
-
-	spinner.Message(aurora.Sprintf(aurora.Yellow("getting global rooms...")))
+// PrepareRoomsForSlots (re)computes, for every slot, the set of rooms that may be
+// used in it, and stores the result in the rooms_for_slots collection. This is a
+// derived cache: it is recomputed entirely from the current rooms, their
+// (de)activation, the active building-management room requests, EXaHM bookings
+// and the config room constraints. It is run automatically as the first step of
+// PrepareRoomForExams, but can also be triggered on its own to preview the
+// allowed rooms per slot.
+func (p *Plexams) PrepareRoomsForSlots(ctx context.Context, reporter Reporter) error {
+	reporter.Step("getting global rooms")
 	allRooms, err := p.dbClient.Rooms(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get global rooms")
@@ -68,12 +52,7 @@ func (p *Plexams) PrepareRoomsForSlots(approvedOnly bool) error {
 		globalRooms = append(globalRooms, room)
 	}
 
-	err = spinner.Stop()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
-	}
-
-	roomsWithRestrictedSlots, err := p.roomsWithRestrictedSlots(globalRooms)
+	roomsWithRestrictedSlots, err := p.roomsWithRestrictedSlots(globalRooms, reporter)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get restricted slots for rooms")
 		return err
@@ -98,67 +77,17 @@ func (p *Plexams) PrepareRoomsForSlots(approvedOnly bool) error {
 			}
 		} else {
 			if room.NeedsRequest {
-				cfg := yacspin.Config{
-					Frequency:         100 * time.Millisecond,
-					CharSet:           yacspin.CharSets[69],
-					Suffix:            aurora.Sprintf(aurora.Cyan(" no restrictions for room %s found"), aurora.Magenta(room.Name)),
-					SuffixAutoColon:   true,
-					StopCharacter:     "✓",
-					StopColors:        []string{"fgGreen"},
-					StopFailMessage:   "error",
-					StopFailCharacter: "✗",
-					StopFailColors:    []string{"fgRed"},
-				}
-
-				spinner, err := yacspin.New(cfg)
-				if err != nil {
-					log.Debug().Err(err).Msg("cannot create spinner")
-				}
-				err = spinner.Start()
-				if err != nil {
-					log.Debug().Err(err).Msg("cannot start spinner")
-				}
-				spinner.StopMessage(aurora.Sprintf(aurora.Red("room %s needs request, but no restrictions found -> %s"),
+				reporter.Warnf(aurora.Sprintf(aurora.Red("room %s needs request, but no restrictions found -> %s"),
 					aurora.Yellow(room.Name),
 					aurora.Green("room ignored")))
-				err = spinner.Stop()
-				if err != nil {
-					log.Debug().Err(err).Msg("cannot stop spinner")
-				}
 				continue
 			}
 
 			// room is not restricted, so we can use all slots
-			cfg := yacspin.Config{
-				Frequency:         100 * time.Millisecond,
-				CharSet:           yacspin.CharSets[69],
-				Suffix:            aurora.Sprintf(aurora.Cyan(" no restrictions for room %s found"), aurora.Magenta(room.Name)),
-				SuffixAutoColon:   true,
-				StopCharacter:     "✓",
-				StopColors:        []string{"fgGreen"},
-				StopFailMessage:   "error",
-				StopFailCharacter: "✗",
-				StopFailColors:    []string{"fgRed"},
-			}
-
-			spinner, err := yacspin.New(cfg)
-			if err != nil {
-				log.Debug().Err(err).Msg("cannot create spinner")
-			}
-			err = spinner.Start()
-			if err != nil {
-				log.Debug().Err(err).Msg("cannot start spinner")
-			}
-
 			for _, roomNames := range slotsWithRoomNames {
 				roomNames.Add(room.Name)
 			}
-
-			spinner.StopMessage(aurora.Sprintf(aurora.Green("added room %s to all slots"), aurora.Yellow(room.Name)))
-			err = spinner.Stop()
-			if err != nil {
-				log.Debug().Err(err).Msg("cannot stop spinner")
-			}
+			reporter.Println(aurora.Sprintf(aurora.Green("added room %s to all slots"), aurora.Yellow(room.Name)))
 		}
 	}
 
@@ -173,10 +102,14 @@ func (p *Plexams) PrepareRoomsForSlots(approvedOnly bool) error {
 		})
 	}
 
-	return p.dbClient.SaveRoomsForSlots(context.Background(), roomsForSlots)
+	if err := p.dbClient.SaveRoomsForSlots(ctx, roomsForSlots); err != nil {
+		return err
+	}
+	reporter.StopProgress(fmt.Sprintf("rooms for %d slots prepared", len(roomsForSlots)))
+	return nil
 }
 
-func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room) (map[string]set.Set[SlotNumber], error) {
+func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room, reporter Reporter) (map[string]set.Set[SlotNumber], error) {
 	restrictedSlots := make(map[string]set.Set[SlotNumber])
 	allSlots := set.NewSet[SlotNumber]()
 	for _, slot := range p.semesterConfig.Slots {
@@ -187,7 +120,7 @@ func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room) (map[strin
 	}
 
 	// EXaHM rooms
-	restrictedSlotsForEXaHMRooms, err := p.restrictedSlotsForEXaHMRooms()
+	restrictedSlotsForEXaHMRooms, err := p.restrictedSlotsForEXaHMRooms(reporter)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get allowed slots for EXaHM rooms")
 		return nil, err
@@ -197,7 +130,7 @@ func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room) (map[strin
 	}
 
 	// Add other room with restricted slots
-	restrictedSlotsForOtherRooms, err := p.restrictedSlotsForOtherRooms(globalRooms)
+	restrictedSlotsForOtherRooms, err := p.restrictedSlotsForOtherRooms(globalRooms, reporter)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get allowed slots for other rooms")
 		return nil, err
@@ -210,7 +143,7 @@ func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room) (map[strin
 	return restrictedSlots, nil
 }
 
-func (p *Plexams) restrictedSlotsForEXaHMRooms() (map[string]set.Set[SlotNumber], error) {
+func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]set.Set[SlotNumber], error) {
 	restrictedSlots := make(map[string]set.Set[SlotNumber])
 	// EXaHM rooms: prefer Anny bookings from DB, fall back to YAML booked entries
 	ctx := context.Background()
@@ -231,30 +164,11 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms() (map[string]set.Set[SlotNumber]
 	}
 
 	for _, entry := range bookedEntries {
-		cfg := yacspin.Config{
-			Frequency: 100 * time.Millisecond,
-			CharSet:   yacspin.CharSets[69],
-			Suffix: aurora.Sprintf(aurora.Cyan(" found booked entry for %s from %s until %s"),
-				aurora.Magenta(fmt.Sprintf("%s", entry.Rooms)),
-				aurora.Magenta(entry.From.Format("02.01.06 15:04")),
-				aurora.Magenta(entry.Until.Format("02.01.06 15:04")),
-			),
-			SuffixAutoColon:   true,
-			StopCharacter:     "✓",
-			StopColors:        []string{"fgGreen"},
-			StopFailMessage:   "error",
-			StopFailCharacter: "✗",
-			StopFailColors:    []string{"fgRed"},
-		}
-
-		spinner, err := yacspin.New(cfg)
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot create spinner")
-		}
-		err = spinner.Start()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot start spinner")
-		}
+		reporter.Step(aurora.Sprintf(aurora.Cyan("found booked entry for %s from %s until %s"),
+			aurora.Magenta(fmt.Sprintf("%s", entry.Rooms)),
+			aurora.Magenta(entry.From.Format("02.01.06 15:04")),
+			aurora.Magenta(entry.Until.Format("02.01.06 15:04")),
+		))
 		var sb strings.Builder
 		for _, slot := range p.semesterConfig.Slots {
 			if entry.From.Before(slot.Starttime) &&
@@ -272,18 +186,13 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms() (map[string]set.Set[SlotNumber]
 				}
 			}
 		}
-		spinner.StopMessage(aurora.Sprintf(aurora.Green("added: %s"), aurora.Yellow(sb.String())))
-
-		err = spinner.Stop()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
+		reporter.Println(aurora.Sprintf(aurora.Green("added: %s"), aurora.Yellow(sb.String())))
 	}
 
 	return restrictedSlots, nil
 }
 
-func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[string]set.Set[SlotNumber], error) {
+func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room, reporter Reporter) (map[string]set.Set[SlotNumber], error) {
 	allSlots := p.semesterConfig.Slots
 
 	// building-management room requests now come from the DB (active ones only);
@@ -322,29 +231,10 @@ func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[s
 						log.Error().Interface("notAvailableEntry", notAvailableEntry).Msg("cannot convert notAvailable entry to time")
 						return nil, fmt.Errorf("cannot convert notAvailable entry to time")
 					}
-					cfg := yacspin.Config{
-						Frequency: 100 * time.Millisecond,
-						CharSet:   yacspin.CharSets[69],
-						Suffix: aurora.Sprintf(aurora.Cyan(" found not available day for %s on %s"),
-							aurora.Magenta(room.Name),
-							aurora.Magenta(rawDate.Format("02.01.06")),
-						),
-						SuffixAutoColon:   true,
-						StopCharacter:     "✓",
-						StopColors:        []string{"fgGreen"},
-						StopFailMessage:   "error",
-						StopFailCharacter: "✗",
-						StopFailColors:    []string{"fgRed"},
-					}
-
-					spinner, err := yacspin.New(cfg)
-					if err != nil {
-						log.Debug().Err(err).Msg("cannot create spinner")
-					}
-					err = spinner.Start()
-					if err != nil {
-						log.Debug().Err(err).Msg("cannot start spinner")
-					}
+					reporter.Step(aurora.Sprintf(aurora.Cyan("found not available day for %s on %s"),
+						aurora.Magenta(room.Name),
+						aurora.Magenta(rawDate.Format("02.01.06")),
+					))
 
 					var sb strings.Builder
 					for _, slot := range allSlots {
@@ -362,12 +252,7 @@ func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[s
 							})
 						}
 					}
-					spinner.StopMessage(aurora.Sprintf(aurora.Red("removed: %s"), aurora.Yellow(sb.String())))
-
-					err = spinner.Stop()
-					if err != nil {
-						log.Debug().Err(err).Msg("cannot stop spinner")
-					}
+					reporter.Println(aurora.Sprintf(aurora.Red("removed: %s"), aurora.Yellow(sb.String())))
 				}
 				restrictedSlots[room.Name] = allSlotsSet.Difference(notAllowedSlots)
 			}

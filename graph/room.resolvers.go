@@ -9,6 +9,7 @@ import (
 
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams"
 )
 
 // PrePlanRoom is the resolver for the prePlanRoom field.
@@ -89,6 +90,20 @@ func (r *queryResolver) PlannedRoomForStudent(ctx context.Context, ancode int, m
 // Rooms is the resolver for the rooms field.
 func (r *roomsForSlotResolver) Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error) {
 	return r.plexams.RoomsFromRoomNames(ctx, obj.RoomNames)
+}
+
+// GenerateRoomsForSlots is the resolver for the generateRoomsForSlots field.
+func (r *subscriptionResolver) GenerateRoomsForSlots(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.PrepareRoomsForSlots(ctx, reporter)
+	}), nil
+}
+
+// GenerateRoomsForExams is the resolver for the generateRoomsForExams field.
+func (r *subscriptionResolver) GenerateRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.PrepareRoomForExams(ctx, reporter)
+	}), nil
 }
 
 // PlannedRoom returns generated.PlannedRoomResolver implementation.

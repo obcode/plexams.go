@@ -104,3 +104,45 @@ func (r *subscriptionResolver) SendEmailRoomRequests(ctx context.Context, run bo
 		return r.plexams.SendEmailRoomRequests(ctx, run, reporter)
 	}), nil
 }
+
+// SendEmailPrimussDataAll is the resolver for the sendEmailPrimussDataAll field.
+func (r *subscriptionResolver) SendEmailPrimussDataAll(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendGeneratedExamMails(ctx, false, run, reporter)
+	}), nil
+}
+
+// SendEmailPrimussData is the resolver for the sendEmailPrimussData field.
+func (r *subscriptionResolver) SendEmailPrimussData(ctx context.Context, ancode int, updated bool, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendGeneratedExamMail(ctx, ancode, updated, run, reporter)
+	}), nil
+}
+
+// SendEmailPrimussDataUnplanned is the resolver for the sendEmailPrimussDataUnplanned field.
+func (r *subscriptionResolver) SendEmailPrimussDataUnplanned(ctx context.Context, program string, ancode int, email string, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendUnplannedExamMail(ctx, program, ancode, email, run, reporter)
+	}), nil
+}
+
+// SendEmailNewNta is the resolver for the sendEmailNewNTA field.
+func (r *subscriptionResolver) SendEmailNewNta(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendMailNewNTA(ctx, mtknr, run, reporter)
+	}), nil
+}
+
+// SendEmailNTARoomAlone is the resolver for the sendEmailNTARoomAlone field.
+func (r *subscriptionResolver) SendEmailNTARoomAlone(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendHandicapsMailsNTARoomAlone(ctx, mtknr, run, reporter)
+	}), nil
+}
+
+// SendEmailNTAPlanned is the resolver for the sendEmailNTAPlanned field.
+func (r *subscriptionResolver) SendEmailNTAPlanned(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendHandicapsMailsNTAPlanned(ctx, run, reporter)
+	}), nil
+}

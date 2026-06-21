@@ -69,7 +69,6 @@ var planningConditionDefs = []planningConditionDef{
 	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase1", ""},
 	{condExamsPrepared, "Ankündigung 'zu planende Prüfungen' verschickt", "phase1", ""},
 	{condDraftSent, "Draft-Plan verschickt", "phase1", ""},
-	{condCoverPagesSent, "Deckblätter an alle verschickt", "phase1", ""},
 	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", ""},
 	{condRoomRequestsSent, "Raum-Anfragen ans Gebäudemanagement verschickt", "phase2", ""},
 	{condRoomsGenerated, "Räume für Prüfungen generiert", "phase2", ""},
@@ -78,6 +77,7 @@ var planningConditionDefs = []planningConditionDef{
 	{condInvigilationsRequested, "Aufsichts-Anforderungsabfrage verschickt", "phase3", ""},
 	{condInvigilationsGenerated, "Aufsichten generiert", "phase3", ""},
 	{condInvigilationPlanPublished, "Aufsichtenplan veröffentlicht (E-Mail)", "phase3", model.PlanningGateInvigilations},
+	{condCoverPagesSent, "Deckblätter an alle verschickt (letzter Schritt)", "phase3", ""},
 }
 
 func planningConditionDefByKey(key string) (planningConditionDef, bool) {

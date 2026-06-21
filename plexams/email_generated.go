@@ -6,16 +6,14 @@ import (
 	"fmt"
 	"html/template"
 	txttmpl "text/template"
-	"time"
 
 	"github.com/jordan-wright/email"
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, updated, run bool) error {
+func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, updated, run bool, reporter Reporter) error {
 	generatedExam, err := p.GeneratedExam(ctx, ancode)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
@@ -35,14 +33,14 @@ func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, updated
 	teachersMap := make(map[int]*model.Teacher)
 	teachersMap[teacher.ID] = teacher
 
-	err = p.sendGeneratedExamMail(generatedExam, teachersMap, updated, run)
+	err = p.sendGeneratedExamMail(generatedExam, teachersMap, updated, run, reporter)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", generatedExam.Ancode).Msg("cannot send email")
 	}
 	return nil
 }
 
-func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, run bool) error {
+func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, run bool, reporter Reporter) error {
 	generatedExams, err := p.GeneratedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get generated exams")
@@ -62,46 +60,24 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, ru
 	}
 
 	for _, exam := range generatedExams {
-		err = p.sendGeneratedExamMail(exam, teachersMap, false, run)
+		err = p.sendGeneratedExamMail(exam, teachersMap, false, run, reporter)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot send email")
 		}
 	}
-
+	reporter.StopProgress(fmt.Sprintf("sent %d primuss-data emails", len(generatedExams)))
 	return nil
 }
 
-func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap map[int]*model.Teacher, updated, run bool) error {
-	cfg := yacspin.Config{
-		Frequency: 100 * time.Millisecond,
-		CharSet:   yacspin.CharSets[69],
-		Suffix: aurora.Sprintf(aurora.Cyan(" sending email about exam %d. %s (%s)"),
-			aurora.Yellow(exam.ZpaExam.AnCode),
-			aurora.Magenta(exam.ZpaExam.Module),
-			aurora.Magenta(exam.ZpaExam.MainExamer),
-		),
-		SuffixAutoColon:   true,
-		StopCharacter:     "✓",
-		StopColors:        []string{"fgGreen"},
-		StopFailMessage:   "not planned by me",
-		StopFailCharacter: "✗",
-		StopFailColors:    []string{"fgRed"},
-	}
-
-	spinner, err := yacspin.New(cfg)
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot create spinner")
-	}
-	err = spinner.Start()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot start spinner")
-	}
+func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap map[int]*model.Teacher, updated, run bool, reporter Reporter) error {
+	reporter.Step(aurora.Sprintf(aurora.Cyan("sending email about exam %d. %s (%s)"),
+		aurora.Yellow(exam.ZpaExam.AnCode),
+		aurora.Magenta(exam.ZpaExam.Module),
+		aurora.Magenta(exam.ZpaExam.MainExamer),
+	))
 
 	if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
-		err = spinner.StopFail()
-		if err != nil {
-			log.Debug().Err(err).Msg("cannot stop spinner")
-		}
+		reporter.Warnf("exam %d not planned by me, skipped", exam.ZpaExam.AnCode)
 		return nil
 	}
 	teacher, ok := teachersMap[exam.ZpaExam.MainExamerID]
@@ -126,22 +102,18 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 
 	log.Debug().Int("ancode", exam.Ancode).Bool("hasStudentRegs", hasStudentRegs).Msg("found student regs for exam")
 
-	err = p.sendGeneratedExamMailToTeacher(to, &GeneratedExamMailData{
+	if err := p.sendGeneratedExamMailToTeacher(to, &GeneratedExamMailData{
 		FromFK07Date:   p.semesterConfig.FromFk07.Format("02.01.2006"),
 		ToDate:         p.semesterConfig.Days[len(p.semesterConfig.Days)-1].Date.Format("02.01.2006"),
 		Exam:           exam,
 		Teacher:        teacher,
 		PlanerName:     p.planer.Name,
 		HasStudentRegs: hasStudentRegs,
-	}, updated)
-	if err != nil {
+	}, updated); err != nil {
 		log.Error().Err(err).Msg("cannot send email")
 		return err
 	}
-	err = spinner.Stop()
-	if err != nil {
-		log.Debug().Err(err).Msg("cannot stop spinner")
-	}
+	reporter.Printf("  ✓ %d. %s -> %s", exam.ZpaExam.AnCode, exam.ZpaExam.Module, to)
 	return nil
 }
 
@@ -270,7 +242,8 @@ type UnpplannedExamMailData struct {
 	PlanerName string
 }
 
-func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, ancode int, emailAddress string, run bool) error {
+func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, ancode int, emailAddress string, run bool, reporter Reporter) error {
+	reporter.Step(fmt.Sprintf("sending primuss data for unplanned exam %s/%d", program, ancode))
 	exam, err := p.dbClient.GetPrimussExam(ctx, program, ancode)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Str("program", program).Msg("cannot get primuss exam")
@@ -350,17 +323,19 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 			to = p.dryRunRecipient()
 		}
 
-		return p.sendMail([]string{to},
+		if err := p.sendMail([]string{to},
 			nil,
 			subject,
 			bufText.Bytes(),
 			bufHTML.Bytes(),
 			attachments,
 			false,
-		)
-	} else {
-		log.Info().Int("ancode", ancode).Str("program", program).Msg("no student registrations found")
+		); err != nil {
+			return err
+		}
+		reporter.StopProgress(fmt.Sprintf("email sent to %s", to))
+		return nil
 	}
-
+	reporter.StopProgressFail(fmt.Sprintf("no student registrations found for %s/%d", program, ancode))
 	return nil
 }

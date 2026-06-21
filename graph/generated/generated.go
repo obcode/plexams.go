@@ -779,7 +779,13 @@ type ComplexityRoot struct {
 		SendEmailExaHm                       func(childComplexity int, run bool) int
 		SendEmailInvigilations               func(childComplexity int, run bool) int
 		SendEmailInvigilationsMissing        func(childComplexity int, run bool) int
+		SendEmailNTAPlanned                  func(childComplexity int, run bool) int
+		SendEmailNTARoomAlone                func(childComplexity int, mtknr string, run bool) int
+		SendEmailNewNta                      func(childComplexity int, mtknr string, run bool) int
 		SendEmailPrepared                    func(childComplexity int, run bool) int
+		SendEmailPrimussData                 func(childComplexity int, ancode int, updated bool, run bool) int
+		SendEmailPrimussDataAll              func(childComplexity int, run bool) int
+		SendEmailPrimussDataUnplanned        func(childComplexity int, program string, ancode int, email string, run bool) int
 		SendEmailPublishedExams              func(childComplexity int, run bool) int
 		SendEmailPublishedInvigilations      func(childComplexity int, run bool) int
 		SendEmailPublishedRooms              func(childComplexity int, run bool) int
@@ -1050,6 +1056,12 @@ type SubscriptionResolver interface {
 	SendEmailCoverPages(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailCoverPage(ctx context.Context, teacherID int, run bool) (<-chan *model.LogLine, error)
 	SendEmailRoomRequests(ctx context.Context, run bool) (<-chan *model.LogLine, error)
+	SendEmailPrimussDataAll(ctx context.Context, run bool) (<-chan *model.LogLine, error)
+	SendEmailPrimussData(ctx context.Context, ancode int, updated bool, run bool) (<-chan *model.LogLine, error)
+	SendEmailPrimussDataUnplanned(ctx context.Context, program string, ancode int, email string, run bool) (<-chan *model.LogLine, error)
+	SendEmailNewNta(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error)
+	SendEmailNTARoomAlone(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error)
+	SendEmailNTAPlanned(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	GenerateRoomsForSlots(ctx context.Context) (<-chan *model.LogLine, error)
 	GenerateRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error)
 	ImportAnnyBookings(ctx context.Context) (<-chan *model.LogLine, error)
@@ -4938,6 +4950,42 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.SendEmailInvigilationsMissing(childComplexity, args["run"].(bool)), true
 
+	case "Subscription.sendEmailNTAPlanned":
+		if e.complexity.Subscription.SendEmailNTAPlanned == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_sendEmailNTAPlanned_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.SendEmailNTAPlanned(childComplexity, args["run"].(bool)), true
+
+	case "Subscription.sendEmailNTARoomAlone":
+		if e.complexity.Subscription.SendEmailNTARoomAlone == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_sendEmailNTARoomAlone_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.SendEmailNTARoomAlone(childComplexity, args["mtknr"].(string), args["run"].(bool)), true
+
+	case "Subscription.sendEmailNewNTA":
+		if e.complexity.Subscription.SendEmailNewNta == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_sendEmailNewNTA_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.SendEmailNewNta(childComplexity, args["mtknr"].(string), args["run"].(bool)), true
+
 	case "Subscription.sendEmailPrepared":
 		if e.complexity.Subscription.SendEmailPrepared == nil {
 			break
@@ -4949,6 +4997,42 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Subscription.SendEmailPrepared(childComplexity, args["run"].(bool)), true
+
+	case "Subscription.sendEmailPrimussData":
+		if e.complexity.Subscription.SendEmailPrimussData == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_sendEmailPrimussData_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.SendEmailPrimussData(childComplexity, args["ancode"].(int), args["updated"].(bool), args["run"].(bool)), true
+
+	case "Subscription.sendEmailPrimussDataAll":
+		if e.complexity.Subscription.SendEmailPrimussDataAll == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_sendEmailPrimussDataAll_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.SendEmailPrimussDataAll(childComplexity, args["run"].(bool)), true
+
+	case "Subscription.sendEmailPrimussDataUnplanned":
+		if e.complexity.Subscription.SendEmailPrimussDataUnplanned == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_sendEmailPrimussDataUnplanned_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.SendEmailPrimussDataUnplanned(childComplexity, args["program"].(string), args["ancode"].(int), args["email"].(string), args["run"].(bool)), true
 
 	case "Subscription.sendEmailPublishedExams":
 		if e.complexity.Subscription.SendEmailPublishedExams == nil {
@@ -5871,6 +5955,20 @@ extend type Subscription {
 
   "Send the request for the active building-management rooms to the Gebäudemanagement."
   sendEmailRoomRequests(run: Boolean!): LogLine!
+
+  # Repeatable emails (no send-once gate): they may be re-sent on changes.
+  "Send the primuss-data email to every examer with exams planned by me."
+  sendEmailPrimussDataAll(run: Boolean!): LogLine!
+  "Send the primuss-data email for a single exam (by ZPA ancode). updated marks it as an update."
+  sendEmailPrimussData(ancode: Int!, updated: Boolean!, run: Boolean!): LogLine!
+  "Send primuss data for an exam not planned by us to a single address."
+  sendEmailPrimussDataUnplanned(program: String!, ancode: Int!, email: String!, run: Boolean!): LogLine!
+  "Inform the examers about a new NTA (by Matrikelnummer)."
+  sendEmailNewNTA(mtknr: String!, run: Boolean!): LogLine!
+  "Email NTAs with a claim to a room of their own (mtknr, or \"all\")."
+  sendEmailNTARoomAlone(mtknr: String!, run: Boolean!): LogLine!
+  "Email all NTAs their planned rooms after room planning."
+  sendEmailNTAPlanned(run: Boolean!): LogLine!
 }
 
 """
@@ -10286,6 +10384,136 @@ func (ec *executionContext) field_Subscription_sendEmailInvigilations_argsRun(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Subscription_sendEmailNTAPlanned_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_sendEmailNTAPlanned_argsRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["run"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_sendEmailNTAPlanned_argsRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["run"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("run"))
+	if tmp, ok := rawArgs["run"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailNTARoomAlone_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_sendEmailNTARoomAlone_argsMtknr(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mtknr"] = arg0
+	arg1, err := ec.field_Subscription_sendEmailNTARoomAlone_argsRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["run"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_sendEmailNTARoomAlone_argsMtknr(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["mtknr"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailNTARoomAlone_argsRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["run"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("run"))
+	if tmp, ok := rawArgs["run"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailNewNTA_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_sendEmailNewNTA_argsMtknr(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mtknr"] = arg0
+	arg1, err := ec.field_Subscription_sendEmailNewNTA_argsRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["run"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_sendEmailNewNTA_argsMtknr(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["mtknr"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailNewNTA_argsRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["run"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("run"))
+	if tmp, ok := rawArgs["run"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Subscription_sendEmailPrepared_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10297,6 +10525,205 @@ func (ec *executionContext) field_Subscription_sendEmailPrepared_args(ctx contex
 	return args, nil
 }
 func (ec *executionContext) field_Subscription_sendEmailPrepared_argsRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["run"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("run"))
+	if tmp, ok := rawArgs["run"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailPrimussDataAll_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_sendEmailPrimussDataAll_argsRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["run"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_sendEmailPrimussDataAll_argsRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["run"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("run"))
+	if tmp, ok := rawArgs["run"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailPrimussDataUnplanned_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_sendEmailPrimussDataUnplanned_argsProgram(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg0
+	arg1, err := ec.field_Subscription_sendEmailPrimussDataUnplanned_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg1
+	arg2, err := ec.field_Subscription_sendEmailPrimussDataUnplanned_argsEmail(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg2
+	arg3, err := ec.field_Subscription_sendEmailPrimussDataUnplanned_argsRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["run"] = arg3
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_sendEmailPrimussDataUnplanned_argsProgram(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["program"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+	if tmp, ok := rawArgs["program"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailPrimussDataUnplanned_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailPrimussDataUnplanned_argsEmail(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["email"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+	if tmp, ok := rawArgs["email"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailPrimussDataUnplanned_argsRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["run"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("run"))
+	if tmp, ok := rawArgs["run"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailPrimussData_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_sendEmailPrimussData_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg0
+	arg1, err := ec.field_Subscription_sendEmailPrimussData_argsUpdated(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["updated"] = arg1
+	arg2, err := ec.field_Subscription_sendEmailPrimussData_argsRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["run"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_sendEmailPrimussData_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailPrimussData_argsUpdated(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["updated"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("updated"))
+	if tmp, ok := rawArgs["updated"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailPrimussData_argsRun(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (bool, error) {
@@ -36196,6 +36623,492 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailRoomRequests(ctx 
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_sendEmailPrimussDataAll(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_sendEmailPrimussDataAll(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().SendEmailPrimussDataAll(rctx, fc.Args["run"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_sendEmailPrimussDataAll(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_sendEmailPrimussDataAll_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_sendEmailPrimussData(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_sendEmailPrimussData(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().SendEmailPrimussData(rctx, fc.Args["ancode"].(int), fc.Args["updated"].(bool), fc.Args["run"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_sendEmailPrimussData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_sendEmailPrimussData_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_sendEmailPrimussDataUnplanned(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_sendEmailPrimussDataUnplanned(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().SendEmailPrimussDataUnplanned(rctx, fc.Args["program"].(string), fc.Args["ancode"].(int), fc.Args["email"].(string), fc.Args["run"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_sendEmailPrimussDataUnplanned(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_sendEmailPrimussDataUnplanned_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_sendEmailNewNTA(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_sendEmailNewNTA(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().SendEmailNewNta(rctx, fc.Args["mtknr"].(string), fc.Args["run"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_sendEmailNewNTA(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_sendEmailNewNTA_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_sendEmailNTARoomAlone(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_sendEmailNTARoomAlone(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().SendEmailNTARoomAlone(rctx, fc.Args["mtknr"].(string), fc.Args["run"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_sendEmailNTARoomAlone(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_sendEmailNTARoomAlone_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_sendEmailNTAPlanned(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_sendEmailNTAPlanned(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().SendEmailNTAPlanned(rctx, fc.Args["run"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_sendEmailNTAPlanned(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_sendEmailNTAPlanned_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Subscription_generateRoomsForSlots(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	fc, err := ec.fieldContext_Subscription_generateRoomsForSlots(ctx, field)
 	if err != nil {
@@ -49807,6 +50720,18 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_sendEmailCoverPage(ctx, fields[0])
 	case "sendEmailRoomRequests":
 		return ec._Subscription_sendEmailRoomRequests(ctx, fields[0])
+	case "sendEmailPrimussDataAll":
+		return ec._Subscription_sendEmailPrimussDataAll(ctx, fields[0])
+	case "sendEmailPrimussData":
+		return ec._Subscription_sendEmailPrimussData(ctx, fields[0])
+	case "sendEmailPrimussDataUnplanned":
+		return ec._Subscription_sendEmailPrimussDataUnplanned(ctx, fields[0])
+	case "sendEmailNewNTA":
+		return ec._Subscription_sendEmailNewNTA(ctx, fields[0])
+	case "sendEmailNTARoomAlone":
+		return ec._Subscription_sendEmailNTARoomAlone(ctx, fields[0])
+	case "sendEmailNTAPlanned":
+		return ec._Subscription_sendEmailNTAPlanned(ctx, fields[0])
 	case "generateRoomsForSlots":
 		return ec._Subscription_generateRoomsForSlots(ctx, fields[0])
 	case "generateRoomsForExams":

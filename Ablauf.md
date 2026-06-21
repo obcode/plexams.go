@@ -59,14 +59,12 @@ Constraints (`constraintsRequested`), „zu planende Prüfungen" (`examsPrepared
 Draft (`draftSent`), Terminplan/Räume/Aufsichten veröffentlicht
 (`examPlanPublished`/`roomPlanPublished`/`invigilationPlanPublished`),
 Raum-Anfragen (`roomRequestsSent`), Aufsichts-Anforderungsabfrage
-(`invigilationsRequested`) und **Deckblätter an alle** (`coverPagesSent`).
-**Nicht** einmalig (wiederholbar): Primuss-Daten und alle E-Mails an **einzelne
-Personen** (einzelnes Deckblatt, Primuss-Daten für eine Prüfung, NTA-Mails) sowie
-die Erinnerung an fehlende Anforderungen.
-
-> Noch **nicht im GUI** (nur CLI): die Primuss-Daten-Mails (`primuss-data`,
-> `primuss-data-unplanned`) und die NTA-Mails (`new-nta`, `nta-with-room-alone`,
-> `nta-planned`). Diese können bei Änderungen mehrfach verschickt werden.
+(`invigilationsRequested`) und — als **letzter Schritt der Aufsichtenplanung** —
+**Deckblätter an alle** (`coverPagesSent`).
+**Nicht** einmalig (wiederholbar): Primuss-Daten, alle E-Mails an **einzelne
+Personen** (einzelnes Deckblatt, Primuss-Daten für eine Prüfung, NTA-Mails) und
+die Erinnerung an fehlende Anforderungen. Diese sind ebenfalls im GUI verfügbar
+und können bei Änderungen mehrfach verschickt werden.
 
 ---
 

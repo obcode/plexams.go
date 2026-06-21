@@ -37,12 +37,14 @@ type NTAEmail struct {
 	PlanerName string
 }
 
-func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr string, run bool) error {
+func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr string, run bool, reporter Reporter) error {
+	reporter.Step("sending room-alone emails to NTAs")
 	ntas, err := p.NtasWithRegs(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get ntas")
 		return err
 	}
+	sent := 0
 	for _, nta := range ntas {
 		if mtknr != "all" && mtknr != nta.Mtknr {
 			log.Debug().Str("mtknr", mtknr).Msg("student with mtknr not found")
@@ -86,8 +88,10 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 		if err != nil {
 			return err
 		}
-
+		reporter.Printf("  ✓ %s %v", nta.Name, to)
+		sent++
 	}
+	reporter.StopProgress(fmt.Sprintf("sent %d room-alone emails", sent))
 	return nil
 }
 
@@ -136,7 +140,8 @@ type NTAEmailWithRooms struct {
 	PlanerName    string
 }
 
-func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool) error {
+func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, reporter Reporter) error {
+	reporter.Step("sending room-info emails to NTAs")
 	ntas, err := p.NtasWithRegs(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get ntas")
@@ -222,7 +227,9 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool) er
 		if err != nil {
 			return err
 		}
+		reporter.Printf("  ✓ %s %v", nta.Name, to)
 	}
+	reporter.StopProgress("room-info emails to NTAs sent")
 	return nil
 }
 
@@ -265,7 +272,8 @@ type NewNTA struct {
 	PlanerName string
 }
 
-func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool) error {
+func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, reporter Reporter) error {
+	reporter.Step(fmt.Sprintf("informing examers about new NTA %s", mtknr))
 	student, err := p.StudentByMtknr(ctx, mtknr)
 	if err != nil {
 		log.Error().Err(err).Str("mtknr", mtknr).Msg("cannot get nta")
@@ -329,13 +337,16 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool) er
 		to = []string{p.dryRunRecipient()}
 	}
 
-	return p.sendMail(to,
+	if err := p.sendMail(to,
 		nil,
 		fmt.Sprintf("[Prüfungsplanung %s] Neuer NTA", p.semester),
 		bufText.Bytes(),
 		bufHTML.Bytes(),
 		nil,
 		true,
-	)
-
+	); err != nil {
+		return err
+	}
+	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	return nil
 }

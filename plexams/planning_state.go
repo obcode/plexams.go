@@ -48,6 +48,7 @@ const (
 	condStudentRegsUploaded       = "studentRegsUploaded"
 	condExamsPrepared             = "examsPrepared"
 	condDraftSent                 = "draftSent"
+	condCoverPagesSent            = "coverPagesSent"
 	condExamPlanPublished         = "examPlanPublished"
 	condRoomRequestsSent          = "roomRequestsSent"
 	condRoomsGenerated            = "roomsGenerated"
@@ -68,6 +69,7 @@ var planningConditionDefs = []planningConditionDef{
 	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase1", ""},
 	{condExamsPrepared, "Ankündigung 'zu planende Prüfungen' verschickt", "phase1", ""},
 	{condDraftSent, "Draft-Plan verschickt", "phase1", ""},
+	{condCoverPagesSent, "Deckblätter an alle verschickt", "phase1", ""},
 	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", ""},
 	{condRoomRequestsSent, "Raum-Anfragen ans Gebäudemanagement verschickt", "phase2", ""},
 	{condRoomsGenerated, "Räume für Prüfungen generiert", "phase2", ""},

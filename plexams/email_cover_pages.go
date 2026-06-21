@@ -45,6 +45,9 @@ func (p *Plexams) coverPagePDF(ctx context.Context, examerID int) (data []byte, 
 }
 
 func (p *Plexams) SendCoverPagesMails(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condCoverPagesSent, run); err != nil {
+		return err
+	}
 	teachers, err := p.ExamersWithExamsPlannedByMe(ctx)
 	if err != nil {
 		return err
@@ -59,6 +62,9 @@ func (p *Plexams) SendCoverPagesMails(ctx context.Context, run bool, reporter Re
 		}
 	}
 
+	if run {
+		p.markCondition(ctx, condCoverPagesSent)
+	}
 	reporter.Println(fmt.Sprintf("sent %d of %d cover-page emails", sent, len(teachers)))
 	return nil
 }

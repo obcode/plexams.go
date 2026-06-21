@@ -12,6 +12,11 @@ import (
 // most this many students does not need a building-management request room.
 const normalRoomSeats = 25
 
+// roomRequestBuffer is the time the building management needs the room before
+// the exam starts (setup) and keeps it reserved after it ends (teardown). It is
+// applied on both ends of the requested time range.
+const roomRequestBuffer = 15 * time.Minute
+
 // managementRooms returns the active rooms that are requested via the building
 // management.
 func (p *Plexams) managementRooms(ctx context.Context) ([]*model.Room, error) {
@@ -181,6 +186,8 @@ func (p *Plexams) GenerateRoomRequestsPreview(ctx context.Context) ([]*model.Roo
 				continue
 			}
 			maxDuration := examMaxDuration(exam)
+			from := start.Add(-roomRequestBuffer)
+			until := start.Add(time.Duration(maxDuration)*time.Minute + roomRequestBuffer)
 			simultaneous := make([]*model.PlannedExam, 0, len(examsInSlot))
 			for _, other := range examsInSlot {
 				if other.Ancode != exam.Ancode {
@@ -193,8 +200,8 @@ func (p *Plexams) GenerateRoomRequestsPreview(ctx context.Context) ([]*model.Roo
 					Room:              room.Name,
 					Day:               slot.DayNumber,
 					Slot:              slot.SlotNumber,
-					From:              start,
-					Until:             start.Add(time.Duration(maxDuration) * time.Minute),
+					From:              from,
+					Until:             until,
 					Students:          studs,
 					Seats:             room.Seats,
 					Exam:              exam,

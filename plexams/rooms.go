@@ -424,6 +424,46 @@ func (p *Plexams) SetRoomActive(ctx context.Context, name string, active bool) (
 	return p.dbClient.SetRoomDeactivated(ctx, name, !active)
 }
 
+func roomInputToRoom(input model.RoomInput) *model.Room {
+	return &model.Room{
+		Name:             input.Name,
+		Seats:            input.Seats,
+		Handicap:         input.Handicap,
+		Lab:              input.Lab,
+		PlacesWithSocket: input.PlacesWithSocket,
+		NeedsRequest:     input.NeedsRequest,
+		Exahm:            input.Exahm,
+		Seb:              input.Seb,
+		SebSeats:         input.SebSeats,
+		HmebSeats:        input.HmebSeats,
+	}
+}
+
+// AddRoom creates a new room (key: name). Errors if a room with that name
+// already exists.
+func (p *Plexams) AddRoom(ctx context.Context, input model.RoomInput) (*model.Room, error) {
+	exists, err := p.dbClient.HasRoom(ctx, input.Name)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, fmt.Errorf("room %s already exists", input.Name)
+	}
+	return p.dbClient.AddRoom(ctx, roomInputToRoom(input))
+}
+
+// UpdateRoom updates an existing room (key: name), keeping its active state.
+// Errors if the room does not exist.
+func (p *Plexams) UpdateRoom(ctx context.Context, input model.RoomInput) (*model.Room, error) {
+	existing, err := p.dbClient.RoomByName(ctx, input.Name)
+	if err != nil {
+		return nil, err
+	}
+	updated := roomInputToRoom(input)
+	updated.Deactivated = existing.Deactivated // toggle owns the active state
+	return p.dbClient.ReplaceRoom(ctx, updated)
+}
+
 func (p *Plexams) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) {
 	return p.dbClient.RoomsForSlots(ctx)
 }

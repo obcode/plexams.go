@@ -427,6 +427,19 @@ type RoomConstraints struct {
 	Comments         *string  `json:"comments,omitempty"`
 }
 
+type RoomInput struct {
+	Name             string `json:"name"`
+	Seats            int    `json:"seats"`
+	Handicap         bool   `json:"handicap"`
+	Lab              bool   `json:"lab"`
+	PlacesWithSocket bool   `json:"placesWithSocket"`
+	NeedsRequest     bool   `json:"needsRequest"`
+	Exahm            bool   `json:"exahm"`
+	Seb              bool   `json:"seb"`
+	SebSeats         *int   `json:"sebSeats,omitempty"`
+	HmebSeats        *int   `json:"hmebSeats,omitempty"`
+}
+
 type RoomWithInvigilator struct {
 	Name         string         `json:"name"`
 	MaxDuration  int            `json:"maxDuration"`

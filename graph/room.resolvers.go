@@ -21,6 +21,16 @@ func (r *mutationResolver) SetRoomActive(ctx context.Context, name string, activ
 	return r.plexams.SetRoomActive(ctx, name, active)
 }
 
+// AddRoom is the resolver for the addRoom field.
+func (r *mutationResolver) AddRoom(ctx context.Context, input model.RoomInput) (*model.Room, error) {
+	return r.plexams.AddRoom(ctx, input)
+}
+
+// UpdateRoom is the resolver for the updateRoom field.
+func (r *mutationResolver) UpdateRoom(ctx context.Context, input model.RoomInput) (*model.Room, error) {
+	return r.plexams.UpdateRoom(ctx, input)
+}
+
 // Room is the resolver for the room field.
 func (r *plannedRoomResolver) Room(ctx context.Context, obj *model.PlannedRoom) (*model.Room, error) {
 	return r.plexams.RoomByName(ctx, obj.RoomName)

@@ -348,6 +348,7 @@ type ComplexityRoot struct {
 		AddConstraints            func(childComplexity int, ancode int, constraints model.ConstraintsInput) int
 		AddExamToSlot             func(childComplexity int, day int, time int, ancode int) int
 		AddNta                    func(childComplexity int, input model.NTAInput) int
+		AddRoom                   func(childComplexity int, input model.RoomInput) int
 		AddZpaExamToPlan          func(childComplexity int, ancode int) int
 		ClearEmailAttachments     func(childComplexity int, kind string) int
 		Exahm                     func(childComplexity int, ancode int) int
@@ -368,6 +369,7 @@ type ComplexityRoot struct {
 		SetNTAActive              func(childComplexity int, mtknr string, active bool) int
 		SetRoomActive             func(childComplexity int, name string, active bool) int
 		UpdateNta                 func(childComplexity int, input model.NTAInput) int
+		UpdateRoom                func(childComplexity int, input model.RoomInput) int
 		ZpaExamsToPlan            func(childComplexity int, input []int) int
 	}
 
@@ -859,6 +861,8 @@ type MutationResolver interface {
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
 	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string) (bool, error)
 	SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error)
+	AddRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
+	UpdateRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
 	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
@@ -2331,6 +2335,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.AddNta(childComplexity, args["input"].(model.NTAInput)), true
 
+	case "Mutation.addRoom":
+		if e.complexity.Mutation.AddRoom == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addRoom_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddRoom(childComplexity, args["input"].(model.RoomInput)), true
+
 	case "Mutation.addZpaExamToPlan":
 		if e.complexity.Mutation.AddZpaExamToPlan == nil {
 			break
@@ -2570,6 +2586,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateNta(childComplexity, args["input"].(model.NTAInput)), true
+
+	case "Mutation.updateRoom":
+		if e.complexity.Mutation.UpdateRoom == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateRoom_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateRoom(childComplexity, args["input"].(model.RoomInput)), true
 
 	case "Mutation.zpaExamsToPlan":
 		if e.complexity.Mutation.ZpaExamsToPlan == nil {
@@ -5061,6 +5089,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputConstraintsInput,
 		ec.unmarshalInputNTAInput,
 		ec.unmarshalInputPrimussExamInput,
+		ec.unmarshalInputRoomInput,
 	)
 	first := true
 
@@ -5774,6 +5803,23 @@ extend type Mutation {
   ): Boolean!
   "Activate/deactivate a room (key: name). A deactivated room is not used for planning."
   setRoomActive(name: String!, active: Boolean!): Room!
+  "Create a new room (key: name). Errors if a room with that name already exists."
+  addRoom(input: RoomInput!): Room!
+  "Update an existing room (key: name). Errors if it does not exist; keeps the active state."
+  updateRoom(input: RoomInput!): Room!
+}
+
+input RoomInput {
+  name: String!
+  seats: Int!
+  handicap: Boolean!
+  lab: Boolean!
+  placesWithSocket: Boolean!
+  needsRequest: Boolean!
+  exahm: Boolean!
+  seb: Boolean!
+  sebSeats: Int
+  hmebSeats: Int
 }
 
 type Room {
@@ -6363,6 +6409,34 @@ func (ec *executionContext) field_Mutation_addNTA_argsInput(
 	}
 
 	var zeroVal model.NTAInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addRoom_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_addRoom_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_addRoom_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.RoomInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal model.RoomInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNRoomInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInput(ctx, tmp)
+	}
+
+	var zeroVal model.RoomInput
 	return zeroVal, nil
 }
 
@@ -7222,6 +7296,34 @@ func (ec *executionContext) field_Mutation_updateNTA_argsInput(
 	}
 
 	var zeroVal model.NTAInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateRoom_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_updateRoom_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_updateRoom_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.RoomInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal model.RoomInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNRoomInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInput(ctx, tmp)
+	}
+
+	var zeroVal model.RoomInput
 	return zeroVal, nil
 }
 
@@ -18957,6 +19059,164 @@ func (ec *executionContext) fieldContext_Mutation_setRoomActive(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setRoomActive_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addRoom(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addRoom(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddRoom(rctx, fc.Args["input"].(model.RoomInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Room)
+	fc.Result = res
+	return ec.marshalNRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoom(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addRoom(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Room_name(ctx, field)
+			case "seats":
+				return ec.fieldContext_Room_seats(ctx, field)
+			case "handicap":
+				return ec.fieldContext_Room_handicap(ctx, field)
+			case "lab":
+				return ec.fieldContext_Room_lab(ctx, field)
+			case "placesWithSocket":
+				return ec.fieldContext_Room_placesWithSocket(ctx, field)
+			case "needsRequest":
+				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "exahm":
+				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
+			case "sebSeats":
+				return ec.fieldContext_Room_sebSeats(ctx, field)
+			case "hmebSeats":
+				return ec.fieldContext_Room_hmebSeats(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_Room_deactivated(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addRoom_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateRoom(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateRoom(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateRoom(rctx, fc.Args["input"].(model.RoomInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Room)
+	fc.Result = res
+	return ec.marshalNRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoom(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateRoom(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Room_name(ctx, field)
+			case "seats":
+				return ec.fieldContext_Room_seats(ctx, field)
+			case "handicap":
+				return ec.fieldContext_Room_handicap(ctx, field)
+			case "lab":
+				return ec.fieldContext_Room_lab(ctx, field)
+			case "placesWithSocket":
+				return ec.fieldContext_Room_placesWithSocket(ctx, field)
+			case "needsRequest":
+				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "exahm":
+				return ec.fieldContext_Room_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_Room_seb(ctx, field)
+			case "sebSeats":
+				return ec.fieldContext_Room_sebSeats(ctx, field)
+			case "hmebSeats":
+				return ec.fieldContext_Room_hmebSeats(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_Room_deactivated(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateRoom_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -38607,6 +38867,96 @@ func (ec *executionContext) unmarshalInputPrimussExamInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any) (model.RoomInput, error) {
+	var it model.RoomInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "seats", "handicap", "lab", "placesWithSocket", "needsRequest", "exahm", "seb", "sebSeats", "hmebSeats"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "seats":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("seats"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Seats = data
+		case "handicap":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("handicap"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Handicap = data
+		case "lab":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lab"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Lab = data
+		case "placesWithSocket":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("placesWithSocket"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PlacesWithSocket = data
+		case "needsRequest":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("needsRequest"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NeedsRequest = data
+		case "exahm":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exahm"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Exahm = data
+		case "seb":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("seb"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Seb = data
+		case "sebSeats":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sebSeats"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SebSeats = data
+		case "hmebSeats":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hmebSeats"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HmebSeats = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -40848,6 +41198,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setRoomActive":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setRoomActive(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addRoom":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addRoom(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateRoom":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateRoom(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -47081,6 +47445,11 @@ func (ec *executionContext) marshalNRoomAndExam2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._RoomAndExam(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNRoomInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInput(ctx context.Context, v any) (model.RoomInput, error) {
+	res, err := ec.unmarshalInputRoomInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNRoomWithInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomWithInvigilatorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomWithInvigilator) graphql.Marshaler {

@@ -19,6 +19,23 @@ extend type Mutation {
   ): Boolean!
   "Activate/deactivate a room (key: name). A deactivated room is not used for planning."
   setRoomActive(name: String!, active: Boolean!): Room!
+  "Create a new room (key: name). Errors if a room with that name already exists."
+  addRoom(input: RoomInput!): Room!
+  "Update an existing room (key: name). Errors if it does not exist; keeps the active state."
+  updateRoom(input: RoomInput!): Room!
+}
+
+input RoomInput {
+  name: String!
+  seats: Int!
+  handicap: Boolean!
+  lab: Boolean!
+  placesWithSocket: Boolean!
+  needsRequest: Boolean!
+  exahm: Boolean!
+  seb: Boolean!
+  sebSeats: Int
+  hmebSeats: Int
 }
 
 type Room {

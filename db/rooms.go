@@ -37,6 +37,41 @@ func (db *DB) RoomByName(ctx context.Context, roomName string) (*model.Room, err
 	return &room, nil
 }
 
+// HasRoom reports whether a room with the given name exists.
+func (db *DB) HasRoom(ctx context.Context, name string) (bool, error) {
+	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	count, err := collection.CountDocuments(ctx, bson.M{"name": name})
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// AddRoom inserts a new room and returns it.
+func (db *DB) AddRoom(ctx context.Context, room *model.Room) (*model.Room, error) {
+	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	if _, err := collection.InsertOne(ctx, room); err != nil {
+		log.Error().Err(err).Str("room", room.Name).Msg("cannot insert room")
+		return nil, err
+	}
+	return db.RoomByName(ctx, room.Name)
+}
+
+// ReplaceRoom replaces the room identified by its name (no upsert) and returns
+// it. Errors if no room with that name exists.
+func (db *DB) ReplaceRoom(ctx context.Context, room *model.Room) (*model.Room, error) {
+	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	res, err := collection.ReplaceOne(ctx, bson.M{"name": room.Name}, room)
+	if err != nil {
+		log.Error().Err(err).Str("room", room.Name).Msg("cannot replace room")
+		return nil, err
+	}
+	if res.MatchedCount == 0 {
+		return nil, fmt.Errorf("cannot find room %s", room.Name)
+	}
+	return db.RoomByName(ctx, room.Name)
+}
+
 // SetRoomDeactivated sets the deactivated flag of the room identified by name.
 // Returns an error if no room with that name exists.
 func (db *DB) SetRoomDeactivated(ctx context.Context, name string, deactivated bool) (*model.Room, error) {

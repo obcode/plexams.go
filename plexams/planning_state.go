@@ -46,9 +46,10 @@ const (
 	condGeneratedExams            = "generatedExams"
 	condStudentRegs               = "studentRegs"
 	condStudentRegsUploaded       = "studentRegsUploaded"
+	condPrimussDataAllSent        = "primussDataAllSent"
 	condExamsPrepared             = "examsPrepared"
+	condNTARoomAloneSent          = "ntaRoomAloneSent"
 	condDraftSent                 = "draftSent"
-	condCoverPagesSent            = "coverPagesSent"
 	condExamPlanPublished         = "examPlanPublished"
 	condRoomRequestsSent          = "roomRequestsSent"
 	condRoomsGenerated            = "roomsGenerated"
@@ -57,6 +58,8 @@ const (
 	condInvigilationsRequested    = "invigilationsRequested"
 	condInvigilationsGenerated    = "invigilationsGenerated"
 	condInvigilationPlanPublished = "invigilationPlanPublished"
+	condNTAPlannedSent            = "ntaPlannedSent"
+	condCoverPagesSent            = "coverPagesSent"
 )
 
 var planningConditionDefs = []planningConditionDef{
@@ -67,7 +70,9 @@ var planningConditionDefs = []planningConditionDef{
 	{condGeneratedExams, "GeneratedExams erstellt", "phase1", ""},
 	{condStudentRegs, "StudentRegs erstellt", "phase1", ""},
 	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase1", ""},
+	{condPrimussDataAllSent, "Primuss-Daten an alle verschickt", "phase1", ""},
 	{condExamsPrepared, "Ankündigung 'zu planende Prüfungen' verschickt", "phase1", ""},
+	{condNTARoomAloneSent, "Info an NTAs mit eigenem Raum verschickt", "phase1", ""},
 	{condDraftSent, "Draft-Plan verschickt", "phase1", ""},
 	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", ""},
 	{condRoomRequestsSent, "Raum-Anfragen ans Gebäudemanagement verschickt", "phase2", ""},
@@ -77,6 +82,7 @@ var planningConditionDefs = []planningConditionDef{
 	{condInvigilationsRequested, "Aufsichts-Anforderungsabfrage verschickt", "phase3", ""},
 	{condInvigilationsGenerated, "Aufsichten generiert", "phase3", ""},
 	{condInvigilationPlanPublished, "Aufsichtenplan veröffentlicht (E-Mail)", "phase3", model.PlanningGateInvigilations},
+	{condNTAPlannedSent, "Info an NTAs zu ihren Räumen verschickt", "phase3", ""},
 	{condCoverPagesSent, "Deckblätter an alle verschickt (letzter Schritt)", "phase3", ""},
 }
 

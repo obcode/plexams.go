@@ -38,6 +38,13 @@ type NTAEmail struct {
 }
 
 func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr string, run bool, reporter Reporter) error {
+	// "all" is the bulk send and may go out only once; a single student (specific
+	// mtknr) can always be (re-)sent.
+	if mtknr == "all" {
+		if err := p.emailSendAllowed(ctx, condNTARoomAloneSent, run); err != nil {
+			return err
+		}
+	}
 	reporter.Step("sending room-alone emails to NTAs")
 	ntas, err := p.NtasWithRegs(ctx)
 	if err != nil {
@@ -91,6 +98,9 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 		reporter.Printf("  ✓ %s %v", nta.Name, to)
 		sent++
 	}
+	if run && mtknr == "all" {
+		p.markCondition(ctx, condNTARoomAloneSent)
+	}
 	reporter.StopProgress(fmt.Sprintf("sent %d room-alone emails", sent))
 	return nil
 }
@@ -141,6 +151,9 @@ type NTAEmailWithRooms struct {
 }
 
 func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condNTAPlannedSent, run); err != nil {
+		return err
+	}
 	reporter.Step("sending room-info emails to NTAs")
 	ntas, err := p.NtasWithRegs(ctx)
 	if err != nil {
@@ -228,6 +241,9 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 			return err
 		}
 		reporter.Printf("  ✓ %s %v", nta.Name, to)
+	}
+	if run {
+		p.markCondition(ctx, condNTAPlannedSent)
 	}
 	reporter.StopProgress("room-info emails to NTAs sent")
 	return nil

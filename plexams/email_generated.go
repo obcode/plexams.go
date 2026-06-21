@@ -41,6 +41,9 @@ func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, updated
 }
 
 func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condPrimussDataAllSent, run); err != nil {
+		return err
+	}
 	generatedExams, err := p.GeneratedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get generated exams")
@@ -64,6 +67,9 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, ru
 		if err != nil {
 			log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot send email")
 		}
+	}
+	if run {
+		p.markCondition(ctx, condPrimussDataAllSent)
 	}
 	reporter.StopProgress(fmt.Sprintf("sent %d primuss-data emails", len(generatedExams)))
 	return nil

@@ -744,6 +744,7 @@ type ComplexityRoot struct {
 		GenerateInvigilations                func(childComplexity int, dryRun bool, seed *int, iterations *int) int
 		GenerateRoomsForExams                func(childComplexity int) int
 		GenerateRoomsForSlots                func(childComplexity int) int
+		ImportAnnyBookings                   func(childComplexity int) int
 		ImportExamsFromZpa                   func(childComplexity int) int
 		ImportInvigilatorRequirementsFromZpa func(childComplexity int) int
 		ImportStudentsFromZpa                func(childComplexity int) int
@@ -1023,6 +1024,7 @@ type SubscriptionResolver interface {
 	SendEmailRoomRequests(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	GenerateRoomsForSlots(ctx context.Context) (<-chan *model.LogLine, error)
 	GenerateRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error)
+	ImportAnnyBookings(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateInvigilatorRequirements(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateInvigilationDuplicates(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateInvigilatorSlots(ctx context.Context) (<-chan *model.LogLine, error)
@@ -4675,6 +4677,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.GenerateRoomsForSlots(childComplexity), true
 
+	case "Subscription.importAnnyBookings":
+		if e.complexity.Subscription.ImportAnnyBookings == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ImportAnnyBookings(childComplexity), true
+
 	case "Subscription.importExamsFromZPA":
 		if e.complexity.Subscription.ImportExamsFromZpa == nil {
 			break
@@ -6224,6 +6233,8 @@ extend type Subscription {
   generateRoomsForSlots: LogLine!
   "Assign rooms to all exams (rooms-for-exams) and stream the output. Recomputes rooms-for-slots first, then writes the planned rooms; no separate rooms-for-slots step needed."
   generateRoomsForExams: LogLine!
+  "Fetch the room bookings from anny.eu and store them (used for the EXaHM room slots). Streams its output."
+  importAnnyBookings: LogLine!
 }
 
 input RoomInput {
@@ -35256,6 +35267,76 @@ func (ec *executionContext) fieldContext_Subscription_generateRoomsForExams(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_importAnnyBookings(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_importAnnyBookings(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ImportAnnyBookings(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_importAnnyBookings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Subscription_validateInvigilatorRequirements(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	fc, err := ec.fieldContext_Subscription_validateInvigilatorRequirements(ctx, field)
 	if err != nil {
@@ -48365,6 +48446,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_generateRoomsForSlots(ctx, fields[0])
 	case "generateRoomsForExams":
 		return ec._Subscription_generateRoomsForExams(ctx, fields[0])
+	case "importAnnyBookings":
+		return ec._Subscription_importAnnyBookings(ctx, fields[0])
 	case "validateInvigilatorRequirements":
 		return ec._Subscription_validateInvigilatorRequirements(ctx, fields[0])
 	case "validateInvigilationDuplicates":

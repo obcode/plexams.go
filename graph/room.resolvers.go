@@ -126,6 +126,13 @@ func (r *subscriptionResolver) GenerateRoomsForExams(ctx context.Context) (<-cha
 	}), nil
 }
 
+// ImportAnnyBookings is the resolver for the importAnnyBookings field.
+func (r *subscriptionResolver) ImportAnnyBookings(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.FetchFromAnny(ctx, reporter)
+	}), nil
+}
+
 // PlannedRoom returns generated.PlannedRoomResolver implementation.
 func (r *Resolver) PlannedRoom() generated.PlannedRoomResolver { return &plannedRoomResolver{r} }
 

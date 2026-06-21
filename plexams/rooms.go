@@ -149,66 +149,6 @@ func isApprovedAnnyStatus(status string) bool {
 	}
 }
 
-func (p *Plexams) ExahmRoomsFromBooked() ([]BookedEntry, error) {
-	if !viper.IsSet("roomconstraints.booked") {
-		return []BookedEntry{}, nil
-	}
-
-	bookedInfo := viper.Get("roomconstraints.booked")
-	if bookedInfo == nil {
-		return []BookedEntry{}, nil
-	}
-
-	bookedInfoSlice, ok := bookedInfo.([]interface{})
-	if !ok {
-		log.Error().Interface("booked info", bookedInfo).Msg("cannot convert booked info to slice")
-		return nil, fmt.Errorf("cannot convert booked info to slice")
-	}
-
-	entries := make([]BookedEntry, 0, len(bookedInfoSlice))
-	for _, bookedEntry := range bookedInfoSlice {
-		fromUntil, err := fromUntil(bookedEntry)
-		if err != nil {
-			log.Error().Err(err).Interface("entry", bookedEntry).Msg("cannot convert entry to time")
-			return nil, err
-		}
-
-		entry, ok := bookedEntry.(map[string]interface{})
-		if !ok {
-			log.Error().Interface("booked entry", bookedEntry).Msg("cannot convert booked entry to map")
-			return nil, fmt.Errorf("cannot convert booked entry to map")
-		}
-
-		rawRooms, ok := entry["rooms"].([]interface{})
-		if !ok {
-			log.Error().Interface("rooms entry", entry["rooms"]).Msg("cannot convert rooms entry to []string")
-			return nil, fmt.Errorf("cannot convert rooms entry to []string")
-		}
-
-		rooms := make([]string, 0, len(rawRooms))
-		for _, rawRoom := range rawRooms {
-			room, ok := rawRoom.(string)
-			if !ok {
-				log.Error().Interface("room entry", rawRoom).Msg("cannot convert room entry to string")
-				return nil, fmt.Errorf("cannot convert room entry to string")
-			}
-			rooms = append(rooms, room)
-		}
-
-		approved := entry["approved"].(bool)
-
-		entries = append(entries, BookedEntry{
-			From:     fromUntil.From,
-			Until:    fromUntil.Until,
-			Rooms:    rooms,
-			Approved: approved,
-		})
-
-	}
-
-	return entries, nil
-}
-
 func (p *Plexams) SlotsWithRoomsFromBookedEntries(bookedEntries []BookedEntry) (map[SlotNumber][]*model.Room, error) {
 	globalRooms, err := p.dbClient.Rooms(context.Background())
 	if err != nil {

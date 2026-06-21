@@ -383,15 +383,8 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 	v.step("get booked entries")
 	bookedEntries, err := p.ExahmRoomsFromAnnyBookings(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get entries from anny_bookings, fallback to booked entries in YAML")
-		bookedEntries = nil
-	}
-	if len(bookedEntries) == 0 {
-		bookedEntries, err = p.ExahmRoomsFromBooked()
-		if err != nil {
-			log.Error().Err(err).Msg("cannot get booked entries")
-			return nil, err
-		}
+		log.Error().Err(err).Msg("cannot get entries from anny_bookings")
+		return nil, err
 	}
 
 	for _, constraint := range constraints {

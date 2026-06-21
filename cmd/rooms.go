@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
+	plx "github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +20,7 @@ anny		    --- fetch bookings from anny.eu.`,
 			p := initPlexamsConfig()
 			switch args[0] {
 			case "anny":
-				err := p.FetchFromAnny()
+				err := p.FetchFromAnny(context.Background(), plx.NewConsoleReporter())
 				if err != nil {
 					panic(err)
 				}

@@ -7,11 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -83,7 +81,8 @@ type annyBookingsPage struct {
 	} `json:"links"`
 }
 
-func (p *Plexams) FetchFromAnny() error {
+func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
+	reporter.Step("fetching bookings from anny.eu")
 	token := viper.GetString("anny.token")
 	personalizationName := strings.TrimSpace(viper.GetString("anny.personalization_name"))
 	configRooms := viper.GetStringSlice("anny.rooms")
@@ -230,17 +229,17 @@ func (p *Plexams) FetchFromAnny() error {
 		dbBookings = append(dbBookings, annyBookingToDBBooking(booking))
 	}
 
-	if err := p.dbClient.SaveAnnyBookings(context.Background(), dbBookings); err != nil {
+	if err := p.dbClient.SaveAnnyBookings(ctx, dbBookings); err != nil {
 		return fmt.Errorf("cannot save anny bookings: %w", err)
 	}
 
-	printAnnySummary(bookings, personalizationName)
-	fmt.Println("Saved to MongoDB collection anny_bookings")
+	annySummary(bookings, personalizationName, reporter)
+	reporter.StopProgress(fmt.Sprintf("saved %d anny bookings to the database", len(dbBookings)))
 
 	return nil
 }
 
-func printAnnySummary(bookings []AnnyBooking, personalizationName string) {
+func annySummary(bookings []AnnyBooking, personalizationName string, reporter Reporter) {
 	roomMap := make(map[string]int)
 	for _, booking := range bookings {
 		room := booking.Room
@@ -256,20 +255,11 @@ func printAnnySummary(bookings []AnnyBooking, personalizationName string) {
 	}
 	sort.Strings(roomNames)
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Anny-Buchungen für\t%s\t(gesamt %d)\n", personalizationName, len(bookings)) // nolint
-	fmt.Fprintln(w, "Raum\tAnzahl")                                                             // nolint                                                // nolint
+	reporter.Println(fmt.Sprintf("Anny-Buchungen für %s (gesamt %d):", personalizationName, len(bookings)))
 	for _, roomName := range roomNames {
-		fmt.Fprintf(w, "%s\t%d\n", roomName, roomMap[roomName]) // nolint
+		reporter.Println(fmt.Sprintf("  %-10s %d", roomName, roomMap[roomName]))
 	}
-
-	maxRows := len(bookings)
-
-	fmt.Fprintln(w, "")                                       // nolint
-	fmt.Fprintln(w, "Alle Termine")                           // nolint
-	fmt.Fprintln(w, "Datum\tZeit\tRaum\tDauer\tBeschreibung") // nolint
-	for i := 0; i < maxRows; i++ {
-		booking := bookings[i]
+	for _, booking := range bookings {
 		room := booking.Room
 		if room == "" {
 			room = "(unknown)"
@@ -278,16 +268,15 @@ func printAnnySummary(bookings []AnnyBooking, personalizationName string) {
 		if len([]rune(desc)) > 36 {
 			desc = string([]rune(desc)[:36]) + "..."
 		}
-		fmt.Fprintf(w, "%s\t%s-%s\t%s\t%d min\t%s\n", // nolint
+		reporter.Println(fmt.Sprintf("  %s %s-%s  %-10s %3d min  %s",
 			booking.StartDate.Format("02.01.2006"),
 			booking.StartDate.Format("15:04"),
 			booking.EndDate.Format("15:04"),
 			room,
 			booking.ChargedDuration,
 			desc,
-		)
+		))
 	}
-	_ = w.Flush()
 }
 
 func annyRawToBooking(raw annyBookingRaw) (AnnyBooking, error) {

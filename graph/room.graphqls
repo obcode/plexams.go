@@ -44,6 +44,8 @@ extend type Subscription {
   generateRoomsForSlots: LogLine!
   "Assign rooms to all exams (rooms-for-exams) and stream the output. Recomputes rooms-for-slots first, then writes the planned rooms; no separate rooms-for-slots step needed."
   generateRoomsForExams: LogLine!
+  "Fetch the room bookings from anny.eu and store them (used for the EXaHM room slots). Streams its output."
+  importAnnyBookings: LogLine!
 }
 
 input RoomInput {

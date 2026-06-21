@@ -150,23 +150,15 @@ func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room, reporter R
 
 func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]set.Set[SlotNumber], error) {
 	restrictedSlots := make(map[string]set.Set[SlotNumber])
-	// EXaHM rooms: prefer Anny bookings from DB, fall back to YAML booked entries
+	// EXaHM rooms come from the Anny bookings in the DB (import via `rooms anny`
+	// / importAnnyBookings).
 	ctx := context.Background()
 	bookedEntries, err := p.ExahmRoomsFromAnnyBookings(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get exahm rooms from anny bookings, falling back to booked in YAML")
-		bookedEntries = nil
+		log.Error().Err(err).Msg("cannot get exahm rooms from anny bookings")
+		return nil, err
 	}
-	if len(bookedEntries) == 0 {
-		log.Debug().Msg("no anny bookings found, reading booked entries from YAML")
-		bookedEntries, err = p.ExahmRoomsFromBooked()
-		if err != nil {
-			log.Error().Err(err).Msg("cannot get exahm rooms from booked")
-			return nil, err
-		}
-	} else {
-		log.Debug().Int("count", len(bookedEntries)).Msg("using anny bookings for EXaHM room slots")
-	}
+	log.Debug().Int("count", len(bookedEntries)).Msg("using anny bookings for EXaHM room slots")
 
 	for _, entry := range bookedEntries {
 		reporter.Step(aurora.Sprintf(aurora.Cyan("found booked entry for %s from %s until %s"),

@@ -548,6 +548,7 @@ type ComplexityRoot struct {
 		PrimussExams                  func(childComplexity int) int
 		PrimussExamsForAnCode         func(childComplexity int, ancode int) int
 		RoomRequests                  func(childComplexity int) int
+		RoomRequestsPreview           func(childComplexity int) int
 		Rooms                         func(childComplexity int) int
 		RoomsForSlot                  func(childComplexity int, day int, time int) int
 		RoomsForSlots                 func(childComplexity int) int
@@ -621,6 +622,18 @@ type ComplexityRoot struct {
 		Room     func(childComplexity int) int
 		Slot     func(childComplexity int) int
 		Until    func(childComplexity int) int
+	}
+
+	RoomRequestPreview struct {
+		Day               func(childComplexity int) int
+		Exam              func(childComplexity int) int
+		From              func(childComplexity int) int
+		Room              func(childComplexity int) int
+		Seats             func(childComplexity int) int
+		SimultaneousExams func(childComplexity int) int
+		Slot              func(childComplexity int) int
+		Students          func(childComplexity int) int
+		Until             func(childComplexity int) int
 	}
 
 	RoomWithInvigilator struct {
@@ -948,6 +961,7 @@ type QueryResolver interface {
 	PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedRoom, error)
 	PlannedRoomForStudent(ctx context.Context, ancode int, mtknr string) (*model.PlannedRoom, error)
 	RoomRequests(ctx context.Context) ([]*model.RoomRequest, error)
+	RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
 	Students(ctx context.Context) ([]*model.Student, error)
@@ -3641,6 +3655,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.RoomRequests(childComplexity), true
 
+	case "Query.roomRequestsPreview":
+		if e.complexity.Query.RoomRequestsPreview == nil {
+			break
+		}
+
+		return e.complexity.Query.RoomRequestsPreview(childComplexity), true
+
 	case "Query.rooms":
 		if e.complexity.Query.Rooms == nil {
 			break
@@ -4070,6 +4091,69 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RoomRequest.Until(childComplexity), true
+
+	case "RoomRequestPreview.day":
+		if e.complexity.RoomRequestPreview.Day == nil {
+			break
+		}
+
+		return e.complexity.RoomRequestPreview.Day(childComplexity), true
+
+	case "RoomRequestPreview.exam":
+		if e.complexity.RoomRequestPreview.Exam == nil {
+			break
+		}
+
+		return e.complexity.RoomRequestPreview.Exam(childComplexity), true
+
+	case "RoomRequestPreview.from":
+		if e.complexity.RoomRequestPreview.From == nil {
+			break
+		}
+
+		return e.complexity.RoomRequestPreview.From(childComplexity), true
+
+	case "RoomRequestPreview.room":
+		if e.complexity.RoomRequestPreview.Room == nil {
+			break
+		}
+
+		return e.complexity.RoomRequestPreview.Room(childComplexity), true
+
+	case "RoomRequestPreview.seats":
+		if e.complexity.RoomRequestPreview.Seats == nil {
+			break
+		}
+
+		return e.complexity.RoomRequestPreview.Seats(childComplexity), true
+
+	case "RoomRequestPreview.simultaneousExams":
+		if e.complexity.RoomRequestPreview.SimultaneousExams == nil {
+			break
+		}
+
+		return e.complexity.RoomRequestPreview.SimultaneousExams(childComplexity), true
+
+	case "RoomRequestPreview.slot":
+		if e.complexity.RoomRequestPreview.Slot == nil {
+			break
+		}
+
+		return e.complexity.RoomRequestPreview.Slot(childComplexity), true
+
+	case "RoomRequestPreview.students":
+		if e.complexity.RoomRequestPreview.Students == nil {
+			break
+		}
+
+		return e.complexity.RoomRequestPreview.Students(childComplexity), true
+
+	case "RoomRequestPreview.until":
+		if e.complexity.RoomRequestPreview.Until == nil {
+			break
+		}
+
+		return e.complexity.RoomRequestPreview.Until(childComplexity), true
 
 	case "RoomWithInvigilator.invigilator":
 		if e.complexity.RoomWithInvigilator.Invigilator == nil {
@@ -6031,9 +6115,29 @@ type RoomRequest {
   active: Boolean!
 }
 
+"""
+RoomRequestPreview is one entry of the dry-run room-request generation: a
+management room that would be requested for an exam in a slot. It carries the
+triggering exam and the other (simultaneous) exams in that slot so the result can
+be eyeballed in the GUI. The preview is read-only and changes nothing.
+"""
+type RoomRequestPreview {
+  room: String!
+  day: Int!
+  slot: Int!
+  from: Time!
+  until: Time!
+  students: Int!
+  seats: Int!
+  exam: PlannedExam!
+  simultaneousExams: [PlannedExam!]!
+}
+
 extend type Query {
   "All building-management room requests of the semester."
   roomRequests: [RoomRequest!]!
+  "Dry-run: which management rooms would be requested for which exams (read-only, changes nothing)."
+  roomRequestsPreview: [RoomRequestPreview!]!
 }
 
 extend type Mutation {
@@ -27011,6 +27115,70 @@ func (ec *executionContext) fieldContext_Query_roomRequests(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_roomRequestsPreview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_roomRequestsPreview(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().RoomRequestsPreview(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.RoomRequestPreview)
+	fc.Result = res
+	return ec.marshalNRoomRequestPreview2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestPreviewᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_roomRequestsPreview(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "room":
+				return ec.fieldContext_RoomRequestPreview_room(ctx, field)
+			case "day":
+				return ec.fieldContext_RoomRequestPreview_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_RoomRequestPreview_slot(ctx, field)
+			case "from":
+				return ec.fieldContext_RoomRequestPreview_from(ctx, field)
+			case "until":
+				return ec.fieldContext_RoomRequestPreview_until(ctx, field)
+			case "students":
+				return ec.fieldContext_RoomRequestPreview_students(ctx, field)
+			case "seats":
+				return ec.fieldContext_RoomRequestPreview_seats(ctx, field)
+			case "exam":
+				return ec.fieldContext_RoomRequestPreview_exam(ctx, field)
+			case "simultaneousExams":
+				return ec.fieldContext_RoomRequestPreview_simultaneousExams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoomRequestPreview", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_studentByMtknr(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_studentByMtknr(ctx, field)
 	if err != nil {
@@ -29657,6 +29825,450 @@ func (ec *executionContext) fieldContext_RoomRequest_active(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomRequestPreview_room(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequestPreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomRequestPreview_room(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Room, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomRequestPreview_room(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomRequestPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomRequestPreview_day(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequestPreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomRequestPreview_day(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Day, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomRequestPreview_day(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomRequestPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomRequestPreview_slot(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequestPreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomRequestPreview_slot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomRequestPreview_slot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomRequestPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomRequestPreview_from(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequestPreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomRequestPreview_from(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.From, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomRequestPreview_from(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomRequestPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomRequestPreview_until(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequestPreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomRequestPreview_until(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Until, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomRequestPreview_until(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomRequestPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomRequestPreview_students(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequestPreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomRequestPreview_students(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Students, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomRequestPreview_students(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomRequestPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomRequestPreview_seats(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequestPreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomRequestPreview_seats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomRequestPreview_seats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomRequestPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomRequestPreview_exam(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequestPreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomRequestPreview_exam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exam, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PlannedExam)
+	fc.Result = res
+	return ec.marshalNPlannedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlannedExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomRequestPreview_exam(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomRequestPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "zpaExam":
+				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_PlannedExam_mainExamer(ctx, field)
+			case "primussExams":
+				return ec.fieldContext_PlannedExam_primussExams(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PlannedExam_constraints(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_PlannedExam_conflicts(ctx, field)
+			case "studentRegsCount":
+				return ec.fieldContext_PlannedExam_studentRegsCount(ctx, field)
+			case "ntas":
+				return ec.fieldContext_PlannedExam_ntas(ctx, field)
+			case "maxDuration":
+				return ec.fieldContext_PlannedExam_maxDuration(ctx, field)
+			case "planEntry":
+				return ec.fieldContext_PlannedExam_planEntry(ctx, field)
+			case "plannedRooms":
+				return ec.fieldContext_PlannedExam_plannedRooms(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlannedExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomRequestPreview_simultaneousExams(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequestPreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomRequestPreview_simultaneousExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SimultaneousExams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PlannedExam)
+	fc.Result = res
+	return ec.marshalNPlannedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlannedExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomRequestPreview_simultaneousExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomRequestPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "zpaExam":
+				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_PlannedExam_mainExamer(ctx, field)
+			case "primussExams":
+				return ec.fieldContext_PlannedExam_primussExams(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PlannedExam_constraints(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_PlannedExam_conflicts(ctx, field)
+			case "studentRegsCount":
+				return ec.fieldContext_PlannedExam_studentRegsCount(ctx, field)
+			case "ntas":
+				return ec.fieldContext_PlannedExam_ntas(ctx, field)
+			case "maxDuration":
+				return ec.fieldContext_PlannedExam_maxDuration(ctx, field)
+			case "planEntry":
+				return ec.fieldContext_PlannedExam_planEntry(ctx, field)
+			case "plannedRooms":
+				return ec.fieldContext_PlannedExam_plannedRooms(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlannedExam", field.Name)
 		},
 	}
 	return fc, nil
@@ -44383,6 +44995,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "roomRequestsPreview":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_roomRequestsPreview(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "studentByMtknr":
 			field := field
 
@@ -45062,6 +45696,85 @@ func (ec *executionContext) _RoomRequest(ctx context.Context, sel ast.SelectionS
 			}
 		case "active":
 			out.Values[i] = ec._RoomRequest_active(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var roomRequestPreviewImplementors = []string{"RoomRequestPreview"}
+
+func (ec *executionContext) _RoomRequestPreview(ctx context.Context, sel ast.SelectionSet, obj *model.RoomRequestPreview) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, roomRequestPreviewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RoomRequestPreview")
+		case "room":
+			out.Values[i] = ec._RoomRequestPreview_room(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "day":
+			out.Values[i] = ec._RoomRequestPreview_day(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slot":
+			out.Values[i] = ec._RoomRequestPreview_slot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "from":
+			out.Values[i] = ec._RoomRequestPreview_from(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "until":
+			out.Values[i] = ec._RoomRequestPreview_until(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "students":
+			out.Values[i] = ec._RoomRequestPreview_students(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seats":
+			out.Values[i] = ec._RoomRequestPreview_seats(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "exam":
+			out.Values[i] = ec._RoomRequestPreview_exam(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "simultaneousExams":
+			out.Values[i] = ec._RoomRequestPreview_simultaneousExams(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -48725,6 +49438,60 @@ func (ec *executionContext) marshalNRoomRequest2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._RoomRequest(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRoomRequestPreview2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestPreviewᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomRequestPreview) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRoomRequestPreview2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestPreview(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRoomRequestPreview2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestPreview(ctx context.Context, sel ast.SelectionSet, v *model.RoomRequestPreview) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RoomRequestPreview(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRoomRequestType2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestType(ctx context.Context, v any) (model.RoomRequestType, error) {

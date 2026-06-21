@@ -29,3 +29,8 @@ func (r *mutationResolver) MigrateRoomRequestsFromConfig(ctx context.Context) (i
 func (r *queryResolver) RoomRequests(ctx context.Context) ([]*model.RoomRequest, error) {
 	return r.plexams.RoomRequests(ctx)
 }
+
+// RoomRequestsPreview is the resolver for the roomRequestsPreview field.
+func (r *queryResolver) RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error) {
+	return r.plexams.GenerateRoomRequestsPreview(ctx)
+}

@@ -13,9 +13,29 @@ type RoomRequest {
   active: Boolean!
 }
 
+"""
+RoomRequestPreview is one entry of the dry-run room-request generation: a
+management room that would be requested for an exam in a slot. It carries the
+triggering exam and the other (simultaneous) exams in that slot so the result can
+be eyeballed in the GUI. The preview is read-only and changes nothing.
+"""
+type RoomRequestPreview {
+  room: String!
+  day: Int!
+  slot: Int!
+  from: Time!
+  until: Time!
+  students: Int!
+  seats: Int!
+  exam: PlannedExam!
+  simultaneousExams: [PlannedExam!]!
+}
+
 extend type Query {
   "All building-management room requests of the semester."
   roomRequests: [RoomRequest!]!
+  "Dry-run: which management rooms would be requested for which exams (read-only, changes nothing)."
+  roomRequestsPreview: [RoomRequestPreview!]!
 }
 
 extend type Mutation {

@@ -455,6 +455,22 @@ type RoomRequest struct {
 	Active   bool      `json:"active"`
 }
 
+// RoomRequestPreview is one entry of the dry-run room-request generation: a
+// management room that would be requested for an exam in a slot. It carries the
+// triggering exam and the other (simultaneous) exams in that slot so the result can
+// be eyeballed in the GUI. The preview is read-only and changes nothing.
+type RoomRequestPreview struct {
+	Room              string         `json:"room"`
+	Day               int            `json:"day"`
+	Slot              int            `json:"slot"`
+	From              time.Time      `json:"from"`
+	Until             time.Time      `json:"until"`
+	Students          int            `json:"students"`
+	Seats             int            `json:"seats"`
+	Exam              *PlannedExam   `json:"exam"`
+	SimultaneousExams []*PlannedExam `json:"simultaneousExams"`
+}
+
 type RoomWithInvigilator struct {
 	Name         string         `json:"name"`
 	MaxDuration  int            `json:"maxDuration"`

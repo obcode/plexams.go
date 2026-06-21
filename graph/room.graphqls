@@ -34,6 +34,7 @@ input RoomInput {
   lab: Boolean!
   placesWithSocket: Boolean!
   requestWith: RoomRequestType!
+  requestPriority: Int!
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int
@@ -60,6 +61,8 @@ type Room {
   "needsRequest is derived: true when requestWith is not NONE."
   needsRequest: Boolean!
   requestWith: RoomRequestType!
+  "Lower number = preferred when generating room requests (e.g. R1.006/R1.046 = 1, R1.049 = 2)."
+  requestPriority: Int!
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int

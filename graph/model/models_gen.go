@@ -406,11 +406,13 @@ type Room struct {
 	// needsRequest is derived: true when requestWith is not NONE.
 	NeedsRequest bool            `json:"needsRequest"`
 	RequestWith  RoomRequestType `json:"requestWith"`
-	Exahm        bool            `json:"exahm"`
-	Seb          bool            `json:"seb"`
-	SebSeats     *int            `json:"sebSeats,omitempty"`
-	HmebSeats    *int            `json:"hmebSeats,omitempty"`
-	Deactivated  bool            `json:"deactivated"`
+	// Lower number = preferred when generating room requests (e.g. R1.006/R1.046 = 1, R1.049 = 2).
+	RequestPriority int  `json:"requestPriority"`
+	Exahm           bool `json:"exahm"`
+	Seb             bool `json:"seb"`
+	SebSeats        *int `json:"sebSeats,omitempty"`
+	HmebSeats       *int `json:"hmebSeats,omitempty"`
+	Deactivated     bool `json:"deactivated"`
 }
 
 type RoomAndExam struct {
@@ -436,6 +438,7 @@ type RoomInput struct {
 	Lab              bool            `json:"lab"`
 	PlacesWithSocket bool            `json:"placesWithSocket"`
 	RequestWith      RoomRequestType `json:"requestWith"`
+	RequestPriority  int             `json:"requestPriority"`
 	Exahm            bool            `json:"exahm"`
 	Seb              bool            `json:"seb"`
 	SebSeats         *int            `json:"sebSeats,omitempty"`

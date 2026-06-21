@@ -590,6 +590,7 @@ type ComplexityRoot struct {
 		Name             func(childComplexity int) int
 		NeedsRequest     func(childComplexity int) int
 		PlacesWithSocket func(childComplexity int) int
+		RequestPriority  func(childComplexity int) int
 		RequestWith      func(childComplexity int) int
 		Seats            func(childComplexity int) int
 		Seb              func(childComplexity int) int
@@ -3916,6 +3917,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Room.PlacesWithSocket(childComplexity), true
 
+	case "Room.requestPriority":
+		if e.complexity.Room.RequestPriority == nil {
+			break
+		}
+
+		return e.complexity.Room.RequestPriority(childComplexity), true
+
 	case "Room.requestWith":
 		if e.complexity.Room.RequestWith == nil {
 			break
@@ -5940,6 +5948,7 @@ input RoomInput {
   lab: Boolean!
   placesWithSocket: Boolean!
   requestWith: RoomRequestType!
+  requestPriority: Int!
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int
@@ -5966,6 +5975,8 @@ type Room {
   "needsRequest is derived: true when requestWith is not NONE."
   needsRequest: Boolean!
   requestWith: RoomRequestType!
+  "Lower number = preferred when generating room requests (e.g. R1.006/R1.046 = 1, R1.049 = 2)."
+  requestPriority: Int!
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int
@@ -19399,6 +19410,8 @@ func (ec *executionContext) fieldContext_Mutation_setRoomActive(ctx context.Cont
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "requestWith":
 				return ec.fieldContext_Room_requestWith(ctx, field)
+			case "requestPriority":
+				return ec.fieldContext_Room_requestPriority(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -19480,6 +19493,8 @@ func (ec *executionContext) fieldContext_Mutation_addRoom(ctx context.Context, f
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "requestWith":
 				return ec.fieldContext_Room_requestWith(ctx, field)
+			case "requestPriority":
+				return ec.fieldContext_Room_requestPriority(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -19561,6 +19576,8 @@ func (ec *executionContext) fieldContext_Mutation_updateRoom(ctx context.Context
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "requestWith":
 				return ec.fieldContext_Room_requestWith(ctx, field)
+			case "requestPriority":
+				return ec.fieldContext_Room_requestPriority(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -22130,6 +22147,8 @@ func (ec *executionContext) fieldContext_PlannedRoom_room(_ context.Context, fie
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "requestWith":
 				return ec.fieldContext_Room_requestWith(ctx, field)
+			case "requestPriority":
+				return ec.fieldContext_Room_requestPriority(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -26434,6 +26453,8 @@ func (ec *executionContext) fieldContext_Query_rooms(_ context.Context, field gr
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "requestWith":
 				return ec.fieldContext_Room_requestWith(ctx, field)
+			case "requestPriority":
+				return ec.fieldContext_Room_requestPriority(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -28597,6 +28618,50 @@ func (ec *executionContext) fieldContext_Room_requestWith(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Room_requestPriority(ctx context.Context, field graphql.CollectedField, obj *model.Room) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Room_requestPriority(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestPriority, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Room_requestPriority(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Room",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Room_exahm(ctx context.Context, field graphql.CollectedField, obj *model.Room) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Room_exahm(ctx, field)
 	if err != nil {
@@ -29985,6 +30050,8 @@ func (ec *executionContext) fieldContext_RoomsForSlot_rooms(_ context.Context, f
 				return ec.fieldContext_Room_needsRequest(ctx, field)
 			case "requestWith":
 				return ec.fieldContext_Room_requestWith(ctx, field)
+			case "requestPriority":
+				return ec.fieldContext_Room_requestPriority(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -39888,7 +39955,7 @@ func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "seats", "handicap", "lab", "placesWithSocket", "requestWith", "exahm", "seb", "sebSeats", "hmebSeats"}
+	fieldsInOrder := [...]string{"name", "seats", "handicap", "lab", "placesWithSocket", "requestWith", "requestPriority", "exahm", "seb", "sebSeats", "hmebSeats"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -39937,6 +40004,13 @@ func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any
 				return it, err
 			}
 			it.RequestWith = data
+		case "requestPriority":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestPriority"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestPriority = data
 		case "exahm":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exahm"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -44789,6 +44863,11 @@ func (ec *executionContext) _Room(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "requestWith":
 			out.Values[i] = ec._Room_requestWith(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestPriority":
+			out.Values[i] = ec._Room_requestPriority(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

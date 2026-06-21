@@ -494,6 +494,7 @@ func roomInputToRoom(input model.RoomInput) *model.Room {
 		Lab:              input.Lab,
 		PlacesWithSocket: input.PlacesWithSocket,
 		RequestWith:      input.RequestWith,
+		RequestPriority:  input.RequestPriority,
 		NeedsRequest:     input.RequestWith != model.RoomRequestTypeNone,
 		Exahm:            input.Exahm,
 		Seb:              input.Seb,

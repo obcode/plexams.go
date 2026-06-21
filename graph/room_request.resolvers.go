@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 )
@@ -23,6 +24,21 @@ func (r *mutationResolver) SetRoomRequestActive(ctx context.Context, room string
 // MigrateRoomRequestsFromConfig is the resolver for the migrateRoomRequestsFromConfig field.
 func (r *mutationResolver) MigrateRoomRequestsFromConfig(ctx context.Context) (int, error) {
 	return r.plexams.MigrateRoomRequestsFromConfig(ctx)
+}
+
+// ApplyRoomRequestsPreview is the resolver for the applyRoomRequestsPreview field.
+func (r *mutationResolver) ApplyRoomRequestsPreview(ctx context.Context, force bool) (int, error) {
+	return r.plexams.ApplyRoomRequestsPreview(ctx, force)
+}
+
+// AddRoomRequest is the resolver for the addRoomRequest field.
+func (r *mutationResolver) AddRoomRequest(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error) {
+	return r.plexams.AddRoomRequest(ctx, room, day, slot, from, until)
+}
+
+// UpdateRoomRequestTime is the resolver for the updateRoomRequestTime field.
+func (r *mutationResolver) UpdateRoomRequestTime(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error) {
+	return r.plexams.UpdateRoomRequestTime(ctx, room, day, slot, from, until)
 }
 
 // RoomRequests is the resolver for the roomRequests field.

@@ -45,4 +45,10 @@ extend type Mutation {
   setRoomRequestActive(room: String!, day: Int!, slot: Int!, active: Boolean!): RoomRequest!
   "One-time import of roomConstraints.<room>.reservations from the semester config into the DB. Returns the number imported."
   migrateRoomRequestsFromConfig: Int!
+  "Generate room requests from the current plan and REPLACE all existing ones (one-shot, no merge). Generated requests start active and not approved. Errors if requests already exist unless force is true (force discards them, including approved flags). Returns the number written."
+  applyRoomRequestsPreview(force: Boolean!): Int!
+  "Manually add a single room request (key: room/day/slot). Errors if one already exists. Starts active and not approved."
+  addRoomRequest(room: String!, day: Int!, slot: Int!, from: Time!, until: Time!): RoomRequest!
+  "Change the time range of an existing room request, e.g. extend it for an NTA (key: room/day/slot). Errors if it does not exist."
+  updateRoomRequestTime(room: String!, day: Int!, slot: Int!, from: Time!, until: Time!): RoomRequest!
 }

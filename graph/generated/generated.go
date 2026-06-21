@@ -349,7 +349,9 @@ type ComplexityRoot struct {
 		AddExamToSlot                 func(childComplexity int, day int, time int, ancode int) int
 		AddNta                        func(childComplexity int, input model.NTAInput) int
 		AddRoom                       func(childComplexity int, input model.RoomInput) int
+		AddRoomRequest                func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
 		AddZpaExamToPlan              func(childComplexity int, ancode int) int
+		ApplyRoomRequestsPreview      func(childComplexity int, force bool) int
 		ClearEmailAttachments         func(childComplexity int, kind string) int
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
@@ -374,6 +376,7 @@ type ComplexityRoot struct {
 		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
 		UpdateNta                     func(childComplexity int, input model.NTAInput) int
 		UpdateRoom                    func(childComplexity int, input model.RoomInput) int
+		UpdateRoomRequestTime         func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
 		ZpaExamsToPlan                func(childComplexity int, input []int) int
 	}
 
@@ -897,6 +900,9 @@ type MutationResolver interface {
 	SetRoomRequestApproved(ctx context.Context, room string, day int, slot int, approved bool) (*model.RoomRequest, error)
 	SetRoomRequestActive(ctx context.Context, room string, day int, slot int, active bool) (*model.RoomRequest, error)
 	MigrateRoomRequestsFromConfig(ctx context.Context) (int, error)
+	ApplyRoomRequestsPreview(ctx context.Context, force bool) (int, error)
+	AddRoomRequest(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
+	UpdateRoomRequestTime(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
 	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
@@ -2383,6 +2389,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.AddRoom(childComplexity, args["input"].(model.RoomInput)), true
 
+	case "Mutation.addRoomRequest":
+		if e.complexity.Mutation.AddRoomRequest == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addRoomRequest_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddRoomRequest(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["from"].(time.Time), args["until"].(time.Time)), true
+
 	case "Mutation.addZpaExamToPlan":
 		if e.complexity.Mutation.AddZpaExamToPlan == nil {
 			break
@@ -2394,6 +2412,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.AddZpaExamToPlan(childComplexity, args["ancode"].(int)), true
+
+	case "Mutation.applyRoomRequestsPreview":
+		if e.complexity.Mutation.ApplyRoomRequestsPreview == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_applyRoomRequestsPreview_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ApplyRoomRequestsPreview(childComplexity, args["force"].(bool)), true
 
 	case "Mutation.clearEmailAttachments":
 		if e.complexity.Mutation.ClearEmailAttachments == nil {
@@ -2672,6 +2702,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateRoom(childComplexity, args["input"].(model.RoomInput)), true
+
+	case "Mutation.updateRoomRequestTime":
+		if e.complexity.Mutation.UpdateRoomRequestTime == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateRoomRequestTime_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateRoomRequestTime(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["from"].(time.Time), args["until"].(time.Time)), true
 
 	case "Mutation.zpaExamsToPlan":
 		if e.complexity.Mutation.ZpaExamsToPlan == nil {
@@ -6147,6 +6189,12 @@ extend type Mutation {
   setRoomRequestActive(room: String!, day: Int!, slot: Int!, active: Boolean!): RoomRequest!
   "One-time import of roomConstraints.<room>.reservations from the semester config into the DB. Returns the number imported."
   migrateRoomRequestsFromConfig: Int!
+  "Generate room requests from the current plan and REPLACE all existing ones (one-shot, no merge). Generated requests start active and not approved. Errors if requests already exist unless force is true (force discards them, including approved flags). Returns the number written."
+  applyRoomRequestsPreview(force: Boolean!): Int!
+  "Manually add a single room request (key: room/day/slot). Errors if one already exists. Starts active and not approved."
+  addRoomRequest(room: String!, day: Int!, slot: Int!, from: Time!, until: Time!): RoomRequest!
+  "Change the time range of an existing room request, e.g. extend it for an NTA (key: room/day/slot). Errors if it does not exist."
+  updateRoomRequestTime(room: String!, day: Int!, slot: Int!, from: Time!, until: Time!): RoomRequest!
 }
 `, BuiltIn: false},
 	{Name: "../semesterconfig.graphqls", Input: `type Query {
@@ -6693,6 +6741,126 @@ func (ec *executionContext) field_Mutation_addNTA_argsInput(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_addRoomRequest_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_addRoomRequest_argsRoom(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["room"] = arg0
+	arg1, err := ec.field_Mutation_addRoomRequest_argsDay(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["day"] = arg1
+	arg2, err := ec.field_Mutation_addRoomRequest_argsSlot(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["slot"] = arg2
+	arg3, err := ec.field_Mutation_addRoomRequest_argsFrom(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["from"] = arg3
+	arg4, err := ec.field_Mutation_addRoomRequest_argsUntil(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["until"] = arg4
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_addRoomRequest_argsRoom(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["room"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("room"))
+	if tmp, ok := rawArgs["room"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addRoomRequest_argsDay(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["day"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+	if tmp, ok := rawArgs["day"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addRoomRequest_argsSlot(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["slot"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slot"))
+	if tmp, ok := rawArgs["slot"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addRoomRequest_argsFrom(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (time.Time, error) {
+	if _, ok := rawArgs["from"]; !ok {
+		var zeroVal time.Time
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+	if tmp, ok := rawArgs["from"]; ok {
+		return ec.unmarshalNTime2timeᚐTime(ctx, tmp)
+	}
+
+	var zeroVal time.Time
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addRoomRequest_argsUntil(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (time.Time, error) {
+	if _, ok := rawArgs["until"]; !ok {
+		var zeroVal time.Time
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("until"))
+	if tmp, ok := rawArgs["until"]; ok {
+		return ec.unmarshalNTime2timeᚐTime(ctx, tmp)
+	}
+
+	var zeroVal time.Time
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_addRoom_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -6746,6 +6914,34 @@ func (ec *executionContext) field_Mutation_addZpaExamToPlan_argsAncode(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_applyRoomRequestsPreview_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_applyRoomRequestsPreview_argsForce(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["force"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_applyRoomRequestsPreview_argsForce(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["force"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("force"))
+	if tmp, ok := rawArgs["force"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
 	return zeroVal, nil
 }
 
@@ -7771,6 +7967,126 @@ func (ec *executionContext) field_Mutation_updateNTA_argsInput(
 	}
 
 	var zeroVal model.NTAInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateRoomRequestTime_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_updateRoomRequestTime_argsRoom(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["room"] = arg0
+	arg1, err := ec.field_Mutation_updateRoomRequestTime_argsDay(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["day"] = arg1
+	arg2, err := ec.field_Mutation_updateRoomRequestTime_argsSlot(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["slot"] = arg2
+	arg3, err := ec.field_Mutation_updateRoomRequestTime_argsFrom(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["from"] = arg3
+	arg4, err := ec.field_Mutation_updateRoomRequestTime_argsUntil(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["until"] = arg4
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_updateRoomRequestTime_argsRoom(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["room"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("room"))
+	if tmp, ok := rawArgs["room"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateRoomRequestTime_argsDay(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["day"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+	if tmp, ok := rawArgs["day"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateRoomRequestTime_argsSlot(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["slot"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slot"))
+	if tmp, ok := rawArgs["slot"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateRoomRequestTime_argsFrom(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (time.Time, error) {
+	if _, ok := rawArgs["from"]; !ok {
+		var zeroVal time.Time
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+	if tmp, ok := rawArgs["from"]; ok {
+		return ec.unmarshalNTime2timeᚐTime(ctx, tmp)
+	}
+
+	var zeroVal time.Time
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateRoomRequestTime_argsUntil(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (time.Time, error) {
+	if _, ok := rawArgs["until"]; !ok {
+		var zeroVal time.Time
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("until"))
+	if tmp, ok := rawArgs["until"]; ok {
+		return ec.unmarshalNTime2timeᚐTime(ctx, tmp)
+	}
+
+	var zeroVal time.Time
 	return zeroVal, nil
 }
 
@@ -19936,6 +20252,203 @@ func (ec *executionContext) fieldContext_Mutation_migrateRoomRequestsFromConfig(
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_applyRoomRequestsPreview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_applyRoomRequestsPreview(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ApplyRoomRequestsPreview(rctx, fc.Args["force"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_applyRoomRequestsPreview(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_applyRoomRequestsPreview_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addRoomRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addRoomRequest(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddRoomRequest(rctx, fc.Args["room"].(string), fc.Args["day"].(int), fc.Args["slot"].(int), fc.Args["from"].(time.Time), fc.Args["until"].(time.Time))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.RoomRequest)
+	fc.Result = res
+	return ec.marshalNRoomRequest2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addRoomRequest(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "room":
+				return ec.fieldContext_RoomRequest_room(ctx, field)
+			case "day":
+				return ec.fieldContext_RoomRequest_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_RoomRequest_slot(ctx, field)
+			case "from":
+				return ec.fieldContext_RoomRequest_from(ctx, field)
+			case "until":
+				return ec.fieldContext_RoomRequest_until(ctx, field)
+			case "approved":
+				return ec.fieldContext_RoomRequest_approved(ctx, field)
+			case "active":
+				return ec.fieldContext_RoomRequest_active(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoomRequest", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addRoomRequest_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateRoomRequestTime(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateRoomRequestTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateRoomRequestTime(rctx, fc.Args["room"].(string), fc.Args["day"].(int), fc.Args["slot"].(int), fc.Args["from"].(time.Time), fc.Args["until"].(time.Time))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.RoomRequest)
+	fc.Result = res
+	return ec.marshalNRoomRequest2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateRoomRequestTime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "room":
+				return ec.fieldContext_RoomRequest_room(ctx, field)
+			case "day":
+				return ec.fieldContext_RoomRequest_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_RoomRequest_slot(ctx, field)
+			case "from":
+				return ec.fieldContext_RoomRequest_from(ctx, field)
+			case "until":
+				return ec.fieldContext_RoomRequest_until(ctx, field)
+			case "approved":
+				return ec.fieldContext_RoomRequest_approved(ctx, field)
+			case "active":
+				return ec.fieldContext_RoomRequest_active(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoomRequest", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateRoomRequestTime_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -42940,6 +43453,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "migrateRoomRequestsFromConfig":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_migrateRoomRequestsFromConfig(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "applyRoomRequestsPreview":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_applyRoomRequestsPreview(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addRoomRequest":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addRoomRequest(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateRoomRequestTime":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateRoomRequestTime(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

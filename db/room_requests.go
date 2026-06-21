@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -89,4 +90,31 @@ func (db *DB) SetRoomRequestApproved(ctx context.Context, room string, day, slot
 // no such request exists.
 func (db *DB) SetRoomRequestActive(ctx context.Context, room string, day, slot int, active bool) (*model.RoomRequest, error) {
 	return db.setRoomRequestField(ctx, room, day, slot, "active", active)
+}
+
+// AddRoomRequest inserts a single room request.
+func (db *DB) AddRoomRequest(ctx context.Context, request *model.RoomRequest) error {
+	collection := db.getCollectionSemester(collectionRoomRequests)
+	if _, err := collection.InsertOne(ctx, request); err != nil {
+		log.Error().Err(err).Str("room", request.Room).Msg("cannot insert room request")
+		return err
+	}
+	return nil
+}
+
+// UpdateRoomRequestTime changes the time range of a room request (key:
+// room/day/slot). Returns nil if no such request exists.
+func (db *DB) UpdateRoomRequestTime(ctx context.Context, room string, day, slot int, from, until time.Time) (*model.RoomRequest, error) {
+	collection := db.getCollectionSemester(collectionRoomRequests)
+	res, err := collection.UpdateOne(ctx,
+		bson.M{"room": room, "day": day, "slot": slot},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "from", Value: from}, {Key: "until", Value: until}}}})
+	if err != nil {
+		log.Error().Err(err).Str("room", room).Msg("cannot update room request time")
+		return nil, err
+	}
+	if res.MatchedCount == 0 {
+		return nil, nil
+	}
+	return db.GetRoomRequest(ctx, room, day, slot)
 }

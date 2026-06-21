@@ -72,6 +72,22 @@ func (db *DB) ReplaceRoom(ctx context.Context, room *model.Room) (*model.Room, e
 	return db.RoomByName(ctx, room.Name)
 }
 
+// SetRoomRequestWith sets the requestWith and (derived) needsRequest fields of
+// the room identified by name.
+func (db *DB) SetRoomRequestWith(ctx context.Context, name, requestWith string, needsRequest bool) error {
+	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	_, err := collection.UpdateOne(ctx,
+		bson.M{"name": name},
+		bson.D{{Key: "$set", Value: bson.D{
+			{Key: "requestwith", Value: requestWith},
+			{Key: "needsrequest", Value: needsRequest},
+		}}})
+	if err != nil {
+		log.Error().Err(err).Str("room", name).Msg("cannot set room requestWith")
+	}
+	return err
+}
+
 // SetRoomDeactivated sets the deactivated flag of the room identified by name.
 // Returns an error if no room with that name exists.
 func (db *DB) SetRoomDeactivated(ctx context.Context, name string, deactivated bool) (*model.Room, error) {

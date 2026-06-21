@@ -403,12 +403,14 @@ type Room struct {
 	Handicap         bool   `json:"handicap"`
 	Lab              bool   `json:"lab"`
 	PlacesWithSocket bool   `json:"placesWithSocket"`
-	NeedsRequest     bool   `json:"needsRequest"`
-	Exahm            bool   `json:"exahm"`
-	Seb              bool   `json:"seb"`
-	SebSeats         *int   `json:"sebSeats,omitempty"`
-	HmebSeats        *int   `json:"hmebSeats,omitempty"`
-	Deactivated      bool   `json:"deactivated"`
+	// needsRequest is derived: true when requestWith is not NONE.
+	NeedsRequest bool            `json:"needsRequest"`
+	RequestWith  RoomRequestType `json:"requestWith"`
+	Exahm        bool            `json:"exahm"`
+	Seb          bool            `json:"seb"`
+	SebSeats     *int            `json:"sebSeats,omitempty"`
+	HmebSeats    *int            `json:"hmebSeats,omitempty"`
+	Deactivated  bool            `json:"deactivated"`
 }
 
 type RoomAndExam struct {
@@ -428,16 +430,16 @@ type RoomConstraints struct {
 }
 
 type RoomInput struct {
-	Name             string `json:"name"`
-	Seats            int    `json:"seats"`
-	Handicap         bool   `json:"handicap"`
-	Lab              bool   `json:"lab"`
-	PlacesWithSocket bool   `json:"placesWithSocket"`
-	NeedsRequest     bool   `json:"needsRequest"`
-	Exahm            bool   `json:"exahm"`
-	Seb              bool   `json:"seb"`
-	SebSeats         *int   `json:"sebSeats,omitempty"`
-	HmebSeats        *int   `json:"hmebSeats,omitempty"`
+	Name             string          `json:"name"`
+	Seats            int             `json:"seats"`
+	Handicap         bool            `json:"handicap"`
+	Lab              bool            `json:"lab"`
+	PlacesWithSocket bool            `json:"placesWithSocket"`
+	RequestWith      RoomRequestType `json:"requestWith"`
+	Exahm            bool            `json:"exahm"`
+	Seb              bool            `json:"seb"`
+	SebSeats         *int            `json:"sebSeats,omitempty"`
+	HmebSeats        *int            `json:"hmebSeats,omitempty"`
 }
 
 type RoomWithInvigilator struct {
@@ -627,6 +629,66 @@ func (e *LogLevel) UnmarshalJSON(b []byte) error {
 }
 
 func (e LogLevel) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// RoomRequestType says how a room that needs requesting must be requested:
+// NONE = no request needed, ANNY = via the Anny website (T-building), MANAGEMENT =
+// via the building management (Gebäudemanagement).
+type RoomRequestType string
+
+const (
+	RoomRequestTypeNone       RoomRequestType = "NONE"
+	RoomRequestTypeAnny       RoomRequestType = "ANNY"
+	RoomRequestTypeManagement RoomRequestType = "MANAGEMENT"
+)
+
+var AllRoomRequestType = []RoomRequestType{
+	RoomRequestTypeNone,
+	RoomRequestTypeAnny,
+	RoomRequestTypeManagement,
+}
+
+func (e RoomRequestType) IsValid() bool {
+	switch e {
+	case RoomRequestTypeNone, RoomRequestTypeAnny, RoomRequestTypeManagement:
+		return true
+	}
+	return false
+}
+
+func (e RoomRequestType) String() string {
+	return string(e)
+}
+
+func (e *RoomRequestType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RoomRequestType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RoomRequestType", str)
+	}
+	return nil
+}
+
+func (e RoomRequestType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RoomRequestType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RoomRequestType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

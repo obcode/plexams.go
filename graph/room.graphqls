@@ -23,6 +23,8 @@ extend type Mutation {
   addRoom(input: RoomInput!): Room!
   "Update an existing room (key: name). Errors if it does not exist; keeps the active state."
   updateRoom(input: RoomInput!): Room!
+  "One-time backfill: derive requestWith for all rooms (ANNY for request-rooms with a T name, MANAGEMENT for other request-rooms, NONE otherwise). Returns the number of rooms updated."
+  migrateRoomsRequestWith: Int!
 }
 
 input RoomInput {
@@ -31,11 +33,22 @@ input RoomInput {
   handicap: Boolean!
   lab: Boolean!
   placesWithSocket: Boolean!
-  needsRequest: Boolean!
+  requestWith: RoomRequestType!
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int
   hmebSeats: Int
+}
+
+"""
+RoomRequestType says how a room that needs requesting must be requested:
+NONE = no request needed, ANNY = via the Anny website (T-building), MANAGEMENT =
+via the building management (Gebäudemanagement).
+"""
+enum RoomRequestType {
+  NONE
+  ANNY
+  MANAGEMENT
 }
 
 type Room {
@@ -44,7 +57,9 @@ type Room {
   handicap: Boolean!
   lab: Boolean!
   placesWithSocket: Boolean!
+  "needsRequest is derived: true when requestWith is not NONE."
   needsRequest: Boolean!
+  requestWith: RoomRequestType!
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int

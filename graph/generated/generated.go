@@ -354,6 +354,7 @@ type ComplexityRoot struct {
 		Exahm                     func(childComplexity int, ancode int) int
 		ExcludeDays               func(childComplexity int, ancode int, days []string) int
 		Lab                       func(childComplexity int, ancode int) int
+		MigrateRoomsRequestWith   func(childComplexity int) int
 		NotPlannedByMe            func(childComplexity int, ancode int) int
 		Online                    func(childComplexity int, ancode int) int
 		PlacesWithSockets         func(childComplexity int, ancode int) int
@@ -585,6 +586,7 @@ type ComplexityRoot struct {
 		Name             func(childComplexity int) int
 		NeedsRequest     func(childComplexity int) int
 		PlacesWithSocket func(childComplexity int) int
+		RequestWith      func(childComplexity int) int
 		Seats            func(childComplexity int) int
 		Seb              func(childComplexity int) int
 		SebSeats         func(childComplexity int) int
@@ -863,6 +865,7 @@ type MutationResolver interface {
 	SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error)
 	AddRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
 	UpdateRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
+	MigrateRoomsRequestWith(ctx context.Context) (int, error)
 	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
@@ -2407,6 +2410,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Lab(childComplexity, args["ancode"].(int)), true
 
+	case "Mutation.migrateRoomsRequestWith":
+		if e.complexity.Mutation.MigrateRoomsRequestWith == nil {
+			break
+		}
+
+		return e.complexity.Mutation.MigrateRoomsRequestWith(childComplexity), true
+
 	case "Mutation.notPlannedByMe":
 		if e.complexity.Mutation.NotPlannedByMe == nil {
 			break
@@ -3849,6 +3859,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Room.PlacesWithSocket(childComplexity), true
+
+	case "Room.requestWith":
+		if e.complexity.Room.RequestWith == nil {
+			break
+		}
+
+		return e.complexity.Room.RequestWith(childComplexity), true
 
 	case "Room.seats":
 		if e.complexity.Room.Seats == nil {
@@ -5807,6 +5824,8 @@ extend type Mutation {
   addRoom(input: RoomInput!): Room!
   "Update an existing room (key: name). Errors if it does not exist; keeps the active state."
   updateRoom(input: RoomInput!): Room!
+  "One-time backfill: derive requestWith for all rooms (ANNY for request-rooms with a T name, MANAGEMENT for other request-rooms, NONE otherwise). Returns the number of rooms updated."
+  migrateRoomsRequestWith: Int!
 }
 
 input RoomInput {
@@ -5815,11 +5834,22 @@ input RoomInput {
   handicap: Boolean!
   lab: Boolean!
   placesWithSocket: Boolean!
-  needsRequest: Boolean!
+  requestWith: RoomRequestType!
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int
   hmebSeats: Int
+}
+
+"""
+RoomRequestType says how a room that needs requesting must be requested:
+NONE = no request needed, ANNY = via the Anny website (T-building), MANAGEMENT =
+via the building management (Gebäudemanagement).
+"""
+enum RoomRequestType {
+  NONE
+  ANNY
+  MANAGEMENT
 }
 
 type Room {
@@ -5828,7 +5858,9 @@ type Room {
   handicap: Boolean!
   lab: Boolean!
   placesWithSocket: Boolean!
+  "needsRequest is derived: true when requestWith is not NONE."
   needsRequest: Boolean!
+  requestWith: RoomRequestType!
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int
@@ -19037,6 +19069,8 @@ func (ec *executionContext) fieldContext_Mutation_setRoomActive(ctx context.Cont
 				return ec.fieldContext_Room_placesWithSocket(ctx, field)
 			case "needsRequest":
 				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "requestWith":
+				return ec.fieldContext_Room_requestWith(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -19116,6 +19150,8 @@ func (ec *executionContext) fieldContext_Mutation_addRoom(ctx context.Context, f
 				return ec.fieldContext_Room_placesWithSocket(ctx, field)
 			case "needsRequest":
 				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "requestWith":
+				return ec.fieldContext_Room_requestWith(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -19195,6 +19231,8 @@ func (ec *executionContext) fieldContext_Mutation_updateRoom(ctx context.Context
 				return ec.fieldContext_Room_placesWithSocket(ctx, field)
 			case "needsRequest":
 				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "requestWith":
+				return ec.fieldContext_Room_requestWith(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -19219,6 +19257,50 @@ func (ec *executionContext) fieldContext_Mutation_updateRoom(ctx context.Context
 	if fc.Args, err = ec.field_Mutation_updateRoom_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_migrateRoomsRequestWith(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_migrateRoomsRequestWith(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().MigrateRoomsRequestWith(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_migrateRoomsRequestWith(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -21532,6 +21614,8 @@ func (ec *executionContext) fieldContext_PlannedRoom_room(_ context.Context, fie
 				return ec.fieldContext_Room_placesWithSocket(ctx, field)
 			case "needsRequest":
 				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "requestWith":
+				return ec.fieldContext_Room_requestWith(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -25834,6 +25918,8 @@ func (ec *executionContext) fieldContext_Query_rooms(_ context.Context, field gr
 				return ec.fieldContext_Room_placesWithSocket(ctx, field)
 			case "needsRequest":
 				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "requestWith":
+				return ec.fieldContext_Room_requestWith(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -27893,6 +27979,50 @@ func (ec *executionContext) fieldContext_Room_needsRequest(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Room_requestWith(ctx context.Context, field graphql.CollectedField, obj *model.Room) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Room_requestWith(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RequestWith, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.RoomRequestType)
+	fc.Result = res
+	return ec.marshalNRoomRequestType2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestType(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Room_requestWith(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Room",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RoomRequestType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Room_exahm(ctx context.Context, field graphql.CollectedField, obj *model.Room) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Room_exahm(ctx, field)
 	if err != nil {
@@ -28971,6 +29101,8 @@ func (ec *executionContext) fieldContext_RoomsForSlot_rooms(_ context.Context, f
 				return ec.fieldContext_Room_placesWithSocket(ctx, field)
 			case "needsRequest":
 				return ec.fieldContext_Room_needsRequest(ctx, field)
+			case "requestWith":
+				return ec.fieldContext_Room_requestWith(ctx, field)
 			case "exahm":
 				return ec.fieldContext_Room_exahm(ctx, field)
 			case "seb":
@@ -38874,7 +39006,7 @@ func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "seats", "handicap", "lab", "placesWithSocket", "needsRequest", "exahm", "seb", "sebSeats", "hmebSeats"}
+	fieldsInOrder := [...]string{"name", "seats", "handicap", "lab", "placesWithSocket", "requestWith", "exahm", "seb", "sebSeats", "hmebSeats"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38916,13 +39048,13 @@ func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any
 				return it, err
 			}
 			it.PlacesWithSocket = data
-		case "needsRequest":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("needsRequest"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+		case "requestWith":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestWith"))
+			data, err := ec.unmarshalNRoomRequestType2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestType(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NeedsRequest = data
+			it.RequestWith = data
 		case "exahm":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exahm"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -41212,6 +41344,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateRoom":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateRoom(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "migrateRoomsRequestWith":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_migrateRoomsRequestWith(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -43720,6 +43859,11 @@ func (ec *executionContext) _Room(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "needsRequest":
 			out.Values[i] = ec._Room_needsRequest(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestWith":
+			out.Values[i] = ec._Room_requestWith(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -47450,6 +47594,16 @@ func (ec *executionContext) marshalNRoomAndExam2ᚖgithubᚗcomᚋobcodeᚋplexa
 func (ec *executionContext) unmarshalNRoomInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInput(ctx context.Context, v any) (model.RoomInput, error) {
 	res, err := ec.unmarshalInputRoomInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNRoomRequestType2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestType(ctx context.Context, v any) (model.RoomRequestType, error) {
+	var res model.RoomRequestType
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRoomRequestType2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestType(ctx context.Context, sel ast.SelectionSet, v model.RoomRequestType) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNRoomWithInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomWithInvigilatorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomWithInvigilator) graphql.Marshaler {

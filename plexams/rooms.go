@@ -414,7 +414,38 @@ func (p *Plexams) GetReservations() (map[string][]TimeRange, error) {
 // }
 
 func (p *Plexams) Rooms(ctx context.Context) ([]*model.Room, error) {
-	return p.dbClient.Rooms(ctx)
+	rooms, err := p.dbClient.Rooms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, room := range rooms {
+		normalizeRoomRequestWith(room)
+	}
+	return rooms, nil
+}
+
+// requestWithForRoom derives how a room must be requested from its needsRequest
+// flag and its name: T-building rooms go via Anny, all other request-rooms via
+// the building management.
+func requestWithForRoom(room *model.Room) model.RoomRequestType {
+	if !room.NeedsRequest {
+		return model.RoomRequestTypeNone
+	}
+	if strings.HasPrefix(room.Name, "T") {
+		return model.RoomRequestTypeAnny
+	}
+	return model.RoomRequestTypeManagement
+}
+
+// normalizeRoomRequestWith fills requestWith for rooms whose document predates
+// the field (so reads are robust before the one-time backfill ran).
+func normalizeRoomRequestWith(room *model.Room) {
+	if room == nil {
+		return
+	}
+	if room.RequestWith == "" {
+		room.RequestWith = requestWithForRoom(room)
+	}
 }
 
 // SetRoomActive activates/deactivates a room (key: name). A deactivated room is
@@ -431,12 +462,35 @@ func roomInputToRoom(input model.RoomInput) *model.Room {
 		Handicap:         input.Handicap,
 		Lab:              input.Lab,
 		PlacesWithSocket: input.PlacesWithSocket,
-		NeedsRequest:     input.NeedsRequest,
+		RequestWith:      input.RequestWith,
+		NeedsRequest:     input.RequestWith != model.RoomRequestTypeNone,
 		Exahm:            input.Exahm,
 		Seb:              input.Seb,
 		SebSeats:         input.SebSeats,
 		HmebSeats:        input.HmebSeats,
 	}
+}
+
+// MigrateRoomsRequestWith is a one-time backfill: it derives requestWith (and the
+// matching needsRequest) for every room and persists it. Returns the number of
+// rooms updated. Idempotent.
+func (p *Plexams) MigrateRoomsRequestWith(ctx context.Context) (int, error) {
+	rooms, err := p.dbClient.Rooms(ctx)
+	if err != nil {
+		return 0, err
+	}
+	updated := 0
+	for _, room := range rooms {
+		want := requestWithForRoom(room)
+		if room.RequestWith == want {
+			continue
+		}
+		if err := p.dbClient.SetRoomRequestWith(ctx, room.Name, string(want), want != model.RoomRequestTypeNone); err != nil {
+			return updated, err
+		}
+		updated++
+	}
+	return updated, nil
 }
 
 // AddRoom creates a new room (key: name). Errors if a room with that name
@@ -636,5 +690,10 @@ func (p *Plexams) PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error
 }
 
 func (p *Plexams) RoomByName(ctx context.Context, roomName string) (*model.Room, error) {
-	return p.dbClient.RoomByName(ctx, roomName)
+	room, err := p.dbClient.RoomByName(ctx, roomName)
+	if err != nil {
+		return nil, err
+	}
+	normalizeRoomRequestWith(room)
+	return room, nil
 }

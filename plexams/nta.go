@@ -2,13 +2,42 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
 
 func (p *Plexams) AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error) {
+	existing, err := p.dbClient.Nta(ctx, input.Mtknr)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, fmt.Errorf("nta with mtknr %s already exists", input.Mtknr)
+	}
 	return p.dbClient.AddNta(ctx, model.NtaInputToNta(input))
+}
+
+// UpdateNta updates the editable fields of an existing NTA (identified by its
+// mtknr), preserving the server-managed fields exams, deactivated and
+// lastSemester. It errors if no NTA with that mtknr exists.
+func (p *Plexams) UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error) {
+	existing, err := p.dbClient.Nta(ctx, input.Mtknr)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, fmt.Errorf("no nta with mtknr %s", input.Mtknr)
+	}
+
+	updated := model.NtaInputToNta(input)
+	// keep server-managed fields
+	updated.Exams = existing.Exams
+	updated.Deactivated = existing.Deactivated
+	updated.LastSemester = existing.LastSemester
+
+	return p.dbClient.ReplaceNta(ctx, updated)
 }
 
 func (p *Plexams) Ntas(ctx context.Context) ([]*model.NTA, error) {

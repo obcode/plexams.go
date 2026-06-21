@@ -7,6 +7,8 @@ extend type Query {
 
 extend type Mutation {
   addNTA(input: NTAInput!): NTA!
+  "Update the editable fields of an existing NTA (key: mtknr). Errors if it does not exist."
+  updateNTA(input: NTAInput!): NTA!
 }
 
 type NTAExam {

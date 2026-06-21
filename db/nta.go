@@ -22,6 +22,20 @@ func (db *DB) AddNta(ctx context.Context, nta *model.NTA) (*model.NTA, error) {
 	return db.Nta(ctx, nta.Mtknr)
 }
 
+// ReplaceNta replaces the NTA document identified by its mtknr. It does not
+// upsert: if no document matches, nothing is changed.
+func (db *DB) ReplaceNta(ctx context.Context, nta *model.NTA) (*model.NTA, error) {
+	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+
+	_, err := collection.ReplaceOne(ctx, bson.D{{Key: "mtknr", Value: nta.Mtknr}}, nta)
+	if err != nil {
+		log.Error().Err(err).Interface("nta", nta).Msg("cannot replace nta in DB")
+		return nil, err
+	}
+
+	return db.Nta(ctx, nta.Mtknr)
+}
+
 func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTA, error) {
 	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
 

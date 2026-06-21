@@ -188,6 +188,50 @@ PLANNEDROOM:
 	return v.finish(), nil
 }
 
+// ValidateRoomsBlocked warns when a room that is blocked for a slot is still
+// planned in that slot (the block only takes effect on the next rooms-for-exams
+// run, so this surfaces the inconsistency until then).
+func (p *Plexams) ValidateRoomsBlocked(reporter Reporter) (*model.ValidationReport, error) {
+	ctx := context.Background()
+	v := newValidation(reporter, "rooms-blocked", "validating blocked rooms against planned rooms")
+
+	blocks, err := p.dbClient.BlockedRooms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get blocked rooms")
+		return nil, err
+	}
+	if len(blocks) == 0 {
+		return v.finish(), nil
+	}
+
+	plannedRooms, err := p.PlannedRooms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planned rooms")
+		return nil, err
+	}
+
+	type slotRoom struct {
+		room string
+		day  int
+		slot int
+	}
+	planned := make(map[slotRoom]bool)
+	for _, pr := range plannedRooms {
+		planned[slotRoom{pr.RoomName, pr.Day, pr.Slot}] = true
+	}
+
+	for _, b := range blocks {
+		v.step("checking block %s in slot (%d/%d)", b.Room, b.Day, b.Slot)
+		if planned[slotRoom{b.Room, b.Day, b.Slot}] {
+			v.warnf(ref{Room: ptr(b.Room), Day: ptr(b.Day), Slot: ptr(b.Slot)},
+				"room %s is blocked in slot (%d/%d) but still planned there; regenerate rooms for exams",
+				b.Room, b.Day, b.Slot)
+		}
+	}
+
+	return v.finish(), nil
+}
+
 func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
 	v := newValidation(reporter, "rooms-per-exam", "validating rooms per exam")

@@ -56,6 +56,11 @@ func (r *subscriptionResolver) ValidateRoomsTimeDistance(ctx context.Context) (<
 	return r.runValidation(ctx, "rooms-time-distance", r.plexams.ValidateRoomsTimeDistance), nil
 }
 
+// ValidateRoomsBlocked is the resolver for the validateRoomsBlocked field.
+func (r *subscriptionResolver) ValidateRoomsBlocked(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "rooms-blocked", r.plexams.ValidateRoomsBlocked), nil
+}
+
 // ValidateZPADateTimes is the resolver for the validateZPADateTimes field.
 func (r *subscriptionResolver) ValidateZPADateTimes(ctx context.Context) (<-chan *model.LogLine, error) {
 	return r.runValidation(ctx, "zpa-date-times", r.plexams.ValidateZPADateTimes), nil

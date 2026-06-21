@@ -48,6 +48,7 @@ var (
 						func() error { _, err := plexams.ValidateRoomsNeedRequest(plx.NewConsoleReporter()); return err },
 						func() error { _, err := plexams.ValidateRoomsPerExam(plx.NewConsoleReporter()); return err },
 						func() error { _, err := plexams.ValidateRoomsTimeDistance(plx.NewConsoleReporter()); return err },
+						func() error { _, err := plexams.ValidateRoomsBlocked(plx.NewConsoleReporter()); return err },
 					}...)
 
 				case "conflicts":
@@ -81,6 +82,7 @@ var (
 							func() error { _, err := plexams.ValidateRoomsNeedRequest(plx.NewConsoleReporter()); return err },
 							func() error { _, err := plexams.ValidateRoomsPerExam(plx.NewConsoleReporter()); return err },
 							func() error { _, err := plexams.ValidateRoomsTimeDistance(plx.NewConsoleReporter()); return err },
+							func() error { _, err := plexams.ValidateRoomsBlocked(plx.NewConsoleReporter()); return err },
 						}...)
 
 				case "zpa":

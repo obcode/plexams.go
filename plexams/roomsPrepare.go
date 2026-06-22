@@ -750,6 +750,19 @@ func (p *Plexams) assignPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg, exam *
 				studentCountInRoom = len(exam.NormalRegsMtknr)
 			}
 
+			// An optional exact seat count from the pre-planning is honored: exactly
+			// that many students go into the room (capped by the free seats and the
+			// remaining students; a warning is emitted if it cannot be fully met).
+			if prePlannedRoom.Seats != nil {
+				if *prePlannedRoom.Seats > studentCountInRoom {
+					reporter.Warnf(aurora.Sprintf(
+						aurora.Red("pre-planned %d seats in %s for exam %d, but only %d possible (free seats / remaining students)"),
+						*prePlannedRoom.Seats, room.Name, exam.Exam.Ancode, studentCountInRoom))
+				} else {
+					studentCountInRoom = *prePlannedRoom.Seats
+				}
+			}
+
 			// A shared room may already be full (taken by another exam) when this
 			// exam gets to it; don't create an empty room entry then (reserve rooms
 			// are intentional placeholders and are kept).

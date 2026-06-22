@@ -20,6 +20,8 @@ extend type Mutation {
     roomName: String!
     reserve: Boolean!
     mtknr: String
+    "Optional exact number of students for this room; taken verbatim when generating."
+    seats: Int
   ): Boolean!
   "Remove a pre-planned room from an exam (key: ancode/roomName/mtknr). mtknr null = the room for normal students."
   removePrePlannedRoom(ancode: Int!, roomName: String!, mtknr: String): Boolean!
@@ -131,6 +133,8 @@ type PrePlannedRoom {
   roomName: String!
   mtknr: String
   reserve: Boolean!
+  "Optional exact number of students planned for this room; taken verbatim when generating."
+  seats: Int
 }
 
 "A room blocked for one slot (not usable for planning there)."

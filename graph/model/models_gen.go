@@ -401,6 +401,8 @@ type PrePlannedRoom struct {
 	RoomName string  `json:"roomName"`
 	Mtknr    *string `json:"mtknr,omitempty"`
 	Reserve  bool    `json:"reserve"`
+	// Optional exact number of students planned for this room; taken verbatim when generating.
+	Seats *int `json:"seats,omitempty"`
 }
 
 type PrimussExamAncode struct {

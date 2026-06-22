@@ -376,7 +376,7 @@ type ComplexityRoot struct {
 		PossibleDays                  func(childComplexity int, ancode int, days []string) int
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
-		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
+		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
 		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
 		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
@@ -519,6 +519,7 @@ type ComplexityRoot struct {
 		Mtknr    func(childComplexity int) int
 		Reserve  func(childComplexity int) int
 		RoomName func(childComplexity int) int
+		Seats    func(childComplexity int) int
 	}
 
 	PrimussExam struct {
@@ -979,7 +980,7 @@ type MutationResolver interface {
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
-	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string) (bool, error)
+	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string, seats *int) (bool, error)
 	RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error)
 	BlockRoomForSlot(ctx context.Context, room string, day int, slot int, reason *string) (*model.BlockedRoom, error)
 	UnblockRoomForSlot(ctx context.Context, room string, day int, slot int) (bool, error)
@@ -2757,7 +2758,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string)), true
+		return e.complexity.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string), args["seats"].(*int)), true
 
 	case "Mutation.removeNtaRoomAloneWaiver":
 		if e.complexity.Mutation.RemoveNtaRoomAloneWaiver == nil {
@@ -3532,6 +3533,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PrePlannedRoom.RoomName(childComplexity), true
+
+	case "PrePlannedRoom.seats":
+		if e.complexity.PrePlannedRoom.Seats == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedRoom.Seats(childComplexity), true
 
 	case "PrimussExam.ancode":
 		if e.complexity.PrimussExam.AnCode == nil {
@@ -6778,6 +6786,8 @@ extend type Mutation {
     roomName: String!
     reserve: Boolean!
     mtknr: String
+    "Optional exact number of students for this room; taken verbatim when generating."
+    seats: Int
   ): Boolean!
   "Remove a pre-planned room from an exam (key: ancode/roomName/mtknr). mtknr null = the room for normal students."
   removePrePlannedRoom(ancode: Int!, roomName: String!, mtknr: String): Boolean!
@@ -6889,6 +6899,8 @@ type PrePlannedRoom {
   roomName: String!
   mtknr: String
   reserve: Boolean!
+  "Optional exact number of students planned for this room; taken verbatim when generating."
+  seats: Int
 }
 
 "A room blocked for one slot (not usable for planning there)."
@@ -8442,6 +8454,11 @@ func (ec *executionContext) field_Mutation_prePlanRoom_args(ctx context.Context,
 		return nil, err
 	}
 	args["mtknr"] = arg3
+	arg4, err := ec.field_Mutation_prePlanRoom_argsSeats(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["seats"] = arg4
 	return args, nil
 }
 func (ec *executionContext) field_Mutation_prePlanRoom_argsAncode(
@@ -8513,6 +8530,24 @@ func (ec *executionContext) field_Mutation_prePlanRoom_argsMtknr(
 	}
 
 	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_prePlanRoom_argsSeats(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["seats"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("seats"))
+	if tmp, ok := rawArgs["seats"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
 	return zeroVal, nil
 }
 
@@ -22093,7 +22128,7 @@ func (ec *executionContext) _Mutation_prePlanRoom(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().PrePlanRoom(rctx, fc.Args["ancode"].(int), fc.Args["roomName"].(string), fc.Args["reserve"].(bool), fc.Args["mtknr"].(*string))
+		return ec.resolvers.Mutation().PrePlanRoom(rctx, fc.Args["ancode"].(int), fc.Args["roomName"].(string), fc.Args["reserve"].(bool), fc.Args["mtknr"].(*string), fc.Args["seats"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -26993,6 +27028,47 @@ func (ec *executionContext) fieldContext_PrePlannedRoom_reserve(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _PrePlannedRoom_seats(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedRoom_seats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedRoom_seats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrimussExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrimussExam_ancode(ctx, field)
 	if err != nil {
@@ -30525,6 +30601,8 @@ func (ec *executionContext) fieldContext_Query_prePlannedRooms(_ context.Context
 				return ec.fieldContext_PrePlannedRoom_mtknr(ctx, field)
 			case "reserve":
 				return ec.fieldContext_PrePlannedRoom_reserve(ctx, field)
+			case "seats":
+				return ec.fieldContext_PrePlannedRoom_seats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PrePlannedRoom", field.Name)
 		},
@@ -49746,6 +49824,8 @@ func (ec *executionContext) _PrePlannedRoom(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "seats":
+			out.Values[i] = ec._PrePlannedRoom_seats(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

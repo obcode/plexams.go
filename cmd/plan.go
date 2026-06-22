@@ -131,7 +131,11 @@ var (
 						mtknr = &args[3]
 					}
 				}
-				success, err := plexams.PreAddRoomToExam(context.Background(), ancode, roomName, mtknr, reserve)
+				var seats *int
+				if prePlanSeats > 0 {
+					seats = &prePlanSeats
+				}
+				success, err := plexams.PreAddRoomToExam(context.Background(), ancode, roomName, mtknr, reserve, seats)
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 					os.Exit(1)
@@ -289,10 +293,12 @@ var (
 			}
 		},
 	}
-	force bool
+	force        bool
+	prePlanSeats int
 )
 
 func init() {
 	rootCmd.AddCommand(planCmd)
 	planCmd.Flags().BoolVarP(&force, "force", "f", false, "force the operation")
+	planCmd.Flags().IntVar(&prePlanSeats, "seats", 0, "pre-plan-room: exact number of students for the room (0 = fill as usual)")
 }

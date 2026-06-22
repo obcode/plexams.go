@@ -13,8 +13,8 @@ import (
 )
 
 // PrePlanRoom is the resolver for the prePlanRoom field.
-func (r *mutationResolver) PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string) (bool, error) {
-	return r.plexams.PreAddRoomToExam(ctx, ancode, roomName, mtknr, reserve)
+func (r *mutationResolver) PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string, seats *int) (bool, error) {
+	return r.plexams.PreAddRoomToExam(ctx, ancode, roomName, mtknr, reserve, seats)
 }
 
 // RemovePrePlannedRoom is the resolver for the removePrePlannedRoom field.

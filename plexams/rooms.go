@@ -511,7 +511,7 @@ func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) (*model.R
 	return p.dbClient.RoomsForSlot(ctx, day, time)
 }
 
-func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName string, mtknr *string, reserve bool) (bool, error) {
+func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName string, mtknr *string, reserve bool, seats *int) (bool, error) {
 	room, err := p.dbClient.RoomByName(ctx, roomName)
 	if err != nil {
 		log.Error().Err(err).Str("room", roomName).Msg("cannot get room from name")
@@ -534,6 +534,16 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 			return false, fmt.Errorf("student with mtknr %s not found", *mtknr)
 		}
 		reserve = false // room for one student is NTA and never reserve
+		seats = nil     // an NTA room is for exactly one student
+	}
+
+	if seats != nil {
+		if *seats < 1 {
+			return false, fmt.Errorf("seats must be at least 1")
+		}
+		if *seats > room.Seats {
+			return false, fmt.Errorf("room %s has only %d seats, cannot plan %d", roomName, room.Seats, *seats)
+		}
 	}
 
 	return p.dbClient.AddPrePlannedRoomToExam(ctx, &model.PrePlannedRoom{
@@ -541,6 +551,7 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 		RoomName: roomName,
 		Mtknr:    mtknr,
 		Reserve:  reserve,
+		Seats:    seats,
 	})
 }
 

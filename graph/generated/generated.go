@@ -260,6 +260,7 @@ type ComplexityRoot struct {
 
 	InvigilationSlot struct {
 		Reserve               func(childComplexity int) int
+		ReservePrePlanned     func(childComplexity int) int
 		RoomsWithInvigilators func(childComplexity int) int
 	}
 
@@ -679,6 +680,7 @@ type ComplexityRoot struct {
 		Invigilator  func(childComplexity int) int
 		MaxDuration  func(childComplexity int) int
 		Name         func(childComplexity int) int
+		PrePlanned   func(childComplexity int) int
 		RoomAndExams func(childComplexity int) int
 		StudentCount func(childComplexity int) int
 	}
@@ -2024,6 +2026,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.InvigilationSlot.Reserve(childComplexity), true
+
+	case "InvigilationSlot.reservePrePlanned":
+		if e.complexity.InvigilationSlot.ReservePrePlanned == nil {
+			break
+		}
+
+		return e.complexity.InvigilationSlot.ReservePrePlanned(childComplexity), true
 
 	case "InvigilationSlot.roomsWithInvigilators":
 		if e.complexity.InvigilationSlot.RoomsWithInvigilators == nil {
@@ -4490,6 +4499,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RoomWithInvigilator.Name(childComplexity), true
 
+	case "RoomWithInvigilator.prePlanned":
+		if e.complexity.RoomWithInvigilator.PrePlanned == nil {
+			break
+		}
+
+		return e.complexity.RoomWithInvigilator.PrePlanned(childComplexity), true
+
 	case "RoomWithInvigilator.roomAndExams":
 		if e.complexity.RoomWithInvigilator.RoomAndExams == nil {
 			break
@@ -6151,6 +6167,8 @@ type InvigilationTodos {
 
 type InvigilationSlot {
   reserve: Teacher
+  "true if the reserve invigilation in this slot is pre-planned (fixed)."
+  reservePrePlanned: Boolean!
   roomsWithInvigilators: [RoomWithInvigilator!]!
 }
 
@@ -6230,6 +6248,8 @@ type RoomWithInvigilator {
   studentCount: Int!
   roomAndExams: [RoomAndExam!]!
   invigilator: Teacher
+  "true if the invigilation for this room in this slot is pre-planned (fixed)."
+  prePlanned: Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../nta.graphqls", Input: `extend type Query {
@@ -17358,6 +17378,50 @@ func (ec *executionContext) fieldContext_InvigilationSlot_reserve(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _InvigilationSlot_reservePrePlanned(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationSlot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilationSlot_reservePrePlanned(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ReservePrePlanned, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilationSlot_reservePrePlanned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilationSlot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _InvigilationSlot_roomsWithInvigilators(ctx context.Context, field graphql.CollectedField, obj *model.InvigilationSlot) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_InvigilationSlot_roomsWithInvigilators(ctx, field)
 	if err != nil {
@@ -17407,6 +17471,8 @@ func (ec *executionContext) fieldContext_InvigilationSlot_roomsWithInvigilators(
 				return ec.fieldContext_RoomWithInvigilator_roomAndExams(ctx, field)
 			case "invigilator":
 				return ec.fieldContext_RoomWithInvigilator_invigilator(ctx, field)
+			case "prePlanned":
+				return ec.fieldContext_RoomWithInvigilator_prePlanned(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RoomWithInvigilator", field.Name)
 		},
@@ -28220,6 +28286,8 @@ func (ec *executionContext) fieldContext_Query_roomsWithInvigilationsForSlot(ctx
 			switch field.Name {
 			case "reserve":
 				return ec.fieldContext_InvigilationSlot_reserve(ctx, field)
+			case "reservePrePlanned":
+				return ec.fieldContext_InvigilationSlot_reservePrePlanned(ctx, field)
 			case "roomsWithInvigilators":
 				return ec.fieldContext_InvigilationSlot_roomsWithInvigilators(ctx, field)
 			}
@@ -33570,6 +33638,50 @@ func (ec *executionContext) fieldContext_RoomWithInvigilator_invigilator(_ conte
 				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithInvigilator_prePlanned(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithInvigilator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithInvigilator_prePlanned(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrePlanned, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithInvigilator_prePlanned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithInvigilator",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -46170,6 +46282,11 @@ func (ec *executionContext) _InvigilationSlot(ctx context.Context, sel ast.Selec
 			out.Values[i] = graphql.MarshalString("InvigilationSlot")
 		case "reserve":
 			out.Values[i] = ec._InvigilationSlot_reserve(ctx, field, obj)
+		case "reservePrePlanned":
+			out.Values[i] = ec._InvigilationSlot_reservePrePlanned(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "roomsWithInvigilators":
 			out.Values[i] = ec._InvigilationSlot_roomsWithInvigilators(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -50164,6 +50281,11 @@ func (ec *executionContext) _RoomWithInvigilator(ctx context.Context, sel ast.Se
 			}
 		case "invigilator":
 			out.Values[i] = ec._RoomWithInvigilator_invigilator(ctx, field, obj)
+		case "prePlanned":
+			out.Values[i] = ec._RoomWithInvigilator_prePlanned(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

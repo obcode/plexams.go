@@ -201,7 +201,9 @@ type InvigilationReport struct {
 }
 
 type InvigilationSlot struct {
-	Reserve               *Teacher               `json:"reserve,omitempty"`
+	Reserve *Teacher `json:"reserve,omitempty"`
+	// true if the reserve invigilation in this slot is pre-planned (fixed).
+	ReservePrePlanned     bool                   `json:"reservePrePlanned"`
 	RoomsWithInvigilators []*RoomWithInvigilator `json:"roomsWithInvigilators"`
 }
 
@@ -510,6 +512,8 @@ type RoomWithInvigilator struct {
 	StudentCount int            `json:"studentCount"`
 	RoomAndExams []*RoomAndExam `json:"roomAndExams"`
 	Invigilator  *Teacher       `json:"invigilator,omitempty"`
+	// true if the invigilation for this room in this slot is pre-planned (fixed).
+	PrePlanned bool `json:"prePlanned"`
 }
 
 type Semester struct {

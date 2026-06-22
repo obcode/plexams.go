@@ -67,6 +67,8 @@ type InvigilationTodos {
 
 type InvigilationSlot {
   reserve: Teacher
+  "true if the reserve invigilation in this slot is pre-planned (fixed)."
+  reservePrePlanned: Boolean!
   roomsWithInvigilators: [RoomWithInvigilator!]!
 }
 
@@ -146,4 +148,6 @@ type RoomWithInvigilator {
   studentCount: Int!
   roomAndExams: [RoomAndExam!]!
   invigilator: Teacher
+  "true if the invigilation for this room in this slot is pre-planned (fixed)."
+  prePlanned: Boolean!
 }

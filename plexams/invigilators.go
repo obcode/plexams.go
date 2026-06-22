@@ -918,8 +918,28 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 		return nil, err
 	}
 
+	// which rooms (and the reserve) are pre-planned in this slot
+	prePlannedInvigilations, err := p.dbClient.PrePlannedInvigilations(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get pre-planned invigilations")
+		return nil, err
+	}
+	prePlannedRooms := make(map[string]bool)
+	reservePrePlanned := false
+	for _, ppi := range prePlannedInvigilations {
+		if ppi.Day != day || ppi.Slot != time {
+			continue
+		}
+		if ppi.RoomName == nil {
+			reservePrePlanned = true
+		} else {
+			prePlannedRooms[*ppi.RoomName] = true
+		}
+	}
+
 	slot := &model.InvigilationSlot{
 		Reserve:               reserve,
+		ReservePrePlanned:     reservePrePlanned,
 		RoomsWithInvigilators: []*model.RoomWithInvigilator{},
 	}
 
@@ -973,6 +993,7 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 			StudentCount: studentCount,
 			RoomAndExams: roomAndExams,
 			Invigilator:  invigilator,
+			PrePlanned:   prePlannedRooms[name],
 		})
 	}
 	return slot, nil

@@ -1,7 +1,4 @@
 {{ define "content" }}
-<p>[Antworten bitte nicht via E-Mail,
-sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA</a>]</p>
-
 <p>Liebe Prüfende,</p>
 
 <p>der Ansturm auf die Räume im T-Bau (nur relevant für EXaHM- und SEB-Prüfungen) wird immer größer.</p>
@@ -30,3 +27,5 @@ erstellen Sie bitte <b>baldmöglichst</b> ein Ticket für die Prüfungsplanung u
 Prüfungsplanung der FK07
 </p>
 {{ end }}
+
+{{ define "jira" }}{{ template "jiraCallout" . }}{{ end }}

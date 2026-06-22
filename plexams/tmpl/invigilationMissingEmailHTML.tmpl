@@ -1,7 +1,4 @@
 {{ define "content" }}
-<p>[Antworten bitte nicht via E-Mail,
-sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA</a>]</p>
-
 <p>Hallo {{ .Teacher.Fullname }},</p>
 
 <p>für die Planung der Prüfungsaufsichten im {{ .Semester }} fehlen uns von Ihnen noch die
@@ -26,3 +23,5 @@ Anforderungen bitte ASAP nach, bevor wir die Aufsichten einplanen.</p>
 Prüfungsplanung der FK07
 </p>
 {{ end }}
+
+{{ define "jira" }}{{ template "jiraCallout" . }}{{ end }}

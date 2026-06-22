@@ -1,7 +1,4 @@
 {{ define "content" }}
-<p>[Antworten bitte nicht via E-Mail,
-sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA</a>]</p>
-
 <p>Liebe Prüfende,</p>
 
 <p>als Prüfungsplanung der FK07 planen wir alle Prüfungen, in denen der Eintrag
@@ -19,8 +16,8 @@ die Zeichenkette <b>schriftlich</b> enthält, im Prüfungszeitraum vom {{ .FromF
 <p>Sollten Sie eine <b>praktische</b> Prüfung im Prüfungszeitraum durchführen wollen,
 teilen Sie uns das bitte <b>explizit</b> mit. Die Prüfung werden wir dann auch planen.</p>
 <p>Bitte teilen Sie uns alle Besonderheiten mit, die wir bei der Planung Ihrer Prüfung beachten müssen.</p>
-<p>Öffnen Sie dazu ein JIRA-Ticket unter <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">https://jira.cc.hm.edu/servicedesk/customer/portal/13</a>.
-Verwenden Sie als Ticket-Art, je nach Anforderung, "Anforderungen an die Raumplanung" oder "allgemeine Anforderungen an Prüfungen".</p>
+<p>Öffnen Sie dazu bitte ein JIRA-Ticket (siehe unten) und verwenden Sie als Ticket-Art,
+je nach Anforderung, "Anforderungen an die Raumplanung" oder "allgemeine Anforderungen an Prüfungen".</p>
 <p>Zu den Besonderheiten/Constraints gehören beispielsweise:</p>
 <ul>
 <li>Prüfung X muss gleichzeitig mit Prüfung Y stattfinden</li>
@@ -41,3 +38,5 @@ und müssen nicht in einem weiteren Ticket gemeldet werden. Es ist nur wichtig, 
 Prüfungsplanung der FK07
 </p>
 {{ end }}
+
+{{ define "jira" }}{{ template "jiraCallout" . }}{{ end }}

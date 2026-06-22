@@ -1,7 +1,4 @@
 {{ define "content" }}
-<p>[Antworten bitte nicht via E-Mail,
-sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA</a>]</p>
-
 <p>Liebes Kollegium,</p>
 
 <p>In Ihrem Profil auf dem ZPA unter  <a href='https://zpa.cs.hm.edu/teacher/profile/'>https://zpa.cs.hm.edu/teacher/profile/</a>
@@ -54,3 +51,5 @@ wobei die anderen angegebenen Zeiten (Beisitz bei mündlichen Prüfungen, ...) a
 Prüfungsplanung der FK07
 </p>
 {{ end }}
+
+{{ define "jira" }}{{ template "jiraCallout" . }}{{ end }}

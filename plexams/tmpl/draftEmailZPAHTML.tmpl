@@ -1,7 +1,4 @@
 {{ define "content" }}
-<p>[Antworten bitte nicht via E-Mail,
-sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13/create/249">JIRA</a>]</p>
-
 <p>Liebe Prüfende,</p>
 
 <p>Sie finden ab sofort im ZPA unter <a href="https://zpa.cs.hm.edu/teacher/exam_plan/">https://zpa.cs.hm.edu/teacher/exam_plan/</a>
@@ -25,3 +22,5 @@ bereits ab dem {{ .FromDate }} Prüfungen ansetzen.</p>
 Prüfungsplanung der FK07
 </p>
 {{ end }}
+
+{{ define "jira" }}{{ template "jiraCallout" . }}{{ end }}

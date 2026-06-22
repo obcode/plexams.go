@@ -1,7 +1,4 @@
 {{ define "content" }}
-<p>[Antworten bitte nicht via E-Mail,
-sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA</a>]</p>
-
 <p>Liebe Prüfende, liebe Fachschaft,</p>
 
 <p>Sie finden ab sofort im ZPA unter <a href="https://zpa.cs.hm.edu/public/exam_plan/">https://zpa.cs.hm.edu/public/exam_plan/</a>
@@ -17,3 +14,5 @@ die Planung für die Prüfungen im Prüfungszeitraum.
 Prüfungsplanung der FK07
 </p>
 {{ end }}
+
+{{ define "jira" }}{{ template "jiraCallout" . }}{{ end }}

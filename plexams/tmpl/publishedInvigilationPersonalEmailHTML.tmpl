@@ -1,7 +1,4 @@
 {{ define "content" }}
-<p>[Antworten bitte nicht via E-Mail,
-sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA</a>]</p>
-
 <p>Hallo {{ .Teacher.Fullname }},</p>
 
 <p>wir haben die Aufsichtenplanung abgeschlossen und ins ZPA gepusht.</p>
@@ -43,3 +40,5 @@ LBA selbst Aufsicht macht, tragen Sie das bitte dort ein.</p>
 Prüfungsplanung der FK07
 </p>
 {{ end }}
+
+{{ define "jira" }}{{ template "jiraCallout" . }}{{ end }}

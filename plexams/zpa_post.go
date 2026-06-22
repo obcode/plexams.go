@@ -350,9 +350,17 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 	if upload {
 		// post to ZPA
 		reporter.Step(fmt.Sprintf("posting %d exams to ZPA", len(exams)))
-		status, body, err := p.zpa.client.PostExams(exams)
-		if err != nil {
-			log.Error().Err(err).Msg("error while posting exams on zpa")
+		status, body, postErr := p.zpa.client.PostExams(exams)
+		if postErr != nil {
+			// a rejected upload (non-2xx) or a transport error: surface ZPA's
+			// response as an error so it is not mistaken for success — both in the
+			// CLI and, via the streaming reporter, in the GUI.
+			log.Error().Err(postErr).Str("status", status).Msg("error while posting exams on zpa")
+			if msg := strings.TrimSpace(string(body)); msg != "" {
+				reporter.Warnf("ZPA response: %s", msg)
+			}
+			reporter.StopProgressFail(fmt.Sprintf("upload to ZPA failed (status %s)", status))
+			return exams, fmt.Errorf("upload to ZPA failed: %w", postErr)
 		}
 
 		log.Info().Str("status", status).Msg("exams posted to zpa")

@@ -447,3 +447,18 @@ func (p *Plexams) setRoomInfo() {
 func (p *Plexams) GetRoomInfo(roomName string) *model.Room {
 	return p.roomInfo[roomName]
 }
+
+// roomInfoMapFromDB reads all rooms fresh from the DB into a name→room map.
+// Validation uses this rather than the in-memory roomInfo map (built once at
+// startup), so it sees rooms added or changed at runtime.
+func (p *Plexams) roomInfoMapFromDB(ctx context.Context) (map[string]*model.Room, error) {
+	rooms, err := p.dbClient.Rooms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	roomInfos := make(map[string]*model.Room, len(rooms))
+	for _, room := range rooms {
+		roomInfos[room.Name] = room
+	}
+	return roomInfos, nil
+}

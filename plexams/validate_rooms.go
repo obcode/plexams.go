@@ -19,6 +19,12 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 
 	slots := p.semesterConfig.Slots
 
+	roomInfos, err := p.roomInfoMapFromDB(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get rooms")
+		return nil, err
+	}
+
 	for _, slot := range slots {
 
 		plannedExams, err := p.dbClient.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
@@ -83,17 +89,23 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 		seats := make(map[string]roomSeats)
 
 		for _, plannedRoom := range plannedRooms {
-			entry, ok := seats[plannedRoom.RoomName]
-
 			// TODO: Remove this hack
 			if strings.HasPrefix(plannedRoom.RoomName, "ONLINE") {
 				continue
 			}
 
-			if !ok {
-				seats[plannedRoom.RoomName] = roomSeats{seatsPlanned: len(plannedRoom.StudentsInRoom), seats: p.GetRoomInfo(plannedRoom.RoomName).Seats}
-			} else {
-				seats[plannedRoom.RoomName] = roomSeats{seatsPlanned: len(plannedRoom.StudentsInRoom) + entry.seatsPlanned, seats: p.GetRoomInfo(plannedRoom.RoomName).Seats}
+			roomInfo := roomInfos[plannedRoom.RoomName]
+			if roomInfo == nil {
+				v.warnf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
+					"No room info found for planned room %s in slot (%d/%d); cannot check seats",
+					plannedRoom.RoomName, slot.DayNumber, slot.SlotNumber)
+				continue
+			}
+
+			entry := seats[plannedRoom.RoomName]
+			seats[plannedRoom.RoomName] = roomSeats{
+				seatsPlanned: len(plannedRoom.StudentsInRoom) + entry.seatsPlanned,
+				seats:        roomInfo.Seats,
 			}
 		}
 
@@ -147,10 +159,23 @@ func (p *Plexams) ValidateRoomsNeedRequest(reporter Reporter) (*model.Validation
 		log.Error().Err(err).Msg("cannot get all planned rooms")
 	}
 
+	roomInfos, err := p.roomInfoMapFromDB(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get rooms")
+		return nil, err
+	}
+
 PLANNEDROOM:
 	for _, plannedRoom := range plannedRooms {
 
-		if !p.roomInfo[plannedRoom.RoomName].NeedsRequest {
+		roomInfo := roomInfos[plannedRoom.RoomName]
+		if roomInfo == nil {
+			v.warnf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(plannedRoom.Day), Slot: ptr(plannedRoom.Slot)},
+				"No room info found for planned room %s in slot (%d/%d); cannot check whether it needs a request",
+				plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot)
+			continue
+		}
+		if !roomInfo.NeedsRequest {
 			log.Debug().Str("room", plannedRoom.RoomName).Msg("room needs no request")
 			continue
 		}
@@ -281,6 +306,12 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 		log.Error().Err(err).Msg("cannot get exams in plan")
 	}
 
+	roomInfos, err := p.roomInfoMapFromDB(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get rooms")
+		return nil, err
+	}
+
 	for _, exam := range exams {
 		if exam.PlanEntry == nil {
 			continue
@@ -337,45 +368,36 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 					}
 				}
 			}
-			if exam.Constraints.RoomConstraints.Exahm {
+			checkRoomConstraint := func(name, label string, ok func(*model.Room) bool) {
 				for _, room := range exam.PlannedRooms {
-					if !p.GetRoomInfo(room.RoomName).Exahm {
-						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
-							"Is not an exahm room %s for exam %d. %s (%s) in slot (%d,%d)",
+					roomInfo := roomInfos[room.RoomName]
+					if roomInfo == nil {
+						v.warnf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
+							"No room info found for room %s for exam %d. %s (%s) in slot (%d,%d); cannot check %s",
 							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber, name)
+						continue
+					}
+					if !ok(roomInfo) {
+						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
+							"%s %s for exam %d. %s (%s) in slot (%d,%d)",
+							label, room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
 							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 					}
 				}
+			}
+			if exam.Constraints.RoomConstraints.Exahm {
+				checkRoomConstraint("exahm", "Is not an exahm room", func(r *model.Room) bool { return r.Exahm })
 			}
 			if exam.Constraints.RoomConstraints.Seb {
-				for _, room := range exam.PlannedRooms {
-					if !p.GetRoomInfo(room.RoomName).Seb {
-						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
-							"Is not a seb room %s for exam %d. %s (%s) in slot (%d,%d)",
-							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-					}
-				}
+				checkRoomConstraint("seb", "Is not a seb room", func(r *model.Room) bool { return r.Seb })
 			}
 			if exam.Constraints.RoomConstraints.Lab {
-				for _, room := range exam.PlannedRooms {
-					if !p.GetRoomInfo(room.RoomName).Lab {
-						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
-							"Is not a lab %s for exam %d. %s (%s) in slot (%d,%d)",
-							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-					}
-				}
+				checkRoomConstraint("lab", "Is not a lab", func(r *model.Room) bool { return r.Lab })
 			}
 			if exam.Constraints.RoomConstraints.PlacesWithSocket {
-				for _, room := range exam.PlannedRooms {
-					if !p.GetRoomInfo(room.RoomName).PlacesWithSocket && !p.GetRoomInfo(room.RoomName).Lab {
-						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
-							"Is not a room with places with sockets %s for exam %d. %s (%s) in slot (%d,%d)",
-							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-					}
-				}
+				checkRoomConstraint("places with sockets", "Is not a room with places with sockets",
+					func(r *model.Room) bool { return r.PlacesWithSocket || r.Lab })
 			}
 		}
 

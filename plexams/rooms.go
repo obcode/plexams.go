@@ -475,7 +475,14 @@ func (p *Plexams) AddRoom(ctx context.Context, input model.RoomInput) (*model.Ro
 	if exists {
 		return nil, fmt.Errorf("room %s already exists", input.Name)
 	}
-	return p.dbClient.AddRoom(ctx, roomInputToRoom(input))
+	room, err := p.dbClient.AddRoom(ctx, roomInputToRoom(input))
+	if err != nil {
+		return nil, err
+	}
+	// keep the in-memory room-info map (built once at startup) in sync, so the
+	// room is known to planning/validation without a server restart.
+	p.roomInfo[room.Name] = room
+	return room, nil
 }
 
 // UpdateRoom updates an existing room (key: name), keeping its active state.
@@ -487,7 +494,13 @@ func (p *Plexams) UpdateRoom(ctx context.Context, input model.RoomInput) (*model
 	}
 	updated := roomInputToRoom(input)
 	updated.Deactivated = existing.Deactivated // toggle owns the active state
-	return p.dbClient.ReplaceRoom(ctx, updated)
+	room, err := p.dbClient.ReplaceRoom(ctx, updated)
+	if err != nil {
+		return nil, err
+	}
+	// keep the in-memory room-info map (built once at startup) in sync.
+	p.roomInfo[room.Name] = room
+	return room, nil
 }
 
 func (p *Plexams) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) {

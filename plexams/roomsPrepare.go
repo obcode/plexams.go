@@ -35,22 +35,31 @@ func (p *Plexams) PrepareRoomForExams(ctx context.Context, reporter Reporter) er
 
 	reporter.Println(aurora.Sprintf(aurora.Cyan("preparing rooms for exams")))
 	examRooms := make([]*model.PlannedRoom, 0)
+	unplaced := make([]*model.UnplacedExam, 0)
 	for _, slot := range p.semesterConfig.Slots {
 		prepareRoomsCfg.slot = slot
-		rooms, err := p.prepareRoomsForExamsInSlot(ctx, prepareRoomsCfg, reporter)
+		rooms, slotUnplaced, err := p.prepareRoomsForExamsInSlot(ctx, prepareRoomsCfg, reporter)
 		if err != nil {
 			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).
 				Msg("error while preparing rooms for exams in slot")
 			continue
 		}
 		examRooms = append(examRooms, rooms...)
+		unplaced = append(unplaced, slotUnplaced...)
 	}
 
 	if err := p.dbClient.ReplacePlannedRooms(ctx, examRooms); err != nil {
 		return err
 	}
+	if err := p.dbClient.ReplaceUnplacedExams(ctx, unplaced); err != nil {
+		return err
+	}
 	p.markCondition(ctx, condRoomsGenerated)
-	reporter.StopProgress(fmt.Sprintf("%d planned rooms written", len(examRooms)))
+	if len(unplaced) > 0 {
+		reporter.StopProgress(fmt.Sprintf("%d planned rooms written, %d exam(s) with unplaced students", len(examRooms), len(unplaced)))
+	} else {
+		reporter.StopProgress(fmt.Sprintf("%d planned rooms written", len(examRooms)))
+	}
 	return nil
 }
 
@@ -64,11 +73,15 @@ func (p *Plexams) ResetRoomsForExams(ctx context.Context) error {
 	if err := p.dbClient.ResetPlannedRooms(ctx); err != nil {
 		return err
 	}
+	if err := p.dbClient.ResetUnplacedExams(ctx); err != nil {
+		return err
+	}
 	p.unmarkCondition(ctx, condRoomsGenerated)
 	return nil
 }
 
-func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCfg *prepareRoomsCfg, reporter Reporter) ([]*model.PlannedRoom, error) {
+func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCfg *prepareRoomsCfg, reporter Reporter) ([]*model.PlannedRoom, []*model.UnplacedExam, error) {
+	unplaced := make([]*model.UnplacedExam, 0)
 	reporter.Step(aurora.Sprintf(aurora.Black("preparing data for slot (%d/%d)"),
 		aurora.Yellow(prepareRoomsCfg.slot.DayNumber),
 		aurora.Yellow(prepareRoomsCfg.slot.SlotNumber),
@@ -80,12 +93,12 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 	if err != nil {
 		log.Error().Err(err).Int("day", prepareRoomsCfg.slot.DayNumber).Int("time", prepareRoomsCfg.slot.SlotNumber).
 			Msg("error while trying to find exams in slot")
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(examsInSlot) == 0 {
 		prepareRoomsCfg.roomsNotUsableInSlot = set.NewSet[string]()
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	reporter.Println(aurora.Sprintf(aurora.Blue("slot (%d/%d): start planning"),
@@ -101,7 +114,7 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 	if err != nil {
 		log.Error().Err(err).Int("day", prepareRoomsCfg.slot.DayNumber).Int("time", prepareRoomsCfg.slot.SlotNumber).
 			Msg("error while trying to get rooms for slot")
-		return nil, err
+		return nil, nil, err
 	}
 
 	prepareRoomsCfg.plannedRoomsWithFreeSeats = make(map[string]*plannedRoomsWithFreeSeats)
@@ -135,11 +148,23 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 		if room == nil {
 			room = findRoom(prepareRoomsCfg, exam)
 			if room == nil {
-				log.Error().Int("ancode", exam.Exam.Ancode).Msg("no room found for exam")
-				room = &model.Room{
-					Name:  "No Room",
-					Seats: 1000,
-				}
+				// No real room left for this exam's remaining normal students:
+				// record them as unplaced (instead of a "No Room" placeholder)
+				// and re-queue the exam with no normal regs so its NTAs are still
+				// handled in the following passes.
+				log.Error().Int("ancode", exam.Exam.Ancode).Int("students", len(exam.NormalRegsMtknr)).
+					Msg("no room found for exam, students unplaced")
+				unplaced = append(unplaced, &model.UnplacedExam{
+					Ancode: exam.Exam.Ancode,
+					Day:    prepareRoomsCfg.slot.DayNumber,
+					Slot:   prepareRoomsCfg.slot.SlotNumber,
+					Mtknrs: append([]string{}, exam.NormalRegsMtknr...),
+				})
+				reporter.Println(aurora.Sprintf(aurora.Red("no room for %d student(s) of exam %d — unplaced"),
+					len(exam.NormalRegsMtknr), exam.Exam.Ancode))
+				exam.NormalRegsMtknr = nil
+				prepareRoomsCfg.exams = append(prepareRoomsCfg.exams, exam)
+				continue
 			}
 		}
 
@@ -207,11 +232,22 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 		if room == nil {
 			room = findRoom(prepareRoomsCfg, exam)
 			if room == nil {
-				log.Error().Int("ancode", exam.Exam.Ancode).Msg("no room found for exam")
-				room = &model.Room{
-					Name:  "No Room",
-					Seats: 1000,
+				// no real room for the NTAs in normal rooms: record them unplaced.
+				log.Error().Int("ancode", exam.Exam.Ancode).Int("ntas", len(exam.NtasInNormalRooms)).
+					Msg("no room found for NTAs in normal rooms, students unplaced")
+				for _, nta := range exam.NtasInNormalRooms {
+					mtknr := nta.Mtknr
+					unplaced = append(unplaced, &model.UnplacedExam{
+						Ancode:   exam.Exam.Ancode,
+						Day:      prepareRoomsCfg.slot.DayNumber,
+						Slot:     prepareRoomsCfg.slot.SlotNumber,
+						Mtknrs:   []string{mtknr},
+						NtaMtknr: &mtknr,
+					})
 				}
+				reporter.Println(aurora.Sprintf(aurora.Red("no room for %d NTA(s) of exam %d — unplaced"),
+					len(exam.NtasInNormalRooms), exam.Exam.Ancode))
+				continue
 			}
 		}
 		for _, nta := range exam.NtasInNormalRooms {
@@ -255,11 +291,20 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 
 			room := findSmallestRoom(prepareRoomsCfg, exam)
 			if room == nil {
-				log.Error().Int("ancode", exam.Exam.Ancode).Msg("no room found for exam")
-				room = &model.Room{
-					Name:  "No Room",
-					Seats: 1000,
-				}
+				// no real room for this NTA's own room: record it unplaced.
+				log.Error().Int("ancode", exam.Exam.Ancode).Str("mtknr", nta.Mtknr).
+					Msg("no room found for NTA alone room, student unplaced")
+				mtknr := nta.Mtknr
+				unplaced = append(unplaced, &model.UnplacedExam{
+					Ancode:   exam.Exam.Ancode,
+					Day:      prepareRoomsCfg.slot.DayNumber,
+					Slot:     prepareRoomsCfg.slot.SlotNumber,
+					Mtknrs:   []string{mtknr},
+					NtaMtknr: &mtknr,
+				})
+				reporter.Println(aurora.Sprintf(aurora.Red("no room for NTA %s of exam %d — unplaced"),
+					nta.Mtknr, exam.Exam.Ancode))
+				continue
 			}
 
 			examRoom := &model.PlannedRoom{
@@ -289,7 +334,7 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 
 	examRooms = p.addReserveBuffer(prepareRoomsCfg, examRooms, reporter)
 
-	return examRooms, nil
+	return examRooms, unplaced, nil
 }
 
 // roomFreeSeatsMin / roomFreeSeatsPercent define the minimum free-seat buffer an
@@ -317,7 +362,7 @@ func roomFreeSeatsBuffer(normalStudents int) int {
 func examFreeSeats(roomInfo map[string]*model.Room, examRooms []*model.PlannedRoom, ancode int) (free, normalStudents int) {
 	capacity, reserveSeats := 0, 0
 	for _, r := range examRooms {
-		if r.Ancode != ancode || r.RoomName == noRoom || r.NtaMtknr != nil {
+		if r.Ancode != ancode || r.NtaMtknr != nil {
 			continue
 		}
 		seats := 0

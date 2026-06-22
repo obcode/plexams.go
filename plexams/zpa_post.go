@@ -200,10 +200,6 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 					roomsMap := make(map[roomNameWithDuration][]*model.ZPAExamPlanRoom)
 
 					for _, roomForAncode := range roomsForAncode {
-						if roomForAncode.RoomName == "No Room" {
-							continue
-						}
-
 						invigilatorID := 0
 						if withInvigilators {
 							invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)

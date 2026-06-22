@@ -390,8 +390,6 @@ func (p *Plexams) ShowInvigilationProblem(ctx context.Context) error {
 	return nil
 }
 
-const noRoom = "No Room"
-
 // buildInvigilationProblem assembles the static snapshot the invigilation
 // optimizer works on. It reads everything from the DB once:
 //   - positions to fill: every planned room per slot (one invigilator each) plus
@@ -511,9 +509,6 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		roomMap := make(map[string]*roomInfo)
 		slotMaxDuration := 0
 		for _, room := range rooms {
-			if room.RoomName == noRoom {
-				continue
-			}
 			if room.Duration > slotMaxDuration {
 				slotMaxDuration = room.Duration
 			}

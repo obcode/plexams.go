@@ -84,7 +84,7 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 	examRooms := func(exam *model.PlannedExam, withInvigilator bool, skipRoom string) []string {
 		lines := make([]string, 0, len(exam.PlannedRooms))
 		for _, room := range exam.PlannedRooms {
-			if room.RoomName == noRoom || room.RoomName == skipRoom {
+			if room.RoomName == skipRoom {
 				continue
 			}
 			lines = append(lines, "  - "+roomLine(exam, room, withInvigilator))

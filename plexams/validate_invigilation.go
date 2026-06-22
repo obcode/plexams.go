@@ -175,9 +175,6 @@ func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.Validation
 		}
 
 		for _, room := range rooms {
-			if room == "No Room" {
-				continue
-			}
 			invigilations, err := p.dbClient.GetInvigilationInSlot(ctx, room, slot.DayNumber, slot.SlotNumber)
 			if err != nil {
 				log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Str("room", room).

@@ -130,6 +130,11 @@ func (r *queryResolver) RoomsWithFreeSeatsForSlot(ctx context.Context, day int, 
 	return r.plexams.RoomsWithFreeSeatsForSlot(ctx, day, time)
 }
 
+// UnplacedExams is the resolver for the unplacedExams field.
+func (r *queryResolver) UnplacedExams(ctx context.Context) ([]*model.UnplacedExam, error) {
+	return r.plexams.UnplacedExams(ctx)
+}
+
 // Rooms is the resolver for the rooms field.
 func (r *roomsForSlotResolver) Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error) {
 	return r.plexams.RoomsFromRoomNames(ctx, obj.RoomNames)

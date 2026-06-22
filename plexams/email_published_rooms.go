@@ -104,7 +104,7 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 	order := make([]string, 0)
 	seen := make(map[string]bool)
 	for _, room := range exam.PlannedRooms {
-		if room.RoomName == noRoom || seen[room.RoomName] {
+		if seen[room.RoomName] {
 			continue
 		}
 		seen[room.RoomName] = true

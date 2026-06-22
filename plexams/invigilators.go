@@ -322,13 +322,6 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 			roomMap := make(map[string]int)
 		OUTER:
 			for _, room := range roomsInSlot {
-				// "No Room" exams get no invigilation position in
-				// buildInvigilationProblem, so they are never assigned and never
-				// credited as doingMinutes. Counting their duration here would
-				// inflate the target sum and leave it permanently "offen".
-				if room.RoomName == noRoom {
-					continue
-				}
 				for _, selfInvigilation := range selfInvigilations {
 					if selfInvigilation.Slot.DayNumber == slot.DayNumber &&
 						selfInvigilation.Slot.SlotNumber == slot.SlotNumber &&

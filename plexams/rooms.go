@@ -685,6 +685,12 @@ func (p *Plexams) PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error
 	return p.dbClient.PlannedRooms(ctx)
 }
 
+// UnplacedExams returns the students that could not be assigned a real room in
+// their slot during the last room generation.
+func (p *Plexams) UnplacedExams(ctx context.Context) ([]*model.UnplacedExam, error) {
+	return p.dbClient.UnplacedExams(ctx)
+}
+
 func (p *Plexams) RoomByName(ctx context.Context, roomName string) (*model.Room, error) {
 	room, err := p.dbClient.RoomByName(ctx, roomName)
 	if err != nil {

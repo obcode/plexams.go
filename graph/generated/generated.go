@@ -615,6 +615,7 @@ type ComplexityRoot struct {
 		StudentsByName                func(childComplexity int, regex string) int
 		Teacher                       func(childComplexity int, id int) int
 		Teachers                      func(childComplexity int, fromZpa *bool) int
+		UnplacedExams                 func(childComplexity int) int
 		ZpaAnCodes                    func(childComplexity int) int
 		ZpaExam                       func(childComplexity int, ancode int) int
 		ZpaExams                      func(childComplexity int, fromZpa *bool) int
@@ -865,6 +866,14 @@ type ComplexityRoot struct {
 		Shortname    func(childComplexity int) int
 	}
 
+	UnplacedExam struct {
+		Ancode   func(childComplexity int) int
+		Day      func(childComplexity int) int
+		Mtknrs   func(childComplexity int) int
+		NtaMtknr func(childComplexity int) int
+		Slot     func(childComplexity int) int
+	}
+
 	ValidationFinding struct {
 		Ancode         func(childComplexity int) int
 		Day            func(childComplexity int) int
@@ -1065,6 +1074,7 @@ type QueryResolver interface {
 	PlannedRoomForStudent(ctx context.Context, ancode int, mtknr string) (*model.PlannedRoom, error)
 	BlockedRooms(ctx context.Context) ([]*model.BlockedRoom, error)
 	RoomsWithFreeSeatsForSlot(ctx context.Context, day int, time int) ([]*model.RoomWithFreeSeats, error)
+	UnplacedExams(ctx context.Context) ([]*model.UnplacedExam, error)
 	RoomRequests(ctx context.Context) ([]*model.RoomRequest, error)
 	RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
@@ -4237,6 +4247,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Teachers(childComplexity, args["fromZPA"].(*bool)), true
 
+	case "Query.unplacedExams":
+		if e.complexity.Query.UnplacedExams == nil {
+			break
+		}
+
+		return e.complexity.Query.UnplacedExams(childComplexity), true
+
 	case "Query.zpaAnCodes":
 		if e.complexity.Query.ZpaAnCodes == nil {
 			break
@@ -5594,6 +5611,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Teacher.Shortname(childComplexity), true
 
+	case "UnplacedExam.ancode":
+		if e.complexity.UnplacedExam.Ancode == nil {
+			break
+		}
+
+		return e.complexity.UnplacedExam.Ancode(childComplexity), true
+
+	case "UnplacedExam.day":
+		if e.complexity.UnplacedExam.Day == nil {
+			break
+		}
+
+		return e.complexity.UnplacedExam.Day(childComplexity), true
+
+	case "UnplacedExam.mtknrs":
+		if e.complexity.UnplacedExam.Mtknrs == nil {
+			break
+		}
+
+		return e.complexity.UnplacedExam.Mtknrs(childComplexity), true
+
+	case "UnplacedExam.ntaMtknr":
+		if e.complexity.UnplacedExam.NtaMtknr == nil {
+			break
+		}
+
+		return e.complexity.UnplacedExam.NtaMtknr(childComplexity), true
+
+	case "UnplacedExam.slot":
+		if e.complexity.UnplacedExam.Slot == nil {
+			break
+		}
+
+		return e.complexity.UnplacedExam.Slot(childComplexity), true
+
 	case "ValidationFinding.ancode":
 		if e.complexity.ValidationFinding.Ancode == nil {
 			break
@@ -6786,6 +6838,8 @@ type ConflictsPerProgramAncode {
   blockedRooms: [BlockedRoom!]!
   "All rooms allowed in a slot with their free seats and which exams already use them — for sharing a room (e.g. as a reserve)."
   roomsWithFreeSeatsForSlot(day: Int!, time: Int!): [RoomWithFreeSeats!]!
+  "Students that could not be assigned a real room in their slot during the last room generation (the replacement for the old 'No Room' placeholder)."
+  unplacedExams: [UnplacedExam!]!
 }
 
 extend type Mutation {
@@ -6900,6 +6954,16 @@ type PlannedRoom {
   studentsInRoom: [String!]!
   ntaMtknr: String
   prePlanned: Boolean!
+}
+
+"Students of an exam that could not be assigned a real room in their slot during room generation (kept out of the planned rooms)."
+type UnplacedExam {
+  ancode: Int!
+  day: Int!
+  slot: Int!
+  mtknrs: [String!]!
+  "set if these are NTA students (then mtknrs has exactly one entry)."
+  ntaMtknr: String
 }
 
 type PrePlannedRoom {
@@ -31175,6 +31239,62 @@ func (ec *executionContext) fieldContext_Query_roomsWithFreeSeatsForSlot(ctx con
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_unplacedExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_unplacedExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().UnplacedExams(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.UnplacedExam)
+	fc.Result = res
+	return ec.marshalNUnplacedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_unplacedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_UnplacedExam_ancode(ctx, field)
+			case "day":
+				return ec.fieldContext_UnplacedExam_day(ctx, field)
+			case "slot":
+				return ec.fieldContext_UnplacedExam_slot(ctx, field)
+			case "mtknrs":
+				return ec.fieldContext_UnplacedExam_mtknrs(ctx, field)
+			case "ntaMtknr":
+				return ec.fieldContext_UnplacedExam_ntaMtknr(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UnplacedExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_roomRequests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_roomRequests(ctx, field)
 	if err != nil {
@@ -41646,6 +41766,223 @@ func (ec *executionContext) fieldContext_Teacher_isActive(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _UnplacedExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UnplacedExam_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UnplacedExam_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnplacedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UnplacedExam_day(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UnplacedExam_day(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Day, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UnplacedExam_day(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnplacedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UnplacedExam_slot(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UnplacedExam_slot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UnplacedExam_slot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnplacedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UnplacedExam_mtknrs(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UnplacedExam_mtknrs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknrs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UnplacedExam_mtknrs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnplacedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UnplacedExam_ntaMtknr(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UnplacedExam_ntaMtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NtaMtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UnplacedExam_ntaMtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnplacedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ValidationFinding_level(ctx context.Context, field graphql.CollectedField, obj *model.ValidationFinding) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ValidationFinding_level(ctx, field)
 	if err != nil {
@@ -51237,6 +51574,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "unplacedExams":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_unplacedExams(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "roomRequests":
 			field := field
 
@@ -53095,6 +53454,62 @@ func (ec *executionContext) _Teacher(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var unplacedExamImplementors = []string{"UnplacedExam"}
+
+func (ec *executionContext) _UnplacedExam(ctx context.Context, sel ast.SelectionSet, obj *model.UnplacedExam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, unplacedExamImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UnplacedExam")
+		case "ancode":
+			out.Values[i] = ec._UnplacedExam_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "day":
+			out.Values[i] = ec._UnplacedExam_day(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slot":
+			out.Values[i] = ec._UnplacedExam_slot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mtknrs":
+			out.Values[i] = ec._UnplacedExam_mtknrs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ntaMtknr":
+			out.Values[i] = ec._UnplacedExam_ntaMtknr(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -57056,6 +57471,60 @@ func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNUnplacedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.UnplacedExam) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNUnplacedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNUnplacedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExam(ctx context.Context, sel ast.SelectionSet, v *model.UnplacedExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UnplacedExam(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNValidationFinding2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐValidationFindingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ValidationFinding) graphql.Marshaler {

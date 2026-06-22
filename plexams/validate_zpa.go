@@ -110,9 +110,6 @@ func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, 
 			log.Error().Err(err).Int("ancode", plannedExam.Ancode).Msg("cannot get planned rooms for ancode")
 		}
 		for _, room := range roomsForAncode {
-			if room.RoomName == "No Room" {
-				continue
-			}
 			found := false
 			for _, zpaExam := range plannedExamsFromZPA {
 				if room.Ancode == zpaExam.Ancode &&
@@ -177,9 +174,6 @@ func (p *Plexams) ValidateZPAInvigilators(reporter Reporter) (*model.ValidationR
 				Msg("cannot get reserve invigilator for slot")
 		}
 		for _, room := range roomsForAncode {
-			if room.RoomName == "No Room" {
-				continue
-			}
 			invigilator, err := p.GetInvigilatorInSlot(ctx, room.RoomName, plannedExam.PlanEntry.DayNumber, plannedExam.PlanEntry.SlotNumber)
 			if err != nil {
 				log.Error().Err(err).Int("day", plannedExam.PlanEntry.DayNumber).Int("slot", plannedExam.PlanEntry.SlotNumber).

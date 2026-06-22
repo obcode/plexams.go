@@ -33,6 +33,7 @@ const (
 	collectionRoomsForSlots   = "rooms_for_slots"
 	collectionRoomsPrePlanned = "rooms_pre_planned"
 	collectionRoomsPlanned    = "rooms_planned"
+	collectionRoomsUnplaced   = "rooms_unplaced"
 	collectionRoomsBlocked    = "rooms_blocked"
 
 	collectionInvigilatorRequirements = "invigilator_requirements"

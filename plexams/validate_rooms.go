@@ -25,6 +25,22 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 		return nil, err
 	}
 
+	// students that could not be assigned a real room during generation are kept
+	// out of planned_rooms and recorded separately — report them as errors here.
+	unplaced, err := p.dbClient.UnplacedExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get unplaced exams")
+		return nil, err
+	}
+	for _, u := range unplaced {
+		what := "student(s)"
+		if u.NtaMtknr != nil {
+			what = "NTA student(s)"
+		}
+		v.errorf(ref{Ancode: ptr(u.Ancode), Day: ptr(u.Day), Slot: ptr(u.Slot)},
+			"exam %d: %d %s without a room in slot (%d/%d)", u.Ancode, len(u.Mtknrs), what, u.Day, u.Slot)
+	}
+
 	for _, slot := range slots {
 
 		plannedExams, err := p.dbClient.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
@@ -61,12 +77,6 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 
 		for _, plannedRoom := range plannedRooms {
 			if plannedRoom.RoomName == "ONLINE" {
-				continue
-			}
-
-			if plannedRoom.RoomName == "No Room" {
-				v.errorf(ref{Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
-					"No Room for %d students in slot (%d/%d)", len(plannedRoom.StudentsInRoom), slot.DayNumber, slot.SlotNumber)
 				continue
 			}
 
@@ -327,7 +337,7 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 		}
 		capacity, normal, reserveSeats := 0, 0, 0
 		for _, r := range exam.PlannedRooms {
-			if r.RoomName == noRoom || r.NtaMtknr != nil {
+			if r.NtaMtknr != nil {
 				continue
 			}
 			if r.Reserve {
@@ -369,9 +379,6 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 			continue
 		}
 		for _, r := range exam.PlannedRooms {
-			if r.RoomName == noRoom {
-				continue
-			}
 			key := slotRoom{r.Day, r.Slot, r.RoomName}
 			occupants[key] += len(r.StudentsInRoom)
 			if r.NtaMtknr == nil { // normal block or (empty) reserve
@@ -442,9 +449,7 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 
 		allStudentsInRooms := make([]string, 0)
 		for _, room := range exam.PlannedRooms {
-			if room.RoomName != "No Room" {
-				allStudentsInRooms = append(allStudentsInRooms, room.StudentsInRoom...)
-			}
+			allStudentsInRooms = append(allStudentsInRooms, room.StudentsInRoom...)
 		}
 
 		for _, studentReg := range allStudentRegs {

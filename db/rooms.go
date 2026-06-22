@@ -397,6 +397,17 @@ func (db *DB) PlannedRoomsForAncode(ctx context.Context, ancode int) ([]*model.P
 	return plannedRooms, nil
 }
 
+// ResetPlannedRooms drops the generated planned rooms (planned_rooms). The
+// pre-planning (rooms_pre_planned) is not touched.
+func (db *DB) ResetPlannedRooms(ctx context.Context) error {
+	collection := db.getCollectionSemester(collectionRoomsPlanned)
+	if err := collection.Drop(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot drop planned rooms")
+		return err
+	}
+	return nil
+}
+
 func (db *DB) ReplacePlannedRooms(ctx context.Context, plannedRooms []*model.PlannedRoom) error {
 	collection := db.getCollectionSemester(collectionRoomsPlanned)
 

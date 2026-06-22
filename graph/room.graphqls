@@ -37,6 +37,8 @@ extend type Mutation {
   updateRoom(input: RoomInput!): Room!
   "One-time backfill: derive requestWith for all rooms (ANNY for request-rooms with a T name, MANAGEMENT for other request-rooms, NONE otherwise). Returns the number of rooms updated."
   migrateRoomsRequestWith: Int!
+  "Reset the generated room plan (planned_rooms) so only the pre-planning remains; re-generation re-applies it. Blocked while the room plan is published."
+  resetRoomsForExams: Boolean!
 }
 
 # Room generation as streaming subscriptions (like the other generators): they

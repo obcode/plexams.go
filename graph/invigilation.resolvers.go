@@ -25,6 +25,14 @@ func (r *mutationResolver) PrePlanInvigilationInSlot(ctx context.Context, day in
 	return r.plexams.PrePlanInvigilationInSlot(ctx, day, slot, roomName)
 }
 
+// ResetInvigilations is the resolver for the resetInvigilations field.
+func (r *mutationResolver) ResetInvigilations(ctx context.Context) (bool, error) {
+	if err := r.plexams.ResetInvigilations(ctx); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // InvigilatorTodos is the resolver for the invigilatorTodos field.
 func (r *queryResolver) InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error) {
 	return r.plexams.GetInvigilationTodos(ctx)

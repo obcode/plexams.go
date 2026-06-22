@@ -356,6 +356,18 @@ func (db *DB) AddPrePlannedInvigilation(ctx context.Context, prePlannedInvigilat
 	return true, nil
 }
 
+// ResetGeneratedInvigilations drops the generated invigilations
+// (invigilations_other). The pre-planning (invigilations_pre_planned) and the
+// self-invigilations (invigilations_self) are not touched.
+func (db *DB) ResetGeneratedInvigilations(ctx context.Context) error {
+	collection := db.getCollectionSemester(collectionOtherInvigilations)
+	if err := collection.Drop(ctx); err != nil {
+		log.Error().Err(err).Str("collection", collectionOtherInvigilations).Msg("cannot drop generated invigilations")
+		return err
+	}
+	return nil
+}
+
 // RemovePrePlannedInvigilation deletes a pre-planned invigilation (key:
 // day/slot/roomName; roomName nil = the reserve). It reports whether a document
 // was actually removed.

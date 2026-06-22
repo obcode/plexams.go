@@ -378,6 +378,8 @@ type ComplexityRoot struct {
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
 		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
+		ResetInvigilations            func(childComplexity int) int
+		ResetRoomsForExams            func(childComplexity int) int
 		RmConstraints                 func(childComplexity int, ancode int) int
 		RmExamFromSlot                func(childComplexity int, ancode int) int
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
@@ -938,6 +940,7 @@ type MutationResolver interface {
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	PrePlanInvigilationInSlot(ctx context.Context, day int, slot int, roomName *string) (bool, error)
+	ResetInvigilations(ctx context.Context) (bool, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
@@ -954,6 +957,7 @@ type MutationResolver interface {
 	AddRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
 	UpdateRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
 	MigrateRoomsRequestWith(ctx context.Context) (int, error)
+	ResetRoomsForExams(ctx context.Context) (bool, error)
 	SetRoomRequestApproved(ctx context.Context, room string, day int, slot int, approved bool) (*model.RoomRequest, error)
 	SetRoomRequestActive(ctx context.Context, room string, day int, slot int, active bool) (*model.RoomRequest, error)
 	MigrateRoomRequestsFromConfig(ctx context.Context) (int, error)
@@ -2731,6 +2735,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemovePrePlannedRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["mtknr"].(*string)), true
+
+	case "Mutation.resetInvigilations":
+		if e.complexity.Mutation.ResetInvigilations == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ResetInvigilations(childComplexity), true
+
+	case "Mutation.resetRoomsForExams":
+		if e.complexity.Mutation.ResetRoomsForExams == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ResetRoomsForExams(childComplexity), true
 
 	case "Mutation.rmConstraints":
 		if e.complexity.Mutation.RmConstraints == nil {
@@ -6129,6 +6147,8 @@ extend type Mutation {
   fixed assignment, so it survives a re-run of the automatic planning.
   """
   prePlanInvigilationInSlot(day: Int!, slot: Int!, roomName: String): Boolean!
+  "Reset the generated invigilations (invigilations_other) so only the pre-planning remains; self-invigilations are refreshed on the next generation. Blocked while the invigilation plan is published."
+  resetInvigilations: Boolean!
 }
 
 """
@@ -6555,6 +6575,8 @@ extend type Mutation {
   updateRoom(input: RoomInput!): Room!
   "One-time backfill: derive requestWith for all rooms (ANNY for request-rooms with a T name, MANAGEMENT for other request-rooms, NONE otherwise). Returns the number of rooms updated."
   migrateRoomsRequestWith: Int!
+  "Reset the generated room plan (planned_rooms) so only the pre-planning remains; re-generation re-applies it. Blocked while the room plan is published."
+  resetRoomsForExams: Boolean!
 }
 
 # Room generation as streaming subscriptions (like the other generators): they
@@ -21059,6 +21081,50 @@ func (ec *executionContext) fieldContext_Mutation_prePlanInvigilationInSlot(ctx 
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_resetInvigilations(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetInvigilations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetInvigilations(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetInvigilations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addNTA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_addNTA(ctx, field)
 	if err != nil {
@@ -22111,6 +22177,50 @@ func (ec *executionContext) fieldContext_Mutation_migrateRoomsRequestWith(_ cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetRoomsForExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetRoomsForExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetRoomsForExams(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetRoomsForExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -47044,6 +47154,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "resetInvigilations":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetInvigilations(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addNTA":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addNTA(ctx, field)
@@ -47152,6 +47269,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "migrateRoomsRequestWith":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_migrateRoomsRequestWith(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetRoomsForExams":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetRoomsForExams(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

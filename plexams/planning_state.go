@@ -158,6 +158,13 @@ func (p *Plexams) markCondition(ctx context.Context, key string) {
 	}
 }
 
+// unmarkCondition clears a condition. Best-effort like markCondition.
+func (p *Plexams) unmarkCondition(ctx context.Context, key string) {
+	if err := p.dbClient.SetPlanningCondition(ctx, key, false); err != nil {
+		log.Error().Err(err).Str("key", key).Msg("cannot auto-unmark planning condition")
+	}
+}
+
 // emailSendAllowed enforces that a "send once" email is sent at most once: while
 // its condition is set, a real send (run==true) is refused; a dry run
 // (run==false) is always allowed. On a successful real send the caller marks the

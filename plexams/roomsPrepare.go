@@ -54,6 +54,20 @@ func (p *Plexams) PrepareRoomForExams(ctx context.Context, reporter Reporter) er
 	return nil
 }
 
+// ResetRoomsForExams drops the generated room plan (planned_rooms) so that only
+// the pre-planning (rooms_pre_planned) remains; a re-generation re-applies the
+// pre-planned rooms. Blocked while the room plan is published.
+func (p *Plexams) ResetRoomsForExams(ctx context.Context) error {
+	if err := p.generationAllowed(ctx, model.PlanningGateRooms); err != nil {
+		return err
+	}
+	if err := p.dbClient.ResetPlannedRooms(ctx); err != nil {
+		return err
+	}
+	p.unmarkCondition(ctx, condRoomsGenerated)
+	return nil
+}
+
 func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCfg *prepareRoomsCfg, reporter Reporter) ([]*model.PlannedRoom, error) {
 	reporter.Step(aurora.Sprintf(aurora.Black("preparing data for slot (%d/%d)"),
 		aurora.Yellow(prepareRoomsCfg.slot.DayNumber),

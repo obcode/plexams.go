@@ -20,6 +20,21 @@ import (
 // invigilations_other, dropping the previous content. Self-invigilations stay
 // in invigilations_self; pre-planned invigilations are included as fixed seeds.
 // To fix an assignment across runs, move it to the pre-planning.
+// ResetInvigilations drops the generated invigilations (invigilations_other) so
+// that only the pre-planning (invigilations_pre_planned) remains; the
+// self-invigilations are refreshed on the next generation. Blocked while the
+// invigilation plan is published.
+func (p *Plexams) ResetInvigilations(ctx context.Context) error {
+	if err := p.generationAllowed(ctx, model.PlanningGateInvigilations); err != nil {
+		return err
+	}
+	if err := p.dbClient.ResetGeneratedInvigilations(ctx); err != nil {
+		return err
+	}
+	p.unmarkCondition(ctx, condInvigilationsGenerated)
+	return nil
+}
+
 func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts invigplan.Options, reporter Reporter) (*model.InvigilationReport, error) {
 	if err := p.generationAllowed(ctx, model.PlanningGateInvigilations); err != nil {
 		return nil, err

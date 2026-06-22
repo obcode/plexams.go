@@ -42,7 +42,7 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool, reporter R
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/constraintsEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/constraintsEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

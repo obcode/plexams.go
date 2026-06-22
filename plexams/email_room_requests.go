@@ -110,7 +110,7 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/roomRequestEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/roomRequestEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

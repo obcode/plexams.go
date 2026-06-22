@@ -31,7 +31,7 @@ func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool, reporter Reporte
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/exahmEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/exahmEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

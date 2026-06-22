@@ -118,7 +118,7 @@ func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, run b
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/handicapEmailRoomAloneHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/handicapEmailRoomAloneHTML.tmpl")
 	if err != nil {
 		return err
 	}
@@ -267,7 +267,7 @@ func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, run boo
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/handicapEmailPlannedHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/handicapEmailPlannedHTML.tmpl")
 	if err != nil {
 		return err
 	}
@@ -345,7 +345,7 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 	if err != nil {
 		return err
 	}
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/newNTAEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/newNTAEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

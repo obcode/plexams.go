@@ -44,7 +44,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/publishedEmailExamsHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/publishedEmailExamsHTML.tmpl")
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 	if err != nil {
 		return err
 	}
-	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/publishedInvigilationPersonalEmailHTML.tmpl")
+	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/publishedInvigilationPersonalEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

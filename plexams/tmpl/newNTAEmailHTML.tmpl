@@ -1,3 +1,4 @@
+{{ define "content" }}
 <p>Liebe Prüfende,</p>
 
 <p>anbei übersenden wir Ihnen Informationen bzgl. eines Studierenden mit einem neuen
@@ -31,8 +32,4 @@ lautet sinngemäß <i>"{{ .Student.Nta.Compensation }}"</i> und beinhaltet für 
 
 <p>Mit freundlichen Grüßen<br />
 {{ .PlanerName }}</p>
-
-<pre>
---
-Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
-</pre>
+{{ end }}

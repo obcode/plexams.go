@@ -256,7 +256,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 			continue
 		}
 		bufHTML := new(bytes.Buffer)
-		if err := htmlTmpl.ExecuteTemplate(bufHTML, "emailBase", data); err != nil {
+		if err := htmlTmpl.Execute(bufHTML, data); err != nil {
 			reporter.Warnf("%s: cannot render html: %v", examer.Fullname, err)
 			continue
 		}

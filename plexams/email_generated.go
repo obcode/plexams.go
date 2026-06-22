@@ -140,7 +140,7 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedE
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/generatedExamEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/generatedExamEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}
@@ -308,7 +308,7 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 			return err
 		}
 
-		tmpl, err = template.ParseFS(emailTemplates, "tmpl/unplannedExamEmailHTML.tmpl")
+		tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/unplannedExamEmailHTML.tmpl")
 		if err != nil {
 			return err
 		}

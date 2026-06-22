@@ -100,7 +100,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/coverPageEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/coverPageEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

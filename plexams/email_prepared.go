@@ -36,7 +36,7 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool, reporter Repo
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/preparedEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/preparedEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

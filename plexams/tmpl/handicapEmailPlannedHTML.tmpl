@@ -1,3 +1,4 @@
+{{ define "content" }}
 <p>Hallo {{ .NTA.Name }},</p>
 
 <p>Sie haben gemäß den uns vorliegenden Informationen Anspruch auf Nachteilsausgleich
@@ -16,8 +17,4 @@ bei Ihren Prüfungen.</p>
 
 <p>Mit freundlichen Grüßen<br />
 {{ .PlanerName }}</p>
-
-<pre>
---
-Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
-</pre>
+{{ end }}

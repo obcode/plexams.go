@@ -86,7 +86,7 @@ func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilat
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/invigilationMissingEmailHTML.tmpl")
+	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/invigilationMissingEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

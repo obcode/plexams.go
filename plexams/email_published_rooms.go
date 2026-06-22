@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"html/template"
 	"sort"
+	"strings"
+	txttmpl "text/template"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -27,16 +29,28 @@ type publishedRoomsExam struct {
 }
 
 type publishedRoomsRoom struct {
-	RoomName     string
-	StudentCount int
-	Duration     int
-	Reserve      bool
-	NTA          string   // formatted NTA note, "" if none
-	SharedWith   []string // other exams using the same room in the same slot
+	RoomName    string
+	Allocations string   // all seat blocks of this room joined, e.g. "1 Stud., 90 min, 1 Stud., 99 min, NTA: …"
+	SharedWith  []string // other exams using the same room in the same slot (deduplicated per room)
 }
 
-// buildPublishedRoomsExam renders one exam (rooms + NTAs + co-usage) for the
-// examer email. Returns nil if the exam has no real (non-"No Room") rooms.
+// ntaNote formats the NTA of a room as "Name (+X%[, eigener Raum])", or "".
+func ntaNote(exam *model.PlannedExam, room *model.PlannedRoom) string {
+	nta := roomNTA(exam, room)
+	if nta == nil {
+		return ""
+	}
+	alone := ""
+	if nta.NeedsRoomAlone {
+		alone = ", eigener Raum"
+	}
+	return fmt.Sprintf("%s (+%d%%%s)", nta.Name, nta.DeltaDurationPercent, alone)
+}
+
+// buildPublishedRoomsExam renders one exam for the examer email. All seat blocks
+// of the same room (the normal students plus one block per NTA in that room) are
+// merged into a single entry; the co-usage by other exams is listed once per
+// room. Returns nil if the exam has no real (non-"No Room") rooms.
 func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.PlannedExam,
 	examsInSlot map[[2]int][]*model.PlannedExam, examerShort func(*model.PlannedExam) string,
 ) *publishedRoomsExam {
@@ -46,28 +60,40 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 	day, slot := exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber
 	start := p.getSlotTime(day, slot)
 
-	rooms := make([]*publishedRoomsRoom, 0, len(exam.PlannedRooms))
+	// group the exam's seat blocks by room name, keeping first-seen order
+	order := make([]string, 0)
+	allocByRoom := make(map[string][]string)
 	for _, room := range exam.PlannedRooms {
 		if room.RoomName == noRoom {
 			continue
 		}
-		ntaNote := ""
-		if nta := roomNTA(exam, room); nta != nil {
-			alone := ""
-			if nta.NeedsRoomAlone {
-				alone = ", eigener Raum"
-			}
-			ntaNote = fmt.Sprintf("%s (+%d%%%s)", nta.Name, nta.DeltaDurationPercent, alone)
+		if _, ok := allocByRoom[room.RoomName]; !ok {
+			order = append(order, room.RoomName)
 		}
+		alloc := fmt.Sprintf("%d Stud., %d min", len(room.StudentsInRoom), room.Duration)
+		if room.Reserve {
+			alloc += " (Reserve)"
+		}
+		if note := ntaNote(exam, room); note != "" {
+			alloc += ", NTA: " + note
+		}
+		allocByRoom[room.RoomName] = append(allocByRoom[room.RoomName], alloc)
+	}
 
-		// co-usage: other exams with a room of the same name in the same slot.
+	if len(order) == 0 {
+		return nil
+	}
+
+	rooms := make([]*publishedRoomsRoom, 0, len(order))
+	for _, name := range order {
+		// co-usage: other exams with a seat block in the same room in the slot.
 		shared := make([]string, 0)
 		for _, other := range examsInSlot[[2]int{day, slot}] {
 			if other.Ancode == exam.Ancode {
 				continue
 			}
 			for _, r := range other.PlannedRooms {
-				if r.RoomName != room.RoomName {
+				if r.RoomName != name {
 					continue
 				}
 				module := ""
@@ -76,29 +102,18 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 				}
 				line := fmt.Sprintf("%d. %s (%s): %d Stud.",
 					other.Ancode, module, examerShort(other), len(r.StudentsInRoom))
-				if nta := roomNTA(other, r); nta != nil {
-					alone := ""
-					if nta.NeedsRoomAlone {
-						alone = ", eigener Raum"
-					}
-					line += fmt.Sprintf(", NTA: %s (+%d%%%s)", nta.Name, nta.DeltaDurationPercent, alone)
+				if note := ntaNote(other, r); note != "" {
+					line += ", NTA: " + note
 				}
 				shared = append(shared, line)
 			}
 		}
 
 		rooms = append(rooms, &publishedRoomsRoom{
-			RoomName:     room.RoomName,
-			StudentCount: len(room.StudentsInRoom),
-			Duration:     room.Duration,
-			Reserve:      room.Reserve,
-			NTA:          ntaNote,
-			SharedWith:   shared,
+			RoomName:    name,
+			Allocations: strings.Join(allocByRoom[name], ", "),
+			SharedWith:  shared,
 		})
-	}
-
-	if len(rooms) == 0 {
-		return nil
 	}
 
 	module := ""
@@ -160,7 +175,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 		return s
 	}
 
-	textTmpl, err := template.ParseFS(emailTemplates, "tmpl/publishedRoomsPersonalEmail.tmpl")
+	textTmpl, err := txttmpl.ParseFS(emailTemplates, "tmpl/publishedRoomsPersonalEmail.tmpl")
 	if err != nil {
 		return err
 	}

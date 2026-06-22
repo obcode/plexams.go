@@ -11,7 +11,7 @@ Prüfungen im selben Slot.</p>
 {{ range .Exams }}
 <p><b>{{ .Ancode }}. {{ .Module }}</b> — {{ .Date }}, {{ .Time }} Uhr</p>
 <ul>
-{{ range .Rooms }}<li><b>{{ .RoomName }}</b>: {{ .StudentCount }} Stud., {{ .Duration }} min{{ if .Reserve }} (Reserve){{ end }}{{ if .NTA }}, NTA: {{ .NTA }}{{ end }}
+{{ range .Rooms }}<li><b>{{ .RoomName }}</b>: {{ .Allocations }}
 {{- if .SharedWith }}
 <ul>
 {{ range .SharedWith }}<li>gemeinsam genutzt mit: {{ . }}</li>

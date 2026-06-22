@@ -15,6 +15,11 @@ func (r *mutationResolver) PrePlanInvigilation(ctx context.Context, invigilatorI
 	return r.plexams.PreAddInvigilation(ctx, invigilatorID, day, slot, roomName)
 }
 
+// RemovePrePlannedInvigilation is the resolver for the removePrePlannedInvigilation field.
+func (r *mutationResolver) RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error) {
+	return r.plexams.RemovePrePlannedInvigilation(ctx, day, slot, roomName)
+}
+
 // PrePlanInvigilationInSlot is the resolver for the prePlanInvigilationInSlot field.
 func (r *mutationResolver) PrePlanInvigilationInSlot(ctx context.Context, day int, slot int, roomName *string) (bool, error) {
 	return r.plexams.PrePlanInvigilationInSlot(ctx, day, slot, roomName)

@@ -109,6 +109,29 @@ func (p *Plexams) PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlan
 	return p.dbClient.PrePlannedInvigilations(ctx)
 }
 
+// RemovePrePlannedInvigilation removes a pre-planned invigilation (key:
+// day/slot/roomName; roomName nil = the reserve). If a live invigilation in that
+// slot was marked pre-planned (via PrePlanInvigilationInSlot), that flag is
+// cleared too. Errors if no such pre-planned invigilation exists.
+func (p *Plexams) RemovePrePlannedInvigilation(ctx context.Context, day, slot int, roomName *string) (bool, error) {
+	removed, err := p.dbClient.RemovePrePlannedInvigilation(ctx, day, slot, roomName)
+	if err != nil {
+		return false, err
+	}
+	if !removed {
+		room := "reserve"
+		if roomName != nil {
+			room = *roomName
+		}
+		return false, fmt.Errorf("no pre-planned invigilation for %s in slot (%d,%d)", room, day, slot)
+	}
+	// best-effort: clear the pre-planned flag on the live invigilation, if any.
+	if err := p.dbClient.SetInvigilationPrePlanned(ctx, day, slot, roomName, false); err != nil {
+		log.Debug().Err(err).Int("day", day).Int("slot", slot).Msg("no live invigilation to unmark as pre-planned")
+	}
+	return true, nil
+}
+
 // PrePlanInvigilationInSlot promotes the invigilation currently planned for a
 // room (roomName != nil) or the reserve (roomName == nil) in a slot to a
 // pre-planned, fixed assignment. It looks up the assigned invigilator, stores a

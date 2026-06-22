@@ -375,6 +375,7 @@ type ComplexityRoot struct {
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
+		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
 		RmConstraints                 func(childComplexity int, ancode int) int
 		RmExamFromSlot                func(childComplexity int, ancode int) int
@@ -933,6 +934,7 @@ type MutationResolver interface {
 	RmConstraints(ctx context.Context, ancode int) (bool, error)
 	ClearEmailAttachments(ctx context.Context, kind string) (int, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
+	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	PrePlanInvigilationInSlot(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
@@ -2696,6 +2698,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string)), true
+
+	case "Mutation.removePrePlannedInvigilation":
+		if e.complexity.Mutation.RemovePrePlannedInvigilation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removePrePlannedInvigilation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemovePrePlannedInvigilation(childComplexity, args["day"].(int), args["slot"].(int), args["roomName"].(*string)), true
 
 	case "Mutation.removePrePlannedRoom":
 		if e.complexity.Mutation.RemovePrePlannedRoom == nil {
@@ -6084,12 +6098,15 @@ type MucDaiExam {
 }
 
 extend type Mutation {
+  "Pre-plan (fix) an invigilator for a room (roomName) or the reserve (roomName == null) in a slot."
   prePlanInvigilation(
     invigilatorID: Int!
     day: Int!
     slot: Int!
     roomName: String
   ): Boolean!
+  "Remove a pre-planned invigilation (key: day/slot/roomName; roomName null = the reserve)."
+  removePrePlannedInvigilation(day: Int!, slot: Int!, roomName: String): Boolean!
   """
   prePlanInvigilationInSlot promotes the invigilation currently planned for a
   room (roomName) or the reserve (roomName == null) in a slot to a pre-planned,
@@ -8130,6 +8147,80 @@ func (ec *executionContext) field_Mutation_prePlanRoom_argsMtknr(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
 	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removePrePlannedInvigilation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_removePrePlannedInvigilation_argsDay(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["day"] = arg0
+	arg1, err := ec.field_Mutation_removePrePlannedInvigilation_argsSlot(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["slot"] = arg1
+	arg2, err := ec.field_Mutation_removePrePlannedInvigilation_argsRoomName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["roomName"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_removePrePlannedInvigilation_argsDay(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["day"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+	if tmp, ok := rawArgs["day"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removePrePlannedInvigilation_argsSlot(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["slot"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slot"))
+	if tmp, ok := rawArgs["slot"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removePrePlannedInvigilation_argsRoomName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["roomName"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("roomName"))
+	if tmp, ok := rawArgs["roomName"]; ok {
 		return ec.unmarshalOString2ᚖstring(ctx, tmp)
 	}
 
@@ -20786,6 +20877,61 @@ func (ec *executionContext) fieldContext_Mutation_prePlanInvigilation(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_prePlanInvigilation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removePrePlannedInvigilation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removePrePlannedInvigilation(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemovePrePlannedInvigilation(rctx, fc.Args["day"].(int), fc.Args["slot"].(int), fc.Args["roomName"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removePrePlannedInvigilation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removePrePlannedInvigilation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -46763,6 +46909,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "prePlanInvigilation":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_prePlanInvigilation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removePrePlannedInvigilation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removePrePlannedInvigilation(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

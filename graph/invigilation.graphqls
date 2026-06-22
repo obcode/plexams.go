@@ -14,12 +14,15 @@ extend type Query {
 }
 
 extend type Mutation {
+  "Pre-plan (fix) an invigilator for a room (roomName) or the reserve (roomName == null) in a slot."
   prePlanInvigilation(
     invigilatorID: Int!
     day: Int!
     slot: Int!
     roomName: String
   ): Boolean!
+  "Remove a pre-planned invigilation (key: day/slot/roomName; roomName null = the reserve)."
+  removePrePlannedInvigilation(day: Int!, slot: Int!, roomName: String): Boolean!
   """
   prePlanInvigilationInSlot promotes the invigilation currently planned for a
   room (roomName) or the reserve (roomName == null) in a slot to a pre-planned,

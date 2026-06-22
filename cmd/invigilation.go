@@ -169,6 +169,32 @@ assignment across runs, move it to the pre-planning (invigilation -p ...).`,
 			}
 		},
 	}
+
+	invigilationRemovePrePlanCmd = &cobra.Command{
+		Use:   "rm-pre-plan [roomname|reserve] [day] [slot]",
+		Short: "Remove a pre-planned invigilation",
+		Long:  `Remove a pre-planned invigilation for a room (or "reserve") in a slot.`,
+		Args:  cobra.ExactArgs(3),
+		Run: func(cmd *cobra.Command, args []string) {
+			plxms := initPlexamsConfig()
+			day, err := strconv.Atoi(args[1])
+			if err != nil {
+				log.Fatalf("cannot use %s as day number", args[1])
+			}
+			slot, err := strconv.Atoi(args[2])
+			if err != nil {
+				log.Fatalf("cannot use %s as slot number", args[2])
+			}
+			var roomName *string
+			if args[0] != "reserve" {
+				roomName = &args[0]
+			}
+			if _, err := plxms.RemovePrePlannedInvigilation(context.Background(), day, slot, roomName); err != nil {
+				log.Fatalf("got error: %v\n", err)
+			}
+			fmt.Printf("removed pre-planned invigilation for %s in slot (%d,%d)\n", args[0], day, slot)
+		},
+	}
 )
 
 func init() {
@@ -180,4 +206,5 @@ func init() {
 	invigilationGenerateCmd.Flags().Int64Var(&generateSeed, "seed", 0, "random seed (0 = config/default)")
 	invigilationGenerateCmd.Flags().IntVar(&generateIterations, "iterations", 0, "number of optimizer iterations (0 = config/default)")
 	invigilationCmd.AddCommand(invigilationGenerateCmd)
+	invigilationCmd.AddCommand(invigilationRemovePrePlanCmd)
 }

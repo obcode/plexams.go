@@ -355,3 +355,23 @@ func (db *DB) AddPrePlannedInvigilation(ctx context.Context, prePlannedInvigilat
 	}
 	return true, nil
 }
+
+// RemovePrePlannedInvigilation deletes a pre-planned invigilation (key:
+// day/slot/roomName; roomName nil = the reserve). It reports whether a document
+// was actually removed.
+func (db *DB) RemovePrePlannedInvigilation(ctx context.Context, day, slot int, roomName *string) (bool, error) {
+	collection := db.getCollectionSemester(collectionInvigilationsPrePlanned)
+	filter := bson.M{
+		"day":      day,
+		"slot":     slot,
+		"roomname": roomName,
+	}
+	res, err := collection.DeleteOne(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).
+			Int("day", day).Int("slot", slot).Interface("roomname", roomName).
+			Msg("cannot delete pre planned invigilation")
+		return false, err
+	}
+	return res.DeletedCount > 0, nil
+}

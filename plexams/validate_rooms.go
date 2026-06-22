@@ -417,6 +417,12 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 		return nil, err
 	}
 
+	waiverReasons, err := p.ntaRoomAloneWaiverReasons(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get nta room-alone waivers")
+		return nil, err
+	}
+
 	for _, exam := range exams {
 		if exam.PlanEntry == nil {
 			continue
@@ -524,10 +530,18 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 						if room.RoomName == roomForNta.RoomName {
 							for _, mtknr := range room.StudentsInRoom {
 								if mtknr != nta.Mtknr {
-									v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), StudentMtknr: ptr(nta.Mtknr), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
-										"NTA %s has room %s not alone for exam %d. %s (%s) in slot (%d,%d)",
-										nta.Name, room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-										exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+									r := ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), StudentMtknr: ptr(nta.Mtknr), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)}
+									if reason, ok := waiverReasons[ntaExamKey{nta.Mtknr, exam.Ancode}]; ok {
+										v.warnf(r,
+											"NTA %s waives the room of their own for exam %d. %s (%s) in slot (%d,%d): %s",
+											nta.Name, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+											exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber, reason)
+									} else {
+										v.errorf(r,
+											"NTA %s has room %s not alone for exam %d. %s (%s) in slot (%d,%d)",
+											nta.Name, room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+											exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+									}
 									break OUTER
 								}
 							}

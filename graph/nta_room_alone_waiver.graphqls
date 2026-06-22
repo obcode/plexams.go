@@ -1,0 +1,22 @@
+# An NTA student can deliberately give up their right to a room of their own for a
+# single exam. Such an accepted waiver (with a reason) is stored per semester, so
+# the rooms validation only reports it as a warning instead of an error, and the
+# reason can be added to the NTA's room email.
+
+type NtaRoomAloneWaiver {
+  mtknr: String!
+  ancode: Int!
+  reason: String!
+}
+
+extend type Query {
+  "All accepted NTA room-alone waivers of the semester."
+  ntaRoomAloneWaivers: [NtaRoomAloneWaiver!]!
+}
+
+extend type Mutation {
+  "Accept that an NTA gives up the room-alone right for one exam (key: mtknr/ancode), with a reason. Downgrades the rooms validation to a warning and is added to the NTA email."
+  addNtaRoomAloneWaiver(mtknr: String!, ancode: Int!, reason: String!): NtaRoomAloneWaiver!
+  "Remove an NTA room-alone waiver (key: mtknr/ancode)."
+  removeNtaRoomAloneWaiver(mtknr: String!, ancode: Int!): Boolean!
+}

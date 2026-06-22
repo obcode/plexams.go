@@ -357,6 +357,7 @@ type ComplexityRoot struct {
 		AddConstraints                func(childComplexity int, ancode int, constraints model.ConstraintsInput) int
 		AddExamToSlot                 func(childComplexity int, day int, time int, ancode int) int
 		AddNta                        func(childComplexity int, input model.NTAInput) int
+		AddNtaRoomAloneWaiver         func(childComplexity int, mtknr string, ancode int, reason string) int
 		AddRoom                       func(childComplexity int, input model.RoomInput) int
 		AddRoomRequest                func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
 		AddZpaExamToPlan              func(childComplexity int, ancode int) int
@@ -376,6 +377,7 @@ type ComplexityRoot struct {
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string) int
+		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
 		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
 		ResetInvigilations            func(childComplexity int) int
@@ -426,6 +428,12 @@ type ComplexityRoot struct {
 	NTAWithRegsByExamAndTeacher struct {
 		Exams   func(childComplexity int) int
 		Teacher func(childComplexity int) int
+	}
+
+	NtaRoomAloneWaiver struct {
+		Ancode func(childComplexity int) int
+		Mtknr  func(childComplexity int) int
+		Reason func(childComplexity int) int
 	}
 
 	OptimizerProgress struct {
@@ -573,6 +581,7 @@ type ComplexityRoot struct {
 		InvigilatorsWithReq           func(childComplexity int) int
 		MucdaiExams                   func(childComplexity int) int
 		Nta                           func(childComplexity int, mtknr string) int
+		NtaRoomAloneWaivers           func(childComplexity int) int
 		Ntas                          func(childComplexity int) int
 		NtasWithRegs                  func(childComplexity int) int
 		PlannedExam                   func(childComplexity int, ancode int) int
@@ -965,6 +974,8 @@ type MutationResolver interface {
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
+	AddNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int, reason string) (*model.NtaRoomAloneWaiver, error)
+	RemoveNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int) (bool, error)
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
@@ -1026,6 +1037,7 @@ type QueryResolver interface {
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
 	ExamsWithNtas(ctx context.Context) ([]*model.PlannedExam, error)
+	NtaRoomAloneWaivers(ctx context.Context) ([]*model.NtaRoomAloneWaiver, error)
 	AllProgramsInPlan(ctx context.Context) ([]string, error)
 	AncodesInPlan(ctx context.Context) ([]int, error)
 	ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error)
@@ -2517,6 +2529,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.AddNta(childComplexity, args["input"].(model.NTAInput)), true
 
+	case "Mutation.addNtaRoomAloneWaiver":
+		if e.complexity.Mutation.AddNtaRoomAloneWaiver == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addNtaRoomAloneWaiver_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddNtaRoomAloneWaiver(childComplexity, args["mtknr"].(string), args["ancode"].(int), args["reason"].(string)), true
+
 	case "Mutation.addRoom":
 		if e.complexity.Mutation.AddRoom == nil {
 			break
@@ -2734,6 +2758,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string)), true
+
+	case "Mutation.removeNtaRoomAloneWaiver":
+		if e.complexity.Mutation.RemoveNtaRoomAloneWaiver == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeNtaRoomAloneWaiver_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveNtaRoomAloneWaiver(childComplexity, args["mtknr"].(string), args["ancode"].(int)), true
 
 	case "Mutation.removePrePlannedInvigilation":
 		if e.complexity.Mutation.RemovePrePlannedInvigilation == nil {
@@ -3090,6 +3126,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.NTAWithRegsByExamAndTeacher.Teacher(childComplexity), true
+
+	case "NtaRoomAloneWaiver.ancode":
+		if e.complexity.NtaRoomAloneWaiver.Ancode == nil {
+			break
+		}
+
+		return e.complexity.NtaRoomAloneWaiver.Ancode(childComplexity), true
+
+	case "NtaRoomAloneWaiver.mtknr":
+		if e.complexity.NtaRoomAloneWaiver.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.NtaRoomAloneWaiver.Mtknr(childComplexity), true
+
+	case "NtaRoomAloneWaiver.reason":
+		if e.complexity.NtaRoomAloneWaiver.Reason == nil {
+			break
+		}
+
+		return e.complexity.NtaRoomAloneWaiver.Reason(childComplexity), true
 
 	case "OptimizerProgress.balance":
 		if e.complexity.OptimizerProgress.Balance == nil {
@@ -3864,6 +3921,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Nta(childComplexity, args["mtknr"].(string)), true
+
+	case "Query.ntaRoomAloneWaivers":
+		if e.complexity.Query.NtaRoomAloneWaivers == nil {
+			break
+		}
+
+		return e.complexity.Query.NtaRoomAloneWaivers(childComplexity), true
 
 	case "Query.ntas":
 		if e.complexity.Query.Ntas == nil {
@@ -6463,6 +6527,29 @@ type NTAWithRegsByExam {
   ntas: [NTAWithRegs!]
 }
 `, BuiltIn: false},
+	{Name: "../nta_room_alone_waiver.graphqls", Input: `# An NTA student can deliberately give up their right to a room of their own for a
+# single exam. Such an accepted waiver (with a reason) is stored per semester, so
+# the rooms validation only reports it as a warning instead of an error, and the
+# reason can be added to the NTA's room email.
+
+type NtaRoomAloneWaiver {
+  mtknr: String!
+  ancode: Int!
+  reason: String!
+}
+
+extend type Query {
+  "All accepted NTA room-alone waivers of the semester."
+  ntaRoomAloneWaivers: [NtaRoomAloneWaiver!]!
+}
+
+extend type Mutation {
+  "Accept that an NTA gives up the room-alone right for one exam (key: mtknr/ancode), with a reason. Downgrades the rooms validation to a warning and is added to the NTA email."
+  addNtaRoomAloneWaiver(mtknr: String!, ancode: Int!, reason: String!): NtaRoomAloneWaiver!
+  "Remove an NTA room-alone waiver (key: mtknr/ancode)."
+  removeNtaRoomAloneWaiver(mtknr: String!, ancode: Int!): Boolean!
+}
+`, BuiltIn: false},
 	{Name: "../plan.graphqls", Input: `extend type Query {
   allProgramsInPlan: [String!]
   ancodesInPlan: [Int!]
@@ -7442,6 +7529,80 @@ func (ec *executionContext) field_Mutation_addNTA_argsInput(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_addNtaRoomAloneWaiver_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_addNtaRoomAloneWaiver_argsMtknr(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mtknr"] = arg0
+	arg1, err := ec.field_Mutation_addNtaRoomAloneWaiver_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg1
+	arg2, err := ec.field_Mutation_addNtaRoomAloneWaiver_argsReason(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_addNtaRoomAloneWaiver_argsMtknr(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["mtknr"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addNtaRoomAloneWaiver_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addNtaRoomAloneWaiver_argsReason(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["reason"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("reason"))
+	if tmp, ok := rawArgs["reason"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_addRoomRequest_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -8352,6 +8513,57 @@ func (ec *executionContext) field_Mutation_prePlanRoom_argsMtknr(
 	}
 
 	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removeNtaRoomAloneWaiver_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_removeNtaRoomAloneWaiver_argsMtknr(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mtknr"] = arg0
+	arg1, err := ec.field_Mutation_removeNtaRoomAloneWaiver_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_removeNtaRoomAloneWaiver_argsMtknr(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["mtknr"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removeNtaRoomAloneWaiver_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
 	return zeroVal, nil
 }
 
@@ -21578,6 +21790,124 @@ func (ec *executionContext) fieldContext_Mutation_setNTAActive(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_addNtaRoomAloneWaiver(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addNtaRoomAloneWaiver(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddNtaRoomAloneWaiver(rctx, fc.Args["mtknr"].(string), fc.Args["ancode"].(int), fc.Args["reason"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.NtaRoomAloneWaiver)
+	fc.Result = res
+	return ec.marshalNNtaRoomAloneWaiver2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNtaRoomAloneWaiver(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addNtaRoomAloneWaiver(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mtknr":
+				return ec.fieldContext_NtaRoomAloneWaiver_mtknr(ctx, field)
+			case "ancode":
+				return ec.fieldContext_NtaRoomAloneWaiver_ancode(ctx, field)
+			case "reason":
+				return ec.fieldContext_NtaRoomAloneWaiver_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NtaRoomAloneWaiver", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addNtaRoomAloneWaiver_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeNtaRoomAloneWaiver(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeNtaRoomAloneWaiver(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveNtaRoomAloneWaiver(rctx, fc.Args["mtknr"].(string), fc.Args["ancode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeNtaRoomAloneWaiver(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeNtaRoomAloneWaiver_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addExamToSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_addExamToSlot(ctx, field)
 	if err != nil {
@@ -23876,6 +24206,138 @@ func (ec *executionContext) fieldContext_NTAWithRegsByExamAndTeacher_exams(_ con
 				return ec.fieldContext_NTAWithRegsByExam_ntas(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NTAWithRegsByExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NtaRoomAloneWaiver_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.NtaRoomAloneWaiver) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NtaRoomAloneWaiver_mtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NtaRoomAloneWaiver_mtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NtaRoomAloneWaiver",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NtaRoomAloneWaiver_ancode(ctx context.Context, field graphql.CollectedField, obj *model.NtaRoomAloneWaiver) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NtaRoomAloneWaiver_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NtaRoomAloneWaiver_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NtaRoomAloneWaiver",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NtaRoomAloneWaiver_reason(ctx context.Context, field graphql.CollectedField, obj *model.NtaRoomAloneWaiver) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NtaRoomAloneWaiver_reason(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Reason, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NtaRoomAloneWaiver_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NtaRoomAloneWaiver",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -29065,6 +29527,58 @@ func (ec *executionContext) fieldContext_Query_examsWithNtas(_ context.Context, 
 				return ec.fieldContext_PlannedExam_plannedRooms(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlannedExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_ntaRoomAloneWaivers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_ntaRoomAloneWaivers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().NtaRoomAloneWaivers(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NtaRoomAloneWaiver)
+	fc.Result = res
+	return ec.marshalNNtaRoomAloneWaiver2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNtaRoomAloneWaiverᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_ntaRoomAloneWaivers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mtknr":
+				return ec.fieldContext_NtaRoomAloneWaiver_mtknr(ctx, field)
+			case "ancode":
+				return ec.fieldContext_NtaRoomAloneWaiver_ancode(ctx, field)
+			case "reason":
+				return ec.fieldContext_NtaRoomAloneWaiver_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NtaRoomAloneWaiver", field.Name)
 		},
 	}
 	return fc, nil
@@ -48119,6 +48633,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "addNtaRoomAloneWaiver":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addNtaRoomAloneWaiver(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeNtaRoomAloneWaiver":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeNtaRoomAloneWaiver(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addExamToSlot":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addExamToSlot(ctx, field)
@@ -48491,6 +49019,55 @@ func (ec *executionContext) _NTAWithRegsByExamAndTeacher(ctx context.Context, se
 			}
 		case "exams":
 			out.Values[i] = ec._NTAWithRegsByExamAndTeacher_exams(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var ntaRoomAloneWaiverImplementors = []string{"NtaRoomAloneWaiver"}
+
+func (ec *executionContext) _NtaRoomAloneWaiver(ctx context.Context, sel ast.SelectionSet, obj *model.NtaRoomAloneWaiver) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, ntaRoomAloneWaiverImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NtaRoomAloneWaiver")
+		case "mtknr":
+			out.Values[i] = ec._NtaRoomAloneWaiver_mtknr(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ancode":
+			out.Values[i] = ec._NtaRoomAloneWaiver_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._NtaRoomAloneWaiver_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -49983,6 +50560,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_examsWithNtas(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "ntaRoomAloneWaivers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_ntaRoomAloneWaivers(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -54515,6 +55114,64 @@ func (ec *executionContext) marshalNNTAWithRegsByExam2ᚖgithubᚗcomᚋobcode�
 		return graphql.Null
 	}
 	return ec._NTAWithRegsByExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNNtaRoomAloneWaiver2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNtaRoomAloneWaiver(ctx context.Context, sel ast.SelectionSet, v model.NtaRoomAloneWaiver) graphql.Marshaler {
+	return ec._NtaRoomAloneWaiver(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNNtaRoomAloneWaiver2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNtaRoomAloneWaiverᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NtaRoomAloneWaiver) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNNtaRoomAloneWaiver2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNtaRoomAloneWaiver(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNNtaRoomAloneWaiver2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNtaRoomAloneWaiver(ctx context.Context, sel ast.SelectionSet, v *model.NtaRoomAloneWaiver) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._NtaRoomAloneWaiver(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPlannedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlannedExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PlannedExam) graphql.Marshaler {

@@ -143,6 +143,9 @@ type NTAEmailExamAndRoom struct {
 	Exam        *model.PlannedExam
 	Room        *model.PlannedRoom
 	Invigilator *model.Teacher
+	// Waiver is set when the student deliberately gave up their room-alone right
+	// for this exam (the stored reason); empty otherwise.
+	Waiver string
 }
 
 type NTAEmailWithRooms struct {
@@ -159,6 +162,12 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 	ntas, err := p.NtasWithRegs(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get ntas")
+		return err
+	}
+
+	waiverReasons, err := p.ntaRoomAloneWaiverReasons(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get nta room-alone waivers")
 		return err
 	}
 
@@ -223,6 +232,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 				Exam:        exam,
 				Room:        room,
 				Invigilator: invigilator,
+				Waiver:      waiverReasons[ntaExamKey{nta.Mtknr, exam.Ancode}],
 			})
 		}
 		cc = ccSet.ToSlice()

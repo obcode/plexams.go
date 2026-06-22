@@ -9,6 +9,7 @@ bei Ihren Prüfungen.</p>
 {{ range .ExamsWithRoom -}}
 <li>
 {{ .Room.RoomName }} --- {{ .Exam.ZpaExam.MainExamer }}: {{ .Exam.ZpaExam.Module }}
+{{ if .Waiver }}<br /><em>Sie verzichten für diese Prüfung auf Ihren Anspruch auf einen eigenen Raum: {{ .Waiver }}</em>{{ end }}
 </li>
 {{ end }}
 </ul>

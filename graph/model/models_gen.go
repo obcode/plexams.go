@@ -341,6 +341,12 @@ type NTAWithRegsByExamAndTeacher struct {
 	Exams   []*NTAWithRegsByExam `json:"exams,omitempty"`
 }
 
+type NtaRoomAloneWaiver struct {
+	Mtknr  string `json:"mtknr"`
+	Ancode int    `json:"ancode"`
+	Reason string `json:"reason"`
+}
+
 // OptimizerProgress is the structured payload of a PROGRESS LogLine, mirroring the
 // simulated-annealing optimizer snapshot.
 type OptimizerProgress struct {

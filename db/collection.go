@@ -46,6 +46,8 @@ const (
 	collectionRoomRequests = "room_requests"
 
 	collectionPlanningState = "planning_state"
+
+	collectionNtaRoomAloneWaivers = "nta_room_alone_waivers"
 )
 
 type PrimussType string

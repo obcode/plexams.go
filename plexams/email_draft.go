@@ -71,15 +71,10 @@ func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
 	realTo := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
 	realTo = append(realTo, p.semesterConfig.Emails.AdditionalExamer...)
 
-	if !run {
-		subject = "[TEST EMAIL] " + subject + " (Würde an: " + fmt.Sprintf("%v", realTo) + ")"
-	}
-	to := p.mailTo(run, realTo...)
-
-	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, realTo, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
 	}
-	reporter.StopProgress(fmt.Sprintf("draft (ZPA) email sent to %v", to))
+	reporter.StopProgress(fmt.Sprintf("draft (ZPA) email sent to %s", p.recipientInfo(run, realTo...)))
 	return nil
 }
 
@@ -119,8 +114,6 @@ func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Vorläufiger Prüfungsplan - Rückmeldung bis spätestens %s",
 		p.semester, feedbackDate)
 
-	to := p.mailTo(run, p.semesterConfig.Emails.Fs)
-
 	// Generate the PDF draft
 	bufMD, err := p.DraftFSBytes(context.Background())
 	if err != nil {
@@ -140,9 +133,9 @@ func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
 		},
 	}
 
-	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Fs}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, false); err != nil {
 		return err
 	}
-	reporter.StopProgress(fmt.Sprintf("draft (FS) email sent to %v", to))
+	reporter.StopProgress(fmt.Sprintf("draft (FS) email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.Fs)))
 	return nil
 }

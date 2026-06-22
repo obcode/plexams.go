@@ -73,9 +73,9 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 			}
 		}
 
-		to := []string{p.dryRunRecipient()}
+		to := []string{}
 		cc := []string{}
-		if run && nta.Nta.Email != nil {
+		if nta.Nta.Email != nil {
 			to = []string{*nta.Nta.Email}
 			for _, exam := range exams {
 				teacher, err := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID)
@@ -87,7 +87,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 			}
 		}
 
-		err = p.SendHandicapsMailToStudentRoomAlone(ctx, to, cc, &NTAEmail{
+		err = p.SendHandicapsMailToStudentRoomAlone(ctx, run, to, cc, &NTAEmail{
 			NTA:        nta,
 			Exams:      exams,
 			PlanerName: p.planer.Name,
@@ -95,7 +95,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 		if err != nil {
 			return err
 		}
-		reporter.Printf("  ✓ %s %v", nta.Name, to)
+		reporter.Printf("  ✓ %s %s", nta.Name, p.recipientInfo(run, to...))
 		sent++
 	}
 	if run && mtknr == "all" {
@@ -105,7 +105,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 	return nil
 }
 
-func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, to []string, cc []string, handicapsEmail *NTAEmail) error {
+func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, run bool, to []string, cc []string, handicapsEmail *NTAEmail) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
 	tmpl, err := template.ParseFS(emailTemplates, "tmpl/handicapEmailRoomAlone.tmpl")
@@ -128,7 +128,8 @@ func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, to []
 		return err
 	}
 
-	return p.sendMail(to,
+	return p.sendMail(run,
+		to,
 		cc,
 		fmt.Sprintf("[Prüfungsplanung %s] Eigener Raum für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
@@ -226,13 +227,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 		}
 		cc = ccSet.ToSlice()
 
-		if !run {
-			to = []string{p.dryRunRecipient()}
-			log.Debug().Interface("cc", cc).Msg("not sending cc")
-			cc = []string{}
-		}
-
-		err = p.SendHandicapsMailToStudentPlanned(ctx, to, cc, &NTAEmailWithRooms{
+		err = p.SendHandicapsMailToStudentPlanned(ctx, run, to, cc, &NTAEmailWithRooms{
 			NTA:           nta,
 			ExamsWithRoom: examsWithRoom,
 			PlanerName:    p.planer.Name,
@@ -240,7 +235,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 		if err != nil {
 			return err
 		}
-		reporter.Printf("  ✓ %s %v", nta.Name, to)
+		reporter.Printf("  ✓ %s %s", nta.Name, p.recipientInfo(run, to...))
 	}
 	if run {
 		p.markCondition(ctx, condNTAPlannedSent)
@@ -249,7 +244,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 	return nil
 }
 
-func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, to []string, cc []string, handicapsEmail *NTAEmailWithRooms) error {
+func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, run bool, to []string, cc []string, handicapsEmail *NTAEmailWithRooms) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
 	tmpl, err := template.ParseFS(emailTemplates, "tmpl/handicapEmailPlanned.tmpl")
@@ -272,7 +267,8 @@ func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, to []st
 		return err
 	}
 
-	return p.sendMail(to,
+	return p.sendMail(run,
+		to,
 		cc,
 		fmt.Sprintf("[Prüfungsplanung %s] Räume für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
@@ -349,11 +345,8 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 		return err
 	}
 
-	if !run {
-		to = []string{p.dryRunRecipient()}
-	}
-
-	if err := p.sendMail(to,
+	if err := p.sendMail(run,
+		to,
 		nil,
 		fmt.Sprintf("[Prüfungsplanung %s] Neuer NTA", p.semester),
 		bufText.Bytes(),
@@ -363,6 +356,6 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 	); err != nil {
 		return err
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, to...)))
 	return nil
 }

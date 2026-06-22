@@ -57,14 +57,12 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool, reporter R
 
 	realRecipients := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
 	realRecipients = append(realRecipients, p.semesterConfig.Emails.AdditionalExamer...)
-	to := p.mailTo(run, realRecipients...)
-
-	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
 	}
 	if run {
 		p.markCondition(ctx, condConstraintsRequested)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, realRecipients...)))
 	return nil
 }

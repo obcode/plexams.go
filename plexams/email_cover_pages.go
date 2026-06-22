@@ -113,9 +113,8 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Deckblätter für Ihre Prüfungen",
 		p.semester)
 
-	to := p.mailTo(run, teacher.Email)
-
-	err = p.sendMail(to,
+	err = p.sendMail(run,
+		[]string{teacher.Email},
 		nil,
 		subject,
 		bufText.Bytes(),
@@ -134,6 +133,6 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		return err
 	}
 
-	reporter.StopProgress(fmt.Sprintf("✓ sent to %s %v [%s]", teacher.Fullname, to, source))
+	reporter.StopProgress(fmt.Sprintf("✓ sent to %s %s [%s]", teacher.Fullname, p.recipientInfo(run, teacher.Email), source))
 	return nil
 }

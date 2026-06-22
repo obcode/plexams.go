@@ -59,15 +59,14 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 
 	realRecipients := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester, p.semesterConfig.Emails.Fs}
 	realRecipients = append(realRecipients, p.semesterConfig.Emails.AdditionalExamer...)
-	to := p.mailTo(run, realRecipients...)
 
-	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
 	}
 	if run {
 		p.markCondition(ctx, condExamPlanPublished)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, realRecipients...)))
 	return nil
 }
 
@@ -112,15 +111,14 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 
 	realRecipients := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
 	realRecipients = append(realRecipients, p.semesterConfig.Emails.AdditionalExamer...)
-	to := p.mailTo(run, realRecipients...)
 
-	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
 	}
 	if run {
 		p.markCondition(ctx, condRoomPlanPublished)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, realRecipients...)))
 	return nil
 }
 
@@ -332,8 +330,8 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 			})
 		}
 
-		to := p.mailTo(run, teacher.Email)
-		err = p.sendMail(to,
+		err = p.sendMail(run,
+			[]string{teacher.Email},
 			nil,
 			subject,
 			bufText.Bytes(),
@@ -346,7 +344,7 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 			continue
 		}
 
-		reporter.Printf("  ✓ sent to %s %v [%s]", teacher.Fullname, to, source)
+		reporter.Printf("  ✓ sent to %s %s [%s]", teacher.Fullname, p.recipientInfo(run, teacher.Email), source)
 		sent++
 	}
 

@@ -99,13 +99,11 @@ func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilat
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Fehlende Anforderungen an die Planung der Prüfungsaufsichten",
 		p.semester)
 
-	to := p.mailTo(run, teacher.Email)
-
-	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, []string{teacher.Email}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		reporter.Warnf("error while sending email to %s", teacher.Fullname)
 		return err
 	}
 
-	reporter.Printf("  ✓ sent to %s (%d minutes)", teacher.Fullname, minutes)
+	reporter.Printf("  ✓ sent to %s (%d minutes) %s", teacher.Fullname, minutes, p.recipientInfo(run, teacher.Email))
 	return nil
 }

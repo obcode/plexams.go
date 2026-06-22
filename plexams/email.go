@@ -82,21 +82,40 @@ func (p *Plexams) dryRunRecipient() string {
 	return p.planer.Email
 }
 
-// mailTo returns the actual recipients for a send. On a dry run (run == false)
-// everything goes to the dry-run recipient instead of the real recipients, so a
-// dry run never reaches the real addressees.
-func (p *Plexams) mailTo(run bool, recipients ...string) []string {
+// recipientInfo describes a send for progress/log output. On a dry run it makes
+// explicit that the mail went to the dry-run address only and lists who it would
+// have reached, so the output never looks like a real send to real recipients.
+func (p *Plexams) recipientInfo(run bool, recipients ...string) string {
 	if run {
-		return recipients
+		return fmt.Sprintf("%v", recipients)
 	}
-	return []string{p.dryRunRecipient()}
+	return fmt.Sprintf("PROBEVERSAND an %s (echte Empfänger wären: %v)", p.dryRunRecipient(), recipients)
 }
 
-func (p *Plexams) sendMail(to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, noreply bool) error {
+func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, noreply bool) error {
+	actualTo := to
+	actualCc := cc
+	bcc := []string{p.planer.Email}
+
+	if !run {
+		// Probeversand: alles geht an die Test-Adresse. Der Betreff wird mit
+		// den echten Empfängern (To + Cc) präfixt, damit klar ist, an wen die
+		// E-Mail tatsächlich versandt worden wäre.
+		realRecipients := append(append([]string{}, to...), cc...)
+		if len(realRecipients) > 0 {
+			subject = fmt.Sprintf("[Probeversand → %s] %s", strings.Join(realRecipients, ", "), subject)
+		} else {
+			subject = fmt.Sprintf("[Probeversand] %s", subject)
+		}
+		actualTo = []string{p.dryRunRecipient()}
+		actualCc = nil
+		bcc = nil
+	}
+
 	e := &email.Email{
-		To:          to,
-		Cc:          cc,
-		Bcc:         []string{p.planer.Email},
+		To:          actualTo,
+		Cc:          actualCc,
+		Bcc:         bcc,
 		From:        fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email),
 		Subject:     subject,
 		Text:        text,

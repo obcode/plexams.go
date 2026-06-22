@@ -93,12 +93,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 		return fmt.Errorf("no info about teacher in zpa")
 	}
 
-	var to string
-	if run {
-		to = teacher.Email
-	} else {
-		to = p.dryRunRecipient()
-	}
+	to := teacher.Email
 
 	hasStudentRegs := false
 
@@ -108,7 +103,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 
 	log.Debug().Int("ancode", exam.Ancode).Bool("hasStudentRegs", hasStudentRegs).Msg("found student regs for exam")
 
-	if err := p.sendGeneratedExamMailToTeacher(to, &GeneratedExamMailData{
+	if err := p.sendGeneratedExamMailToTeacher(run, to, &GeneratedExamMailData{
 		FromFK07Date:   p.semesterConfig.FromFk07.Format("02.01.2006"),
 		ToDate:         p.semesterConfig.Days[len(p.semesterConfig.Days)-1].Date.Format("02.01.2006"),
 		Exam:           exam,
@@ -119,7 +114,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 		log.Error().Err(err).Msg("cannot send email")
 		return err
 	}
-	reporter.Printf("  ✓ %d. %s -> %s", exam.ZpaExam.AnCode, exam.ZpaExam.Module, to)
+	reporter.Printf("  ✓ %d. %s -> %s", exam.ZpaExam.AnCode, exam.ZpaExam.Module, p.recipientInfo(run, to))
 	return nil
 }
 
@@ -132,7 +127,7 @@ type GeneratedExamMailData struct {
 	HasStudentRegs bool
 }
 
-func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailData *GeneratedExamMailData, updated bool) error {
+func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedExamMailData *GeneratedExamMailData, updated bool) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
 	tmpl, err := template.ParseFS(emailTemplates, "tmpl/generatedExamEmail.tmpl")
@@ -233,7 +228,8 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(to string, generatedExamMailDat
 		attachments = append(attachments, attachment)
 	}
 
-	return p.sendMail([]string{to},
+	return p.sendMail(run,
+		[]string{to},
 		nil,
 		subject,
 		bufText.Bytes(),
@@ -322,14 +318,8 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 			return err
 		}
 
-		var to string
-		if run {
-			to = emailAddress
-		} else {
-			to = p.dryRunRecipient()
-		}
-
-		if err := p.sendMail([]string{to},
+		if err := p.sendMail(run,
+			[]string{emailAddress},
 			nil,
 			subject,
 			bufText.Bytes(),
@@ -339,7 +329,7 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 		); err != nil {
 			return err
 		}
-		reporter.StopProgress(fmt.Sprintf("email sent to %s", to))
+		reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, emailAddress)))
 		return nil
 	}
 	reporter.StopProgressFail(fmt.Sprintf("no student registrations found for %s/%d", program, ancode))

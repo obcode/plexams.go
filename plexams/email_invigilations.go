@@ -47,14 +47,12 @@ func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool, reporter
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Anforderungen an die Planung der Prüfungsaufsichten - Rückmeldung bis spätestens %s",
 		p.semester, feedbackDate)
 
-	to := p.mailTo(run, p.semesterConfig.Emails.Profs)
-
-	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Profs}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
 		return err
 	}
 	if run {
 		p.markCondition(ctx, condInvigilationsRequested)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.Profs)))
 	return nil
 }

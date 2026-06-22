@@ -51,7 +51,6 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool, reporter Repo
 
 	realRecipients := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
 	realRecipients = append(realRecipients, p.semesterConfig.Emails.AdditionalExamer...)
-	to := p.mailTo(run, realRecipients...)
 
 	examsToPlan, err := p.generateExamsToPlanBuffer(ctx)
 	if err != nil {
@@ -79,12 +78,12 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool, reporter Repo
 		},
 	}
 
-	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, true); err != nil {
+	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, true); err != nil {
 		return err
 	}
 	if run {
 		p.markCondition(ctx, condExamsPrepared)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, realRecipients...)))
 	return nil
 }

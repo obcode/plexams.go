@@ -121,13 +121,12 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Raumanfrage für die Prüfungsplanung", p.semester)
 
-	to := p.mailTo(run, p.semesterConfig.Emails.RoomManagement)
-	if err := p.sendMail(to, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.RoomManagement}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
 		return err
 	}
 	if run {
 		p.markCondition(ctx, condRoomRequestsSent)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %v", to))
+	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.RoomManagement)))
 	return nil
 }

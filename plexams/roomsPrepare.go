@@ -422,6 +422,7 @@ type prepareRoomsCfg struct {
 	plannedRoomsWithFreeSeats map[string]*plannedRoomsWithFreeSeats // key is room name
 	roomsNotUsableInSlot      set.Set[string]
 	blockedRooms              map[SlotNumber]set.Set[string] // slot -> blocked room names
+	exactSeatRooms            map[int]map[string]bool        // ancode -> room names with an exact seat count (do not refill with this exam)
 }
 
 type plannedRoomsWithFreeSeats struct {
@@ -460,6 +461,7 @@ func (p *Plexams) prepareRoomsCfg(ctx context.Context) (*prepareRoomsCfg, error)
 		prePlannedRooms: p.prePlannedRooms(ctx, roomInfo),
 		additionalSeats: additionalSeats(),
 		blockedRooms:    blockedRooms,
+		exactSeatRooms:  make(map[int]map[string]bool),
 	}
 
 	log.Info().Interface("prePlannedRooms", prepareRoomsCfg.prePlannedRooms).Msg("prepareRoomsCfg initialized")
@@ -761,6 +763,12 @@ func (p *Plexams) assignPrePlannedRooms(prepareRoomsCfg *prepareRoomsCfg, exam *
 				} else {
 					studentCountInRoom = *prePlannedRoom.Seats
 				}
+				// the remaining capacity stays free for OTHER exams, but this exam
+				// must not later refill its own exact room.
+				if prepareRoomsCfg.exactSeatRooms[exam.Exam.Ancode] == nil {
+					prepareRoomsCfg.exactSeatRooms[exam.Exam.Ancode] = make(map[string]bool)
+				}
+				prepareRoomsCfg.exactSeatRooms[exam.Exam.Ancode][room.Name] = true
 			}
 
 			// A shared room may already be full (taken by another exam) when this
@@ -864,6 +872,10 @@ func (p *Plexams) findRoomWithFreeSeats(prepareRoomsCfg *prepareRoomsCfg, exam *
 
 OUTER:
 	for roomName, plannedRoomWithFreeSeats := range prepareRoomsCfg.plannedRoomsWithFreeSeats {
+		// do not refill a room this exam already filled to an exact seat count.
+		if prepareRoomsCfg.exactSeatRooms[exam.Exam.Ancode][roomName] {
+			continue
+		}
 		if plannedRoomWithFreeSeats.freeSeats >= neededSeats {
 			room := prepareRoomsCfg.roomInfo[roomName]
 			if !room.Handicap && roomSatisfiesConstraints(room, exam.Exam.Constraints) {

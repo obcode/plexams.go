@@ -4,31 +4,30 @@
 <p>anbei übersenden wir Ihnen Informationen bzgl. eines Studierenden mit einem neuen
 Anspruch auf Nachteilsausgleich.</p>
 
-<p>
-{{ .Student.Name }}
-{{ if ne .Student.ZpaStudent nil }}({{ .Student.ZpaStudent.Gender }}) <{{ .Student.ZpaStudent.Email }}>{{ end }}
-</p>
-
-<p>
-Der Nachteilsausgleich vom {{ .Student.Nta.From }}
-lautet sinngemäß <i>"{{ .Student.Nta.Compensation }}"</i> und beinhaltet für unsere Planung:
-</p>
-
-<ul>
-{{ if ge .Student.Nta.DeltaDurationPercent 0 }}<li> {{ .Student.Nta.DeltaDurationPercent }}% Verlängerung </i>{{ end }}
-{{ if .Student.Nta.NeedsRoomAlone }}<li> Prüfung in eigenem Raum </i>{{ end }}
-{{ if .Student.Nta.NeedsHardware }}<li> Prüfung mit eigener/besonderer Hardware </i>{{ end }}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 14px; background-color:#f6f7f9; border:1px solid #e6e8ec; border-radius:6px;">
+<tr><td style="padding:10px 16px; font-size:14px; line-height:1.5; color:#1f2937;">
+<div style="font-weight:bold; color:#5555FC;">{{ .Student.Name }}{{ if ne .Student.ZpaStudent nil }} <span style="font-weight:normal; color:#6b7280;">({{ .Student.ZpaStudent.Gender }}) &lt;{{ .Student.ZpaStudent.Email }}&gt;</span>{{ end }}</div>
+<div style="margin:6px 0;">Nachteilsausgleich vom {{ .Student.Nta.From }}: <i>"{{ .Student.Nta.Compensation }}"</i></div>
+<div>Für unsere Planung bedeutet das:</div>
+<ul style="margin:4px 0 0; padding-left:18px;">
+{{ if ge .Student.Nta.DeltaDurationPercent 0 }}<li>{{ .Student.Nta.DeltaDurationPercent }}% Verlängerung</li>{{ end }}
+{{ if .Student.Nta.NeedsRoomAlone }}<li>Prüfung in eigenem Raum</li>{{ end }}
+{{ if .Student.Nta.NeedsHardware }}<li>Prüfung mit eigener/besonderer Hardware</li>{{ end }}
 </ul>
+</td></tr>
+</table>
 
 <p>Der Studierende hat sich für folgende, von uns geplanten, Prüfungen angemeldet:</p>
 
-<ul>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 14px; background-color:#f6f7f9; border:1px solid #e6e8ec; border-radius:6px;">
+<tr><td style="padding:10px 16px; font-size:14px; line-height:1.5; color:#1f2937;">
+<ul style="margin:0; padding-left:18px;">
 {{ range .Exams -}}
-<li>
-{{ .Ancode }}. {{ .ZpaExam.Module }} ({{ .ZpaExam.MainExamer }})
-</li>
+<li>{{ .Ancode }}. {{ .ZpaExam.Module }} ({{ .ZpaExam.MainExamer }})</li>
 {{ end }}
 </ul>
+</td></tr>
+</table>
 
 <p>Mit freundlichen Grüßen<br />
 {{ .PlanerName }}</p>

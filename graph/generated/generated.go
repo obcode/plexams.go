@@ -594,6 +594,7 @@ type ComplexityRoot struct {
 		Rooms                         func(childComplexity int) int
 		RoomsForSlot                  func(childComplexity int, day int, time int) int
 		RoomsForSlots                 func(childComplexity int) int
+		RoomsWithFreeSeatsForSlot     func(childComplexity int, day int, time int) int
 		RoomsWithInvigilationsForSlot func(childComplexity int, day int, time int) int
 		Semester                      func(childComplexity int) int
 		SemesterConfig                func(childComplexity int) int
@@ -656,6 +657,13 @@ type ComplexityRoot struct {
 		Seb              func(childComplexity int) int
 	}
 
+	RoomInSlotUsage struct {
+		Ancode       func(childComplexity int) int
+		Examer       func(childComplexity int) int
+		Module       func(childComplexity int) int
+		StudentCount func(childComplexity int) int
+	}
+
 	RoomRequest struct {
 		Active   func(childComplexity int) int
 		Approved func(childComplexity int) int
@@ -676,6 +684,18 @@ type ComplexityRoot struct {
 		Slot              func(childComplexity int) int
 		Students          func(childComplexity int) int
 		Until             func(childComplexity int) int
+	}
+
+	RoomWithFreeSeats struct {
+		Exahm     func(childComplexity int) int
+		FreeSeats func(childComplexity int) int
+		Handicap  func(childComplexity int) int
+		Lab       func(childComplexity int) int
+		RoomName  func(childComplexity int) int
+		Seats     func(childComplexity int) int
+		Seb       func(childComplexity int) int
+		UsedBy    func(childComplexity int) int
+		UsedSeats func(childComplexity int) int
 	}
 
 	RoomWithInvigilator struct {
@@ -1030,6 +1050,7 @@ type QueryResolver interface {
 	PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedRoom, error)
 	PlannedRoomForStudent(ctx context.Context, ancode int, mtknr string) (*model.PlannedRoom, error)
 	BlockedRooms(ctx context.Context) ([]*model.BlockedRoom, error)
+	RoomsWithFreeSeatsForSlot(ctx context.Context, day int, time int) ([]*model.RoomWithFreeSeats, error)
 	RoomRequests(ctx context.Context) ([]*model.RoomRequest, error)
 	RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
@@ -4031,6 +4052,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.RoomsForSlots(childComplexity), true
 
+	case "Query.roomsWithFreeSeatsForSlot":
+		if e.complexity.Query.RoomsWithFreeSeatsForSlot == nil {
+			break
+		}
+
+		args, err := ec.field_Query_roomsWithFreeSeatsForSlot_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.RoomsWithFreeSeatsForSlot(childComplexity, args["day"].(int), args["time"].(int)), true
+
 	case "Query.roomsWithInvigilationsForSlot":
 		if e.complexity.Query.RoomsWithInvigilationsForSlot == nil {
 			break
@@ -4386,6 +4419,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RoomConstraints.Seb(childComplexity), true
 
+	case "RoomInSlotUsage.ancode":
+		if e.complexity.RoomInSlotUsage.Ancode == nil {
+			break
+		}
+
+		return e.complexity.RoomInSlotUsage.Ancode(childComplexity), true
+
+	case "RoomInSlotUsage.examer":
+		if e.complexity.RoomInSlotUsage.Examer == nil {
+			break
+		}
+
+		return e.complexity.RoomInSlotUsage.Examer(childComplexity), true
+
+	case "RoomInSlotUsage.module":
+		if e.complexity.RoomInSlotUsage.Module == nil {
+			break
+		}
+
+		return e.complexity.RoomInSlotUsage.Module(childComplexity), true
+
+	case "RoomInSlotUsage.studentCount":
+		if e.complexity.RoomInSlotUsage.StudentCount == nil {
+			break
+		}
+
+		return e.complexity.RoomInSlotUsage.StudentCount(childComplexity), true
+
 	case "RoomRequest.active":
 		if e.complexity.RoomRequest.Active == nil {
 			break
@@ -4497,6 +4558,69 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RoomRequestPreview.Until(childComplexity), true
+
+	case "RoomWithFreeSeats.exahm":
+		if e.complexity.RoomWithFreeSeats.Exahm == nil {
+			break
+		}
+
+		return e.complexity.RoomWithFreeSeats.Exahm(childComplexity), true
+
+	case "RoomWithFreeSeats.freeSeats":
+		if e.complexity.RoomWithFreeSeats.FreeSeats == nil {
+			break
+		}
+
+		return e.complexity.RoomWithFreeSeats.FreeSeats(childComplexity), true
+
+	case "RoomWithFreeSeats.handicap":
+		if e.complexity.RoomWithFreeSeats.Handicap == nil {
+			break
+		}
+
+		return e.complexity.RoomWithFreeSeats.Handicap(childComplexity), true
+
+	case "RoomWithFreeSeats.lab":
+		if e.complexity.RoomWithFreeSeats.Lab == nil {
+			break
+		}
+
+		return e.complexity.RoomWithFreeSeats.Lab(childComplexity), true
+
+	case "RoomWithFreeSeats.roomName":
+		if e.complexity.RoomWithFreeSeats.RoomName == nil {
+			break
+		}
+
+		return e.complexity.RoomWithFreeSeats.RoomName(childComplexity), true
+
+	case "RoomWithFreeSeats.seats":
+		if e.complexity.RoomWithFreeSeats.Seats == nil {
+			break
+		}
+
+		return e.complexity.RoomWithFreeSeats.Seats(childComplexity), true
+
+	case "RoomWithFreeSeats.seb":
+		if e.complexity.RoomWithFreeSeats.Seb == nil {
+			break
+		}
+
+		return e.complexity.RoomWithFreeSeats.Seb(childComplexity), true
+
+	case "RoomWithFreeSeats.usedBy":
+		if e.complexity.RoomWithFreeSeats.UsedBy == nil {
+			break
+		}
+
+		return e.complexity.RoomWithFreeSeats.UsedBy(childComplexity), true
+
+	case "RoomWithFreeSeats.usedSeats":
+		if e.complexity.RoomWithFreeSeats.UsedSeats == nil {
+			break
+		}
+
+		return e.complexity.RoomWithFreeSeats.UsedSeats(childComplexity), true
 
 	case "RoomWithInvigilator.invigilator":
 		if e.complexity.RoomWithInvigilator.Invigilator == nil {
@@ -6557,6 +6681,8 @@ type ConflictsPerProgramAncode {
   plannedRoomForStudent(ancode: Int!, mtknr: String!): PlannedRoom
   "All rooms blocked for a specific slot (not usable there, e.g. otherwise occupied)."
   blockedRooms: [BlockedRoom!]!
+  "All rooms allowed in a slot with their free seats and which exams already use them — for sharing a room (e.g. as a reserve)."
+  roomsWithFreeSeatsForSlot(day: Int!, time: Int!): [RoomWithFreeSeats!]!
 }
 
 extend type Mutation {
@@ -6684,6 +6810,29 @@ type BlockedRoom {
   day: Int!
   slot: Int!
   reason: String
+}
+
+"A room allowed in a slot, with its free seats and the exams already using it."
+type RoomWithFreeSeats {
+  roomName: String!
+  seats: Int!
+  usedSeats: Int!
+  freeSeats: Int!
+  "handicap = true: NTA room, only for NTAs (not for normal students / non-NTA reserve)."
+  handicap: Boolean!
+  exahm: Boolean!
+  lab: Boolean!
+  seb: Boolean!
+  "The exams already using this room in the slot (empty if the room is still free)."
+  usedBy: [RoomInSlotUsage!]!
+}
+
+"One exam's use of a room in a slot."
+type RoomInSlotUsage {
+  ancode: Int!
+  module: String!
+  examer: String!
+  studentCount: Int!
 }
 
 type RoomAndExam {
@@ -9971,6 +10120,57 @@ func (ec *executionContext) field_Query_roomsForSlot_argsDay(
 }
 
 func (ec *executionContext) field_Query_roomsForSlot_argsTime(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["time"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("time"))
+	if tmp, ok := rawArgs["time"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_roomsWithFreeSeatsForSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_roomsWithFreeSeatsForSlot_argsDay(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["day"] = arg0
+	arg1, err := ec.field_Query_roomsWithFreeSeatsForSlot_argsTime(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["time"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Query_roomsWithFreeSeatsForSlot_argsDay(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["day"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+	if tmp, ok := rawArgs["day"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_roomsWithFreeSeatsForSlot_argsTime(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (int, error) {
@@ -30297,6 +30497,81 @@ func (ec *executionContext) fieldContext_Query_blockedRooms(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_roomsWithFreeSeatsForSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_roomsWithFreeSeatsForSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().RoomsWithFreeSeatsForSlot(rctx, fc.Args["day"].(int), fc.Args["time"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.RoomWithFreeSeats)
+	fc.Result = res
+	return ec.marshalNRoomWithFreeSeats2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomWithFreeSeatsᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_roomsWithFreeSeatsForSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "roomName":
+				return ec.fieldContext_RoomWithFreeSeats_roomName(ctx, field)
+			case "seats":
+				return ec.fieldContext_RoomWithFreeSeats_seats(ctx, field)
+			case "usedSeats":
+				return ec.fieldContext_RoomWithFreeSeats_usedSeats(ctx, field)
+			case "freeSeats":
+				return ec.fieldContext_RoomWithFreeSeats_freeSeats(ctx, field)
+			case "handicap":
+				return ec.fieldContext_RoomWithFreeSeats_handicap(ctx, field)
+			case "exahm":
+				return ec.fieldContext_RoomWithFreeSeats_exahm(ctx, field)
+			case "lab":
+				return ec.fieldContext_RoomWithFreeSeats_lab(ctx, field)
+			case "seb":
+				return ec.fieldContext_RoomWithFreeSeats_seb(ctx, field)
+			case "usedBy":
+				return ec.fieldContext_RoomWithFreeSeats_usedBy(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoomWithFreeSeats", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_roomsWithFreeSeatsForSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_roomRequests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_roomRequests(ctx, field)
 	if err != nil {
@@ -32764,6 +33039,182 @@ func (ec *executionContext) fieldContext_RoomConstraints_comments(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _RoomInSlotUsage_ancode(ctx context.Context, field graphql.CollectedField, obj *model.RoomInSlotUsage) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomInSlotUsage_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomInSlotUsage_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomInSlotUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomInSlotUsage_module(ctx context.Context, field graphql.CollectedField, obj *model.RoomInSlotUsage) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomInSlotUsage_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomInSlotUsage_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomInSlotUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomInSlotUsage_examer(ctx context.Context, field graphql.CollectedField, obj *model.RoomInSlotUsage) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomInSlotUsage_examer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Examer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomInSlotUsage_examer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomInSlotUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomInSlotUsage_studentCount(ctx context.Context, field graphql.CollectedField, obj *model.RoomInSlotUsage) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomInSlotUsage_studentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomInSlotUsage_studentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomInSlotUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RoomRequest_room(ctx context.Context, field graphql.CollectedField, obj *model.RoomRequest) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoomRequest_room(ctx, field)
 	if err != nil {
@@ -33511,6 +33962,412 @@ func (ec *executionContext) fieldContext_RoomRequestPreview_simultaneousExams(_ 
 				return ec.fieldContext_PlannedExam_plannedRooms(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlannedExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithFreeSeats_roomName(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithFreeSeats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithFreeSeats_roomName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithFreeSeats_roomName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithFreeSeats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithFreeSeats_seats(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithFreeSeats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithFreeSeats_seats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithFreeSeats_seats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithFreeSeats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithFreeSeats_usedSeats(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithFreeSeats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithFreeSeats_usedSeats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UsedSeats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithFreeSeats_usedSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithFreeSeats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithFreeSeats_freeSeats(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithFreeSeats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithFreeSeats_freeSeats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FreeSeats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithFreeSeats_freeSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithFreeSeats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithFreeSeats_handicap(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithFreeSeats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithFreeSeats_handicap(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Handicap, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithFreeSeats_handicap(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithFreeSeats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithFreeSeats_exahm(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithFreeSeats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithFreeSeats_exahm(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exahm, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithFreeSeats_exahm(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithFreeSeats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithFreeSeats_lab(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithFreeSeats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithFreeSeats_lab(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Lab, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithFreeSeats_lab(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithFreeSeats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithFreeSeats_seb(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithFreeSeats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithFreeSeats_seb(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seb, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithFreeSeats_seb(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithFreeSeats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomWithFreeSeats_usedBy(ctx context.Context, field graphql.CollectedField, obj *model.RoomWithFreeSeats) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomWithFreeSeats_usedBy(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UsedBy, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.RoomInSlotUsage)
+	fc.Result = res
+	return ec.marshalNRoomInSlotUsage2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInSlotUsageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomWithFreeSeats_usedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomWithFreeSeats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_RoomInSlotUsage_ancode(ctx, field)
+			case "module":
+				return ec.fieldContext_RoomInSlotUsage_module(ctx, field)
+			case "examer":
+				return ec.fieldContext_RoomInSlotUsage_examer(ctx, field)
+			case "studentCount":
+				return ec.fieldContext_RoomInSlotUsage_studentCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoomInSlotUsage", field.Name)
 		},
 	}
 	return fc, nil
@@ -49624,6 +50481,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "roomsWithFreeSeatsForSlot":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_roomsWithFreeSeatsForSlot(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "roomRequests":
 			field := field
 
@@ -50304,6 +51183,60 @@ func (ec *executionContext) _RoomConstraints(ctx context.Context, sel ast.Select
 	return out
 }
 
+var roomInSlotUsageImplementors = []string{"RoomInSlotUsage"}
+
+func (ec *executionContext) _RoomInSlotUsage(ctx context.Context, sel ast.SelectionSet, obj *model.RoomInSlotUsage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, roomInSlotUsageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RoomInSlotUsage")
+		case "ancode":
+			out.Values[i] = ec._RoomInSlotUsage_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._RoomInSlotUsage_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examer":
+			out.Values[i] = ec._RoomInSlotUsage_examer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentCount":
+			out.Values[i] = ec._RoomInSlotUsage_studentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var roomRequestImplementors = []string{"RoomRequest"}
 
 func (ec *executionContext) _RoomRequest(ctx context.Context, sel ast.SelectionSet, obj *model.RoomRequest) graphql.Marshaler {
@@ -50426,6 +51359,85 @@ func (ec *executionContext) _RoomRequestPreview(ctx context.Context, sel ast.Sel
 			}
 		case "simultaneousExams":
 			out.Values[i] = ec._RoomRequestPreview_simultaneousExams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var roomWithFreeSeatsImplementors = []string{"RoomWithFreeSeats"}
+
+func (ec *executionContext) _RoomWithFreeSeats(ctx context.Context, sel ast.SelectionSet, obj *model.RoomWithFreeSeats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, roomWithFreeSeatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RoomWithFreeSeats")
+		case "roomName":
+			out.Values[i] = ec._RoomWithFreeSeats_roomName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seats":
+			out.Values[i] = ec._RoomWithFreeSeats_seats(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "usedSeats":
+			out.Values[i] = ec._RoomWithFreeSeats_usedSeats(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "freeSeats":
+			out.Values[i] = ec._RoomWithFreeSeats_freeSeats(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "handicap":
+			out.Values[i] = ec._RoomWithFreeSeats_handicap(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "exahm":
+			out.Values[i] = ec._RoomWithFreeSeats_exahm(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lab":
+			out.Values[i] = ec._RoomWithFreeSeats_lab(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seb":
+			out.Values[i] = ec._RoomWithFreeSeats_seb(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "usedBy":
+			out.Values[i] = ec._RoomWithFreeSeats_usedBy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -54308,6 +55320,60 @@ func (ec *executionContext) marshalNRoomAndExam2ᚖgithubᚗcomᚋobcodeᚋplexa
 	return ec._RoomAndExam(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNRoomInSlotUsage2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInSlotUsageᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomInSlotUsage) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRoomInSlotUsage2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInSlotUsage(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRoomInSlotUsage2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInSlotUsage(ctx context.Context, sel ast.SelectionSet, v *model.RoomInSlotUsage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RoomInSlotUsage(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNRoomInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInput(ctx context.Context, v any) (model.RoomInput, error) {
 	res, err := ec.unmarshalInputRoomInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -54433,6 +55499,60 @@ func (ec *executionContext) unmarshalNRoomRequestType2githubᚗcomᚋobcodeᚋpl
 
 func (ec *executionContext) marshalNRoomRequestType2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomRequestType(ctx context.Context, sel ast.SelectionSet, v model.RoomRequestType) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNRoomWithFreeSeats2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomWithFreeSeatsᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomWithFreeSeats) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRoomWithFreeSeats2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomWithFreeSeats(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRoomWithFreeSeats2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomWithFreeSeats(ctx context.Context, sel ast.SelectionSet, v *model.RoomWithFreeSeats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RoomWithFreeSeats(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNRoomWithInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomWithInvigilatorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomWithInvigilator) graphql.Marshaler {

@@ -465,6 +465,14 @@ type RoomConstraints struct {
 	Comments         *string  `json:"comments,omitempty"`
 }
 
+// One exam's use of a room in a slot.
+type RoomInSlotUsage struct {
+	Ancode       int    `json:"ancode"`
+	Module       string `json:"module"`
+	Examer       string `json:"examer"`
+	StudentCount int    `json:"studentCount"`
+}
+
 type RoomInput struct {
 	Name             string          `json:"name"`
 	Seats            int             `json:"seats"`
@@ -504,6 +512,21 @@ type RoomRequestPreview struct {
 	Seats             int            `json:"seats"`
 	Exam              *PlannedExam   `json:"exam"`
 	SimultaneousExams []*PlannedExam `json:"simultaneousExams"`
+}
+
+// A room allowed in a slot, with its free seats and the exams already using it.
+type RoomWithFreeSeats struct {
+	RoomName  string `json:"roomName"`
+	Seats     int    `json:"seats"`
+	UsedSeats int    `json:"usedSeats"`
+	FreeSeats int    `json:"freeSeats"`
+	// handicap = true: NTA room, only for NTAs (not for normal students / non-NTA reserve).
+	Handicap bool `json:"handicap"`
+	Exahm    bool `json:"exahm"`
+	Lab      bool `json:"lab"`
+	Seb      bool `json:"seb"`
+	// The exams already using this room in the slot (empty if the room is still free).
+	UsedBy []*RoomInSlotUsage `json:"usedBy"`
 }
 
 type RoomWithInvigilator struct {

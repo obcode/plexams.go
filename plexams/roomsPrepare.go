@@ -874,15 +874,15 @@ func roomSatisfiesConstraints(room *model.Room, constraints *model.Constraints) 
 		rc = constraints.RoomConstraints
 	}
 
-	// EXaHM rooms are reserved for EXaHM exams. They may additionally serve an exam
-	// that needs SEB or Lab if the room also has that feature, but never any other
-	// exam (e.g. the NTA room of a non-EXaHM exam). An all-false RoomConstraints
-	// object (present but nothing required) must not let an EXaHM room slip through.
-	if room.Exahm {
-		needsExahm := rc != nil && rc.Exahm
-		needsSeb := rc != nil && rc.Seb && room.Seb
-		needsLab := rc != nil && rc.Lab && room.Lab
-		if !needsExahm && !needsSeb && !needsLab {
+	// A room with a special feature (EXaHM / Lab / SEB) is only used for an exam
+	// that requires at least one feature the room actually has; never for an exam
+	// that requires none of them. So an EXaHM room only serves EXaHM exams (or a
+	// SEB/Lab exam if it is also a SEB/Lab room), a Lab room only Lab exams (or
+	// SEB/EXaHM if it has those), etc. An all-false RoomConstraints object
+	// (present but nothing required) must not let such a room slip through.
+	if room.Exahm || room.Lab || room.Seb {
+		needsFeature := rc != nil && ((rc.Exahm && room.Exahm) || (rc.Lab && room.Lab) || (rc.Seb && room.Seb))
+		if !needsFeature {
 			return false
 		}
 	}

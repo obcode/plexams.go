@@ -125,6 +125,11 @@ func (r *queryResolver) BlockedRooms(ctx context.Context) ([]*model.BlockedRoom,
 	return r.plexams.BlockedRooms(ctx)
 }
 
+// RoomsWithFreeSeatsForSlot is the resolver for the roomsWithFreeSeatsForSlot field.
+func (r *queryResolver) RoomsWithFreeSeatsForSlot(ctx context.Context, day int, time int) ([]*model.RoomWithFreeSeats, error) {
+	return r.plexams.RoomsWithFreeSeatsForSlot(ctx, day, time)
+}
+
 // Rooms is the resolver for the rooms field.
 func (r *roomsForSlotResolver) Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error) {
 	return r.plexams.RoomsFromRoomNames(ctx, obj.RoomNames)

@@ -10,6 +10,8 @@ extend type Query {
   plannedRoomForStudent(ancode: Int!, mtknr: String!): PlannedRoom
   "All rooms blocked for a specific slot (not usable there, e.g. otherwise occupied)."
   blockedRooms: [BlockedRoom!]!
+  "All rooms allowed in a slot with their free seats and which exams already use them — for sharing a room (e.g. as a reserve)."
+  roomsWithFreeSeatsForSlot(day: Int!, time: Int!): [RoomWithFreeSeats!]!
 }
 
 extend type Mutation {
@@ -137,6 +139,29 @@ type BlockedRoom {
   day: Int!
   slot: Int!
   reason: String
+}
+
+"A room allowed in a slot, with its free seats and the exams already using it."
+type RoomWithFreeSeats {
+  roomName: String!
+  seats: Int!
+  usedSeats: Int!
+  freeSeats: Int!
+  "handicap = true: NTA room, only for NTAs (not for normal students / non-NTA reserve)."
+  handicap: Boolean!
+  exahm: Boolean!
+  lab: Boolean!
+  seb: Boolean!
+  "The exams already using this room in the slot (empty if the room is still free)."
+  usedBy: [RoomInSlotUsage!]!
+}
+
+"One exam's use of a room in a slot."
+type RoomInSlotUsage {
+  ancode: Int!
+  module: String!
+  examer: String!
+  studentCount: Int!
 }
 
 type RoomAndExam {

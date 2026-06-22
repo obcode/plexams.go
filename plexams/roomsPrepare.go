@@ -748,23 +748,41 @@ OUTER:
 }
 
 func roomSatisfiesConstraints(room *model.Room, constraints *model.Constraints) bool {
-	if constraints == nil || constraints.RoomConstraints == nil {
+	var rc *model.RoomConstraints
+	if constraints != nil {
+		rc = constraints.RoomConstraints
+	}
+
+	// EXaHM rooms are reserved for EXaHM exams. They may additionally serve an exam
+	// that needs SEB or Lab if the room also has that feature, but never any other
+	// exam (e.g. the NTA room of a non-EXaHM exam). An all-false RoomConstraints
+	// object (present but nothing required) must not let an EXaHM room slip through.
+	if room.Exahm {
+		needsExahm := rc != nil && rc.Exahm
+		needsSeb := rc != nil && rc.Seb && room.Seb
+		needsLab := rc != nil && rc.Lab && room.Lab
+		if !needsExahm && !needsSeb && !needsLab {
+			return false
+		}
+	}
+
+	if rc == nil {
 		// room without constraints should be no lab!
 		return !room.Exahm && !room.Lab && !room.Seb
 	}
-	if constraints.RoomConstraints.Exahm && !room.Exahm {
+	if rc.Exahm && !room.Exahm {
 		return false
 	}
-	if constraints.RoomConstraints.Lab && !room.Lab {
+	if rc.Lab && !room.Lab {
 		return false
 	}
-	if constraints.RoomConstraints.PlacesWithSocket && !room.PlacesWithSocket {
+	if rc.PlacesWithSocket && !room.PlacesWithSocket {
 		return false
 	}
-	if constraints.RoomConstraints.Seb && !room.Seb {
+	if rc.Seb && !room.Seb {
 		return false
 	}
-	if constraints.RoomConstraints.AllowedRooms != nil && !set.NewSet(constraints.RoomConstraints.AllowedRooms...).Contains(room.Name) {
+	if rc.AllowedRooms != nil && !set.NewSet(rc.AllowedRooms...).Contains(room.Name) {
 		return false
 	}
 

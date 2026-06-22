@@ -309,8 +309,10 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 		return nil, err
 	}
 	seats := make(map[string]int, len(rooms))
+	handicap := make(map[string]bool, len(rooms))
 	for _, room := range rooms {
 		seats[room.Name] = room.Seats
+		handicap[room.Name] = room.Handicap
 	}
 
 	plannedExams, err := p.PlannedExams(ctx)
@@ -318,6 +320,7 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 		return nil, err
 	}
 
+	bufferByAncode := make(map[int]int)
 	for _, exam := range plannedExams {
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
@@ -338,8 +341,9 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 			continue
 		}
 		v.step("checking free seats for exam %d", exam.Ancode)
-		free := capacity - normal + reserveSeats
 		buffer := roomFreeSeatsBuffer(normal)
+		bufferByAncode[exam.Ancode] = buffer
+		free := capacity - normal + reserveSeats
 		if free < buffer {
 			module := ""
 			if exam.ZpaExam != nil {
@@ -348,6 +352,50 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 			v.warnf(ref{Ancode: ptr(exam.Ancode)},
 				"exam %d (%s): only %d free seat(s) for %d students; recommended buffer %d — too tight",
 				exam.Ancode, module, free, normal, buffer)
+		}
+	}
+
+	// shared rooms: a room used by several exams in a slot must have enough free
+	// seats for the combined reserve buffers of those exams (the per-exam check
+	// above counts each room's full capacity and would miss this).
+	type slotRoom struct {
+		day, slot int
+		room      string
+	}
+	occupants := make(map[slotRoom]int)
+	sharers := make(map[slotRoom]map[int]bool) // -> set of ancodes using it for normal/reserve
+	for _, exam := range plannedExams {
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+		for _, r := range exam.PlannedRooms {
+			if r.RoomName == noRoom {
+				continue
+			}
+			key := slotRoom{r.Day, r.Slot, r.RoomName}
+			occupants[key] += len(r.StudentsInRoom)
+			if r.NtaMtknr == nil { // normal block or (empty) reserve
+				if sharers[key] == nil {
+					sharers[key] = make(map[int]bool)
+				}
+				sharers[key][exam.Ancode] = true
+			}
+		}
+	}
+
+	for key, ancodes := range sharers {
+		if handicap[key.room] || len(ancodes) < 2 {
+			continue // only shared, non-NTA rooms are interesting here
+		}
+		required := 0
+		for ancode := range ancodes {
+			required += bufferByAncode[ancode]
+		}
+		free := seats[key.room] - occupants[key]
+		if free < required {
+			v.warnf(ref{Room: ptr(key.room), Day: ptr(key.day), Slot: ptr(key.slot)},
+				"room %s in slot (%d/%d) is shared by %d exams: only %d free seat(s) for a combined reserve of %d — too tight",
+				key.room, key.day, key.slot, len(ancodes), free, required)
 		}
 	}
 

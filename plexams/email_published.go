@@ -70,58 +70,6 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 	return nil
 }
 
-func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporter Reporter) error {
-	if err := p.emailSendAllowed(ctx, condRoomPlanPublished, run); err != nil {
-		return err
-	}
-	reporter.Step("sending email announcing published rooms")
-
-	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
-
-	contraintsEmailData := &ConstraintsEmail{
-		FromDate:     p.semesterConfig.From.Format("02.01.06"),
-		FromFK07Date: p.semesterConfig.FromFk07.Format("02.01.06"),
-		UntilDate:    p.semesterConfig.Until.Format("02.01.06"),
-		PlanerName:   p.planer.Name,
-		FeedbackDate: feedbackDate,
-	}
-
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/publishedEmailRooms.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, contraintsEmailData)
-	if err != nil {
-		return err
-	}
-
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/publishedEmailRoomsHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, contraintsEmailData)
-	if err != nil {
-		return err
-	}
-
-	subject := fmt.Sprintf("[Prüfungsplanung %s] Räume veröffentlicht",
-		p.semester)
-
-	realRecipients := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
-	realRecipients = append(realRecipients, p.semesterConfig.Emails.AdditionalExamer...)
-
-	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
-		return err
-	}
-	if run {
-		p.markCondition(ctx, condRoomPlanPublished)
-	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, realRecipients...)))
-	return nil
-}
-
 type InvigilationsEmail struct {
 	NoOfInvigilators    int
 	InvigilationInRooms int

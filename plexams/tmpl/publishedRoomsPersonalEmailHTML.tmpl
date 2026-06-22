@@ -1,0 +1,31 @@
+<p>Liebe(r) {{ .Teacher.Fullname }},</p>
+
+<p>die Räume für Ihre Prüfungen sind geplant und veröffentlicht. Nachfolgend Ihre
+Prüfungen mit den eingeplanten Räumen, jeweils mit Anzahl der Studierenden, ggf.
+Reserve, den eingeplanten NTAs und einer evtl. Mitnutzung des Raums durch andere
+Prüfungen im selben Slot.</p>
+
+{{ range .Exams }}
+<p><b>{{ .Ancode }}. {{ .Module }}</b> — {{ .Date }}, {{ .Time }} Uhr</p>
+<ul>
+{{ range .Rooms }}<li><b>{{ .RoomName }}</b>: {{ .StudentCount }} Stud., {{ .Duration }} min{{ if .Reserve }} (Reserve){{ end }}{{ if .NTA }}, NTA: {{ .NTA }}{{ end }}
+{{- if .SharedWith }}
+<ul>
+{{ range .SharedWith }}<li>gemeinsam genutzt mit: {{ . }}</li>
+{{ end }}</ul>
+{{- end }}
+</li>
+{{ end }}</ul>
+{{ end }}
+
+<p>Bitte prüfen Sie Ihre Räume. Bei Unstimmigkeiten melden Sie sich bitte bei der
+Prüfungsplanung.</p>
+
+<p>Mit freundlichen Grüßen<br />
+{{ .PlanerName }}<br />
+Prüfungsplanung der FK07</p>
+
+<pre>
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
+</pre>

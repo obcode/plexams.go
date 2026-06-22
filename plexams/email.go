@@ -53,6 +53,8 @@ import (
 //go:embed tmpl/unplannedExamEmailHTML.tmpl
 //go:embed tmpl/roomRequestEmail.tmpl
 //go:embed tmpl/roomRequestEmailHTML.tmpl
+//go:embed tmpl/roomsSecretariatEmail.tmpl
+//go:embed tmpl/roomsSecretariatEmailHTML.tmpl
 
 var emailTemplates embed.FS
 

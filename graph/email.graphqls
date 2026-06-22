@@ -23,6 +23,9 @@ extend type Subscription {
   "Send the request for the active building-management rooms to the Gebäudemanagement."
   sendEmailRoomRequests(run: Boolean!): LogLine!
 
+  "Send the secretariat the room occupancy (per non-request room, when it is used by an exam; overlapping NTA times merged) with a request to check it against ZPA. Send before publishing the room plan."
+  sendEmailRoomsSecretariat(run: Boolean!): LogLine!
+
   # Repeatable emails (no send-once gate): they may be re-sent on changes.
   "Send the primuss-data email to every examer with exams planned by me."
   sendEmailPrimussDataAll(run: Boolean!): LogLine!

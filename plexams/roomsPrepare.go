@@ -876,12 +876,14 @@ func roomSatisfiesConstraints(room *model.Room, constraints *model.Constraints) 
 
 	// A room with a special feature (EXaHM / Lab / SEB) is only used for an exam
 	// that requires at least one feature the room actually has; never for an exam
-	// that requires none of them. So an EXaHM room only serves EXaHM exams (or a
-	// SEB/Lab exam if it is also a SEB/Lab room), a Lab room only Lab exams (or
-	// SEB/EXaHM if it has those), etc. An all-false RoomConstraints object
-	// (present but nothing required) must not let such a room slip through.
+	// that requires none of them. EXaHM and SEB are compatible: an EXaHM room may
+	// also host SEB exams (the T-building EXaHM rooms run SEB too). A Lab room only
+	// serves Lab exams (or SEB/EXaHM if it has those). An all-false RoomConstraints
+	// object (present but nothing required) must not let such a room slip through.
 	if room.Exahm || room.Lab || room.Seb {
-		needsFeature := rc != nil && ((rc.Exahm && room.Exahm) || (rc.Lab && room.Lab) || (rc.Seb && room.Seb))
+		needsFeature := rc != nil && ((rc.Exahm && room.Exahm) ||
+			(rc.Seb && (room.Seb || room.Exahm)) ||
+			(rc.Lab && room.Lab))
 		if !needsFeature {
 			return false
 		}
@@ -900,7 +902,7 @@ func roomSatisfiesConstraints(room *model.Room, constraints *model.Constraints) 
 	if rc.PlacesWithSocket && !room.PlacesWithSocket {
 		return false
 	}
-	if rc.Seb && !room.Seb {
+	if rc.Seb && !room.Seb && !room.Exahm { // a SEB exam fits a SEB or an EXaHM room
 		return false
 	}
 	if rc.AllowedRooms != nil && !set.NewSet(rc.AllowedRooms...).Contains(room.Name) {

@@ -646,6 +646,7 @@ type ValidationReport struct {
 	Ok           bool                 `json:"ok"`
 	ErrorCount   int                  `json:"errorCount"`
 	WarningCount int                  `json:"warningCount"`
+	InfoCount    int                  `json:"infoCount"`
 	Findings     []*ValidationFinding `json:"findings"`
 }
 

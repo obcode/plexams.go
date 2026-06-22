@@ -32,6 +32,7 @@ type ValidationReport {
   ok: Boolean!
   errorCount: Int!
   warningCount: Int!
+  infoCount: Int!
   findings: [ValidationFinding!]!
 }
 

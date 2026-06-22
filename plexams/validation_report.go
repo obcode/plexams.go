@@ -67,23 +67,43 @@ func (v *validation) warnf(r ref, format string, a ...any) {
 	v.add(model.ValidationLevelWarning, r, format, a...)
 }
 
-// finish renders the summary plus every finding to the reporter and returns the
-// structured report. ok is true when there are no errors (warnings do not fail).
-func (v *validation) finish() *model.ValidationReport {
-	var errs, warns int
+// infof records a purely informational finding (not a problem), e.g. an accepted
+// exception. It does not count as a warning or error.
+func (v *validation) infof(r ref, format string, a ...any) {
+	v.add(model.ValidationLevelInfo, r, format, a...)
+}
+
+func (v *validation) counts() (errs, warns, infos int) {
 	for _, f := range v.findings {
 		switch f.Level {
 		case model.ValidationLevelError:
 			errs++
 		case model.ValidationLevelWarning:
 			warns++
+		case model.ValidationLevelInfo:
+			infos++
 		}
 	}
+	return errs, warns, infos
+}
 
-	if errs == 0 && warns == 0 {
+// finish renders the summary plus every finding to the reporter and returns the
+// structured report. ok is true when there are no errors (warnings and infos do
+// not fail).
+func (v *validation) finish() *model.ValidationReport {
+	errs, warns, infos := v.counts()
+
+	switch {
+	case errs == 0 && warns == 0 && infos == 0:
 		v.reporter.StopProgress(aurora.Sprintf(aurora.Green("✓ no problems found")))
-	} else {
-		v.reporter.StopProgressFail(aurora.Sprintf(aurora.Red("✗ %d error(s), %d warning(s)"), errs, warns))
+	case errs == 0 && warns == 0:
+		// only infos: not a problem, but show them.
+		v.reporter.StopProgress(aurora.Sprintf(aurora.Green("✓ no problems found, %d info(s)"), infos))
+		for _, f := range v.findings {
+			v.reporter.Println(renderFinding(f))
+		}
+	default:
+		v.reporter.StopProgressFail(aurora.Sprintf(aurora.Red("✗ %d error(s), %d warning(s), %d info(s)"), errs, warns, infos))
 		for _, f := range v.findings {
 			v.reporter.Println(renderFinding(f))
 		}
@@ -94,6 +114,7 @@ func (v *validation) finish() *model.ValidationReport {
 		Ok:           errs == 0,
 		ErrorCount:   errs,
 		WarningCount: warns,
+		InfoCount:    infos,
 		Findings:     v.findings,
 	}
 }
@@ -102,20 +123,13 @@ func (v *validation) finish() *model.ValidationReport {
 // streaming a summary or the findings. Use it when a validator does its own
 // custom terminal output instead of the flat list finish produces.
 func (v *validation) report() *model.ValidationReport {
-	var errs, warns int
-	for _, f := range v.findings {
-		switch f.Level {
-		case model.ValidationLevelError:
-			errs++
-		case model.ValidationLevelWarning:
-			warns++
-		}
-	}
+	errs, warns, infos := v.counts()
 	return &model.ValidationReport{
 		Name:         v.name,
 		Ok:           errs == 0,
 		ErrorCount:   errs,
 		WarningCount: warns,
+		InfoCount:    infos,
 		Findings:     v.findings,
 	}
 }

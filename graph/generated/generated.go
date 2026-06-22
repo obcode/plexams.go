@@ -880,6 +880,7 @@ type ComplexityRoot struct {
 	ValidationReport struct {
 		ErrorCount   func(childComplexity int) int
 		Findings     func(childComplexity int) int
+		InfoCount    func(childComplexity int) int
 		Name         func(childComplexity int) int
 		Ok           func(childComplexity int) int
 		WarningCount func(childComplexity int) int
@@ -5670,6 +5671,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ValidationReport.Findings(childComplexity), true
 
+	case "ValidationReport.infoCount":
+		if e.complexity.ValidationReport.InfoCount == nil {
+			break
+		}
+
+		return e.complexity.ValidationReport.InfoCount(childComplexity), true
+
 	case "ValidationReport.name":
 		if e.complexity.ValidationReport.Name == nil {
 			break
@@ -7225,6 +7233,7 @@ type ValidationReport {
   ok: Boolean!
   errorCount: Int!
   warningCount: Int!
+  infoCount: Int!
   findings: [ValidationFinding!]!
 }
 
@@ -20115,6 +20124,8 @@ func (ec *executionContext) fieldContext_LogLine_validation(_ context.Context, f
 				return ec.fieldContext_ValidationReport_errorCount(ctx, field)
 			case "warningCount":
 				return ec.fieldContext_ValidationReport_warningCount(ctx, field)
+			case "infoCount":
+				return ec.fieldContext_ValidationReport_infoCount(ctx, field)
 			case "findings":
 				return ec.fieldContext_ValidationReport_findings(ctx, field)
 			}
@@ -42186,6 +42197,50 @@ func (ec *executionContext) fieldContext_ValidationReport_warningCount(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _ValidationReport_infoCount(ctx context.Context, field graphql.CollectedField, obj *model.ValidationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ValidationReport_infoCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InfoCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ValidationReport_infoCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ValidationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ValidationReport_findings(ctx context.Context, field graphql.CollectedField, obj *model.ValidationReport) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ValidationReport_findings(ctx, field)
 	if err != nil {
@@ -53149,6 +53204,11 @@ func (ec *executionContext) _ValidationReport(ctx context.Context, sel ast.Selec
 			}
 		case "warningCount":
 			out.Values[i] = ec._ValidationReport_warningCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "infoCount":
+			out.Values[i] = ec._ValidationReport_infoCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

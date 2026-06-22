@@ -8,7 +8,8 @@ ggf. Reserve, den eingeplanten NTAs und einer evtl. Mitnutzung des Raums durch
 andere Prüfungen im selben Slot.
 {{ range .Exams }}
 {{ .Ancode }}. {{ .Module }} — {{ .Date }}, {{ .Time }} Uhr
-{{ range .Rooms }}  - {{ .RoomName }}: {{ .Allocations }}
+{{ range .Rooms }}  - {{ .RoomName }}:{{ if eq (len .Allocations) 1 }} {{ index .Allocations 0 }}{{ else }}{{ range .Allocations }}
+      - {{ . }}{{ end }}{{ end }}
 {{- range .SharedWith }}
       gemeinsam genutzt mit: {{ . }}
 {{- end }}

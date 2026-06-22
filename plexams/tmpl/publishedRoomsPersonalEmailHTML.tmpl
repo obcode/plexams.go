@@ -11,7 +11,11 @@ Prüfungen im selben Slot.</p>
 {{ range .Exams }}
 <p><b>{{ .Ancode }}. {{ .Module }}</b> — {{ .Date }}, {{ .Time }} Uhr</p>
 <ul>
-{{ range .Rooms }}<li><b>{{ .RoomName }}</b>: {{ .Allocations }}
+{{ range .Rooms }}<li><b>{{ .RoomName }}</b>:{{ if eq (len .Allocations) 1 }} {{ index .Allocations 0 }}{{ else }}
+<ul>
+{{ range .Allocations }}<li>{{ . }}</li>
+{{ end }}</ul>
+{{- end }}
 {{- if .SharedWith }}
 <ul>
 {{ range .SharedWith }}<li>gemeinsam genutzt mit: {{ . }}</li>

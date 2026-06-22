@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"sort"
-	"strings"
 	txttmpl "text/template"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -30,7 +29,7 @@ type publishedRoomsExam struct {
 
 type publishedRoomsRoom struct {
 	RoomName    string
-	Allocations string   // all seat blocks of this room joined, e.g. "1 Stud., 90 min, 1 Stud., 99 min, NTA: …"
+	Allocations []string // seat blocks of this room, non-NTA first then the NTA blocks
 	SharedWith  []string // other exams using the same room in the same slot (deduplicated per room)
 }
 
@@ -60,14 +59,18 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 	day, slot := exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber
 	start := p.getSlotTime(day, slot)
 
-	// group the exam's seat blocks by room name, keeping first-seen order
+	// group the exam's seat blocks by room name, keeping first-seen order; within a
+	// room list the non-NTA blocks first, then the NTA blocks.
 	order := make([]string, 0)
-	allocByRoom := make(map[string][]string)
+	nonNTAByRoom := make(map[string][]string)
+	ntaByRoom := make(map[string][]string)
+	seen := make(map[string]bool)
 	for _, room := range exam.PlannedRooms {
 		if room.RoomName == noRoom {
 			continue
 		}
-		if _, ok := allocByRoom[room.RoomName]; !ok {
+		if !seen[room.RoomName] {
+			seen[room.RoomName] = true
 			order = append(order, room.RoomName)
 		}
 		alloc := fmt.Sprintf("%d Stud., %d min", len(room.StudentsInRoom), room.Duration)
@@ -75,9 +78,10 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 			alloc += " (Reserve)"
 		}
 		if note := ntaNote(exam, room); note != "" {
-			alloc += ", NTA: " + note
+			ntaByRoom[room.RoomName] = append(ntaByRoom[room.RoomName], alloc+", NTA: "+note)
+		} else {
+			nonNTAByRoom[room.RoomName] = append(nonNTAByRoom[room.RoomName], alloc)
 		}
-		allocByRoom[room.RoomName] = append(allocByRoom[room.RoomName], alloc)
 	}
 
 	if len(order) == 0 {
@@ -111,7 +115,7 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 
 		rooms = append(rooms, &publishedRoomsRoom{
 			RoomName:    name,
-			Allocations: strings.Join(allocByRoom[name], ", "),
+			Allocations: append(append([]string{}, nonNTAByRoom[name]...), ntaByRoom[name]...),
 			SharedWith:  shared,
 		})
 	}

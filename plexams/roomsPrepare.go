@@ -339,7 +339,8 @@ func examFreeSeats(roomInfo map[string]*model.Room, examRooms []*model.PlannedRo
 func takeReserveRoom(cfg *prepareRoomsCfg, constraints *model.Constraints, minSeats int) *model.Room {
 	bestIdx := -1
 	for i, room := range cfg.availableRooms {
-		if room.Seats < minSeats || !roomSatisfiesConstraints(room, constraints) {
+		// handicap rooms are reserved for NTAs, never used as a (non-NTA) reserve.
+		if room.Handicap || room.Seats < minSeats || !roomSatisfiesConstraints(room, constraints) {
 			continue
 		}
 		if bestIdx == -1 || room.Seats < cfg.availableRooms[bestIdx].Seats {
@@ -852,7 +853,7 @@ OUTER:
 	for roomName, plannedRoomWithFreeSeats := range prepareRoomsCfg.plannedRoomsWithFreeSeats {
 		if plannedRoomWithFreeSeats.freeSeats >= neededSeats {
 			room := prepareRoomsCfg.roomInfo[roomName]
-			if roomSatisfiesConstraints(room, exam.Exam.Constraints) {
+			if !room.Handicap && roomSatisfiesConstraints(room, exam.Exam.Constraints) {
 				for _, plannedRoom := range plannedRoomWithFreeSeats.plannedRooms {
 					otherExam := prepareRoomsCfg.examsMap[plannedRoom.Ancode]
 					if exam.Exam.ZpaExam.Duration != otherExam.ZpaExam.Duration {
@@ -911,7 +912,8 @@ func roomSatisfiesConstraints(room *model.Room, constraints *model.Constraints) 
 
 func findRoom(prepareRoomsCfg *prepareRoomsCfg, exam *model.ExamWithRegsAndRooms) *model.Room {
 	for i, room := range prepareRoomsCfg.availableRooms {
-		if roomSatisfiesConstraints(room, exam.Exam.Constraints) {
+		// handicap rooms are reserved for NTAs (placed via findSmallestRoom).
+		if !room.Handicap && roomSatisfiesConstraints(room, exam.Exam.Constraints) {
 			// remove room from available rooms
 			prepareRoomsCfg.availableRooms = append(prepareRoomsCfg.availableRooms[:i], prepareRoomsCfg.availableRooms[i+1:]...)
 			return room

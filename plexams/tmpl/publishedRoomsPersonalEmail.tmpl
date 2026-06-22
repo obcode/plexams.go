@@ -11,7 +11,8 @@ andere Prüfungen im selben Slot.
 {{ range .Rooms }}  - {{ .RoomName }}:{{ if eq (len .Allocations) 1 }} {{ index .Allocations 0 }}{{ else }}{{ range .Allocations }}
       - {{ . }}{{ end }}{{ end }}
 {{- range .SharedWith }}
-      gemeinsam genutzt mit: {{ . }}
+      gemeinsam genutzt mit: {{ .ExamHeader }}:{{ if eq (len .Allocations) 1 }} {{ index .Allocations 0 }}{{ else }}{{ range .Allocations }}
+          - {{ . }}{{ end }}{{ end }}
 {{- end }}
 {{ end }}{{ end }}
 Bitte prüfen Sie Ihre Räume. Bei Unstimmigkeiten öffnen Sie bitte ein JIRA-Ticket

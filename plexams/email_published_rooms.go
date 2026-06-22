@@ -29,8 +29,14 @@ type publishedRoomsExam struct {
 
 type publishedRoomsRoom struct {
 	RoomName    string
-	Allocations []string // seat blocks of this room, non-NTA first then the NTA blocks
-	SharedWith  []string // other exams using the same room in the same slot (deduplicated per room)
+	Allocations []string                // seat blocks of this room (non-NTA first, then by duration)
+	SharedWith  []*publishedRoomsShared // other exams using the same room in the same slot
+}
+
+// publishedRoomsShared is one other exam sharing a room, with its seat blocks.
+type publishedRoomsShared struct {
+	ExamHeader  string   // "324. IT-Sicherheit … (Schreck, Thomas)"
+	Allocations []string // that exam's seat blocks in the shared room (non-NTA first, then by duration)
 }
 
 // ntaNote formats the NTA of a room as "Name (+X%[, eigener Raum])", or "".
@@ -46,10 +52,45 @@ func ntaNote(exam *model.PlannedExam, room *model.PlannedRoom) string {
 	return fmt.Sprintf("%s (+%d%%%s)", nta.Name, nta.DeltaDurationPercent, alone)
 }
 
-// buildPublishedRoomsExam renders one exam for the examer email. All seat blocks
-// of the same room (the normal students plus one block per NTA in that room) are
-// merged into a single entry; the co-usage by other exams is listed once per
-// room. Returns nil if the exam has no real (non-"No Room") rooms.
+// roomAllocations returns the seat blocks ("N Stud., D min[, NTA: …]") of one
+// exam in one room, ordered: non-NTA blocks first, then by duration ascending.
+func roomAllocations(exam *model.PlannedExam, roomName string) []string {
+	type seatBlock struct {
+		hasNTA   bool
+		duration int
+		text     string
+	}
+	blocks := make([]seatBlock, 0)
+	for _, room := range exam.PlannedRooms {
+		if room.RoomName != roomName {
+			continue
+		}
+		text := fmt.Sprintf("%d Stud., %d min", len(room.StudentsInRoom), room.Duration)
+		if room.Reserve {
+			text += " (Reserve)"
+		}
+		note := ntaNote(exam, room)
+		if note != "" {
+			text += ", NTA: " + note
+		}
+		blocks = append(blocks, seatBlock{hasNTA: note != "", duration: room.Duration, text: text})
+	}
+	sort.SliceStable(blocks, func(i, j int) bool {
+		if blocks[i].hasNTA != blocks[j].hasNTA {
+			return !blocks[i].hasNTA // non-NTA first
+		}
+		return blocks[i].duration < blocks[j].duration
+	})
+	texts := make([]string, len(blocks))
+	for i, b := range blocks {
+		texts[i] = b.text
+	}
+	return texts
+}
+
+// buildPublishedRoomsExam renders one exam for the examer email: per room the
+// exam's own seat blocks and, grouped per other exam, the co-usage of that room
+// in the same slot. Returns nil if the exam has no real (non-"No Room") rooms.
 func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.PlannedExam,
 	examsInSlot map[[2]int][]*model.PlannedExam, examerShort func(*model.PlannedExam) string,
 ) *publishedRoomsExam {
@@ -59,63 +100,45 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 	day, slot := exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber
 	start := p.getSlotTime(day, slot)
 
-	// group the exam's seat blocks by room name, keeping first-seen order; within a
-	// room list the non-NTA blocks first, then the NTA blocks.
+	// room names of this exam, first-seen order
 	order := make([]string, 0)
-	nonNTAByRoom := make(map[string][]string)
-	ntaByRoom := make(map[string][]string)
 	seen := make(map[string]bool)
 	for _, room := range exam.PlannedRooms {
-		if room.RoomName == noRoom {
+		if room.RoomName == noRoom || seen[room.RoomName] {
 			continue
 		}
-		if !seen[room.RoomName] {
-			seen[room.RoomName] = true
-			order = append(order, room.RoomName)
-		}
-		alloc := fmt.Sprintf("%d Stud., %d min", len(room.StudentsInRoom), room.Duration)
-		if room.Reserve {
-			alloc += " (Reserve)"
-		}
-		if note := ntaNote(exam, room); note != "" {
-			ntaByRoom[room.RoomName] = append(ntaByRoom[room.RoomName], alloc+", NTA: "+note)
-		} else {
-			nonNTAByRoom[room.RoomName] = append(nonNTAByRoom[room.RoomName], alloc)
-		}
+		seen[room.RoomName] = true
+		order = append(order, room.RoomName)
 	}
-
 	if len(order) == 0 {
 		return nil
 	}
 
 	rooms := make([]*publishedRoomsRoom, 0, len(order))
 	for _, name := range order {
-		// co-usage: other exams with a seat block in the same room in the slot.
-		shared := make([]string, 0)
+		// co-usage: other exams (grouped) with seat blocks in the same room.
+		shared := make([]*publishedRoomsShared, 0)
 		for _, other := range examsInSlot[[2]int{day, slot}] {
 			if other.Ancode == exam.Ancode {
 				continue
 			}
-			for _, r := range other.PlannedRooms {
-				if r.RoomName != name {
-					continue
-				}
-				module := ""
-				if other.ZpaExam != nil {
-					module = other.ZpaExam.Module
-				}
-				line := fmt.Sprintf("%d. %s (%s): %d Stud.",
-					other.Ancode, module, examerShort(other), len(r.StudentsInRoom))
-				if note := ntaNote(other, r); note != "" {
-					line += ", NTA: " + note
-				}
-				shared = append(shared, line)
+			allocs := roomAllocations(other, name)
+			if len(allocs) == 0 {
+				continue
 			}
+			module := ""
+			if other.ZpaExam != nil {
+				module = other.ZpaExam.Module
+			}
+			shared = append(shared, &publishedRoomsShared{
+				ExamHeader:  fmt.Sprintf("%d. %s (%s)", other.Ancode, module, examerShort(other)),
+				Allocations: allocs,
+			})
 		}
 
 		rooms = append(rooms, &publishedRoomsRoom{
 			RoomName:    name,
-			Allocations: append(append([]string{}, nonNTAByRoom[name]...), ntaByRoom[name]...),
+			Allocations: roomAllocations(exam, name),
 			SharedWith:  shared,
 		})
 	}

@@ -16,9 +16,10 @@ Prüfungen im selben Slot.</p>
 {{ range .Allocations }}<li>{{ . }}</li>
 {{ end }}</ul>
 {{- end }}
-{{- if .SharedWith }}
+{{- range .SharedWith }}
+gemeinsam genutzt mit: {{ .ExamHeader }}
 <ul>
-{{ range .SharedWith }}<li>gemeinsam genutzt mit: {{ . }}</li>
+{{ range .Allocations }}<li>{{ . }}</li>
 {{ end }}</ul>
 {{- end }}
 </li>

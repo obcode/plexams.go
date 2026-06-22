@@ -65,7 +65,8 @@ input RoomInput {
   lab: Boolean!
   placesWithSocket: Boolean!
   requestWith: RoomRequestType!
-  requestPriority: Int!
+  "Lower number = preferred when generating room requests. Optional; defaults to 0 (irrelevant when requestWith is NONE)."
+  requestPriority: Int! = 0
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int

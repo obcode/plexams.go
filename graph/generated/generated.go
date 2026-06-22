@@ -6546,7 +6546,8 @@ input RoomInput {
   lab: Boolean!
   placesWithSocket: Boolean!
   requestWith: RoomRequestType!
-  requestPriority: Int!
+  "Lower number = preferred when generating room requests. Optional; defaults to 0 (irrelevant when requestWith is NONE)."
+  requestPriority: Int! = 0
   exahm: Boolean!
   seb: Boolean!
   sebSeats: Int
@@ -44391,6 +44392,10 @@ func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
+	}
+
+	if _, present := asMap["requestPriority"]; !present {
+		asMap["requestPriority"] = 0
 	}
 
 	fieldsInOrder := [...]string{"name", "seats", "handicap", "lab", "placesWithSocket", "requestWith", "requestPriority", "exahm", "seb", "sebSeats", "hmebSeats"}

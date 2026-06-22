@@ -1,39 +1,32 @@
-<p>[Antworten bitte nicht via E-Mail,
-sondern via <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">JIRA</a>]</p>
+{{ define "content" }}
+<p style="margin:0 0 14px;">Hallo {{ .Teacher.Shortname }},</p>
 
-<p>Hallo {{ .Teacher.Shortname }},</p>
-
-<p>die Räume für Ihre Prüfungen sind geplant und veröffentlicht. Nachfolgend Ihre
+<p style="margin:0 0 14px;">die Räume für Ihre Prüfungen sind geplant und veröffentlicht. Nachfolgend Ihre
 Prüfungen mit den eingeplanten Räumen, jeweils mit Anzahl der Studierenden, ggf.
 Reserve, den eingeplanten NTAs und einer evtl. Mitnutzung des Raums durch andere
 Prüfungen im selben Slot.</p>
 
 {{ range .Exams }}
-<p><b>{{ .Ancode }}. {{ .Module }}</b> — {{ .Date }}, {{ .Time }} Uhr</p>
-<ul>
-{{ range .Rooms }}<li><b>{{ .RoomName }}</b>:{{ if eq (len .Allocations) 1 }} {{ index .Allocations 0 }}{{ else }}
-<ul>
-{{ range .Allocations }}<li>{{ . }}</li>
-{{ end }}</ul>
-{{- end }}
+<p style="margin:18px 0 6px; font-weight:bold; color:#00558c;">{{ .Ancode }}. {{ .Module }}<span style="font-weight:normal; color:#6b7280;"> — {{ .Date }}, {{ .Time }} Uhr</span></p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f6f7f9; border:1px solid #e6e8ec; border-radius:6px;">
+<tr>
+<td style="padding:10px 14px; font-size:14px; line-height:1.5; color:#1f2937;">
+{{ range .Rooms }}<div style="margin:6px 0;"><b>{{ .RoomName }}</b>{{ if eq (len .Allocations) 1 }}: {{ index .Allocations 0 }}{{ else }}{{ range .Allocations }}
+<div style="margin:2px 0 0 18px;">– {{ . }}</div>{{ end }}{{ end }}
 {{- range .SharedWith }}
-gemeinsam genutzt mit: {{ .ExamHeader }}
-<ul>
-{{ range .Allocations }}<li>{{ . }}</li>
-{{ end }}</ul>
+<div style="margin:6px 0 0 18px; color:#6b7280; font-size:13px;">gemeinsam genutzt mit: {{ .ExamHeader }}{{ if eq (len .Allocations) 1 }}: {{ index .Allocations 0 }}{{ else }}{{ range .Allocations }}
+<div style="margin:1px 0 0 18px;">– {{ . }}</div>{{ end }}{{ end }}</div>
 {{- end }}
-</li>
-{{ end }}</ul>
+</div>{{ end }}
+</td>
+</tr>
+</table>
 {{ end }}
 
-<p>Bitte prüfen Sie Ihre Räume. Bei Unstimmigkeiten öffnen Sie bitte ein JIRA-Ticket
-unter <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13">https://jira.cc.hm.edu/servicedesk/customer/portal/13</a>.</p>
+<p style="margin:18px 0 14px;">Bitte prüfen Sie Ihre Räume. Bei Unstimmigkeiten öffnen Sie bitte ein JIRA-Ticket
+unter <a href="https://jira.cc.hm.edu/servicedesk/customer/portal/13" style="color:#00558c;">https://jira.cc.hm.edu/servicedesk/customer/portal/13</a>.</p>
 
-<p>Mit freundlichen Grüßen<br />
+<p style="margin:0;">Mit freundlichen Grüßen<br />
 {{ .PlanerName }}<br />
 Prüfungsplanung der FK07</p>
-
-<pre>
---
-Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go
-</pre>
+{{ end }}

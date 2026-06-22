@@ -38,6 +38,7 @@ import (
 //go:embed tmpl/preparedEmailHTML.tmpl
 //go:embed tmpl/publishedEmailExams.tmpl
 //go:embed tmpl/publishedEmailExamsHTML.tmpl
+//go:embed tmpl/emailBaseHTML.tmpl
 //go:embed tmpl/publishedRoomsPersonalEmail.tmpl
 //go:embed tmpl/publishedRoomsPersonalEmailHTML.tmpl
 //go:embed tmpl/publishedEmailInvigilations.tmpl

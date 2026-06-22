@@ -206,7 +206,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 	if err != nil {
 		return err
 	}
-	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/publishedRoomsPersonalEmailHTML.tmpl")
+	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/publishedRoomsPersonalEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 			continue
 		}
 		bufHTML := new(bytes.Buffer)
-		if err := htmlTmpl.Execute(bufHTML, data); err != nil {
+		if err := htmlTmpl.ExecuteTemplate(bufHTML, "emailBase", data); err != nil {
 			reporter.Warnf("%s: cannot render html: %v", examer.Fullname, err)
 			continue
 		}

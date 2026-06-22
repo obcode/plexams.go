@@ -74,8 +74,16 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 				if other.ZpaExam != nil {
 					module = other.ZpaExam.Module
 				}
-				shared = append(shared, fmt.Sprintf("%d. %s (%s): %d Stud.",
-					other.Ancode, module, examerShort(other), len(r.StudentsInRoom)))
+				line := fmt.Sprintf("%d. %s (%s): %d Stud.",
+					other.Ancode, module, examerShort(other), len(r.StudentsInRoom))
+				if nta := roomNTA(other, r); nta != nil {
+					alone := ""
+					if nta.NeedsRoomAlone {
+						alone = ", eigener Raum"
+					}
+					line += fmt.Sprintf(", NTA: %s (+%d%%%s)", nta.Name, nta.DeltaDurationPercent, alone)
+				}
+				shared = append(shared, line)
 			}
 		}
 

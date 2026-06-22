@@ -1,4 +1,6 @@
-Liebe(r) {{ .Teacher.Fullname }},
+[Antworten bitte nicht via E-Mail, sondern via JIRA (https://jira.cc.hm.edu/servicedesk/customer/portal/13)]
+
+Hallo {{ .Teacher.Shortname }},
 
 die Räume für Ihre Prüfungen sind geplant und veröffentlicht. Nachfolgend Ihre
 Prüfungen mit den eingeplanten Räumen, jeweils mit Anzahl der Studierenden,
@@ -12,8 +14,8 @@ andere Prüfungen im selben Slot.
       gemeinsam genutzt mit: {{ . }}
 {{- end }}
 {{ end }}{{ end }}
-Bitte prüfen Sie Ihre Räume. Bei Unstimmigkeiten melden Sie sich bitte bei der
-Prüfungsplanung.
+Bitte prüfen Sie Ihre Räume. Bei Unstimmigkeiten öffnen Sie bitte ein JIRA-Ticket
+unter https://jira.cc.hm.edu/servicedesk/customer/portal/13.
 
 Mit freundlichen Grüßen
 {{ .PlanerName }}

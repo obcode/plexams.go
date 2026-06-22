@@ -297,6 +297,63 @@ func (p *Plexams) ValidateRoomsForSlotsFresh(reporter Reporter) (*model.Validati
 	return v.finish(), nil
 }
 
+// ValidateRoomsEnoughSeats warns when an exam is packed too tightly, i.e. its
+// normal rooms (NTA-alone rooms excluded, reserve rooms counted as free) leave
+// fewer free seats than the buffer max(roomFreeSeatsMin, roomFreeSeatsPercent%).
+func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.ValidationReport, error) {
+	ctx := context.Background()
+	v := newValidation(reporter, "rooms-enough-seats", "validating enough free seats per exam")
+
+	rooms, err := p.dbClient.Rooms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	seats := make(map[string]int, len(rooms))
+	for _, room := range rooms {
+		seats[room.Name] = room.Seats
+	}
+
+	plannedExams, err := p.PlannedExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, exam := range plannedExams {
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+		capacity, normal, reserveSeats := 0, 0, 0
+		for _, r := range exam.PlannedRooms {
+			if r.RoomName == noRoom || r.NtaMtknr != nil {
+				continue
+			}
+			if r.Reserve {
+				reserveSeats += seats[r.RoomName]
+				continue
+			}
+			normal += len(r.StudentsInRoom)
+			capacity += seats[r.RoomName]
+		}
+		if normal == 0 {
+			continue
+		}
+		v.step("checking free seats for exam %d", exam.Ancode)
+		free := capacity - normal + reserveSeats
+		buffer := roomFreeSeatsBuffer(normal)
+		if free < buffer {
+			module := ""
+			if exam.ZpaExam != nil {
+				module = exam.ZpaExam.Module
+			}
+			v.warnf(ref{Ancode: ptr(exam.Ancode)},
+				"exam %d (%s): only %d free seat(s) for %d students; recommended buffer %d — too tight",
+				exam.Ancode, module, free, normal, buffer)
+		}
+	}
+
+	return v.finish(), nil
+}
+
 func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
 	v := newValidation(reporter, "rooms-per-exam", "validating rooms per exam")

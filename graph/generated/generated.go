@@ -809,6 +809,7 @@ type ComplexityRoot struct {
 		ValidateInvigilatorSlots             func(childComplexity int) int
 		ValidatePrePlannedExahmRooms         func(childComplexity int) int
 		ValidateRoomsBlocked                 func(childComplexity int) int
+		ValidateRoomsEnoughSeats             func(childComplexity int) int
 		ValidateRoomsForSlotsFresh           func(childComplexity int) int
 		ValidateRoomsNeedRequest             func(childComplexity int) int
 		ValidateRoomsPerExam                 func(childComplexity int) int
@@ -1084,6 +1085,7 @@ type SubscriptionResolver interface {
 	ValidateRoomsTimeDistance(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateRoomsBlocked(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateRoomsForSlotsFresh(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateRoomsEnoughSeats(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateZPADateTimes(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateZPARooms(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateZPAInvigilators(ctx context.Context) (<-chan *model.LogLine, error)
@@ -5248,6 +5250,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.ValidateRoomsBlocked(childComplexity), true
 
+	case "Subscription.validateRoomsEnoughSeats":
+		if e.complexity.Subscription.ValidateRoomsEnoughSeats == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ValidateRoomsEnoughSeats(childComplexity), true
+
 	case "Subscription.validateRoomsForSlotsFresh":
 		if e.complexity.Subscription.ValidateRoomsForSlotsFresh == nil {
 			break
@@ -6988,6 +6997,7 @@ extend type Subscription {
   validateRoomsTimeDistance: LogLine!
   validateRoomsBlocked: LogLine!
   validateRoomsForSlotsFresh: LogLine!
+  validateRoomsEnoughSeats: LogLine!
 
   validateZPADateTimes: LogLine!
   validateZPARooms: LogLine!
@@ -38458,6 +38468,76 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsForSlotsFresh
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_validateRoomsEnoughSeats(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateRoomsEnoughSeats(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ValidateRoomsEnoughSeats(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_validateRoomsEnoughSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Subscription_validateZPADateTimes(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	fc, err := ec.fieldContext_Subscription_validateZPADateTimes(ctx, field)
 	if err != nil {
@@ -51164,6 +51244,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_validateRoomsBlocked(ctx, fields[0])
 	case "validateRoomsForSlotsFresh":
 		return ec._Subscription_validateRoomsForSlotsFresh(ctx, fields[0])
+	case "validateRoomsEnoughSeats":
+		return ec._Subscription_validateRoomsEnoughSeats(ctx, fields[0])
 	case "validateZPADateTimes":
 		return ec._Subscription_validateZPADateTimes(ctx, fields[0])
 	case "validateZPARooms":

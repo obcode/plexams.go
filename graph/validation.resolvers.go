@@ -66,6 +66,11 @@ func (r *subscriptionResolver) ValidateRoomsForSlotsFresh(ctx context.Context) (
 	return r.runValidation(ctx, "rooms-for-slots-fresh", r.plexams.ValidateRoomsForSlotsFresh), nil
 }
 
+// ValidateRoomsEnoughSeats is the resolver for the validateRoomsEnoughSeats field.
+func (r *subscriptionResolver) ValidateRoomsEnoughSeats(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "rooms-enough-seats", r.plexams.ValidateRoomsEnoughSeats), nil
+}
+
 // ValidateZPADateTimes is the resolver for the validateZPADateTimes field.
 func (r *subscriptionResolver) ValidateZPADateTimes(ctx context.Context) (<-chan *model.LogLine, error) {
 	return r.runValidation(ctx, "zpa-date-times", r.plexams.ValidateZPADateTimes), nil

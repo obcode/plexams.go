@@ -287,7 +287,127 @@ func (p *Plexams) prepareRoomsForExamsInSlot(ctx context.Context, prepareRoomsCf
 		}
 	}
 
+	examRooms = p.addReserveBuffer(prepareRoomsCfg, examRooms, reporter)
+
 	return examRooms, nil
+}
+
+// roomFreeSeatsMin / roomFreeSeatsPercent define the minimum free-seat buffer an
+// exam should keep, so rooms are never packed exactly full: at least
+// roomFreeSeatsMin seats and at least roomFreeSeatsPercent percent of the normal
+// students.
+const (
+	roomFreeSeatsMin     = 2
+	roomFreeSeatsPercent = 5
+)
+
+// roomFreeSeatsBuffer returns the required free-seat buffer for an exam with the
+// given number of students placed in normal rooms.
+func roomFreeSeatsBuffer(normalStudents int) int {
+	buf := (normalStudents*roomFreeSeatsPercent + 99) / 100 // ceil(percent%)
+	if buf < roomFreeSeatsMin {
+		buf = roomFreeSeatsMin
+	}
+	return buf
+}
+
+// examFreeSeats returns, for one exam, the free seats across its normal rooms
+// (NTA-alone rooms excluded, reserve rooms count as free) and the number of
+// students placed in normal rooms.
+func examFreeSeats(roomInfo map[string]*model.Room, examRooms []*model.PlannedRoom, ancode int) (free, normalStudents int) {
+	capacity, reserveSeats := 0, 0
+	for _, r := range examRooms {
+		if r.Ancode != ancode || r.RoomName == noRoom || r.NtaMtknr != nil {
+			continue
+		}
+		seats := 0
+		if room, ok := roomInfo[r.RoomName]; ok {
+			seats = room.Seats
+		}
+		if r.Reserve {
+			reserveSeats += seats
+			continue
+		}
+		normalStudents += len(r.StudentsInRoom)
+		capacity += seats
+	}
+	return capacity - normalStudents + reserveSeats, normalStudents
+}
+
+// takeReserveRoom removes and returns the smallest available room that satisfies
+// the exam's constraints and has at least minSeats seats, or nil if none fits.
+func takeReserveRoom(cfg *prepareRoomsCfg, constraints *model.Constraints, minSeats int) *model.Room {
+	bestIdx := -1
+	for i, room := range cfg.availableRooms {
+		if room.Seats < minSeats || !roomSatisfiesConstraints(room, constraints) {
+			continue
+		}
+		if bestIdx == -1 || room.Seats < cfg.availableRooms[bestIdx].Seats {
+			bestIdx = i
+		}
+	}
+	if bestIdx == -1 {
+		return nil
+	}
+	room := cfg.availableRooms[bestIdx]
+	cfg.availableRooms = append(cfg.availableRooms[:bestIdx], cfg.availableRooms[bestIdx+1:]...)
+	return room
+}
+
+// addReserveBuffer makes sure no exam is packed exactly full: if an exam has
+// fewer free seats than its buffer, an additional free room is added as a reserve
+// (if one is still available in the slot). Otherwise a warning is emitted; the
+// rooms validation flags it as well.
+func (p *Plexams) addReserveBuffer(cfg *prepareRoomsCfg, examRooms []*model.PlannedRoom, reporter Reporter) []*model.PlannedRoom {
+	ancodes := make([]int, 0)
+	seen := make(map[int]bool)
+	for _, r := range examRooms {
+		if !seen[r.Ancode] {
+			seen[r.Ancode] = true
+			ancodes = append(ancodes, r.Ancode)
+		}
+	}
+
+	for _, ancode := range ancodes {
+		free, normal := examFreeSeats(cfg.roomInfo, examRooms, ancode)
+		if normal == 0 {
+			continue
+		}
+		buffer := roomFreeSeatsBuffer(normal)
+		if free >= buffer {
+			continue
+		}
+		exam := cfg.examsMap[ancode]
+		if exam == nil {
+			continue
+		}
+		needed := buffer - free
+		if needed < 1 {
+			needed = 1
+		}
+		room := takeReserveRoom(cfg, exam.Constraints, needed)
+		if room == nil {
+			room = takeReserveRoom(cfg, exam.Constraints, 1) // any room is better than none
+		}
+		if room == nil {
+			reporter.Warnf(aurora.Sprintf(aurora.Red("exam %d: only %d free seat(s) for %d students, no free room left for a reserve"),
+				ancode, free, normal))
+			continue
+		}
+		examRoom := &model.PlannedRoom{
+			Day:            cfg.slot.DayNumber,
+			Slot:           cfg.slot.SlotNumber,
+			RoomName:       room.Name,
+			Ancode:         ancode,
+			Duration:       exam.ZpaExam.Duration,
+			Reserve:        true,
+			StudentsInRoom: []string{},
+		}
+		examRooms = append(examRooms, examRoom)
+		reporter.Println(aurora.Sprintf(aurora.Green("added reserve room %s for exam %d (only %d free of needed %d)"),
+			room.Name, ancode, free, buffer))
+	}
+	return examRooms
 }
 
 type prepareRoomsCfg struct {

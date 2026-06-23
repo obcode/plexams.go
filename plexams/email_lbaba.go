@@ -19,16 +19,24 @@ type lbaPerson struct {
 	Email string
 }
 
+// lbaProgram is a study program with its number of registrations.
+type lbaProgram struct {
+	Name  string
+	Count int
+}
+
 // lbaRepeaterExam is one repeat exam of a non-prof (LBA / Prof HC / external)
 // that I planned, reduced to what the Lehrbeauftragten-Beauftragte:r needs: the
-// module, the examer and the invigilators (each with email), and when it is.
+// module, the examer and the invigilators (each with email), when it is, and the
+// programs with registrations.
 type lbaRepeaterExam struct {
 	Module       string
 	Examer       lbaPerson
 	Date         string
 	Time         string
 	start        time.Time
-	Invigilators []lbaPerson // unique, in room order
+	Invigilators []lbaPerson  // unique, in room order
+	Programs     []lbaProgram // programs with registrations (count > 0)
 }
 
 // LbaRepeaterEmail is the data for the LBA-BA overview email.
@@ -86,6 +94,15 @@ func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*lbaRepeaterExam
 			}
 		}
 
+		programs := make([]lbaProgram, 0)
+		for _, pe := range exam.PrimussExams {
+			if pe == nil || pe.Exam == nil || len(pe.StudentRegs) == 0 {
+				continue
+			}
+			programs = append(programs, lbaProgram{Name: pe.Exam.Program, Count: len(pe.StudentRegs)})
+		}
+		sort.Slice(programs, func(i, j int) bool { return programs[i].Name < programs[j].Name })
+
 		result = append(result, &lbaRepeaterExam{
 			Module:       exam.ZpaExam.Module,
 			Examer:       lbaPerson{Name: exam.ZpaExam.MainExamer, Email: mainExamer.Email},
@@ -93,6 +110,7 @@ func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*lbaRepeaterExam
 			Time:         timeStr,
 			start:        start,
 			Invigilators: invigilators,
+			Programs:     programs,
 		})
 	}
 
@@ -128,6 +146,21 @@ func (p *Plexams) SendEmailLbaRepeaters(ctx context.Context, run bool, reporter 
 		Exams:        exams,
 	}
 
+	// the affected invigilators go into Cc
+	ccSet := make(map[string]bool)
+	for _, exam := range exams {
+		for _, inv := range exam.Invigilators {
+			if inv.Email != "" {
+				ccSet[inv.Email] = true
+			}
+		}
+	}
+	cc := make([]string, 0, len(ccSet))
+	for e := range ccSet {
+		cc = append(cc, e)
+	}
+	sort.Strings(cc)
+
 	textTmpl, err := txttmpl.ParseFS(emailTemplates, "tmpl/lbaRepeaterEmail.tmpl")
 	if err != nil {
 		return err
@@ -148,7 +181,7 @@ func (p *Plexams) SendEmailLbaRepeaters(ctx context.Context, run bool, reporter 
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Wiederholungsprüfungen von Lehrbeauftragten", p.semester)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Lbaba}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Lbaba}, cc, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
 		return err
 	}
 	if run {

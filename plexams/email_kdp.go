@@ -302,7 +302,7 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 		return err
 	}
 
-	textTmpl, err := txttmpl.ParseFS(emailTemplates, "tmpl/kdpExahmEmail.tmpl")
+	textTmpl, err := txttmpl.New("kdpExahmEmail.tmpl").Funcs(txttmpl.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/kdpExahmEmail.tmpl")
 	if err != nil {
 		return err
 	}
@@ -311,7 +311,7 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 		return err
 	}
 
-	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/kdpExahmEmailHTML.tmpl")
+	htmlTmpl, err := template.New("emailBaseHTML.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/kdpExahmEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

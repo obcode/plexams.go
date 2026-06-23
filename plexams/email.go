@@ -65,6 +65,20 @@ import (
 
 var emailTemplates embed.FS
 
+// pluralN formats a count with the correct German singular/plural noun, e.g.
+// plural 1 "Platz" "Plätze" -> "1 Platz", plural 3 ... -> "3 Plätze".
+func pluralN(n int, singular, plural string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, singular)
+	}
+	return fmt.Sprintf("%d %s", n, plural)
+}
+
+// emailFuncs are the template helpers available in all email templates.
+var emailFuncs = map[string]any{
+	"plural": pluralN,
+}
+
 func (p *Plexams) SendTestMail() error {
 	e := &email.Email{
 		To:      []string{p.planer.Email},
@@ -193,7 +207,7 @@ func (p *Plexams) renderMailHTML(contentFile string, jira bool, data any) ([]byt
 	}
 	files = append(files, contentFile)
 
-	tmpl, err := template.ParseFS(emailTemplates, files...)
+	tmpl, err := template.New("emailBaseHTML.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, files...)
 	if err != nil {
 		return nil, err
 	}

@@ -17,13 +17,13 @@ Maßgeblich ist der im Raum mit den Postfächern aushängende Plan. Wenn Sie Auf
 
 Und wie immer ein bisschen Transparenz am Schluss:
 
-- {{ .NoOfInvigilators }} Aufsichten
-- {{ .InvigilationInRooms }} Minuten Aufsichten in Räumen
-- {{ .ReserveInvigilation }} Minuten Reserveaufsichten (eine Reserve rechnet mit 60 Minuten)
-- {{ .OtherContributions }} Minuten anrechenbare Minuten durch Mastergespräche, Beisitzer, ...
-- 100% zu leistende Aufsichten entsprechen {{ .TodoPerInvigilator }} Minuten, Teilzeit, halbes Freisemester, … entsprechend weniger
+- {{ plural .NoOfInvigilators "Aufsicht" "Aufsichten" }}
+- {{ plural .InvigilationInRooms "Minute" "Minuten" }} Aufsichten in Räumen
+- {{ plural .ReserveInvigilation "Minute" "Minuten" }} Reserveaufsichten (eine Reserve rechnet mit 60 Minuten)
+- {{ plural .OtherContributions "Minute" "Minuten" }} anrechenbare Minuten durch Mastergespräche, Beisitzer, ...
+- 100% zu leistende Aufsichten entsprechen {{ plural .TodoPerInvigilator "Minute" "Minuten" }}, Teilzeit, halbes Freisemester, … entsprechend weniger
 - Aufsicht bei eigener Prüfung rechnet nicht mit (genau wie eigene mündliche Prüfungen nicht anrechenbar sind)
-- Die geleisteten Zeiten pro Person liegen zwischen {{ .MaxDeviation }} Minuten zu wenig und {{ .MinDeviation }} Minuten zu viel
+- Die geleisteten Zeiten pro Person liegen zwischen {{ plural .MaxDeviation "Minute" "Minuten" }} zu wenig und {{ plural .MinDeviation "Minute" "Minuten" }} zu viel
 
 Mit freundlichen Grüßen
 {{ .PlanerName }}

@@ -178,11 +178,11 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		MinDeviation:        -minDeviation,
 	}
 
-	textTmpl, err := template.ParseFS(emailTemplates, "tmpl/publishedInvigilationPersonalEmail.tmpl")
+	textTmpl, err := template.New("publishedInvigilationPersonalEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/publishedInvigilationPersonalEmail.tmpl")
 	if err != nil {
 		return err
 	}
-	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/jiraOnHTML.tmpl", "tmpl/publishedInvigilationPersonalEmailHTML.tmpl")
+	htmlTmpl, err := template.New("emailBaseHTML.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/jiraOnHTML.tmpl", "tmpl/publishedInvigilationPersonalEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

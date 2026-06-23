@@ -9,7 +9,7 @@ Die betroffenen Prüfenden sind in Cc.
 {{ range .Slots }}
 {{ .Date }}, {{ .Time }} Uhr
 {{ range .Rooms }}  Raum {{ .RoomName }}:
-{{ range .Exams }}    - {{ .Ancode }}. {{ .Module }} ({{ .Examer }}) [{{ .Type }}]: {{ .Seats }} Plätze — {{ .Detail }}
+{{ range .Exams }}    - {{ .Ancode }}. {{ .Module }} ({{ .Examer }}) [{{ .Type }}]: {{ plural .Seats "Platz" "Plätze" }} — {{ .Detail }}
 {{ end }}{{ end }}{{ end }}
 Bei Rückfragen können Sie direkt auf diese E-Mail antworten.
 

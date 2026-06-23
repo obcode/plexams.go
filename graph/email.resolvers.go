@@ -119,6 +119,13 @@ func (r *subscriptionResolver) SendEmailKdpExahm(ctx context.Context, run bool) 
 	}), nil
 }
 
+// SendEmailLbaRepeaters is the resolver for the sendEmailLbaRepeaters field.
+func (r *subscriptionResolver) SendEmailLbaRepeaters(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendEmailLbaRepeaters(ctx, run, reporter)
+	}), nil
+}
+
 // SendEmailPrimussDataAll is the resolver for the sendEmailPrimussDataAll field.
 func (r *subscriptionResolver) SendEmailPrimussDataAll(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
 	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {

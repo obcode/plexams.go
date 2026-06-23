@@ -117,6 +117,8 @@ type Emails struct {
 	RoomManagement string `json:"roomManagement"`
 	// Recipient for the EXaHM/SEB room overview (KDP).
 	Kdp string `json:"kdp"`
+	// Recipient for the overview of LBAs' repeat exams (Lehrbeauftragten-Beauftragte:r).
+	Lbaba string `json:"lbaba"`
 }
 
 type EnhancedPrimussExam struct {

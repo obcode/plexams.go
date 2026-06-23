@@ -353,6 +353,10 @@ func (p *Plexams) setSemesterConfig() {
 		if emails.Kdp == "" {
 			log.Debug().Msg("no kdp email in config")
 		}
+		emails.Lbaba = emailsMap["lbaba"]
+		if emails.Lbaba == "" {
+			log.Debug().Msg("no lbaba email in config")
+		}
 
 		emails.AdditionalExamer = viper.GetStringSlice("semesterConfig.additionalexamer")
 		if len(emails.AdditionalExamer) == 0 {

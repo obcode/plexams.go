@@ -29,6 +29,9 @@ extend type Subscription {
   "Send the KDP the overview of the EXaHM/SEB room planning (by day/time and room, with per-exam seat counts and a room-oriented CSV attachment). Send after publishing the room plan."
   sendEmailKdpExahm(run: Boolean!): LogLine!
 
+  "Send the Lehrbeauftragten-Beauftragte:r (lbaba) an overview of all repeat exams of LBAs I planned (dates and invigilations only)."
+  sendEmailLbaRepeaters(run: Boolean!): LogLine!
+
   # Repeatable emails (no send-once gate): they may be re-sent on changes.
   "Send the primuss-data email to every examer with exams planned by me."
   sendEmailPrimussDataAll(run: Boolean!): LogLine!

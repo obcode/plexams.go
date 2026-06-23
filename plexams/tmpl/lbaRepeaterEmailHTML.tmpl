@@ -1,0 +1,23 @@
+{{ define "content" }}
+<p>Hallo,</p>
+
+<p>nachfolgend die von mir geplanten Wiederholungsprüfungen von Lehrbeauftragten im Semester
+{{ .SemesterName }}, mit Terminen und Aufsichten – damit Du weißt, wen Du ggf. noch einmal
+erinnern musst.</p>
+
+{{ range .Exams }}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 12px; background-color:#f6f7f9; border:1px solid #e6e8ec; border-radius:6px;">
+<tr><td style="padding:10px 14px; font-size:14px; line-height:1.5; color:#1f2937;">
+<div style="font-weight:bold; color:#5555FC;">{{ .Ancode }}. {{ .Module }} <span style="font-weight:normal; color:#6b7280;">({{ .Examer }})</span></div>
+<div style="margin:4px 0 0;"><b>Termin:</b> {{ .Date }}{{ if .Time }}, {{ .Time }} Uhr{{ end }}</div>
+<div><b>Aufsichten:</b> {{ if .Invigilators }}{{ range $i, $inv := .Invigilators }}{{ if $i }}, {{ end }}{{ $inv }}{{ end }}{{ else }}<span style="color:#6b7280;">noch keine Aufsicht geplant</span>{{ end }}</div>
+</td></tr>
+</table>
+{{ end }}
+
+<p>Bei Rückfragen kannst Du direkt auf diese E-Mail antworten.</p>
+
+<p>Mit freundlichen Grüßen<br />
+{{ .PlanerName }}<br />
+Prüfungsplanung der FK07</p>
+{{ end }}

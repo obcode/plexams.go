@@ -34,8 +34,9 @@ cover-pages [all|<teacherid>]                 --- send emails with externally ge
 room-requests                                 --- send the request for the active building-management rooms
 rooms-secretariat                             --- send the room occupancy (non-request rooms) to the secretariat for a ZPA check
 kdp-exahm                                     --- send the EXaHM/SEB room overview (+CSV) to the KDP
+lba-repeaters                                 --- send the LBA repeat-exam overview (dates/invigilations) to the LBA-BA
 `,
-		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "constraints", "prepared", "draft", "published-exams", "published-rooms", "invigilations", "invigilations-missing", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages", "room-requests", "rooms-secretariat", "kdp-exahm"},
+		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "constraints", "prepared", "draft", "published-exams", "published-rooms", "invigilations", "invigilations-missing", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages", "room-requests", "rooms-secretariat", "kdp-exahm", "lba-repeaters"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -174,6 +175,11 @@ kdp-exahm                                     --- send the EXaHM/SEB room overvi
 				}
 			case "kdp-exahm":
 				err := plexams.SendEmailKdpExahm(context.Background(), run, plx.NewConsoleReporter())
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+			case "lba-repeaters":
+				err := plexams.SendEmailLbaRepeaters(context.Background(), run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

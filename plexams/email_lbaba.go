@@ -1,0 +1,150 @@
+package plexams
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"html/template"
+	"sort"
+	txttmpl "text/template"
+	"time"
+
+	set "github.com/deckarep/golang-set/v2"
+)
+
+// lbaRepeaterExam is one repeat exam of an LBA that I planned, reduced to what
+// the Lehrbeauftragten-Beauftragte:r needs: when it is and who invigilates.
+type lbaRepeaterExam struct {
+	Ancode       int
+	Module       string
+	Examer       string // the LBA
+	Date         string
+	Time         string
+	start        time.Time
+	Invigilators []string // invigilator shortnames (unique, in room order)
+}
+
+// LbaRepeaterEmail is the data for the LBA-BA overview email.
+type LbaRepeaterEmail struct {
+	SemesterName string
+	PlanerName   string
+	Exams        []*lbaRepeaterExam
+}
+
+// buildLbaRepeaterExams collects the repeat exams of LBAs that I planned, with
+// their time and invigilators, ordered chronologically.
+func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*lbaRepeaterExam, error) {
+	plannedExams, err := p.PlannedExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*lbaRepeaterExam, 0)
+	for _, exam := range plannedExams {
+		if exam.ZpaExam == nil || !exam.ZpaExam.IsRepeaterExam {
+			continue
+		}
+		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
+			continue
+		}
+		mainExamer, err := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID)
+		if err != nil || mainExamer == nil || !mainExamer.IsLBA {
+			continue
+		}
+
+		date, timeStr := "noch nicht geplant", ""
+		var start time.Time
+		if exam.PlanEntry != nil {
+			start = p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			date = fmt.Sprintf("%s, %s", weekdayShortDE[int(start.Weekday())], start.Format("02.01.2006"))
+			timeStr = start.Format("15:04")
+		}
+
+		invigilators := make([]string, 0)
+		if exam.PlanEntry != nil {
+			seen := set.NewSet[int]()
+			for _, room := range exam.PlannedRooms {
+				if room.RoomName == "No Room" || room.RoomName == "ONLINE" {
+					continue
+				}
+				invigilator, err := p.GetInvigilatorForRoom(ctx, room.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+				if err != nil || invigilator == nil || seen.Contains(invigilator.ID) {
+					continue
+				}
+				seen.Add(invigilator.ID)
+				invigilators = append(invigilators, invigilator.Shortname)
+			}
+		}
+
+		result = append(result, &lbaRepeaterExam{
+			Ancode:       exam.Ancode,
+			Module:       exam.ZpaExam.Module,
+			Examer:       exam.ZpaExam.MainExamer,
+			Date:         date,
+			Time:         timeStr,
+			start:        start,
+			Invigilators: invigilators,
+		})
+	}
+
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].start.Before(result[j].start)
+	})
+
+	return result, nil
+}
+
+// SendEmailLbaRepeaters sends the Lehrbeauftragten-Beauftragte:r (emails.lbaba)
+// an overview of all repeat exams of LBAs that I planned — only dates and
+// invigilations — so they know whom to remind. Answerable by email (no JIRA).
+// Send-once (condLbaRepeatersSent).
+func (p *Plexams) SendEmailLbaRepeaters(ctx context.Context, run bool, reporter Reporter) error {
+	if err := p.emailSendAllowed(ctx, condLbaRepeatersSent, run); err != nil {
+		return err
+	}
+	reporter.Step("collecting LBA repeat exams")
+
+	exams, err := p.buildLbaRepeaterExams(ctx)
+	if err != nil {
+		return err
+	}
+	if len(exams) == 0 {
+		reporter.StopProgress("no LBA repeat exams planned by me, nothing to send")
+		return nil
+	}
+
+	data := &LbaRepeaterEmail{
+		SemesterName: p.semester,
+		PlanerName:   p.planer.Name,
+		Exams:        exams,
+	}
+
+	textTmpl, err := txttmpl.ParseFS(emailTemplates, "tmpl/lbaRepeaterEmail.tmpl")
+	if err != nil {
+		return err
+	}
+	bufText := new(bytes.Buffer)
+	if err := textTmpl.Execute(bufText, data); err != nil {
+		return err
+	}
+
+	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/lbaRepeaterEmailHTML.tmpl")
+	if err != nil {
+		return err
+	}
+	bufHTML := new(bytes.Buffer)
+	if err := htmlTmpl.Execute(bufHTML, data); err != nil {
+		return err
+	}
+
+	subject := fmt.Sprintf("[Prüfungsplanung %s] Wiederholungsprüfungen von Lehrbeauftragten", p.semester)
+
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Lbaba}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
+		return err
+	}
+	if run {
+		p.markCondition(ctx, condLbaRepeatersSent)
+	}
+	reporter.StopProgress(fmt.Sprintf("email sent to %s (%d exams)", p.recipientInfo(run, p.semesterConfig.Emails.Lbaba), len(exams)))
+	return nil
+}

@@ -33,6 +33,8 @@ type Emails {
   roomManagement: String!
   "Recipient for the EXaHM/SEB room overview (KDP)."
   kdp: String!
+  "Recipient for the overview of LBAs' repeat exams (Lehrbeauftragten-Beauftragte:r)."
+  lbaba: String!
 }
 
 type ExamDay {

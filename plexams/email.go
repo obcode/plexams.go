@@ -59,6 +59,8 @@ import (
 //go:embed tmpl/roomsSecretariatEmailHTML.tmpl
 //go:embed tmpl/kdpExahmEmail.tmpl
 //go:embed tmpl/kdpExahmEmailHTML.tmpl
+//go:embed tmpl/lbaRepeaterEmail.tmpl
+//go:embed tmpl/lbaRepeaterEmailHTML.tmpl
 //go:embed tmpl/jiraOnHTML.tmpl
 
 var emailTemplates embed.FS

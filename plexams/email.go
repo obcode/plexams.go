@@ -167,26 +167,25 @@ func (p *Plexams) replyToAddress(jira bool) string {
 // sendMail sends one mail. jira == true marks a mail that should be answered via
 // JIRA (Reply-To = noreply address); otherwise it is answerable by email
 // (Reply-To = reply address). The From always stays the (authenticated)
-// planner address. On a real send the configured extra Cc (smtp.cc) and the
-// planner's own address (a filterable self-copy) are added to the Cc.
+// planner address. On a real send the configured Cc address (smtp.cc) is added
+// to the Cc — it doubles as the planner's filterable self-copy.
 func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, jira bool) error {
 	actualTo := to
 
-	// The real Cc of a send: the call-site Cc, the configured extra (smtp.cc) and
-	// the planner's own address as a self-copy. We use Cc (not Bcc) for the
-	// self-copy so the planner can filter these copies in Exchange — Bcc is not
-	// part of the headers and cannot be filtered.
+	// The real Cc of a send: the call-site Cc plus the configured Cc address
+	// (smtp.cc), which also serves as the planner's filterable self-copy. We use
+	// Cc (not Bcc) so these copies can be filtered in Exchange — Bcc is not part
+	// of the headers and cannot be filtered.
 	realCc := append([]string{}, cc...)
 	if p.email.cc != "" {
 		realCc = append(realCc, p.email.cc)
 	}
-	realCc = append(realCc, p.planer.Email)
 	actualCc := realCc
 
 	if !run {
 		// Probeversand: alles geht an die Test-Adresse. Der Betreff wird mit
-		// den echten Empfängern (An + Cc, inkl. smtp.cc und der Selbst-Kopie)
-		// präfixt, damit klar ist, an wen die E-Mail tatsächlich gegangen wäre.
+		// den echten Empfängern (An + Cc inkl. smtp.cc) präfixt, damit klar ist,
+		// an wen die E-Mail tatsächlich gegangen wäre.
 		parts := make([]string, 0, 2)
 		if len(to) > 0 {
 			parts = append(parts, "An: "+strings.Join(to, ", "))

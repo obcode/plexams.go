@@ -43,7 +43,7 @@ func (p *Plexams) SendEmailInvigilationsSecretariat(ctx context.Context, run boo
 		return err
 	}
 
-	subject := fmt.Sprintf("[Prüfungsplanung %s] Aufsichtenplan veröffentlicht", p.semester)
+	subject := fmt.Sprintf("[Prüfungsplanung %s] Prüfungsplan veröffentlicht – kann ausgehängt werden", p.semester)
 
 	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Sekr}, nil, subject, bufText.Bytes(), bufHTML, nil, false); err != nil {
 		return err

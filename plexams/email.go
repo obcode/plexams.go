@@ -132,11 +132,22 @@ func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, t
 
 	if !run {
 		// Probeversand: alles geht an die Test-Adresse. Der Betreff wird mit
-		// den echten Empfängern (To + Cc) präfixt, damit klar ist, an wen die
-		// E-Mail tatsächlich versandt worden wäre.
-		realRecipients := append(append([]string{}, to...), cc...)
-		if len(realRecipients) > 0 {
-			subject = fmt.Sprintf("[Probeversand → %s] %s", strings.Join(realRecipients, ", "), subject)
+		// den echten Empfängern (An + Cc, inkl. dem konfigurierten smtp.cc, das
+		// beim echten Versand ergänzt würde) präfixt, damit klar ist, an wen die
+		// E-Mail tatsächlich gegangen wäre.
+		realCc := cc
+		if p.email.cc != "" {
+			realCc = append(append([]string{}, cc...), p.email.cc)
+		}
+		parts := make([]string, 0, 2)
+		if len(to) > 0 {
+			parts = append(parts, "An: "+strings.Join(to, ", "))
+		}
+		if len(realCc) > 0 {
+			parts = append(parts, "Cc: "+strings.Join(realCc, ", "))
+		}
+		if len(parts) > 0 {
+			subject = fmt.Sprintf("[Probeversand → %s] %s", strings.Join(parts, " | "), subject)
 		} else {
 			subject = fmt.Sprintf("[Probeversand] %s", subject)
 		}

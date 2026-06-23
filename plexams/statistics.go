@@ -22,7 +22,8 @@ func (p *Plexams) PrintStatistics() error {
 		regs += len(studentReg.Regs)
 	}
 
-	fmt.Printf("- %d Studierende mit insgesamt %d Anmeldungen auf unsere Prüfungen\n", len(studentRegs), regs)
+	fmt.Printf("- %s mit insgesamt %s auf unsere Prüfungen\n",
+		pluralN(len(studentRegs), "Studierende:r", "Studierende"), pluralN(regs, "Anmeldung", "Anmeldungen"))
 
 	studentRegsFK07 := 0
 	regsFK07 := 0
@@ -38,8 +39,8 @@ STUDENTREG:
 	}
 
 	// - Gesamtzahl der Anmeldungen aller unserer Studierenden (nur FK07)
-	fmt.Printf("- %d Studierende der FK07 mit insgesamt %d Anmeldungen auf unsere Prüfungen\n",
-		studentRegsFK07, regsFK07)
+	fmt.Printf("- %s der FK07 mit insgesamt %s auf unsere Prüfungen\n",
+		pluralN(studentRegsFK07, "Studierende:r", "Studierende"), pluralN(regsFK07, "Anmeldung", "Anmeldungen"))
 
 	// - Zahl aller von uns angebotenen Prüfungen im Sommersemester 2023
 	zpaExamsAll, err := p.dbClient.GetZPAExams(ctx)
@@ -51,8 +52,8 @@ STUDENTREG:
 		log.Error().Err(err).Msg("cannot get ZPA exams")
 	}
 
-	fmt.Printf("- %d von uns angebotenen Prüfungen, davon %d im Prüfungszeitraum\n",
-		len(zpaExamsAll), len(zpaExamsToPlan))
+	fmt.Printf("- %s, davon %d im Prüfungszeitraum\n",
+		pluralN(len(zpaExamsAll), "von uns angebotene Prüfung", "von uns angebotene Prüfungen"), len(zpaExamsToPlan))
 
 	return nil
 }

@@ -16,6 +16,8 @@ extend type Query {
   invigilatorConstraints: [InvigilatorConstraints!]!
   "Teachers who never do invigilation duty again (e.g. retired). Global (plexams DB), carries over between semesters; always implies isNotInvigilator."
   permanentNonInvigilators: [PermanentNonInvigilator!]!
+  "All teachers in the invigilator pool, including the ones currently excluded (isNotInvigilator / permanent). Use this to manage constraints for everyone — invigilatorsWithReq only returns the ones who actually invigilate."
+  invigilatorCandidates: [Teacher!]!
 }
 
 extend type Mutation {

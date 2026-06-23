@@ -35,6 +35,14 @@ func (p *Plexams) PermanentNonInvigilators(ctx context.Context) ([]*model.Perman
 	return p.dbClient.PermanentNonInvigilators(ctx)
 }
 
+// InvigilatorCandidates returns all teachers in the invigilator pool, including
+// those currently excluded (isNotInvigilator / permanent). The GUI uses this to
+// manage constraints for everyone, since invigilatorsWithReq drops the excluded
+// ones.
+func (p *Plexams) InvigilatorCandidates(ctx context.Context) ([]*model.Teacher, error) {
+	return p.getInvigilators(ctx)
+}
+
 // SetPermanentNonInvigilator adds or updates a permanent (cross-semester)
 // non-invigilator.
 func (p *Plexams) SetPermanentNonInvigilator(ctx context.Context, teacherID int, reason string) (*model.PermanentNonInvigilator, error) {

@@ -592,6 +592,7 @@ type ComplexityRoot struct {
 		GeneratedExam                 func(childComplexity int, ancode int) int
 		GeneratedExams                func(childComplexity int) int
 		Invigilator                   func(childComplexity int, room string, day int, time int) int
+		InvigilatorCandidates         func(childComplexity int) int
 		InvigilatorConstraints        func(childComplexity int) int
 		InvigilatorTodos              func(childComplexity int) int
 		Invigilators                  func(childComplexity int) int
@@ -1071,6 +1072,7 @@ type QueryResolver interface {
 	PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedInvigilation, error)
 	InvigilatorConstraints(ctx context.Context) ([]*model.InvigilatorConstraints, error)
 	PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error)
+	InvigilatorCandidates(ctx context.Context) ([]*model.Teacher, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
@@ -4007,6 +4009,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Invigilator(childComplexity, args["room"].(string), args["day"].(int), args["time"].(int)), true
 
+	case "Query.invigilatorCandidates":
+		if e.complexity.Query.InvigilatorCandidates == nil {
+			break
+		}
+
+		return e.complexity.Query.InvigilatorCandidates(childComplexity), true
+
 	case "Query.invigilatorConstraints":
 		if e.complexity.Query.InvigilatorConstraints == nil {
 			break
@@ -6555,6 +6564,8 @@ type MucDaiExam {
   invigilatorConstraints: [InvigilatorConstraints!]!
   "Teachers who never do invigilation duty again (e.g. retired). Global (plexams DB), carries over between semesters; always implies isNotInvigilator."
   permanentNonInvigilators: [PermanentNonInvigilator!]!
+  "All teachers in the invigilator pool, including the ones currently excluded (isNotInvigilator / permanent). Use this to manage constraints for everyone — invigilatorsWithReq only returns the ones who actually invigilate."
+  invigilatorCandidates: [Teacher!]!
 }
 
 extend type Mutation {
@@ -30459,6 +30470,74 @@ func (ec *executionContext) fieldContext_Query_permanentNonInvigilators(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_invigilatorCandidates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_invigilatorCandidates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().InvigilatorCandidates(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Teacher)
+	fc.Result = res
+	return ec.marshalNTeacher2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacherᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_invigilatorCandidates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "shortname":
+				return ec.fieldContext_Teacher_shortname(ctx, field)
+			case "fullname":
+				return ec.fieldContext_Teacher_fullname(ctx, field)
+			case "isProf":
+				return ec.fieldContext_Teacher_isProf(ctx, field)
+			case "isLBA":
+				return ec.fieldContext_Teacher_isLBA(ctx, field)
+			case "isProfHC":
+				return ec.fieldContext_Teacher_isProfHC(ctx, field)
+			case "isStaff":
+				return ec.fieldContext_Teacher_isStaff(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_Teacher_lastSemester(ctx, field)
+			case "fk":
+				return ec.fieldContext_Teacher_fk(ctx, field)
+			case "id":
+				return ec.fieldContext_Teacher_id(ctx, field)
+			case "email":
+				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_ntas(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_ntas(ctx, field)
 	if err != nil {
@@ -52328,6 +52407,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_permanentNonInvigilators(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "invigilatorCandidates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_invigilatorCandidates(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

@@ -102,3 +102,8 @@ func (r *queryResolver) InvigilatorConstraints(ctx context.Context) ([]*model.In
 func (r *queryResolver) PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error) {
 	return r.plexams.PermanentNonInvigilators(ctx)
 }
+
+// InvigilatorCandidates is the resolver for the invigilatorCandidates field.
+func (r *queryResolver) InvigilatorCandidates(ctx context.Context) ([]*model.Teacher, error) {
+	return r.plexams.InvigilatorCandidates(ctx)
+}

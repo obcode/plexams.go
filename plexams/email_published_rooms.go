@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"sort"
 	txttmpl "text/template"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -22,8 +23,9 @@ type PublishedRoomsEmail struct {
 type publishedRoomsExam struct {
 	Ancode int
 	Module string
-	Date   string // e.g. "Mo, 13.07.2026"
-	Time   string // e.g. "08:30"
+	Date   string    // e.g. "Mo, 13.07.2026"
+	Time   string    // e.g. "08:30"
+	start  time.Time // for chronological sorting (Date is a weekday-prefixed string)
 	Rooms  []*publishedRoomsRoom
 }
 
@@ -152,6 +154,7 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 		Module: module,
 		Date:   fmt.Sprintf("%s, %s", weekdayShortDE[int(start.Weekday())], start.Format("02.01.2006")),
 		Time:   start.Format("15:04"),
+		start:  start,
 		Rooms:  rooms,
 	}
 }
@@ -238,10 +241,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 			continue // examer has no exams with rooms
 		}
 		sort.SliceStable(exams, func(i, j int) bool {
-			if exams[i].Date != exams[j].Date {
-				return exams[i].Date < exams[j].Date
-			}
-			return exams[i].Time < exams[j].Time
+			return exams[i].start.Before(exams[j].start)
 		})
 
 		data := &PublishedRoomsEmail{

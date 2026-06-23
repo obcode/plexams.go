@@ -32,7 +32,7 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool, reporter R
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/constraintsEmail.tmpl")
+	tmpl, err := template.New("constraintsEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/constraintsEmail.tmpl")
 	if err != nil {
 		return err
 	}

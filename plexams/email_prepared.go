@@ -26,7 +26,7 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool, reporter Repo
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/preparedEmail.tmpl")
+	tmpl, err := template.New("preparedEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/preparedEmail.tmpl")
 	if err != nil {
 		return err
 	}

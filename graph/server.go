@@ -20,19 +20,36 @@ import (
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-// allowedOrigins are the local dev frontends permitted for CORS and websocket
-// upgrades. plexams is a local single-user tool, so only localhost is allowed.
-var allowedOrigins = map[string]bool{
-	"http://localhost:5173": true,
-	"http://localhost:8080": true,
-	"http://localhost:3000": true,
+// defaultAllowedOrigins are the local dev frontends permitted for CORS and
+// websocket upgrades when none are configured. plexams is a local single-user
+// tool, so only localhost is allowed by default. Override via the config key
+// server.allowedorigins (list of full origin URLs).
+var defaultAllowedOrigins = []string{
+	"http://localhost:5173",
+	"http://localhost:8080",
+	"http://localhost:3000",
+}
+
+// allowedOriginsFromConfig returns the configured CORS origins, or the defaults.
+func allowedOriginsFromConfig() []string {
+	if o := viper.GetStringSlice("server.allowedorigins"); len(o) > 0 {
+		return o
+	}
+	return defaultAllowedOrigins
 }
 
 func StartServer(plexams *plexams.Plexams, port string) {
 	plexamsResolver := NewResolver(plexams)
+
+	origins := allowedOriginsFromConfig()
+	originSet := make(map[string]bool, len(origins))
+	for _, o := range origins {
+		originSet[o] = true
+	}
 
 	c := generated.Config{Resolvers: plexamsResolver}
 	srv := handler.New(generated.NewExecutableSchema(c))
@@ -43,7 +60,7 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		KeepAlivePingInterval: 10 * time.Second,
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				return allowedOrigins[r.Header.Get("Origin")]
+				return originSet[r.Header.Get("Origin")]
 			},
 		},
 	})
@@ -63,10 +80,6 @@ func StartServer(plexams *plexams.Plexams, port string) {
 
 	router := chi.NewRouter()
 
-	origins := make([]string, 0, len(allowedOrigins))
-	for o := range allowedOrigins {
-		origins = append(origins, o)
-	}
 	router.Use(cors.New(cors.Options{
 		AllowedOrigins:   origins,
 		AllowCredentials: true,

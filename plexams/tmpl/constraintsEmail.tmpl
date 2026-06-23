@@ -3,7 +3,7 @@
 Liebe Prüfende,
 
 als Prüfungsplanung der FK07 planen wir alle Prüfungen,
-in denen der Eintrag in der Spalte Prüfungsform unter https://zpa.cs.hm.edu/public/exam_means_list/
+in denen der Eintrag in der Spalte Prüfungsform unter {{ zpaURL }}/public/exam_means_list/
 die Zeichenkette schriftlich enthält, im Prüfungszeitraum vom {{ .FromFK07Date }} bis {{ .UntilDate }}.
 {{if ne .FromDate .FromFK07Date}}
   Bitte beachten Sie, dass die anderen, an unseren Studiengängen beteiligten, Fakultäten teilweise früher,
@@ -14,7 +14,7 @@ Sollten Sie eine praktische Prüfung im Prüfungszeitraum durchführen wollen,
 teilen Sie uns das bitte mit. Die Prüfung werden wir dann auch planen.
 
 Bitte teilen Sie uns Besonderheiten mit, die wir bei der Planung Ihrer Prüfung beachten müssen.
-Öffnen Sie dazu ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13.
+Öffnen Sie dazu ein JIRA-Ticket unter {{ jiraURL }}.
 
 Verwenden Sie als Ticket-Art entweder "Anforderungen an die Raumplanung" oder "allgemeine Anforderungen an Prüfungen".
 

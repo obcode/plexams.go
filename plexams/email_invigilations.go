@@ -24,7 +24,7 @@ func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool, reporter
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/invigilationEmail.tmpl")
+	tmpl, err := template.New("invigilationEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/invigilationEmail.tmpl")
 	if err != nil {
 		return err
 	}

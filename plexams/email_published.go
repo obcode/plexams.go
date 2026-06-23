@@ -34,7 +34,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/publishedEmailExams.tmpl")
+	tmpl, err := template.New("publishedEmailExams.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/publishedEmailExams.tmpl")
 	if err != nil {
 		return err
 	}

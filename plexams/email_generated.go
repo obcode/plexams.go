@@ -130,7 +130,7 @@ type GeneratedExamMailData struct {
 func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedExamMailData *GeneratedExamMailData, updated bool) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/generatedExamEmail.tmpl")
+	tmpl, err := template.New("generatedExamEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/generatedExamEmail.tmpl")
 	if err != nil {
 		return err
 	}

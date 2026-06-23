@@ -21,7 +21,7 @@ func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool, reporter Reporte
 		PlanerName: p.planer.Name,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/exahmEmail.tmpl")
+	tmpl, err := template.New("exahmEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/exahmEmail.tmpl")
 	if err != nil {
 		return err
 	}

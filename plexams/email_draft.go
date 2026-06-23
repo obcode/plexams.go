@@ -45,7 +45,7 @@ func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/draftEmailZPA.tmpl")
+	tmpl, err := template.New("draftEmailZPA.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/draftEmailZPA.tmpl")
 	if err != nil {
 		return err
 	}

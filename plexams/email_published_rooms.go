@@ -205,7 +205,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 		return s
 	}
 
-	textTmpl, err := txttmpl.ParseFS(emailTemplates, "tmpl/publishedRoomsPersonalEmail.tmpl")
+	textTmpl, err := txttmpl.New("publishedRoomsPersonalEmail.tmpl").Funcs(txttmpl.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/publishedRoomsPersonalEmail.tmpl")
 	if err != nil {
 		return err
 	}

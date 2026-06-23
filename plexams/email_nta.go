@@ -108,7 +108,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, run bool, to []string, cc []string, handicapsEmail *NTAEmail) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/handicapEmailRoomAlone.tmpl")
+	tmpl, err := template.New("handicapEmailRoomAlone.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/handicapEmailRoomAlone.tmpl")
 	if err != nil {
 		return err
 	}

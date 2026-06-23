@@ -89,10 +89,22 @@ func jiraURL() string {
 	return defaultJiraURL
 }
 
+// zpaURL returns the ZPA web base URL (no trailing slash), derived from
+// zpa.baseurl (which points at the REST API .../rest), or a default.
+func zpaURL() string {
+	base := strings.TrimSuffix(viper.GetString("zpa.baseurl"), "/rest")
+	base = strings.TrimSuffix(base, "/")
+	if base != "" {
+		return base
+	}
+	return "https://zpa.cs.hm.edu"
+}
+
 // emailFuncs are the template helpers available in all email templates.
 var emailFuncs = map[string]any{
 	"plural":  pluralN,
 	"jiraURL": jiraURL,
+	"zpaURL":  zpaURL,
 }
 
 func (p *Plexams) SendTestMail() error {

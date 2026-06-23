@@ -105,7 +105,10 @@ func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
 		authToken = "Bearer " + authToken
 	}
 
-	endpoint := "https://b.anny.eu/api/v1/bookings"
+	endpoint := viper.GetString("anny.url")
+	if endpoint == "" {
+		endpoint = "https://b.anny.eu/api/v1/bookings"
+	}
 	query := url.Values{}
 	query.Set("sort", "start_date")
 	query.Set("page[size]", "100")

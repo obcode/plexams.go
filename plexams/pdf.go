@@ -89,7 +89,7 @@ func (p *Plexams) generateExamsToPlanMaroto(ctx context.Context) (pdf.Maroto, er
 	m.Row(10, func() {
 		m.Col(12, func() {
 			m.Text(
-				"Öffnen Sie bitte umgehend ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13, wenn Ihre Prüfung hier fehlt oder hier nicht stehen sollte.", props.Text{
+				fmt.Sprintf("Öffnen Sie bitte umgehend ein JIRA-Ticket unter %s, wenn Ihre Prüfung hier fehlt oder hier nicht stehen sollte.", jiraURL()), props.Text{
 					Top:   3,
 					Style: consts.Normal,
 					Align: consts.Center,
@@ -319,7 +319,7 @@ func (p *Plexams) constraintsMaroto(ctx context.Context) (pdf.Maroto, error) {
 	m.Row(12, func() {
 		m.Col(12, func() {
 			m.Text(
-				"Öffnen Sie bitte umgehend ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13, wenn Ihre Prüfung eine Randbedingung hat, die hier fehlt oder hier nicht stehen sollte.",
+				fmt.Sprintf("Öffnen Sie bitte umgehend ein JIRA-Ticket unter %s, wenn Ihre Prüfung eine Randbedingung hat, die hier fehlt oder hier nicht stehen sollte.", jiraURL()),
 				props.Text{
 					Top:   3,
 					Style: consts.Normal,

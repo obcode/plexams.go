@@ -56,8 +56,9 @@ type Email struct {
 	// testMail is the recipient used for dry-run sends (run == false). Configured
 	// via smtp.testmail; falls back to the planner's address when empty.
 	testMail string
-	// cc is added to the Cc of every real send (smtp.cc), e.g. a shared mailbox.
-	cc string
+	// bcc is added to the Bcc of every real send (smtp.bcc), e.g. a shared mailbox
+	// that should receive a copy without being visible to the recipients.
+	bcc string
 	// replyMail is the Reply-To for mails that may be answered by email
 	// (smtp.replymail); falls back to the planner's address when empty.
 	replyMail string
@@ -110,7 +111,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			username:    viper.GetString("smtp.username"),
 			password:    viper.GetString("smtp.password"),
 			testMail:    viper.GetString("smtp.testmail"),
-			cc:          viper.GetString("smtp.cc"),
+			bcc:         viper.GetString("smtp.bcc"),
 			replyMail:   viper.GetString("smtp.replymail"),
 			noreplyMail: viper.GetString("smtp.noreplymail"),
 		},

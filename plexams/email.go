@@ -121,30 +121,29 @@ func (p *Plexams) replyToAddress(jira bool) string {
 // sendMail sends one mail. jira == true marks a mail that should be answered via
 // JIRA (Reply-To = noreply address); otherwise it is answerable by email
 // (Reply-To = reply address). The From always stays the (authenticated)
-// planner address. On a real send the configured Cc (smtp.cc) is added.
+// planner address. On a real send the configured Bcc (smtp.bcc) is added.
 func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, jira bool) error {
 	actualTo := to
 	actualCc := cc
-	if run && p.email.cc != "" {
-		actualCc = append(append([]string{}, cc...), p.email.cc)
-	}
 	bcc := []string{p.planer.Email}
+	if p.email.bcc != "" {
+		bcc = append(bcc, p.email.bcc)
+	}
 
 	if !run {
 		// Probeversand: alles geht an die Test-Adresse. Der Betreff wird mit
-		// den echten Empfängern (An + Cc, inkl. dem konfigurierten smtp.cc, das
-		// beim echten Versand ergänzt würde) präfixt, damit klar ist, an wen die
-		// E-Mail tatsächlich gegangen wäre.
-		realCc := cc
-		if p.email.cc != "" {
-			realCc = append(append([]string{}, cc...), p.email.cc)
-		}
-		parts := make([]string, 0, 2)
+		// den echten Empfängern (An + Cc, sowie dem konfigurierten smtp.bcc, das
+		// beim echten Versand als Bcc ergänzt würde) präfixt, damit klar ist, an
+		// wen die E-Mail tatsächlich gegangen wäre.
+		parts := make([]string, 0, 3)
 		if len(to) > 0 {
 			parts = append(parts, "An: "+strings.Join(to, ", "))
 		}
-		if len(realCc) > 0 {
-			parts = append(parts, "Cc: "+strings.Join(realCc, ", "))
+		if len(cc) > 0 {
+			parts = append(parts, "Cc: "+strings.Join(cc, ", "))
+		}
+		if p.email.bcc != "" {
+			parts = append(parts, "Bcc: "+p.email.bcc)
 		}
 		if len(parts) > 0 {
 			subject = fmt.Sprintf("[Probeversand → %s] %s", strings.Join(parts, " | "), subject)

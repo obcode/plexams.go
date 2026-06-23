@@ -29,6 +29,16 @@ func (p *Plexams) invigilatorConstraintsMap(ctx context.Context) (map[int]*model
 	return m, nil
 }
 
+// rebuildInvigilationTodosBestEffort recomputes the cached invigilator todos
+// after a change to the invigilator pool (constraints / permanent list). It is
+// best-effort: the constraint change itself already succeeded, so a failure here
+// (e.g. no room plan yet) is only logged.
+func (p *Plexams) rebuildInvigilationTodosBestEffort(ctx context.Context) {
+	if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot rebuild invigilation todos after invigilator-pool change")
+	}
+}
+
 // PermanentNonInvigilators returns the teachers who never do invigilation duty
 // again (global, carries over between semesters).
 func (p *Plexams) PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error) {
@@ -56,12 +66,17 @@ func (p *Plexams) SetPermanentNonInvigilator(ctx context.Context, teacherID int,
 	if err := p.dbClient.UpsertPermanentNonInvigilator(ctx, nonInvigilator); err != nil {
 		return nil, err
 	}
+	p.rebuildInvigilationTodosBestEffort(ctx)
 	return nonInvigilator, nil
 }
 
 // RemovePermanentNonInvigilator removes a permanent non-invigilator.
 func (p *Plexams) RemovePermanentNonInvigilator(ctx context.Context, teacherID int) (bool, error) {
-	return p.dbClient.DeletePermanentNonInvigilator(ctx, teacherID)
+	removed, err := p.dbClient.DeletePermanentNonInvigilator(ctx, teacherID)
+	if err == nil {
+		p.rebuildInvigilationTodosBestEffort(ctx)
+	}
+	return removed, err
 }
 
 // notInvigilating builds a predicate that reports whether a teacher does no
@@ -126,12 +141,17 @@ func (p *Plexams) SetInvigilatorConstraints(ctx context.Context, input model.Inv
 	if err := p.dbClient.UpsertInvigilatorConstraints(ctx, constraints); err != nil {
 		return nil, err
 	}
+	p.rebuildInvigilationTodosBestEffort(ctx)
 	return constraints, nil
 }
 
 // DeleteInvigilatorConstraints removes the constraints record of one invigilator.
 func (p *Plexams) DeleteInvigilatorConstraints(ctx context.Context, teacherID int) (bool, error) {
-	return p.dbClient.DeleteInvigilatorConstraints(ctx, teacherID)
+	removed, err := p.dbClient.DeleteInvigilatorConstraints(ctx, teacherID)
+	if err == nil {
+		p.rebuildInvigilationTodosBestEffort(ctx)
+	}
+	return removed, err
 }
 
 // MigrateInvigilatorConstraintsFromConfig is a one-time migration that copies the

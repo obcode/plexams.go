@@ -61,6 +61,8 @@ import (
 //go:embed tmpl/kdpExahmEmailHTML.tmpl
 //go:embed tmpl/lbaRepeaterEmail.tmpl
 //go:embed tmpl/lbaRepeaterEmailHTML.tmpl
+//go:embed tmpl/invigilationsSecretariatEmail.tmpl
+//go:embed tmpl/invigilationsSecretariatEmailHTML.tmpl
 //go:embed tmpl/jiraOnHTML.tmpl
 
 var emailTemplates embed.FS

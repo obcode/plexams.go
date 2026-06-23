@@ -126,6 +126,13 @@ func (r *subscriptionResolver) SendEmailLbaRepeaters(ctx context.Context, run bo
 	}), nil
 }
 
+// SendEmailInvigilationsSecretariat is the resolver for the sendEmailInvigilationsSecretariat field.
+func (r *subscriptionResolver) SendEmailInvigilationsSecretariat(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendEmailInvigilationsSecretariat(ctx, run, reporter)
+	}), nil
+}
+
 // SendEmailPrimussDataAll is the resolver for the sendEmailPrimussDataAll field.
 func (r *subscriptionResolver) SendEmailPrimussDataAll(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
 	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {

@@ -61,6 +61,7 @@ const (
 	condInvigilationsGenerated    = "invigilationsGenerated"
 	condInvigilationPlanPublished = "invigilationPlanPublished"
 	condNTAPlannedSent            = "ntaPlannedSent"
+	condInvigSecretariatSent      = "invigSecretariatSent"
 	condLbaRepeatersSent          = "lbaRepeatersSent"
 	condCoverPagesSent            = "coverPagesSent"
 )
@@ -87,6 +88,7 @@ var planningConditionDefs = []planningConditionDef{
 	{condInvigReqsImported, "Aufsichts-Anforderungen importiert", "phase3", ""},
 	{condInvigilationsGenerated, "Aufsichten generiert", "phase3", ""},
 	{condInvigilationPlanPublished, "Aufsichtenplan veröffentlicht (E-Mail)", "phase3", model.PlanningGateInvigilations},
+	{condInvigSecretariatSent, "Info 'Aufsichten veröffentlicht' ans Sekretariat verschickt", "phase3", ""},
 	{condNTAPlannedSent, "Info an NTAs zu ihren Räumen verschickt", "phase3", ""},
 	{condLbaRepeatersSent, "Info Wiederholungsprüfungen LBAs ans LBA-BA verschickt", "phase3", ""},
 	{condCoverPagesSent, "Deckblätter an alle verschickt (letzter Schritt)", "phase3", ""},

@@ -12,16 +12,23 @@ import (
 	set "github.com/deckarep/golang-set/v2"
 )
 
-// lbaRepeaterExam is one repeat exam of an LBA that I planned, reduced to what
-// the Lehrbeauftragten-Beauftragte:r needs: when it is and who invigilates.
+// lbaPerson is a person shown in the LBA-BA email, with their email so the
+// LBA-BA can contact them directly.
+type lbaPerson struct {
+	Name  string
+	Email string
+}
+
+// lbaRepeaterExam is one repeat exam of a non-prof (LBA / Prof HC / external)
+// that I planned, reduced to what the Lehrbeauftragten-Beauftragte:r needs: the
+// module, the examer and the invigilators (each with email), and when it is.
 type lbaRepeaterExam struct {
-	Ancode       int
 	Module       string
-	Examer       string // the LBA
+	Examer       lbaPerson
 	Date         string
 	Time         string
 	start        time.Time
-	Invigilators []string // invigilator shortnames (unique, in room order)
+	Invigilators []lbaPerson // unique, in room order
 }
 
 // LbaRepeaterEmail is the data for the LBA-BA overview email.
@@ -47,8 +54,11 @@ func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*lbaRepeaterExam
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
 		}
+		// LBAs, Prof HC and externals (anyone who is not a regular prof) are the
+		// people the LBA-BA reminds. The teachers' IsLBA flag is unreliable here, so
+		// "not a regular prof" is the robust criterion.
 		mainExamer, err := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID)
-		if err != nil || mainExamer == nil || !mainExamer.IsLBA {
+		if err != nil || mainExamer == nil || mainExamer.IsProf {
 			continue
 		}
 
@@ -60,7 +70,7 @@ func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*lbaRepeaterExam
 			timeStr = start.Format("15:04")
 		}
 
-		invigilators := make([]string, 0)
+		invigilators := make([]lbaPerson, 0)
 		if exam.PlanEntry != nil {
 			seen := set.NewSet[int]()
 			for _, room := range exam.PlannedRooms {
@@ -72,14 +82,13 @@ func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*lbaRepeaterExam
 					continue
 				}
 				seen.Add(invigilator.ID)
-				invigilators = append(invigilators, invigilator.Shortname)
+				invigilators = append(invigilators, lbaPerson{Name: invigilator.Shortname, Email: invigilator.Email})
 			}
 		}
 
 		result = append(result, &lbaRepeaterExam{
-			Ancode:       exam.Ancode,
 			Module:       exam.ZpaExam.Module,
-			Examer:       exam.ZpaExam.MainExamer,
+			Examer:       lbaPerson{Name: exam.ZpaExam.MainExamer, Email: mainExamer.Email},
 			Date:         date,
 			Time:         timeStr,
 			start:        start,

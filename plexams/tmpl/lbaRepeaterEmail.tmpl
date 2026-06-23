@@ -4,9 +4,10 @@ nachfolgend die von mir geplanten Wiederholungsprüfungen von Lehrbeauftragten i
 {{ .SemesterName }}, mit Terminen und Aufsichten – damit Du weißt, wen Du ggf. noch einmal
 erinnern musst.
 
-{{ range .Exams }}{{ .Ancode }}. {{ .Module }} ({{ .Examer }})
-  Termin:    {{ .Date }}{{ if .Time }}, {{ .Time }} Uhr{{ end }}
-  Aufsichten: {{ if .Invigilators }}{{ range $i, $inv := .Invigilators }}{{ if $i }}, {{ end }}{{ $inv }}{{ end }}{{ else }}noch keine Aufsicht geplant{{ end }}
+{{ range .Exams }}{{ .Module }}
+  Prüfer:in:  {{ .Examer.Name }}{{ if .Examer.Email }} <{{ .Examer.Email }}>{{ end }}
+  Termin:     {{ .Date }}{{ if .Time }}, {{ .Time }} Uhr{{ end }}
+  Aufsichten: {{ if .Invigilators }}{{ range $i, $inv := .Invigilators }}{{ if $i }}, {{ end }}{{ $inv.Name }}{{ if $inv.Email }} <{{ $inv.Email }}>{{ end }}{{ end }}{{ else }}noch keine Aufsicht geplant{{ end }}
 {{ end }}
 Bei Rückfragen kannst Du direkt auf diese E-Mail antworten.
 

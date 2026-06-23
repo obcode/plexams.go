@@ -85,11 +85,14 @@ type kdpBlock struct {
 
 // buildKdpData collects, for all EXaHM/SEB exams, the per-slot/room/exam
 // allocation (room view and exam view) and the room-oriented CSV rows.
-func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, error) {
+func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, []string, error) {
 	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
+
+	// email addresses of the affected examers (CC of the KDP mail)
+	examerEmails := make(map[string]bool)
 
 	// slotKey -> roomName -> ancode -> block aggregation
 	type re struct{ day, slot int }
@@ -127,6 +130,10 @@ func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, er
 			examer = exam.ZpaExam.MainExamer
 		}
 		meta[exam.Ancode] = examMeta{module, examer, typ, start}
+
+		if teacher, terr := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID); terr == nil && teacher != nil && teacher.Email != "" {
+			examerEmails[teacher.Email] = true
+		}
 
 		for _, room := range exam.PlannedRooms {
 			if room.RoomName == "No Room" || room.RoomName == "ONLINE" {
@@ -290,12 +297,18 @@ func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, er
 		})
 	}
 
+	ccEmails := make([]string, 0, len(examerEmails))
+	for e := range examerEmails {
+		ccEmails = append(ccEmails, e)
+	}
+	sort.Strings(ccEmails)
+
 	return &KdpEmail{
 		SemesterName: p.semester,
 		PlanerName:   p.planer.Name,
 		Slots:        emailSlots,
 		Exams:        examViews,
-	}, csvRows, nil
+	}, csvRows, ccEmails, nil
 }
 
 func kdpDetail(normalSeats, normalDur int, ntaDurs []int, reserveSeats int) string {
@@ -330,7 +343,7 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 	}
 	reporter.Step("collecting EXaHM/SEB room planning for the KDP")
 
-	data, csvRows, err := p.buildKdpData(ctx)
+	data, csvRows, ccEmails, err := p.buildKdpData(ctx)
 	if err != nil {
 		return err
 	}
@@ -372,7 +385,7 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] EXaHM/SEB – Raumübersicht für das KDP", p.semester)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Kdp}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Kdp}, ccEmails, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, false); err != nil {
 		return err
 	}
 	if run {

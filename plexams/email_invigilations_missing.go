@@ -95,7 +95,7 @@ func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilat
 		p.semester)
 
 	if err := p.sendMail(run, []string{teacher.Email}, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
-		reporter.Warnf("error while sending email to %s", teacher.Fullname)
+		reporter.Warnf("error while sending email to %s: %v", teacher.Fullname, err)
 		return err
 	}
 

@@ -283,7 +283,7 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 			true,
 		)
 		if err != nil {
-			reporter.Warnf("error while sending email to %s", teacher.Fullname)
+			reporter.Warnf("error while sending email to %s: %v", teacher.Fullname, err)
 			continue
 		}
 

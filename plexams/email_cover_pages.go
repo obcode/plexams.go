@@ -124,7 +124,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		false,
 	)
 	if err != nil {
-		reporter.StopProgressFail(fmt.Sprintf("error while sending email to %s", teacher.Fullname))
+		reporter.StopProgressFail(fmt.Sprintf("error while sending email to %s: %v", teacher.Fullname, err))
 		return err
 	}
 

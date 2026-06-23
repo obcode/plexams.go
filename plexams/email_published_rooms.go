@@ -262,7 +262,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 		}
 
 		if err := p.sendMail(run, []string{examer.Email}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
-			reporter.Warnf("error while sending email to %s", examer.Fullname)
+			reporter.Warnf("error while sending email to %s: %v", examer.Fullname, err)
 			continue
 		}
 		reporter.Printf("  ✓ %s", p.recipientInfo(run, examer.Email))

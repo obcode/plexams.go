@@ -26,6 +26,9 @@ extend type Subscription {
   "Send the secretariat the room occupancy (per non-request room, when it is used by an exam; overlapping NTA times merged) with a request to check it against ZPA. Send before publishing the room plan."
   sendEmailRoomsSecretariat(run: Boolean!): LogLine!
 
+  "Send the KDP the overview of the EXaHM/SEB room planning (by day/time and room, with per-exam seat counts and a room-oriented CSV attachment). Send after publishing the room plan."
+  sendEmailKdpExahm(run: Boolean!): LogLine!
+
   # Repeatable emails (no send-once gate): they may be re-sent on changes.
   "Send the primuss-data email to every examer with exams planned by me."
   sendEmailPrimussDataAll(run: Boolean!): LogLine!

@@ -57,6 +57,8 @@ import (
 //go:embed tmpl/roomRequestEmailHTML.tmpl
 //go:embed tmpl/roomsSecretariatEmail.tmpl
 //go:embed tmpl/roomsSecretariatEmailHTML.tmpl
+//go:embed tmpl/kdpExahmEmail.tmpl
+//go:embed tmpl/kdpExahmEmailHTML.tmpl
 //go:embed tmpl/jiraOnHTML.tmpl
 
 var emailTemplates embed.FS

@@ -31,6 +31,8 @@ type Emails {
   sekr: String!
   "Recipient for building-management room requests (Gebäudemanagement)."
   roomManagement: String!
+  "Recipient for the EXaHM/SEB room overview (KDP)."
+  kdp: String!
 }
 
 type ExamDay {

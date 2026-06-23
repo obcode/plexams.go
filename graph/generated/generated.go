@@ -165,6 +165,7 @@ type ComplexityRoot struct {
 	Emails struct {
 		AdditionalExamer func(childComplexity int) int
 		Fs               func(childComplexity int) int
+		Kdp              func(childComplexity int) int
 		Lbas             func(childComplexity int) int
 		LbasLastSemester func(childComplexity int) int
 		Profs            func(childComplexity int) int
@@ -836,6 +837,7 @@ type ComplexityRoot struct {
 		SendEmailExaHm                       func(childComplexity int, run bool) int
 		SendEmailInvigilations               func(childComplexity int, run bool) int
 		SendEmailInvigilationsMissing        func(childComplexity int, run bool) int
+		SendEmailKdpExahm                    func(childComplexity int, run bool) int
 		SendEmailNTAPlanned                  func(childComplexity int, run bool) int
 		SendEmailNTARoomAlone                func(childComplexity int, mtknr string, run bool) int
 		SendEmailNewNta                      func(childComplexity int, mtknr string, run bool) int
@@ -1141,6 +1143,7 @@ type SubscriptionResolver interface {
 	SendEmailCoverPage(ctx context.Context, teacherID int, run bool) (<-chan *model.LogLine, error)
 	SendEmailRoomRequests(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailRoomsSecretariat(ctx context.Context, run bool) (<-chan *model.LogLine, error)
+	SendEmailKdpExahm(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailPrimussDataAll(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailPrimussData(ctx context.Context, ancode int, updated bool, run bool) (<-chan *model.LogLine, error)
 	SendEmailPrimussDataUnplanned(ctx context.Context, program string, ancode int, email string, run bool) (<-chan *model.LogLine, error)
@@ -1695,6 +1698,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Emails.Fs(childComplexity), true
+
+	case "Emails.kdp":
+		if e.complexity.Emails.Kdp == nil {
+			break
+		}
+
+		return e.complexity.Emails.Kdp(childComplexity), true
 
 	case "Emails.lbas":
 		if e.complexity.Emails.Lbas == nil {
@@ -5370,6 +5380,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.SendEmailInvigilationsMissing(childComplexity, args["run"].(bool)), true
 
+	case "Subscription.sendEmailKdpExahm":
+		if e.complexity.Subscription.SendEmailKdpExahm == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_sendEmailKdpExahm_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.SendEmailKdpExahm(childComplexity, args["run"].(bool)), true
+
 	case "Subscription.sendEmailNTAPlanned":
 		if e.complexity.Subscription.SendEmailNTAPlanned == nil {
 			break
@@ -6442,6 +6464,9 @@ extend type Subscription {
   "Send the secretariat the room occupancy (per non-request room, when it is used by an exam; overlapping NTA times merged) with a request to check it against ZPA. Send before publishing the room plan."
   sendEmailRoomsSecretariat(run: Boolean!): LogLine!
 
+  "Send the KDP the overview of the EXaHM/SEB room planning (by day/time and room, with per-exam seat counts and a room-oriented CSV attachment). Send after publishing the room plan."
+  sendEmailKdpExahm(run: Boolean!): LogLine!
+
   # Repeatable emails (no send-once gate): they may be re-sent on changes.
   "Send the primuss-data email to every examer with exams planned by me."
   sendEmailPrimussDataAll(run: Boolean!): LogLine!
@@ -6881,6 +6906,8 @@ type Emails {
   sekr: String!
   "Recipient for building-management room requests (Gebäudemanagement)."
   roomManagement: String!
+  "Recipient for the EXaHM/SEB room overview (KDP)."
+  kdp: String!
 }
 
 type ExamDay {
@@ -11436,6 +11463,34 @@ func (ec *executionContext) field_Subscription_sendEmailInvigilations_argsRun(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Subscription_sendEmailKdpExahm_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_sendEmailKdpExahm_argsRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["run"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_sendEmailKdpExahm_argsRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["run"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("run"))
+	if tmp, ok := rawArgs["run"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Subscription_sendEmailNTAPlanned_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15578,6 +15633,50 @@ func (ec *executionContext) _Emails_roomManagement(ctx context.Context, field gr
 }
 
 func (ec *executionContext) fieldContext_Emails_roomManagement(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Emails",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Emails_kdp(ctx context.Context, field graphql.CollectedField, obj *model.Emails) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Emails_kdp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Kdp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Emails_kdp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Emails",
 		Field:      field,
@@ -37302,6 +37401,8 @@ func (ec *executionContext) fieldContext_SemesterConfig_emails(_ context.Context
 				return ec.fieldContext_Emails_sekr(ctx, field)
 			case "roomManagement":
 				return ec.fieldContext_Emails_roomManagement(ctx, field)
+			case "kdp":
+				return ec.fieldContext_Emails_kdp(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Emails", field.Name)
 		},
@@ -39845,6 +39946,87 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailRoomsSecretariat(
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Subscription_sendEmailRoomsSecretariat_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_sendEmailKdpExahm(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_sendEmailKdpExahm(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().SendEmailKdpExahm(rctx, fc.Args["run"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_sendEmailKdpExahm(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_sendEmailKdpExahm_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -48974,6 +49156,11 @@ func (ec *executionContext) _Emails(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "kdp":
+			out.Values[i] = ec._Emails_kdp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -54873,6 +55060,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_sendEmailRoomRequests(ctx, fields[0])
 	case "sendEmailRoomsSecretariat":
 		return ec._Subscription_sendEmailRoomsSecretariat(ctx, fields[0])
+	case "sendEmailKdpExahm":
+		return ec._Subscription_sendEmailKdpExahm(ctx, fields[0])
 	case "sendEmailPrimussDataAll":
 		return ec._Subscription_sendEmailPrimussDataAll(ctx, fields[0])
 	case "sendEmailPrimussData":

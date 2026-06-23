@@ -55,6 +55,7 @@ const (
 	condRoomsGenerated            = "roomsGenerated"
 	condSecretariatRoomsSent      = "secretariatRoomsSent"
 	condRoomPlanPublished         = "roomPlanPublished"
+	condKdpRoomsSent              = "kdpRoomsSent"
 	condInvigReqsImported         = "invigReqsImported"
 	condInvigilationsRequested    = "invigilationsRequested"
 	condInvigilationsGenerated    = "invigilationsGenerated"
@@ -80,6 +81,7 @@ var planningConditionDefs = []planningConditionDef{
 	{condRoomsGenerated, "Räume für Prüfungen generiert", "phase2", ""},
 	{condSecretariatRoomsSent, "Raumbelegung ans Sekretariat verschickt", "phase2", ""},
 	{condRoomPlanPublished, "Raumplan veröffentlicht (E-Mail)", "phase2", model.PlanningGateRooms},
+	{condKdpRoomsSent, "EXaHM/SEB-Raumübersicht ans KDP verschickt", "phase2", ""},
 	{condInvigilationsRequested, "Aufsichts-Anforderungsabfrage verschickt", "phase3", ""},
 	{condInvigReqsImported, "Aufsichts-Anforderungen importiert", "phase3", ""},
 	{condInvigilationsGenerated, "Aufsichten generiert", "phase3", ""},

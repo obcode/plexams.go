@@ -112,6 +112,13 @@ func (r *subscriptionResolver) SendEmailRoomsSecretariat(ctx context.Context, ru
 	}), nil
 }
 
+// SendEmailKdpExahm is the resolver for the sendEmailKdpExahm field.
+func (r *subscriptionResolver) SendEmailKdpExahm(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
+	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendEmailKdpExahm(ctx, run, reporter)
+	}), nil
+}
+
 // SendEmailPrimussDataAll is the resolver for the sendEmailPrimussDataAll field.
 func (r *subscriptionResolver) SendEmailPrimussDataAll(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
 	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {

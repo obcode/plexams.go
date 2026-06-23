@@ -115,6 +115,8 @@ type Emails struct {
 	Sekr             string   `json:"sekr"`
 	// Recipient for building-management room requests (Gebäudemanagement).
 	RoomManagement string `json:"roomManagement"`
+	// Recipient for the EXaHM/SEB room overview (KDP).
+	Kdp string `json:"kdp"`
 }
 
 type EnhancedPrimussExam struct {

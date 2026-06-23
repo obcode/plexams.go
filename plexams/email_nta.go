@@ -138,6 +138,8 @@ type NTAEmailExamAndRoom struct {
 	Exam        *model.PlannedExam
 	Room        *model.PlannedRoom
 	Invigilator *model.Teacher
+	Date        string // e.g. "Mo, 13.07.2026"
+	Time        string // e.g. "08:30"
 	// Waiver is set when the student deliberately gave up their room-alone right
 	// for this exam (the stored reason); empty otherwise.
 	Waiver string
@@ -223,10 +225,13 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 			log.Debug().Str("mtknr", nta.Mtknr).Str("name", nta.Name).Str("room", room.RoomName).Str("invigilator", invigilator.Fullname).
 				Msg("found info")
 			ccSet.Add(invigilator.Email)
+			start := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 			examsWithRoom = append(examsWithRoom, NTAEmailExamAndRoom{
 				Exam:        exam,
 				Room:        room,
 				Invigilator: invigilator,
+				Date:        fmt.Sprintf("%s, %s", weekdayShortDE[int(start.Weekday())], start.Format("02.01.2006")),
+				Time:        start.Format("15:04"),
 				Waiver:      waiverReasons[ntaExamKey{nta.Mtknr, exam.Ancode}],
 			})
 		}

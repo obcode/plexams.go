@@ -399,7 +399,7 @@ type ComplexityRoot struct {
 		Seb                           func(childComplexity int, ancode int) int
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
-		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, reason string) int
+		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
@@ -457,6 +457,7 @@ type ComplexityRoot struct {
 	}
 
 	PermanentNonInvigilator struct {
+		Name      func(childComplexity int) int
 		Reason    func(childComplexity int) int
 		TeacherID func(childComplexity int) int
 	}
@@ -1006,7 +1007,7 @@ type MutationResolver interface {
 	SetInvigilatorConstraints(ctx context.Context, input model.InvigilatorConstraintsInput) (*model.InvigilatorConstraints, error)
 	DeleteInvigilatorConstraints(ctx context.Context, teacherID int) (bool, error)
 	MigrateInvigilatorConstraints(ctx context.Context) (int, error)
-	SetPermanentNonInvigilator(ctx context.Context, teacherID int, reason string) (*model.PermanentNonInvigilator, error)
+	SetPermanentNonInvigilator(ctx context.Context, teacherID int, name string, reason string) (*model.PermanentNonInvigilator, error)
 	RemovePermanentNonInvigilator(ctx context.Context, teacherID int) (bool, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
@@ -3004,7 +3005,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetPermanentNonInvigilator(childComplexity, args["teacherID"].(int), args["reason"].(string)), true
+		return e.complexity.Mutation.SetPermanentNonInvigilator(childComplexity, args["teacherID"].(int), args["name"].(string), args["reason"].(string)), true
 
 	case "Mutation.setPlanningCondition":
 		if e.complexity.Mutation.SetPlanningCondition == nil {
@@ -3307,6 +3308,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OptimizerProgress.Unfilled(childComplexity), true
+
+	case "PermanentNonInvigilator.name":
+		if e.complexity.PermanentNonInvigilator.Name == nil {
+			break
+		}
+
+		return e.complexity.PermanentNonInvigilator.Name(childComplexity), true
 
 	case "PermanentNonInvigilator.reason":
 		if e.complexity.PermanentNonInvigilator.Reason == nil {
@@ -6592,8 +6600,8 @@ extend type Mutation {
   deleteInvigilatorConstraints(teacherID: Int!): Boolean!
   "One-time migration: copy the invigilatorConstraints from the semester config (viper) into the DB. Returns the number of records written."
   migrateInvigilatorConstraints: Int!
-  "Add or update a permanent (cross-semester) non-invigilator (key: teacherID), e.g. someone retired."
-  setPermanentNonInvigilator(teacherID: Int!, reason: String!): PermanentNonInvigilator!
+  "Add or update a permanent (cross-semester) non-invigilator (key: teacherID), e.g. someone retired. name is the display name (pass the candidate's name; if empty the backend tries to resolve it)."
+  setPermanentNonInvigilator(teacherID: Int!, name: String!, reason: String!): PermanentNonInvigilator!
   "Remove a permanent non-invigilator (key: teacherID). Returns false if there was none."
   removePermanentNonInvigilator(teacherID: Int!): Boolean!
 }
@@ -6684,6 +6692,8 @@ over between semesters; it always implies isNotInvigilator.
 """
 type PermanentNonInvigilator {
   teacherID: Int!
+  "Denormalized display name, kept so the entry stays readable even after the teacher has left the FK07 invigilator pool."
+  name: String!
   reason: String!
 }
 
@@ -9349,11 +9359,16 @@ func (ec *executionContext) field_Mutation_setPermanentNonInvigilator_args(ctx c
 		return nil, err
 	}
 	args["teacherID"] = arg0
-	arg1, err := ec.field_Mutation_setPermanentNonInvigilator_argsReason(ctx, rawArgs)
+	arg1, err := ec.field_Mutation_setPermanentNonInvigilator_argsName(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["reason"] = arg1
+	args["name"] = arg1
+	arg2, err := ec.field_Mutation_setPermanentNonInvigilator_argsReason(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg2
 	return args, nil
 }
 func (ec *executionContext) field_Mutation_setPermanentNonInvigilator_argsTeacherID(
@@ -9371,6 +9386,24 @@ func (ec *executionContext) field_Mutation_setPermanentNonInvigilator_argsTeache
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPermanentNonInvigilator_argsName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["name"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+	if tmp, ok := rawArgs["name"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -22402,7 +22435,7 @@ func (ec *executionContext) _Mutation_setPermanentNonInvigilator(ctx context.Con
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetPermanentNonInvigilator(rctx, fc.Args["teacherID"].(int), fc.Args["reason"].(string))
+		return ec.resolvers.Mutation().SetPermanentNonInvigilator(rctx, fc.Args["teacherID"].(int), fc.Args["name"].(string), fc.Args["reason"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -22429,6 +22462,8 @@ func (ec *executionContext) fieldContext_Mutation_setPermanentNonInvigilator(ctx
 			switch field.Name {
 			case "teacherID":
 				return ec.fieldContext_PermanentNonInvigilator_teacherID(ctx, field)
+			case "name":
+				return ec.fieldContext_PermanentNonInvigilator_name(ctx, field)
 			case "reason":
 				return ec.fieldContext_PermanentNonInvigilator_reason(ctx, field)
 			}
@@ -25559,6 +25594,50 @@ func (ec *executionContext) fieldContext_PermanentNonInvigilator_teacherID(_ con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PermanentNonInvigilator_name(ctx context.Context, field graphql.CollectedField, obj *model.PermanentNonInvigilator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PermanentNonInvigilator_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PermanentNonInvigilator_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PermanentNonInvigilator",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30461,6 +30540,8 @@ func (ec *executionContext) fieldContext_Query_permanentNonInvigilators(_ contex
 			switch field.Name {
 			case "teacherID":
 				return ec.fieldContext_PermanentNonInvigilator_teacherID(ctx, field)
+			case "name":
+				return ec.fieldContext_PermanentNonInvigilator_name(ctx, field)
 			case "reason":
 				return ec.fieldContext_PermanentNonInvigilator_reason(ctx, field)
 			}
@@ -50999,6 +51080,11 @@ func (ec *executionContext) _PermanentNonInvigilator(ctx context.Context, sel as
 			out.Values[i] = graphql.MarshalString("PermanentNonInvigilator")
 		case "teacherID":
 			out.Values[i] = ec._PermanentNonInvigilator_teacherID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._PermanentNonInvigilator_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

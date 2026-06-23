@@ -44,9 +44,15 @@ func (p *Plexams) InvigilatorCandidates(ctx context.Context) ([]*model.Teacher, 
 }
 
 // SetPermanentNonInvigilator adds or updates a permanent (cross-semester)
-// non-invigilator.
-func (p *Plexams) SetPermanentNonInvigilator(ctx context.Context, teacherID int, reason string) (*model.PermanentNonInvigilator, error) {
-	nonInvigilator := &model.PermanentNonInvigilator{TeacherID: teacherID, Reason: reason}
+// non-invigilator. If name is empty it tries to resolve the teacher's name (so a
+// CLI/API caller need not supply it for teachers still in the pool).
+func (p *Plexams) SetPermanentNonInvigilator(ctx context.Context, teacherID int, name, reason string) (*model.PermanentNonInvigilator, error) {
+	if name == "" {
+		if teacher, err := p.dbClient.GetTeacher(ctx, teacherID); err == nil && teacher != nil {
+			name = teacher.Fullname
+		}
+	}
+	nonInvigilator := &model.PermanentNonInvigilator{TeacherID: teacherID, Name: name, Reason: reason}
 	if err := p.dbClient.UpsertPermanentNonInvigilator(ctx, nonInvigilator); err != nil {
 		return nil, err
 	}

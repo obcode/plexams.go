@@ -218,7 +218,7 @@ This list is global (plexams DB) and carries over between semesters.
 				}
 				fmt.Printf("%d permanent non-invigilator(s):\n", len(list))
 				for _, n := range list {
-					fmt.Printf("  %d  %s\n", n.TeacherID, n.Reason)
+					fmt.Printf("  %d  %s  (%s)\n", n.TeacherID, n.Name, n.Reason)
 				}
 			case "add":
 				if len(args) < 3 {
@@ -229,7 +229,8 @@ This list is global (plexams DB) and carries over between semesters.
 					log.Fatalf("cannot use %s as teacher id", args[1])
 				}
 				reason := strings.Join(args[2:], " ")
-				if _, err := plxms.SetPermanentNonInvigilator(ctx, id, reason); err != nil {
+				// name "" -> backend resolves it from the teacher record if possible
+				if _, err := plxms.SetPermanentNonInvigilator(ctx, id, "", reason); err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
 				fmt.Printf("added permanent non-invigilator %d (%s)\n", id, reason)

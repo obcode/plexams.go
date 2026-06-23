@@ -5,6 +5,10 @@ package model
 // the global "plexams" database and therefore carries over from semester to
 // semester. It always implies isNotInvigilator.
 type PermanentNonInvigilator struct {
-	TeacherID int    `json:"teacherID"`
-	Reason    string `json:"reason"`
+	TeacherID int `json:"teacherID"`
+	// Name is a denormalized display name, so the entry stays readable even when
+	// the teacher has left the FK07 invigilator pool (then they are no longer in
+	// invigilatorCandidates and the GUI could not resolve a name).
+	Name   string `json:"name"`
+	Reason string `json:"reason"`
 }

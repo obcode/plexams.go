@@ -114,8 +114,8 @@ func initConfig() error {
 			return fmt.Errorf("cannot merge semester config: %w", err)
 		}
 
-		// Beobachte die per-Semester-Config (enthält z.B. invigilatorConstraints),
-		// damit Änderungen ohne Neustart wirksam werden. viper liest die Datei vor
+		// Beobachte die per-Semester-Config, damit Änderungen an der YAML ohne
+		// Neustart wirksam werden. viper liest die Datei vor
 		// dem Callback selbst neu ein, wir mergen die frischen Werte ins globale
 		// viper. Hinweis: Merge entfernt keine im File gelöschten Schlüssel – dafür
 		// ist weiterhin ein Neustart nötig.

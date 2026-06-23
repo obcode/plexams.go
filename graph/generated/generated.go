@@ -287,6 +287,13 @@ type ComplexityRoot struct {
 		Todos        func(childComplexity int) int
 	}
 
+	InvigilatorConstraints struct {
+		ExcludedDates    func(childComplexity int) int
+		IsNotInvigilator func(childComplexity int) int
+		TeacherID        func(childComplexity int) int
+		TimeWindows      func(childComplexity int) int
+	}
+
 	InvigilatorOutlier struct {
 		Doing         func(childComplexity int) int
 		InvigilatorID func(childComplexity int) int
@@ -365,9 +372,11 @@ type ComplexityRoot struct {
 		BlockRoomForSlot              func(childComplexity int, room string, day int, slot int, reason *string) int
 		BlockRoomForSlots             func(childComplexity int, room string, slots []*model.SlotInput, reason *string) int
 		ClearEmailAttachments         func(childComplexity int, kind string) int
+		DeleteInvigilatorConstraints  func(childComplexity int, teacherID int) int
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
 		Lab                           func(childComplexity int, ancode int) int
+		MigrateInvigilatorConstraints func(childComplexity int) int
 		MigrateRoomRequestsFromConfig func(childComplexity int) int
 		MigrateRoomsRequestWith       func(childComplexity int) int
 		NotPlannedByMe                func(childComplexity int, ancode int) int
@@ -387,6 +396,7 @@ type ComplexityRoot struct {
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
 		SameSlot                      func(childComplexity int, ancode int, ancodes []int) int
 		Seb                           func(childComplexity int, ancode int) int
+		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
@@ -575,6 +585,7 @@ type ComplexityRoot struct {
 		GeneratedExam                 func(childComplexity int, ancode int) int
 		GeneratedExams                func(childComplexity int) int
 		Invigilator                   func(childComplexity int, room string, day int, time int) int
+		InvigilatorConstraints        func(childComplexity int) int
 		InvigilatorTodos              func(childComplexity int) int
 		Invigilators                  func(childComplexity int) int
 		InvigilatorsExcludedByConfig  func(childComplexity int) int
@@ -983,6 +994,9 @@ type MutationResolver interface {
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	PrePlanInvigilationInSlot(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	ResetInvigilations(ctx context.Context) (bool, error)
+	SetInvigilatorConstraints(ctx context.Context, input model.InvigilatorConstraintsInput) (*model.InvigilatorConstraints, error)
+	DeleteInvigilatorConstraints(ctx context.Context, teacherID int) (bool, error)
+	MigrateInvigilatorConstraints(ctx context.Context) (int, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
@@ -1045,6 +1059,7 @@ type QueryResolver interface {
 	InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error)
 	Invigilator(ctx context.Context, room string, day int, time int) (*model.Teacher, error)
 	PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedInvigilation, error)
+	InvigilatorConstraints(ctx context.Context) ([]*model.InvigilatorConstraints, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
@@ -2192,6 +2207,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Invigilator.Todos(childComplexity), true
 
+	case "InvigilatorConstraints.excludedDates":
+		if e.complexity.InvigilatorConstraints.ExcludedDates == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorConstraints.ExcludedDates(childComplexity), true
+
+	case "InvigilatorConstraints.isNotInvigilator":
+		if e.complexity.InvigilatorConstraints.IsNotInvigilator == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorConstraints.IsNotInvigilator(childComplexity), true
+
+	case "InvigilatorConstraints.teacherID":
+		if e.complexity.InvigilatorConstraints.TeacherID == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorConstraints.TeacherID(childComplexity), true
+
+	case "InvigilatorConstraints.timeWindows":
+		if e.complexity.InvigilatorConstraints.TimeWindows == nil {
+			break
+		}
+
+		return e.complexity.InvigilatorConstraints.TimeWindows(childComplexity), true
+
 	case "InvigilatorOutlier.doing":
 		if e.complexity.InvigilatorOutlier.Doing == nil {
 			break
@@ -2639,6 +2682,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ClearEmailAttachments(childComplexity, args["kind"].(string)), true
 
+	case "Mutation.deleteInvigilatorConstraints":
+		if e.complexity.Mutation.DeleteInvigilatorConstraints == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteInvigilatorConstraints_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteInvigilatorConstraints(childComplexity, args["teacherID"].(int)), true
+
 	case "Mutation.exahm":
 		if e.complexity.Mutation.Exahm == nil {
 			break
@@ -2674,6 +2729,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Lab(childComplexity, args["ancode"].(int)), true
+
+	case "Mutation.migrateInvigilatorConstraints":
+		if e.complexity.Mutation.MigrateInvigilatorConstraints == nil {
+			break
+		}
+
+		return e.complexity.Mutation.MigrateInvigilatorConstraints(childComplexity), true
 
 	case "Mutation.migrateRoomRequestsFromConfig":
 		if e.complexity.Mutation.MigrateRoomRequestsFromConfig == nil {
@@ -2882,6 +2944,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Seb(childComplexity, args["ancode"].(int)), true
+
+	case "Mutation.setInvigilatorConstraints":
+		if e.complexity.Mutation.SetInvigilatorConstraints == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setInvigilatorConstraints_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetInvigilatorConstraints(childComplexity, args["input"].(model.InvigilatorConstraintsInput)), true
 
 	case "Mutation.setNTAActive":
 		if e.complexity.Mutation.SetNTAActive == nil {
@@ -3883,6 +3957,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Invigilator(childComplexity, args["room"].(string), args["day"].(int), args["time"].(int)), true
+
+	case "Query.invigilatorConstraints":
+		if e.complexity.Query.InvigilatorConstraints == nil {
+			break
+		}
+
+		return e.complexity.Query.InvigilatorConstraints(childComplexity), true
 
 	case "Query.invigilatorTodos":
 		if e.complexity.Query.InvigilatorTodos == nil {
@@ -6047,6 +6128,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputConstraintsInput,
+		ec.unmarshalInputInvigilationTimeWindowInput,
+		ec.unmarshalInputInvigilatorConstraintsInput,
 		ec.unmarshalInputNTAInput,
 		ec.unmarshalInputPrimussExamInput,
 		ec.unmarshalInputRoomInput,
@@ -6411,6 +6494,8 @@ type MucDaiExam {
   invigilatorsForDay(day: Int!): InvigilatorsForDay
   invigilator(room: String!, day: Int!, time: Int!): Teacher
   prePlannedInvigilations: [PrePlannedInvigilation!]!
+  "Per-invigilator constraints stored in the DB (managed via the GUI): whether they do no invigilation at all, additional excluded whole days and time windows when they cannot invigilate. These are merged on top of the ZPA requirements."
+  invigilatorConstraints: [InvigilatorConstraints!]!
 }
 
 extend type Mutation {
@@ -6431,6 +6516,12 @@ extend type Mutation {
   prePlanInvigilationInSlot(day: Int!, slot: Int!, roomName: String): Boolean!
   "Reset the generated invigilations (invigilations_other) so only the pre-planning remains; self-invigilations are refreshed on the next generation. Blocked while the invigilation plan is published."
   resetInvigilations: Boolean!
+  "Create or replace the whole constraints record of one invigilator (key: teacherID)."
+  setInvigilatorConstraints(input: InvigilatorConstraintsInput!): InvigilatorConstraints!
+  "Remove the constraints record of one invigilator (key: teacherID). Returns false if there was none."
+  deleteInvigilatorConstraints(teacherID: Int!): Boolean!
+  "One-time migration: copy the invigilatorConstraints from the semester config (viper) into the DB. Returns the number of records written."
+  migrateInvigilatorConstraints: Int!
 }
 
 """
@@ -6482,6 +6573,34 @@ type InvigilatorsForDay {
 type ZPAInvigilator {
   teacher: Teacher!
   hasSubmittedRequirements: Boolean!
+}
+
+"""
+InvigilatorConstraints are the per-invigilator constraints kept in the DB and
+edited via the GUI (separate from the ZPA-sourced invigilator_requirements,
+which is overwritten on every ZPA pull). They are merged on top of the ZPA
+requirements: isNotInvigilator removes the person from invigilation duty,
+excludedDates add whole blocked days, and timeWindows block parts of a day.
+"""
+type InvigilatorConstraints {
+  teacherID: Int!
+  isNotInvigilator: Boolean!
+  excludedDates: [Time!]!
+  timeWindows: [InvigilationTimeWindow!]!
+}
+
+input InvigilatorConstraintsInput {
+  teacherID: Int!
+  isNotInvigilator: Boolean!
+  excludedDates: [Time!]!
+  timeWindows: [InvigilationTimeWindowInput!]!
+}
+
+"date is the calendar day; from/until are clock times on that day (at least one of from/until must be set)."
+input InvigilationTimeWindowInput {
+  date: Time!
+  from: Time
+  until: Time
 }
 
 type Invigilator {
@@ -8108,6 +8227,34 @@ func (ec *executionContext) field_Mutation_clearEmailAttachments_argsKind(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteInvigilatorConstraints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_deleteInvigilatorConstraints_argsTeacherID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["teacherID"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_deleteInvigilatorConstraints_argsTeacherID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["teacherID"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("teacherID"))
+	if tmp, ok := rawArgs["teacherID"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_exahm_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -9000,6 +9147,34 @@ func (ec *executionContext) field_Mutation_seb_argsAncode(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setInvigilatorConstraints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setInvigilatorConstraints_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setInvigilatorConstraints_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.InvigilatorConstraintsInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal model.InvigilatorConstraintsInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNInvigilatorConstraintsInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorConstraintsInput(ctx, tmp)
+	}
+
+	var zeroVal model.InvigilatorConstraintsInput
 	return zeroVal, nil
 }
 
@@ -18757,6 +18932,190 @@ func (ec *executionContext) fieldContext_Invigilator_todos(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _InvigilatorConstraints_teacherID(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorConstraints_teacherID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TeacherID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorConstraints_teacherID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorConstraints_isNotInvigilator(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorConstraints_isNotInvigilator(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsNotInvigilator, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorConstraints_isNotInvigilator(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorConstraints_excludedDates(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorConstraints_excludedDates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExcludedDates, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]time.Time)
+	fc.Result = res
+	return ec.marshalNTime2ᚕtimeᚐTimeᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorConstraints_excludedDates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InvigilatorConstraints_timeWindows(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_InvigilatorConstraints_timeWindows(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimeWindows, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.InvigilationTimeWindow)
+	fc.Result = res
+	return ec.marshalNInvigilationTimeWindow2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTimeWindowᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_InvigilatorConstraints_timeWindows(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InvigilatorConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "date":
+				return ec.fieldContext_InvigilationTimeWindow_date(ctx, field)
+			case "from":
+				return ec.fieldContext_InvigilationTimeWindow_from(ctx, field)
+			case "until":
+				return ec.fieldContext_InvigilationTimeWindow_until(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InvigilationTimeWindow", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _InvigilatorOutlier_invigilatorID(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorOutlier) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_InvigilatorOutlier_invigilatorID(ctx, field)
 	if err != nil {
@@ -21697,6 +22056,170 @@ func (ec *executionContext) fieldContext_Mutation_resetInvigilations(_ context.C
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setInvigilatorConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setInvigilatorConstraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetInvigilatorConstraints(rctx, fc.Args["input"].(model.InvigilatorConstraintsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.InvigilatorConstraints)
+	fc.Result = res
+	return ec.marshalNInvigilatorConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorConstraints(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setInvigilatorConstraints(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "teacherID":
+				return ec.fieldContext_InvigilatorConstraints_teacherID(ctx, field)
+			case "isNotInvigilator":
+				return ec.fieldContext_InvigilatorConstraints_isNotInvigilator(ctx, field)
+			case "excludedDates":
+				return ec.fieldContext_InvigilatorConstraints_excludedDates(ctx, field)
+			case "timeWindows":
+				return ec.fieldContext_InvigilatorConstraints_timeWindows(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InvigilatorConstraints", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setInvigilatorConstraints_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteInvigilatorConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteInvigilatorConstraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteInvigilatorConstraints(rctx, fc.Args["teacherID"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteInvigilatorConstraints(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteInvigilatorConstraints_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_migrateInvigilatorConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_migrateInvigilatorConstraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().MigrateInvigilatorConstraints(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_migrateInvigilatorConstraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -29471,6 +29994,60 @@ func (ec *executionContext) fieldContext_Query_prePlannedInvigilations(_ context
 				return ec.fieldContext_PrePlannedInvigilation_isReserve(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PrePlannedInvigilation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_invigilatorConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_invigilatorConstraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().InvigilatorConstraints(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.InvigilatorConstraints)
+	fc.Result = res
+	return ec.marshalNInvigilatorConstraints2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorConstraintsᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_invigilatorConstraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "teacherID":
+				return ec.fieldContext_InvigilatorConstraints_teacherID(ctx, field)
+			case "isNotInvigilator":
+				return ec.fieldContext_InvigilatorConstraints_isNotInvigilator(ctx, field)
+			case "excludedDates":
+				return ec.fieldContext_InvigilatorConstraints_excludedDates(ctx, field)
+			case "timeWindows":
+				return ec.fieldContext_InvigilatorConstraints_timeWindows(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InvigilatorConstraints", field.Name)
 		},
 	}
 	return fc, nil
@@ -46678,6 +47255,95 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputInvigilationTimeWindowInput(ctx context.Context, obj any) (model.InvigilationTimeWindowInput, error) {
+	var it model.InvigilationTimeWindowInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"date", "from", "until"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Date = data
+		case "from":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.From = data
+		case "until":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("until"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Until = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputInvigilatorConstraintsInput(ctx context.Context, obj any) (model.InvigilatorConstraintsInput, error) {
+	var it model.InvigilatorConstraintsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"teacherID", "isNotInvigilator", "excludedDates", "timeWindows"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "teacherID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("teacherID"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TeacherID = data
+		case "isNotInvigilator":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isNotInvigilator"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsNotInvigilator = data
+		case "excludedDates":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("excludedDates"))
+			data, err := ec.unmarshalNTime2ᚕᚖtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExcludedDates = data
+		case "timeWindows":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeWindows"))
+			data, err := ec.unmarshalNInvigilationTimeWindowInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTimeWindowInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TimeWindows = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputNTAInput(ctx context.Context, obj any) (model.NTAInput, error) {
 	var it model.NTAInput
 	asMap := map[string]any{}
@@ -48632,6 +49298,60 @@ func (ec *executionContext) _Invigilator(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var invigilatorConstraintsImplementors = []string{"InvigilatorConstraints"}
+
+func (ec *executionContext) _InvigilatorConstraints(ctx context.Context, sel ast.SelectionSet, obj *model.InvigilatorConstraints) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, invigilatorConstraintsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InvigilatorConstraints")
+		case "teacherID":
+			out.Values[i] = ec._InvigilatorConstraints_teacherID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isNotInvigilator":
+			out.Values[i] = ec._InvigilatorConstraints_isNotInvigilator(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "excludedDates":
+			out.Values[i] = ec._InvigilatorConstraints_excludedDates(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "timeWindows":
+			out.Values[i] = ec._InvigilatorConstraints_timeWindows(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var invigilatorOutlierImplementors = []string{"InvigilatorOutlier"}
 
 func (ec *executionContext) _InvigilatorOutlier(ctx context.Context, sel ast.SelectionSet, obj *model.InvigilatorOutlier) graphql.Marshaler {
@@ -49204,6 +49924,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "resetInvigilations":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_resetInvigilations(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setInvigilatorConstraints":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setInvigilatorConstraints(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteInvigilatorConstraints":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteInvigilatorConstraints(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "migrateInvigilatorConstraints":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_migrateInvigilatorConstraints(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -51079,6 +51820,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_prePlannedInvigilations(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "invigilatorConstraints":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_invigilatorConstraints(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -55520,6 +56283,26 @@ func (ec *executionContext) marshalNInvigilationTimeWindow2ᚖgithubᚗcomᚋobc
 	return ec._InvigilationTimeWindow(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNInvigilationTimeWindowInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTimeWindowInputᚄ(ctx context.Context, v any) ([]*model.InvigilationTimeWindowInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.InvigilationTimeWindowInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInvigilationTimeWindowInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTimeWindowInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNInvigilationTimeWindowInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilationTimeWindowInput(ctx context.Context, v any) (*model.InvigilationTimeWindowInput, error) {
+	res, err := ec.unmarshalInputInvigilationTimeWindowInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Invigilator) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -55572,6 +56355,69 @@ func (ec *executionContext) marshalNInvigilator2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._Invigilator(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNInvigilatorConstraints2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorConstraints(ctx context.Context, sel ast.SelectionSet, v model.InvigilatorConstraints) graphql.Marshaler {
+	return ec._InvigilatorConstraints(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNInvigilatorConstraints2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorConstraintsᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InvigilatorConstraints) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNInvigilatorConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorConstraints(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInvigilatorConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorConstraints(ctx context.Context, sel ast.SelectionSet, v *model.InvigilatorConstraints) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InvigilatorConstraints(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNInvigilatorConstraintsInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorConstraintsInput(ctx context.Context, v any) (model.InvigilatorConstraintsInput, error) {
+	res, err := ec.unmarshalInputInvigilatorConstraintsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNInvigilatorOutlier2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInvigilatorOutlierᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InvigilatorOutlier) graphql.Marshaler {
@@ -57547,6 +58393,36 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNTime2ᚕtimeᚐTimeᚄ(ctx context.Context, v any) ([]time.Time, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]time.Time, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNTime2timeᚐTime(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNTime2ᚕtimeᚐTimeᚄ(ctx context.Context, sel ast.SelectionSet, v []time.Time) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNTime2timeᚐTime(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNTime2ᚕᚖtimeᚐTimeᚄ(ctx context.Context, v any) ([]*time.Time, error) {

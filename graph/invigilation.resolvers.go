@@ -33,6 +33,21 @@ func (r *mutationResolver) ResetInvigilations(ctx context.Context) (bool, error)
 	return true, nil
 }
 
+// SetInvigilatorConstraints is the resolver for the setInvigilatorConstraints field.
+func (r *mutationResolver) SetInvigilatorConstraints(ctx context.Context, input model.InvigilatorConstraintsInput) (*model.InvigilatorConstraints, error) {
+	return r.plexams.SetInvigilatorConstraints(ctx, input)
+}
+
+// DeleteInvigilatorConstraints is the resolver for the deleteInvigilatorConstraints field.
+func (r *mutationResolver) DeleteInvigilatorConstraints(ctx context.Context, teacherID int) (bool, error) {
+	return r.plexams.DeleteInvigilatorConstraints(ctx, teacherID)
+}
+
+// MigrateInvigilatorConstraints is the resolver for the migrateInvigilatorConstraints field.
+func (r *mutationResolver) MigrateInvigilatorConstraints(ctx context.Context) (int, error) {
+	return r.plexams.MigrateInvigilatorConstraintsFromConfig(ctx)
+}
+
 // InvigilatorTodos is the resolver for the invigilatorTodos field.
 func (r *queryResolver) InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error) {
 	return r.plexams.GetInvigilationTodos(ctx)
@@ -66,4 +81,9 @@ func (r *queryResolver) Invigilator(ctx context.Context, room string, day int, t
 // PrePlannedInvigilations is the resolver for the prePlannedInvigilations field.
 func (r *queryResolver) PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedInvigilation, error) {
 	return r.plexams.PrePlannedInvigilations(ctx)
+}
+
+// InvigilatorConstraints is the resolver for the invigilatorConstraints field.
+func (r *queryResolver) InvigilatorConstraints(ctx context.Context) ([]*model.InvigilatorConstraints, error) {
+	return r.plexams.InvigilatorConstraints(ctx)
 }

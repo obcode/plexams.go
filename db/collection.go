@@ -37,6 +37,7 @@ const (
 	collectionRoomsBlocked    = "rooms_blocked"
 
 	collectionInvigilatorRequirements = "invigilator_requirements"
+	collectionInvigilatorConstraints  = "invigilator_constraints"
 	collectionInvigilatorTodos        = "invigilator_todos"
 	collectionOtherInvigilations      = "invigilations_other"
 	collectionSelfInvigilations       = "invigilations_self"

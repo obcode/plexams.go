@@ -218,6 +218,13 @@ type InvigilationTimeWindow struct {
 	Until *time.Time `json:"until,omitempty"`
 }
 
+// date is the calendar day; from/until are clock times on that day (at least one of from/until must be set).
+type InvigilationTimeWindowInput struct {
+	Date  time.Time  `json:"date"`
+	From  *time.Time `json:"from,omitempty"`
+	Until *time.Time `json:"until,omitempty"`
+}
+
 type InvigilationTodos struct {
 	SumExamRooms                        int            `json:"sumExamRooms"`
 	SumReserve                          int            `json:"sumReserve"`
@@ -233,6 +240,13 @@ type Invigilator struct {
 	Teacher      *Teacher                 `json:"teacher"`
 	Requirements *InvigilatorRequirements `json:"requirements,omitempty"`
 	Todos        *InvigilatorTodos        `json:"todos,omitempty"`
+}
+
+type InvigilatorConstraintsInput struct {
+	TeacherID        int                            `json:"teacherID"`
+	IsNotInvigilator bool                           `json:"isNotInvigilator"`
+	ExcludedDates    []*time.Time                   `json:"excludedDates"`
+	TimeWindows      []*InvigilationTimeWindowInput `json:"timeWindows"`
 }
 
 // InvigilatorOutlier: a person whose assigned minutes are furthest from target.

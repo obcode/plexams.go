@@ -195,6 +195,24 @@ assignment across runs, move it to the pre-planning (invigilation -p ...).`,
 			fmt.Printf("removed pre-planned invigilation for %s in slot (%d,%d)\n", args[0], day, slot)
 		},
 	}
+
+	invigilationMigrateConstraintsCmd = &cobra.Command{
+		Use:   "migrate-constraints",
+		Short: "One-time migration of invigilatorConstraints from the config into the DB",
+		Long: `Copy the invigilatorConstraints (isNotInvigilator, excludedDates, timeWindows)
+from the semester config (YAML) into the DB collection invigilator_constraints,
+so they can be managed via the GUI. After this you can remove the
+invigilatorConstraints block from the semester YAML.`,
+		Args: cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			plxms := initPlexamsConfig()
+			count, err := plxms.MigrateInvigilatorConstraintsFromConfig(context.Background())
+			if err != nil {
+				log.Fatalf("got error: %v\n", err)
+			}
+			fmt.Printf("migrated %d invigilator constraint record(s) into the DB\n", count)
+		},
+	}
 )
 
 func init() {
@@ -207,4 +225,5 @@ func init() {
 	invigilationGenerateCmd.Flags().IntVar(&generateIterations, "iterations", 0, "number of optimizer iterations (0 = config/default)")
 	invigilationCmd.AddCommand(invigilationGenerateCmd)
 	invigilationCmd.AddCommand(invigilationRemovePrePlanCmd)
+	invigilationCmd.AddCommand(invigilationMigrateConstraintsCmd)
 }

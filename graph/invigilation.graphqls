@@ -3,14 +3,17 @@ extend type Query {
   invigilatorsWithReq: [Invigilator!]!
   """
   invigilatorsExcludedByConfig returns the invigilators who would do invigilation
-  duty (factor > 0) but are excluded only because invigilatorConstraints.<id>.isNotInvigilator
-  is set in the semester config. People who are out anyway are not listed.
+  duty (factor > 0) but are excluded only because isNotInvigilator is set in their
+  DB constraints (see invigilatorConstraints). People who are out anyway are not
+  listed. (The field name is kept for backwards compatibility.)
   """
   invigilatorsExcludedByConfig: [Invigilator!]!
   roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
   invigilatorsForDay(day: Int!): InvigilatorsForDay
   invigilator(room: String!, day: Int!, time: Int!): Teacher
   prePlannedInvigilations: [PrePlannedInvigilation!]!
+  "Per-invigilator constraints stored in the DB (managed via the GUI): whether they do no invigilation at all, additional excluded whole days and time windows when they cannot invigilate. These are merged on top of the ZPA requirements."
+  invigilatorConstraints: [InvigilatorConstraints!]!
 }
 
 extend type Mutation {
@@ -31,6 +34,12 @@ extend type Mutation {
   prePlanInvigilationInSlot(day: Int!, slot: Int!, roomName: String): Boolean!
   "Reset the generated invigilations (invigilations_other) so only the pre-planning remains; self-invigilations are refreshed on the next generation. Blocked while the invigilation plan is published."
   resetInvigilations: Boolean!
+  "Create or replace the whole constraints record of one invigilator (key: teacherID)."
+  setInvigilatorConstraints(input: InvigilatorConstraintsInput!): InvigilatorConstraints!
+  "Remove the constraints record of one invigilator (key: teacherID). Returns false if there was none."
+  deleteInvigilatorConstraints(teacherID: Int!): Boolean!
+  "One-time migration: copy the invigilatorConstraints from the semester config (viper) into the DB. Returns the number of records written."
+  migrateInvigilatorConstraints: Int!
 }
 
 """
@@ -82,6 +91,34 @@ type InvigilatorsForDay {
 type ZPAInvigilator {
   teacher: Teacher!
   hasSubmittedRequirements: Boolean!
+}
+
+"""
+InvigilatorConstraints are the per-invigilator constraints kept in the DB and
+edited via the GUI (separate from the ZPA-sourced invigilator_requirements,
+which is overwritten on every ZPA pull). They are merged on top of the ZPA
+requirements: isNotInvigilator removes the person from invigilation duty,
+excludedDates add whole blocked days, and timeWindows block parts of a day.
+"""
+type InvigilatorConstraints {
+  teacherID: Int!
+  isNotInvigilator: Boolean!
+  excludedDates: [Time!]!
+  timeWindows: [InvigilationTimeWindow!]!
+}
+
+input InvigilatorConstraintsInput {
+  teacherID: Int!
+  isNotInvigilator: Boolean!
+  excludedDates: [Time!]!
+  timeWindows: [InvigilationTimeWindowInput!]!
+}
+
+"date is the calendar day; from/until are clock times on that day (at least one of from/until must be set)."
+input InvigilationTimeWindowInput {
+  date: Time!
+  from: Time
+  until: Time
 }
 
 type Invigilator {

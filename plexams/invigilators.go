@@ -12,15 +12,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
-
-// isNotInvigilator reports whether the teacher is excluded from invigilation
-// duty via invigilatorConstraints.<id>.isNotInvigilator in the semester config.
-// This is the single source of truth for that exclusion.
-func (p *Plexams) isNotInvigilator(teacherID int) bool {
-	return viper.GetBool(fmt.Sprintf("invigilatorConstraints.%d.isNotInvigilator", teacherID))
-}
 
 func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error) {
 	teachers, err := p.getInvigilators(ctx)
@@ -29,14 +21,20 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 		return nil, err
 	}
 
+	constraintsMap, err := p.invigilatorConstraintsMap(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	invigilators := make([]*model.Invigilator, 0, len(teachers))
 	for _, teacher := range teachers {
-		if p.isNotInvigilator(teacher.ID) {
+		constraints := constraintsMap[teacher.ID]
+		if constraints != nil && constraints.IsNotInvigilator {
 			log.Debug().Str("name", teacher.Shortname).Msg("is not invigilator")
 			continue
 		}
 
-		invigilator, err := p.buildInvigilator(ctx, teacher)
+		invigilator, err := p.buildInvigilator(ctx, teacher, constraints)
 		if err != nil {
 			return nil, err
 		}
@@ -58,12 +56,18 @@ func (p *Plexams) InvigilatorsExcludedByConfig(ctx context.Context) ([]*model.In
 		return nil, err
 	}
 
+	constraintsMap, err := p.invigilatorConstraintsMap(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	excluded := make([]*model.Invigilator, 0)
 	for _, teacher := range teachers {
-		if !p.isNotInvigilator(teacher.ID) {
+		constraints := constraintsMap[teacher.ID]
+		if constraints == nil || !constraints.IsNotInvigilator {
 			continue
 		}
-		invigilator, err := p.buildInvigilator(ctx, teacher)
+		invigilator, err := p.buildInvigilator(ctx, teacher, constraints)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +82,7 @@ func (p *Plexams) InvigilatorsExcludedByConfig(ctx context.Context) ([]*model.In
 // buildInvigilator assembles the full invigilator (requirements, factor, exam
 // times, config time windows) for one teacher, independent of whether the
 // teacher is excluded by config.
-func (p *Plexams) buildInvigilator(ctx context.Context, teacher *model.Teacher) (*model.Invigilator, error) {
+func (p *Plexams) buildInvigilator(ctx context.Context, teacher *model.Teacher, constraints *model.InvigilatorConstraints) (*model.Invigilator, error) {
 	reqs, err := p.dbClient.GetInvigilatorRequirements(ctx, teacher.ID)
 	if err != nil {
 		log.Error().Err(err).Str("teacher", teacher.Shortname).Msg("cannot get requirements for teacher")
@@ -92,35 +96,29 @@ func (p *Plexams) buildInvigilator(ctx context.Context, teacher *model.Teacher) 
 		reqs = &zpa.SupervisorRequirements{PartTime: 1.0}
 	}
 
-	invigilatorConstraints := viper.Get(fmt.Sprintf("invigilatorConstraints.%d", teacher.ID))
+	// Additional per-invigilator constraints come from the DB (managed via the
+	// GUI), merged on top of the ZPA requirements.
 	var timeWindows []*model.InvigilationTimeWindow
-	if invigilatorConstraints != nil {
-		excludedDates := viper.GetStringSlice(fmt.Sprintf("invigilatorConstraints.%d.excludedDates", teacher.ID))
-		if len(excludedDates) > 0 {
-			log.Debug().Interface("excludedDates", excludedDates).Str("name", teacher.Shortname).Msg("found in config")
-			reqs.ExcludedDates = append(reqs.ExcludedDates, excludedDates...)
-		}
-
-		timeWindowsCfg := viper.Get(fmt.Sprintf("invigilatorConstraints.%d.timeWindows", teacher.ID))
-		if timeWindowsCfg != nil {
-			timeWindows, err = timeWindowsFromConfig(timeWindowsCfg)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"invigilatorConstraints für %s (%d): %w", teacher.Shortname, teacher.ID, err)
-			}
-			log.Debug().Interface("timeWindows", timeWindows).Str("name", teacher.Shortname).
-				Msg("timeWindows found")
-		}
+	if constraints != nil {
+		timeWindows = constraints.TimeWindows
 	}
 
+	// ExcludedDates: the (≤3) whole days from the ZPA (stored as "02.01.06"
+	// strings) plus the additional ones from the DB constraints.
+	loc, _ := time.LoadLocation("Europe/Berlin")
 	excludedDates := make([]*time.Time, 0, len(reqs.ExcludedDates))
 	for _, day := range reqs.ExcludedDates {
-		loc, _ := time.LoadLocation("Europe/Berlin")
 		t, err := time.ParseInLocation("02.01.06", day, loc)
 		if err != nil {
 			log.Error().Err(err).Str("day", day).Msg("cannot parse date")
 		} else {
 			excludedDates = append(excludedDates, &t)
+		}
+	}
+	if constraints != nil {
+		for i := range constraints.ExcludedDates {
+			d := constraints.ExcludedDates[i]
+			excludedDates = append(excludedDates, &d)
 		}
 	}
 

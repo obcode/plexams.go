@@ -170,7 +170,7 @@ func (p *Plexams) SendEmailLbaRepeaters(ctx context.Context, run bool, reporter 
 		return err
 	}
 
-	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/lbaRepeaterEmailHTML.tmpl")
+	htmlTmpl, err := template.New("emailBaseHTML.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/lbaRepeaterEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

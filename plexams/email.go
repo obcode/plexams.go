@@ -13,6 +13,7 @@ import (
 	// TODO: Ersetzen durch github.com/wneessen/go-mail
 
 	"github.com/jordan-wright/email"
+	"github.com/spf13/viper"
 )
 
 //go:embed tmpl/constraintsEmail.tmpl
@@ -76,9 +77,22 @@ func pluralN(n int, singular, plural string) string {
 	return fmt.Sprintf("%d %s", n, plural)
 }
 
+// defaultJiraURL is used when no jira.url is configured in the semester config.
+const defaultJiraURL = "https://jira.cc.hm.edu/servicedesk/customer/portal/13"
+
+// jiraURL returns the configured JIRA service-desk URL (jira.url), or the
+// default when none is set.
+func jiraURL() string {
+	if u := viper.GetString("jira.url"); u != "" {
+		return u
+	}
+	return defaultJiraURL
+}
+
 // emailFuncs are the template helpers available in all email templates.
 var emailFuncs = map[string]any{
-	"plural": pluralN,
+	"plural":  pluralN,
+	"jiraURL": jiraURL,
 }
 
 func (p *Plexams) SendTestMail() error {

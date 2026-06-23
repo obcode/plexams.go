@@ -55,12 +55,7 @@ func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/draftEmailZPAHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, contraintsEmailData)
+	bufHTML, err := p.renderMailHTML("tmpl/draftEmailZPAHTML.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -71,7 +66,7 @@ func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
 	realTo := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
 	realTo = append(realTo, p.semesterConfig.Emails.AdditionalExamer...)
 
-	if err := p.sendMail(run, realTo, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, realTo, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
 		return err
 	}
 	reporter.StopProgress(fmt.Sprintf("draft (ZPA) email sent to %s", p.recipientInfo(run, realTo...)))
@@ -101,12 +96,7 @@ func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/draftEmailFSHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, contraintsEmailData)
+	bufHTML, err := p.renderMailHTML("tmpl/draftEmailFSHTML.tmpl", false, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -133,7 +123,7 @@ func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
 		},
 	}
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Fs}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Fs}, nil, subject, bufText.Bytes(), bufHTML, attachments, false); err != nil {
 		return err
 	}
 	reporter.StopProgress(fmt.Sprintf("draft (FS) email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.Fs)))

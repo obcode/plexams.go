@@ -1,9 +1,11 @@
 package plexams
 
 import (
+	"bytes"
 	"crypto/tls"
 	"embed"
 	"fmt"
+	"html/template"
 	"net/smtp"
 	"net/textproto"
 	"strings"
@@ -55,6 +57,7 @@ import (
 //go:embed tmpl/roomRequestEmailHTML.tmpl
 //go:embed tmpl/roomsSecretariatEmail.tmpl
 //go:embed tmpl/roomsSecretariatEmailHTML.tmpl
+//go:embed tmpl/jiraOnHTML.tmpl
 
 var emailTemplates embed.FS
 
@@ -95,9 +98,36 @@ func (p *Plexams) recipientInfo(run bool, recipients ...string) string {
 	return fmt.Sprintf("PROBEVERSAND an %s (echte Empfänger wären: %v)", p.dryRunRecipient(), recipients)
 }
 
-func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, noreply bool) error {
+// replyToAddress returns the Reply-To for a mail. jira == true means the mail
+// should be answered via JIRA, not by email, so replies are steered to the
+// noreply address (smtp.noreplymail, or a noreply alias of the planner). For
+// answerable mails it is the reply address (smtp.replymail, or the planner).
+func (p *Plexams) replyToAddress(jira bool) string {
+	if jira {
+		if p.email.noreplyMail != "" {
+			return p.email.noreplyMail
+		}
+		if localPart, domain, ok := strings.Cut(p.planer.Email, "@"); ok && localPart != "" && domain != "" {
+			return fmt.Sprintf("%s+pruefungsplanung_noreply@%s", localPart, domain)
+		}
+		return "noreply@hm.edu"
+	}
+	if p.email.replyMail != "" {
+		return p.email.replyMail
+	}
+	return p.planer.Email
+}
+
+// sendMail sends one mail. jira == true marks a mail that should be answered via
+// JIRA (Reply-To = noreply address); otherwise it is answerable by email
+// (Reply-To = reply address). The From always stays the (authenticated)
+// planner address. On a real send the configured Cc (smtp.cc) is added.
+func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, jira bool) error {
 	actualTo := to
 	actualCc := cc
+	if run && p.email.cc != "" {
+		actualCc = append(append([]string{}, cc...), p.email.cc)
+	}
 	bcc := []string{p.planer.Email}
 
 	if !run {
@@ -120,19 +150,12 @@ func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, t
 		Cc:          actualCc,
 		Bcc:         bcc,
 		From:        fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email),
+		ReplyTo:     []string{p.replyToAddress(jira)},
 		Subject:     subject,
 		Text:        text,
 		HTML:        html,
 		Headers:     textproto.MIMEHeader{},
 		Attachments: attachments,
-	}
-
-	if noreply {
-		replyTo := "noreply@hm.edu"
-		if localPart, domain, ok := strings.Cut(p.planer.Email, "@"); ok && localPart != "" && domain != "" {
-			replyTo = fmt.Sprintf("%s+pruefungsplanung_noreply@%s", localPart, domain)
-		}
-		e.ReplyTo = []string{replyTo}
 	}
 
 	err := e.SendWithStartTLS(fmt.Sprintf("%s:%d", p.email.server, p.email.port),
@@ -143,4 +166,25 @@ func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, t
 		})
 
 	return err
+}
+
+// renderMailHTML renders the shared HTML layout with the given content template
+// and data. When jira is true the JIRA callout is included (driven from code, so
+// the individual templates no longer opt in).
+func (p *Plexams) renderMailHTML(contentFile string, jira bool, data any) ([]byte, error) {
+	files := []string{"tmpl/emailBaseHTML.tmpl"}
+	if jira {
+		files = append(files, "tmpl/jiraOnHTML.tmpl")
+	}
+	files = append(files, contentFile)
+
+	tmpl, err := template.ParseFS(emailTemplates, files...)
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	if err := tmpl.Execute(buf, data); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

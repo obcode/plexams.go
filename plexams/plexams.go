@@ -56,6 +56,14 @@ type Email struct {
 	// testMail is the recipient used for dry-run sends (run == false). Configured
 	// via smtp.testmail; falls back to the planner's address when empty.
 	testMail string
+	// cc is added to the Cc of every real send (smtp.cc), e.g. a shared mailbox.
+	cc string
+	// replyMail is the Reply-To for mails that may be answered by email
+	// (smtp.replymail); falls back to the planner's address when empty.
+	replyMail string
+	// noreplyMail is the Reply-To for mails that should be answered via JIRA, not
+	// by email (smtp.noreplymail); falls back to a noreply alias when empty.
+	noreplyMail string
 }
 
 func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken string, fk07programs, oldprograms []string) (*Plexams, error) {
@@ -97,11 +105,14 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			Email: viper.GetString("planer.email"),
 		},
 		email: &Email{
-			server:   viper.GetString("smtp.server.name"),
-			port:     viper.GetInt("smtp.server.port"),
-			username: viper.GetString("smtp.username"),
-			password: viper.GetString("smtp.password"),
-			testMail: viper.GetString("smtp.testmail"),
+			server:      viper.GetString("smtp.server.name"),
+			port:        viper.GetInt("smtp.server.port"),
+			username:    viper.GetString("smtp.username"),
+			password:    viper.GetString("smtp.password"),
+			testMail:    viper.GetString("smtp.testmail"),
+			cc:          viper.GetString("smtp.cc"),
+			replyMail:   viper.GetString("smtp.replymail"),
+			noreplyMail: viper.GetString("smtp.noreplymail"),
 		},
 		guard: &opGuard{},
 	}

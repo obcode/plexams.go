@@ -44,12 +44,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/publishedEmailExamsHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, contraintsEmailData)
+	bufHTML, err := p.renderMailHTML("tmpl/publishedEmailExamsHTML.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -60,7 +55,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 	realRecipients := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester, p.semesterConfig.Emails.Fs}
 	realRecipients = append(realRecipients, p.semesterConfig.Emails.AdditionalExamer...)
 
-	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
 		return err
 	}
 	if run {
@@ -187,7 +182,7 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 	if err != nil {
 		return err
 	}
-	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/publishedInvigilationPersonalEmailHTML.tmpl")
+	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/jiraOnHTML.tmpl", "tmpl/publishedInvigilationPersonalEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

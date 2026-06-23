@@ -100,12 +100,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/coverPageEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, coverMailData)
+	bufHTML, err := p.renderMailHTML("tmpl/coverPageEmailHTML.tmpl", false, coverMailData)
 	if err != nil {
 		return err
 	}
@@ -118,7 +113,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		nil,
 		subject,
 		bufText.Bytes(),
-		bufHTML.Bytes(),
+		bufHTML,
 		[]*email.Attachment{{
 			Filename:    strings.ReplaceAll(fmt.Sprintf("%s_Deckblaetter_Pruefungen_%s.pdf", p.semester, teacher.Fullname), " ", "_"),
 			ContentType: "application/pdf",

@@ -42,12 +42,7 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool, reporter R
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/constraintsEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, contraintsEmailData)
+	bufHTML, err := p.renderMailHTML("tmpl/constraintsEmailHTML.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -57,7 +52,7 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool, reporter R
 
 	realRecipients := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
 	realRecipients = append(realRecipients, p.semesterConfig.Emails.AdditionalExamer...)
-	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
 		return err
 	}
 	if run {

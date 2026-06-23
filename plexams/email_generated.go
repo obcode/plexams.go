@@ -140,12 +140,7 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedE
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/generatedExamEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, generatedExamMailData)
+	bufHTML, err := p.renderMailHTML("tmpl/generatedExamEmailHTML.tmpl", true, generatedExamMailData)
 	if err != nil {
 		return err
 	}
@@ -233,9 +228,9 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedE
 		nil,
 		subject,
 		bufText.Bytes(),
-		bufHTML.Bytes(),
+		bufHTML,
 		attachments,
-		false,
+		true,
 	)
 }
 
@@ -308,12 +303,7 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 			return err
 		}
 
-		tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/unplannedExamEmailHTML.tmpl")
-		if err != nil {
-			return err
-		}
-		bufHTML := new(bytes.Buffer)
-		err = tmpl.Execute(bufHTML, unplannedExamData)
+		bufHTML, err := p.renderMailHTML("tmpl/unplannedExamEmailHTML.tmpl", false, unplannedExamData)
 		if err != nil {
 			return err
 		}
@@ -323,7 +313,7 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 			nil,
 			subject,
 			bufText.Bytes(),
-			bufHTML.Bytes(),
+			bufHTML,
 			attachments,
 			false,
 		); err != nil {

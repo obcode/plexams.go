@@ -36,12 +36,7 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool, reporter Repo
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/preparedEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, contraintsEmailData)
+	bufHTML, err := p.renderMailHTML("tmpl/preparedEmailHTML.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -78,7 +73,7 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool, reporter Repo
 		},
 	}
 
-	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, true); err != nil {
+	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML, attachments, true); err != nil {
 		return err
 	}
 	if run {

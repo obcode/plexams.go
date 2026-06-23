@@ -110,18 +110,14 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/roomRequestEmailHTML.tmpl")
+	bufHTML, err := p.renderMailHTML("tmpl/roomRequestEmailHTML.tmpl", false, emailData)
 	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	if err := tmpl.Execute(bufHTML, emailData); err != nil {
 		return err
 	}
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Raumanfrage für die Prüfungsplanung", p.semester)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.RoomManagement}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.RoomManagement}, nil, subject, bufText.Bytes(), bufHTML, nil, false); err != nil {
 		return err
 	}
 	if run {

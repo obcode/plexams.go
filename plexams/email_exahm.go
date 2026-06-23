@@ -31,19 +31,14 @@ func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool, reporter Reporte
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/exahmEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, contraintsEmailData)
+	bufHTML, err := p.renderMailHTML("tmpl/exahmEmailHTML.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
 
 	subject := "[Prüfungsplanung nächstes Semester] Prüfungen mit EXaHM und SEB - Rückmeldung bis so schnell wie möglich"
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Profs}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Profs}, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
 		return err
 	}
 	if run {

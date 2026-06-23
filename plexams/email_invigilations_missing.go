@@ -86,12 +86,7 @@ func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilat
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/invigilationMissingEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, mailData)
+	bufHTML, err := p.renderMailHTML("tmpl/invigilationMissingEmailHTML.tmpl", true, mailData)
 	if err != nil {
 		return err
 	}
@@ -99,7 +94,7 @@ func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilat
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Fehlende Anforderungen an die Planung der Prüfungsaufsichten",
 		p.semester)
 
-	if err := p.sendMail(run, []string{teacher.Email}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+	if err := p.sendMail(run, []string{teacher.Email}, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
 		reporter.Warnf("error while sending email to %s", teacher.Fullname)
 		return err
 	}

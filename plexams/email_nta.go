@@ -118,12 +118,7 @@ func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, run b
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/handicapEmailRoomAloneHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, handicapsEmail)
+	bufHTML, err := p.renderMailHTML("tmpl/handicapEmailRoomAloneHTML.tmpl", false, handicapsEmail)
 	if err != nil {
 		return err
 	}
@@ -133,7 +128,7 @@ func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, run b
 		cc,
 		fmt.Sprintf("[Prüfungsplanung %s] Eigener Raum für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
-		bufHTML.Bytes(),
+		bufHTML,
 		nil,
 		false,
 	)
@@ -267,12 +262,7 @@ func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, run boo
 		return err
 	}
 
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/handicapEmailPlannedHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, handicapsEmail)
+	bufHTML, err := p.renderMailHTML("tmpl/handicapEmailPlannedHTML.tmpl", false, handicapsEmail)
 	if err != nil {
 		return err
 	}
@@ -282,9 +272,9 @@ func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, run boo
 		cc,
 		fmt.Sprintf("[Prüfungsplanung %s] Räume für Ihre Prüfung(en)", p.semester),
 		bufText.Bytes(),
-		bufHTML.Bytes(),
+		bufHTML,
 		nil,
-		true,
+		false,
 	)
 }
 
@@ -345,12 +335,7 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 	if err != nil {
 		return err
 	}
-	tmpl, err = template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/newNTAEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	err = tmpl.Execute(bufHTML, newNTA)
+	bufHTML, err := p.renderMailHTML("tmpl/newNTAEmailHTML.tmpl", false, newNTA)
 	if err != nil {
 		return err
 	}
@@ -360,9 +345,9 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 		nil,
 		fmt.Sprintf("[Prüfungsplanung %s] Neuer NTA", p.semester),
 		bufText.Bytes(),
-		bufHTML.Bytes(),
+		bufHTML,
 		nil,
-		true,
+		false,
 	); err != nil {
 		return err
 	}

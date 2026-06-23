@@ -133,18 +133,14 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 		return err
 	}
 
-	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/roomsSecretariatEmailHTML.tmpl")
+	bufHTML, err := p.renderMailHTML("tmpl/roomsSecretariatEmailHTML.tmpl", false, emailData)
 	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	if err := htmlTmpl.Execute(bufHTML, emailData); err != nil {
 		return err
 	}
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Raumbelegung der Prüfungen – Bitte um Abgleich mit dem ZPA", p.semester)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Sekr}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Sekr}, nil, subject, bufText.Bytes(), bufHTML, nil, false); err != nil {
 		return err
 	}
 	if run {

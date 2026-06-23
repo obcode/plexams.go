@@ -209,7 +209,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 	if err != nil {
 		return err
 	}
-	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/publishedRoomsPersonalEmailHTML.tmpl")
+	htmlTmpl, err := template.ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/jiraOnHTML.tmpl", "tmpl/publishedRoomsPersonalEmailHTML.tmpl")
 	if err != nil {
 		return err
 	}

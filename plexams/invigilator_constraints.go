@@ -29,6 +29,55 @@ func (p *Plexams) invigilatorConstraintsMap(ctx context.Context) (map[int]*model
 	return m, nil
 }
 
+// PermanentNonInvigilators returns the teachers who never do invigilation duty
+// again (global, carries over between semesters).
+func (p *Plexams) PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error) {
+	return p.dbClient.PermanentNonInvigilators(ctx)
+}
+
+// SetPermanentNonInvigilator adds or updates a permanent (cross-semester)
+// non-invigilator.
+func (p *Plexams) SetPermanentNonInvigilator(ctx context.Context, teacherID int, reason string) (*model.PermanentNonInvigilator, error) {
+	nonInvigilator := &model.PermanentNonInvigilator{TeacherID: teacherID, Reason: reason}
+	if err := p.dbClient.UpsertPermanentNonInvigilator(ctx, nonInvigilator); err != nil {
+		return nil, err
+	}
+	return nonInvigilator, nil
+}
+
+// RemovePermanentNonInvigilator removes a permanent non-invigilator.
+func (p *Plexams) RemovePermanentNonInvigilator(ctx context.Context, teacherID int) (bool, error) {
+	return p.dbClient.DeletePermanentNonInvigilator(ctx, teacherID)
+}
+
+// notInvigilating builds a predicate that reports whether a teacher does no
+// invigilation at all — true if they are a global permanent non-invigilator or
+// their per-semester constraint has isNotInvigilator set. It also returns the
+// per-semester constraints map so callers can build the invigilators without a
+// second query.
+func (p *Plexams) notInvigilating(ctx context.Context) (func(teacherID int) bool, map[int]*model.InvigilatorConstraints, error) {
+	cmap, err := p.invigilatorConstraintsMap(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	permanent, err := p.dbClient.PermanentNonInvigilators(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	permanentSet := make(map[int]bool, len(permanent))
+	for _, n := range permanent {
+		permanentSet[n.TeacherID] = true
+	}
+	isNot := func(teacherID int) bool {
+		if permanentSet[teacherID] {
+			return true
+		}
+		c := cmap[teacherID]
+		return c != nil && c.IsNotInvigilator
+	}
+	return isNot, cmap, nil
+}
+
 // SetInvigilatorConstraints creates or replaces the whole constraints record of
 // one invigilator. Empty records (no exclusion, no dates, no windows) are stored
 // too, so the GUI can keep an explicit "no constraints" entry.

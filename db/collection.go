@@ -38,10 +38,12 @@ const (
 
 	collectionInvigilatorRequirements = "invigilator_requirements"
 	collectionInvigilatorConstraints  = "invigilator_constraints"
-	collectionInvigilatorTodos        = "invigilator_todos"
-	collectionOtherInvigilations      = "invigilations_other"
-	collectionSelfInvigilations       = "invigilations_self"
-	collectionInvigilationsPrePlanned = "invigilations_pre_planned"
+	// global (plexams DB), carries over between semesters:
+	collectionPermanentNonInvigilators = "permanent_non_invigilators"
+	collectionInvigilatorTodos         = "invigilator_todos"
+	collectionOtherInvigilations       = "invigilations_other"
+	collectionSelfInvigilations        = "invigilations_self"
+	collectionInvigilationsPrePlanned  = "invigilations_pre_planned"
 
 	collectionEmailAttachments = "email_attachments"
 

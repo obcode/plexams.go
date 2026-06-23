@@ -21,20 +21,19 @@ func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator
 		return nil, err
 	}
 
-	constraintsMap, err := p.invigilatorConstraintsMap(ctx)
+	isNotInvigilator, constraintsMap, err := p.notInvigilating(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	invigilators := make([]*model.Invigilator, 0, len(teachers))
 	for _, teacher := range teachers {
-		constraints := constraintsMap[teacher.ID]
-		if constraints != nil && constraints.IsNotInvigilator {
+		if isNotInvigilator(teacher.ID) {
 			log.Debug().Str("name", teacher.Shortname).Msg("is not invigilator")
 			continue
 		}
 
-		invigilator, err := p.buildInvigilator(ctx, teacher, constraints)
+		invigilator, err := p.buildInvigilator(ctx, teacher, constraintsMap[teacher.ID])
 		if err != nil {
 			return nil, err
 		}
@@ -56,18 +55,17 @@ func (p *Plexams) InvigilatorsExcludedByConfig(ctx context.Context) ([]*model.In
 		return nil, err
 	}
 
-	constraintsMap, err := p.invigilatorConstraintsMap(ctx)
+	isNotInvigilator, constraintsMap, err := p.notInvigilating(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	excluded := make([]*model.Invigilator, 0)
 	for _, teacher := range teachers {
-		constraints := constraintsMap[teacher.ID]
-		if constraints == nil || !constraints.IsNotInvigilator {
+		if !isNotInvigilator(teacher.ID) {
 			continue
 		}
-		invigilator, err := p.buildInvigilator(ctx, teacher, constraints)
+		invigilator, err := p.buildInvigilator(ctx, teacher, constraintsMap[teacher.ID])
 		if err != nil {
 			return nil, err
 		}

@@ -387,6 +387,7 @@ type ComplexityRoot struct {
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
 		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
+		RemovePermanentNonInvigilator func(childComplexity int, teacherID int) int
 		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
 		ResetInvigilations            func(childComplexity int) int
@@ -398,6 +399,7 @@ type ComplexityRoot struct {
 		Seb                           func(childComplexity int, ancode int) int
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
+		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, reason string) int
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
@@ -452,6 +454,11 @@ type ComplexityRoot struct {
 		Iteration func(childComplexity int) int
 		Total     func(childComplexity int) int
 		Unfilled  func(childComplexity int) int
+	}
+
+	PermanentNonInvigilator struct {
+		Reason    func(childComplexity int) int
+		TeacherID func(childComplexity int) int
 	}
 
 	PlanEntry struct {
@@ -596,6 +603,7 @@ type ComplexityRoot struct {
 		NtaRoomAloneWaivers           func(childComplexity int) int
 		Ntas                          func(childComplexity int) int
 		NtasWithRegs                  func(childComplexity int) int
+		PermanentNonInvigilators      func(childComplexity int) int
 		PlannedExam                   func(childComplexity int, ancode int) int
 		PlannedExams                  func(childComplexity int) int
 		PlannedRoomForStudent         func(childComplexity int, ancode int, mtknr string) int
@@ -997,6 +1005,8 @@ type MutationResolver interface {
 	SetInvigilatorConstraints(ctx context.Context, input model.InvigilatorConstraintsInput) (*model.InvigilatorConstraints, error)
 	DeleteInvigilatorConstraints(ctx context.Context, teacherID int) (bool, error)
 	MigrateInvigilatorConstraints(ctx context.Context) (int, error)
+	SetPermanentNonInvigilator(ctx context.Context, teacherID int, reason string) (*model.PermanentNonInvigilator, error)
+	RemovePermanentNonInvigilator(ctx context.Context, teacherID int) (bool, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
@@ -1060,6 +1070,7 @@ type QueryResolver interface {
 	Invigilator(ctx context.Context, room string, day int, time int) (*model.Teacher, error)
 	PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedInvigilation, error)
 	InvigilatorConstraints(ctx context.Context) ([]*model.InvigilatorConstraints, error)
+	PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
@@ -2847,6 +2858,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.RemoveNtaRoomAloneWaiver(childComplexity, args["mtknr"].(string), args["ancode"].(int)), true
 
+	case "Mutation.removePermanentNonInvigilator":
+		if e.complexity.Mutation.RemovePermanentNonInvigilator == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removePermanentNonInvigilator_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemovePermanentNonInvigilator(childComplexity, args["teacherID"].(int)), true
+
 	case "Mutation.removePrePlannedInvigilation":
 		if e.complexity.Mutation.RemovePrePlannedInvigilation == nil {
 			break
@@ -2968,6 +2991,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetNTAActive(childComplexity, args["mtknr"].(string), args["active"].(bool)), true
+
+	case "Mutation.setPermanentNonInvigilator":
+		if e.complexity.Mutation.SetPermanentNonInvigilator == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setPermanentNonInvigilator_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetPermanentNonInvigilator(childComplexity, args["teacherID"].(int), args["reason"].(string)), true
 
 	case "Mutation.setPlanningCondition":
 		if e.complexity.Mutation.SetPlanningCondition == nil {
@@ -3270,6 +3305,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OptimizerProgress.Unfilled(childComplexity), true
+
+	case "PermanentNonInvigilator.reason":
+		if e.complexity.PermanentNonInvigilator.Reason == nil {
+			break
+		}
+
+		return e.complexity.PermanentNonInvigilator.Reason(childComplexity), true
+
+	case "PermanentNonInvigilator.teacherID":
+		if e.complexity.PermanentNonInvigilator.TeacherID == nil {
+			break
+		}
+
+		return e.complexity.PermanentNonInvigilator.TeacherID(childComplexity), true
 
 	case "PlanEntry.ancode":
 		if e.complexity.PlanEntry.Ancode == nil {
@@ -4044,6 +4093,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.NtasWithRegs(childComplexity), true
+
+	case "Query.permanentNonInvigilators":
+		if e.complexity.Query.PermanentNonInvigilators == nil {
+			break
+		}
+
+		return e.complexity.Query.PermanentNonInvigilators(childComplexity), true
 
 	case "Query.plannedExam":
 		if e.complexity.Query.PlannedExam == nil {
@@ -6486,8 +6542,9 @@ type MucDaiExam {
   invigilatorsWithReq: [Invigilator!]!
   """
   invigilatorsExcludedByConfig returns the invigilators who would do invigilation
-  duty (factor > 0) but are excluded only because invigilatorConstraints.<id>.isNotInvigilator
-  is set in the semester config. People who are out anyway are not listed.
+  duty (factor > 0) but are excluded only because isNotInvigilator is set in their
+  DB constraints (see invigilatorConstraints). People who are out anyway are not
+  listed. (The field name is kept for backwards compatibility.)
   """
   invigilatorsExcludedByConfig: [Invigilator!]!
   roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
@@ -6496,6 +6553,8 @@ type MucDaiExam {
   prePlannedInvigilations: [PrePlannedInvigilation!]!
   "Per-invigilator constraints stored in the DB (managed via the GUI): whether they do no invigilation at all, additional excluded whole days and time windows when they cannot invigilate. These are merged on top of the ZPA requirements."
   invigilatorConstraints: [InvigilatorConstraints!]!
+  "Teachers who never do invigilation duty again (e.g. retired). Global (plexams DB), carries over between semesters; always implies isNotInvigilator."
+  permanentNonInvigilators: [PermanentNonInvigilator!]!
 }
 
 extend type Mutation {
@@ -6522,6 +6581,10 @@ extend type Mutation {
   deleteInvigilatorConstraints(teacherID: Int!): Boolean!
   "One-time migration: copy the invigilatorConstraints from the semester config (viper) into the DB. Returns the number of records written."
   migrateInvigilatorConstraints: Int!
+  "Add or update a permanent (cross-semester) non-invigilator (key: teacherID), e.g. someone retired."
+  setPermanentNonInvigilator(teacherID: Int!, reason: String!): PermanentNonInvigilator!
+  "Remove a permanent non-invigilator (key: teacherID). Returns false if there was none."
+  removePermanentNonInvigilator(teacherID: Int!): Boolean!
 }
 
 """
@@ -6601,6 +6664,16 @@ input InvigilationTimeWindowInput {
   date: Time!
   from: Time
   until: Time
+}
+
+"""
+PermanentNonInvigilator is a teacher who never does invigilation duty again
+(e.g. retired). It lives in the global plexams database and therefore carries
+over between semesters; it always implies isNotInvigilator.
+"""
+type PermanentNonInvigilator {
+  teacherID: Int!
+  reason: String!
 }
 
 type Invigilator {
@@ -8839,6 +8912,34 @@ func (ec *executionContext) field_Mutation_removeNtaRoomAloneWaiver_argsAncode(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_removePermanentNonInvigilator_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_removePermanentNonInvigilator_argsTeacherID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["teacherID"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_removePermanentNonInvigilator_argsTeacherID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["teacherID"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("teacherID"))
+	if tmp, ok := rawArgs["teacherID"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_removePrePlannedInvigilation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -9226,6 +9327,57 @@ func (ec *executionContext) field_Mutation_setNTAActive_argsActive(
 	}
 
 	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPermanentNonInvigilator_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setPermanentNonInvigilator_argsTeacherID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["teacherID"] = arg0
+	arg1, err := ec.field_Mutation_setPermanentNonInvigilator_argsReason(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setPermanentNonInvigilator_argsTeacherID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["teacherID"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("teacherID"))
+	if tmp, ok := rawArgs["teacherID"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPermanentNonInvigilator_argsReason(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["reason"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("reason"))
+	if tmp, ok := rawArgs["reason"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -22225,6 +22377,122 @@ func (ec *executionContext) fieldContext_Mutation_migrateInvigilatorConstraints(
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setPermanentNonInvigilator(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setPermanentNonInvigilator(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetPermanentNonInvigilator(rctx, fc.Args["teacherID"].(int), fc.Args["reason"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PermanentNonInvigilator)
+	fc.Result = res
+	return ec.marshalNPermanentNonInvigilator2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPermanentNonInvigilator(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setPermanentNonInvigilator(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "teacherID":
+				return ec.fieldContext_PermanentNonInvigilator_teacherID(ctx, field)
+			case "reason":
+				return ec.fieldContext_PermanentNonInvigilator_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PermanentNonInvigilator", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setPermanentNonInvigilator_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removePermanentNonInvigilator(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removePermanentNonInvigilator(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemovePermanentNonInvigilator(rctx, fc.Args["teacherID"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removePermanentNonInvigilator(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removePermanentNonInvigilator_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addNTA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_addNTA(ctx, field)
 	if err != nil {
@@ -25236,6 +25504,94 @@ func (ec *executionContext) fieldContext_OptimizerProgress_unfilled(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PermanentNonInvigilator_teacherID(ctx context.Context, field graphql.CollectedField, obj *model.PermanentNonInvigilator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PermanentNonInvigilator_teacherID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TeacherID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PermanentNonInvigilator_teacherID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PermanentNonInvigilator",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PermanentNonInvigilator_reason(ctx context.Context, field graphql.CollectedField, obj *model.PermanentNonInvigilator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PermanentNonInvigilator_reason(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Reason, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PermanentNonInvigilator_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PermanentNonInvigilator",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30048,6 +30404,56 @@ func (ec *executionContext) fieldContext_Query_invigilatorConstraints(_ context.
 				return ec.fieldContext_InvigilatorConstraints_timeWindows(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type InvigilatorConstraints", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_permanentNonInvigilators(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_permanentNonInvigilators(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PermanentNonInvigilators(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PermanentNonInvigilator)
+	fc.Result = res
+	return ec.marshalNPermanentNonInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPermanentNonInvigilatorᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_permanentNonInvigilators(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "teacherID":
+				return ec.fieldContext_PermanentNonInvigilator_teacherID(ctx, field)
+			case "reason":
+				return ec.fieldContext_PermanentNonInvigilator_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PermanentNonInvigilator", field.Name)
 		},
 	}
 	return fc, nil
@@ -49949,6 +50355,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setPermanentNonInvigilator":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setPermanentNonInvigilator(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removePermanentNonInvigilator":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removePermanentNonInvigilator(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addNTA":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addNTA(ctx, field)
@@ -50461,6 +50881,50 @@ func (ec *executionContext) _OptimizerProgress(ctx context.Context, sel ast.Sele
 			}
 		case "unfilled":
 			out.Values[i] = ec._OptimizerProgress_unfilled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var permanentNonInvigilatorImplementors = []string{"PermanentNonInvigilator"}
+
+func (ec *executionContext) _PermanentNonInvigilator(ctx context.Context, sel ast.SelectionSet, obj *model.PermanentNonInvigilator) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, permanentNonInvigilatorImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PermanentNonInvigilator")
+		case "teacherID":
+			out.Values[i] = ec._PermanentNonInvigilator_teacherID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._PermanentNonInvigilator_reason(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -51842,6 +52306,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_invigilatorConstraints(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "permanentNonInvigilators":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_permanentNonInvigilators(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -56701,6 +57187,64 @@ func (ec *executionContext) marshalNNtaRoomAloneWaiver2ᚖgithubᚗcomᚋobcode�
 		return graphql.Null
 	}
 	return ec._NtaRoomAloneWaiver(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPermanentNonInvigilator2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPermanentNonInvigilator(ctx context.Context, sel ast.SelectionSet, v model.PermanentNonInvigilator) graphql.Marshaler {
+	return ec._PermanentNonInvigilator(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPermanentNonInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPermanentNonInvigilatorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PermanentNonInvigilator) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPermanentNonInvigilator2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPermanentNonInvigilator(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPermanentNonInvigilator2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPermanentNonInvigilator(ctx context.Context, sel ast.SelectionSet, v *model.PermanentNonInvigilator) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PermanentNonInvigilator(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPlannedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlannedExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PlannedExam) graphql.Marshaler {

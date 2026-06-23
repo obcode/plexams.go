@@ -48,6 +48,16 @@ func (r *mutationResolver) MigrateInvigilatorConstraints(ctx context.Context) (i
 	return r.plexams.MigrateInvigilatorConstraintsFromConfig(ctx)
 }
 
+// SetPermanentNonInvigilator is the resolver for the setPermanentNonInvigilator field.
+func (r *mutationResolver) SetPermanentNonInvigilator(ctx context.Context, teacherID int, reason string) (*model.PermanentNonInvigilator, error) {
+	return r.plexams.SetPermanentNonInvigilator(ctx, teacherID, reason)
+}
+
+// RemovePermanentNonInvigilator is the resolver for the removePermanentNonInvigilator field.
+func (r *mutationResolver) RemovePermanentNonInvigilator(ctx context.Context, teacherID int) (bool, error) {
+	return r.plexams.RemovePermanentNonInvigilator(ctx, teacherID)
+}
+
 // InvigilatorTodos is the resolver for the invigilatorTodos field.
 func (r *queryResolver) InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error) {
 	return r.plexams.GetInvigilationTodos(ctx)
@@ -86,4 +96,9 @@ func (r *queryResolver) PrePlannedInvigilations(ctx context.Context) ([]*model.P
 // InvigilatorConstraints is the resolver for the invigilatorConstraints field.
 func (r *queryResolver) InvigilatorConstraints(ctx context.Context) ([]*model.InvigilatorConstraints, error) {
 	return r.plexams.InvigilatorConstraints(ctx)
+}
+
+// PermanentNonInvigilators is the resolver for the permanentNonInvigilators field.
+func (r *queryResolver) PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error) {
+	return r.plexams.PermanentNonInvigilators(ctx)
 }

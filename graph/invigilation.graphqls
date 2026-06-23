@@ -14,6 +14,8 @@ extend type Query {
   prePlannedInvigilations: [PrePlannedInvigilation!]!
   "Per-invigilator constraints stored in the DB (managed via the GUI): whether they do no invigilation at all, additional excluded whole days and time windows when they cannot invigilate. These are merged on top of the ZPA requirements."
   invigilatorConstraints: [InvigilatorConstraints!]!
+  "Teachers who never do invigilation duty again (e.g. retired). Global (plexams DB), carries over between semesters; always implies isNotInvigilator."
+  permanentNonInvigilators: [PermanentNonInvigilator!]!
 }
 
 extend type Mutation {
@@ -40,6 +42,10 @@ extend type Mutation {
   deleteInvigilatorConstraints(teacherID: Int!): Boolean!
   "One-time migration: copy the invigilatorConstraints from the semester config (viper) into the DB. Returns the number of records written."
   migrateInvigilatorConstraints: Int!
+  "Add or update a permanent (cross-semester) non-invigilator (key: teacherID), e.g. someone retired."
+  setPermanentNonInvigilator(teacherID: Int!, reason: String!): PermanentNonInvigilator!
+  "Remove a permanent non-invigilator (key: teacherID). Returns false if there was none."
+  removePermanentNonInvigilator(teacherID: Int!): Boolean!
 }
 
 """
@@ -119,6 +125,16 @@ input InvigilationTimeWindowInput {
   date: Time!
   from: Time
   until: Time
+}
+
+"""
+PermanentNonInvigilator is a teacher who never does invigilation duty again
+(e.g. retired). It lives in the global plexams database and therefore carries
+over between semesters; it always implies isNotInvigilator.
+"""
+type PermanentNonInvigilator {
+  teacherID: Int!
+  reason: String!
 }
 
 type Invigilator {

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
@@ -196,6 +197,61 @@ assignment across runs, move it to the pre-planning (invigilation -p ...).`,
 		},
 	}
 
+	invigilationPermanentNonInvigilatorCmd = &cobra.Command{
+		Use:   "permanent-non-invigilator [list | add <id> <reason...> | rm <id>]",
+		Short: "Manage the global (cross-semester) permanent non-invigilators",
+		Long: `Manage the teachers who never do invigilation duty again (e.g. retired).
+This list is global (plexams DB) and carries over between semesters.
+
+  permanent-non-invigilator list
+  permanent-non-invigilator add <teacherID> <reason...>
+  permanent-non-invigilator rm  <teacherID>`,
+		Args: cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			plxms := initPlexamsConfig()
+			ctx := context.Background()
+			switch args[0] {
+			case "list":
+				list, err := plxms.PermanentNonInvigilators(ctx)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+				fmt.Printf("%d permanent non-invigilator(s):\n", len(list))
+				for _, n := range list {
+					fmt.Printf("  %d  %s\n", n.TeacherID, n.Reason)
+				}
+			case "add":
+				if len(args) < 3 {
+					log.Fatal("need teacherID and a reason")
+				}
+				id, err := strconv.Atoi(args[1])
+				if err != nil {
+					log.Fatalf("cannot use %s as teacher id", args[1])
+				}
+				reason := strings.Join(args[2:], " ")
+				if _, err := plxms.SetPermanentNonInvigilator(ctx, id, reason); err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+				fmt.Printf("added permanent non-invigilator %d (%s)\n", id, reason)
+			case "rm":
+				if len(args) < 2 {
+					log.Fatal("need teacherID")
+				}
+				id, err := strconv.Atoi(args[1])
+				if err != nil {
+					log.Fatalf("cannot use %s as teacher id", args[1])
+				}
+				removed, err := plxms.RemovePermanentNonInvigilator(ctx, id)
+				if err != nil {
+					log.Fatalf("got error: %v\n", err)
+				}
+				fmt.Printf("removed: %v\n", removed)
+			default:
+				log.Fatalf("unknown subcommand %q (use list|add|rm)", args[0])
+			}
+		},
+	}
+
 	invigilationMigrateConstraintsCmd = &cobra.Command{
 		Use:   "migrate-constraints",
 		Short: "One-time migration of invigilatorConstraints from the config into the DB",
@@ -226,4 +282,5 @@ func init() {
 	invigilationCmd.AddCommand(invigilationGenerateCmd)
 	invigilationCmd.AddCommand(invigilationRemovePrePlanCmd)
 	invigilationCmd.AddCommand(invigilationMigrateConstraintsCmd)
+	invigilationCmd.AddCommand(invigilationPermanentNonInvigilatorCmd)
 }

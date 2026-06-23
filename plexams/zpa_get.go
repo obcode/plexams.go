@@ -50,14 +50,14 @@ func (p *Plexams) GetInvigilators(ctx context.Context) ([]*model.ZPAInvigilator,
 		return nil, err
 	}
 
-	constraintsMap, err := p.invigilatorConstraintsMap(ctx)
+	isNotInvigilator, _, err := p.notInvigilating(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	invigilators := make([]*model.ZPAInvigilator, 0, len(justInvigilators))
 	for _, invig := range justInvigilators {
-		if c := constraintsMap[invig.ID]; c != nil && c.IsNotInvigilator {
+		if isNotInvigilator(invig.ID) {
 			log.Debug().Str("name", invig.Shortname).Msg("is not invigilator")
 			continue
 		}

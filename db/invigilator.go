@@ -28,6 +28,24 @@ func (db *DB) GetInvigilatorRequirements(ctx context.Context, teacherID int) (*z
 	return &req, nil
 }
 
+// AllInvigilatorRequirements returns all stored ZPA invigilator requirements.
+func (db *DB) AllInvigilatorRequirements(ctx context.Context) ([]*zpa.SupervisorRequirements, error) {
+	collection := db.getCollectionSemester(collectionInvigilatorRequirements)
+
+	cur, err := collection.Find(ctx, bson.D{})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invigilator requirements")
+		return nil, err
+	}
+
+	reqs := make([]*zpa.SupervisorRequirements, 0)
+	if err := cur.All(ctx, &reqs); err != nil {
+		log.Error().Err(err).Msg("cannot decode invigilator requirements")
+		return nil, err
+	}
+	return reqs, nil
+}
+
 func (db *DB) GetInvigilatorForRoom(ctx context.Context, name string, day, time int) (*model.Teacher, error) {
 	self, err := db.getInvigilatorForRoom(ctx, collectionSelfInvigilations, name, day, time)
 	if err != nil {

@@ -6,17 +6,11 @@ Plätze auf welche Prüfung entfallen. Dieselben Daten finden Sie raumweise auch
 
 Die betroffenen Prüfenden sind in Cc.
 
-=== Nach Tag/Zeit und Raum ===
 {{ range .Slots }}
 {{ .Date }}, {{ .Time }} Uhr
 {{ range .Rooms }}  Raum {{ .RoomName }}:
 {{ range .Exams }}    - {{ .Ancode }}. {{ .Module }} ({{ .Examer }}) [{{ .Type }}]: {{ .Seats }} Plätze — {{ .Detail }}
 {{ end }}{{ end }}{{ end }}
-=== Nach Prüfung ===
-{{ range .Exams }}
-{{ .Ancode }}. {{ .Module }} ({{ .Examer }}) [{{ .Type }}] — {{ .Date }}, {{ .Time }} Uhr
-{{ range .Rooms }}    - {{ . }}
-{{ end }}{{ end }}
 Bei Rückfragen können Sie direkt auf diese E-Mail antworten.
 
 Mit freundlichen Grüßen

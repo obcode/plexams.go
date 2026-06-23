@@ -40,23 +40,11 @@ type kdpSlot struct {
 	Rooms []*kdpRoom
 }
 
-// kdpExamView is the per-exam view (which rooms, how many seats each).
-type kdpExamView struct {
-	Ancode int
-	Module string
-	Examer string
-	Type   string
-	Date   string
-	Time   string
-	Rooms  []string // "T3.016: 5 Plätze (+1 NTA)"
-}
-
 // KdpEmail is the data for the KDP EXaHM/SEB room-overview email.
 type KdpEmail struct {
 	SemesterName string
 	PlanerName   string
-	Slots        []*kdpSlot     // ordered by day/time, then room
-	Exams        []*kdpExamView // ordered by day/time, then ancode
+	Slots        []*kdpSlot // ordered by day/time, then room
 }
 
 // CsvKdpRoom is one row of the room-oriented CSV: per slot, room and exam how
@@ -172,7 +160,6 @@ func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, []
 
 	emailSlots := make([]*kdpSlot, 0, len(slotKeys))
 	csvRows := make([]CsvKdpRoom, 0)
-	examViews := make([]*kdpExamView, 0)
 
 	for _, key := range slotKeys {
 		start := slotStartMap[key]
@@ -256,47 +243,6 @@ func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, []
 		emailSlots = append(emailSlots, es)
 	}
 
-	// exam view: per exam, the rooms with seats
-	ancodes := make([]int, 0, len(meta))
-	for ancode := range meta {
-		ancodes = append(ancodes, ancode)
-	}
-	sort.Slice(ancodes, func(i, j int) bool {
-		if !meta[ancodes[i]].start.Equal(meta[ancodes[j]].start) {
-			return meta[ancodes[i]].start.Before(meta[ancodes[j]].start)
-		}
-		return ancodes[i] < ancodes[j]
-	})
-	for _, ancode := range ancodes {
-		m := meta[ancode]
-		rooms := make([]string, 0)
-		for _, es := range emailSlots {
-			for _, kr := range es.Rooms {
-				for _, ex := range kr.Exams {
-					if ex.Ancode == ancode {
-						label := fmt.Sprintf("%s: %d Plätze", kr.RoomName, ex.Seats)
-						if ex.NtaSeats > 0 {
-							label += fmt.Sprintf(" (davon %d NTA)", ex.NtaSeats)
-						}
-						if ex.ReserveSeats > 0 {
-							label += fmt.Sprintf(", Reserve %d", ex.ReserveSeats)
-						}
-						rooms = append(rooms, label)
-					}
-				}
-			}
-		}
-		examViews = append(examViews, &kdpExamView{
-			Ancode: ancode,
-			Module: m.module,
-			Examer: m.examer,
-			Type:   m.typ,
-			Date:   fmt.Sprintf("%s, %s", weekdayShortDE[int(m.start.Weekday())], m.start.Format("02.01.2006")),
-			Time:   m.start.Format("15:04"),
-			Rooms:  rooms,
-		})
-	}
-
 	ccEmails := make([]string, 0, len(examerEmails))
 	for e := range examerEmails {
 		ccEmails = append(ccEmails, e)
@@ -307,7 +253,6 @@ func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, []
 		SemesterName: p.semester,
 		PlanerName:   p.planer.Name,
 		Slots:        emailSlots,
-		Exams:        examViews,
 	}, csvRows, ccEmails, nil
 }
 

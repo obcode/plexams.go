@@ -22,33 +22,19 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.22
-        uses: actions/setup-go@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.22
-        id: go
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v1
-
-      - name: Get dependencies
-        run: |
-          go get -v -t -d ./...
-          if [ -f Gopkg.toml ]; then
-              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-              dep ensure
-          fi
-
+          go-version: 1.24.2
       - name: Test
-        run: |
-          go test -v ./...
+        run: go test -v ./...
   release:
     runs-on: ubuntu-latest
     needs:
       - golangci
       - test
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false

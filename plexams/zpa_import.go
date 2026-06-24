@@ -130,14 +130,16 @@ func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (in
 		func(e *model.ZPAExam) map[string]string {
 			groups := append([]string{}, e.Groups...)
 			sort.Strings(groups)
+			// NB: primussAncodes are intentionally not compared here — they are
+			// enriched on DB read (cleanupPrimussAncodes + added ancodes) while the
+			// ZPA fetch returns the raw list, so they would always differ.
 			return map[string]string{
-				"module":     e.Module,
-				"examer":     fmt.Sprintf("%s (%d)", e.MainExamer, e.MainExamerID),
-				"type":       e.ExamType,
-				"duration":   fmt.Sprint(e.Duration),
-				"repeater":   fmt.Sprint(e.IsRepeaterExam),
-				"groups":     strings.Join(groups, ","),
-				"primussAnc": fmt.Sprintf("%v", e.PrimussAncodes),
+				"module":   e.Module,
+				"examer":   fmt.Sprintf("%s (%d)", e.MainExamer, e.MainExamerID),
+				"type":     e.ExamType,
+				"duration": fmt.Sprint(e.Duration),
+				"repeater": fmt.Sprint(e.IsRepeaterExam),
+				"groups":   strings.Join(groups, ","),
 			}
 		})
 	p.markCondition(ctx, condZPAImported)

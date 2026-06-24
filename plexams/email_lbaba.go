@@ -82,7 +82,7 @@ func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*lbaRepeaterExam
 		if exam.PlanEntry != nil {
 			seen := set.NewSet[int]()
 			for _, room := range exam.PlannedRooms {
-				if room.RoomName == "No Room" || room.RoomName == "ONLINE" {
+				if room.RoomName == "ONLINE" {
 					continue
 				}
 				invigilator, err := p.GetInvigilatorForRoom(ctx, room.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)

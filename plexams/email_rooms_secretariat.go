@@ -76,9 +76,8 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 		roomInfo[room.Name] = room
 	}
 
-	// rooms that are not real bookable rooms for the secretariat: the "No Room"
-	// placeholder and the online "rooms".
-	skipRoom := map[string]bool{"No Room": true, "ONLINE": true, "ONLINE_1": true, "ONLINE_2": true}
+	// the online "rooms" are not real bookable rooms for the secretariat.
+	skipRoom := map[string]bool{"ONLINE": true, "ONLINE_1": true, "ONLINE_2": true}
 
 	// collect occupancy intervals per (non-request) room
 	intervalsByRoom := make(map[string][]roomInterval)

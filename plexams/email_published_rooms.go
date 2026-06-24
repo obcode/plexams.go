@@ -92,7 +92,7 @@ func roomAllocations(exam *model.PlannedExam, roomName string) []string {
 
 // buildPublishedRoomsExam renders one exam for the examer email: per room the
 // exam's own seat blocks and, grouped per other exam, the co-usage of that room
-// in the same slot. Returns nil if the exam has no real (non-"No Room") rooms.
+// in the same slot. Returns nil if the exam has no real rooms.
 func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.PlannedExam,
 	examsInSlot map[[2]int][]*model.PlannedExam, examerShort func(*model.PlannedExam) string,
 ) *publishedRoomsExam {

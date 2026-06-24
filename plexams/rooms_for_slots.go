@@ -84,7 +84,7 @@ func (p *Plexams) computeRoomsForSlots(ctx context.Context, reporter Reporter) (
 	}
 
 	for _, room := range globalRooms {
-		if room.Name == "No Room" || room.Name == "ONLINE_1" || room.Name == "ONLINE_2" {
+		if room.Name == "ONLINE_1" || room.Name == "ONLINE_2" {
 			continue
 		}
 		restrictedSlots, ok := roomsWithRestrictedSlots[room.Name]

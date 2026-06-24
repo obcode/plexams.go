@@ -124,7 +124,7 @@ func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, []
 		}
 
 		for _, room := range exam.PlannedRooms {
-			if room.RoomName == "No Room" || room.RoomName == "ONLINE" {
+			if room.RoomName == "ONLINE" {
 				continue
 			}
 			if slotRooms[key] == nil {

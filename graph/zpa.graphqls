@@ -11,32 +11,45 @@ extend type Query {
   zpaExam(ancode: Int!): ZPAExam
   zpaAnCodes: [AnCode]
   studentRegsImportErrors: [RegWithError!]!
-  "Recorded change diffs of the most recent ZPA imports (per kind: teachers / exams / invigilatorRequirements)."
-  zpaImportChanges: [ZPAImportChange!]!
+  """
+  Transfer history (imports from / uploads to ZPA, Anny, …), newest first.
+  The whole history since the start of the semester is kept; pass limit to cap it.
+  """
+  syncLog(limit: Int): [SyncLogEntry!]!
 }
 
 """
-ZPAImportChange is the recorded diff of the most recent ZPA import of one kind
-against the DB state right before it.
+SyncLogEntry records one external transfer (import from / upload to ZPA, Anny, …).
+For imports it also carries the diff against the DB state right before it.
 """
-type ZPAImportChange {
-  kind: String!
+type SyncLogEntry {
   time: Time!
+  "stable key, e.g. zpa-import-exams, zpa-upload-plan-exams-rooms, anny-import-bookings"
+  operation: String!
+  "human-readable label"
+  label: String!
+  "import | upload"
+  direction: String!
+  "ZPA | Anny | …"
+  system: String!
+  ok: Boolean!
+  summary: String!
   added: Int!
   changed: Int!
   removed: Int!
-  entries: [ZPAImportChangeEntry!]!
+  "per-entry detail (imports only)"
+  entries: [SyncChangeEntry!]
 }
 
-type ZPAImportChangeEntry {
+type SyncChangeEntry {
   "added | removed | changed"
   type: String!
   name: String!
   "set only for changed entries"
-  fields: [ZPAImportFieldChange!]
+  fields: [SyncFieldChange!]
 }
 
-type ZPAImportFieldChange {
+type SyncFieldChange {
   field: String!
   old: String!
   new: String!

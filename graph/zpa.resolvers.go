@@ -85,7 +85,11 @@ func (r *queryResolver) StudentRegsImportErrors(ctx context.Context) ([]*model.R
 	return r.plexams.StudentRegsImportErrors(ctx)
 }
 
-// ZpaImportChanges is the resolver for the zpaImportChanges field.
-func (r *queryResolver) ZpaImportChanges(ctx context.Context) ([]*model.ZPAImportChange, error) {
-	return r.plexams.ZPAImportChanges(ctx)
+// SyncLog is the resolver for the syncLog field.
+func (r *queryResolver) SyncLog(ctx context.Context, limit *int) ([]*model.SyncLogEntry, error) {
+	l := 0
+	if limit != nil {
+		l = *limit
+	}
+	return r.plexams.SyncLog(ctx, l)
 }

@@ -113,6 +113,15 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 	p.markCondition(ctx, condStudentRegsUploaded)
 	reporter.StopProgress(fmt.Sprintf("uploaded %d regs, %d with errors", len(zpaStudentRegs), len(regsWithErrors)))
 
+	p.logSync(ctx, &model.SyncLogEntry{
+		Operation: "zpa-upload-studentregs",
+		Label:     "Anmeldungen ins ZPA hochgeladen",
+		Direction: "upload",
+		System:    "ZPA",
+		OK:        true,
+		Summary:   fmt.Sprintf("%d Anmeldungen hochgeladen, %d mit Fehlern", len(zpaStudentRegs), len(regsWithErrors)),
+	})
+
 	return zpaStudentRegs, regsWithErrors, nil
 }
 
@@ -366,6 +375,21 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		log.Info().Str("status", status).Msg("exams posted to zpa")
 		reporter.StopProgress(fmt.Sprintf("uploaded %d exams to ZPA (status %s)", len(exams), status))
 		reporter.Println(string(body))
+
+		scope := "exams"
+		if withInvigilators {
+			scope = "exams-rooms-invigilators"
+		} else if withRooms {
+			scope = "exams-rooms"
+		}
+		p.logSync(ctx, &model.SyncLogEntry{
+			Operation: "zpa-upload-plan-" + scope,
+			Label:     "Prüfungsplan ins ZPA hochgeladen (" + what + ")",
+			Direction: "upload",
+			System:    "ZPA",
+			OK:        true,
+			Summary:   fmt.Sprintf("%d Prüfungen hochgeladen (%s)", len(exams), what),
+		})
 	} else {
 		reporter.StopProgress(fmt.Sprintf("dry run: %d exams prepared, nothing uploaded", len(exams)))
 	}

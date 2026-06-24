@@ -81,6 +81,15 @@ func (p *Plexams) GetStudentsFromZPA(ctx context.Context, reporter Reporter) (st
 		return studentsFound, studentsNotFound, err
 	}
 
+	p.logSync(ctx, &model.SyncLogEntry{
+		Operation: "zpa-import-students",
+		Label:     "Studierende aus ZPA importiert",
+		Direction: "import",
+		System:    "ZPA",
+		OK:        true,
+		Summary:   fmt.Sprintf("%d Studierende gefunden, %d nicht gefunden", studentsFound, studentsNotFound),
+	})
+
 	reporter.StopProgress(fmt.Sprintf("%d students found, %d students not found", studentsFound, studentsNotFound))
 	return studentsFound, studentsNotFound, nil
 }

@@ -14,10 +14,10 @@ import (
 
 // reportImportChanges streams what a ZPA (re-)import changed compared to the
 // previous DB state (new / dropped entries and per-field changes, keyed by id)
-// and returns the same as a structured record (without Kind/Time, which the
-// caller sets) so it can be persisted.
+// and returns a partial SyncLogEntry (Added/Changed/Removed/Entries) that the
+// caller completes (operation/label/…) and logs.
 func reportImportChanges[T any](reporter Reporter, old, neu []T,
-	id func(T) int, name func(T) string, fields func(T) map[string]string) *model.ZPAImportChange {
+	id func(T) int, name func(T) string, fields func(T) map[string]string) *model.SyncLogEntry {
 	oldByID := make(map[int]T, len(old))
 	for _, o := range old {
 		oldByID[id(o)] = o
@@ -27,7 +27,7 @@ func reportImportChanges[T any](reporter Reporter, old, neu []T,
 		newByID[id(n)] = n
 	}
 
-	rec := &model.ZPAImportChange{Entries: make([]*model.ZPAImportChangeEntry, 0)}
+	rec := &model.SyncLogEntry{Entries: make([]*model.SyncChangeEntry, 0)}
 
 	newIDs := make([]int, 0, len(newByID))
 	for k := range newByID {
@@ -39,7 +39,7 @@ func reportImportChanges[T any](reporter Reporter, old, neu []T,
 		o, ok := oldByID[k]
 		if !ok {
 			reporter.Printf("  + neu: %s", name(n))
-			rec.Entries = append(rec.Entries, &model.ZPAImportChangeEntry{Type: "added", Name: name(n)})
+			rec.Entries = append(rec.Entries, &model.SyncChangeEntry{Type: "added", Name: name(n)})
 			rec.Added++
 			continue
 		}
@@ -50,16 +50,16 @@ func reportImportChanges[T any](reporter Reporter, old, neu []T,
 		}
 		sort.Strings(fnames)
 		diffs := make([]string, 0)
-		fieldChanges := make([]*model.ZPAImportFieldChange, 0)
+		fieldChanges := make([]*model.SyncFieldChange, 0)
 		for _, f := range fnames {
 			if of[f] != nf[f] {
 				diffs = append(diffs, fmt.Sprintf("%s: %q → %q", f, of[f], nf[f]))
-				fieldChanges = append(fieldChanges, &model.ZPAImportFieldChange{Field: f, Old: of[f], New: nf[f]})
+				fieldChanges = append(fieldChanges, &model.SyncFieldChange{Field: f, Old: of[f], New: nf[f]})
 			}
 		}
 		if len(diffs) > 0 {
 			reporter.Printf("  ~ %s: %s", name(n), strings.Join(diffs, ", "))
-			rec.Entries = append(rec.Entries, &model.ZPAImportChangeEntry{Type: "changed", Name: name(n), Fields: fieldChanges})
+			rec.Entries = append(rec.Entries, &model.SyncChangeEntry{Type: "changed", Name: name(n), Fields: fieldChanges})
 			rec.Changed++
 		}
 	}
@@ -72,7 +72,7 @@ func reportImportChanges[T any](reporter Reporter, old, neu []T,
 	for _, k := range oldIDs {
 		if _, ok := newByID[k]; !ok {
 			reporter.Printf("  - entfällt: %s", name(oldByID[k]))
-			rec.Entries = append(rec.Entries, &model.ZPAImportChangeEntry{Type: "removed", Name: name(oldByID[k])})
+			rec.Entries = append(rec.Entries, &model.SyncChangeEntry{Type: "removed", Name: name(oldByID[k])})
 			rec.Removed++
 		}
 	}
@@ -85,18 +85,17 @@ func reportImportChanges[T any](reporter Reporter, old, neu []T,
 	return rec
 }
 
-// ZPAImportChanges returns the recorded change diffs of the most recent ZPA
-// imports (per kind).
-func (p *Plexams) ZPAImportChanges(ctx context.Context) ([]*model.ZPAImportChange, error) {
-	return p.dbClient.ZPAImportChanges(ctx)
+// SyncLog returns the transfer history (newest first; limit <= 0 = all).
+func (p *Plexams) SyncLog(ctx context.Context, limit int) ([]*model.SyncLogEntry, error) {
+	return p.dbClient.SyncLog(ctx, limit)
 }
 
-// recordImportChanges sets kind/time and persists the change record (best-effort).
-func (p *Plexams) recordImportChanges(ctx context.Context, kind string, rec *model.ZPAImportChange) {
-	rec.Kind = kind
-	rec.Time = time.Now()
-	if err := p.dbClient.SaveZPAImportChange(ctx, rec); err != nil {
-		log.Error().Err(err).Str("kind", kind).Msg("cannot save zpa import changes")
+// logSync stamps the entry with the current time and appends it to the sync-log
+// history (best-effort).
+func (p *Plexams) logSync(ctx context.Context, entry *model.SyncLogEntry) {
+	entry.Time = time.Now()
+	if err := p.dbClient.AddSyncLogEntry(ctx, entry); err != nil {
+		log.Error().Err(err).Str("operation", entry.Operation).Msg("cannot write sync-log entry")
 	}
 }
 
@@ -128,7 +127,14 @@ func (p *Plexams) ImportTeachersFromZPA(ctx context.Context, reporter Reporter) 
 				"isActive": fmt.Sprint(t.IsActive),
 			}
 		})
-	p.recordImportChanges(ctx, "teachers", rec)
+	rec.Operation = "zpa-import-teachers"
+	rec.Label = "Lehrende aus ZPA importiert"
+	rec.Direction = "import"
+	rec.System = "ZPA"
+	rec.OK = true
+	rec.Summary = fmt.Sprintf("%d Lehrende geladen (%d neu, %d geändert, %d entfallen)",
+		len(teachers), rec.Added, rec.Changed, rec.Removed)
+	p.logSync(ctx, rec)
 	reporter.StopProgress(fmt.Sprintf("fetched %d teachers", len(teachers)))
 	return len(teachers), nil
 }
@@ -165,7 +171,14 @@ func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (in
 				"groups":   strings.Join(groups, ","),
 			}
 		})
-	p.recordImportChanges(ctx, "exams", rec)
+	rec.Operation = "zpa-import-exams"
+	rec.Label = "Prüfungen aus ZPA importiert"
+	rec.Direction = "import"
+	rec.System = "ZPA"
+	rec.OK = true
+	rec.Summary = fmt.Sprintf("%d Prüfungen geladen (%d neu, %d geändert, %d entfallen)",
+		len(exams), rec.Added, rec.Changed, rec.Removed)
+	p.logSync(ctx, rec)
 	p.markCondition(ctx, condZPAImported)
 	reporter.StopProgress(fmt.Sprintf("fetched %d exams", len(exams)))
 	return len(exams), nil
@@ -229,7 +242,14 @@ func (p *Plexams) ImportInvigilatorRequirementsFromZPA(ctx context.Context, repo
 				"excludedDates": strings.Join(excl, ","),
 			}
 		})
-	p.recordImportChanges(ctx, "invigilatorRequirements", rec)
+	rec.Operation = "zpa-import-invigilator-requirements"
+	rec.Label = "Aufsichts-Anforderungen aus ZPA importiert"
+	rec.Direction = "import"
+	rec.System = "ZPA"
+	rec.OK = true
+	rec.Summary = fmt.Sprintf("%d Anforderungen geladen (%d neu, %d geändert, %d entfallen), %d fehlen noch",
+		len(reqs), rec.Added, rec.Changed, rec.Removed, missing)
+	p.logSync(ctx, rec)
 	if rec.Added+rec.Changed+rec.Removed > 0 {
 		reporter.Step("requirements changed — rebuilding invigilator todos")
 		if _, err := p.PrepareInvigilationTodos(ctx); err != nil {

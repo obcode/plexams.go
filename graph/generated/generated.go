@@ -636,6 +636,7 @@ type ComplexityRoot struct {
 		StudentRegsImportErrors       func(childComplexity int) int
 		Students                      func(childComplexity int) int
 		StudentsByName                func(childComplexity int, regex string) int
+		SyncLog                       func(childComplexity int, limit *int) int
 		Teacher                       func(childComplexity int, id int) int
 		Teachers                      func(childComplexity int, fromZpa *bool) int
 		UnplacedExams                 func(childComplexity int) int
@@ -647,7 +648,6 @@ type ComplexityRoot struct {
 		ZpaExamsPlaningStatusUnknown  func(childComplexity int) int
 		ZpaExamsToPlan                func(childComplexity int) int
 		ZpaExamsToPlanWithConstraints func(childComplexity int) int
-		ZpaImportChanges              func(childComplexity int) int
 	}
 
 	RegWithError struct {
@@ -880,6 +880,32 @@ type ComplexityRoot struct {
 		ValidateZPARooms                     func(childComplexity int) int
 	}
 
+	SyncChangeEntry struct {
+		Fields func(childComplexity int) int
+		Name   func(childComplexity int) int
+		Type   func(childComplexity int) int
+	}
+
+	SyncFieldChange struct {
+		Field func(childComplexity int) int
+		New   func(childComplexity int) int
+		Old   func(childComplexity int) int
+	}
+
+	SyncLogEntry struct {
+		Added     func(childComplexity int) int
+		Changed   func(childComplexity int) int
+		Direction func(childComplexity int) int
+		Entries   func(childComplexity int) int
+		Label     func(childComplexity int) int
+		OK        func(childComplexity int) int
+		Operation func(childComplexity int) int
+		Removed   func(childComplexity int) int
+		Summary   func(childComplexity int) int
+		System    func(childComplexity int) int
+		Time      func(childComplexity int) int
+	}
+
 	Teacher struct {
 		Email        func(childComplexity int) int
 		FK           func(childComplexity int) int
@@ -953,27 +979,6 @@ type ComplexityRoot struct {
 	ZPAExamsForType struct {
 		Exams func(childComplexity int) int
 		Type  func(childComplexity int) int
-	}
-
-	ZPAImportChange struct {
-		Added   func(childComplexity int) int
-		Changed func(childComplexity int) int
-		Entries func(childComplexity int) int
-		Kind    func(childComplexity int) int
-		Removed func(childComplexity int) int
-		Time    func(childComplexity int) int
-	}
-
-	ZPAImportChangeEntry struct {
-		Fields func(childComplexity int) int
-		Name   func(childComplexity int) int
-		Type   func(childComplexity int) int
-	}
-
-	ZPAImportFieldChange struct {
-		Field func(childComplexity int) int
-		New   func(childComplexity int) int
-		Old   func(childComplexity int) int
 	}
 
 	ZPAInvigilator struct {
@@ -1149,7 +1154,7 @@ type QueryResolver interface {
 	ZpaExam(ctx context.Context, ancode int) (*model.ZPAExam, error)
 	ZpaAnCodes(ctx context.Context) ([]*model.AnCode, error)
 	StudentRegsImportErrors(ctx context.Context) ([]*model.RegWithError, error)
-	ZpaImportChanges(ctx context.Context) ([]*model.ZPAImportChange, error)
+	SyncLog(ctx context.Context, limit *int) ([]*model.SyncLogEntry, error)
 }
 type RoomsForSlotResolver interface {
 	Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error)
@@ -4424,6 +4429,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.StudentsByName(childComplexity, args["regex"].(string)), true
 
+	case "Query.syncLog":
+		if e.complexity.Query.SyncLog == nil {
+			break
+		}
+
+		args, err := ec.field_Query_syncLog_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.SyncLog(childComplexity, args["limit"].(*int)), true
+
 	case "Query.teacher":
 		if e.complexity.Query.Teacher == nil {
 			break
@@ -4520,13 +4537,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.ZpaExamsToPlanWithConstraints(childComplexity), true
-
-	case "Query.zpaImportChanges":
-		if e.complexity.Query.ZpaImportChanges == nil {
-			break
-		}
-
-		return e.complexity.Query.ZpaImportChanges(childComplexity), true
 
 	case "RegWithError.error":
 		if e.complexity.RegWithError.Error == nil {
@@ -5790,6 +5800,125 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.ValidateZPARooms(childComplexity), true
 
+	case "SyncChangeEntry.fields":
+		if e.complexity.SyncChangeEntry.Fields == nil {
+			break
+		}
+
+		return e.complexity.SyncChangeEntry.Fields(childComplexity), true
+
+	case "SyncChangeEntry.name":
+		if e.complexity.SyncChangeEntry.Name == nil {
+			break
+		}
+
+		return e.complexity.SyncChangeEntry.Name(childComplexity), true
+
+	case "SyncChangeEntry.type":
+		if e.complexity.SyncChangeEntry.Type == nil {
+			break
+		}
+
+		return e.complexity.SyncChangeEntry.Type(childComplexity), true
+
+	case "SyncFieldChange.field":
+		if e.complexity.SyncFieldChange.Field == nil {
+			break
+		}
+
+		return e.complexity.SyncFieldChange.Field(childComplexity), true
+
+	case "SyncFieldChange.new":
+		if e.complexity.SyncFieldChange.New == nil {
+			break
+		}
+
+		return e.complexity.SyncFieldChange.New(childComplexity), true
+
+	case "SyncFieldChange.old":
+		if e.complexity.SyncFieldChange.Old == nil {
+			break
+		}
+
+		return e.complexity.SyncFieldChange.Old(childComplexity), true
+
+	case "SyncLogEntry.added":
+		if e.complexity.SyncLogEntry.Added == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.Added(childComplexity), true
+
+	case "SyncLogEntry.changed":
+		if e.complexity.SyncLogEntry.Changed == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.Changed(childComplexity), true
+
+	case "SyncLogEntry.direction":
+		if e.complexity.SyncLogEntry.Direction == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.Direction(childComplexity), true
+
+	case "SyncLogEntry.entries":
+		if e.complexity.SyncLogEntry.Entries == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.Entries(childComplexity), true
+
+	case "SyncLogEntry.label":
+		if e.complexity.SyncLogEntry.Label == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.Label(childComplexity), true
+
+	case "SyncLogEntry.ok":
+		if e.complexity.SyncLogEntry.OK == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.OK(childComplexity), true
+
+	case "SyncLogEntry.operation":
+		if e.complexity.SyncLogEntry.Operation == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.Operation(childComplexity), true
+
+	case "SyncLogEntry.removed":
+		if e.complexity.SyncLogEntry.Removed == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.Removed(childComplexity), true
+
+	case "SyncLogEntry.summary":
+		if e.complexity.SyncLogEntry.Summary == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.Summary(childComplexity), true
+
+	case "SyncLogEntry.system":
+		if e.complexity.SyncLogEntry.System == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.System(childComplexity), true
+
+	case "SyncLogEntry.time":
+		if e.complexity.SyncLogEntry.Time == nil {
+			break
+		}
+
+		return e.complexity.SyncLogEntry.Time(childComplexity), true
+
 	case "Teacher.email":
 		if e.complexity.Teacher.Email == nil {
 			break
@@ -6146,90 +6275,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ZPAExamsForType.Type(childComplexity), true
-
-	case "ZPAImportChange.added":
-		if e.complexity.ZPAImportChange.Added == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportChange.Added(childComplexity), true
-
-	case "ZPAImportChange.changed":
-		if e.complexity.ZPAImportChange.Changed == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportChange.Changed(childComplexity), true
-
-	case "ZPAImportChange.entries":
-		if e.complexity.ZPAImportChange.Entries == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportChange.Entries(childComplexity), true
-
-	case "ZPAImportChange.kind":
-		if e.complexity.ZPAImportChange.Kind == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportChange.Kind(childComplexity), true
-
-	case "ZPAImportChange.removed":
-		if e.complexity.ZPAImportChange.Removed == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportChange.Removed(childComplexity), true
-
-	case "ZPAImportChange.time":
-		if e.complexity.ZPAImportChange.Time == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportChange.Time(childComplexity), true
-
-	case "ZPAImportChangeEntry.fields":
-		if e.complexity.ZPAImportChangeEntry.Fields == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportChangeEntry.Fields(childComplexity), true
-
-	case "ZPAImportChangeEntry.name":
-		if e.complexity.ZPAImportChangeEntry.Name == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportChangeEntry.Name(childComplexity), true
-
-	case "ZPAImportChangeEntry.type":
-		if e.complexity.ZPAImportChangeEntry.Type == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportChangeEntry.Type(childComplexity), true
-
-	case "ZPAImportFieldChange.field":
-		if e.complexity.ZPAImportFieldChange.Field == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportFieldChange.Field(childComplexity), true
-
-	case "ZPAImportFieldChange.new":
-		if e.complexity.ZPAImportFieldChange.New == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportFieldChange.New(childComplexity), true
-
-	case "ZPAImportFieldChange.old":
-		if e.complexity.ZPAImportFieldChange.Old == nil {
-			break
-		}
-
-		return e.complexity.ZPAImportFieldChange.Old(childComplexity), true
 
 	case "ZPAInvigilator.hasSubmittedRequirements":
 		if e.complexity.ZPAInvigilator.HasSubmittedRequirements == nil {
@@ -7759,32 +7804,45 @@ extend type Subscription {
   zpaExam(ancode: Int!): ZPAExam
   zpaAnCodes: [AnCode]
   studentRegsImportErrors: [RegWithError!]!
-  "Recorded change diffs of the most recent ZPA imports (per kind: teachers / exams / invigilatorRequirements)."
-  zpaImportChanges: [ZPAImportChange!]!
+  """
+  Transfer history (imports from / uploads to ZPA, Anny, …), newest first.
+  The whole history since the start of the semester is kept; pass limit to cap it.
+  """
+  syncLog(limit: Int): [SyncLogEntry!]!
 }
 
 """
-ZPAImportChange is the recorded diff of the most recent ZPA import of one kind
-against the DB state right before it.
+SyncLogEntry records one external transfer (import from / upload to ZPA, Anny, …).
+For imports it also carries the diff against the DB state right before it.
 """
-type ZPAImportChange {
-  kind: String!
+type SyncLogEntry {
   time: Time!
+  "stable key, e.g. zpa-import-exams, zpa-upload-plan-exams-rooms, anny-import-bookings"
+  operation: String!
+  "human-readable label"
+  label: String!
+  "import | upload"
+  direction: String!
+  "ZPA | Anny | …"
+  system: String!
+  ok: Boolean!
+  summary: String!
   added: Int!
   changed: Int!
   removed: Int!
-  entries: [ZPAImportChangeEntry!]!
+  "per-entry detail (imports only)"
+  entries: [SyncChangeEntry!]
 }
 
-type ZPAImportChangeEntry {
+type SyncChangeEntry {
   "added | removed | changed"
   type: String!
   name: String!
   "set only for changed entries"
-  fields: [ZPAImportFieldChange!]
+  fields: [SyncFieldChange!]
 }
 
-type ZPAImportFieldChange {
+type SyncFieldChange {
   field: String!
   old: String!
   new: String!
@@ -11242,6 +11300,34 @@ func (ec *executionContext) field_Query_studentsByName_argsRegex(
 	}
 
 	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_syncLog_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_syncLog_argsLimit(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_syncLog_argsLimit(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["limit"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+	if tmp, ok := rawArgs["limit"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
 	return zeroVal, nil
 }
 
@@ -33965,8 +34051,8 @@ func (ec *executionContext) fieldContext_Query_studentRegsImportErrors(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_zpaImportChanges(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_zpaImportChanges(ctx, field)
+func (ec *executionContext) _Query_syncLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_syncLog(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -33979,7 +34065,7 @@ func (ec *executionContext) _Query_zpaImportChanges(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ZpaImportChanges(rctx)
+		return ec.resolvers.Query().SyncLog(rctx, fc.Args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -33991,12 +34077,12 @@ func (ec *executionContext) _Query_zpaImportChanges(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.ZPAImportChange)
+	res := resTmp.([]*model.SyncLogEntry)
 	fc.Result = res
-	return ec.marshalNZPAImportChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportChangeᚄ(ctx, field.Selections, res)
+	return ec.marshalNSyncLogEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncLogEntryᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_zpaImportChanges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_syncLog(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -34004,21 +34090,42 @@ func (ec *executionContext) fieldContext_Query_zpaImportChanges(_ context.Contex
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "kind":
-				return ec.fieldContext_ZPAImportChange_kind(ctx, field)
 			case "time":
-				return ec.fieldContext_ZPAImportChange_time(ctx, field)
+				return ec.fieldContext_SyncLogEntry_time(ctx, field)
+			case "operation":
+				return ec.fieldContext_SyncLogEntry_operation(ctx, field)
+			case "label":
+				return ec.fieldContext_SyncLogEntry_label(ctx, field)
+			case "direction":
+				return ec.fieldContext_SyncLogEntry_direction(ctx, field)
+			case "system":
+				return ec.fieldContext_SyncLogEntry_system(ctx, field)
+			case "ok":
+				return ec.fieldContext_SyncLogEntry_ok(ctx, field)
+			case "summary":
+				return ec.fieldContext_SyncLogEntry_summary(ctx, field)
 			case "added":
-				return ec.fieldContext_ZPAImportChange_added(ctx, field)
+				return ec.fieldContext_SyncLogEntry_added(ctx, field)
 			case "changed":
-				return ec.fieldContext_ZPAImportChange_changed(ctx, field)
+				return ec.fieldContext_SyncLogEntry_changed(ctx, field)
 			case "removed":
-				return ec.fieldContext_ZPAImportChange_removed(ctx, field)
+				return ec.fieldContext_SyncLogEntry_removed(ctx, field)
 			case "entries":
-				return ec.fieldContext_ZPAImportChange_entries(ctx, field)
+				return ec.fieldContext_SyncLogEntry_entries(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAImportChange", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type SyncLogEntry", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_syncLog_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -43242,6 +43349,764 @@ func (ec *executionContext) fieldContext_Subscription_importStudentsFromZPA(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _SyncChangeEntry_type(ctx context.Context, field graphql.CollectedField, obj *model.SyncChangeEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncChangeEntry_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncChangeEntry_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncChangeEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncChangeEntry_name(ctx context.Context, field graphql.CollectedField, obj *model.SyncChangeEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncChangeEntry_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncChangeEntry_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncChangeEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncChangeEntry_fields(ctx context.Context, field graphql.CollectedField, obj *model.SyncChangeEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncChangeEntry_fields(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Fields, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.SyncFieldChange)
+	fc.Result = res
+	return ec.marshalOSyncFieldChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncFieldChangeᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncChangeEntry_fields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncChangeEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "field":
+				return ec.fieldContext_SyncFieldChange_field(ctx, field)
+			case "old":
+				return ec.fieldContext_SyncFieldChange_old(ctx, field)
+			case "new":
+				return ec.fieldContext_SyncFieldChange_new(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncFieldChange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncFieldChange_field(ctx context.Context, field graphql.CollectedField, obj *model.SyncFieldChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncFieldChange_field(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Field, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncFieldChange_field(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncFieldChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncFieldChange_old(ctx context.Context, field graphql.CollectedField, obj *model.SyncFieldChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncFieldChange_old(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Old, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncFieldChange_old(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncFieldChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncFieldChange_new(ctx context.Context, field graphql.CollectedField, obj *model.SyncFieldChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncFieldChange_new(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.New, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncFieldChange_new(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncFieldChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_time(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_time(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Time, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_time(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_operation(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_operation(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Operation, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_operation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_label(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_label(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Label, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_direction(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_direction(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Direction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_direction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_system(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_system(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.System, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_system(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_ok(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_ok(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OK, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_ok(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_summary(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_summary(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Summary, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_summary(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_added(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_added(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Added, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_added(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_changed(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_changed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Changed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_changed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_removed(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_removed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Removed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_removed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncLogEntry_entries(ctx context.Context, field graphql.CollectedField, obj *model.SyncLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SyncLogEntry_entries(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Entries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.SyncChangeEntry)
+	fc.Result = res
+	return ec.marshalOSyncChangeEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncChangeEntryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SyncLogEntry_entries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "type":
+				return ec.fieldContext_SyncChangeEntry_type(ctx, field)
+			case "name":
+				return ec.fieldContext_SyncChangeEntry_name(ctx, field)
+			case "fields":
+				return ec.fieldContext_SyncChangeEntry_fields(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncChangeEntry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Teacher_shortname(ctx context.Context, field graphql.CollectedField, obj *model.Teacher) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Teacher_shortname(ctx, field)
 	if err != nil {
@@ -45571,547 +46436,6 @@ func (ec *executionContext) fieldContext_ZPAExamsForType_exams(_ context.Context
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportChange_kind(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportChange_kind(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Kind, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportChange_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportChange_time(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportChange_time(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Time, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportChange_time(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportChange_added(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportChange_added(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Added, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportChange_added(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportChange_changed(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportChange_changed(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Changed, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportChange_changed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportChange_removed(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportChange_removed(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Removed, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportChange_removed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportChange_entries(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportChange_entries(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Entries, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.ZPAImportChangeEntry)
-	fc.Result = res
-	return ec.marshalNZPAImportChangeEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportChangeEntryᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportChange_entries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "type":
-				return ec.fieldContext_ZPAImportChangeEntry_type(ctx, field)
-			case "name":
-				return ec.fieldContext_ZPAImportChangeEntry_name(ctx, field)
-			case "fields":
-				return ec.fieldContext_ZPAImportChangeEntry_fields(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAImportChangeEntry", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportChangeEntry_type(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportChangeEntry) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportChangeEntry_type(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Type, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportChangeEntry_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportChangeEntry",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportChangeEntry_name(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportChangeEntry) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportChangeEntry_name(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Name, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportChangeEntry_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportChangeEntry",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportChangeEntry_fields(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportChangeEntry) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportChangeEntry_fields(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Fields, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]*model.ZPAImportFieldChange)
-	fc.Result = res
-	return ec.marshalOZPAImportFieldChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportFieldChangeᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportChangeEntry_fields(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportChangeEntry",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "field":
-				return ec.fieldContext_ZPAImportFieldChange_field(ctx, field)
-			case "old":
-				return ec.fieldContext_ZPAImportFieldChange_old(ctx, field)
-			case "new":
-				return ec.fieldContext_ZPAImportFieldChange_new(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAImportFieldChange", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportFieldChange_field(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportFieldChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportFieldChange_field(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Field, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportFieldChange_field(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportFieldChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportFieldChange_old(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportFieldChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportFieldChange_old(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Old, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportFieldChange_old(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportFieldChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ZPAImportFieldChange_new(ctx context.Context, field graphql.CollectedField, obj *model.ZPAImportFieldChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ZPAImportFieldChange_new(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.New, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ZPAImportFieldChange_new(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ZPAImportFieldChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -54762,7 +55086,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "zpaImportChanges":
+		case "syncLog":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -54771,7 +55095,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_zpaImportChanges(ctx, field)
+				res = ec._Query_syncLog(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -56222,6 +56546,187 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	}
 }
 
+var syncChangeEntryImplementors = []string{"SyncChangeEntry"}
+
+func (ec *executionContext) _SyncChangeEntry(ctx context.Context, sel ast.SelectionSet, obj *model.SyncChangeEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, syncChangeEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SyncChangeEntry")
+		case "type":
+			out.Values[i] = ec._SyncChangeEntry_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._SyncChangeEntry_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fields":
+			out.Values[i] = ec._SyncChangeEntry_fields(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var syncFieldChangeImplementors = []string{"SyncFieldChange"}
+
+func (ec *executionContext) _SyncFieldChange(ctx context.Context, sel ast.SelectionSet, obj *model.SyncFieldChange) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, syncFieldChangeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SyncFieldChange")
+		case "field":
+			out.Values[i] = ec._SyncFieldChange_field(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "old":
+			out.Values[i] = ec._SyncFieldChange_old(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "new":
+			out.Values[i] = ec._SyncFieldChange_new(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var syncLogEntryImplementors = []string{"SyncLogEntry"}
+
+func (ec *executionContext) _SyncLogEntry(ctx context.Context, sel ast.SelectionSet, obj *model.SyncLogEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, syncLogEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SyncLogEntry")
+		case "time":
+			out.Values[i] = ec._SyncLogEntry_time(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "operation":
+			out.Values[i] = ec._SyncLogEntry_operation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._SyncLogEntry_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "direction":
+			out.Values[i] = ec._SyncLogEntry_direction(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "system":
+			out.Values[i] = ec._SyncLogEntry_system(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ok":
+			out.Values[i] = ec._SyncLogEntry_ok(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "summary":
+			out.Values[i] = ec._SyncLogEntry_summary(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "added":
+			out.Values[i] = ec._SyncLogEntry_added(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "changed":
+			out.Values[i] = ec._SyncLogEntry_changed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removed":
+			out.Values[i] = ec._SyncLogEntry_removed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "entries":
+			out.Values[i] = ec._SyncLogEntry_entries(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var teacherImplementors = []string{"Teacher"}
 
 func (ec *executionContext) _Teacher(ctx context.Context, sel ast.SelectionSet, obj *model.Teacher) graphql.Marshaler {
@@ -56693,165 +57198,6 @@ func (ec *executionContext) _ZPAExamsForType(ctx context.Context, sel ast.Select
 			}
 		case "exams":
 			out.Values[i] = ec._ZPAExamsForType_exams(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var zPAImportChangeImplementors = []string{"ZPAImportChange"}
-
-func (ec *executionContext) _ZPAImportChange(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAImportChange) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, zPAImportChangeImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ZPAImportChange")
-		case "kind":
-			out.Values[i] = ec._ZPAImportChange_kind(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "time":
-			out.Values[i] = ec._ZPAImportChange_time(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "added":
-			out.Values[i] = ec._ZPAImportChange_added(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "changed":
-			out.Values[i] = ec._ZPAImportChange_changed(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "removed":
-			out.Values[i] = ec._ZPAImportChange_removed(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "entries":
-			out.Values[i] = ec._ZPAImportChange_entries(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var zPAImportChangeEntryImplementors = []string{"ZPAImportChangeEntry"}
-
-func (ec *executionContext) _ZPAImportChangeEntry(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAImportChangeEntry) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, zPAImportChangeEntryImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ZPAImportChangeEntry")
-		case "type":
-			out.Values[i] = ec._ZPAImportChangeEntry_type(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "name":
-			out.Values[i] = ec._ZPAImportChangeEntry_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "fields":
-			out.Values[i] = ec._ZPAImportChangeEntry_fields(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var zPAImportFieldChangeImplementors = []string{"ZPAImportFieldChange"}
-
-func (ec *executionContext) _ZPAImportFieldChange(ctx context.Context, sel ast.SelectionSet, obj *model.ZPAImportFieldChange) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, zPAImportFieldChangeImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ZPAImportFieldChange")
-		case "field":
-			out.Values[i] = ec._ZPAImportFieldChange_field(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "old":
-			out.Values[i] = ec._ZPAImportFieldChange_old(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "new":
-			out.Values[i] = ec._ZPAImportFieldChange_new(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -60481,6 +60827,80 @@ func (ec *executionContext) marshalNStudentRegsPerAncodeAndProgram2ᚖgithubᚗc
 	return ec._StudentRegsPerAncodeAndProgram(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNSyncChangeEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncChangeEntry(ctx context.Context, sel ast.SelectionSet, v *model.SyncChangeEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SyncChangeEntry(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSyncFieldChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncFieldChange(ctx context.Context, sel ast.SelectionSet, v *model.SyncFieldChange) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SyncFieldChange(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSyncLogEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncLogEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SyncLogEntry) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSyncLogEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncLogEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSyncLogEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncLogEntry(ctx context.Context, sel ast.SelectionSet, v *model.SyncLogEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SyncLogEntry(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNTeacher2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx context.Context, sel ast.SelectionSet, v model.Teacher) graphql.Marshaler {
 	return ec._Teacher(ctx, sel, &v)
 }
@@ -60969,124 +61389,6 @@ func (ec *executionContext) marshalNZPAExamsForType2ᚖgithubᚗcomᚋobcodeᚋp
 		return graphql.Null
 	}
 	return ec._ZPAExamsForType(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNZPAImportChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ZPAImportChange) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNZPAImportChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportChange(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNZPAImportChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportChange(ctx context.Context, sel ast.SelectionSet, v *model.ZPAImportChange) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ZPAImportChange(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNZPAImportChangeEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportChangeEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ZPAImportChangeEntry) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNZPAImportChangeEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportChangeEntry(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNZPAImportChangeEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportChangeEntry(ctx context.Context, sel ast.SelectionSet, v *model.ZPAImportChangeEntry) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ZPAImportChangeEntry(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNZPAImportFieldChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportFieldChange(ctx context.Context, sel ast.SelectionSet, v *model.ZPAImportFieldChange) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ZPAImportFieldChange(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNZPAInvigilator2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAInvigilatorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ZPAInvigilator) graphql.Marshaler {
@@ -62513,6 +62815,100 @@ func (ec *executionContext) marshalOStudentRegsPerStudent2ᚖgithubᚗcomᚋobco
 	return ec._StudentRegsPerStudent(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOSyncChangeEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncChangeEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SyncChangeEntry) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSyncChangeEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncChangeEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOSyncFieldChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncFieldChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SyncFieldChange) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSyncFieldChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncFieldChange(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx context.Context, sel ast.SelectionSet, v *model.Teacher) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -62586,53 +62982,6 @@ func (ec *executionContext) marshalOZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._ZPAExam(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOZPAImportFieldChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportFieldChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ZPAImportFieldChange) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNZPAImportFieldChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAImportFieldChange(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) marshalOZPAStudent2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAStudent(ctx context.Context, sel ast.SelectionSet, v *model.ZPAStudent) graphql.Marshaler {

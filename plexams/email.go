@@ -157,8 +157,15 @@ func (p *Plexams) buildMsg(to []string, cc []string, subject string, text, html 
 		if a == nil {
 			continue
 		}
-		if err := msg.AttachReader(a.Filename, bytes.NewReader(a.Content),
-			mail.WithFileContentType(mail.ContentType(a.ContentType))); err != nil {
+		opts := []mail.FileOption{mail.WithFileContentType(mail.ContentType(a.ContentType))}
+		// A message/rfc822 part (a nested .eml) must NOT be base64-encoded
+		// (RFC 2046 §5.2.1); Apple Mail refuses to open it otherwise. Write the
+		// raw message instead (8bit). The message go-mail renders is already
+		// 7-bit clean (base64 + quoted-printable + ASCII headers), so 8bit is safe.
+		if strings.HasPrefix(a.ContentType, "message/rfc822") {
+			opts = append(opts, mail.WithFileEncoding(mail.NoEncoding))
+		}
+		if err := msg.AttachReader(a.Filename, bytes.NewReader(a.Content), opts...); err != nil {
 			return nil, fmt.Errorf("cannot attach %s: %w", a.Filename, err)
 		}
 	}

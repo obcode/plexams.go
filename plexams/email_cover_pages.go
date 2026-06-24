@@ -87,7 +87,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 	coverMailData := &CoverMailData{
 		PlanerName:    p.planer.Name,
 		Teacher:       teacher,
-		GeneratorName: "Edda Eich-Söllner",
+		GeneratorName: "Prof. Dr. Edda Eich-Söllner",
 	}
 
 	tmpl, err := template.ParseFS(emailTemplates, "tmpl/coverPageEmail.tmpl")

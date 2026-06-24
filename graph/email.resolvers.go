@@ -23,154 +23,154 @@ func (r *queryResolver) EmailAttachments(ctx context.Context, kind string) ([]*m
 
 // SendEmailExaHm is the resolver for the sendEmailExaHM field.
 func (r *subscriptionResolver) SendEmailExaHm(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailExaHM(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailConstraints is the resolver for the sendEmailConstraints field.
 func (r *subscriptionResolver) SendEmailConstraints(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailConstraints(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailPrepared is the resolver for the sendEmailPrepared field.
 func (r *subscriptionResolver) SendEmailPrepared(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailPrepared(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailDraft is the resolver for the sendEmailDraft field.
 func (r *subscriptionResolver) SendEmailDraft(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailDraft(run, reporter)
 	}), nil
 }
 
 // SendEmailPublishedExams is the resolver for the sendEmailPublishedExams field.
 func (r *subscriptionResolver) SendEmailPublishedExams(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailPublishedExams(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailPublishedRooms is the resolver for the sendEmailPublishedRooms field.
 func (r *subscriptionResolver) SendEmailPublishedRooms(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailPublishedRooms(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailInvigilations is the resolver for the sendEmailInvigilations field.
 func (r *subscriptionResolver) SendEmailInvigilations(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailInvigilations(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailInvigilationsMissing is the resolver for the sendEmailInvigilationsMissing field.
 func (r *subscriptionResolver) SendEmailInvigilationsMissing(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailInvigilationReqMissing(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailPublishedInvigilations is the resolver for the sendEmailPublishedInvigilations field.
 func (r *subscriptionResolver) SendEmailPublishedInvigilations(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailPublishedInvigilations(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailCoverPages is the resolver for the sendEmailCoverPages field.
 func (r *subscriptionResolver) SendEmailCoverPages(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendCoverPagesMails(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailCoverPage is the resolver for the sendEmailCoverPage field.
 func (r *subscriptionResolver) SendEmailCoverPage(ctx context.Context, teacherID int, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendCoverPageMail(ctx, teacherID, run, reporter)
 	}), nil
 }
 
 // SendEmailRoomRequests is the resolver for the sendEmailRoomRequests field.
 func (r *subscriptionResolver) SendEmailRoomRequests(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailRoomRequests(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailRoomsSecretariat is the resolver for the sendEmailRoomsSecretariat field.
 func (r *subscriptionResolver) SendEmailRoomsSecretariat(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailRoomsSecretariat(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailKdpExahm is the resolver for the sendEmailKdpExahm field.
 func (r *subscriptionResolver) SendEmailKdpExahm(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailKdpExahm(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailLbaRepeaters is the resolver for the sendEmailLbaRepeaters field.
 func (r *subscriptionResolver) SendEmailLbaRepeaters(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailLbaRepeaters(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailInvigilationsSecretariat is the resolver for the sendEmailInvigilationsSecretariat field.
 func (r *subscriptionResolver) SendEmailInvigilationsSecretariat(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendEmailInvigilationsSecretariat(ctx, run, reporter)
 	}), nil
 }
 
 // SendEmailPrimussDataAll is the resolver for the sendEmailPrimussDataAll field.
 func (r *subscriptionResolver) SendEmailPrimussDataAll(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendGeneratedExamMails(ctx, false, run, reporter)
 	}), nil
 }
 
 // SendEmailPrimussData is the resolver for the sendEmailPrimussData field.
 func (r *subscriptionResolver) SendEmailPrimussData(ctx context.Context, ancode int, updated bool, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendGeneratedExamMail(ctx, ancode, updated, run, reporter)
 	}), nil
 }
 
 // SendEmailPrimussDataUnplanned is the resolver for the sendEmailPrimussDataUnplanned field.
 func (r *subscriptionResolver) SendEmailPrimussDataUnplanned(ctx context.Context, program string, ancode int, email string, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendUnplannedExamMail(ctx, program, ancode, email, run, reporter)
 	}), nil
 }
 
 // SendEmailNewNta is the resolver for the sendEmailNewNTA field.
 func (r *subscriptionResolver) SendEmailNewNta(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendMailNewNTA(ctx, mtknr, run, reporter)
 	}), nil
 }
 
 // SendEmailNTARoomAlone is the resolver for the sendEmailNTARoomAlone field.
 func (r *subscriptionResolver) SendEmailNTARoomAlone(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendHandicapsMailsNTARoomAlone(ctx, mtknr, run, reporter)
 	}), nil
 }
 
 // SendEmailNTAPlanned is the resolver for the sendEmailNTAPlanned field.
 func (r *subscriptionResolver) SendEmailNTAPlanned(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
 		return r.plexams.SendHandicapsMailsNTAPlanned(ctx, run, reporter)
 	}), nil
 }

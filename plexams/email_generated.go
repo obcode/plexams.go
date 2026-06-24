@@ -7,7 +7,6 @@ import (
 	"html/template"
 	txttmpl "text/template"
 
-	"github.com/jordan-wright/email"
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -157,19 +156,17 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedE
 			p.semester, generatedExamMailData.Exam.ZpaExam.Module)
 	}
 
-	var attachments []*email.Attachment
+	var attachments []*mailAttachment
 
 	if generatedExamMailData.HasStudentRegs {
-		attachments = make([]*email.Attachment, 0, 1)
-		var attachment *email.Attachment
+		attachments = make([]*mailAttachment, 0, 1)
+		var attachment *mailAttachment
 
 		if generatedExamMailData.HasStudentRegs {
-			attachment = &email.Attachment{
+			attachment = &mailAttachment{
 				Filename:    fmt.Sprintf("Anmeldungen-%d.csv", generatedExamMailData.Exam.Ancode),
 				ContentType: "text/csv; charset=\"utf-8\"",
-				Header:      map[string][]string{},
 				Content:     []byte("Mtknr;Name;Gender;E-Mail;Studiengang;Gruppe\n"),
-				HTMLRelated: false,
 			}
 
 			for _, primussExam := range generatedExamMailData.Exam.PrimussExams {
@@ -213,12 +210,10 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedE
 			return err
 		}
 
-		attachment = &email.Attachment{
+		attachment = &mailAttachment{
 			Filename:    fmt.Sprintf("Anmeldungen-%d.md", generatedExamMailData.Exam.Ancode),
 			ContentType: "text/plain; charset=\"utf-8\"",
-			Header:      map[string][]string{},
 			Content:     bufMD.Bytes(),
-			HTMLRelated: false,
 		}
 		attachments = append(attachments, attachment)
 	}
@@ -254,14 +249,12 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 		p.semester, exam.Module, program)
 
 	if len(studentRegs) > 0 {
-		attachments := make([]*email.Attachment, 0, 1)
+		attachments := make([]*mailAttachment, 0, 1)
 
-		attachment := &email.Attachment{
+		attachment := &mailAttachment{
 			Filename:    fmt.Sprintf("Anmeldungen-%s-%d.csv", program, ancode),
 			ContentType: "text/csv; charset=\"utf-8\"",
-			Header:      map[string][]string{},
 			Content:     []byte("Mtknr;Name;Gender;E-Mail;Studiengang;Gruppe\n"),
-			HTMLRelated: false,
 		}
 
 		for _, studentReg := range studentRegs {

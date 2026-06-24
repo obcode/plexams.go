@@ -12,7 +12,6 @@ import (
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
-	"github.com/jordan-wright/email"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -251,12 +250,10 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		}
 
 		baseName := strings.ReplaceAll(fmt.Sprintf("%s_Aufsichtenplan_%s", p.semester, teacher.Fullname), " ", "_")
-		attachments := []*email.Attachment{{
+		attachments := []*mailAttachment{{
 			Filename:    baseName + ".png",
 			ContentType: "image/png",
-			Header:      map[string][]string{},
 			Content:     pngData,
-			HTMLRelated: false,
 		}}
 
 		// Attach an ICS with the same appointments (own exams, invigilations,
@@ -264,12 +261,10 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		if icsData, err := p.InvigilatorICS(ctx, id); err != nil {
 			reporter.Warnf("%s: cannot build ICS: %v", teacher.Fullname, err)
 		} else {
-			attachments = append(attachments, &email.Attachment{
+			attachments = append(attachments, &mailAttachment{
 				Filename:    baseName + ".ics",
 				ContentType: "text/calendar; charset=utf-8",
-				Header:      map[string][]string{},
 				Content:     icsData,
-				HTMLRelated: false,
 			})
 		}
 

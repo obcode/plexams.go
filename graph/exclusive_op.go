@@ -48,3 +48,26 @@ func (r *subscriptionResolver) runExclusiveOp(
 
 	return ch
 }
+
+// runEmailOp wraps runExclusiveOp for email operations. On a dry run (run ==
+// false) it collects every mail and flushes the whole batch as a single mail of
+// .eml attachments to the test address (see plexams.BeginMailCollection /
+// FlushMailCollection); real sends (run == true) stay individual.
+func (r *subscriptionResolver) runEmailOp(
+	ctx context.Context,
+	run bool,
+	fn func(opCtx context.Context, reporter plexams.Reporter) error,
+) <-chan *model.LogLine {
+	return r.runExclusiveOp(ctx, func(opCtx context.Context, reporter plexams.Reporter) error {
+		if !run {
+			r.plexams.BeginMailCollection()
+		}
+		opErr := fn(opCtx, reporter)
+		if !run {
+			if flushErr := r.plexams.FlushMailCollection(reporter); flushErr != nil && opErr == nil {
+				opErr = flushErr
+			}
+		}
+		return opErr
+	})
+}

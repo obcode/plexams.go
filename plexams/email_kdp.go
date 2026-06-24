@@ -10,7 +10,6 @@ import (
 	txttmpl "text/template"
 	"time"
 
-	"github.com/jordan-wright/email"
 	"github.com/jszwec/csvutil"
 )
 
@@ -320,12 +319,10 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 		return err
 	}
 
-	attachments := []*email.Attachment{{
+	attachments := []*mailAttachment{{
 		Filename:    fmt.Sprintf("%s_EXaHM_SEB_Raeume.csv", strings.ReplaceAll(p.semester, " ", "_")),
 		ContentType: "text/csv; charset=utf-8",
-		Header:      map[string][]string{},
 		Content:     csvBytes,
-		HTMLRelated: false,
 	}}
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] EXaHM/SEB – Raumübersicht für das KDP", p.semester)

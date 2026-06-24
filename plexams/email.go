@@ -6,14 +6,10 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"net/smtp"
-	"net/textproto"
 	"strings"
 
-	// TODO: Ersetzen durch github.com/wneessen/go-mail
-
-	"github.com/jordan-wright/email"
 	"github.com/spf13/viper"
+	"github.com/wneessen/go-mail"
 )
 
 //go:embed tmpl/constraintsEmail.tmpl
@@ -107,22 +103,80 @@ var emailFuncs = map[string]any{
 	"zpaURL":  zpaURL,
 }
 
-func (p *Plexams) SendTestMail() error {
-	e := &email.Email{
-		To:      []string{p.planer.Email},
-		From:    fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email),
-		Subject: "Awesome Subject",
-		Text:    []byte("Text Body is, of course, supported!"),
-		HTML:    []byte("<h1>Fancy HTML is supported, too!</h1>"),
-		Headers: textproto.MIMEHeader{},
-	}
+// mailAttachment is a library-neutral attachment so the rest of the code base
+// does not depend on the concrete mail library. The go-mail dependency stays
+// confined to this file.
+type mailAttachment struct {
+	Filename    string
+	ContentType string
+	Content     []byte
+}
 
-	return e.SendWithStartTLS(fmt.Sprintf("%s:%d", p.email.server, p.email.port),
-		smtp.PlainAuth("", p.email.username, p.email.password, p.email.server),
-		&tls.Config{
-			InsecureSkipVerify: true,
+// newMailClient builds an SMTP client for the configured server. STARTTLS is
+// mandatory (matching the previous SendWithStartTLS behavior); the server
+// certificate is not verified (InsecureSkipVerify), as before.
+func (p *Plexams) newMailClient() (*mail.Client, error) {
+	return mail.NewClient(p.email.server,
+		mail.WithPort(p.email.port),
+		mail.WithSMTPAuth(mail.SMTPAuthPlain),
+		mail.WithUsername(p.email.username),
+		mail.WithPassword(p.email.password),
+		mail.WithTLSPolicy(mail.TLSMandatory),
+		mail.WithTLSConfig(&tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // server uses a self-signed/internal cert
 			ServerName:         p.email.server,
-		})
+		}),
+	)
+}
+
+// buildMsg assembles a go-mail message (From = authenticated planner address,
+// Reply-To per jira). text is the plain-text body, html (if non-empty) the
+// alternative HTML part.
+func (p *Plexams) buildMsg(to []string, cc []string, subject string, text, html []byte, attachments []*mailAttachment, jira bool) (*mail.Msg, error) {
+	msg := mail.NewMsg()
+	if err := msg.FromFormat(p.planer.Name, p.planer.Email); err != nil {
+		return nil, fmt.Errorf("invalid From address: %w", err)
+	}
+	if err := msg.To(to...); err != nil {
+		return nil, fmt.Errorf("invalid To address(es) %v: %w", to, err)
+	}
+	if len(cc) > 0 {
+		if err := msg.Cc(cc...); err != nil {
+			return nil, fmt.Errorf("invalid Cc address(es) %v: %w", cc, err)
+		}
+	}
+	if err := msg.ReplyTo(p.replyToAddress(jira)); err != nil {
+		return nil, fmt.Errorf("invalid Reply-To address: %w", err)
+	}
+	msg.Subject(subject)
+	msg.SetBodyString(mail.TypeTextPlain, string(text))
+	if len(html) > 0 {
+		msg.AddAlternativeString(mail.TypeTextHTML, string(html))
+	}
+	for _, a := range attachments {
+		if a == nil {
+			continue
+		}
+		if err := msg.AttachReader(a.Filename, bytes.NewReader(a.Content),
+			mail.WithFileContentType(mail.ContentType(a.ContentType))); err != nil {
+			return nil, fmt.Errorf("cannot attach %s: %w", a.Filename, err)
+		}
+	}
+	return msg, nil
+}
+
+func (p *Plexams) SendTestMail() error {
+	msg, err := p.buildMsg([]string{p.planer.Email}, nil, "Awesome Subject",
+		[]byte("Text Body is, of course, supported!"),
+		[]byte("<h1>Fancy HTML is supported, too!</h1>"), nil, false)
+	if err != nil {
+		return err
+	}
+	client, err := p.newMailClient()
+	if err != nil {
+		return err
+	}
+	return client.DialAndSend(msg)
 }
 
 // dryRunRecipient is the address all dry-run mails go to: the configured test
@@ -169,9 +223,7 @@ func (p *Plexams) replyToAddress(jira bool) string {
 // (Reply-To = reply address). The From always stays the (authenticated)
 // planner address. On a real send the configured Cc address (smtp.cc) is added
 // to the Cc — it doubles as the planner's filterable self-copy.
-func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, text []byte, html []byte, attachments []*email.Attachment, jira bool) error {
-	actualTo := to
-
+func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, text []byte, html []byte, attachments []*mailAttachment, jira bool) error {
 	// The real Cc of a send: the call-site Cc plus the configured Cc address
 	// (smtp.cc), which also serves as the planner's filterable self-copy. We use
 	// Cc (not Bcc) so these copies can be filtered in Exchange — Bcc is not part
@@ -180,12 +232,31 @@ func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, t
 	if p.email.cc != "" {
 		realCc = append(realCc, p.email.cc)
 	}
+
+	// Probeversand with an active collector: render the mail with its REAL
+	// recipients/subject to an .eml and collect it instead of sending. The whole
+	// batch is later flushed as a single mail of .eml attachments to the test
+	// address (see flushMailCollection).
+	if !run && p.mailCollector != nil {
+		msg, err := p.buildMsg(to, realCc, subject, text, html, attachments, jira)
+		if err != nil {
+			return err
+		}
+		var buf bytes.Buffer
+		if _, err := msg.WriteTo(&buf); err != nil {
+			return fmt.Errorf("cannot render mail to .eml: %w", err)
+		}
+		p.mailCollector.add(to, realCc, subject, buf.Bytes())
+		return nil
+	}
+
+	actualTo := to
 	actualCc := realCc
 
 	if !run {
-		// Probeversand: alles geht an die Test-Adresse. Der Betreff wird mit
-		// den echten Empfängern (An + Cc inkl. smtp.cc) präfixt, damit klar ist,
-		// an wen die E-Mail tatsächlich gegangen wäre.
+		// Probeversand ohne Sammler: alles geht an die Test-Adresse. Der Betreff
+		// wird mit den echten Empfängern (An + Cc inkl. smtp.cc) präfixt, damit
+		// klar ist, an wen die E-Mail tatsächlich gegangen wäre.
 		parts := make([]string, 0, 2)
 		if len(to) > 0 {
 			parts = append(parts, "An: "+strings.Join(to, ", "))
@@ -202,26 +273,108 @@ func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, t
 		actualCc = nil
 	}
 
-	e := &email.Email{
-		To:          actualTo,
-		Cc:          actualCc,
-		From:        fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email),
-		ReplyTo:     []string{p.replyToAddress(jira)},
-		Subject:     subject,
-		Text:        text,
-		HTML:        html,
-		Headers:     textproto.MIMEHeader{},
-		Attachments: attachments,
+	msg, err := p.buildMsg(actualTo, actualCc, subject, text, html, attachments, jira)
+	if err != nil {
+		return err
+	}
+	client, err := p.newMailClient()
+	if err != nil {
+		return err
+	}
+	return client.DialAndSend(msg)
+}
+
+// collectedMail is one mail captured during a bundled dry-run.
+type collectedMail struct {
+	to      []string
+	cc      []string
+	subject string
+	eml     []byte
+}
+
+// mailCollector gathers dry-run mails so they can be flushed as a single
+// summary mail with one .eml attachment each. opGuard guarantees that only one
+// email operation runs at a time, so no locking is needed.
+type mailCollector struct {
+	mails []collectedMail
+}
+
+func (c *mailCollector) add(to, cc []string, subject string, eml []byte) {
+	c.mails = append(c.mails, collectedMail{to: to, cc: cc, subject: subject, eml: eml})
+}
+
+// BeginMailCollection starts collecting dry-run mails (replacing any stale
+// collector). Pair every call with FlushMailCollection.
+func (p *Plexams) BeginMailCollection() {
+	p.mailCollector = &mailCollector{}
+}
+
+// FlushMailCollection sends the collected dry-run mails as a single summary mail
+// (each captured mail attached as an .eml that opens as a real mail in the
+// client) to the dry-run address, then clears the collector. It is a no-op when
+// no collector is active or nothing was collected.
+func (p *Plexams) FlushMailCollection(reporter Reporter) error {
+	collector := p.mailCollector
+	p.mailCollector = nil
+	if collector == nil || len(collector.mails) == 0 {
+		return nil
 	}
 
-	err := e.SendWithStartTLS(fmt.Sprintf("%s:%d", p.email.server, p.email.port),
-		smtp.PlainAuth("", p.email.username, p.email.password, p.email.server),
-		&tls.Config{
-			InsecureSkipVerify: true,
-			ServerName:         p.email.server,
+	attachments := make([]*mailAttachment, 0, len(collector.mails))
+	var list strings.Builder
+	for i, m := range collector.mails {
+		fmt.Fprintf(&list, "%2d. An: %s", i+1, strings.Join(m.to, ", "))
+		if len(m.cc) > 0 {
+			list.WriteString(" | Cc: " + strings.Join(m.cc, ", "))
+		}
+		list.WriteString("\n    " + m.subject + "\n")
+		attachments = append(attachments, &mailAttachment{
+			Filename:    fmt.Sprintf("%02d_%s.eml", i+1, sanitizeFilename(firstOr(m.to, "mail"))),
+			ContentType: "message/rfc822",
+			Content:     m.eml,
 		})
+	}
 
-	return err
+	subject := fmt.Sprintf("[Probeversand] %d E-Mails als .eml-Anhänge", len(collector.mails))
+	text := fmt.Sprintf("Gebündelter Probeversand: %d E-Mails sind als .eml angehängt "+
+		"(je Anhang öffnet sich als echte E-Mail mit den tatsächlichen Empfängern).\n\n%s",
+		len(collector.mails), list.String())
+
+	msg, err := p.buildMsg([]string{p.dryRunRecipient()}, nil, subject, []byte(text), nil, attachments, false)
+	if err != nil {
+		return err
+	}
+	client, err := p.newMailClient()
+	if err != nil {
+		return err
+	}
+	if err := client.DialAndSend(msg); err != nil {
+		return fmt.Errorf("cannot send bundled dry-run mail: %w", err)
+	}
+	reporter.Printf("Probeversand: %d E-Mails als .eml-Anhänge gebündelt an %s gesendet",
+		len(collector.mails), p.dryRunRecipient())
+	return nil
+}
+
+// firstOr returns the first element of s, or def when s is empty (used to label
+// .eml files by their primary recipient).
+func firstOr(s []string, def string) string {
+	if len(s) > 0 && s[0] != "" {
+		return s[0]
+	}
+	return def
+}
+
+// sanitizeFilename keeps a string safe for use as a file name.
+func sanitizeFilename(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_', r == '.', r == '@':
+			return r
+		default:
+			return '_'
+		}
+	}, s)
 }
 
 // renderMailHTML renders the shared HTML layout with the given content template

@@ -31,6 +31,10 @@ type Plexams struct {
 	allSlots []*model.Slot
 	roomInfo map[string]*model.Room
 	guard    *opGuard
+	// mailCollector, when non-nil, captures dry-run mails so a whole batch can be
+	// flushed as a single mail of .eml attachments (see email.go). opGuard ensures
+	// only one email operation runs at a time, so this needs no locking.
+	mailCollector *mailCollector
 }
 
 type ZPA struct {

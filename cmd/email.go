@@ -41,6 +41,16 @@ invigilations-secretariat                     --- tell the secretariat the invig
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
+			// On a dry run, bundle all mails into a single mail of .eml attachments
+			// to the test address instead of sending each separately.
+			if !run {
+				plexams.BeginMailCollection()
+				defer func() {
+					if err := plexams.FlushMailCollection(plx.NewConsoleReporter()); err != nil {
+						log.Printf("cannot flush bundled dry-run mails: %v\n", err)
+					}
+				}()
+			}
 			switch args[0] {
 			case "exahm":
 				err := plexams.SendEmailExaHM(context.Background(), run, plx.NewConsoleReporter())

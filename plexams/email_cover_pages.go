@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jordan-wright/email"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -114,12 +113,10 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		subject,
 		bufText.Bytes(),
 		bufHTML,
-		[]*email.Attachment{{
+		[]*mailAttachment{{
 			Filename:    strings.ReplaceAll(fmt.Sprintf("%s_Deckblaetter_Pruefungen_%s.pdf", p.semester, teacher.Fullname), " ", "_"),
 			ContentType: "application/pdf",
-			Header:      map[string][]string{},
 			Content:     pdfData,
-			HTMLRelated: false,
 		}},
 		false,
 	)

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"time"
-
-	"github.com/jordan-wright/email"
 )
 
 func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool, reporter Reporter) error {
@@ -56,20 +54,16 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool, reporter Repo
 		panic(err)
 	}
 
-	attachments := []*email.Attachment{
+	attachments := []*mailAttachment{
 		{
 			Filename:    "ExamsToPlan.pdf",
 			ContentType: "text/pdf; charset=\"utf-8\"",
-			Header:      map[string][]string{},
 			Content:     examsToPlan.Bytes(),
-			HTMLRelated: false,
 		},
 		{
 			Filename:    "Constraints.pdf",
 			ContentType: "text/pdf; charset=\"utf-8\"",
-			Header:      map[string][]string{},
 			Content:     constraints.Bytes(),
-			HTMLRelated: false,
 		},
 	}
 

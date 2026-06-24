@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"time"
 
-	"github.com/jordan-wright/email"
 	"github.com/rs/zerolog/log"
 )
 
@@ -111,15 +110,13 @@ func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
 		return err
 	}
 
-	attachments := []*email.Attachment{
+	attachments := []*mailAttachment{
 		{
 			Filename: fmt.Sprintf("%s_Vorlaeufiger_Pruefungsplan_FK07_%s.pdf",
 				time.Now().Format("2006-01-02"),
 				string(bytes.ReplaceAll([]byte(p.semester), []byte(" "), []byte("_")))),
 			ContentType: "application/pdf",
-			Header:      map[string][]string{},
 			Content:     bufMD,
-			HTMLRelated: false,
 		},
 	}
 

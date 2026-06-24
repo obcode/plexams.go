@@ -1,6 +1,6 @@
 module github.com/obcode/plexams.go
 
-go 1.24.4
+go 1.25.0
 
 tool github.com/99designs/gqlgen
 
@@ -13,7 +13,6 @@ require (
 	github.com/gookit/color v1.5.4
 	github.com/gorilla/websocket v1.5.0
 	github.com/johnfercher/maroto v1.0.0
-	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/jszwec/csvutil v1.10.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
@@ -23,6 +22,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/theckman/yacspin v0.13.12
 	github.com/vektah/gqlparser/v2 v2.5.30
+	github.com/wneessen/go-mail v0.7.3
 	go.mongodb.org/mongo-driver v1.17.4
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -64,10 +64,10 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/mod v0.25.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
-	golang.org/x/tools v0.34.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/tools v0.44.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )

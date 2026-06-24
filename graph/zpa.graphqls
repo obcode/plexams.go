@@ -11,6 +11,35 @@ extend type Query {
   zpaExam(ancode: Int!): ZPAExam
   zpaAnCodes: [AnCode]
   studentRegsImportErrors: [RegWithError!]!
+  "Recorded change diffs of the most recent ZPA imports (per kind: teachers / exams / invigilatorRequirements)."
+  zpaImportChanges: [ZPAImportChange!]!
+}
+
+"""
+ZPAImportChange is the recorded diff of the most recent ZPA import of one kind
+against the DB state right before it.
+"""
+type ZPAImportChange {
+  kind: String!
+  time: Time!
+  added: Int!
+  changed: Int!
+  removed: Int!
+  entries: [ZPAImportChangeEntry!]!
+}
+
+type ZPAImportChangeEntry {
+  "added | removed | changed"
+  type: String!
+  name: String!
+  "set only for changed entries"
+  fields: [ZPAImportFieldChange!]
+}
+
+type ZPAImportFieldChange {
+  field: String!
+  old: String!
+  new: String!
 }
 
 extend type Mutation {

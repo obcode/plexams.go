@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/zpa"
@@ -12,10 +13,11 @@ import (
 )
 
 // reportImportChanges streams what a ZPA (re-)import changed compared to the
-// previous DB state: new entries, dropped entries, and per-field changes of
-// existing ones (keyed by id). It returns whether anything changed at all.
+// previous DB state (new / dropped entries and per-field changes, keyed by id)
+// and returns the same as a structured record (without Kind/Time, which the
+// caller sets) so it can be persisted.
 func reportImportChanges[T any](reporter Reporter, old, neu []T,
-	id func(T) int, name func(T) string, fields func(T) map[string]string) bool {
+	id func(T) int, name func(T) string, fields func(T) map[string]string) *model.ZPAImportChange {
 	oldByID := make(map[int]T, len(old))
 	for _, o := range old {
 		oldByID[id(o)] = o
@@ -25,7 +27,7 @@ func reportImportChanges[T any](reporter Reporter, old, neu []T,
 		newByID[id(n)] = n
 	}
 
-	added, removed, changed := 0, 0, 0
+	rec := &model.ZPAImportChange{Entries: make([]*model.ZPAImportChangeEntry, 0)}
 
 	newIDs := make([]int, 0, len(newByID))
 	for k := range newByID {
@@ -37,7 +39,8 @@ func reportImportChanges[T any](reporter Reporter, old, neu []T,
 		o, ok := oldByID[k]
 		if !ok {
 			reporter.Printf("  + neu: %s", name(n))
-			added++
+			rec.Entries = append(rec.Entries, &model.ZPAImportChangeEntry{Type: "added", Name: name(n)})
+			rec.Added++
 			continue
 		}
 		of, nf := fields(o), fields(n)
@@ -47,14 +50,17 @@ func reportImportChanges[T any](reporter Reporter, old, neu []T,
 		}
 		sort.Strings(fnames)
 		diffs := make([]string, 0)
+		fieldChanges := make([]*model.ZPAImportFieldChange, 0)
 		for _, f := range fnames {
 			if of[f] != nf[f] {
 				diffs = append(diffs, fmt.Sprintf("%s: %q → %q", f, of[f], nf[f]))
+				fieldChanges = append(fieldChanges, &model.ZPAImportFieldChange{Field: f, Old: of[f], New: nf[f]})
 			}
 		}
 		if len(diffs) > 0 {
 			reporter.Printf("  ~ %s: %s", name(n), strings.Join(diffs, ", "))
-			changed++
+			rec.Entries = append(rec.Entries, &model.ZPAImportChangeEntry{Type: "changed", Name: name(n), Fields: fieldChanges})
+			rec.Changed++
 		}
 	}
 
@@ -66,16 +72,32 @@ func reportImportChanges[T any](reporter Reporter, old, neu []T,
 	for _, k := range oldIDs {
 		if _, ok := newByID[k]; !ok {
 			reporter.Printf("  - entfällt: %s", name(oldByID[k]))
-			removed++
+			rec.Entries = append(rec.Entries, &model.ZPAImportChangeEntry{Type: "removed", Name: name(oldByID[k])})
+			rec.Removed++
 		}
 	}
 
-	if added == 0 && removed == 0 && changed == 0 {
+	if rec.Added == 0 && rec.Removed == 0 && rec.Changed == 0 {
 		reporter.Printf("keine Änderungen gegenüber dem vorherigen Stand")
-		return false
+	} else {
+		reporter.Printf("Änderungen: %d neu, %d geändert, %d entfallen", rec.Added, rec.Changed, rec.Removed)
 	}
-	reporter.Printf("Änderungen: %d neu, %d geändert, %d entfallen", added, changed, removed)
-	return true
+	return rec
+}
+
+// ZPAImportChanges returns the recorded change diffs of the most recent ZPA
+// imports (per kind).
+func (p *Plexams) ZPAImportChanges(ctx context.Context) ([]*model.ZPAImportChange, error) {
+	return p.dbClient.ZPAImportChanges(ctx)
+}
+
+// recordImportChanges sets kind/time and persists the change record (best-effort).
+func (p *Plexams) recordImportChanges(ctx context.Context, kind string, rec *model.ZPAImportChange) {
+	rec.Kind = kind
+	rec.Time = time.Now()
+	if err := p.dbClient.SaveZPAImportChange(ctx, rec); err != nil {
+		log.Error().Err(err).Str("kind", kind).Msg("cannot save zpa import changes")
+	}
 }
 
 // ImportTeachersFromZPA fetches the teachers from ZPA, caches them and streams a
@@ -92,7 +114,7 @@ func (p *Plexams) ImportTeachersFromZPA(ctx context.Context, reporter Reporter) 
 	if err != nil {
 		return 0, err
 	}
-	reportImportChanges(reporter, oldTeachers, teachers,
+	rec := reportImportChanges(reporter, oldTeachers, teachers,
 		func(t *model.Teacher) int { return t.ID },
 		func(t *model.Teacher) string { return fmt.Sprintf("%s (%d)", t.Fullname, t.ID) },
 		func(t *model.Teacher) map[string]string {
@@ -106,6 +128,7 @@ func (p *Plexams) ImportTeachersFromZPA(ctx context.Context, reporter Reporter) 
 				"isActive": fmt.Sprint(t.IsActive),
 			}
 		})
+	p.recordImportChanges(ctx, "teachers", rec)
 	reporter.StopProgress(fmt.Sprintf("fetched %d teachers", len(teachers)))
 	return len(teachers), nil
 }
@@ -124,7 +147,7 @@ func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (in
 	if err != nil {
 		return 0, err
 	}
-	reportImportChanges(reporter, oldExams, exams,
+	rec := reportImportChanges(reporter, oldExams, exams,
 		func(e *model.ZPAExam) int { return e.AnCode },
 		func(e *model.ZPAExam) string { return fmt.Sprintf("%d. %s (%s)", e.AnCode, e.Module, e.MainExamer) },
 		func(e *model.ZPAExam) map[string]string {
@@ -142,6 +165,7 @@ func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (in
 				"groups":   strings.Join(groups, ","),
 			}
 		})
+	p.recordImportChanges(ctx, "exams", rec)
 	p.markCondition(ctx, condZPAImported)
 	reporter.StopProgress(fmt.Sprintf("fetched %d exams", len(exams)))
 	return len(exams), nil
@@ -186,7 +210,7 @@ func (p *Plexams) ImportInvigilatorRequirementsFromZPA(ctx context.Context, repo
 
 	// report what changed; if anything did, rebuild the invigilator todos right
 	// away so the cached snapshot reflects the new requirements (best-effort).
-	changed := reportImportChanges(reporter, oldReqs, reqs,
+	rec := reportImportChanges(reporter, oldReqs, reqs,
 		func(r *zpa.SupervisorRequirements) int { return r.InvigilatorID },
 		func(r *zpa.SupervisorRequirements) string {
 			return fmt.Sprintf("%s (%d)", r.Invigilator, r.InvigilatorID)
@@ -205,7 +229,8 @@ func (p *Plexams) ImportInvigilatorRequirementsFromZPA(ctx context.Context, repo
 				"excludedDates": strings.Join(excl, ","),
 			}
 		})
-	if changed {
+	p.recordImportChanges(ctx, "invigilatorRequirements", rec)
+	if rec.Added+rec.Changed+rec.Removed > 0 {
 		reporter.Step("requirements changed — rebuilding invigilator todos")
 		if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
 			reporter.Warnf("cannot rebuild invigilator todos: %v", err)

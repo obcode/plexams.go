@@ -84,3 +84,8 @@ func (r *queryResolver) ZpaAnCodes(ctx context.Context) ([]*model.AnCode, error)
 func (r *queryResolver) StudentRegsImportErrors(ctx context.Context) ([]*model.RegWithError, error) {
 	return r.plexams.StudentRegsImportErrors(ctx)
 }
+
+// ZpaImportChanges is the resolver for the zpaImportChanges field.
+func (r *queryResolver) ZpaImportChanges(ctx context.Context) ([]*model.ZPAImportChange, error) {
+	return r.plexams.ZPAImportChanges(ctx)
+}

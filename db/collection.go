@@ -29,12 +29,13 @@ const (
 
 	collectionGeneratedExams = "generated_exams"
 
-	collectionGlobalRooms     = "rooms"
-	collectionRoomsForSlots   = "rooms_for_slots"
-	collectionRoomsPrePlanned = "rooms_pre_planned"
-	collectionRoomsPlanned    = "rooms_planned"
-	collectionRoomsUnplaced   = "rooms_unplaced"
-	collectionRoomsBlocked    = "rooms_blocked"
+	collectionGlobalRooms      = "rooms"
+	collectionRoomsForSlots    = "rooms_for_slots"
+	collectionRoomsPrePlanned  = "rooms_pre_planned"
+	collectionRoomsPlanned     = "rooms_planned"
+	collectionRoomsUnplaced    = "rooms_unplaced"
+	collectionZPAImportChanges = "zpa_import_changes"
+	collectionRoomsBlocked     = "rooms_blocked"
 
 	collectionInvigilatorRequirements = "invigilator_requirements"
 	collectionInvigilatorConstraints  = "invigilator_constraints"

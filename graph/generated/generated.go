@@ -383,6 +383,7 @@ type ComplexityRoot struct {
 		DisconnectPreplanExam         func(childComplexity int, id int) int
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
+		GeneratePreplanAssignment     func(childComplexity int, keepAssigned *bool) int
 		Lab                           func(childComplexity int, ancode int) int
 		MigrateInvigilatorConstraints func(childComplexity int) int
 		MigrateRoomRequestsFromConfig func(childComplexity int) int
@@ -595,6 +596,13 @@ type ComplexityRoot struct {
 		Starttime  func(childComplexity int) int
 	}
 
+	PreplanValidation struct {
+		AssignedCount func(childComplexity int) int
+		Messages      func(childComplexity int) int
+		Ok            func(childComplexity int) int
+		UnassignedIDs func(childComplexity int) int
+	}
+
 	PrimussExam struct {
 		AnCode     func(childComplexity int) int
 		ExamType   func(childComplexity int) int
@@ -700,6 +708,7 @@ type ComplexityRoot struct {
 		Teacher                       func(childComplexity int, id int) int
 		Teachers                      func(childComplexity int, fromZpa *bool) int
 		UnplacedExams                 func(childComplexity int) int
+		ValidatePreplanAssignment     func(childComplexity int) int
 		ZpaAnCodes                    func(childComplexity int) int
 		ZpaExam                       func(childComplexity int, ancode int) int
 		ZpaExams                      func(childComplexity int, fromZpa *bool) int
@@ -1134,6 +1143,7 @@ type MutationResolver interface {
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
+	GeneratePreplanAssignment(ctx context.Context, keepAssigned *bool) (*model.PreplanValidation, error)
 	AddPreplanExam(ctx context.Context, input model.PreplanExamInput) (*model.PreplanExam, error)
 	UpdatePreplanExam(ctx context.Context, id int, input model.PreplanExamInput) (*model.PreplanExam, error)
 	DeletePreplanExam(ctx context.Context, id int) (bool, error)
@@ -1219,6 +1229,7 @@ type QueryResolver interface {
 	AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
 	AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
 	PlanningState(ctx context.Context) (*model.PlanningState, error)
+	ValidatePreplanAssignment(ctx context.Context) (*model.PreplanValidation, error)
 	PreplanExams(ctx context.Context) ([]*model.PreplanExam, error)
 	PreplanExam(ctx context.Context, id int) (*model.PreplanExam, error)
 	PreplanExamAncodeSuggestions(ctx context.Context, id int) ([]*model.ZPAExam, error)
@@ -2957,6 +2968,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ExcludeDays(childComplexity, args["ancode"].(int), args["days"].([]string)), true
 
+	case "Mutation.generatePreplanAssignment":
+		if e.complexity.Mutation.GeneratePreplanAssignment == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_generatePreplanAssignment_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.GeneratePreplanAssignment(childComplexity, args["keepAssigned"].(*bool)), true
+
 	case "Mutation.lab":
 		if e.complexity.Mutation.Lab == nil {
 			break
@@ -4156,6 +4179,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreplanSlotNeed.Starttime(childComplexity), true
 
+	case "PreplanValidation.assignedCount":
+		if e.complexity.PreplanValidation.AssignedCount == nil {
+			break
+		}
+
+		return e.complexity.PreplanValidation.AssignedCount(childComplexity), true
+
+	case "PreplanValidation.messages":
+		if e.complexity.PreplanValidation.Messages == nil {
+			break
+		}
+
+		return e.complexity.PreplanValidation.Messages(childComplexity), true
+
+	case "PreplanValidation.ok":
+		if e.complexity.PreplanValidation.Ok == nil {
+			break
+		}
+
+		return e.complexity.PreplanValidation.Ok(childComplexity), true
+
+	case "PreplanValidation.unassignedIDs":
+		if e.complexity.PreplanValidation.UnassignedIDs == nil {
+			break
+		}
+
+		return e.complexity.PreplanValidation.UnassignedIDs(childComplexity), true
+
 	case "PrimussExam.ancode":
 		if e.complexity.PrimussExam.AnCode == nil {
 			break
@@ -4949,6 +5000,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.UnplacedExams(childComplexity), true
+
+	case "Query.validatePreplanAssignment":
+		if e.complexity.Query.ValidatePreplanAssignment == nil {
+			break
+		}
+
+		return e.complexity.Query.ValidatePreplanAssignment(childComplexity), true
 
 	case "Query.zpaAnCodes":
 		if e.complexity.Query.ZpaAnCodes == nil {
@@ -7787,6 +7845,31 @@ extend type Mutation {
   setPlanningCondition(key: String!, done: Boolean!): PlanningState!
 }
 `, BuiltIn: false},
+	{Name: "../preplan_assign.graphqls", Input: `extend type Query {
+  "Validate the current slot assignment of the pre-exams (unassigned, capacity, program overlaps)."
+  validatePreplanAssignment: PreplanValidation!
+}
+
+extend type Mutation {
+  """
+  Generate a slot assignment for the pre-exams (EXaHM/SEB go-slots), minimizing
+  shared study programs per slot and seat overflow. With keepAssigned the
+  already-slotted exams stay put and only the unassigned ones are placed. The new
+  assignment is persisted; the result is its validation.
+  """
+  generatePreplanAssignment(keepAssigned: Boolean): PreplanValidation!
+}
+
+type PreplanValidation {
+  "True when there are no findings (everything assigned, within capacity, no overlaps)."
+  ok: Boolean!
+  assignedCount: Int!
+  "ids of pre-exams without a slot."
+  unassignedIDs: [Int!]!
+  "Human-readable findings (German)."
+  messages: [String!]!
+}
+`, BuiltIn: false},
 	{Name: "../preplan_exam.graphqls", Input: `extend type Query {
   "SEB/EXaHM pre-planning pseudo-exams of this semester."
   preplanExams: [PreplanExam!]!
@@ -9718,6 +9801,34 @@ func (ec *executionContext) field_Mutation_excludeDays_argsDays(
 	}
 
 	var zeroVal []string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_generatePreplanAssignment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_generatePreplanAssignment_argsKeepAssigned(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["keepAssigned"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_generatePreplanAssignment_argsKeepAssigned(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*bool, error) {
+	if _, ok := rawArgs["keepAssigned"]; !ok {
+		var zeroVal *bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("keepAssigned"))
+	if tmp, ok := rawArgs["keepAssigned"]; ok {
+		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+	}
+
+	var zeroVal *bool
 	return zeroVal, nil
 }
 
@@ -24801,6 +24912,71 @@ func (ec *executionContext) fieldContext_Mutation_setPlanningCondition(ctx conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_generatePreplanAssignment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_generatePreplanAssignment(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().GeneratePreplanAssignment(rctx, fc.Args["keepAssigned"].(*bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PreplanValidation)
+	fc.Result = res
+	return ec.marshalNPreplanValidation2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanValidation(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_generatePreplanAssignment(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ok":
+				return ec.fieldContext_PreplanValidation_ok(ctx, field)
+			case "assignedCount":
+				return ec.fieldContext_PreplanValidation_assignedCount(ctx, field)
+			case "unassignedIDs":
+				return ec.fieldContext_PreplanValidation_unassignedIDs(ctx, field)
+			case "messages":
+				return ec.fieldContext_PreplanValidation_messages(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanValidation", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_generatePreplanAssignment_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addPreplanExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_addPreplanExam(ctx, field)
 	if err != nil {
@@ -31846,6 +32022,182 @@ func (ec *executionContext) fieldContext_PreplanSlotNeed_conflicts(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanValidation_ok(ctx context.Context, field graphql.CollectedField, obj *model.PreplanValidation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanValidation_ok(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ok, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanValidation_ok(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanValidation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanValidation_assignedCount(ctx context.Context, field graphql.CollectedField, obj *model.PreplanValidation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanValidation_assignedCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AssignedCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanValidation_assignedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanValidation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanValidation_unassignedIDs(ctx context.Context, field graphql.CollectedField, obj *model.PreplanValidation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanValidation_unassignedIDs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnassignedIDs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanValidation_unassignedIDs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanValidation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanValidation_messages(ctx context.Context, field graphql.CollectedField, obj *model.PreplanValidation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanValidation_messages(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Messages, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanValidation_messages(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanValidation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrimussExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrimussExam_ancode(ctx, field)
 	if err != nil {
@@ -35305,6 +35657,60 @@ func (ec *executionContext) fieldContext_Query_planningState(_ context.Context, 
 				return ec.fieldContext_PlanningState_blockedAreas(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlanningState", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_validatePreplanAssignment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_validatePreplanAssignment(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ValidatePreplanAssignment(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PreplanValidation)
+	fc.Result = res
+	return ec.marshalNPreplanValidation2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanValidation(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_validatePreplanAssignment(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ok":
+				return ec.fieldContext_PreplanValidation_ok(ctx, field)
+			case "assignedCount":
+				return ec.fieldContext_PreplanValidation_assignedCount(ctx, field)
+			case "unassignedIDs":
+				return ec.fieldContext_PreplanValidation_unassignedIDs(ctx, field)
+			case "messages":
+				return ec.fieldContext_PreplanValidation_messages(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanValidation", field.Name)
 		},
 	}
 	return fc, nil
@@ -56827,6 +57233,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "generatePreplanAssignment":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_generatePreplanAssignment(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addPreplanExam":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addPreplanExam(ctx, field)
@@ -58337,6 +58750,60 @@ func (ec *executionContext) _PreplanSlotNeed(ctx context.Context, sel ast.Select
 	return out
 }
 
+var preplanValidationImplementors = []string{"PreplanValidation"}
+
+func (ec *executionContext) _PreplanValidation(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanValidation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanValidationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanValidation")
+		case "ok":
+			out.Values[i] = ec._PreplanValidation_ok(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "assignedCount":
+			out.Values[i] = ec._PreplanValidation_assignedCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unassignedIDs":
+			out.Values[i] = ec._PreplanValidation_unassignedIDs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "messages":
+			out.Values[i] = ec._PreplanValidation_messages(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var primussExamImplementors = []string{"PrimussExam"}
 
 func (ec *executionContext) _PrimussExam(ctx context.Context, sel ast.SelectionSet, obj *model.PrimussExam) graphql.Marshaler {
@@ -59459,6 +59926,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_planningState(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "validatePreplanAssignment":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_validatePreplanAssignment(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -65176,6 +65665,20 @@ func (ec *executionContext) marshalNPreplanSlotNeed2ᚖgithubᚗcomᚋobcodeᚋp
 		return graphql.Null
 	}
 	return ec._PreplanSlotNeed(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPreplanValidation2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanValidation(ctx context.Context, sel ast.SelectionSet, v model.PreplanValidation) graphql.Marshaler {
+	return ec._PreplanValidation(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPreplanValidation2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanValidation(ctx context.Context, sel ast.SelectionSet, v *model.PreplanValidation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanValidation(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPrimussExam2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExam(ctx context.Context, sel ast.SelectionSet, v model.PrimussExam) graphql.Marshaler {

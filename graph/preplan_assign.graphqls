@@ -1,0 +1,24 @@
+extend type Query {
+  "Validate the current slot assignment of the pre-exams (unassigned, capacity, program overlaps)."
+  validatePreplanAssignment: PreplanValidation!
+}
+
+extend type Mutation {
+  """
+  Generate a slot assignment for the pre-exams (EXaHM/SEB go-slots), minimizing
+  shared study programs per slot and seat overflow. With keepAssigned the
+  already-slotted exams stay put and only the unassigned ones are placed. The new
+  assignment is persisted; the result is its validation.
+  """
+  generatePreplanAssignment(keepAssigned: Boolean): PreplanValidation!
+}
+
+type PreplanValidation {
+  "True when there are no findings (everything assigned, within capacity, no overlaps)."
+  ok: Boolean!
+  assignedCount: Int!
+  "ids of pre-exams without a slot."
+  unassignedIDs: [Int!]!
+  "Human-readable findings (German)."
+  messages: [String!]!
+}

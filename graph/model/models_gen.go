@@ -477,6 +477,16 @@ type PreplanSlotNeed struct {
 	Conflicts []*PreplanProgramConflict `json:"conflicts"`
 }
 
+type PreplanValidation struct {
+	// True when there are no findings (everything assigned, within capacity, no overlaps).
+	Ok            bool `json:"ok"`
+	AssignedCount int  `json:"assignedCount"`
+	// ids of pre-exams without a slot.
+	UnassignedIDs []int `json:"unassignedIDs"`
+	// Human-readable findings (German).
+	Messages []string `json:"messages"`
+}
+
 type PrimussExamAncode struct {
 	Ancode        int    `json:"ancode"`
 	Program       string `json:"program"`

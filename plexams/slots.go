@@ -9,14 +9,10 @@ import (
 
 type Slot []int
 
-func PrintGOSlots(semesterConfigSlots []*model.Slot, goSlots [][]int) error {
-	// fmt.Printf("GO Slots: %v\n", p.goSlots())
-	// fmt.Printf("all Slots: %v\n", p.semesterConfig.Slots)
-	// fixedDay := time.Date(2023, 1, 31, 0, 0, 0, 0, time.Local)
-	// fixedTime := time.Date(2023, 1, 31, 12, 30, 0, 0, time.Local)
-	isGo := false
+func PrintMucDaiSlots(semesterConfigSlots []*model.Slot, mucDaiSlots [][]int) error {
+	isMucDai := false
 
-	allowedSlots := CalculatedAllowedSlots(semesterConfigSlots, goSlots, isGo, &model.Constraints{
+	allowedSlots := CalculatedAllowedSlots(semesterConfigSlots, mucDaiSlots, isMucDai, &model.Constraints{
 		ExcludeDays:  []*time.Time{},
 		PossibleDays: []*time.Time{},
 		FixedDay:     nil, // &fixedDay,
@@ -43,14 +39,14 @@ func allSlots(semesterConfigSlots []*model.Slot, allowed bool) map[int]map[int]b
 	return allSlots
 }
 
-func CalculatedAllowedSlots(semesterConfigSlots []*model.Slot, goSlots [][]int, isGO bool, constraints *model.Constraints) []*model.Slot {
+func CalculatedAllowedSlots(semesterConfigSlots []*model.Slot, mucDaiSlots [][]int, isMucDai bool, constraints *model.Constraints) []*model.Slot {
 	allSlotsAllowed := allSlots(semesterConfigSlots, true)
 	noSlotsAllowed := allSlots(semesterConfigSlots, false)
 
 	var slotsMap map[int]map[int]bool
 
-	if isGO {
-		for _, slot := range goSlots {
+	if isMucDai {
+		for _, slot := range mucDaiSlots {
 			dayMap, ok := noSlotsAllowed[slot[0]]
 			if ok {
 				_, ok := dayMap[slot[1]]

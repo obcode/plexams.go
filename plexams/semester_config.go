@@ -54,41 +54,81 @@ func semesterConfigInputFromViper() *model.SemesterConfigInput {
 		}
 	}
 
+	// MUC.DAI slots: prefer the new absolute `mucdaislots`; otherwise convert the
+	// legacy `goslots` (offsets relative to goDay0) to absolute [day, slot].
+	mucDaiSlots := intPairsFromViper("mucdaislots")
+	if len(mucDaiSlots) == 0 {
+		if legacy := intPairsFromViper("goslots"); len(legacy) > 0 {
+			goDay0 := viper.GetTime("semesterConfig.goDay0").Local()
+			mucDaiSlots = absoluteMucDaiSlots(from, goDay0, legacy)
+		}
+	}
+
 	return &model.SemesterConfigInput{
 		From:          from,
 		Until:         viper.GetTime("semesterConfig.until").Local(),
 		Slots:         viper.GetStringSlice("semesterConfig.slots"),
-		GoDay0:        viper.GetTime("semesterConfig.goDay0").Local(),
 		ForbiddenDays: forbiddenDays,
-		GoSlots:       goSlotsFromViper(),
+		MucDaiSlots:   mucDaiSlots,
 		Emails:        emails,
 	}
 }
 
-// goSlotsFromViper reads the top-level goslots block ([][]int) from the YAML.
-func goSlotsFromViper() [][]int {
-	goSlotsRaw, ok := viper.Get("goslots").([]interface{})
+// intPairsFromViper reads a [][]int block from the YAML.
+func intPairsFromViper(key string) [][]int {
+	raw, ok := viper.Get(key).([]interface{})
 	if !ok {
 		return nil
 	}
-	goSlots := make([][]int, 0, len(goSlotsRaw))
-	for _, goSlotRaw := range goSlotsRaw {
-		inner, ok := goSlotRaw.([]interface{})
+	pairs := make([][]int, 0, len(raw))
+	for _, pairRaw := range raw {
+		inner, ok := pairRaw.([]interface{})
 		if !ok {
 			continue
 		}
-		goSlot := make([]int, 0, 2)
+		pair := make([]int, 0, 2)
 		for _, intRaw := range inner {
 			number, ok := intRaw.(int)
 			if !ok {
-				log.Error().Interface("intRaw", intRaw).Msg("cannot convert go slot entry to int")
+				log.Error().Interface("intRaw", intRaw).Msg("cannot convert slot pair entry to int")
 				continue
 			}
-			goSlot = append(goSlot, number)
+			pair = append(pair, number)
 		}
-		goSlots = append(goSlots, goSlot)
+		pairs = append(pairs, pair)
 	}
-	return goSlots
+	return pairs
+}
+
+// weekdayDayNumber returns the 1-based day number of target within the Mon–Fri
+// sequence starting at from (0 when target is a weekend or before from).
+func weekdayDayNumber(from, target time.Time) int {
+	d := time.Date(from.Year(), from.Month(), from.Day(), 12, 0, 0, 0, time.Local)
+	end := time.Date(target.Year(), target.Month(), target.Day(), 12, 0, 0, 0, time.Local)
+	number := 0
+	for !d.After(end) {
+		if d.Weekday() != time.Saturday && d.Weekday() != time.Sunday {
+			number++
+			if d.Year() == end.Year() && d.Month() == end.Month() && d.Day() == end.Day() {
+				return number
+			}
+		}
+		d = d.Add(24 * time.Hour)
+	}
+	return 0
+}
+
+// absoluteMucDaiSlots converts legacy [dayOffsetFromGoDay0, slotNumber] pairs to
+// absolute [dayNumber, slotNumber] pairs (day 1 = from), used for migration.
+func absoluteMucDaiSlots(from, goDay0 time.Time, offsets [][]int) [][]int {
+	dayNumber := weekdayDayNumber(from, goDay0)
+	pairs := make([][]int, 0, len(offsets))
+	for _, o := range offsets {
+		if len(o) >= 2 {
+			pairs = append(pairs, []int{o[0] + dayNumber, o[1]})
+		}
+	}
+	return pairs
 }
 
 // SemesterConfigInput returns the raw, editable per-semester config (source of
@@ -161,9 +201,8 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 		From:          data.From.Local(),
 		Until:         data.Until.Local(),
 		Slots:         data.Slots,
-		GoDay0:        data.GoDay0.Local(),
 		ForbiddenDays: forbiddenDays,
-		GoSlots:       data.GoSlots,
+		MucDaiSlots:   data.MucDaiSlots,
 		Emails:        emails,
 	}
 	if err := validateSemesterConfigInput(input); err != nil {
@@ -201,9 +240,9 @@ func validateSemesterConfigInput(input *model.SemesterConfigInput) error {
 var semesterNameRE = regexp.MustCompile(`^\d{4}-(SS|WS)$`)
 
 // NewSemesterConfigDefaults returns a template for creating a new semester,
-// based on the current semester's stored config (slots, emails, go-slots and — as
-// a starting point — the dates carry over; the planner adjusts the dates). Falls
-// back to minimal defaults when nothing is stored.
+// based on the current semester's stored config (slots, emails, MUC.DAI slots and
+// — as a starting point — the dates carry over; the planner adjusts the dates).
+// Falls back to minimal defaults when nothing is stored.
 func (p *Plexams) NewSemesterConfigDefaults(ctx context.Context) (*model.SemesterConfigInput, error) {
 	input, err := p.SemesterConfigInput(ctx)
 	if err != nil {
@@ -384,32 +423,20 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 		Days:           days,
 		Starttimes:     starttimes,
 		Slots:          slots,
-		GoDay0:         input.GoDay0.Local(),
 		Emails:         input.Emails,
-		GoSlots:        slots,
+		MucDaiSlots:    slots,
 		From:           from,
 		Until:          until,
 		ForbiddenSlots: forbiddenSlots,
 	}
 
-	p.deriveGoSlots(input.GoSlots)
+	p.deriveMucDaiSlots(input.MucDaiSlots)
 }
 
-// deriveGoSlots maps the raw go-slot pairs ([dayOffsetFromGoDay0, slotNumber])
-// onto real slots and stores them on the semester config. The offset maps the
-// GoDay0-relative day indices onto real day numbers (day 1 = from).
-func (p *Plexams) deriveGoSlots(goSlotsRaw [][]int) {
-	p.semesterConfig.GoSlotsRaw = goSlotsRaw
-
-	offset := 0
-	for i, day := range p.allDays {
-		if p.semesterConfig.GoDay0.Year() == day.Date.Year() &&
-			p.semesterConfig.GoDay0.Month() == day.Date.Month() &&
-			p.semesterConfig.GoDay0.Day() == day.Date.Day() {
-			offset = i + 1
-			break
-		}
-	}
+// deriveMucDaiSlots maps the raw MUC.DAI slot pairs ([dayNumber, slotNumber],
+// absolute) onto real slots and stores them on the semester config.
+func (p *Plexams) deriveMucDaiSlots(mucDaiSlotsRaw [][]int) {
+	p.semesterConfig.MucDaiSlotsRaw = mucDaiSlotsRaw
 
 	type slotNumber struct {
 		day, slot int
@@ -419,14 +446,14 @@ func (p *Plexams) deriveGoSlots(goSlotsRaw [][]int) {
 		slotsMap[slotNumber{day: slot.DayNumber, slot: slot.SlotNumber}] = slot
 	}
 
-	goSlots := make([]*model.Slot, 0, len(goSlotsRaw))
-	for _, goSlot := range goSlotsRaw {
-		if len(goSlot) < 2 {
+	mucDaiSlots := make([]*model.Slot, 0, len(mucDaiSlotsRaw))
+	for _, pair := range mucDaiSlotsRaw {
+		if len(pair) < 2 {
 			continue
 		}
-		if slot, ok := slotsMap[slotNumber{day: goSlot[0] + offset, slot: goSlot[1]}]; ok {
-			goSlots = append(goSlots, slot)
+		if slot, ok := slotsMap[slotNumber{day: pair[0], slot: pair[1]}]; ok {
+			mucDaiSlots = append(mucDaiSlots, slot)
 		}
 	}
-	p.semesterConfig.GoSlots = goSlots
+	p.semesterConfig.MucDaiSlots = mucDaiSlots
 }

@@ -142,8 +142,8 @@ func (p *Plexams) SetZPA() error {
 	return nil
 }
 
-func (p *Plexams) GetGoSlots() [][]int {
-	return p.semesterConfig.GoSlotsRaw
+func (p *Plexams) GetMucDaiSlots() [][]int {
+	return p.semesterConfig.MucDaiSlotsRaw
 }
 
 func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
@@ -161,8 +161,7 @@ func (p *Plexams) PrintSemesterConfig() {
 	fmt.Printf("Days: %v\n", p.semesterConfig.Days)
 	fmt.Printf("Starttimes: %v\n", p.semesterConfig.Starttimes)
 	fmt.Printf("Slots: %v\n", p.semesterConfig.Slots)
-	fmt.Printf("GoDay0: %v\n", p.semesterConfig.GoDay0)
-	fmt.Printf("GoSlots: %v\n", p.semesterConfig.GoSlots)
+	fmt.Printf("MUC.DAI-Slots: %v\n", p.semesterConfig.MucDaiSlots)
 	fmt.Printf("Emails: %v\n", p.semesterConfig.Emails)
 }
 

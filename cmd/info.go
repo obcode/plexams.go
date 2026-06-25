@@ -23,14 +23,14 @@ exam [ancode]           --- print info about exam
 exams-without-duration  --- print exams with a duration of 0
 not-planned-by-me       --- print info about exams not planned by me
 samename                --- exams with same module name
-goslots                 --- info about slots for GO/GN
+mucdaislots             --- info about slots for MUC.DAI
 request-rooms           --- which rooms to request
 planned-room [roomname] --- get planned room for roomname
 planned-ancodes		 	--- get planned ancodes
 stats                   --- get statistics
 student-regs ancode     --- get student-reqs for ancode
 student name            --- get info for student.`,
-		ValidArgs: []string{"semester-config", "exam", "samename", "goslots", "request-rooms", "planned-room", "planned-ancodes", "stats", "student-regs", "student"},
+		ValidArgs: []string{"semester-config", "exam", "samename", "mucdaislots", "request-rooms", "planned-room", "planned-ancodes", "stats", "student-regs", "student"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			p := initPlexamsConfig()
@@ -80,8 +80,8 @@ student name            --- get info for student.`,
 				}
 			case "samename":
 				p.PrintSameName()
-			case "goslots":
-				err := plexams.PrintGOSlots(p.GetSemesterConfig().Slots, p.GetGoSlots())
+			case "mucdaislots":
+				err := plexams.PrintMucDaiSlots(p.GetSemesterConfig().Slots, p.GetMucDaiSlots())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

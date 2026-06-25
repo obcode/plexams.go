@@ -647,9 +647,8 @@ type SemesterConfig struct {
 	Days           []*ExamDay   `json:"days"`
 	Starttimes     []*Starttime `json:"starttimes"`
 	Slots          []*Slot      `json:"slots"`
-	GoSlotsRaw     [][]int      `json:"goSlotsRaw,omitempty"`
-	GoSlots        []*Slot      `json:"goSlots"`
-	GoDay0         time.Time    `json:"goDay0"`
+	MucDaiSlotsRaw [][]int      `json:"mucDaiSlotsRaw,omitempty"`
+	MucDaiSlots    []*Slot      `json:"mucDaiSlots"`
 	ForbiddenSlots []*Slot      `json:"forbiddenSlots,omitempty"`
 	From           time.Time    `json:"from"`
 	Until          time.Time    `json:"until"`
@@ -660,10 +659,10 @@ type SemesterConfigInputData struct {
 	From          time.Time    `json:"from"`
 	Until         time.Time    `json:"until"`
 	Slots         []string     `json:"slots"`
-	GoDay0        time.Time    `json:"goDay0"`
 	ForbiddenDays []*time.Time `json:"forbiddenDays,omitempty"`
-	GoSlots       [][]int      `json:"goSlots,omitempty"`
-	Emails        *EmailsInput `json:"emails"`
+	// MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from).
+	MucDaiSlots [][]int      `json:"mucDaiSlots,omitempty"`
+	Emails      *EmailsInput `json:"emails"`
 }
 
 type Slot struct {

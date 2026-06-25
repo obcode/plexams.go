@@ -38,10 +38,9 @@ type SemesterConfigInput {
   until: Time!
   "Daily slot start times as \"HH:MM\"."
   slots: [String!]!
-  goDay0: Time!
   forbiddenDays: [Time!]
-  "[dayOffsetFromGoDay0, slotNumber] pairs."
-  goSlots: [[Int!]!]
+  "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
+  mucDaiSlots: [[Int!]!]
   emails: Emails!
 }
 
@@ -49,9 +48,9 @@ input SemesterConfigInputData {
   from: Time!
   until: Time!
   slots: [String!]!
-  goDay0: Time!
   forbiddenDays: [Time!]
-  goSlots: [[Int!]!]
+  "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
+  mucDaiSlots: [[Int!]!]
   emails: EmailsInput!
 }
 
@@ -85,9 +84,8 @@ type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
   slots: [Slot!]!
-  goSlotsRaw: [[Int!]!]
-  goSlots: [Slot!]!
-  goDay0: Time!
+  mucDaiSlotsRaw: [[Int!]!]
+  mucDaiSlots: [Slot!]!
   forbiddenSlots: [Slot!]
   from: Time!
   until: Time!

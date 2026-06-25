@@ -9,16 +9,16 @@ import (
 )
 
 func TestAllSlots(t *testing.T) {
-	allowedSlots := plexams.CalculatedAllowedSlots(semesterConfigSlots, goSlots, false, &model.Constraints{})
+	allowedSlots := plexams.CalculatedAllowedSlots(semesterConfigSlots, mucDaiSlots, false, &model.Constraints{})
 	if !equalSlots(allowedSlots, allowedSlots) {
 		t.Fatal("all slots != all slots")
 	}
 }
 
-func TestGoSlots(t *testing.T) {
-	allGoSlots := plexams.CalculatedAllowedSlots(semesterConfigSlots, goSlots, true, &model.Constraints{})
-	if !equalIntSlots(goSlots, slotsToIntSlots(allGoSlots)) {
-		t.Fatalf("all GO slots != all GO slots\nwant = %v\ngot = %v", goSlots, slotsToIntSlots(allGoSlots))
+func TestMucDaiSlots(t *testing.T) {
+	allMucDaiSlots := plexams.CalculatedAllowedSlots(semesterConfigSlots, mucDaiSlots, true, &model.Constraints{})
+	if !equalIntSlots(mucDaiSlots, slotsToIntSlots(allMucDaiSlots)) {
+		t.Fatalf("all GO slots != all GO slots\nwant = %v\ngot = %v", mucDaiSlots, slotsToIntSlots(allMucDaiSlots))
 	}
 }
 
@@ -35,7 +35,7 @@ func TestFixedTime(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		slots := plexams.CalculatedAllowedSlots(semesterConfigSlots, goSlots, c.goExam,
+		slots := plexams.CalculatedAllowedSlots(semesterConfigSlots, mucDaiSlots, c.goExam,
 			&model.Constraints{
 				FixedTime: &c.fixedTime,
 			})
@@ -63,7 +63,7 @@ func TestFixedDay(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		slots := plexams.CalculatedAllowedSlots(semesterConfigSlots, goSlots, c.goExam,
+		slots := plexams.CalculatedAllowedSlots(semesterConfigSlots, mucDaiSlots, c.goExam,
 			&model.Constraints{
 				FixedDay: &c.fixedDay,
 			})
@@ -220,7 +220,7 @@ var (
 		{DayNumber: 10, SlotNumber: 5, Starttime: time.Date(2023, 2, 8, 16, 30, 0, 0, time.Local)},
 		{DayNumber: 10, SlotNumber: 6, Starttime: time.Date(2023, 2, 8, 18, 30, 0, 0, time.Local)},
 	}
-	goSlots = [][]int{
+	mucDaiSlots = [][]int{
 		{1, 1},
 		{1, 2},
 		{2, 4},

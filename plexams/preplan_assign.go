@@ -159,9 +159,9 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		return &model.PreplanValidation{Ok: true, Messages: []string{}, UnassignedIDs: []int{}}, nil
 	}
 
-	goSlots := p.semesterConfig.GoSlots
-	if len(goSlots) == 0 {
-		return nil, fmt.Errorf("no go-slots configured for this semester")
+	mucDaiSlots := p.semesterConfig.MucDaiSlots
+	if len(mucDaiSlots) == 0 {
+		return nil, fmt.Errorf("no MUC.DAI slots configured for this semester")
 	}
 	exahmRooms, sebRooms, err := p.preplanRoomCapacities(ctx)
 	if err != nil {
@@ -169,10 +169,10 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	}
 	exahmAvail, sebAvail := totalSeats(exahmRooms), totalSeats(sebRooms)
 
-	// candidate slots = the go-slots
+	// candidate slots = the MUC.DAI slots
 	type slotRef struct{ day, slot int }
-	slots := make([]slotRef, 0, len(goSlots))
-	for _, s := range goSlots {
+	slots := make([]slotRef, 0, len(mucDaiSlots))
+	for _, s := range mucDaiSlots {
 		slots = append(slots, slotRef{day: s.DayNumber, slot: s.SlotNumber})
 	}
 

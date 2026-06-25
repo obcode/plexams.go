@@ -20,7 +20,6 @@ type initDefaults struct {
 	From             string
 	Until            string
 	Slots            []string
-	GoDay0           string
 	ForbiddenDays    []string
 	Profs            string
 	Lbas             string
@@ -67,11 +66,6 @@ var (
 				}
 			}
 
-			goDay0, err := askDate(reader, "goDay0 (YYYY-MM-DD)", defaults.GoDay0)
-			if err != nil {
-				return err
-			}
-
 			forbiddenDays, err := askList(reader, "forbiddenDays (comma separated YYYY-MM-DD, empty allowed)", defaults.ForbiddenDays, false)
 			if err != nil {
 				return err
@@ -116,10 +110,6 @@ var (
 			if err != nil {
 				return fmt.Errorf("cannot parse until date: %w", err)
 			}
-			goDay0Date, err := time.Parse("2006-01-02", goDay0)
-			if err != nil {
-				return fmt.Errorf("cannot parse goDay0 date: %w", err)
-			}
 
 			forbiddenDayTimes := make([]time.Time, 0, len(forbiddenDays))
 			for _, day := range forbiddenDays {
@@ -133,7 +123,6 @@ var (
 			input := &model.SemesterConfigInput{
 				From:          fromDate,
 				Until:         untilDate,
-				GoDay0:        goDay0Date,
 				Slots:         slots,
 				ForbiddenDays: forbiddenDayTimes,
 				Emails: &model.Emails{
@@ -179,10 +168,6 @@ func getInitDefaults() initDefaults {
 
 	if slots := viper.GetStringSlice("semesterConfig.slots"); len(slots) > 0 {
 		defaults.Slots = slots
-	}
-
-	if !viper.GetTime("semesterConfig.goDay0").IsZero() {
-		defaults.GoDay0 = viper.GetTime("semesterConfig.goDay0").Format("2006-01-02")
 	}
 
 	defaults.ForbiddenDays = getDateSliceFromViper("semesterConfig.forbiddenDays")

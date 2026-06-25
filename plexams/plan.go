@@ -373,8 +373,12 @@ func (p *Plexams) PreExamsInSlot(ctx context.Context, day int, time int) ([]*mod
 	for _, planEntry := range planEntries {
 		exam, err := p.GetZPAExam(ctx, planEntry.Ancode)
 		if err != nil {
-			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
-			return nil, err
+			// not a ZPA exam (e.g. a MUC.DAI / non-ZPA exam) — fall back
+			exam, err = p.dbClient.NonZpaExam(ctx, planEntry.Ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam (neither ZPA nor non-ZPA)")
+				return nil, err
+			}
 		}
 		constraints, err := p.ConstraintForAncode(ctx, planEntry.Ancode)
 		if err != nil {

@@ -77,9 +77,13 @@ func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.Valida
 					Int("slot", planEntry.SlotNumber).
 					Msg("cannot rooms for slot")
 			}
+			var allowedRoomNames []string
+			if roomsForSlot != nil {
+				allowedRoomNames = roomsForSlot.RoomNames
+			}
 			for _, prePlannedRoom := range prePlannedRooms {
 				found := false
-				for _, roomInSlot := range roomsForSlot.RoomNames {
+				for _, roomInSlot := range allowedRoomNames {
 					if prePlannedRoom.RoomName == roomInSlot {
 						found = true
 						break

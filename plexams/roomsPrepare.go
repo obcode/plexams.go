@@ -650,6 +650,10 @@ func (p *Plexams) availableRoomsInSlot(ctx context.Context, prepareRoomsCfg *pre
 			Msg("error while trying to get rooms for slot")
 		return nil, err
 	}
+	if slotWithRooms == nil {
+		return nil, fmt.Errorf("no rooms configured for slot (%d/%d)",
+			prepareRoomsCfg.slot.DayNumber, prepareRoomsCfg.slot.SlotNumber)
+	}
 
 	roomNames := set.NewSet(slotWithRooms.RoomNames...).Difference(prepareRoomsCfg.roomsNotUsableInSlot)
 	prepareRoomsCfg.roomsNotUsableInSlot = set.NewSet[string]()

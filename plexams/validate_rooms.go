@@ -68,6 +68,11 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 				Msg("error while getting allowed rooms for slot")
 			return nil, err
 		}
+		if allowedRooms == nil {
+			// no rooms configured for this slot (e.g. a forbidden/pre-period slot) —
+			// treat as "no allowed rooms"; any room planned here is then flagged below.
+			allowedRooms = &model.RoomsForSlot{}
+		}
 		allAllowedRooms, err := p.RoomsFromRoomNames(ctx, allowedRooms.RoomNames)
 		if err != nil {
 			log.Error().Err(err).

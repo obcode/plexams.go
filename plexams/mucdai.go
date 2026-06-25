@@ -9,8 +9,28 @@ import (
 	"github.com/spf13/viper"
 )
 
+// mucdaiProgramNames returns the MUC.DAI program shortnames from the StudyProgram
+// master data (category mucdai); falls back to the config (mucdaiprograms) when no
+// such study programs are stored yet.
+func (p *Plexams) mucdaiProgramNames(ctx context.Context) []string {
+	programs, err := p.dbClient.StudyPrograms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot read study programs for mucdai")
+	}
+	names := make([]string, 0)
+	for _, prog := range programs {
+		if prog.Category == "mucdai" {
+			names = append(names, prog.Shortname)
+		}
+	}
+	if len(names) == 0 {
+		return viper.GetStringSlice("mucdaiprograms")
+	}
+	return names
+}
+
 func (p *Plexams) MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error) {
-	mucdaiPrograms := viper.GetStringSlice("mucdaiprograms")
+	mucdaiPrograms := p.mucdaiProgramNames(ctx)
 
 	exams := make([]*model.MucDaiExam, 0)
 

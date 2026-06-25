@@ -1,0 +1,49 @@
+extend type Query {
+  "SEB/EXaHM pre-planning pseudo-exams of this semester."
+  preplanExams: [PreplanExam!]!
+  preplanExam(id: Int!): PreplanExam
+}
+
+extend type Mutation {
+  addPreplanExam(input: PreplanExamInput!): PreplanExam!
+  updatePreplanExam(id: Int!, input: PreplanExamInput!): PreplanExam!
+  deletePreplanExam(id: Int!): Boolean!
+  """
+  Assign the pre-exam to a slot, or clear it (pass both dayNumber and slotNumber,
+  or neither). The slot must be a real slot of this semester.
+  """
+  setPreplanExamSlot(id: Int!, dayNumber: Int, slotNumber: Int): PreplanExam!
+}
+
+"""
+A manually entered pseudo-exam for the SEB/EXaHM pre-planning, captured before the
+ZPA exam list / Primuss data exist. Linked to a ZPA ancode later (phase 4).
+"""
+type PreplanExam {
+  id: Int!
+  "EXaHM | SEB"
+  examKind: String!
+  examerID: Int!
+  "Snapshot of the examer's name."
+  examerName: String!
+  module: String!
+  "StudyProgram shortnames."
+  programs: [String!]!
+  expectedStudents: Int!
+  duration: Int
+  plannedDayNumber: Int
+  plannedSlotNumber: Int
+  "Set once linked to a real ZPA exam."
+  ancode: Int
+  notes: String
+}
+
+input PreplanExamInput {
+  examKind: String!
+  examerID: Int!
+  module: String!
+  programs: [String!]!
+  expectedStudents: Int!
+  duration: Int
+  notes: String
+}

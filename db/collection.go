@@ -22,9 +22,10 @@ const (
 	collectionStudentRegsPerStudentPlanned = "studentregs_per_student_planned"
 	collectionZpaStudents                  = "zpastudents"
 
-	collectionAll         = "zpaexams"
-	collectionToPlan      = "zpaexamsToPlan"
-	collectionNonZpaExams = "non_zpaexams"
+	collectionAll          = "zpaexams"
+	collectionToPlan       = "zpaexamsToPlan"
+	collectionNonZpaExams  = "non_zpaexams"
+	collectionPreplanExams = "preplan_exams"
 
 	collectionPrimussAncodes = "primuss_ancodes"
 

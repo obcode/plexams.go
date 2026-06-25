@@ -435,6 +435,16 @@ type PrePlannedRoom struct {
 	Seats *int `json:"seats,omitempty"`
 }
 
+type PreplanExamInput struct {
+	ExamKind         string   `json:"examKind"`
+	ExamerID         int      `json:"examerID"`
+	Module           string   `json:"module"`
+	Programs         []string `json:"programs"`
+	ExpectedStudents int      `json:"expectedStudents"`
+	Duration         *int     `json:"duration,omitempty"`
+	Notes            *string  `json:"notes,omitempty"`
+}
+
 type PrimussExamAncode struct {
 	Ancode        int    `json:"ancode"`
 	Program       string `json:"program"`

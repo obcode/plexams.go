@@ -566,6 +566,33 @@ type ComplexityRoot struct {
 		Programs          func(childComplexity int) int
 	}
 
+	PreplanKindNeed struct {
+		ExamCount      func(childComplexity int) int
+		Rooms          func(childComplexity int) int
+		RoomsSuggested func(childComplexity int) int
+		SeatsAvailable func(childComplexity int) int
+		SeatsNeeded    func(childComplexity int) int
+	}
+
+	PreplanOverview struct {
+		Slots func(childComplexity int) int
+	}
+
+	PreplanProgramConflict struct {
+		Modules        func(childComplexity int) int
+		PreplanExamIDs func(childComplexity int) int
+		Program        func(childComplexity int) int
+	}
+
+	PreplanSlotNeed struct {
+		Conflicts  func(childComplexity int) int
+		DayNumber  func(childComplexity int) int
+		Exahm      func(childComplexity int) int
+		Seb        func(childComplexity int) int
+		SlotNumber func(childComplexity int) int
+		Starttime  func(childComplexity int) int
+	}
+
 	PrimussExam struct {
 		AnCode     func(childComplexity int) int
 		ExamType   func(childComplexity int) int
@@ -646,6 +673,7 @@ type ComplexityRoot struct {
 		PrePlannedRooms               func(childComplexity int) int
 		PreplanExam                   func(childComplexity int, id int) int
 		PreplanExams                  func(childComplexity int) int
+		PreplanOverview               func(childComplexity int) int
 		PrimussExam                   func(childComplexity int, program string, ancode int) int
 		PrimussExams                  func(childComplexity int) int
 		PrimussExamsForAnCode         func(childComplexity int, ancode int) int
@@ -1188,6 +1216,7 @@ type QueryResolver interface {
 	PlanningState(ctx context.Context) (*model.PlanningState, error)
 	PreplanExams(ctx context.Context) ([]*model.PreplanExam, error)
 	PreplanExam(ctx context.Context, id int) (*model.PreplanExam, error)
+	PreplanOverview(ctx context.Context) (*model.PreplanOverview, error)
 	PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error)
 	PrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error)
 	PrimussExamsForAnCode(ctx context.Context, ancode int) ([]*model.PrimussExam, error)
@@ -3992,6 +4021,111 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreplanExam.Programs(childComplexity), true
 
+	case "PreplanKindNeed.examCount":
+		if e.complexity.PreplanKindNeed.ExamCount == nil {
+			break
+		}
+
+		return e.complexity.PreplanKindNeed.ExamCount(childComplexity), true
+
+	case "PreplanKindNeed.rooms":
+		if e.complexity.PreplanKindNeed.Rooms == nil {
+			break
+		}
+
+		return e.complexity.PreplanKindNeed.Rooms(childComplexity), true
+
+	case "PreplanKindNeed.roomsSuggested":
+		if e.complexity.PreplanKindNeed.RoomsSuggested == nil {
+			break
+		}
+
+		return e.complexity.PreplanKindNeed.RoomsSuggested(childComplexity), true
+
+	case "PreplanKindNeed.seatsAvailable":
+		if e.complexity.PreplanKindNeed.SeatsAvailable == nil {
+			break
+		}
+
+		return e.complexity.PreplanKindNeed.SeatsAvailable(childComplexity), true
+
+	case "PreplanKindNeed.seatsNeeded":
+		if e.complexity.PreplanKindNeed.SeatsNeeded == nil {
+			break
+		}
+
+		return e.complexity.PreplanKindNeed.SeatsNeeded(childComplexity), true
+
+	case "PreplanOverview.slots":
+		if e.complexity.PreplanOverview.Slots == nil {
+			break
+		}
+
+		return e.complexity.PreplanOverview.Slots(childComplexity), true
+
+	case "PreplanProgramConflict.modules":
+		if e.complexity.PreplanProgramConflict.Modules == nil {
+			break
+		}
+
+		return e.complexity.PreplanProgramConflict.Modules(childComplexity), true
+
+	case "PreplanProgramConflict.preplanExamIDs":
+		if e.complexity.PreplanProgramConflict.PreplanExamIDs == nil {
+			break
+		}
+
+		return e.complexity.PreplanProgramConflict.PreplanExamIDs(childComplexity), true
+
+	case "PreplanProgramConflict.program":
+		if e.complexity.PreplanProgramConflict.Program == nil {
+			break
+		}
+
+		return e.complexity.PreplanProgramConflict.Program(childComplexity), true
+
+	case "PreplanSlotNeed.conflicts":
+		if e.complexity.PreplanSlotNeed.Conflicts == nil {
+			break
+		}
+
+		return e.complexity.PreplanSlotNeed.Conflicts(childComplexity), true
+
+	case "PreplanSlotNeed.dayNumber":
+		if e.complexity.PreplanSlotNeed.DayNumber == nil {
+			break
+		}
+
+		return e.complexity.PreplanSlotNeed.DayNumber(childComplexity), true
+
+	case "PreplanSlotNeed.exahm":
+		if e.complexity.PreplanSlotNeed.Exahm == nil {
+			break
+		}
+
+		return e.complexity.PreplanSlotNeed.Exahm(childComplexity), true
+
+	case "PreplanSlotNeed.seb":
+		if e.complexity.PreplanSlotNeed.Seb == nil {
+			break
+		}
+
+		return e.complexity.PreplanSlotNeed.Seb(childComplexity), true
+
+	case "PreplanSlotNeed.slotNumber":
+		if e.complexity.PreplanSlotNeed.SlotNumber == nil {
+			break
+		}
+
+		return e.complexity.PreplanSlotNeed.SlotNumber(childComplexity), true
+
+	case "PreplanSlotNeed.starttime":
+		if e.complexity.PreplanSlotNeed.Starttime == nil {
+			break
+		}
+
+		return e.complexity.PreplanSlotNeed.Starttime(childComplexity), true
+
 	case "PrimussExam.ancode":
 		if e.complexity.PrimussExam.AnCode == nil {
 			break
@@ -4550,6 +4684,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PreplanExams(childComplexity), true
+
+	case "Query.preplanOverview":
+		if e.complexity.Query.PreplanOverview == nil {
+			break
+		}
+
+		return e.complexity.Query.PreplanOverview(childComplexity), true
 
 	case "Query.primussExam":
 		if e.complexity.Query.PrimussExam == nil {
@@ -7652,6 +7793,47 @@ input PreplanExamInput {
   expectedStudents: Int!
   duration: Int
   notes: String
+}
+`, BuiltIn: false},
+	{Name: "../preplan_overview.graphqls", Input: `extend type Query {
+  """
+  Room-need and program-overlap overview for the SEB/EXaHM pre-planning: per slot
+  (plus one entry with null day/slot for not-yet-slotted pre-exams) the seat demand
+  and a suggested set of rooms per kind, and the program overlaps within the slot.
+  """
+  preplanOverview: PreplanOverview!
+}
+
+type PreplanOverview {
+  slots: [PreplanSlotNeed!]!
+}
+
+type PreplanSlotNeed {
+  "null day/slot = the bucket of pre-exams without a slot yet."
+  dayNumber: Int
+  slotNumber: Int
+  starttime: Time
+  exahm: PreplanKindNeed!
+  seb: PreplanKindNeed!
+  "Programs that appear in more than one pre-exam of this slot (possible clash)."
+  conflicts: [PreplanProgramConflict!]!
+}
+
+type PreplanKindNeed {
+  examCount: Int!
+  seatsNeeded: Int!
+  "Greedily suggested number of rooms of this kind to cover the seats."
+  roomsSuggested: Int!
+  "Names of the suggested rooms (largest first)."
+  rooms: [String!]!
+  "Total seats available across all rooms of this kind (per slot ceiling)."
+  seatsAvailable: Int!
+}
+
+type PreplanProgramConflict {
+  program: String!
+  preplanExamIDs: [Int!]!
+  modules: [String!]!
 }
 `, BuiltIn: false},
 	{Name: "../primuss.graphqls", Input: `extend type Query {
@@ -30644,6 +30826,703 @@ func (ec *executionContext) fieldContext_PreplanExam_notes(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanKindNeed_examCount(ctx context.Context, field graphql.CollectedField, obj *model.PreplanKindNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanKindNeed_examCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanKindNeed_examCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanKindNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanKindNeed_seatsNeeded(ctx context.Context, field graphql.CollectedField, obj *model.PreplanKindNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanKindNeed_seatsNeeded(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SeatsNeeded, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanKindNeed_seatsNeeded(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanKindNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanKindNeed_roomsSuggested(ctx context.Context, field graphql.CollectedField, obj *model.PreplanKindNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanKindNeed_roomsSuggested(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomsSuggested, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanKindNeed_roomsSuggested(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanKindNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanKindNeed_rooms(ctx context.Context, field graphql.CollectedField, obj *model.PreplanKindNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanKindNeed_rooms(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rooms, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanKindNeed_rooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanKindNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanKindNeed_seatsAvailable(ctx context.Context, field graphql.CollectedField, obj *model.PreplanKindNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanKindNeed_seatsAvailable(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SeatsAvailable, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanKindNeed_seatsAvailable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanKindNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanOverview_slots(ctx context.Context, field graphql.CollectedField, obj *model.PreplanOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanOverview_slots(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slots, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PreplanSlotNeed)
+	fc.Result = res
+	return ec.marshalNPreplanSlotNeed2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSlotNeedᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanOverview_slots(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanOverview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_PreplanSlotNeed_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_PreplanSlotNeed_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_PreplanSlotNeed_starttime(ctx, field)
+			case "exahm":
+				return ec.fieldContext_PreplanSlotNeed_exahm(ctx, field)
+			case "seb":
+				return ec.fieldContext_PreplanSlotNeed_seb(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_PreplanSlotNeed_conflicts(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanSlotNeed", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanProgramConflict_program(ctx context.Context, field graphql.CollectedField, obj *model.PreplanProgramConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanProgramConflict_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanProgramConflict_program(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanProgramConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanProgramConflict_preplanExamIDs(ctx context.Context, field graphql.CollectedField, obj *model.PreplanProgramConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanProgramConflict_preplanExamIDs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PreplanExamIDs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanProgramConflict_preplanExamIDs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanProgramConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanProgramConflict_modules(ctx context.Context, field graphql.CollectedField, obj *model.PreplanProgramConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanProgramConflict_modules(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Modules, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanProgramConflict_modules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanProgramConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSlotNeed_dayNumber(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSlotNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSlotNeed_dayNumber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DayNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSlotNeed_dayNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSlotNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSlotNeed_slotNumber(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSlotNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSlotNeed_slotNumber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SlotNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSlotNeed_slotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSlotNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSlotNeed_starttime(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSlotNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSlotNeed_starttime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Starttime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSlotNeed_starttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSlotNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSlotNeed_exahm(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSlotNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSlotNeed_exahm(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exahm, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PreplanKindNeed)
+	fc.Result = res
+	return ec.marshalNPreplanKindNeed2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanKindNeed(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSlotNeed_exahm(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSlotNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "examCount":
+				return ec.fieldContext_PreplanKindNeed_examCount(ctx, field)
+			case "seatsNeeded":
+				return ec.fieldContext_PreplanKindNeed_seatsNeeded(ctx, field)
+			case "roomsSuggested":
+				return ec.fieldContext_PreplanKindNeed_roomsSuggested(ctx, field)
+			case "rooms":
+				return ec.fieldContext_PreplanKindNeed_rooms(ctx, field)
+			case "seatsAvailable":
+				return ec.fieldContext_PreplanKindNeed_seatsAvailable(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanKindNeed", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSlotNeed_seb(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSlotNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSlotNeed_seb(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seb, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PreplanKindNeed)
+	fc.Result = res
+	return ec.marshalNPreplanKindNeed2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanKindNeed(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSlotNeed_seb(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSlotNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "examCount":
+				return ec.fieldContext_PreplanKindNeed_examCount(ctx, field)
+			case "seatsNeeded":
+				return ec.fieldContext_PreplanKindNeed_seatsNeeded(ctx, field)
+			case "roomsSuggested":
+				return ec.fieldContext_PreplanKindNeed_roomsSuggested(ctx, field)
+			case "rooms":
+				return ec.fieldContext_PreplanKindNeed_rooms(ctx, field)
+			case "seatsAvailable":
+				return ec.fieldContext_PreplanKindNeed_seatsAvailable(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanKindNeed", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSlotNeed_conflicts(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSlotNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSlotNeed_conflicts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Conflicts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PreplanProgramConflict)
+	fc.Result = res
+	return ec.marshalNPreplanProgramConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanProgramConflictᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSlotNeed_conflicts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSlotNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "program":
+				return ec.fieldContext_PreplanProgramConflict_program(ctx, field)
+			case "preplanExamIDs":
+				return ec.fieldContext_PreplanProgramConflict_preplanExamIDs(ctx, field)
+			case "modules":
+				return ec.fieldContext_PreplanProgramConflict_modules(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanProgramConflict", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrimussExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrimussExam_ancode(ctx, field)
 	if err != nil {
@@ -34252,6 +35131,54 @@ func (ec *executionContext) fieldContext_Query_preplanExam(ctx context.Context, 
 	if fc.Args, err = ec.field_Query_preplanExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_preplanOverview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_preplanOverview(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PreplanOverview(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PreplanOverview)
+	fc.Result = res
+	return ec.marshalNPreplanOverview2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanOverview(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_preplanOverview(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "slots":
+				return ec.fieldContext_PreplanOverview_slots(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanOverview", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -56790,6 +57717,208 @@ func (ec *executionContext) _PreplanExam(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var preplanKindNeedImplementors = []string{"PreplanKindNeed"}
+
+func (ec *executionContext) _PreplanKindNeed(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanKindNeed) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanKindNeedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanKindNeed")
+		case "examCount":
+			out.Values[i] = ec._PreplanKindNeed_examCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seatsNeeded":
+			out.Values[i] = ec._PreplanKindNeed_seatsNeeded(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomsSuggested":
+			out.Values[i] = ec._PreplanKindNeed_roomsSuggested(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rooms":
+			out.Values[i] = ec._PreplanKindNeed_rooms(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seatsAvailable":
+			out.Values[i] = ec._PreplanKindNeed_seatsAvailable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var preplanOverviewImplementors = []string{"PreplanOverview"}
+
+func (ec *executionContext) _PreplanOverview(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanOverview) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanOverviewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanOverview")
+		case "slots":
+			out.Values[i] = ec._PreplanOverview_slots(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var preplanProgramConflictImplementors = []string{"PreplanProgramConflict"}
+
+func (ec *executionContext) _PreplanProgramConflict(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanProgramConflict) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanProgramConflictImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanProgramConflict")
+		case "program":
+			out.Values[i] = ec._PreplanProgramConflict_program(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "preplanExamIDs":
+			out.Values[i] = ec._PreplanProgramConflict_preplanExamIDs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modules":
+			out.Values[i] = ec._PreplanProgramConflict_modules(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var preplanSlotNeedImplementors = []string{"PreplanSlotNeed"}
+
+func (ec *executionContext) _PreplanSlotNeed(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanSlotNeed) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanSlotNeedImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanSlotNeed")
+		case "dayNumber":
+			out.Values[i] = ec._PreplanSlotNeed_dayNumber(ctx, field, obj)
+		case "slotNumber":
+			out.Values[i] = ec._PreplanSlotNeed_slotNumber(ctx, field, obj)
+		case "starttime":
+			out.Values[i] = ec._PreplanSlotNeed_starttime(ctx, field, obj)
+		case "exahm":
+			out.Values[i] = ec._PreplanSlotNeed_exahm(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seb":
+			out.Values[i] = ec._PreplanSlotNeed_seb(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "conflicts":
+			out.Values[i] = ec._PreplanSlotNeed_conflicts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var primussExamImplementors = []string{"PrimussExam"}
 
 func (ec *executionContext) _PrimussExam(ctx context.Context, sel ast.SelectionSet, obj *model.PrimussExam) graphql.Marshaler {
@@ -57956,6 +59085,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_preplanExam(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "preplanOverview":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_preplanOverview(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -63453,6 +64604,138 @@ func (ec *executionContext) marshalNPreplanExam2ᚖgithubᚗcomᚋobcodeᚋplexa
 func (ec *executionContext) unmarshalNPreplanExamInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanExamInput(ctx context.Context, v any) (model.PreplanExamInput, error) {
 	res, err := ec.unmarshalInputPreplanExamInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPreplanKindNeed2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanKindNeed(ctx context.Context, sel ast.SelectionSet, v *model.PreplanKindNeed) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanKindNeed(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPreplanOverview2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanOverview(ctx context.Context, sel ast.SelectionSet, v model.PreplanOverview) graphql.Marshaler {
+	return ec._PreplanOverview(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPreplanOverview2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanOverview(ctx context.Context, sel ast.SelectionSet, v *model.PreplanOverview) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanOverview(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPreplanProgramConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanProgramConflictᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreplanProgramConflict) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPreplanProgramConflict2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanProgramConflict(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPreplanProgramConflict2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanProgramConflict(ctx context.Context, sel ast.SelectionSet, v *model.PreplanProgramConflict) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanProgramConflict(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPreplanSlotNeed2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSlotNeedᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreplanSlotNeed) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPreplanSlotNeed2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSlotNeed(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPreplanSlotNeed2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSlotNeed(ctx context.Context, sel ast.SelectionSet, v *model.PreplanSlotNeed) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanSlotNeed(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPrimussExam2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPrimussExam(ctx context.Context, sel ast.SelectionSet, v model.PrimussExam) graphql.Marshaler {

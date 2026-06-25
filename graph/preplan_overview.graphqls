@@ -1,0 +1,40 @@
+extend type Query {
+  """
+  Room-need and program-overlap overview for the SEB/EXaHM pre-planning: per slot
+  (plus one entry with null day/slot for not-yet-slotted pre-exams) the seat demand
+  and a suggested set of rooms per kind, and the program overlaps within the slot.
+  """
+  preplanOverview: PreplanOverview!
+}
+
+type PreplanOverview {
+  slots: [PreplanSlotNeed!]!
+}
+
+type PreplanSlotNeed {
+  "null day/slot = the bucket of pre-exams without a slot yet."
+  dayNumber: Int
+  slotNumber: Int
+  starttime: Time
+  exahm: PreplanKindNeed!
+  seb: PreplanKindNeed!
+  "Programs that appear in more than one pre-exam of this slot (possible clash)."
+  conflicts: [PreplanProgramConflict!]!
+}
+
+type PreplanKindNeed {
+  examCount: Int!
+  seatsNeeded: Int!
+  "Greedily suggested number of rooms of this kind to cover the seats."
+  roomsSuggested: Int!
+  "Names of the suggested rooms (largest first)."
+  rooms: [String!]!
+  "Total seats available across all rooms of this kind (per slot ceiling)."
+  seatsAvailable: Int!
+}
+
+type PreplanProgramConflict {
+  program: String!
+  preplanExamIDs: [Int!]!
+  modules: [String!]!
+}

@@ -445,6 +445,38 @@ type PreplanExamInput struct {
 	Notes            *string  `json:"notes,omitempty"`
 }
 
+type PreplanKindNeed struct {
+	ExamCount   int `json:"examCount"`
+	SeatsNeeded int `json:"seatsNeeded"`
+	// Greedily suggested number of rooms of this kind to cover the seats.
+	RoomsSuggested int `json:"roomsSuggested"`
+	// Names of the suggested rooms (largest first).
+	Rooms []string `json:"rooms"`
+	// Total seats available across all rooms of this kind (per slot ceiling).
+	SeatsAvailable int `json:"seatsAvailable"`
+}
+
+type PreplanOverview struct {
+	Slots []*PreplanSlotNeed `json:"slots"`
+}
+
+type PreplanProgramConflict struct {
+	Program        string   `json:"program"`
+	PreplanExamIDs []int    `json:"preplanExamIDs"`
+	Modules        []string `json:"modules"`
+}
+
+type PreplanSlotNeed struct {
+	// null day/slot = the bucket of pre-exams without a slot yet.
+	DayNumber  *int             `json:"dayNumber,omitempty"`
+	SlotNumber *int             `json:"slotNumber,omitempty"`
+	Starttime  *time.Time       `json:"starttime,omitempty"`
+	Exahm      *PreplanKindNeed `json:"exahm"`
+	Seb        *PreplanKindNeed `json:"seb"`
+	// Programs that appear in more than one pre-exam of this slot (possible clash).
+	Conflicts []*PreplanProgramConflict `json:"conflicts"`
+}
+
 type PrimussExamAncode struct {
 	Ancode        int    `json:"ancode"`
 	Program       string `json:"program"`

@@ -43,16 +43,25 @@ func semesterConfigInputFromViper() *model.SemesterConfigInput {
 		}
 	}
 
+	// `from` now has the semantics of the former `fromFK07` (day 1 = from, no
+	// pre-period). For a legacy YAML the planning start is the former numbering
+	// anchor: `from` when dayNumberStart was "from", otherwise `fromFK07` — this
+	// keeps existing day numbers stable.
+	from := viper.GetTime("semesterConfig.from").Local()
+	if viper.GetString("semesterConfig.dayNumberStart") != "from" {
+		if fromFK07 := viper.GetTime("semesterConfig.fromFK07").Local(); !fromFK07.IsZero() {
+			from = fromFK07
+		}
+	}
+
 	return &model.SemesterConfigInput{
-		From:           viper.GetTime("semesterConfig.from").Local(),
-		FromFk07:       viper.GetTime("semesterConfig.fromFK07").Local(),
-		Until:          viper.GetTime("semesterConfig.until").Local(),
-		DayNumberStart: viper.GetString("semesterConfig.dayNumberStart"),
-		Slots:          viper.GetStringSlice("semesterConfig.slots"),
-		GoDay0:         viper.GetTime("semesterConfig.goDay0").Local(),
-		ForbiddenDays:  forbiddenDays,
-		GoSlots:        goSlotsFromViper(),
-		Emails:         emails,
+		From:          from,
+		Until:         viper.GetTime("semesterConfig.until").Local(),
+		Slots:         viper.GetStringSlice("semesterConfig.slots"),
+		GoDay0:        viper.GetTime("semesterConfig.goDay0").Local(),
+		ForbiddenDays: forbiddenDays,
+		GoSlots:       goSlotsFromViper(),
+		Emails:        emails,
 	}
 }
 
@@ -126,11 +135,6 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 		return nil, fmt.Errorf("no config provided")
 	}
 
-	dayNumberStart := ""
-	if data.DayNumberStart != nil {
-		dayNumberStart = *data.DayNumberStart
-	}
-
 	forbiddenDays := make([]time.Time, 0, len(data.ForbiddenDays))
 	for _, d := range data.ForbiddenDays {
 		if d != nil {
@@ -154,15 +158,13 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 	}
 
 	input := &model.SemesterConfigInput{
-		From:           data.From.Local(),
-		FromFk07:       data.FromFk07.Local(),
-		Until:          data.Until.Local(),
-		DayNumberStart: dayNumberStart,
-		Slots:          data.Slots,
-		GoDay0:         data.GoDay0.Local(),
-		ForbiddenDays:  forbiddenDays,
-		GoSlots:        data.GoSlots,
-		Emails:         emails,
+		From:          data.From.Local(),
+		Until:         data.Until.Local(),
+		Slots:         data.Slots,
+		GoDay0:        data.GoDay0.Local(),
+		ForbiddenDays: forbiddenDays,
+		GoSlots:       data.GoSlots,
+		Emails:        emails,
 	}
 	if err := validateSemesterConfigInput(input); err != nil {
 		return nil, err
@@ -175,13 +177,9 @@ func validateSemesterConfigInput(input *model.SemesterConfigInput) error {
 	if input == nil {
 		return fmt.Errorf("no config provided")
 	}
-	if input.From.After(input.FromFk07) {
-		return fmt.Errorf("from (%s) must not be after fromFK07 (%s)",
-			input.From.Format("2006-01-02"), input.FromFk07.Format("2006-01-02"))
-	}
-	if input.FromFk07.After(input.Until) {
-		return fmt.Errorf("fromFK07 (%s) must not be after until (%s)",
-			input.FromFk07.Format("2006-01-02"), input.Until.Format("2006-01-02"))
+	if input.From.After(input.Until) {
+		return fmt.Errorf("from (%s) must not be after until (%s)",
+			input.From.Format("2006-01-02"), input.Until.Format("2006-01-02"))
 	}
 	if len(input.Slots) == 0 {
 		return fmt.Errorf("at least one slot start time is required")
@@ -203,9 +201,9 @@ func validateSemesterConfigInput(input *model.SemesterConfigInput) error {
 var semesterNameRE = regexp.MustCompile(`^\d{4}-(SS|WS)$`)
 
 // NewSemesterConfigDefaults returns a template for creating a new semester,
-// based on the current semester's stored config (slots, emails, go-slots,
-// dayNumberStart and — as a starting point — the dates carry over; the planner
-// adjusts the dates). Falls back to minimal defaults when nothing is stored.
+// based on the current semester's stored config (slots, emails, go-slots and — as
+// a starting point — the dates carry over; the planner adjusts the dates). Falls
+// back to minimal defaults when nothing is stored.
 func (p *Plexams) NewSemesterConfigDefaults(ctx context.Context) (*model.SemesterConfigInput, error) {
 	input, err := p.SemesterConfigInput(ctx)
 	if err != nil {
@@ -278,11 +276,8 @@ func (p *Plexams) semesterConfigChangeWarnings(ctx context.Context, input *model
 		return warnings
 	}
 
-	if !old.FromFk07.Equal(input.FromFk07) {
-		warnings = append(warnings, "fromFK07 geändert: gespeicherte Tag-Nummern im Plan verschieben sich.")
-	}
 	if !old.From.Equal(input.From) {
-		warnings = append(warnings, "from geändert: bei Tag-Nummerierung ab 'from' verschieben sich gespeicherte Tag-Nummern.")
+		warnings = append(warnings, "from geändert: gespeicherte Tag-Nummern im Plan verschieben sich.")
 	}
 	if len(old.Starttimes) != len(input.Slots) {
 		warnings = append(warnings, "Anzahl der Slots geändert: gespeicherte Slot-Nummern im Plan können ungültig werden.")
@@ -296,6 +291,9 @@ func (p *Plexams) semesterConfigChangeWarnings(ctx context.Context, input *model
 func (p *Plexams) loadSemesterConfig(ctx context.Context) {
 	var input *model.SemesterConfigInput
 	if p.dbClient != nil {
+		if err := p.dbClient.MigrateLegacySemesterConfigInput(ctx); err != nil {
+			log.Error().Err(err).Msg("cannot migrate legacy semester config input")
+		}
 		var err error
 		input, err = p.dbClient.GetSemesterConfigInput(ctx)
 		if err != nil {
@@ -324,31 +322,20 @@ func (p *Plexams) loadSemesterConfig(ctx context.Context) {
 	p.deriveSemesterConfig(input)
 }
 
-// deriveSemesterConfig computes the runtime SemesterConfig (full + windowed days
-// and slots, forbidden slots, go-slots) from the raw input and stores it on p
-// (semesterConfig, allDays, allSlots). input must be non-nil.
+// deriveSemesterConfig computes the runtime SemesterConfig (days, slots, forbidden
+// slots, go-slots) from the raw input and stores it on p (semesterConfig, allDays,
+// allSlots). Day 1 = from; there is no pre-period. input must be non-nil.
 func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 	from := input.From.Local()
-	fromFK07 := input.FromFk07.Local()
 	until := input.Until.Local()
 
-	// Day numbering starts at the anchor. By default the anchor is fromFK07, so
-	// day 1 = fromFK07 and the pre-period does not exist at all. A semester whose
-	// plan is already stored with day 1 = `from` opts into the legacy numbering by
-	// setting dayNumberStart == "from"; the window then simply starts at a higher
-	// number while those stored numbers stay valid.
-	anchor := fromFK07
-	if input.DayNumberStart == "from" {
-		anchor = from
-	}
-
-	// Full list of days from the anchor through until, no saturdays, no sundays.
-	allDays := make([]*model.ExamDay, 0)
-	day := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 12, 0, 0, 0, time.Local)
+	// Days from `from` through until, no saturdays, no sundays; day 1 = from.
+	days := make([]*model.ExamDay, 0)
+	day := time.Date(from.Year(), from.Month(), from.Day(), 12, 0, 0, 0, time.Local)
 	number := 1
 	for !day.After(until.Add(23 * time.Hour)) {
 		if day.Weekday() != time.Saturday && day.Weekday() != time.Sunday {
-			allDays = append(allDays, &model.ExamDay{
+			days = append(days, &model.ExamDay{
 				Number: number,
 				Date:   time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local),
 			})
@@ -365,13 +352,13 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 		})
 	}
 
-	allSlots := make([]*model.Slot, 0, len(allDays)*len(starttimes))
-	for _, day := range allDays {
+	slots := make([]*model.Slot, 0, len(days)*len(starttimes))
+	for _, day := range days {
 		for _, starttime := range starttimes {
 			start := strings.Split(starttime.Start, ":")
 			hour, _ := strconv.Atoi(start[0])
 			minute, _ := strconv.Atoi(start[1])
-			allSlots = append(allSlots, &model.Slot{
+			slots = append(slots, &model.Slot{
 				DayNumber:  day.Number,
 				SlotNumber: starttime.Number,
 				Starttime:  time.Date(day.Date.Year(), day.Date.Month(), day.Date.Day(), hour, minute, 0, 0, time.Local),
@@ -379,25 +366,9 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 		}
 	}
 
-	// Planning window: only days/slots on or after fromFK07.
-	fromFK07Day := time.Date(fromFK07.Year(), fromFK07.Month(), fromFK07.Day(), 0, 0, 0, 0, time.Local)
-	days := make([]*model.ExamDay, 0, len(allDays))
-	for _, d := range allDays {
-		if !d.Date.Before(fromFK07Day) {
-			days = append(days, d)
-		}
-	}
-	slots := make([]*model.Slot, 0, len(allSlots))
-	for _, s := range allSlots {
-		if !s.Starttime.Before(fromFK07Day) {
-			slots = append(slots, s)
-		}
-	}
+	p.allDays = days
+	p.allSlots = slots
 
-	p.allDays = allDays
-	p.allSlots = allSlots
-
-	// Forbidden slots are only meaningful inside the planning window.
 	forbiddenSlots := make([]*model.Slot, 0)
 	for _, forbiddenDay := range input.ForbiddenDays {
 		for _, slot := range slots {
@@ -417,7 +388,6 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 		Emails:         input.Emails,
 		GoSlots:        slots,
 		From:           from,
-		FromFk07:       fromFK07,
 		Until:          until,
 		ForbiddenSlots: forbiddenSlots,
 	}
@@ -427,8 +397,7 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 
 // deriveGoSlots maps the raw go-slot pairs ([dayOffsetFromGoDay0, slotNumber])
 // onto real slots and stores them on the semester config. The offset maps the
-// GoDay0-relative day indices onto real day numbers, computed against the full
-// (anchor-based) day list.
+// GoDay0-relative day indices onto real day numbers (day 1 = from).
 func (p *Plexams) deriveGoSlots(goSlotsRaw [][]int) {
 	p.semesterConfig.GoSlotsRaw = goSlotsRaw
 

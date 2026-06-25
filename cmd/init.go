@@ -18,7 +18,6 @@ import (
 
 type initDefaults struct {
 	From             string
-	FromFK07         string
 	Until            string
 	Slots            []string
 	GoDay0           string
@@ -50,10 +49,6 @@ var (
 			fmt.Println()
 
 			from, err := askDate(reader, "from (YYYY-MM-DD)", defaults.From)
-			if err != nil {
-				return err
-			}
-			fromFK07, err := askDate(reader, "fromFK07 (YYYY-MM-DD)", defaults.FromFK07)
 			if err != nil {
 				return err
 			}
@@ -117,10 +112,6 @@ var (
 			if err != nil {
 				return fmt.Errorf("cannot parse from date: %w", err)
 			}
-			fromFK07Date, err := time.Parse("2006-01-02", fromFK07)
-			if err != nil {
-				return fmt.Errorf("cannot parse fromFK07 date: %w", err)
-			}
 			untilDate, err := time.Parse("2006-01-02", until)
 			if err != nil {
 				return fmt.Errorf("cannot parse until date: %w", err)
@@ -141,7 +132,6 @@ var (
 
 			input := &model.SemesterConfigInput{
 				From:          fromDate,
-				FromFk07:      fromFK07Date,
 				Until:         untilDate,
 				GoDay0:        goDay0Date,
 				Slots:         slots,
@@ -182,9 +172,6 @@ func getInitDefaults() initDefaults {
 
 	if !viper.GetTime("semesterConfig.from").IsZero() {
 		defaults.From = viper.GetTime("semesterConfig.from").Format("2006-01-02")
-	}
-	if !viper.GetTime("semesterConfig.fromFK07").IsZero() {
-		defaults.FromFK07 = viper.GetTime("semesterConfig.fromFK07").Format("2006-01-02")
 	}
 	if !viper.GetTime("semesterConfig.until").IsZero() {
 		defaults.Until = viper.GetTime("semesterConfig.until").Format("2006-01-02")

@@ -10,7 +10,6 @@ import (
 
 type ConstraintsEmail struct {
 	FromDate     string
-	FromFK07Date string
 	UntilDate    string
 	FeedbackDate string
 	PlanerName   string
@@ -26,7 +25,6 @@ func (p *Plexams) SendEmailConstraints(ctx context.Context, run bool, reporter R
 
 	contraintsEmailData := &ConstraintsEmail{
 		FromDate:     p.semesterConfig.From.Format("02.01.06"),
-		FromFK07Date: p.semesterConfig.FromFk07.Format("02.01.06"),
 		UntilDate:    p.semesterConfig.Until.Format("02.01.06"),
 		PlanerName:   p.planer.Name,
 		FeedbackDate: feedbackDate,

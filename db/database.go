@@ -86,6 +86,43 @@ func databaseNameForSemester(semester string) string {
 	return strings.Replace(semester, " ", "-", 1)
 }
 
+// MigrateLegacySemesterConfigInput rewrites a stored config that still carries the
+// removed fromFK07 / dayNumberStart fields: `from` is set to the former numbering
+// anchor (from when dayNumberStart == "from", else fromFK07) so existing plan day
+// numbers stay stable, and the legacy fields are dropped. No-op otherwise.
+func (db *DB) MigrateLegacySemesterConfigInput(ctx context.Context) error {
+	collection := db.getCollectionSemester(collectionNameSemesterConfigInput)
+
+	var doc bson.M
+	err := collection.FindOne(ctx, bson.M{}).Decode(&doc)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil
+		}
+		return err
+	}
+	fromFK07, hasFK07 := doc["fromFK07"]
+	_, hasDayNumberStart := doc["dayNumberStart"]
+	if !hasFK07 && !hasDayNumberStart {
+		return nil
+	}
+
+	set := bson.M{}
+	if dns, _ := doc["dayNumberStart"].(string); dns != "from" && hasFK07 {
+		set["from"] = fromFK07
+	}
+	update := bson.M{"$unset": bson.M{"fromFK07": "", "dayNumberStart": ""}}
+	if len(set) > 0 {
+		update["$set"] = set
+	}
+	if _, err := collection.UpdateOne(ctx, bson.M{"_id": doc["_id"]}, update); err != nil {
+		log.Error().Err(err).Msg("cannot migrate legacy semester config input")
+		return err
+	}
+	log.Info().Msg("migrated legacy semester config (removed fromFK07/dayNumberStart)")
+	return nil
+}
+
 // SaveSemesterConfigInput replaces the stored raw per-semester config.
 func (db *DB) SaveSemesterConfigInput(ctx context.Context, input *model.SemesterConfigInput) error {
 	collection := db.getCollectionSemester(collectionNameSemesterConfigInput)

@@ -103,7 +103,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 	log.Debug().Int("ancode", exam.Ancode).Bool("hasStudentRegs", hasStudentRegs).Msg("found student regs for exam")
 
 	if err := p.sendGeneratedExamMailToTeacher(run, to, &GeneratedExamMailData{
-		FromFK07Date:   p.semesterConfig.FromFk07.Format("02.01.2006"),
+		FromDate:       p.semesterConfig.From.Format("02.01.2006"),
 		ToDate:         p.semesterConfig.Days[len(p.semesterConfig.Days)-1].Date.Format("02.01.2006"),
 		Exam:           exam,
 		Teacher:        teacher,
@@ -118,7 +118,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 }
 
 type GeneratedExamMailData struct {
-	FromFK07Date   string
+	FromDate       string
 	ToDate         string
 	Exam           *model.GeneratedExam
 	Teacher        *model.Teacher

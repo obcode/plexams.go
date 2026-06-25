@@ -20,11 +20,10 @@ type Plexams struct {
 	planer         *Planer
 	email          *Email
 	semesterConfig *model.SemesterConfig
-	// allDays/allSlots hold the FULL list of days/slots from the numbering anchor
-	// (usually `from`) through `until`, numbered from day 1. semesterConfig.Days /
-	// .Slots only hold the planning window (date >= fromFK07). Code that resolves a
-	// stored day number (incl. days before fromFK07, e.g. external exams of other
-	// faculties) or indexes by day number must use these full lists.
+	// allDays/allSlots hold the list of days/slots from `from` (day 1) through
+	// `until`. They currently equal semesterConfig.Days/.Slots (there is no
+	// pre-period anymore); kept as separate fields for the callers that resolve a
+	// stored day number or index by day number.
 	allDays  []*model.ExamDay
 	allSlots []*model.Slot
 	roomInfo map[string]*model.Room

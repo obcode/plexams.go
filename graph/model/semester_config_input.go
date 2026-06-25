@@ -8,12 +8,11 @@ import "time"
 // go-slots, forbidden slots) is computed in deriveSemesterConfig. It is
 // persisted in the per-semester DB (collection semester_config_input).
 type SemesterConfigInput struct {
-	From     time.Time `json:"from" bson:"from"`
-	FromFk07 time.Time `json:"fromFK07" bson:"fromFK07"`
-	Until    time.Time `json:"until" bson:"until"`
-	// DayNumberStart == "from" numbers days from `from` (legacy plans); empty (or
-	// anything else) numbers from fromFK07.
-	DayNumberStart string `json:"dayNumberStart,omitempty" bson:"dayNumberStart,omitempty"`
+	// From is the start of the planning period; day 1 = from. Exams of other
+	// faculties may have earlier dates (or a negative day number); there is no
+	// pre-period and no check for that.
+	From  time.Time `json:"from" bson:"from"`
+	Until time.Time `json:"until" bson:"until"`
 	// Slots are the daily slot start times as "HH:MM".
 	Slots  []string  `json:"slots" bson:"slots"`
 	GoDay0 time.Time `json:"goDay0" bson:"goDay0"`

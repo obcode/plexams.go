@@ -33,11 +33,9 @@ that used to live in <semester>.yaml. The derived SemesterConfig is computed fro
 it.
 """
 type SemesterConfigInput {
+  "Start of the planning period; day 1 = from. Exams of other faculties may lie earlier (no check)."
   from: Time!
-  fromFK07: Time!
   until: Time!
-  "\"from\" numbers days from `from` (legacy plans); otherwise from fromFK07."
-  dayNumberStart: String
   "Daily slot start times as \"HH:MM\"."
   slots: [String!]!
   goDay0: Time!
@@ -49,9 +47,7 @@ type SemesterConfigInput {
 
 input SemesterConfigInputData {
   from: Time!
-  fromFK07: Time!
   until: Time!
-  dayNumberStart: String
   slots: [String!]!
   goDay0: Time!
   forbiddenDays: [Time!]
@@ -94,7 +90,6 @@ type SemesterConfig {
   goDay0: Time!
   forbiddenSlots: [Slot!]
   from: Time!
-  fromFK07: Time!
   until: Time!
   emails: Emails!
 }

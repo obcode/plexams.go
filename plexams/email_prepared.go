@@ -18,7 +18,6 @@ func (p *Plexams) SendEmailPrepared(ctx context.Context, run bool, reporter Repo
 
 	contraintsEmailData := &ConstraintsEmail{
 		FromDate:     p.semesterConfig.From.Format("02.01.06"),
-		FromFK07Date: p.semesterConfig.FromFk07.Format("02.01.06"),
 		UntilDate:    p.semesterConfig.Until.Format("02.01.06"),
 		PlanerName:   p.planer.Name,
 		FeedbackDate: feedbackDate,

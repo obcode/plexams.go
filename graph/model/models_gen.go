@@ -652,21 +652,18 @@ type SemesterConfig struct {
 	GoDay0         time.Time    `json:"goDay0"`
 	ForbiddenSlots []*Slot      `json:"forbiddenSlots,omitempty"`
 	From           time.Time    `json:"from"`
-	FromFk07       time.Time    `json:"fromFK07"`
 	Until          time.Time    `json:"until"`
 	Emails         *Emails      `json:"emails"`
 }
 
 type SemesterConfigInputData struct {
-	From           time.Time    `json:"from"`
-	FromFk07       time.Time    `json:"fromFK07"`
-	Until          time.Time    `json:"until"`
-	DayNumberStart *string      `json:"dayNumberStart,omitempty"`
-	Slots          []string     `json:"slots"`
-	GoDay0         time.Time    `json:"goDay0"`
-	ForbiddenDays  []*time.Time `json:"forbiddenDays,omitempty"`
-	GoSlots        [][]int      `json:"goSlots,omitempty"`
-	Emails         *EmailsInput `json:"emails"`
+	From          time.Time    `json:"from"`
+	Until         time.Time    `json:"until"`
+	Slots         []string     `json:"slots"`
+	GoDay0        time.Time    `json:"goDay0"`
+	ForbiddenDays []*time.Time `json:"forbiddenDays,omitempty"`
+	GoSlots       [][]int      `json:"goSlots,omitempty"`
+	Emails        *EmailsInput `json:"emails"`
 }
 
 type Slot struct {

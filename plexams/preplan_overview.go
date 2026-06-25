@@ -58,6 +58,19 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 		return keys[i].slot < keys[j].slot
 	})
 
+	// Anny bookings already made for the slotted slots, so we can show what is
+	// still missing.
+	slotKeys := make([][2]int, 0)
+	for _, key := range keys {
+		if key.slotted {
+			slotKeys = append(slotKeys, [2]int{key.day, key.slot})
+		}
+	}
+	booked, err := p.annyBookedBySlot(ctx, slotKeys)
+	if err != nil {
+		return nil, err
+	}
+
 	slots := make([]*model.PreplanSlotNeed, 0, len(keys))
 	for _, key := range keys {
 		exams := groups[key]
@@ -74,11 +87,25 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 			if start, err := p.GetStarttime(day, slot); err == nil {
 				need.Starttime = start
 			}
+			if sb := booked[[2]int{day, slot}]; sb != nil {
+				applyBooking(need.Exahm, sb.exahmSeats, exahmRooms, sb.rooms)
+				applyBooking(need.Seb, sb.sebSeats, sebRooms, sb.rooms)
+			}
 		}
 		slots = append(slots, need)
 	}
 
 	return &model.PreplanOverview{Slots: slots}, nil
+}
+
+// applyBooking fills the booked seats and the still-to-book rooms for one kind.
+func applyBooking(need *model.PreplanKindNeed, bookedSeats int, rooms []roomCapacity, bookedRooms map[string]bool) {
+	need.SeatsBooked = bookedSeats
+	gap := need.SeatsNeeded - bookedSeats
+	if gap < 0 {
+		gap = 0
+	}
+	need.RoomsToBook = roomsToBook(rooms, gap, bookedRooms)
 }
 
 // preplanRoomCapacities returns the usable EXaHM and SEB rooms (sorted by seats
@@ -143,6 +170,8 @@ func kindNeed(exams []*model.PreplanExam, kind string, rooms []roomCapacity, ava
 		RoomsSuggested: len(roomNames),
 		Rooms:          roomNames,
 		SeatsAvailable: available,
+		SeatsBooked:    0,
+		RoomsToBook:    []string{},
 	}
 }
 

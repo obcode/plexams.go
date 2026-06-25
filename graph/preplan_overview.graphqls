@@ -31,6 +31,10 @@ type PreplanKindNeed {
   rooms: [String!]!
   "Total seats available across all rooms of this kind (per slot ceiling)."
   seatsAvailable: Int!
+  "Seats already booked in Anny for this slot (0 for the unslotted bucket)."
+  seatsBooked: Int!
+  "Rooms still to book in Anny to cover the demand (largest first); empty when enough is booked."
+  roomsToBook: [String!]!
 }
 
 type PreplanProgramConflict {

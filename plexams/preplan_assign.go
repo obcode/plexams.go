@@ -29,11 +29,26 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 	if err != nil {
 		return nil, err
 	}
-	return validatePreplan(preExams, totalSeats(exahmRooms), totalSeats(sebRooms)), nil
+
+	slotKeys := make([][2]int, 0)
+	for _, pe := range preExams {
+		if pe.PlannedDayNumber != nil && pe.PlannedSlotNumber != nil {
+			slotKeys = append(slotKeys, [2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber})
+		}
+	}
+	booked, err := p.annyBookedBySlot(ctx, slotKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	return validatePreplan(preExams, exahmRooms, sebRooms, booked), nil
 }
 
 // validatePreplan builds the validation result from an in-memory set of pre-exams.
-func validatePreplan(preExams []*model.PreplanExam, exahmAvail, sebAvail int) *model.PreplanValidation {
+// booked (Anny bookings per slot) may be nil; when present, missing bookings are
+// reported so the planner can book step by step.
+func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomCapacity, booked map[[2]int]*slotBooking) *model.PreplanValidation {
+	exahmAvail, sebAvail := totalSeats(exahmRooms), totalSeats(sebRooms)
 	messages := make([]string, 0)
 
 	unassigned := make([]int, 0)
@@ -72,14 +87,14 @@ func validatePreplan(preExams []*model.PreplanExam, exahmAvail, sebAvail int) *m
 				seb += pe.ExpectedStudents
 			}
 		}
-		if exahm > exahmAvail {
-			messages = append(messages, fmt.Sprintf("Slot %d/%d: EXaHM %d Plätze nötig, nur %d verfügbar",
-				key[0], key[1], exahm, exahmAvail))
+
+		var sb *slotBooking
+		if booked != nil {
+			sb = booked[key]
 		}
-		if seb > sebAvail {
-			messages = append(messages, fmt.Sprintf("Slot %d/%d: SEB %d Plätze nötig, nur %d verfügbar",
-				key[0], key[1], seb, sebAvail))
-		}
+		messages = append(messages, kindBookingMessages(key, "EXaHM", exahm, exahmAvail, exahmRooms, sb)...)
+		messages = append(messages, kindBookingMessages(key, "SEB", seb, sebAvail, sebRooms, sb)...)
+
 		for _, c := range programConflicts(exams) {
 			messages = append(messages, fmt.Sprintf("Slot %d/%d: Studiengang %s in %d Prüfungen (%s)",
 				key[0], key[1], c.Program, len(c.PreplanExamIDs), joinStrings(c.Modules)))
@@ -93,6 +108,41 @@ func validatePreplan(preExams []*model.PreplanExam, exahmAvail, sebAvail int) *m
 		UnassignedIDs: unassigned,
 		Messages:      messages,
 	}
+}
+
+// kindBookingMessages reports, for one slot and kind, a physical-capacity overflow
+// (can't fit even fully booked) or — when within capacity — the Anny bookings still
+// missing to cover the demand.
+func kindBookingMessages(key [2]int, kind string, needed, available int, rooms []roomCapacity, sb *slotBooking) []string {
+	if needed == 0 {
+		return nil
+	}
+	if needed > available {
+		return []string{fmt.Sprintf("Slot %d/%d: %s %d Plätze nötig, nur %d verfügbar (Kapazität reicht nicht)",
+			key[0], key[1], kind, needed, available)}
+	}
+
+	bookedSeats := 0
+	var bookedRooms map[string]bool
+	if sb != nil {
+		bookedRooms = sb.rooms
+		if kind == "EXaHM" {
+			bookedSeats = sb.exahmSeats
+		} else {
+			bookedSeats = sb.sebSeats
+		}
+	}
+	if bookedSeats >= needed {
+		return nil
+	}
+
+	toBook := roomsToBook(rooms, needed-bookedSeats, bookedRooms)
+	msg := fmt.Sprintf("Slot %d/%d: %s noch %d Plätze zu buchen (gebucht %d von %d nötig)",
+		key[0], key[1], kind, needed-bookedSeats, bookedSeats, needed)
+	if len(toBook) > 0 {
+		msg += " — z. B. " + joinStrings(toBook)
+	}
+	return []string{msg}
 }
 
 // GeneratePreplanAssignment assigns the pre-exams to the EXaHM/SEB go-slots,
@@ -258,7 +308,18 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 	}
 
-	return validatePreplan(preExams, exahmAvail, sebAvail), nil
+	slotKeys := make([][2]int, 0)
+	for _, pe := range preExams {
+		if pe.PlannedDayNumber != nil && pe.PlannedSlotNumber != nil {
+			slotKeys = append(slotKeys, [2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber})
+		}
+	}
+	booked, err := p.annyBookedBySlot(ctx, slotKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	return validatePreplan(preExams, exahmRooms, sebRooms, booked), nil
 }
 
 func joinStrings(s []string) string {

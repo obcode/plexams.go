@@ -454,6 +454,10 @@ type PreplanKindNeed struct {
 	Rooms []string `json:"rooms"`
 	// Total seats available across all rooms of this kind (per slot ceiling).
 	SeatsAvailable int `json:"seatsAvailable"`
+	// Seats already booked in Anny for this slot (0 for the unslotted bucket).
+	SeatsBooked int `json:"seatsBooked"`
+	// Rooms still to book in Anny to cover the demand (largest first); empty when enough is booked.
+	RoomsToBook []string `json:"roomsToBook"`
 }
 
 type PreplanOverview struct {

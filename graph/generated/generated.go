@@ -573,7 +573,9 @@ type ComplexityRoot struct {
 		ExamCount      func(childComplexity int) int
 		Rooms          func(childComplexity int) int
 		RoomsSuggested func(childComplexity int) int
+		RoomsToBook    func(childComplexity int) int
 		SeatsAvailable func(childComplexity int) int
+		SeatsBooked    func(childComplexity int) int
 		SeatsNeeded    func(childComplexity int) int
 	}
 
@@ -4095,12 +4097,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreplanKindNeed.RoomsSuggested(childComplexity), true
 
+	case "PreplanKindNeed.roomsToBook":
+		if e.complexity.PreplanKindNeed.RoomsToBook == nil {
+			break
+		}
+
+		return e.complexity.PreplanKindNeed.RoomsToBook(childComplexity), true
+
 	case "PreplanKindNeed.seatsAvailable":
 		if e.complexity.PreplanKindNeed.SeatsAvailable == nil {
 			break
 		}
 
 		return e.complexity.PreplanKindNeed.SeatsAvailable(childComplexity), true
+
+	case "PreplanKindNeed.seatsBooked":
+		if e.complexity.PreplanKindNeed.SeatsBooked == nil {
+			break
+		}
+
+		return e.complexity.PreplanKindNeed.SeatsBooked(childComplexity), true
 
 	case "PreplanKindNeed.seatsNeeded":
 		if e.complexity.PreplanKindNeed.SeatsNeeded == nil {
@@ -7965,6 +7981,10 @@ type PreplanKindNeed {
   rooms: [String!]!
   "Total seats available across all rooms of this kind (per slot ceiling)."
   seatsAvailable: Int!
+  "Seats already booked in Anny for this slot (0 for the unslotted bucket)."
+  seatsBooked: Int!
+  "Rooms still to book in Anny to cover the demand (largest first); empty when enough is booked."
+  roomsToBook: [String!]!
 }
 
 type PreplanProgramConflict {
@@ -31545,6 +31565,94 @@ func (ec *executionContext) fieldContext_PreplanKindNeed_seatsAvailable(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanKindNeed_seatsBooked(ctx context.Context, field graphql.CollectedField, obj *model.PreplanKindNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanKindNeed_seatsBooked(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SeatsBooked, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanKindNeed_seatsBooked(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanKindNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanKindNeed_roomsToBook(ctx context.Context, field graphql.CollectedField, obj *model.PreplanKindNeed) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanKindNeed_roomsToBook(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomsToBook, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanKindNeed_roomsToBook(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanKindNeed",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreplanOverview_slots(ctx context.Context, field graphql.CollectedField, obj *model.PreplanOverview) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreplanOverview_slots(ctx, field)
 	if err != nil {
@@ -31907,6 +32015,10 @@ func (ec *executionContext) fieldContext_PreplanSlotNeed_exahm(_ context.Context
 				return ec.fieldContext_PreplanKindNeed_rooms(ctx, field)
 			case "seatsAvailable":
 				return ec.fieldContext_PreplanKindNeed_seatsAvailable(ctx, field)
+			case "seatsBooked":
+				return ec.fieldContext_PreplanKindNeed_seatsBooked(ctx, field)
+			case "roomsToBook":
+				return ec.fieldContext_PreplanKindNeed_roomsToBook(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanKindNeed", field.Name)
 		},
@@ -31963,6 +32075,10 @@ func (ec *executionContext) fieldContext_PreplanSlotNeed_seb(_ context.Context, 
 				return ec.fieldContext_PreplanKindNeed_rooms(ctx, field)
 			case "seatsAvailable":
 				return ec.fieldContext_PreplanKindNeed_seatsAvailable(ctx, field)
+			case "seatsBooked":
+				return ec.fieldContext_PreplanKindNeed_seatsBooked(ctx, field)
+			case "roomsToBook":
+				return ec.fieldContext_PreplanKindNeed_roomsToBook(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanKindNeed", field.Name)
 		},
@@ -58581,6 +58697,16 @@ func (ec *executionContext) _PreplanKindNeed(ctx context.Context, sel ast.Select
 			}
 		case "seatsAvailable":
 			out.Values[i] = ec._PreplanKindNeed_seatsAvailable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seatsBooked":
+			out.Values[i] = ec._PreplanKindNeed_seatsBooked(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomsToBook":
+			out.Values[i] = ec._PreplanKindNeed_roomsToBook(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

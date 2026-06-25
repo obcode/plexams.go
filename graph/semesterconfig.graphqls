@@ -1,7 +1,8 @@
 type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
-  semesterConfig: SemesterConfig!
+  "null when the semester has no config yet (fresh/empty DB) — create it via createSemester / init."
+  semesterConfig: SemesterConfig
   "The raw, editable per-semester config (source of truth for the derived semesterConfig)."
   semesterConfigInput: SemesterConfigInput
   """

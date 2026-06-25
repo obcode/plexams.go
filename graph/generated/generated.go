@@ -8354,7 +8354,8 @@ extend type Mutation {
 	{Name: "../semesterconfig.graphqls", Input: `type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
-  semesterConfig: SemesterConfig!
+  "null when the semester has no config yet (fresh/empty DB) — create it via createSemester / init."
+  semesterConfig: SemesterConfig
   "The raw, editable per-semester config (source of truth for the derived semesterConfig)."
   semesterConfigInput: SemesterConfigInput
   """
@@ -33462,14 +33463,11 @@ func (ec *executionContext) _Query_semesterConfig(ctx context.Context, field gra
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.SemesterConfig)
 	fc.Result = res
-	return ec.marshalNSemesterConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfig(ctx, field.Selections, res)
+	return ec.marshalOSemesterConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfig(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -59345,16 +59343,13 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		case "semesterConfig":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Query_semesterConfig(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -66750,20 +66745,6 @@ func (ec *executionContext) marshalNSemester2ᚖgithubᚗcomᚋobcodeᚋplexams�
 	return ec._Semester(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNSemesterConfig2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfig(ctx context.Context, sel ast.SelectionSet, v model.SemesterConfig) graphql.Marshaler {
-	return ec._SemesterConfig(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNSemesterConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfig(ctx context.Context, sel ast.SelectionSet, v *model.SemesterConfig) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._SemesterConfig(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNSemesterConfigInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfigInput(ctx context.Context, sel ast.SelectionSet, v model.SemesterConfigInput) graphql.Marshaler {
 	return ec._SemesterConfigInput(ctx, sel, &v)
 }
@@ -69018,6 +68999,13 @@ func (ec *executionContext) marshalORoomsForSlot2ᚖgithubᚗcomᚋobcodeᚋplex
 		return graphql.Null
 	}
 	return ec._RoomsForSlot(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSemesterConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfig(ctx context.Context, sel ast.SelectionSet, v *model.SemesterConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SemesterConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOSemesterConfigInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfigInput(ctx context.Context, sel ast.SelectionSet, v *model.SemesterConfigInput) graphql.Marshaler {

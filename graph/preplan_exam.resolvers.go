@@ -30,6 +30,16 @@ func (r *mutationResolver) SetPreplanExamSlot(ctx context.Context, id int, dayNu
 	return r.plexams.SetPreplanExamSlot(ctx, id, dayNumber, slotNumber)
 }
 
+// ConnectPreplanExamToAncode is the resolver for the connectPreplanExamToAncode field.
+func (r *mutationResolver) ConnectPreplanExamToAncode(ctx context.Context, id int, ancode int) (*model.PreplanExam, error) {
+	return r.plexams.ConnectPreplanExamToAncode(ctx, id, ancode)
+}
+
+// DisconnectPreplanExam is the resolver for the disconnectPreplanExam field.
+func (r *mutationResolver) DisconnectPreplanExam(ctx context.Context, id int) (*model.PreplanExam, error) {
+	return r.plexams.DisconnectPreplanExam(ctx, id)
+}
+
 // PreplanExams is the resolver for the preplanExams field.
 func (r *queryResolver) PreplanExams(ctx context.Context) ([]*model.PreplanExam, error) {
 	return r.plexams.PreplanExams(ctx)
@@ -38,4 +48,9 @@ func (r *queryResolver) PreplanExams(ctx context.Context) ([]*model.PreplanExam,
 // PreplanExam is the resolver for the preplanExam field.
 func (r *queryResolver) PreplanExam(ctx context.Context, id int) (*model.PreplanExam, error) {
 	return r.plexams.PreplanExam(ctx, id)
+}
+
+// PreplanExamAncodeSuggestions is the resolver for the preplanExamAncodeSuggestions field.
+func (r *queryResolver) PreplanExamAncodeSuggestions(ctx context.Context, id int) ([]*model.ZPAExam, error) {
+	return r.plexams.PreplanExamAncodeSuggestions(ctx, id)
 }

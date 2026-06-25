@@ -2,6 +2,11 @@ extend type Query {
   "SEB/EXaHM pre-planning pseudo-exams of this semester."
   preplanExams: [PreplanExam!]!
   preplanExam(id: Int!): PreplanExam
+  """
+  Candidate ZPA exams for linking the given pre-exam, ranked by examer (same
+  teacher) and module-name similarity. Empty before the ZPA exams are imported.
+  """
+  preplanExamAncodeSuggestions(id: Int!): [ZPAExam!]!
 }
 
 extend type Mutation {
@@ -13,6 +18,13 @@ extend type Mutation {
   or neither). The slot must be a real slot of this semester.
   """
   setPreplanExamSlot(id: Int!, dayNumber: Int, slotNumber: Int): PreplanExam!
+  """
+  Link the pre-exam to a real ZPA exam (its ancode). The ancode must exist and
+  must not already be linked by another pre-exam.
+  """
+  connectPreplanExamToAncode(id: Int!, ancode: Int!): PreplanExam!
+  "Remove the ZPA link from a pre-exam."
+  disconnectPreplanExam(id: Int!): PreplanExam!
 }
 
 """

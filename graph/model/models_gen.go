@@ -668,6 +668,14 @@ type StudentRegsPerStudent struct {
 	Ancodes []int    `json:"ancodes"`
 }
 
+type StudyProgramInput struct {
+	Shortname string  `json:"shortname"`
+	Name      string  `json:"name"`
+	Degree    *string `json:"degree,omitempty"`
+	Category  string  `json:"category"`
+	Active    bool    `json:"active"`
+}
+
 type Subscription struct {
 }
 

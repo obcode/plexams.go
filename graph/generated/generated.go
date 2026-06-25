@@ -376,6 +376,7 @@ type ComplexityRoot struct {
 		ClearEmailAttachments         func(childComplexity int, kind string) int
 		CreateSemester                func(childComplexity int, semester string, input model.SemesterConfigInputData) int
 		DeleteInvigilatorConstraints  func(childComplexity int, teacherID int) int
+		DeleteStudyProgram            func(childComplexity int, shortname string) int
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
 		Lab                           func(childComplexity int, ancode int) int
@@ -400,6 +401,7 @@ type ComplexityRoot struct {
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
 		SameSlot                      func(childComplexity int, ancode int, ancodes []int) int
 		Seb                           func(childComplexity int, ancode int) int
+		SeedStudyProgramsFromConfig   func(childComplexity int) int
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
@@ -413,6 +415,7 @@ type ComplexityRoot struct {
 		UpdateNta                     func(childComplexity int, input model.NTAInput) int
 		UpdateRoom                    func(childComplexity int, input model.RoomInput) int
 		UpdateRoomRequestTime         func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
+		UpsertStudyProgram            func(childComplexity int, input model.StudyProgramInput) int
 		ZpaExamsToPlan                func(childComplexity int, input []int) int
 	}
 
@@ -640,6 +643,7 @@ type ComplexityRoot struct {
 		StudentRegsImportErrors       func(childComplexity int) int
 		Students                      func(childComplexity int) int
 		StudentsByName                func(childComplexity int, regex string) int
+		StudyPrograms                 func(childComplexity int) int
 		SyncLog                       func(childComplexity int, limit *int) int
 		Teacher                       func(childComplexity int, id int) int
 		Teachers                      func(childComplexity int, fromZpa *bool) int
@@ -842,6 +846,14 @@ type ComplexityRoot struct {
 	StudentRegsPerStudent struct {
 		Ancodes func(childComplexity int) int
 		Student func(childComplexity int) int
+	}
+
+	StudyProgram struct {
+		Active    func(childComplexity int) int
+		Category  func(childComplexity int) int
+		Degree    func(childComplexity int) int
+		Name      func(childComplexity int) int
+		Shortname func(childComplexity int) int
 	}
 
 	Subscription struct {
@@ -1089,6 +1101,9 @@ type MutationResolver interface {
 	UpdateRoomRequestTime(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
 	SetSemesterConfigInput(ctx context.Context, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
 	CreateSemester(ctx context.Context, semester string, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
+	UpsertStudyProgram(ctx context.Context, input model.StudyProgramInput) (*model.StudyProgram, error)
+	DeleteStudyProgram(ctx context.Context, shortname string) (bool, error)
+	SeedStudyProgramsFromConfig(ctx context.Context) (int, error)
 	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
@@ -1167,6 +1182,7 @@ type QueryResolver interface {
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
 	Students(ctx context.Context) ([]*model.Student, error)
+	StudyPrograms(ctx context.Context) ([]*model.StudyProgram, error)
 	Teacher(ctx context.Context, id int) (*model.Teacher, error)
 	Teachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error)
 	Invigilators(ctx context.Context) ([]*model.ZPAInvigilator, error)
@@ -2795,6 +2811,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.DeleteInvigilatorConstraints(childComplexity, args["teacherID"].(int)), true
 
+	case "Mutation.deleteStudyProgram":
+		if e.complexity.Mutation.DeleteStudyProgram == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteStudyProgram_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteStudyProgram(childComplexity, args["shortname"].(string)), true
+
 	case "Mutation.exahm":
 		if e.complexity.Mutation.Exahm == nil {
 			break
@@ -3058,6 +3086,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Seb(childComplexity, args["ancode"].(int)), true
 
+	case "Mutation.seedStudyProgramsFromConfig":
+		if e.complexity.Mutation.SeedStudyProgramsFromConfig == nil {
+			break
+		}
+
+		return e.complexity.Mutation.SeedStudyProgramsFromConfig(childComplexity), true
+
 	case "Mutation.setInvigilatorConstraints":
 		if e.complexity.Mutation.SetInvigilatorConstraints == nil {
 			break
@@ -3213,6 +3248,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateRoomRequestTime(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["from"].(time.Time), args["until"].(time.Time)), true
+
+	case "Mutation.upsertStudyProgram":
+		if e.complexity.Mutation.UpsertStudyProgram == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_upsertStudyProgram_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpsertStudyProgram(childComplexity, args["input"].(model.StudyProgramInput)), true
 
 	case "Mutation.zpaExamsToPlan":
 		if e.complexity.Mutation.ZpaExamsToPlan == nil {
@@ -4492,6 +4539,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.StudentsByName(childComplexity, args["regex"].(string)), true
 
+	case "Query.studyPrograms":
+		if e.complexity.Query.StudyPrograms == nil {
+			break
+		}
+
+		return e.complexity.Query.StudyPrograms(childComplexity), true
+
 	case "Query.syncLog":
 		if e.complexity.Query.SyncLog == nil {
 			break
@@ -5426,6 +5480,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StudentRegsPerStudent.Student(childComplexity), true
+
+	case "StudyProgram.active":
+		if e.complexity.StudyProgram.Active == nil {
+			break
+		}
+
+		return e.complexity.StudyProgram.Active(childComplexity), true
+
+	case "StudyProgram.category":
+		if e.complexity.StudyProgram.Category == nil {
+			break
+		}
+
+		return e.complexity.StudyProgram.Category(childComplexity), true
+
+	case "StudyProgram.degree":
+		if e.complexity.StudyProgram.Degree == nil {
+			break
+		}
+
+		return e.complexity.StudyProgram.Degree(childComplexity), true
+
+	case "StudyProgram.name":
+		if e.complexity.StudyProgram.Name == nil {
+			break
+		}
+
+		return e.complexity.StudyProgram.Name(childComplexity), true
+
+	case "StudyProgram.shortname":
+		if e.complexity.StudyProgram.Shortname == nil {
+			break
+		}
+
+		return e.complexity.StudyProgram.Shortname(childComplexity), true
 
 	case "Subscription.generateInvigilations":
 		if e.complexity.Subscription.GenerateInvigilations == nil {
@@ -6566,6 +6655,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRoomInput,
 		ec.unmarshalInputSemesterConfigInputData,
 		ec.unmarshalInputSlotInput,
+		ec.unmarshalInputStudyProgramInput,
 	)
 	first := true
 
@@ -7938,6 +8028,43 @@ type Student {
   nta: NTA
 }
 `, BuiltIn: false},
+	{Name: "../study_program.graphqls", Input: `extend type Query {
+  "All study programs (Studiengänge), global/cross-semester."
+  studyPrograms: [StudyProgram!]!
+}
+
+extend type Mutation {
+  "Create or update a study program (key: shortname/Kürzel)."
+  upsertStudyProgram(input: StudyProgramInput!): StudyProgram!
+  "Delete a study program by its shortname. Returns false if there was none."
+  deleteStudyProgram(shortname: String!): Boolean!
+  """
+  Seed study programs from the configured lists (fk07programs, mucdaiprograms,
+  miscprograms) without overwriting existing ones. Returns the number created.
+  """
+  seedStudyProgramsFromConfig: Int!
+}
+
+"A study program (Studiengang), e.g. IF / DE / GN."
+type StudyProgram {
+  "Kürzel, e.g. IF (unique key)."
+  shortname: String!
+  name: String!
+  "e.g. Bachelor / Master."
+  degree: String
+  "Origin/grouping: fk07 | mucdai | misc."
+  category: String!
+  active: Boolean!
+}
+
+input StudyProgramInput {
+  shortname: String!
+  name: String!
+  degree: String
+  category: String!
+  active: Boolean!
+}
+`, BuiltIn: false},
 	{Name: "../validation.graphqls", Input: `"""ValidationLevel classifies a single validation finding."""
 enum ValidationLevel {
   INFO
@@ -8884,6 +9011,34 @@ func (ec *executionContext) field_Mutation_deleteInvigilatorConstraints_argsTeac
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteStudyProgram_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_deleteStudyProgram_argsShortname(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["shortname"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_deleteStudyProgram_argsShortname(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["shortname"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("shortname"))
+	if tmp, ok := rawArgs["shortname"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -10585,6 +10740,34 @@ func (ec *executionContext) field_Mutation_updateRoom_argsInput(
 	}
 
 	var zeroVal model.RoomInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_upsertStudyProgram_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_upsertStudyProgram_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_upsertStudyProgram_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.StudyProgramInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal model.StudyProgramInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNStudyProgramInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudyProgramInput(ctx, tmp)
+	}
+
+	var zeroVal model.StudyProgramInput
 	return zeroVal, nil
 }
 
@@ -25029,6 +25212,172 @@ func (ec *executionContext) fieldContext_Mutation_createSemester(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_upsertStudyProgram(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_upsertStudyProgram(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpsertStudyProgram(rctx, fc.Args["input"].(model.StudyProgramInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.StudyProgram)
+	fc.Result = res
+	return ec.marshalNStudyProgram2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudyProgram(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_upsertStudyProgram(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "shortname":
+				return ec.fieldContext_StudyProgram_shortname(ctx, field)
+			case "name":
+				return ec.fieldContext_StudyProgram_name(ctx, field)
+			case "degree":
+				return ec.fieldContext_StudyProgram_degree(ctx, field)
+			case "category":
+				return ec.fieldContext_StudyProgram_category(ctx, field)
+			case "active":
+				return ec.fieldContext_StudyProgram_active(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type StudyProgram", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_upsertStudyProgram_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteStudyProgram(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteStudyProgram(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteStudyProgram(rctx, fc.Args["shortname"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteStudyProgram(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteStudyProgram_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_seedStudyProgramsFromConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_seedStudyProgramsFromConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SeedStudyProgramsFromConfig(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_seedStudyProgramsFromConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_zpaExamsToPlan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_zpaExamsToPlan(ctx, field)
 	if err != nil {
@@ -33825,6 +34174,62 @@ func (ec *executionContext) fieldContext_Query_students(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_studyPrograms(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_studyPrograms(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().StudyPrograms(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.StudyProgram)
+	fc.Result = res
+	return ec.marshalNStudyProgram2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudyProgramᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_studyPrograms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "shortname":
+				return ec.fieldContext_StudyProgram_shortname(ctx, field)
+			case "name":
+				return ec.fieldContext_StudyProgram_name(ctx, field)
+			case "degree":
+				return ec.fieldContext_StudyProgram_degree(ctx, field)
+			case "category":
+				return ec.fieldContext_StudyProgram_category(ctx, field)
+			case "active":
+				return ec.fieldContext_StudyProgram_active(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type StudyProgram", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_teacher(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_teacher(ctx, field)
 	if err != nil {
@@ -40303,6 +40708,223 @@ func (ec *executionContext) fieldContext_StudentRegsPerStudent_ancodes(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudyProgram_shortname(ctx context.Context, field graphql.CollectedField, obj *model.StudyProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudyProgram_shortname(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Shortname, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudyProgram_shortname(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudyProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudyProgram_name(ctx context.Context, field graphql.CollectedField, obj *model.StudyProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudyProgram_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudyProgram_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudyProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudyProgram_degree(ctx context.Context, field graphql.CollectedField, obj *model.StudyProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudyProgram_degree(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Degree, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudyProgram_degree(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudyProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudyProgram_category(ctx context.Context, field graphql.CollectedField, obj *model.StudyProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudyProgram_category(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Category, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudyProgram_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudyProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudyProgram_active(ctx context.Context, field graphql.CollectedField, obj *model.StudyProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudyProgram_active(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Active, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudyProgram_active(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudyProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -50927,6 +51549,61 @@ func (ec *executionContext) unmarshalInputSlotInput(ctx context.Context, obj any
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context, obj any) (model.StudyProgramInput, error) {
+	var it model.StudyProgramInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"shortname", "name", "degree", "category", "active"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "shortname":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shortname"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Shortname = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "degree":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("degree"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Degree = data
+		case "category":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("category"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Category = data
+		case "active":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("active"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Active = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -53482,6 +54159,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createSemester":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createSemester(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "upsertStudyProgram":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_upsertStudyProgram(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteStudyProgram":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteStudyProgram(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seedStudyProgramsFromConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_seedStudyProgramsFromConfig(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -56088,6 +56786,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "studyPrograms":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_studyPrograms(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "teacher":
 			field := field
 
@@ -57765,6 +58485,62 @@ func (ec *executionContext) _StudentRegsPerStudent(ctx context.Context, sel ast.
 			}
 		case "ancodes":
 			out.Values[i] = ec._StudentRegsPerStudent_ancodes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var studyProgramImplementors = []string{"StudyProgram"}
+
+func (ec *executionContext) _StudyProgram(ctx context.Context, sel ast.SelectionSet, obj *model.StudyProgram) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, studyProgramImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("StudyProgram")
+		case "shortname":
+			out.Values[i] = ec._StudyProgram_shortname(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._StudyProgram_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "degree":
+			out.Values[i] = ec._StudyProgram_degree(ctx, field, obj)
+		case "category":
+			out.Values[i] = ec._StudyProgram_category(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "active":
+			out.Values[i] = ec._StudyProgram_active(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -62234,6 +63010,69 @@ func (ec *executionContext) marshalNStudentRegsPerAncodeAndProgram2ᚖgithubᚗc
 		return graphql.Null
 	}
 	return ec._StudentRegsPerAncodeAndProgram(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNStudyProgram2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudyProgram(ctx context.Context, sel ast.SelectionSet, v model.StudyProgram) graphql.Marshaler {
+	return ec._StudyProgram(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNStudyProgram2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudyProgramᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StudyProgram) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNStudyProgram2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudyProgram(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNStudyProgram2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudyProgram(ctx context.Context, sel ast.SelectionSet, v *model.StudyProgram) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._StudyProgram(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNStudyProgramInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudyProgramInput(ctx context.Context, v any) (model.StudyProgramInput, error) {
+	res, err := ec.unmarshalInputStudyProgramInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNSyncChangeEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSyncChangeEntry(ctx context.Context, sel ast.SelectionSet, v *model.SyncChangeEntry) graphql.Marshaler {

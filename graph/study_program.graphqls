@@ -1,0 +1,36 @@
+extend type Query {
+  "All study programs (Studiengänge), global/cross-semester."
+  studyPrograms: [StudyProgram!]!
+}
+
+extend type Mutation {
+  "Create or update a study program (key: shortname/Kürzel)."
+  upsertStudyProgram(input: StudyProgramInput!): StudyProgram!
+  "Delete a study program by its shortname. Returns false if there was none."
+  deleteStudyProgram(shortname: String!): Boolean!
+  """
+  Seed study programs from the configured lists (fk07programs, mucdaiprograms,
+  miscprograms) without overwriting existing ones. Returns the number created.
+  """
+  seedStudyProgramsFromConfig: Int!
+}
+
+"A study program (Studiengang), e.g. IF / DE / GN."
+type StudyProgram {
+  "Kürzel, e.g. IF (unique key)."
+  shortname: String!
+  name: String!
+  "e.g. Bachelor / Master."
+  degree: String
+  "Origin/grouping: fk07 | mucdai | misc."
+  category: String!
+  active: Boolean!
+}
+
+input StudyProgramInput {
+  shortname: String!
+  name: String!
+  degree: String
+  category: String!
+  active: Boolean!
+}

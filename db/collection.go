@@ -42,6 +42,7 @@ const (
 	collectionInvigilatorConstraints  = "invigilator_constraints"
 	// global (plexams DB), carries over between semesters:
 	collectionPermanentNonInvigilators = "permanent_non_invigilators"
+	collectionStudyPrograms            = "study_programs"
 	collectionInvigilatorTodos         = "invigilator_todos"
 	collectionOtherInvigilations       = "invigilations_other"
 	collectionSelfInvigilations        = "invigilations_self"

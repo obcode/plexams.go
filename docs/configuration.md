@@ -22,8 +22,14 @@ semester-path: ~/semester      # optional: nur nötig, wenn noch per-Semester-YA
 db:
   uri: mongodb://localhost:27013
   database: ""                 # optional, Default = Semestername (z. B. "2026-SS")
+```
 
-planer:
+Der **Planer** (`planer.name`/`planer.email`) liegt inzwischen in der DB (global,
+GUI-editierbar über `setPlaner`); der Config-Block ist nur noch Bootstrap/Fallback
+für den ersten Start und kann danach entfallen:
+
+```yaml
+planer:                        # optional, sobald in der DB gesetzt
   name: Vorname Nachname
   email: planer@hm.edu
 ```
@@ -36,13 +42,20 @@ zpa:
   username: <zpa-user>
   password: <zpa-passwort>
   token: <zpa-token>           # Secret — nicht teilen
-  fk07programs:                # FK07-Studiengänge
+  fk07programs:                # FK07-Studiengänge — Bootstrap/Seed (s. u.)
     - IF
     - IB
     # ...
-  oldprograms:                 # ausgelaufene Studiengänge
+  oldprograms:                 # ausgelaufene Studiengänge — Bootstrap/Seed (s. u.)
     - IC
 ```
+
+> `zpa.fk07programs`/`zpa.oldprograms` werden zur Laufzeit aus den
+> `StudyProgram`-Stammdaten (DB) abgeleitet, sobald diese existieren:
+> aktuelle = `category fk07 && !retired`, alte = `category fk07 && retired`.
+> Die Config-Listen dienen nur noch als Bootstrap und als Seed-Quelle für
+> `seedStudyProgramsFromConfig` (oldprograms werden dabei als `retired` angelegt).
+> Sind die Stammdaten gepflegt, können die beiden Listen aus der YAML entfallen.
 
 ## 3. SMTP / E-Mail
 

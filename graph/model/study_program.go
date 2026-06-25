@@ -13,4 +13,7 @@ type StudyProgram struct {
 	// Category groups the program by origin: "fk07" | "mucdai" | "misc".
 	Category string `json:"category" bson:"category"`
 	Active   bool   `json:"active" bson:"active"`
+	// Retired marks a discontinued program. A retired fk07 program is treated as
+	// an "old program" (no longer planned, but still relevant for old exams).
+	Retired bool `json:"retired" bson:"retired"`
 }

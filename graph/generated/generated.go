@@ -410,6 +410,7 @@ type ComplexityRoot struct {
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
+		SetPlaner                     func(childComplexity int, name string, email string) int
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
 		SetPreplanExamSlot            func(childComplexity int, id int, dayNumber *int, slotNumber *int) int
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
@@ -483,6 +484,11 @@ type ComplexityRoot struct {
 		Locked       func(childComplexity int) int
 		SlotNumber   func(childComplexity int) int
 		Starttime    func(childComplexity int) int
+	}
+
+	Planer struct {
+		Email func(childComplexity int) int
+		Name  func(childComplexity int) int
 	}
 
 	PlannedExam struct {
@@ -672,6 +678,7 @@ type ComplexityRoot struct {
 		Ntas                          func(childComplexity int) int
 		NtasWithRegs                  func(childComplexity int) int
 		PermanentNonInvigilators      func(childComplexity int) int
+		Planer                        func(childComplexity int) int
 		PlannedExam                   func(childComplexity int, ancode int) int
 		PlannedExams                  func(childComplexity int) int
 		PlannedRoomForStudent         func(childComplexity int, ancode int, mtknr string) int
@@ -911,6 +918,7 @@ type ComplexityRoot struct {
 		Category  func(childComplexity int) int
 		Degree    func(childComplexity int) int
 		Name      func(childComplexity int) int
+		Retired   func(childComplexity int) int
 		Shortname func(childComplexity int) int
 	}
 
@@ -1139,6 +1147,7 @@ type MutationResolver interface {
 	RemoveNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int) (bool, error)
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
+	SetPlaner(ctx context.Context, name string, email string) (*model.Planer, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
 	GeneratePreplanAssignment(ctx context.Context, keepAssigned *bool) (*model.PreplanValidation, error)
 	AddPreplanExam(ctx context.Context, input model.PreplanExamInput) (*model.PreplanExam, error)
@@ -1225,6 +1234,7 @@ type QueryResolver interface {
 	ExamsWithoutSlot(ctx context.Context) ([]*model.PlannedExam, error)
 	AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
 	AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
+	Planer(ctx context.Context) (*model.Planer, error)
 	PlanningState(ctx context.Context) (*model.PlanningState, error)
 	ValidatePreplanAssignment(ctx context.Context) (*model.PreplanValidation, error)
 	PreplanExams(ctx context.Context) ([]*model.PreplanExam, error)
@@ -3259,6 +3269,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetPermanentNonInvigilator(childComplexity, args["teacherID"].(int), args["name"].(string), args["reason"].(string)), true
 
+	case "Mutation.setPlaner":
+		if e.complexity.Mutation.SetPlaner == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setPlaner_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetPlaner(childComplexity, args["name"].(string), args["email"].(string)), true
+
 	case "Mutation.setPlanningCondition":
 		if e.complexity.Mutation.SetPlanningCondition == nil {
 			break
@@ -3671,6 +3693,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PlanEntry.Starttime(childComplexity), true
+
+	case "Planer.email":
+		if e.complexity.Planer.Email == nil {
+			break
+		}
+
+		return e.complexity.Planer.Email(childComplexity), true
+
+	case "Planer.name":
+		if e.complexity.Planer.Name == nil {
+			break
+		}
+
+		return e.complexity.Planer.Name(childComplexity), true
 
 	case "PlannedExam.ancode":
 		if e.complexity.PlannedExam.Ancode == nil {
@@ -4655,6 +4691,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PermanentNonInvigilators(childComplexity), true
+
+	case "Query.planer":
+		if e.complexity.Query.Planer == nil {
+			break
+		}
+
+		return e.complexity.Query.Planer(childComplexity), true
 
 	case "Query.plannedExam":
 		if e.complexity.Query.PlannedExam == nil {
@@ -5903,6 +5946,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StudyProgram.Name(childComplexity), true
+
+	case "StudyProgram.retired":
+		if e.complexity.StudyProgram.Retired == nil {
+			break
+		}
+
+		return e.complexity.StudyProgram.Retired(childComplexity), true
 
 	case "StudyProgram.shortname":
 		if e.complexity.StudyProgram.Shortname == nil {
@@ -7777,6 +7827,21 @@ type PlanEntry {
   locked: Boolean!
 }
 `, BuiltIn: false},
+	{Name: "../planer.graphqls", Input: `extend type Query {
+  "The planner (name + email). Stored globally in the DB; the config is only a fallback."
+  planer: Planer!
+}
+
+extend type Mutation {
+  "Set the planner (name + email), stored in the global DB."
+  setPlaner(name: String!, email: String!): Planer!
+}
+
+type Planer {
+  name: String!
+  email: String!
+}
+`, BuiltIn: false},
 	{Name: "../planning_state.graphqls", Input: `# The planning state is a condition/event model of the planning workflow: per
 # phase a set of conditions (milestones). Some are set automatically when an
 # operation finishes, all can be toggled by hand. A condition with a gate locks
@@ -8576,6 +8641,8 @@ type StudyProgram {
   "Origin/grouping: fk07 | mucdai | misc."
   category: String!
   active: Boolean!
+  "A retired fk07 program counts as an \"old program\" (no longer planned)."
+  retired: Boolean!
 }
 
 input StudyProgramInput {
@@ -8584,6 +8651,7 @@ input StudyProgramInput {
   degree: String
   category: String!
   active: Boolean!
+  retired: Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../validation.graphqls", Input: `"""ValidationLevel classifies a single validation finding."""
@@ -10795,6 +10863,57 @@ func (ec *executionContext) field_Mutation_setPermanentNonInvigilator_argsReason
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("reason"))
 	if tmp, ok := rawArgs["reason"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPlaner_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setPlaner_argsName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	arg1, err := ec.field_Mutation_setPlaner_argsEmail(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setPlaner_argsName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["name"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+	if tmp, ok := rawArgs["name"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPlaner_argsEmail(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["email"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+	if tmp, ok := rawArgs["email"]; ok {
 		return ec.unmarshalNString2string(ctx, tmp)
 	}
 
@@ -24824,6 +24943,67 @@ func (ec *executionContext) fieldContext_Mutation_rmExamFromSlot(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setPlaner(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setPlaner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetPlaner(rctx, fc.Args["name"].(string), fc.Args["email"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Planer)
+	fc.Result = res
+	return ec.marshalNPlaner2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlaner(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setPlaner(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Planer_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Planer_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Planer", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setPlaner_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_setPlanningCondition(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_setPlanningCondition(ctx, field)
 	if err != nil {
@@ -26651,6 +26831,8 @@ func (ec *executionContext) fieldContext_Mutation_upsertStudyProgram(ctx context
 				return ec.fieldContext_StudyProgram_category(ctx, field)
 			case "active":
 				return ec.fieldContext_StudyProgram_active(ctx, field)
+			case "retired":
+				return ec.fieldContext_StudyProgram_retired(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type StudyProgram", field.Name)
 		},
@@ -28570,6 +28752,94 @@ func (ec *executionContext) fieldContext_PlanEntry_locked(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_name(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_email(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_email(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Email, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -35665,6 +35935,56 @@ func (ec *executionContext) fieldContext_Query_awkwardSlots(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_planer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_planer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Planer(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Planer)
+	fc.Result = res
+	return ec.marshalNPlaner2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlaner(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_planer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Planer_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Planer_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Planer", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_planningState(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_planningState(ctx, field)
 	if err != nil {
@@ -37410,6 +37730,8 @@ func (ec *executionContext) fieldContext_Query_studyPrograms(_ context.Context, 
 				return ec.fieldContext_StudyProgram_category(ctx, field)
 			case "active":
 				return ec.fieldContext_StudyProgram_active(ctx, field)
+			case "retired":
+				return ec.fieldContext_StudyProgram_retired(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type StudyProgram", field.Name)
 		},
@@ -43888,6 +44210,50 @@ func (ec *executionContext) _StudyProgram_active(ctx context.Context, field grap
 }
 
 func (ec *executionContext) fieldContext_StudyProgram_active(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudyProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudyProgram_retired(ctx context.Context, field graphql.CollectedField, obj *model.StudyProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudyProgram_retired(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Retired, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudyProgram_retired(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StudyProgram",
 		Field:      field,
@@ -54574,7 +54940,7 @@ func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"shortname", "name", "degree", "category", "active"}
+	fieldsInOrder := [...]string{"shortname", "name", "degree", "category", "active", "retired"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -54616,6 +54982,13 @@ func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context,
 				return it, err
 			}
 			it.Active = data
+		case "retired":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retired"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Retired = data
 		}
 	}
 
@@ -57041,6 +57414,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setPlaner":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setPlaner(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setPlanningCondition":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPlanningCondition(ctx, field)
@@ -57731,6 +58111,50 @@ func (ec *executionContext) _PlanEntry(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._PlanEntry_locked(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var planerImplementors = []string{"Planer"}
+
+func (ec *executionContext) _Planer(ctx context.Context, sel ast.SelectionSet, obj *model.Planer) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, planerImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Planer")
+		case "name":
+			out.Values[i] = ec._Planer_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "email":
+			out.Values[i] = ec._Planer_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -59729,6 +60153,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_awkwardSlots(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "planer":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_planer(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -62038,6 +62484,11 @@ func (ec *executionContext) _StudyProgram(ctx context.Context, sel ast.Selection
 			}
 		case "active":
 			out.Values[i] = ec._StudyProgram_active(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "retired":
+			out.Values[i] = ec._StudyProgram_retired(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -64856,6 +65307,20 @@ func (ec *executionContext) marshalNPermanentNonInvigilator2ᚖgithubᚗcomᚋob
 		return graphql.Null
 	}
 	return ec._PermanentNonInvigilator(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPlaner2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlaner(ctx context.Context, sel ast.SelectionSet, v model.Planer) graphql.Marshaler {
+	return ec._Planer(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPlaner2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlaner(ctx context.Context, sel ast.SelectionSet, v *model.Planer) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Planer(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPlannedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlannedExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PlannedExam) graphql.Marshaler {

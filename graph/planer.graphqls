@@ -1,0 +1,14 @@
+extend type Query {
+  "The planner (name + email). Stored globally in the DB; the config is only a fallback."
+  planer: Planer!
+}
+
+extend type Mutation {
+  "Set the planner (name + email), stored in the global DB."
+  setPlaner(name: String!, email: String!): Planer!
+}
+
+type Planer {
+  name: String!
+  email: String!
+}

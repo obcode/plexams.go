@@ -387,6 +387,11 @@ type OptimizerProgress struct {
 	Unfilled  int     `json:"unfilled"`
 }
 
+type Planer struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
 type PlanningCondition struct {
 	Key   string `json:"key"`
 	Title string `json:"title"`
@@ -726,6 +731,7 @@ type StudyProgramInput struct {
 	Degree    *string `json:"degree,omitempty"`
 	Category  string  `json:"category"`
 	Active    bool    `json:"active"`
+	Retired   bool    `json:"retired"`
 }
 
 type Subscription struct {

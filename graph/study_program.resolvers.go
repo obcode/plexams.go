@@ -18,6 +18,7 @@ func (r *mutationResolver) UpsertStudyProgram(ctx context.Context, input model.S
 		Degree:    input.Degree,
 		Category:  input.Category,
 		Active:    input.Active,
+		Retired:   input.Retired,
 	}
 	return r.plexams.UpsertStudyProgram(ctx, program)
 }

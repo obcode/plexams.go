@@ -25,6 +25,8 @@ type StudyProgram {
   "Origin/grouping: fk07 | mucdai | misc."
   category: String!
   active: Boolean!
+  "A retired fk07 program counts as an \"old program\" (no longer planned)."
+  retired: Boolean!
 }
 
 input StudyProgramInput {
@@ -33,4 +35,5 @@ input StudyProgramInput {
   degree: String
   category: String!
   active: Boolean!
+  retired: Boolean!
 }

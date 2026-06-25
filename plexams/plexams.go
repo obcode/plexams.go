@@ -118,6 +118,24 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		guard: &opGuard{},
 	}
 
+	if plexams.dbClient != nil {
+		ctx := context.Background()
+		// FK07 programs come from the StudyProgram master data when present; the
+		// config values are only the bootstrap/seed fallback.
+		if current, old, err := plexams.fk07ProgramsFromStudyPrograms(ctx); err != nil {
+			log.Error().Err(err).Msg("cannot read fk07 programs from study programs")
+		} else if len(current) > 0 || len(old) > 0 {
+			plexams.zpa.fk07programs = current
+			plexams.zpa.oldprograms = old
+		}
+		// The planner is read from the DB when present (config is the fallback).
+		if planer, err := plexams.dbClient.GetPlaner(ctx); err != nil {
+			log.Error().Err(err).Msg("cannot read planer from db")
+		} else if planer != nil {
+			plexams.planer = &Planer{Name: planer.Name, Email: planer.Email}
+		}
+	}
+
 	plexams.loadSemesterConfig(context.Background())
 	if plexams.semesterConfig != nil && plexams.dbClient != nil {
 		// keep the derived snapshot in the DB for the GUI to read directly

@@ -56,6 +56,19 @@ func (db *DB) AddAncode(ctx context.Context, zpaAncode int, program string, prim
 	return nil
 }
 
+// RemoveAddedAncode removes a manually added Primuss ancode mapping (program) of a
+// ZPA exam. Returns false when there was none. (Mappings that come from ZPA itself
+// are not stored here and are not affected.)
+func (db *DB) RemoveAddedAncode(ctx context.Context, zpaAncode int, program string) (bool, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionPrimussAncodes)
+	res, err := collection.DeleteOne(ctx, bson.M{"ancode": zpaAncode, "primussancode.program": program})
+	if err != nil {
+		log.Error().Err(err).Int("zpaAncode", zpaAncode).Str("program", program).Msg("cannot remove added primuss ancode")
+		return false, err
+	}
+	return res.DeletedCount > 0, nil
+}
+
 func (db *DB) GetAddedAncodes(ctx context.Context) (map[int][]model.ZPAPrimussAncodes, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionPrimussAncodes)
 

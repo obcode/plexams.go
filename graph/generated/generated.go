@@ -132,8 +132,12 @@ type ComplexityRoot struct {
 	}
 
 	ConnectedExamWarning struct {
+		Ancode  func(childComplexity int) int
+		Examer  func(childComplexity int) int
 		Level   func(childComplexity int) int
 		Message func(childComplexity int) int
+		Module  func(childComplexity int) int
+		Program func(childComplexity int) int
 	}
 
 	Constraints struct {
@@ -373,6 +377,7 @@ type ComplexityRoot struct {
 		AddNta                        func(childComplexity int, input model.NTAInput) int
 		AddNtaRoomAloneWaiver         func(childComplexity int, mtknr string, ancode int, reason string) int
 		AddPreplanExam                func(childComplexity int, input model.PreplanExamInput) int
+		AddPrimussAncode              func(childComplexity int, zpaAncode int, program string, primussAncode int) int
 		AddRoom                       func(childComplexity int, input model.RoomInput) int
 		AddRoomRequest                func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
 		AddZpaExamToPlan              func(childComplexity int, ancode int) int
@@ -388,6 +393,7 @@ type ComplexityRoot struct {
 		DisconnectPreplanExam         func(childComplexity int, id int) int
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
+		FixPrimussAncode              func(childComplexity int, zpaAncode int, program string, fromAncode int, toAncode int) int
 		GeneratePreplanAssignment     func(childComplexity int, keepAssigned *bool) int
 		Lab                           func(childComplexity int, ancode int) int
 		MigrateInvigilatorConstraints func(childComplexity int) int
@@ -400,10 +406,12 @@ type ComplexityRoot struct {
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
+		RebuildConnectedExam          func(childComplexity int, zpaAncode int) int
 		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
 		RemovePermanentNonInvigilator func(childComplexity int, teacherID int) int
 		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
+		RemovePrimussAncode           func(childComplexity int, zpaAncode int, program string) int
 		ResetInvigilations            func(childComplexity int) int
 		ResetRoomsForExams            func(childComplexity int) int
 		RmConstraints                 func(childComplexity int, ancode int) int
@@ -1136,6 +1144,10 @@ type MutationResolver interface {
 	AddConstraints(ctx context.Context, ancode int, constraints model.ConstraintsInput) (*model.Constraints, error)
 	RmConstraints(ctx context.Context, ancode int) (bool, error)
 	ClearEmailAttachments(ctx context.Context, kind string) (int, error)
+	AddPrimussAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) (*model.ConnectedExam, error)
+	RemovePrimussAncode(ctx context.Context, zpaAncode int, program string) (*model.ConnectedExam, error)
+	FixPrimussAncode(ctx context.Context, zpaAncode int, program string, fromAncode int, toAncode int) (*model.ConnectedExam, error)
+	RebuildConnectedExam(ctx context.Context, zpaAncode int) (*model.ConnectedExam, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	PrePlanInvigilationInSlot(ctx context.Context, day int, slot int, roomName *string) (bool, error)
@@ -1711,6 +1723,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ConnectedExam.ZpaExam(childComplexity), true
 
+	case "ConnectedExamWarning.ancode":
+		if e.complexity.ConnectedExamWarning.Ancode == nil {
+			break
+		}
+
+		return e.complexity.ConnectedExamWarning.Ancode(childComplexity), true
+
+	case "ConnectedExamWarning.examer":
+		if e.complexity.ConnectedExamWarning.Examer == nil {
+			break
+		}
+
+		return e.complexity.ConnectedExamWarning.Examer(childComplexity), true
+
 	case "ConnectedExamWarning.level":
 		if e.complexity.ConnectedExamWarning.Level == nil {
 			break
@@ -1724,6 +1750,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ConnectedExamWarning.Message(childComplexity), true
+
+	case "ConnectedExamWarning.module":
+		if e.complexity.ConnectedExamWarning.Module == nil {
+			break
+		}
+
+		return e.complexity.ConnectedExamWarning.Module(childComplexity), true
+
+	case "ConnectedExamWarning.program":
+		if e.complexity.ConnectedExamWarning.Program == nil {
+			break
+		}
+
+		return e.complexity.ConnectedExamWarning.Program(childComplexity), true
 
 	case "Constraints.ancode":
 		if e.complexity.Constraints.Ancode == nil {
@@ -2814,6 +2854,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.AddPreplanExam(childComplexity, args["input"].(model.PreplanExamInput)), true
 
+	case "Mutation.addPrimussAncode":
+		if e.complexity.Mutation.AddPrimussAncode == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addPrimussAncode_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddPrimussAncode(childComplexity, args["zpaAncode"].(int), args["program"].(string), args["primussAncode"].(int)), true
+
 	case "Mutation.addRoom":
 		if e.complexity.Mutation.AddRoom == nil {
 			break
@@ -2994,6 +3046,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ExcludeDays(childComplexity, args["ancode"].(int), args["days"].([]string)), true
 
+	case "Mutation.fixPrimussAncode":
+		if e.complexity.Mutation.FixPrimussAncode == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_fixPrimussAncode_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.FixPrimussAncode(childComplexity, args["zpaAncode"].(int), args["program"].(string), args["fromAncode"].(int), args["toAncode"].(int)), true
+
 	case "Mutation.generatePreplanAssignment":
 		if e.complexity.Mutation.GeneratePreplanAssignment == nil {
 			break
@@ -3123,6 +3187,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string), args["seats"].(*int)), true
 
+	case "Mutation.rebuildConnectedExam":
+		if e.complexity.Mutation.RebuildConnectedExam == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_rebuildConnectedExam_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RebuildConnectedExam(childComplexity, args["zpaAncode"].(int)), true
+
 	case "Mutation.removeNtaRoomAloneWaiver":
 		if e.complexity.Mutation.RemoveNtaRoomAloneWaiver == nil {
 			break
@@ -3170,6 +3246,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemovePrePlannedRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["mtknr"].(*string)), true
+
+	case "Mutation.removePrimussAncode":
+		if e.complexity.Mutation.RemovePrimussAncode == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removePrimussAncode_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemovePrimussAncode(childComplexity, args["zpaAncode"].(int), args["program"].(string)), true
 
 	case "Mutation.resetInvigilations":
 		if e.complexity.Mutation.ResetInvigilations == nil {
@@ -7418,6 +7506,26 @@ extend type Mutation {
   conflictingAncodes(ancode: Int!): [Conflict!]
 }
 
+extend type Mutation {
+  """
+  Add a Primuss ancode mapping to a ZPA exam and rebuild only this connected exam.
+  Returns the rebuilt connected exam.
+  """
+  addPrimussAncode(zpaAncode: Int!, program: String!, primussAncode: Int!): ConnectedExam!
+  """
+  Remove a (manually added) Primuss ancode mapping of a program from a ZPA exam and
+  rebuild only this connected exam.
+  """
+  removePrimussAncode(zpaAncode: Int!, program: String!): ConnectedExam!
+  """
+  Renumber a Primuss exam (exam + student regs + conflicts) from fromAncode to
+  toAncode within a program, then rebuild the given ZPA exam's connected exam.
+  """
+  fixPrimussAncode(zpaAncode: Int!, program: String!, fromAncode: Int!, toAncode: Int!): ConnectedExam!
+  "Rebuild only the connected exam of the given ZPA ancode."
+  rebuildConnectedExam(zpaAncode: Int!): ConnectedExam!
+}
+
 type ExamWithRegsAndRooms {
   exam: PlannedExam!
   normalRegsMtknr: [String!]!
@@ -7439,6 +7547,14 @@ type ConnectedExamWarning {
   "info | warning | error"
   level: String!
   message: String!
+  "The Primuss program this finding refers to (for an add/fix/remove action), if any."
+  program: String
+  "The Primuss ancode this finding refers to, if any."
+  ancode: Int
+  "The module/exam name of the referenced Primuss exam, if known."
+  module: String
+  "The examer of the referenced Primuss exam, if known."
+  examer: String
 }
 
 type GeneratedExam {
@@ -9177,6 +9293,80 @@ func (ec *executionContext) field_Mutation_addPreplanExam_argsInput(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_addPrimussAncode_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_addPrimussAncode_argsZpaAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["zpaAncode"] = arg0
+	arg1, err := ec.field_Mutation_addPrimussAncode_argsProgram(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg1
+	arg2, err := ec.field_Mutation_addPrimussAncode_argsPrimussAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["primussAncode"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_addPrimussAncode_argsZpaAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["zpaAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("zpaAncode"))
+	if tmp, ok := rawArgs["zpaAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addPrimussAncode_argsProgram(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["program"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+	if tmp, ok := rawArgs["program"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addPrimussAncode_argsPrimussAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["primussAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("primussAncode"))
+	if tmp, ok := rawArgs["primussAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_addRoomRequest_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -9873,6 +10063,103 @@ func (ec *executionContext) field_Mutation_excludeDays_argsDays(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_fixPrimussAncode_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_fixPrimussAncode_argsZpaAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["zpaAncode"] = arg0
+	arg1, err := ec.field_Mutation_fixPrimussAncode_argsProgram(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg1
+	arg2, err := ec.field_Mutation_fixPrimussAncode_argsFromAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["fromAncode"] = arg2
+	arg3, err := ec.field_Mutation_fixPrimussAncode_argsToAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["toAncode"] = arg3
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_fixPrimussAncode_argsZpaAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["zpaAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("zpaAncode"))
+	if tmp, ok := rawArgs["zpaAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_fixPrimussAncode_argsProgram(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["program"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+	if tmp, ok := rawArgs["program"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_fixPrimussAncode_argsFromAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["fromAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("fromAncode"))
+	if tmp, ok := rawArgs["fromAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_fixPrimussAncode_argsToAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["toAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("toAncode"))
+	if tmp, ok := rawArgs["toAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_generatePreplanAssignment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10355,6 +10642,34 @@ func (ec *executionContext) field_Mutation_prePlanRoom_argsSeats(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_rebuildConnectedExam_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_rebuildConnectedExam_argsZpaAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["zpaAncode"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_rebuildConnectedExam_argsZpaAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["zpaAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("zpaAncode"))
+	if tmp, ok := rawArgs["zpaAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_removeNtaRoomAloneWaiver_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10579,6 +10894,57 @@ func (ec *executionContext) field_Mutation_removePrePlannedRoom_argsMtknr(
 	}
 
 	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removePrimussAncode_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_removePrimussAncode_argsZpaAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["zpaAncode"] = arg0
+	arg1, err := ec.field_Mutation_removePrimussAncode_argsProgram(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_removePrimussAncode_argsZpaAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["zpaAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("zpaAncode"))
+	if tmp, ok := rawArgs["zpaAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removePrimussAncode_argsProgram(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["program"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+	if tmp, ok := rawArgs["program"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -16318,6 +16684,14 @@ func (ec *executionContext) fieldContext_ConnectedExam_warnings(_ context.Contex
 				return ec.fieldContext_ConnectedExamWarning_level(ctx, field)
 			case "message":
 				return ec.fieldContext_ConnectedExamWarning_message(ctx, field)
+			case "program":
+				return ec.fieldContext_ConnectedExamWarning_program(ctx, field)
+			case "ancode":
+				return ec.fieldContext_ConnectedExamWarning_ancode(ctx, field)
+			case "module":
+				return ec.fieldContext_ConnectedExamWarning_module(ctx, field)
+			case "examer":
+				return ec.fieldContext_ConnectedExamWarning_examer(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ConnectedExamWarning", field.Name)
 		},
@@ -16401,6 +16775,170 @@ func (ec *executionContext) _ConnectedExamWarning_message(ctx context.Context, f
 }
 
 func (ec *executionContext) fieldContext_ConnectedExamWarning_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConnectedExamWarning",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConnectedExamWarning_program(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExamWarning) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConnectedExamWarning_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConnectedExamWarning_program(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConnectedExamWarning",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConnectedExamWarning_ancode(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExamWarning) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConnectedExamWarning_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConnectedExamWarning_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConnectedExamWarning",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConnectedExamWarning_module(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExamWarning) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConnectedExamWarning_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConnectedExamWarning_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConnectedExamWarning",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConnectedExamWarning_examer(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExamWarning) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConnectedExamWarning_examer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Examer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConnectedExamWarning_examer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ConnectedExamWarning",
 		Field:      field,
@@ -24097,6 +24635,266 @@ func (ec *executionContext) fieldContext_Mutation_clearEmailAttachments(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_clearEmailAttachments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addPrimussAncode(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addPrimussAncode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddPrimussAncode(rctx, fc.Args["zpaAncode"].(int), fc.Args["program"].(string), fc.Args["primussAncode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ConnectedExam)
+	fc.Result = res
+	return ec.marshalNConnectedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addPrimussAncode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaExam":
+				return ec.fieldContext_ConnectedExam_zpaExam(ctx, field)
+			case "primussExams":
+				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
+			case "otherPrimussExams":
+				return ec.fieldContext_ConnectedExam_otherPrimussExams(ctx, field)
+			case "warnings":
+				return ec.fieldContext_ConnectedExam_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addPrimussAncode_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removePrimussAncode(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removePrimussAncode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemovePrimussAncode(rctx, fc.Args["zpaAncode"].(int), fc.Args["program"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ConnectedExam)
+	fc.Result = res
+	return ec.marshalNConnectedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removePrimussAncode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaExam":
+				return ec.fieldContext_ConnectedExam_zpaExam(ctx, field)
+			case "primussExams":
+				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
+			case "otherPrimussExams":
+				return ec.fieldContext_ConnectedExam_otherPrimussExams(ctx, field)
+			case "warnings":
+				return ec.fieldContext_ConnectedExam_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removePrimussAncode_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_fixPrimussAncode(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_fixPrimussAncode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().FixPrimussAncode(rctx, fc.Args["zpaAncode"].(int), fc.Args["program"].(string), fc.Args["fromAncode"].(int), fc.Args["toAncode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ConnectedExam)
+	fc.Result = res
+	return ec.marshalNConnectedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_fixPrimussAncode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaExam":
+				return ec.fieldContext_ConnectedExam_zpaExam(ctx, field)
+			case "primussExams":
+				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
+			case "otherPrimussExams":
+				return ec.fieldContext_ConnectedExam_otherPrimussExams(ctx, field)
+			case "warnings":
+				return ec.fieldContext_ConnectedExam_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_fixPrimussAncode_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_rebuildConnectedExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_rebuildConnectedExam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RebuildConnectedExam(rctx, fc.Args["zpaAncode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ConnectedExam)
+	fc.Result = res
+	return ec.marshalNConnectedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_rebuildConnectedExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaExam":
+				return ec.fieldContext_ConnectedExam_zpaExam(ctx, field)
+			case "primussExams":
+				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
+			case "otherPrimussExams":
+				return ec.fieldContext_ConnectedExam_otherPrimussExams(ctx, field)
+			case "warnings":
+				return ec.fieldContext_ConnectedExam_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_rebuildConnectedExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -55681,6 +56479,14 @@ func (ec *executionContext) _ConnectedExamWarning(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "program":
+			out.Values[i] = ec._ConnectedExamWarning_program(ctx, field, obj)
+		case "ancode":
+			out.Values[i] = ec._ConnectedExamWarning_ancode(ctx, field, obj)
+		case "module":
+			out.Values[i] = ec._ConnectedExamWarning_module(ctx, field, obj)
+		case "examer":
+			out.Values[i] = ec._ConnectedExamWarning_examer(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -57461,6 +58267,34 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "clearEmailAttachments":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_clearEmailAttachments(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addPrimussAncode":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addPrimussAncode(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removePrimussAncode":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removePrimussAncode(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fixPrimussAncode":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_fixPrimussAncode(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rebuildConnectedExam":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_rebuildConnectedExam(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -64269,6 +65103,10 @@ func (ec *executionContext) marshalNConflict2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._Conflict(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNConnectedExam2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExam(ctx context.Context, sel ast.SelectionSet, v model.ConnectedExam) graphql.Marshaler {
+	return ec._ConnectedExam(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNConnectedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ConnectedExam) graphql.Marshaler {

@@ -58,6 +58,14 @@ type ConnectedExamWarning struct {
 	// info | warning | error
 	Level   string `json:"level"`
 	Message string `json:"message"`
+	// The Primuss program this finding refers to (for an add/fix/remove action), if any.
+	Program *string `json:"program,omitempty"`
+	// The Primuss ancode this finding refers to, if any.
+	Ancode *int `json:"ancode,omitempty"`
+	// The module/exam name of the referenced Primuss exam, if known.
+	Module *string `json:"module,omitempty"`
+	// The examer of the referenced Primuss exam, if known.
+	Examer *string `json:"examer,omitempty"`
 }
 
 type Constraints struct {

@@ -66,7 +66,8 @@ func (db *DB) ReplaceConnectedExam(ctx context.Context, exam *model.ConnectedExa
 	collection := db.Client.Database(db.databaseName).Collection(collectionNameConnectedExams)
 
 	connectedExam := db.modelConnectedExamToConnectedExam(exam)
-	_, err := collection.ReplaceOne(ctx, bson.D{{Key: "zpaExamAncode", Value: exam.ZpaExam.AnCode}}, connectedExam)
+	_, err := collection.ReplaceOne(ctx, bson.D{{Key: "zpaExamAncode", Value: exam.ZpaExam.AnCode}}, connectedExam,
+		options.Replace().SetUpsert(true))
 	if err != nil {
 		log.Error().Err(err).Int("zpaexam.ancode", exam.ZpaExam.AnCode).Msg("cannot replace connected exam")
 		return err

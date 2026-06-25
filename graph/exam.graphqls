@@ -13,6 +13,26 @@ extend type Query {
   conflictingAncodes(ancode: Int!): [Conflict!]
 }
 
+extend type Mutation {
+  """
+  Add a Primuss ancode mapping to a ZPA exam and rebuild only this connected exam.
+  Returns the rebuilt connected exam.
+  """
+  addPrimussAncode(zpaAncode: Int!, program: String!, primussAncode: Int!): ConnectedExam!
+  """
+  Remove a (manually added) Primuss ancode mapping of a program from a ZPA exam and
+  rebuild only this connected exam.
+  """
+  removePrimussAncode(zpaAncode: Int!, program: String!): ConnectedExam!
+  """
+  Renumber a Primuss exam (exam + student regs + conflicts) from fromAncode to
+  toAncode within a program, then rebuild the given ZPA exam's connected exam.
+  """
+  fixPrimussAncode(zpaAncode: Int!, program: String!, fromAncode: Int!, toAncode: Int!): ConnectedExam!
+  "Rebuild only the connected exam of the given ZPA ancode."
+  rebuildConnectedExam(zpaAncode: Int!): ConnectedExam!
+}
+
 type ExamWithRegsAndRooms {
   exam: PlannedExam!
   normalRegsMtknr: [String!]!
@@ -34,6 +54,14 @@ type ConnectedExamWarning {
   "info | warning | error"
   level: String!
   message: String!
+  "The Primuss program this finding refers to (for an add/fix/remove action), if any."
+  program: String
+  "The Primuss ancode this finding refers to, if any."
+  ancode: Int
+  "The module/exam name of the referenced Primuss exam, if known."
+  module: String
+  "The examer of the referenced Primuss exam, if known."
+  examer: String
 }
 
 type GeneratedExam {

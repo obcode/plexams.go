@@ -16,6 +16,26 @@ func (r *generatedExamResolver) MainExamer(ctx context.Context, obj *model.Gener
 	return r.plexams.GetTeacher(ctx, obj.ZpaExam.MainExamerID)
 }
 
+// AddPrimussAncode is the resolver for the addPrimussAncode field.
+func (r *mutationResolver) AddPrimussAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) (*model.ConnectedExam, error) {
+	return r.plexams.AddPrimussAncode(ctx, zpaAncode, program, primussAncode)
+}
+
+// RemovePrimussAncode is the resolver for the removePrimussAncode field.
+func (r *mutationResolver) RemovePrimussAncode(ctx context.Context, zpaAncode int, program string) (*model.ConnectedExam, error) {
+	return r.plexams.RemovePrimussAncode(ctx, zpaAncode, program)
+}
+
+// FixPrimussAncode is the resolver for the fixPrimussAncode field.
+func (r *mutationResolver) FixPrimussAncode(ctx context.Context, zpaAncode int, program string, fromAncode int, toAncode int) (*model.ConnectedExam, error) {
+	return r.plexams.FixPrimussAncode(ctx, zpaAncode, program, fromAncode, toAncode)
+}
+
+// RebuildConnectedExam is the resolver for the rebuildConnectedExam field.
+func (r *mutationResolver) RebuildConnectedExam(ctx context.Context, zpaAncode int) (*model.ConnectedExam, error) {
+	return r.plexams.RebuildConnectedExam(ctx, zpaAncode)
+}
+
 // MainExamer is the resolver for the mainExamer field.
 func (r *plannedExamResolver) MainExamer(ctx context.Context, obj *model.PlannedExam) (*model.Teacher, error) {
 	return r.plexams.GetTeacher(ctx, obj.ZpaExam.MainExamerID)

@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -78,6 +79,142 @@ func goSlotsFromViper() [][]int {
 		goSlots = append(goSlots, goSlot)
 	}
 	return goSlots
+}
+
+// SemesterConfigInput returns the raw, editable per-semester config (source of
+// truth). It falls back to the YAML when nothing is stored yet, so the GUI can
+// always show and then save the current values.
+func (p *Plexams) SemesterConfigInput(ctx context.Context) (*model.SemesterConfigInput, error) {
+	input, err := p.dbClient.GetSemesterConfigInput(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if input == nil {
+		input = semesterConfigInputFromViper()
+	}
+	return input, nil
+}
+
+// SetSemesterConfigInput validates and stores a new raw per-semester config,
+// recomputes the derived config and snapshot, and returns non-fatal warnings for
+// changes that may invalidate an existing plan (the change is still applied).
+func (p *Plexams) SetSemesterConfigInput(ctx context.Context, data *model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error) {
+	input, err := semesterConfigInputFromData(data)
+	if err != nil {
+		return nil, err
+	}
+
+	warnings := p.semesterConfigChangeWarnings(ctx, input)
+
+	if err := p.dbClient.SaveSemesterConfigInput(ctx, input); err != nil {
+		return nil, fmt.Errorf("cannot save semester config: %w", err)
+	}
+
+	p.deriveSemesterConfig(input)
+	if err := p.dbClient.SaveSemesterConfig(ctx, p.semesterConfig); err != nil {
+		log.Error().Err(err).Msg("cannot save derived semester config")
+	}
+
+	return &model.SaveSemesterConfigResult{Ok: true, Warnings: warnings}, nil
+}
+
+// semesterConfigInputFromData converts the GraphQL input into the stored model
+// and validates it.
+func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.SemesterConfigInput, error) {
+	if data == nil {
+		return nil, fmt.Errorf("no config provided")
+	}
+	from := data.From.Local()
+	fromFK07 := data.FromFk07.Local()
+	until := data.Until.Local()
+	if from.After(fromFK07) {
+		return nil, fmt.Errorf("from (%s) must not be after fromFK07 (%s)", from.Format("2006-01-02"), fromFK07.Format("2006-01-02"))
+	}
+	if fromFK07.After(until) {
+		return nil, fmt.Errorf("fromFK07 (%s) must not be after until (%s)", fromFK07.Format("2006-01-02"), until.Format("2006-01-02"))
+	}
+	if len(data.Slots) == 0 {
+		return nil, fmt.Errorf("at least one slot start time is required")
+	}
+	for _, s := range data.Slots {
+		parts := strings.Split(s, ":")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid slot start time %q (expected HH:MM)", s)
+		}
+		hour, errH := strconv.Atoi(parts[0])
+		minute, errM := strconv.Atoi(parts[1])
+		if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+			return nil, fmt.Errorf("invalid slot start time %q (expected HH:MM)", s)
+		}
+	}
+
+	dayNumberStart := ""
+	if data.DayNumberStart != nil {
+		dayNumberStart = *data.DayNumberStart
+	}
+
+	forbiddenDays := make([]time.Time, 0, len(data.ForbiddenDays))
+	for _, d := range data.ForbiddenDays {
+		if d != nil {
+			forbiddenDays = append(forbiddenDays, d.Local())
+		}
+	}
+
+	var emails *model.Emails
+	if data.Emails != nil {
+		emails = &model.Emails{
+			Profs:            data.Emails.Profs,
+			Lbas:             data.Emails.Lbas,
+			LbasLastSemester: data.Emails.LbasLastSemester,
+			AdditionalExamer: data.Emails.AdditionalExamer,
+			Fs:               data.Emails.Fs,
+			Sekr:             data.Emails.Sekr,
+			RoomManagement:   data.Emails.RoomManagement,
+			Kdp:              data.Emails.Kdp,
+			Lbaba:            data.Emails.Lbaba,
+		}
+	}
+
+	return &model.SemesterConfigInput{
+		From:           from,
+		FromFk07:       fromFK07,
+		Until:          until,
+		DayNumberStart: dayNumberStart,
+		Slots:          data.Slots,
+		GoDay0:         data.GoDay0.Local(),
+		ForbiddenDays:  forbiddenDays,
+		GoSlots:        data.GoSlots,
+		Emails:         emails,
+	}, nil
+}
+
+// semesterConfigChangeWarnings compares the new input against the currently
+// derived config and reports changes that shift stored plan day/slot numbers.
+func (p *Plexams) semesterConfigChangeWarnings(ctx context.Context, input *model.SemesterConfigInput) []string {
+	warnings := make([]string, 0)
+	old := p.semesterConfig
+	if old == nil {
+		return warnings
+	}
+
+	planExists := false
+	if entries, err := p.dbClient.PlanEntries(ctx); err == nil && len(entries) > 0 {
+		planExists = true
+	}
+	if !planExists {
+		return warnings
+	}
+
+	if !old.FromFk07.Equal(input.FromFk07) {
+		warnings = append(warnings, "fromFK07 geändert: gespeicherte Tag-Nummern im Plan verschieben sich.")
+	}
+	if !old.From.Equal(input.From) {
+		warnings = append(warnings, "from geändert: bei Tag-Nummerierung ab 'from' verschieben sich gespeicherte Tag-Nummern.")
+	}
+	if len(old.Starttimes) != len(input.Slots) {
+		warnings = append(warnings, "Anzahl der Slots geändert: gespeicherte Slot-Nummern im Plan können ungültig werden.")
+	}
+	return warnings
 }
 
 // loadSemesterConfig loads the raw per-semester config: from the DB if present,

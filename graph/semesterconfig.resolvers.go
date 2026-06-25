@@ -11,6 +11,11 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// SetSemesterConfigInput is the resolver for the setSemesterConfigInput field.
+func (r *mutationResolver) SetSemesterConfigInput(ctx context.Context, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error) {
+	return r.plexams.SetSemesterConfigInput(ctx, &input)
+}
+
 // AllSemesterNames is the resolver for the allSemesterNames field.
 func (r *queryResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return r.plexams.GetAllSemesterNames(ctx)
@@ -24,6 +29,11 @@ func (r *queryResolver) Semester(ctx context.Context) (*model.Semester, error) {
 // SemesterConfig is the resolver for the SemesterConfig field.
 func (r *queryResolver) SemesterConfig(ctx context.Context) (*model.SemesterConfig, error) {
 	return r.plexams.GetSemesterConfig(), nil
+}
+
+// SemesterConfigInput is the resolver for the semesterConfigInput field.
+func (r *queryResolver) SemesterConfigInput(ctx context.Context) (*model.SemesterConfigInput, error) {
+	return r.plexams.SemesterConfigInput(ctx)
 }
 
 // Query returns generated.QueryResolver implementation.

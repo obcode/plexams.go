@@ -2,6 +2,67 @@ type Query {
   allSemesterNames: [Semester!]!
   semester: Semester!
   semesterConfig: SemesterConfig!
+  "The raw, editable per-semester config (source of truth for the derived semesterConfig)."
+  semesterConfigInput: SemesterConfigInput
+}
+
+extend type Mutation {
+  """
+  Replace the raw per-semester config. The derived semesterConfig (days, slots,
+  go-slots) is recomputed and stored. Returns warnings for changes that may
+  invalidate an existing plan (the change is still applied).
+  """
+  setSemesterConfigInput(input: SemesterConfigInputData!): SaveSemesterConfigResult!
+}
+
+"""
+SemesterConfigInput is the raw, editable per-semester configuration — the values
+that used to live in <semester>.yaml. The derived SemesterConfig is computed from
+it.
+"""
+type SemesterConfigInput {
+  from: Time!
+  fromFK07: Time!
+  until: Time!
+  "\"from\" numbers days from `from` (legacy plans); otherwise from fromFK07."
+  dayNumberStart: String
+  "Daily slot start times as \"HH:MM\"."
+  slots: [String!]!
+  goDay0: Time!
+  forbiddenDays: [Time!]
+  "[dayOffsetFromGoDay0, slotNumber] pairs."
+  goSlots: [[Int!]!]
+  emails: Emails!
+}
+
+input SemesterConfigInputData {
+  from: Time!
+  fromFK07: Time!
+  until: Time!
+  dayNumberStart: String
+  slots: [String!]!
+  goDay0: Time!
+  forbiddenDays: [Time!]
+  goSlots: [[Int!]!]
+  emails: EmailsInput!
+}
+
+input EmailsInput {
+  profs: String!
+  lbas: String!
+  lbasLastSemester: String!
+  additionalExamer: [String!]!
+  fs: String!
+  sekr: String!
+  roomManagement: String!
+  kdp: String!
+  lbaba: String!
+}
+
+type SaveSemesterConfigResult {
+  ok: Boolean!
+  "Non-fatal warnings, e.g. changes that may invalidate an existing plan."
+  warnings: [String!]!
 }
 
 type Semester {

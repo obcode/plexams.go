@@ -121,6 +121,18 @@ type Emails struct {
 	Lbaba string `json:"lbaba"`
 }
 
+type EmailsInput struct {
+	Profs            string   `json:"profs"`
+	Lbas             string   `json:"lbas"`
+	LbasLastSemester string   `json:"lbasLastSemester"`
+	AdditionalExamer []string `json:"additionalExamer"`
+	Fs               string   `json:"fs"`
+	Sekr             string   `json:"sekr"`
+	RoomManagement   string   `json:"roomManagement"`
+	Kdp              string   `json:"kdp"`
+	Lbaba            string   `json:"lbaba"`
+}
+
 type EnhancedPrimussExam struct {
 	Exam        *PrimussExam          `json:"exam"`
 	StudentRegs []*EnhancedStudentReg `json:"studentRegs"`
@@ -565,6 +577,12 @@ type RoomWithInvigilator struct {
 	PrePlanned bool `json:"prePlanned"`
 }
 
+type SaveSemesterConfigResult struct {
+	Ok bool `json:"ok"`
+	// Non-fatal warnings, e.g. changes that may invalidate an existing plan.
+	Warnings []string `json:"warnings"`
+}
+
 type Semester struct {
 	ID string `json:"id"`
 }
@@ -581,6 +599,18 @@ type SemesterConfig struct {
 	FromFk07       time.Time    `json:"fromFK07"`
 	Until          time.Time    `json:"until"`
 	Emails         *Emails      `json:"emails"`
+}
+
+type SemesterConfigInputData struct {
+	From           time.Time    `json:"from"`
+	FromFk07       time.Time    `json:"fromFK07"`
+	Until          time.Time    `json:"until"`
+	DayNumberStart *string      `json:"dayNumberStart,omitempty"`
+	Slots          []string     `json:"slots"`
+	GoDay0         time.Time    `json:"goDay0"`
+	ForbiddenDays  []*time.Time `json:"forbiddenDays,omitempty"`
+	GoSlots        [][]int      `json:"goSlots,omitempty"`
+	Emails         *EmailsInput `json:"emails"`
 }
 
 type Slot struct {

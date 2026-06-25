@@ -406,6 +406,7 @@ type ComplexityRoot struct {
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
 		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
+		SetSemesterConfigInput        func(childComplexity int, input model.SemesterConfigInputData) int
 		UnblockRoomForSlot            func(childComplexity int, room string, day int, slot int) int
 		UnblockRoomForSlots           func(childComplexity int, room string, slots []*model.SlotInput) int
 		UpdateNta                     func(childComplexity int, input model.NTAInput) int
@@ -631,6 +632,7 @@ type ComplexityRoot struct {
 		RoomsWithInvigilationsForSlot func(childComplexity int, day int, time int) int
 		Semester                      func(childComplexity int) int
 		SemesterConfig                func(childComplexity int) int
+		SemesterConfigInput           func(childComplexity int) int
 		StudentByMtknr                func(childComplexity int, mtknr string) int
 		StudentRegsForProgram         func(childComplexity int, program string) int
 		StudentRegsImportErrors       func(childComplexity int) int
@@ -748,6 +750,11 @@ type ComplexityRoot struct {
 		Slot  func(childComplexity int) int
 	}
 
+	SaveSemesterConfigResult struct {
+		Ok       func(childComplexity int) int
+		Warnings func(childComplexity int) int
+	}
+
 	Semester struct {
 		ID func(childComplexity int) int
 	}
@@ -763,6 +770,18 @@ type ComplexityRoot struct {
 		GoSlotsRaw     func(childComplexity int) int
 		Slots          func(childComplexity int) int
 		Starttimes     func(childComplexity int) int
+		Until          func(childComplexity int) int
+	}
+
+	SemesterConfigInput struct {
+		DayNumberStart func(childComplexity int) int
+		Emails         func(childComplexity int) int
+		ForbiddenDays  func(childComplexity int) int
+		From           func(childComplexity int) int
+		FromFk07       func(childComplexity int) int
+		GoDay0         func(childComplexity int) int
+		GoSlots        func(childComplexity int) int
+		Slots          func(childComplexity int) int
 		Until          func(childComplexity int) int
 	}
 
@@ -1066,6 +1085,7 @@ type MutationResolver interface {
 	ApplyRoomRequestsPreview(ctx context.Context, force bool) (int, error)
 	AddRoomRequest(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
 	UpdateRoomRequestTime(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
+	SetSemesterConfigInput(ctx context.Context, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
 	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
@@ -1083,6 +1103,7 @@ type QueryResolver interface {
 	AllSemesterNames(ctx context.Context) ([]*model.Semester, error)
 	Semester(ctx context.Context) (*model.Semester, error)
 	SemesterConfig(ctx context.Context) (*model.SemesterConfig, error)
+	SemesterConfigInput(ctx context.Context) (*model.SemesterConfigInput, error)
 	AnnyBookings(ctx context.Context, room *string) ([]*model.AnnyBooking, error)
 	AllAnnyBookings(ctx context.Context) ([]*model.AnnyBooking, error)
 	ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error)
@@ -3105,6 +3126,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetRoomRequestApproved(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["approved"].(bool)), true
 
+	case "Mutation.setSemesterConfigInput":
+		if e.complexity.Mutation.SetSemesterConfigInput == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setSemesterConfigInput_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetSemesterConfigInput(childComplexity, args["input"].(model.SemesterConfigInputData)), true
+
 	case "Mutation.unblockRoomForSlot":
 		if e.complexity.Mutation.UnblockRoomForSlot == nil {
 			break
@@ -4379,6 +4412,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.SemesterConfig(childComplexity), true
 
+	case "Query.semesterConfigInput":
+		if e.complexity.Query.SemesterConfigInput == nil {
+			break
+		}
+
+		return e.complexity.Query.SemesterConfigInput(childComplexity), true
+
 	case "Query.studentByMtknr":
 		if e.complexity.Query.StudentByMtknr == nil {
 			break
@@ -4993,6 +5033,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RoomsForSlot.Slot(childComplexity), true
 
+	case "SaveSemesterConfigResult.ok":
+		if e.complexity.SaveSemesterConfigResult.Ok == nil {
+			break
+		}
+
+		return e.complexity.SaveSemesterConfigResult.Ok(childComplexity), true
+
+	case "SaveSemesterConfigResult.warnings":
+		if e.complexity.SaveSemesterConfigResult.Warnings == nil {
+			break
+		}
+
+		return e.complexity.SaveSemesterConfigResult.Warnings(childComplexity), true
+
 	case "Semester.id":
 		if e.complexity.Semester.ID == nil {
 			break
@@ -5076,6 +5130,69 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SemesterConfig.Until(childComplexity), true
+
+	case "SemesterConfigInput.dayNumberStart":
+		if e.complexity.SemesterConfigInput.DayNumberStart == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.DayNumberStart(childComplexity), true
+
+	case "SemesterConfigInput.emails":
+		if e.complexity.SemesterConfigInput.Emails == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.Emails(childComplexity), true
+
+	case "SemesterConfigInput.forbiddenDays":
+		if e.complexity.SemesterConfigInput.ForbiddenDays == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.ForbiddenDays(childComplexity), true
+
+	case "SemesterConfigInput.from":
+		if e.complexity.SemesterConfigInput.From == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.From(childComplexity), true
+
+	case "SemesterConfigInput.fromFK07":
+		if e.complexity.SemesterConfigInput.FromFk07 == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.FromFk07(childComplexity), true
+
+	case "SemesterConfigInput.goDay0":
+		if e.complexity.SemesterConfigInput.GoDay0 == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.GoDay0(childComplexity), true
+
+	case "SemesterConfigInput.goSlots":
+		if e.complexity.SemesterConfigInput.GoSlots == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.GoSlots(childComplexity), true
+
+	case "SemesterConfigInput.slots":
+		if e.complexity.SemesterConfigInput.Slots == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.Slots(childComplexity), true
+
+	case "SemesterConfigInput.until":
+		if e.complexity.SemesterConfigInput.Until == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.Until(childComplexity), true
 
 	case "Slot.dayNumber":
 		if e.complexity.Slot.DayNumber == nil {
@@ -6418,11 +6535,13 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputConstraintsInput,
+		ec.unmarshalInputEmailsInput,
 		ec.unmarshalInputInvigilationTimeWindowInput,
 		ec.unmarshalInputInvigilatorConstraintsInput,
 		ec.unmarshalInputNTAInput,
 		ec.unmarshalInputPrimussExamInput,
 		ec.unmarshalInputRoomInput,
+		ec.unmarshalInputSemesterConfigInputData,
 		ec.unmarshalInputSlotInput,
 	)
 	first := true
@@ -7530,6 +7649,67 @@ extend type Mutation {
   allSemesterNames: [Semester!]!
   semester: Semester!
   semesterConfig: SemesterConfig!
+  "The raw, editable per-semester config (source of truth for the derived semesterConfig)."
+  semesterConfigInput: SemesterConfigInput
+}
+
+extend type Mutation {
+  """
+  Replace the raw per-semester config. The derived semesterConfig (days, slots,
+  go-slots) is recomputed and stored. Returns warnings for changes that may
+  invalidate an existing plan (the change is still applied).
+  """
+  setSemesterConfigInput(input: SemesterConfigInputData!): SaveSemesterConfigResult!
+}
+
+"""
+SemesterConfigInput is the raw, editable per-semester configuration — the values
+that used to live in <semester>.yaml. The derived SemesterConfig is computed from
+it.
+"""
+type SemesterConfigInput {
+  from: Time!
+  fromFK07: Time!
+  until: Time!
+  "\"from\" numbers days from ` + "`" + `from` + "`" + ` (legacy plans); otherwise from fromFK07."
+  dayNumberStart: String
+  "Daily slot start times as \"HH:MM\"."
+  slots: [String!]!
+  goDay0: Time!
+  forbiddenDays: [Time!]
+  "[dayOffsetFromGoDay0, slotNumber] pairs."
+  goSlots: [[Int!]!]
+  emails: Emails!
+}
+
+input SemesterConfigInputData {
+  from: Time!
+  fromFK07: Time!
+  until: Time!
+  dayNumberStart: String
+  slots: [String!]!
+  goDay0: Time!
+  forbiddenDays: [Time!]
+  goSlots: [[Int!]!]
+  emails: EmailsInput!
+}
+
+input EmailsInput {
+  profs: String!
+  lbas: String!
+  lbasLastSemester: String!
+  additionalExamer: [String!]!
+  fs: String!
+  sekr: String!
+  roomManagement: String!
+  kdp: String!
+  lbaba: String!
+}
+
+type SaveSemesterConfigResult {
+  ok: Boolean!
+  "Non-fatal warnings, e.g. changes that may invalidate an existing plan."
+  warnings: [String!]!
 }
 
 type Semester {
@@ -9990,6 +10170,34 @@ func (ec *executionContext) field_Mutation_setRoomRequestApproved_argsApproved(
 	}
 
 	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemesterConfigInput_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setSemesterConfigInput_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setSemesterConfigInput_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.SemesterConfigInputData, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal model.SemesterConfigInputData
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNSemesterConfigInputData2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfigInputData(ctx, tmp)
+	}
+
+	var zeroVal model.SemesterConfigInputData
 	return zeroVal, nil
 }
 
@@ -24613,6 +24821,67 @@ func (ec *executionContext) fieldContext_Mutation_updateRoomRequestTime(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setSemesterConfigInput(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setSemesterConfigInput(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetSemesterConfigInput(rctx, fc.Args["input"].(model.SemesterConfigInputData))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.SaveSemesterConfigResult)
+	fc.Result = res
+	return ec.marshalNSaveSemesterConfigResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSaveSemesterConfigResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setSemesterConfigInput(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ok":
+				return ec.fieldContext_SaveSemesterConfigResult_ok(ctx, field)
+			case "warnings":
+				return ec.fieldContext_SaveSemesterConfigResult_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SaveSemesterConfigResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setSemesterConfigInput_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_zpaExamsToPlan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_zpaExamsToPlan(ctx, field)
 	if err != nil {
@@ -29597,6 +29866,67 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_emails(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_semesterConfigInput(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_semesterConfigInput(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().SemesterConfigInput(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.SemesterConfigInput)
+	fc.Result = res
+	return ec.marshalOSemesterConfigInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfigInput(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_semesterConfigInput(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "from":
+				return ec.fieldContext_SemesterConfigInput_from(ctx, field)
+			case "fromFK07":
+				return ec.fieldContext_SemesterConfigInput_fromFK07(ctx, field)
+			case "until":
+				return ec.fieldContext_SemesterConfigInput_until(ctx, field)
+			case "dayNumberStart":
+				return ec.fieldContext_SemesterConfigInput_dayNumberStart(ctx, field)
+			case "slots":
+				return ec.fieldContext_SemesterConfigInput_slots(ctx, field)
+			case "goDay0":
+				return ec.fieldContext_SemesterConfigInput_goDay0(ctx, field)
+			case "forbiddenDays":
+				return ec.fieldContext_SemesterConfigInput_forbiddenDays(ctx, field)
+			case "goSlots":
+				return ec.fieldContext_SemesterConfigInput_goSlots(ctx, field)
+			case "emails":
+				return ec.fieldContext_SemesterConfigInput_emails(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SemesterConfigInput", field.Name)
 		},
 	}
 	return fc, nil
@@ -37286,6 +37616,94 @@ func (ec *executionContext) fieldContext_RoomsForSlot_rooms(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _SaveSemesterConfigResult_ok(ctx context.Context, field graphql.CollectedField, obj *model.SaveSemesterConfigResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SaveSemesterConfigResult_ok(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ok, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SaveSemesterConfigResult_ok(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SaveSemesterConfigResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SaveSemesterConfigResult_warnings(ctx context.Context, field graphql.CollectedField, obj *model.SaveSemesterConfigResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SaveSemesterConfigResult_warnings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Warnings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SaveSemesterConfigResult_warnings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SaveSemesterConfigResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Semester_id(ctx context.Context, field graphql.CollectedField, obj *model.Semester) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Semester_id(ctx, field)
 	if err != nil {
@@ -37834,6 +38252,413 @@ func (ec *executionContext) _SemesterConfig_emails(ctx context.Context, field gr
 func (ec *executionContext) fieldContext_SemesterConfig_emails(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "profs":
+				return ec.fieldContext_Emails_profs(ctx, field)
+			case "lbas":
+				return ec.fieldContext_Emails_lbas(ctx, field)
+			case "lbasLastSemester":
+				return ec.fieldContext_Emails_lbasLastSemester(ctx, field)
+			case "additionalExamer":
+				return ec.fieldContext_Emails_additionalExamer(ctx, field)
+			case "fs":
+				return ec.fieldContext_Emails_fs(ctx, field)
+			case "sekr":
+				return ec.fieldContext_Emails_sekr(ctx, field)
+			case "roomManagement":
+				return ec.fieldContext_Emails_roomManagement(ctx, field)
+			case "kdp":
+				return ec.fieldContext_Emails_kdp(ctx, field)
+			case "lbaba":
+				return ec.fieldContext_Emails_lbaba(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Emails", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_from(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_from(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.From, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_from(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_fromFK07(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_fromFK07(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FromFk07, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_fromFK07(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_until(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_until(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Until, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_until(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_dayNumberStart(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_dayNumberStart(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DayNumberStart, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_dayNumberStart(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_slots(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_slots(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slots, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_slots(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_goDay0(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_goDay0(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GoDay0, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_goDay0(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_forbiddenDays(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_forbiddenDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ForbiddenDays, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚕtimeᚐTimeᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_forbiddenDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_goSlots(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_goSlots(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GoSlots, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([][]int)
+	fc.Result = res
+	return ec.marshalOInt2ᚕᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_goSlots(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_emails(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_emails(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Emails, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Emails)
+	fc.Result = res
+	return ec.marshalNEmails2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmails(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_emails(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -49377,6 +50202,89 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputEmailsInput(ctx context.Context, obj any) (model.EmailsInput, error) {
+	var it model.EmailsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"profs", "lbas", "lbasLastSemester", "additionalExamer", "fs", "sekr", "roomManagement", "kdp", "lbaba"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "profs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("profs"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Profs = data
+		case "lbas":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lbas"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Lbas = data
+		case "lbasLastSemester":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lbasLastSemester"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LbasLastSemester = data
+		case "additionalExamer":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("additionalExamer"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AdditionalExamer = data
+		case "fs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fs"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Fs = data
+		case "sekr":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sekr"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sekr = data
+		case "roomManagement":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomManagement"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomManagement = data
+		case "kdp":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kdp"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Kdp = data
+		case "lbaba":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lbaba"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Lbaba = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputInvigilationTimeWindowInput(ctx context.Context, obj any) (model.InvigilationTimeWindowInput, error) {
 	var it model.InvigilationTimeWindowInput
 	asMap := map[string]any{}
@@ -49685,6 +50593,89 @@ func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any
 				return it, err
 			}
 			it.HmebSeats = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Context, obj any) (model.SemesterConfigInputData, error) {
+	var it model.SemesterConfigInputData
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"from", "fromFK07", "until", "dayNumberStart", "slots", "goDay0", "forbiddenDays", "goSlots", "emails"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "from":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.From = data
+		case "fromFK07":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fromFK07"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FromFk07 = data
+		case "until":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("until"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Until = data
+		case "dayNumberStart":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dayNumberStart"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DayNumberStart = data
+		case "slots":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slots"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slots = data
+		case "goDay0":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("goDay0"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GoDay0 = data
+		case "forbiddenDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("forbiddenDays"))
+			data, err := ec.unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ForbiddenDays = data
+		case "goSlots":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("goSlots"))
+			data, err := ec.unmarshalOInt2ᚕᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GoSlots = data
+		case "emails":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("emails"))
+			data, err := ec.unmarshalNEmailsInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailsInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Emails = data
 		}
 	}
 
@@ -52270,6 +53261,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setSemesterConfigInput":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setSemesterConfigInput(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "zpaExamsToPlan":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_zpaExamsToPlan(ctx, field)
@@ -53605,6 +54603,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "semesterConfigInput":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_semesterConfigInput(ctx, field)
 				return res
 			}
 
@@ -55848,6 +56865,50 @@ func (ec *executionContext) _RoomsForSlot(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var saveSemesterConfigResultImplementors = []string{"SaveSemesterConfigResult"}
+
+func (ec *executionContext) _SaveSemesterConfigResult(ctx context.Context, sel ast.SelectionSet, obj *model.SaveSemesterConfigResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, saveSemesterConfigResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SaveSemesterConfigResult")
+		case "ok":
+			out.Values[i] = ec._SaveSemesterConfigResult_ok(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "warnings":
+			out.Values[i] = ec._SaveSemesterConfigResult_warnings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var semesterImplementors = []string{"Semester"}
 
 func (ec *executionContext) _Semester(ctx context.Context, sel ast.SelectionSet, obj *model.Semester) graphql.Marshaler {
@@ -55944,6 +57005,76 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			}
 		case "emails":
 			out.Values[i] = ec._SemesterConfig_emails(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var semesterConfigInputImplementors = []string{"SemesterConfigInput"}
+
+func (ec *executionContext) _SemesterConfigInput(ctx context.Context, sel ast.SelectionSet, obj *model.SemesterConfigInput) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, semesterConfigInputImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SemesterConfigInput")
+		case "from":
+			out.Values[i] = ec._SemesterConfigInput_from(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fromFK07":
+			out.Values[i] = ec._SemesterConfigInput_fromFK07(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "until":
+			out.Values[i] = ec._SemesterConfigInput_until(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "dayNumberStart":
+			out.Values[i] = ec._SemesterConfigInput_dayNumberStart(ctx, field, obj)
+		case "slots":
+			out.Values[i] = ec._SemesterConfigInput_slots(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "goDay0":
+			out.Values[i] = ec._SemesterConfigInput_goDay0(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "forbiddenDays":
+			out.Values[i] = ec._SemesterConfigInput_forbiddenDays(ctx, field, obj)
+		case "goSlots":
+			out.Values[i] = ec._SemesterConfigInput_goSlots(ctx, field, obj)
+		case "emails":
+			out.Values[i] = ec._SemesterConfigInput_emails(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -58217,6 +59348,11 @@ func (ec *executionContext) marshalNEmails2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗ
 	return ec._Emails(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNEmailsInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailsInput(ctx context.Context, v any) (*model.EmailsInput, error) {
+	res, err := ec.unmarshalInputEmailsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNEnhancedPrimussExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEnhancedPrimussExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EnhancedPrimussExam) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -60355,6 +61491,20 @@ func (ec *executionContext) marshalNRoomsForSlot2ᚖgithubᚗcomᚋobcodeᚋplex
 	return ec._RoomsForSlot(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNSaveSemesterConfigResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSaveSemesterConfigResult(ctx context.Context, sel ast.SelectionSet, v model.SaveSemesterConfigResult) graphql.Marshaler {
+	return ec._SaveSemesterConfigResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSaveSemesterConfigResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSaveSemesterConfigResult(ctx context.Context, sel ast.SelectionSet, v *model.SaveSemesterConfigResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SaveSemesterConfigResult(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNSemester2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemester(ctx context.Context, sel ast.SelectionSet, v model.Semester) graphql.Marshaler {
 	return ec._Semester(ctx, sel, &v)
 }
@@ -60425,6 +61575,11 @@ func (ec *executionContext) marshalNSemesterConfig2ᚖgithubᚗcomᚋobcodeᚋpl
 		return graphql.Null
 	}
 	return ec._SemesterConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSemesterConfigInputData2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfigInputData(ctx context.Context, v any) (model.SemesterConfigInputData, error) {
+	res, err := ec.unmarshalInputSemesterConfigInputData(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNSlot2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Slot) graphql.Marshaler {
@@ -62594,6 +63749,13 @@ func (ec *executionContext) marshalORoomsForSlot2ᚖgithubᚗcomᚋobcodeᚋplex
 	return ec._RoomsForSlot(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOSemesterConfigInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfigInput(ctx context.Context, sel ast.SelectionSet, v *model.SemesterConfigInput) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SemesterConfigInput(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOSlot2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Slot) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -62914,6 +64076,42 @@ func (ec *executionContext) marshalOTeacher2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._Teacher(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTime2ᚕtimeᚐTimeᚄ(ctx context.Context, v any) ([]time.Time, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]time.Time, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNTime2timeᚐTime(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOTime2ᚕtimeᚐTimeᚄ(ctx context.Context, sel ast.SelectionSet, v []time.Time) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNTime2timeᚐTime(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx context.Context, v any) ([]*time.Time, error) {

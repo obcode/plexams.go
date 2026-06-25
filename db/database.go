@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"sort"
+	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -41,17 +42,48 @@ func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
 // GetSemesterConfigInput returns the raw, editable per-semester config (the
 // source of truth) or nil when none has been stored yet.
 func (db *DB) GetSemesterConfigInput(ctx context.Context) (*model.SemesterConfigInput, error) {
-	collection := db.getCollectionSemester(collectionNameSemesterConfigInput)
+	return db.getSemesterConfigInputFrom(ctx, db.databaseName)
+}
+
+// GetSemesterConfigInputForSemester returns the raw config of another semester
+// (its own database), or nil when none is stored. Used to seed a new semester
+// from a previous one and to guard createSemester against overwriting.
+func (db *DB) GetSemesterConfigInputForSemester(ctx context.Context, semester string) (*model.SemesterConfigInput, error) {
+	return db.getSemesterConfigInputFrom(ctx, databaseNameForSemester(semester))
+}
+
+func (db *DB) getSemesterConfigInputFrom(ctx context.Context, databaseName string) (*model.SemesterConfigInput, error) {
+	collection := db.Client.Database(databaseName).Collection(collectionNameSemesterConfigInput)
 	var input model.SemesterConfigInput
 	err := collection.FindOne(ctx, bson.M{}).Decode(&input)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
 		}
-		log.Error().Err(err).Msg("cannot get semester config input")
+		log.Error().Err(err).Str("database", databaseName).Msg("cannot get semester config input")
 		return nil, err
 	}
 	return &input, nil
+}
+
+// SaveSemesterConfigInputForSemester writes the raw config into another
+// semester's database (used when creating a new semester).
+func (db *DB) SaveSemesterConfigInputForSemester(ctx context.Context, semester string, input *model.SemesterConfigInput) error {
+	collection := db.Client.Database(databaseNameForSemester(semester)).Collection(collectionNameSemesterConfigInput)
+	if err := collection.Drop(ctx); err != nil {
+		return err
+	}
+	if _, err := collection.InsertOne(ctx, input); err != nil {
+		log.Error().Err(err).Str("semester", semester).Msg("cannot save semester config input for semester")
+		return err
+	}
+	return nil
+}
+
+// databaseNameForSemester maps a semester (e.g. "2026 WS" or "2026-WS") to its
+// MongoDB database name ("2026-WS").
+func databaseNameForSemester(semester string) string {
+	return strings.Replace(semester, " ", "-", 1)
 }
 
 // SaveSemesterConfigInput replaces the stored raw per-semester config.

@@ -16,6 +16,11 @@ func (r *mutationResolver) SetSemesterConfigInput(ctx context.Context, input mod
 	return r.plexams.SetSemesterConfigInput(ctx, &input)
 }
 
+// CreateSemester is the resolver for the createSemester field.
+func (r *mutationResolver) CreateSemester(ctx context.Context, semester string, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error) {
+	return r.plexams.CreateSemester(ctx, semester, &input)
+}
+
 // AllSemesterNames is the resolver for the allSemesterNames field.
 func (r *queryResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return r.plexams.GetAllSemesterNames(ctx)
@@ -34,6 +39,11 @@ func (r *queryResolver) SemesterConfig(ctx context.Context) (*model.SemesterConf
 // SemesterConfigInput is the resolver for the semesterConfigInput field.
 func (r *queryResolver) SemesterConfigInput(ctx context.Context) (*model.SemesterConfigInput, error) {
 	return r.plexams.SemesterConfigInput(ctx)
+}
+
+// NewSemesterConfigDefaults is the resolver for the newSemesterConfigDefaults field.
+func (r *queryResolver) NewSemesterConfigDefaults(ctx context.Context) (*model.SemesterConfigInput, error) {
+	return r.plexams.NewSemesterConfigDefaults(ctx)
 }
 
 // Query returns generated.QueryResolver implementation.

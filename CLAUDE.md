@@ -23,11 +23,11 @@ Pre-commit hooks (`.pre-commit-config.yaml`) run `gofmt -w`, `go vet`, `golangci
 
 `plexams.go <command>` — with no command, it starts the GraphQL server (playground at `/`, queries at `/query`, default CORS allows localhost:5173/8080/3000). Top-level commands: `zpa`, `primuss`, `prepare`, `plan`, `rooms`, `invigilation`, `validate`, `email`, `export`, `csv`, `pdf`, `ics`, `info`, `init`, `server`, `version`. Global flags: `-v/--verbose`, `--db-uri`, `--semester`.
 
-A typical run requires MongoDB and config (see below). `plexams.go init <semester>` interactively creates a semester config file. The overall planning workflow is documented step-by-step in [README.md](README.md) (`zpa exams` → `zpa teacher` → select exams in GUI → constraints → import Primuss → `prepare connected-exams` → ... → publish plan → invigilation planning).
+A typical run requires MongoDB and config (see below). `plexams.go init <semester>` interactively creates a new semester's config and stores it in that semester's database (it no longer writes a YAML file; it needs `.plexams.yaml` with `db.uri`). The overall planning workflow is documented step-by-step in [README.md](README.md) (`zpa exams` → `zpa teacher` → select exams in GUI → constraints → import Primuss → `prepare connected-exams` → ... → publish plan → invigilation planning).
 
 ## Configuration
 
-Config is loaded via **viper** (`.plexams.yaml` in `.` or `$HOME`) which names the `semester` (e.g. `2026-SS`) and a `semester-path`. A second per-semester file `<semester>.yaml` is read from `semester-path` and **merged** on top. Required key: `semester`. `init` and `version` commands skip config loading. Key config sections consumed in code: `db.uri`/`db.database`, `zpa.*` (baseurl, username, password, fk07programs, oldprograms), `smtp.*`, `planer.*`, `semesterConfig.*` (from/until/slots/forbiddenDays/goDay0/emails), `goslots`.
+Config is loaded via **viper** (`.plexams.yaml` in `.` or `$HOME`) which names the `semester` (e.g. `2026-SS`) and a `semester-path`. A second per-semester file `<semester>.yaml` may be read from `semester-path` and **merged** on top, but is now **optional**: the per-semester config (`semesterConfig.*`/`goslots`) is stored in and loaded from the database (collection `semester_config_input`), auto-migrated from the YAML on first start. The `version` command skips config loading. Required key: `semester`. Key config sections consumed in code: `db.uri`/`db.database`, `zpa.*` (baseurl, username, password, fk07programs, oldprograms), `smtp.*`, `planer.*`; the per-semester `semesterConfig.*` (from/until/slots/forbiddenDays/goDay0/emails) and `goslots` come from the DB (YAML still works as a fallback/seed).
 
 ## Architecture
 

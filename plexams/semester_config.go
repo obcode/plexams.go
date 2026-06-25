@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -124,29 +125,6 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 	if data == nil {
 		return nil, fmt.Errorf("no config provided")
 	}
-	from := data.From.Local()
-	fromFK07 := data.FromFk07.Local()
-	until := data.Until.Local()
-	if from.After(fromFK07) {
-		return nil, fmt.Errorf("from (%s) must not be after fromFK07 (%s)", from.Format("2006-01-02"), fromFK07.Format("2006-01-02"))
-	}
-	if fromFK07.After(until) {
-		return nil, fmt.Errorf("fromFK07 (%s) must not be after until (%s)", fromFK07.Format("2006-01-02"), until.Format("2006-01-02"))
-	}
-	if len(data.Slots) == 0 {
-		return nil, fmt.Errorf("at least one slot start time is required")
-	}
-	for _, s := range data.Slots {
-		parts := strings.Split(s, ":")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid slot start time %q (expected HH:MM)", s)
-		}
-		hour, errH := strconv.Atoi(parts[0])
-		minute, errM := strconv.Atoi(parts[1])
-		if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
-			return nil, fmt.Errorf("invalid slot start time %q (expected HH:MM)", s)
-		}
-	}
 
 	dayNumberStart := ""
 	if data.DayNumberStart != nil {
@@ -175,17 +153,112 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 		}
 	}
 
-	return &model.SemesterConfigInput{
-		From:           from,
-		FromFk07:       fromFK07,
-		Until:          until,
+	input := &model.SemesterConfigInput{
+		From:           data.From.Local(),
+		FromFk07:       data.FromFk07.Local(),
+		Until:          data.Until.Local(),
 		DayNumberStart: dayNumberStart,
 		Slots:          data.Slots,
 		GoDay0:         data.GoDay0.Local(),
 		ForbiddenDays:  forbiddenDays,
 		GoSlots:        data.GoSlots,
 		Emails:         emails,
+	}
+	if err := validateSemesterConfigInput(input); err != nil {
+		return nil, err
+	}
+	return input, nil
+}
+
+// validateSemesterConfigInput checks date ordering and slot start-time format.
+func validateSemesterConfigInput(input *model.SemesterConfigInput) error {
+	if input == nil {
+		return fmt.Errorf("no config provided")
+	}
+	if input.From.After(input.FromFk07) {
+		return fmt.Errorf("from (%s) must not be after fromFK07 (%s)",
+			input.From.Format("2006-01-02"), input.FromFk07.Format("2006-01-02"))
+	}
+	if input.FromFk07.After(input.Until) {
+		return fmt.Errorf("fromFK07 (%s) must not be after until (%s)",
+			input.FromFk07.Format("2006-01-02"), input.Until.Format("2006-01-02"))
+	}
+	if len(input.Slots) == 0 {
+		return fmt.Errorf("at least one slot start time is required")
+	}
+	for _, s := range input.Slots {
+		parts := strings.Split(s, ":")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid slot start time %q (expected HH:MM)", s)
+		}
+		hour, errH := strconv.Atoi(parts[0])
+		minute, errM := strconv.Atoi(parts[1])
+		if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+			return fmt.Errorf("invalid slot start time %q (expected HH:MM)", s)
+		}
+	}
+	return nil
+}
+
+var semesterNameRE = regexp.MustCompile(`^\d{4}-(SS|WS)$`)
+
+// NewSemesterConfigDefaults returns a template for creating a new semester,
+// based on the current semester's stored config (slots, emails, go-slots,
+// dayNumberStart and — as a starting point — the dates carry over; the planner
+// adjusts the dates). Falls back to minimal defaults when nothing is stored.
+func (p *Plexams) NewSemesterConfigDefaults(ctx context.Context) (*model.SemesterConfigInput, error) {
+	input, err := p.SemesterConfigInput(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if input != nil {
+		return input, nil
+	}
+	return &model.SemesterConfigInput{
+		Slots:  []string{"08:30", "10:30", "12:30", "14:30", "16:30"},
+		Emails: &model.Emails{},
 	}, nil
+}
+
+// CreateSemester stores the config for a new semester in its own database. It
+// refuses an invalid semester name or a semester that already has a config.
+func (p *Plexams) CreateSemester(ctx context.Context, semester string, data *model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error) {
+	input, err := semesterConfigInputFromData(data)
+	if err != nil {
+		return nil, err
+	}
+	return p.createSemesterWithInput(ctx, semester, input)
+}
+
+// CreateSemesterFromInput creates a new semester from an already-built raw
+// config (the CLI init entry point).
+func (p *Plexams) CreateSemesterFromInput(ctx context.Context, semester string, input *model.SemesterConfigInput) (*model.SaveSemesterConfigResult, error) {
+	return p.createSemesterWithInput(ctx, semester, input)
+}
+
+// createSemesterWithInput is the shared core for the GUI mutation and the CLI
+// init command.
+func (p *Plexams) createSemesterWithInput(ctx context.Context, semester string, input *model.SemesterConfigInput) (*model.SaveSemesterConfigResult, error) {
+	semester = strings.TrimSpace(semester)
+	if !semesterNameRE.MatchString(semester) {
+		return nil, fmt.Errorf("invalid semester %q (expected YYYY-SS or YYYY-WS)", semester)
+	}
+	if err := validateSemesterConfigInput(input); err != nil {
+		return nil, err
+	}
+
+	existing, err := p.dbClient.GetSemesterConfigInputForSemester(ctx, semester)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, fmt.Errorf("semester %q already has a config — edit it instead of creating it", semester)
+	}
+
+	if err := p.dbClient.SaveSemesterConfigInputForSemester(ctx, semester, input); err != nil {
+		return nil, fmt.Errorf("cannot save config for new semester: %w", err)
+	}
+	return &model.SaveSemesterConfigResult{Ok: true, Warnings: []string{}}, nil
 }
 
 // semesterConfigChangeWarnings compares the new input against the currently

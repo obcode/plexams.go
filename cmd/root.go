@@ -101,31 +101,31 @@ func initConfig() error {
 		if err != nil {
 			var notFound viper.ConfigFileNotFoundError
 			if errors.As(err, &notFound) {
-				if p != "" {
-					return fmt.Errorf("semester config '%s.yaml' not found (searched in: ., %s, %s)", semester, home, p)
-				}
-				return fmt.Errorf("semester config '%s.yaml' not found (searched in: ., %s)", semester, home)
+				// The per-semester YAML is optional: the semester config is now
+				// stored in (and loaded from) the database. Without the file we
+				// simply skip the merge and rely on the DB.
+				log.Debug().Str("semester", semester).Msg("no per-semester YAML found, using config from the database")
+			} else {
+				return fmt.Errorf("cannot read semester config '%s.yaml': %w", semester, err)
 			}
-			return fmt.Errorf("cannot read semester config '%s.yaml': %w", semester, err)
-		}
-
-		err = viper.MergeConfigMap(semesterViper.AllSettings())
-		if err != nil {
-			return fmt.Errorf("cannot merge semester config: %w", err)
-		}
-
-		// Beobachte die per-Semester-Config, damit Änderungen an der YAML ohne
-		// Neustart wirksam werden. viper liest die Datei vor
-		// dem Callback selbst neu ein, wir mergen die frischen Werte ins globale
-		// viper. Hinweis: Merge entfernt keine im File gelöschten Schlüssel – dafür
-		// ist weiterhin ein Neustart nötig.
-		semesterViper.OnConfigChange(func(e fsnotify.Event) {
-			log.Info().Str("file", e.Name).Msg("semester config changed, reloading")
+		} else {
 			if err := viper.MergeConfigMap(semesterViper.AllSettings()); err != nil {
-				log.Error().Err(err).Msg("cannot re-merge semester config after change")
+				return fmt.Errorf("cannot merge semester config: %w", err)
 			}
-		})
-		semesterViper.WatchConfig()
+
+			// Beobachte die per-Semester-Config, damit Änderungen an der YAML ohne
+			// Neustart wirksam werden. viper liest die Datei vor
+			// dem Callback selbst neu ein, wir mergen die frischen Werte ins globale
+			// viper. Hinweis: Merge entfernt keine im File gelöschten Schlüssel – dafür
+			// ist weiterhin ein Neustart nötig.
+			semesterViper.OnConfigChange(func(e fsnotify.Event) {
+				log.Info().Str("file", e.Name).Msg("semester config changed, reloading")
+				if err := viper.MergeConfigMap(semesterViper.AllSettings()); err != nil {
+					log.Error().Err(err).Msg("cannot re-merge semester config after change")
+				}
+			})
+			semesterViper.WatchConfig()
+		}
 	} else {
 		var notFound viper.ConfigFileNotFoundError
 		if errors.As(err, &notFound) {
@@ -140,7 +140,7 @@ func initConfig() error {
 func isConfigOptionalCommand(cmd *cobra.Command) bool {
 	for c := cmd; c != nil; c = c.Parent() {
 		switch c.Name() {
-		case "init", "version":
+		case "version":
 			return true
 		}
 	}

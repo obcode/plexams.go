@@ -4,6 +4,11 @@ type Query {
   semesterConfig: SemesterConfig!
   "The raw, editable per-semester config (source of truth for the derived semesterConfig)."
   semesterConfigInput: SemesterConfigInput
+  """
+  A template for creating a new semester, seeded from the current semester's
+  config (slots/emails/go-slots carry over; the planner adjusts the dates).
+  """
+  newSemesterConfigDefaults: SemesterConfigInput!
 }
 
 extend type Mutation {
@@ -13,6 +18,13 @@ extend type Mutation {
   invalidate an existing plan (the change is still applied).
   """
   setSemesterConfigInput(input: SemesterConfigInputData!): SaveSemesterConfigResult!
+  """
+  Create a new semester (in its own database) with the given config. The
+  semester must match YYYY-SS / YYYY-WS and must not already have a config.
+  Note: the running server stays bound to its current semester — switch to the
+  new one by (re)starting plexams for it.
+  """
+  createSemester(semester: String!, input: SemesterConfigInputData!): SaveSemesterConfigResult!
 }
 
 """

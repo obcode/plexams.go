@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -14,7 +14,6 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v3"
 )
 
 type initDefaults struct {
@@ -36,7 +35,7 @@ var (
 	initCmd = &cobra.Command{
 		Use:   "init [semester]",
 		Short: "Initialize new semester",
-		Long:  `Initialize new semester. This interactively creates a semester config file named <semester>.yaml.`,
+		Long:  `Initialize a new semester. Interactively asks for the config and stores it in the semester's database (no YAML file is written). Requires .plexams.yaml with db.uri.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			semester := strings.TrimSpace(args[0])
@@ -140,17 +139,13 @@ var (
 				forbiddenDayTimes = append(forbiddenDayTimes, parsed)
 			}
 
-			starttimes := make([]*model.Starttime, 0, len(slots))
-			for i, slot := range slots {
-				starttimes = append(starttimes, &model.Starttime{Number: i + 1, Start: slot})
-			}
-
-			cfg := &model.SemesterConfig{
-				From:       fromDate,
-				FromFk07:   fromFK07Date,
-				Until:      untilDate,
-				GoDay0:     goDay0Date,
-				Starttimes: starttimes,
+			input := &model.SemesterConfigInput{
+				From:          fromDate,
+				FromFk07:      fromFK07Date,
+				Until:         untilDate,
+				GoDay0:        goDay0Date,
+				Slots:         slots,
+				ForbiddenDays: forbiddenDayTimes,
 				Emails: &model.Emails{
 					Profs:            profs,
 					Lbas:             lbas,
@@ -161,45 +156,16 @@ var (
 				},
 			}
 
-			out, err := yaml.Marshal(semesterConfigYAMLDocument(cfg, forbiddenDayTimes))
+			plexams := initPlexamsConfig()
+			result, err := plexams.CreateSemesterFromInput(context.Background(), semester, input)
 			if err != nil {
-				return fmt.Errorf("cannot marshal yaml: %w", err)
+				return err
 			}
 
-			basePath := viper.GetString("semester-path")
-			if basePath == "" {
-				basePath = "."
+			fmt.Printf("\nCreated semester config for %s in the database.\n", semester)
+			for _, w := range result.Warnings {
+				fmt.Printf("  warning: %s\n", w)
 			}
-			basePath = os.ExpandEnv(basePath)
-
-			if strings.HasPrefix(basePath, "~") {
-				home, err := os.UserHomeDir()
-				if err != nil {
-					return fmt.Errorf("cannot resolve home dir: %w", err)
-				}
-				basePath = filepath.Join(home, strings.TrimPrefix(basePath, "~"))
-			}
-
-			if err := os.MkdirAll(basePath, 0o755); err != nil {
-				return fmt.Errorf("cannot create semester path '%s': %w", basePath, err)
-			}
-
-			filename := filepath.Join(basePath, fmt.Sprintf("%s.yaml", semester))
-			if _, err := os.Stat(filename); err == nil {
-				overwrite, askErr := askYesNo(reader, fmt.Sprintf("file '%s' exists. Overwrite? [y/N]: ", filename))
-				if askErr != nil {
-					return askErr
-				}
-				if !overwrite {
-					return errors.New("aborted")
-				}
-			}
-
-			if err := os.WriteFile(filename, out, 0o644); err != nil {
-				return fmt.Errorf("cannot write '%s': %w", filename, err)
-			}
-
-			fmt.Printf("\nWrote semester config: %s\n", filename)
 			return nil
 		},
 	}
@@ -348,15 +314,6 @@ func askList(reader *bufio.Reader, prompt string, defaultValues []string, requir
 	}
 }
 
-func askYesNo(reader *bufio.Reader, prompt string) (bool, error) {
-	line, err := readTrimmedLine(reader, prompt)
-	if err != nil {
-		return false, err
-	}
-	answer := strings.ToLower(strings.TrimSpace(line))
-	return answer == "y" || answer == "yes", nil
-}
-
 func readTrimmedLine(reader *bufio.Reader, prompt string) (string, error) {
 	fmt.Print(prompt)
 	line, err := reader.ReadString('\n')
@@ -371,46 +328,4 @@ func withDefault(prompt, defaultValue string) string {
 		return prompt + ": "
 	}
 	return fmt.Sprintf("%s [%s]: ", prompt, defaultValue)
-}
-
-func semesterConfigYAMLDocument(cfg *model.SemesterConfig, forbiddenDays []time.Time) map[string]any {
-	slots := make([]string, 0, len(cfg.Starttimes))
-	for _, starttime := range cfg.Starttimes {
-		slots = append(slots, starttime.Start)
-	}
-
-	forbidden := make([]string, 0, len(forbiddenDays))
-	for _, day := range forbiddenDays {
-		forbidden = append(forbidden, day.Format("2006-01-02"))
-	}
-
-	additionalExamer := []string{}
-	if cfg.Emails != nil {
-		additionalExamer = cfg.Emails.AdditionalExamer
-	}
-
-	emails := map[string]string{}
-	if cfg.Emails != nil {
-		emails["profs"] = cfg.Emails.Profs
-		emails["lbas"] = cfg.Emails.Lbas
-		emails["lbaslastsemester"] = cfg.Emails.LbasLastSemester
-		emails["fs"] = cfg.Emails.Fs
-		emails["sekr"] = cfg.Emails.Sekr
-	}
-
-	return map[string]any{
-		"semesterConfig": map[string]any{
-			"from":     cfg.From.Format("2006-01-02"),
-			"fromFK07": cfg.FromFk07.Format("2006-01-02"),
-			"until":    cfg.Until.Format("2006-01-02"),
-			// dayNumberStart defaults to "fromFK07" (day 1 = fromFK07, no
-			// pre-period), so new semesters don't need to set it. Older semesters
-			// whose plan is stored with day 1 = from set dayNumberStart: from.
-			"slots":            slots,
-			"goDay0":           cfg.GoDay0.Format("2006-01-02"),
-			"forbiddenDays":    forbidden,
-			"emails":           emails,
-			"additionalexamer": additionalExamer,
-		},
-	}
 }

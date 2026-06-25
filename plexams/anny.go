@@ -85,7 +85,7 @@ type annyBookingsPage struct {
 func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
 	reporter.Step("fetching bookings from anny.eu")
 	token := viper.GetString("anny.token")
-	personalizationName := strings.TrimSpace(viper.GetString("anny.personalization_name"))
+	personalizationNames := personalizationNamesFromConfig()
 	configRooms := viper.GetStringSlice("anny.rooms")
 	allowedRooms := make(map[string]struct{}, len(configRooms))
 	for _, room := range configRooms {
@@ -209,7 +209,7 @@ func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
 			}
 		}
 
-		if personalizationName != "" && !strings.EqualFold(strings.TrimSpace(booking.PersonalizationName), personalizationName) {
+		if !matchesAnyPersonalization(booking.PersonalizationName, personalizationNames) {
 			continue
 		}
 		if len(allowedRooms) > 0 {
@@ -237,7 +237,7 @@ func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
 		return fmt.Errorf("cannot save anny bookings: %w", err)
 	}
 
-	annySummary(bookings, personalizationName, reporter)
+	annySummary(bookings, personalizationNames, reporter)
 	reporter.StopProgress(fmt.Sprintf("saved %d anny bookings to the database", len(dbBookings)))
 
 	p.logSync(ctx, &model.SyncLogEntry{
@@ -258,7 +258,50 @@ func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
 	return nil
 }
 
-func annySummary(bookings []AnnyBooking, personalizationName string, reporter Reporter) {
+// personalizationNamesFromConfig reads anny.personalization_name, which may be a
+// single name or a list of names. Bookings are kept when their personalization
+// name matches any of them (empty list = no filtering).
+func personalizationNamesFromConfig() []string {
+	names := make([]string, 0)
+	switch v := viper.Get("anny.personalization_name").(type) {
+	case string:
+		if s := strings.TrimSpace(v); s != "" {
+			names = append(names, s)
+		}
+	case []interface{}:
+		for _, e := range v {
+			if s, ok := e.(string); ok {
+				if s = strings.TrimSpace(s); s != "" {
+					names = append(names, s)
+				}
+			}
+		}
+	case []string:
+		for _, s := range v {
+			if s = strings.TrimSpace(s); s != "" {
+				names = append(names, s)
+			}
+		}
+	}
+	return names
+}
+
+// matchesAnyPersonalization reports whether name equals (case-insensitively) any
+// of the configured names. An empty list means "keep everything".
+func matchesAnyPersonalization(name string, names []string) bool {
+	if len(names) == 0 {
+		return true
+	}
+	name = strings.TrimSpace(name)
+	for _, n := range names {
+		if strings.EqualFold(name, n) {
+			return true
+		}
+	}
+	return false
+}
+
+func annySummary(bookings []AnnyBooking, personalizationNames []string, reporter Reporter) {
 	roomMap := make(map[string]int)
 	for _, booking := range bookings {
 		room := booking.Room
@@ -274,7 +317,11 @@ func annySummary(bookings []AnnyBooking, personalizationName string, reporter Re
 	}
 	sort.Strings(roomNames)
 
-	reporter.Println(fmt.Sprintf("Anny-Buchungen für %s (gesamt %d):", personalizationName, len(bookings)))
+	who := "alle"
+	if len(personalizationNames) > 0 {
+		who = strings.Join(personalizationNames, ", ")
+	}
+	reporter.Println(fmt.Sprintf("Anny-Buchungen für %s (gesamt %d):", who, len(bookings)))
 	for _, roomName := range roomNames {
 		reporter.Println(fmt.Sprintf("  %-10s %d", roomName, roomMap[roomName]))
 	}

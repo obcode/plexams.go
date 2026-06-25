@@ -36,12 +36,16 @@ planer:                        # optional, sobald in der DB gesetzt
 
 ## 2. ZPA (Import/Upload)
 
+Authentifizierung: **entweder** `token` **oder** `username`+`password`. Ist ein
+`token` gesetzt, wird er direkt benutzt (username/password werden ignoriert);
+sonst werden username/password gegen `/api-token-auth` eingetauscht.
+
 ```yaml
 zpa:
   baseurl: https://zpa.cs.hm.edu/rest
-  username: <zpa-user>
-  password: <zpa-passwort>
-  token: <zpa-token>           # Secret — nicht teilen
+  token: <zpa-token>           # Secret — entweder das ...
+  # username: <zpa-user>       # ... oder username + password
+  # password: <zpa-passwort>
   fk07programs:                # FK07-Studiengänge — Bootstrap/Seed (s. u.)
     - IF
     - IB

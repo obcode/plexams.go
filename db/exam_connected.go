@@ -123,8 +123,11 @@ func (db *DB) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, er
 	connectedExams := make([]*model.ConnectedExam, 0, len(exams))
 	for _, exam := range exams {
 		connectedExam, err := db.connectedExamToModelConnectedExam(ctx, exam)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", exam.ZpaExam).Msg("cannot get connected exam")
+		if err != nil || connectedExam == nil {
+			// skip entries that cannot be mapped (e.g. a ZPA/Primuss exam without a
+			// counterpart) — otherwise a nil element violates the non-null list type.
+			log.Error().Err(err).Int("ancode", exam.ZpaExam).Msg("cannot get connected exam, skipping")
+			continue
 		}
 		connectedExams = append(connectedExams, connectedExam)
 	}

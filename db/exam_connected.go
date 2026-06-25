@@ -15,10 +15,10 @@ type PrimussExam struct {
 }
 
 type ConnectedExam struct {
-	ZpaExam           int            `bson:"zpaExamAncode"`
-	PrimussExams      []*PrimussExam `bson:"primussExamsAncodes"`
-	OtherPrimussExams []*PrimussExam `bson:"otherPrimussExamsAncodes"`
-	Errors            []string       `bson:"errors"`
+	ZpaExam           int                           `bson:"zpaExamAncode"`
+	PrimussExams      []*PrimussExam                `bson:"primussExamsAncodes"`
+	OtherPrimussExams []*PrimussExam                `bson:"otherPrimussExamsAncodes"`
+	Warnings          []*model.ConnectedExamWarning `bson:"warnings"`
 }
 
 func (db *DB) SaveConnectedExam(ctx context.Context, exam *model.ConnectedExam) error {
@@ -162,7 +162,7 @@ func (db *DB) modelConnectedExamToConnectedExam(exam *model.ConnectedExam) *Conn
 		ZpaExam:           exam.ZpaExam.AnCode,
 		PrimussExams:      primussExamsAncodes,
 		OtherPrimussExams: otherPrimussExamsAncodes,
-		Errors:            exam.Errors,
+		Warnings:          exam.Warnings,
 	}
 }
 
@@ -208,6 +208,6 @@ func (db *DB) connectedExamToModelConnectedExam(ctx context.Context, exam *Conne
 		ZpaExam:           zpaExam,
 		PrimussExams:      primussExams,
 		OtherPrimussExams: otherPrimussExams,
-		Errors:            exam.Errors,
+		Warnings:          exam.Warnings,
 	}, nil
 }

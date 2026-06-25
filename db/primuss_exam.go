@@ -36,8 +36,15 @@ func (db *DB) GetPrimussExam(ctx context.Context, program string, ancode int) (*
 	var exam model.PrimussExam
 	err := collection.FindOne(ctx, bson.D{{Key: "AnCode", Value: ancode}}).Decode(&exam)
 	if err != nil {
-		log.Error().Err(err).Str("semester", db.semester).Str("program", program).
-			Int("ancode", ancode).Msg("cannot find primuss exam")
+		// not found is a normal, caller-handled outcome (e.g. connected-exams) — log
+		// it only at debug level to avoid flooding; surface real errors loudly.
+		if err == mongo.ErrNoDocuments {
+			log.Debug().Str("semester", db.semester).Str("program", program).
+				Int("ancode", ancode).Msg("primuss exam not found")
+		} else {
+			log.Error().Err(err).Str("semester", db.semester).Str("program", program).
+				Int("ancode", ancode).Msg("cannot find primuss exam")
+		}
 		return nil, err
 	}
 
@@ -119,6 +126,11 @@ func (db *DB) GetPrimussExams(ctx context.Context) ([]*model.PrimussExamByProgra
 	}
 
 	return primussExams, err
+}
+
+// PrimussExamsForProgram returns all Primuss exams of one program.
+func (db *DB) PrimussExamsForProgram(ctx context.Context, program string) ([]*model.PrimussExam, error) {
+	return db.getPrimussExams(ctx, program)
 }
 
 func (db *DB) getPrimussExams(ctx context.Context, program string) ([]*model.PrimussExam, error) {

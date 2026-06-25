@@ -6,6 +6,7 @@ tool github.com/99designs/gqlgen
 
 require (
 	github.com/99designs/gqlgen v0.17.76
+	github.com/agnivade/levenshtein v1.2.1
 	github.com/arran4/golang-ical v0.3.2
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/fsnotify/fsnotify v1.8.0
@@ -27,7 +28,6 @@ require (
 )
 
 require (
-	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/boombuler/barcode v1.0.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/fatih/color v1.14.1 // indirect

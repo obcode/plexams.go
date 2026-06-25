@@ -49,7 +49,15 @@ type ConnectedExam struct {
 	ZpaExam           *ZPAExam       `json:"zpaExam"`
 	PrimussExams      []*PrimussExam `json:"primussExams"`
 	OtherPrimussExams []*PrimussExam `json:"otherPrimussExams"`
-	Errors            []string       `json:"errors"`
+	// Findings from connecting ZPA and Primuss data, graded by level.
+	Warnings []*ConnectedExamWarning `json:"warnings"`
+}
+
+// A finding from connecting a ZPA exam to its Primuss registrations.
+type ConnectedExamWarning struct {
+	// info | warning | error
+	Level   string `json:"level"`
+	Message string `json:"message"`
 }
 
 type Constraints struct {

@@ -125,10 +125,15 @@ type ComplexityRoot struct {
 	}
 
 	ConnectedExam struct {
-		Errors            func(childComplexity int) int
 		OtherPrimussExams func(childComplexity int) int
 		PrimussExams      func(childComplexity int) int
+		Warnings          func(childComplexity int) int
 		ZpaExam           func(childComplexity int) int
+	}
+
+	ConnectedExamWarning struct {
+		Level   func(childComplexity int) int
+		Message func(childComplexity int) int
 	}
 
 	Constraints struct {
@@ -1678,13 +1683,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ConflictsPerProgramAncode.Program(childComplexity), true
 
-	case "ConnectedExam.errors":
-		if e.complexity.ConnectedExam.Errors == nil {
-			break
-		}
-
-		return e.complexity.ConnectedExam.Errors(childComplexity), true
-
 	case "ConnectedExam.otherPrimussExams":
 		if e.complexity.ConnectedExam.OtherPrimussExams == nil {
 			break
@@ -1699,12 +1697,33 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ConnectedExam.PrimussExams(childComplexity), true
 
+	case "ConnectedExam.warnings":
+		if e.complexity.ConnectedExam.Warnings == nil {
+			break
+		}
+
+		return e.complexity.ConnectedExam.Warnings(childComplexity), true
+
 	case "ConnectedExam.zpaExam":
 		if e.complexity.ConnectedExam.ZpaExam == nil {
 			break
 		}
 
 		return e.complexity.ConnectedExam.ZpaExam(childComplexity), true
+
+	case "ConnectedExamWarning.level":
+		if e.complexity.ConnectedExamWarning.Level == nil {
+			break
+		}
+
+		return e.complexity.ConnectedExamWarning.Level(childComplexity), true
+
+	case "ConnectedExamWarning.message":
+		if e.complexity.ConnectedExamWarning.Message == nil {
+			break
+		}
+
+		return e.complexity.ConnectedExamWarning.Message(childComplexity), true
 
 	case "Constraints.ancode":
 		if e.complexity.Constraints.Ancode == nil {
@@ -7411,7 +7430,15 @@ type ConnectedExam {
   zpaExam: ZPAExam!
   primussExams: [PrimussExam!]!
   otherPrimussExams: [PrimussExam!]!
-  errors: [String!]!
+  "Findings from connecting ZPA and Primuss data, graded by level."
+  warnings: [ConnectedExamWarning!]!
+}
+
+"A finding from connecting a ZPA exam to its Primuss registrations."
+type ConnectedExamWarning {
+  "info | warning | error"
+  level: String!
+  message: String!
 }
 
 type GeneratedExam {
@@ -16248,8 +16275,8 @@ func (ec *executionContext) fieldContext_ConnectedExam_otherPrimussExams(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _ConnectedExam_errors(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ConnectedExam_errors(ctx, field)
+func (ec *executionContext) _ConnectedExam_warnings(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConnectedExam_warnings(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -16262,7 +16289,7 @@ func (ec *executionContext) _ConnectedExam_errors(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Errors, nil
+		return obj.Warnings, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16274,14 +16301,108 @@ func (ec *executionContext) _ConnectedExam_errors(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]string)
+	res := resTmp.([]*model.ConnectedExamWarning)
 	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNConnectedExamWarning2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExamWarningᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ConnectedExam_errors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ConnectedExam_warnings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ConnectedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_ConnectedExamWarning_level(ctx, field)
+			case "message":
+				return ec.fieldContext_ConnectedExamWarning_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ConnectedExamWarning", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConnectedExamWarning_level(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExamWarning) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConnectedExamWarning_level(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Level, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConnectedExamWarning_level(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConnectedExamWarning",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConnectedExamWarning_message(ctx context.Context, field graphql.CollectedField, obj *model.ConnectedExamWarning) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConnectedExamWarning_message(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConnectedExamWarning_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConnectedExamWarning",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -34042,8 +34163,8 @@ func (ec *executionContext) fieldContext_Query_connectedExam(ctx context.Context
 				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
 			case "otherPrimussExams":
 				return ec.fieldContext_ConnectedExam_otherPrimussExams(ctx, field)
-			case "errors":
-				return ec.fieldContext_ConnectedExam_errors(ctx, field)
+			case "warnings":
+				return ec.fieldContext_ConnectedExam_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
 		},
@@ -34107,8 +34228,8 @@ func (ec *executionContext) fieldContext_Query_connectedExams(_ context.Context,
 				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
 			case "otherPrimussExams":
 				return ec.fieldContext_ConnectedExam_otherPrimussExams(ctx, field)
-			case "errors":
-				return ec.fieldContext_ConnectedExam_errors(ctx, field)
+			case "warnings":
+				return ec.fieldContext_ConnectedExam_warnings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
 		},
@@ -55511,8 +55632,52 @@ func (ec *executionContext) _ConnectedExam(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "errors":
-			out.Values[i] = ec._ConnectedExam_errors(ctx, field, obj)
+		case "warnings":
+			out.Values[i] = ec._ConnectedExam_warnings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var connectedExamWarningImplementors = []string{"ConnectedExamWarning"}
+
+func (ec *executionContext) _ConnectedExamWarning(ctx context.Context, sel ast.SelectionSet, obj *model.ConnectedExamWarning) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, connectedExamWarningImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ConnectedExamWarning")
+		case "level":
+			out.Values[i] = ec._ConnectedExamWarning_level(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._ConnectedExamWarning_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -64158,6 +64323,60 @@ func (ec *executionContext) marshalNConnectedExam2ᚖgithubᚗcomᚋobcodeᚋple
 		return graphql.Null
 	}
 	return ec._ConnectedExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNConnectedExamWarning2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExamWarningᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ConnectedExamWarning) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNConnectedExamWarning2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExamWarning(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNConnectedExamWarning2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExamWarning(ctx context.Context, sel ast.SelectionSet, v *model.ConnectedExamWarning) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ConnectedExamWarning(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNConstraints2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraints(ctx context.Context, sel ast.SelectionSet, v model.Constraints) graphql.Marshaler {

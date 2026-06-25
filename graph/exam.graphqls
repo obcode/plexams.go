@@ -25,7 +25,15 @@ type ConnectedExam {
   zpaExam: ZPAExam!
   primussExams: [PrimussExam!]!
   otherPrimussExams: [PrimussExam!]!
-  errors: [String!]!
+  "Findings from connecting ZPA and Primuss data, graded by level."
+  warnings: [ConnectedExamWarning!]!
+}
+
+"A finding from connecting a ZPA exam to its Primuss registrations."
+type ConnectedExamWarning {
+  "info | warning | error"
+  level: String!
+  message: String!
 }
 
 type GeneratedExam {

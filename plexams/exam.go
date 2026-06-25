@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/agnivade/levenshtein"
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -58,15 +59,15 @@ func (p *Plexams) prepareConnectedZPAExam(ctx context.Context, ancode int, allPr
 	}
 
 	primussExams := make([]*model.PrimussExam, 0)
-	errors := make([]string, 0)
+	warnings := make([]*model.ConnectedExamWarning, 0)
 
-	// Replace with primuss ancodes
+	// Connect via the primuss ancodes the ZPA exam carries.
 	for _, primussAncode := range zpaExam.PrimussAncodes {
 		if primussAncode.Ancode == 0 || primussAncode.Ancode == -1 {
 			continue
 		}
 
-		// Skip old programs
+		// Skip old (retired) programs
 		skipProgram := false
 		for _, oldProgram := range p.zpa.oldprograms {
 			if primussAncode.Program == oldProgram {
@@ -80,9 +81,12 @@ func (p *Plexams) prepareConnectedZPAExam(ctx context.Context, ancode int, allPr
 
 		primussExam, err := p.GetPrimussExam(ctx, primussAncode.Program, primussAncode.Ancode)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("%s/%d not found", primussAncode.Program, primussAncode.Ancode))
+			warnings = append(warnings, p.primussNotFoundWarning(ctx, zpaExam, primussAncode.Program, primussAncode.Ancode))
 		} else {
 			primussExams = append(primussExams, primussExam)
+			if w := examerMismatchWarning(primussAncode.Program, primussAncode.Ancode, zpaExam.MainExamer, primussExam.MainExamer); w != nil {
+				warnings = append(warnings, w)
+			}
 		}
 	}
 
@@ -99,14 +103,27 @@ OUTER:
 
 	var otherPrimussExams []*model.PrimussExam
 
+	// A primuss exam with the same ancode in another program: a real additional
+	// program when the examer matches, otherwise most likely a coincidental number
+	// (e.g. MUC.DAI) — only a hint.
 	for _, program := range otherPrograms {
 		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
 		if err == nil {
 			if otherPrimussExams == nil {
 				otherPrimussExams = make([]*model.PrimussExam, 0)
 			}
-			errors = append(errors, fmt.Sprintf("found %s/%d (%s: %s)", program, ancode, primussExam.MainExamer, primussExam.Module))
 			otherPrimussExams = append(otherPrimussExams, primussExam)
+			if sameExamer(zpaExam.MainExamer, primussExam.MainExamer) {
+				warnings = append(warnings, &model.ConnectedExamWarning{
+					Level:   "warning",
+					Message: fmt.Sprintf("gleiche Nummer auch in %s/%d (gleicher Prüfer: %s) — zusätzlicher Studiengang?", program, ancode, primussExam.MainExamer),
+				})
+			} else {
+				warnings = append(warnings, &model.ConnectedExamWarning{
+					Level:   "info",
+					Message: fmt.Sprintf("gleiche Nummer in %s/%d (anderer Prüfer: %s, %s) — vermutlich Zufall", program, ancode, primussExam.MainExamer, primussExam.Module),
+				})
+			}
 		}
 	}
 
@@ -114,8 +131,109 @@ OUTER:
 		ZpaExam:           zpaExam,
 		PrimussExams:      primussExams,
 		OtherPrimussExams: otherPrimussExams,
-		Errors:            errors,
+		Warnings:          warnings,
 	}, nil
+}
+
+// primussNotFoundWarning classifies a missing mapped primuss exam: when a likely
+// counterpart (same examer, similar module) exists in the program it is a warning
+// with a concrete suggestion, otherwise just an info (e.g. a program that isn't
+// (fully) imported this semester).
+func (p *Plexams) primussNotFoundWarning(ctx context.Context, zpaExam *model.ZPAExam, program string, ancode int) *model.ConnectedExamWarning {
+	if suggestion := p.suggestPrimussExam(ctx, program, zpaExam.MainExamer, zpaExam.Module); suggestion != nil {
+		return &model.ConnectedExamWarning{
+			Level: "warning",
+			Message: fmt.Sprintf("%s/%d nicht gefunden — evtl. %s/%d (gleicher Prüfer, Modul „%s“)",
+				program, ancode, program, suggestion.AnCode, suggestion.Module),
+		}
+	}
+	return &model.ConnectedExamWarning{
+		Level:   "info",
+		Message: fmt.Sprintf("%s/%d nicht gefunden", program, ancode),
+	}
+}
+
+// suggestPrimussExam looks in one program for a primuss exam with the same examer
+// (surname) and a similar module name as the given ZPA exam.
+func (p *Plexams) suggestPrimussExam(ctx context.Context, program, zpaExamer, zpaModule string) *model.PrimussExam {
+	exams, err := p.dbClient.PrimussExamsForProgram(ctx, program)
+	if err != nil {
+		return nil
+	}
+	for _, exam := range exams {
+		if sameExamer(zpaExamer, exam.MainExamer) && similarModule(zpaModule, exam.Module) {
+			return exam
+		}
+	}
+	return nil
+}
+
+// examerMismatchWarning compares the ZPA and Primuss examer of a matched exam:
+// identical -> nil (silent); same surname, different spelling -> info; different
+// surname -> warning.
+func examerMismatchWarning(program string, ancode int, zpaExamer, primussExamer string) *model.ConnectedExamWarning {
+	if strings.TrimSpace(zpaExamer) == strings.TrimSpace(primussExamer) {
+		return nil
+	}
+	if sameExamer(zpaExamer, primussExamer) {
+		return &model.ConnectedExamWarning{
+			Level:   "info",
+			Message: fmt.Sprintf("Prüfer-Schreibweise weicht ab (%s/%d): ZPA „%s“ / Primuss „%s“", program, ancode, zpaExamer, primussExamer),
+		}
+	}
+	return &model.ConnectedExamWarning{
+		Level:   "warning",
+		Message: fmt.Sprintf("Prüfer unterschiedlich (%s/%d): ZPA „%s“ / Primuss „%s“", program, ancode, zpaExamer, primussExamer),
+	}
+}
+
+// examerSurname reduces a name to its lowercased surname for comparison:
+// "Orehek, Martin" and "Orehek M." both -> "orehek".
+func examerSurname(name string) string {
+	name = strings.TrimSpace(name)
+	if i := strings.IndexAny(name, ","); i >= 0 {
+		name = name[:i]
+	} else if i := strings.IndexAny(name, " "); i >= 0 {
+		name = name[:i]
+	}
+	return foldUmlauts(strings.ToLower(strings.TrimSpace(name)))
+}
+
+// foldUmlauts normalizes German umlaut spellings so that ASCII (ZPA) and umlaut
+// (Primuss) variants of a name compare equal, e.g. "böhm" == "boehm".
+func foldUmlauts(s string) string {
+	r := strings.NewReplacer("ä", "ae", "ö", "oe", "ü", "ue", "ß", "ss")
+	return r.Replace(s)
+}
+
+func sameExamer(a, b string) bool {
+	sa, sb := examerSurname(a), examerSurname(b)
+	return sa != "" && sa == sb
+}
+
+// similarModule reports whether two module names are close (case-insensitive,
+// whitespace-normalized): equal, one contains the other, or small edit distance.
+func similarModule(a, b string) bool {
+	na, nb := normalizeModule(a), normalizeModule(b)
+	if na == "" || nb == "" {
+		return false
+	}
+	if na == nb || strings.Contains(na, nb) || strings.Contains(nb, na) {
+		return true
+	}
+	longer := len(na)
+	if len(nb) > longer {
+		longer = len(nb)
+	}
+	threshold := longer / 4
+	if threshold < 2 {
+		threshold = 2
+	}
+	return levenshtein.ComputeDistance(na, nb) <= threshold
+}
+
+func normalizeModule(s string) string {
+	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(s))), " ")
 }
 
 func (p *Plexams) prepareConnectedNonZPAExam(ctx context.Context, ancode int, nonZPAExam *model.ZPAExam) (*model.ConnectedExam, error) {
@@ -143,7 +261,7 @@ func (p *Plexams) prepareConnectedNonZPAExam(ctx context.Context, ancode int, no
 		ZpaExam:           nonZPAExam,
 		PrimussExams:      primussExams,
 		OtherPrimussExams: nil,
-		Errors:            []string{},
+		Warnings:          []*model.ConnectedExamWarning{},
 	}, nil
 }
 

@@ -3,8 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/logrusorgru/aurora"
@@ -121,10 +119,12 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		guard: &opGuard{},
 	}
 
-	plexams.setSemesterConfig()
-	err = plexams.dbClient.SaveSemesterConfig(context.Background(), plexams.semesterConfig)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot save semester config")
+	plexams.loadSemesterConfig(context.Background())
+	if plexams.semesterConfig != nil && plexams.dbClient != nil {
+		// keep the derived snapshot in the DB for the GUI to read directly
+		if err := plexams.dbClient.SaveSemesterConfig(context.Background(), plexams.semesterConfig); err != nil {
+			log.Error().Err(err).Msg("cannot save semester config")
+		}
 	}
 
 	plexams.setRoomInfo()
@@ -143,77 +143,6 @@ func (p *Plexams) SetZPA() error {
 	return nil
 }
 
-func (p *Plexams) setGoSlots() {
-	goSlotsValue := viper.Get("goslots")
-	goSlotsRaw, ok := goSlotsValue.([]interface{})
-	if !ok {
-		log.Error().Interface("goSlots", goSlotsRaw).Msg("cannot get go slots from config")
-		return
-	}
-	goSlotsII := make([][]int, 0, len(goSlotsRaw))
-	for _, goSlotRaw := range goSlotsRaw {
-		goSlot := make([]int, 0, 2)
-		for _, intRaw := range goSlotRaw.([]interface{}) {
-			number, ok := intRaw.(int)
-			if !ok {
-				log.Error().Interface("intRaw", intRaw).Msg("cannot convert to int")
-				return
-			}
-			goSlot = append(goSlot, number)
-		}
-		goSlotsII = append(goSlotsII, goSlot)
-	}
-
-	p.semesterConfig.GoSlotsRaw = goSlotsII
-
-	// Calculate real slots. The offset maps the GoDay0-relative day indices from
-	// the config onto real day numbers, so it must be computed against the full
-	// (anchor-based) day list, not the planning-window subset.
-	offset := 0
-	for i, day := range p.allDays {
-		if p.semesterConfig.GoDay0.Year() == day.Date.Year() &&
-			p.semesterConfig.GoDay0.Month() == day.Date.Month() &&
-			p.semesterConfig.GoDay0.Day() == day.Date.Day() {
-			offset = i + 1
-			// fmt.Printf("offset == %d\n", offset)
-			break
-		}
-	}
-
-	type slotNumber struct {
-		day, slot int
-	}
-
-	slotsMap := make(map[slotNumber]*model.Slot)
-	for _, slot := range p.semesterConfig.Slots {
-		slotsMap[slotNumber{
-			day:  slot.DayNumber,
-			slot: slot.SlotNumber,
-		}] = slot
-	}
-
-	// for k, v := range slotsMap {
-	// 	fmt.Printf("slot[%v] = %v\n", k, v)
-	// }
-
-	goSlots := make([]*model.Slot, 0, len(goSlotsII))
-
-	for _, goSlot := range goSlotsII {
-		slot, ok := slotsMap[slotNumber{
-			day:  goSlot[0] + offset,
-			slot: goSlot[1],
-		}]
-		if ok {
-			goSlots = append(goSlots, slot)
-		}
-	}
-
-	// offSet := (p.semesterConfig.GoDay0.Sub(p.semesterConfig.Days[0].Date).Hours() / 24)
-	// fmt.Printf("day0 = %v, goday0 = %v, offset = %v\n", p.semesterConfig.Days[0].Date, p.semesterConfig.GoDay0, offset)
-	p.semesterConfig.GoSlots = goSlots
-	// fmt.Printf("Go-Slots = %+v\n", p.semesterConfig.GoSlots)
-}
-
 func (p *Plexams) GetGoSlots() [][]int {
 	return p.semesterConfig.GoSlotsRaw
 }
@@ -226,162 +155,6 @@ func (p *Plexams) GetSemester(ctx context.Context) *model.Semester {
 	return &model.Semester{
 		ID: p.semester,
 	}
-}
-
-func (p *Plexams) setSemesterConfig() {
-	plan := viper.GetStringMap("semesterConfig")
-	if len(plan) > 0 {
-		from := viper.GetTime("semesterConfig.from").Local()
-		fromFK07 := viper.GetTime("semesterConfig.fromFK07").Local()
-		until := viper.GetTime("semesterConfig.until").Local()
-
-		// The planning window always starts at fromFK07. Exam/room/invigilation
-		// planning and the GraphQL API only ever see days inside this window.
-		//
-		// Day numbering starts at the anchor. By default the anchor is fromFK07,
-		// so day 1 = fromFK07 and the pre-period does not exist at all. A semester
-		// whose plan is already stored with day 1 = `from` (i.e. the pre-period
-		// days have numbers 1..) must opt into the legacy numbering by setting
-		// `semesterConfig.dayNumberStart: from`; the window then simply starts at
-		// a higher number while those stored numbers stay valid.
-		anchor := fromFK07
-		if viper.GetString("semesterConfig.dayNumberStart") == "from" {
-			anchor = from
-		}
-
-		// Full list of days from the anchor through until, no saturdays, no sundays.
-		allDays := make([]*model.ExamDay, 0)
-		day := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 12, 0, 0, 0, time.Local)
-		number := 1
-		for !day.After(until.Add(23 * time.Hour)) {
-			if day.Weekday() != time.Saturday && day.Weekday() != time.Sunday {
-				allDays = append(allDays, &model.ExamDay{
-					Number: number,
-					Date:   time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local),
-				})
-				number++
-			}
-			day = day.Add(24 * time.Hour)
-		}
-
-		slotStarts := viper.GetStringSlice("semesterConfig.slots")
-		starttimes := make([]*model.Starttime, 0, len(slotStarts))
-		for i, start := range slotStarts {
-			starttimes = append(starttimes, &model.Starttime{
-				Number: i + 1,
-				Start:  start,
-			})
-		}
-
-		allSlots := make([]*model.Slot, 0, len(allDays)*len(starttimes))
-		for _, day := range allDays {
-			for _, starttime := range starttimes {
-				start := strings.Split(starttime.Start, ":")
-				hour, _ := strconv.Atoi(start[0])
-				minute, _ := strconv.Atoi(start[1])
-				allSlots = append(allSlots, &model.Slot{
-					DayNumber:  day.Number,
-					SlotNumber: starttime.Number,
-					Starttime:  time.Date(day.Date.Year(), day.Date.Month(), day.Date.Day(), hour, minute, 0, 0, time.Local),
-				})
-			}
-		}
-
-		// Planning window: only days/slots on or after fromFK07.
-		fromFK07Day := time.Date(fromFK07.Year(), fromFK07.Month(), fromFK07.Day(), 0, 0, 0, 0, time.Local)
-		days := make([]*model.ExamDay, 0, len(allDays))
-		for _, d := range allDays {
-			if !d.Date.Before(fromFK07Day) {
-				days = append(days, d)
-			}
-		}
-		slots := make([]*model.Slot, 0, len(allSlots))
-		for _, s := range allSlots {
-			if !s.Starttime.Before(fromFK07Day) {
-				slots = append(slots, s)
-			}
-		}
-
-		p.allDays = allDays
-		p.allSlots = allSlots
-
-		// Forbidden slots are only meaningful inside the planning window; the
-		// pre-period is excluded by the window anyway, so forbiddenDays no longer
-		// need to list those days. forbiddenDays within the window still work.
-		forbiddenSlots := make([]*model.Slot, 0)
-		forbiddenDaysSlice := viper.Get("semesterConfig.forbiddenDays").([]interface{})
-		for _, forbiddenDayRaw := range forbiddenDaysSlice {
-			forbiddenDay, ok := forbiddenDayRaw.(time.Time)
-			if !ok {
-				log.Error().Interface("forbiddenDayRaw", forbiddenDayRaw).Msg("cannot convert forbidden day to time.Time")
-				continue
-			}
-			for _, slot := range slots {
-				if slot.Starttime.Year() == forbiddenDay.Year() &&
-					slot.Starttime.Month() == forbiddenDay.Month() &&
-					slot.Starttime.Day() == forbiddenDay.Day() {
-					forbiddenSlots = append(forbiddenSlots, slot)
-				}
-			}
-		}
-
-		emails := &model.Emails{}
-		emailsMap := viper.GetStringMapString("semesterConfig.emails")
-		var ok bool
-		emails.Profs, ok = emailsMap["profs"]
-		if !ok {
-			log.Error().Interface("emails", emailsMap).Msg("cannot get profs emails from config")
-		}
-		emails.Lbas, ok = emailsMap["lbas"]
-		if !ok {
-			log.Error().Interface("emails", emailsMap).Msg("cannot get lbas emails from config")
-		}
-		emails.LbasLastSemester, ok = emailsMap["lbaslastsemester"]
-		if !ok {
-			log.Error().Interface("emails", emailsMap).Msg("cannot get lbaslastsemester emails from config")
-		}
-
-		emails.Fs, ok = emailsMap["fs"]
-		if !ok {
-			log.Error().Interface("emails", emailsMap).Msg("cannot get fs emails from config")
-		}
-		emails.Sekr, ok = emailsMap["sekr"]
-		if !ok {
-			log.Error().Interface("emails", emailsMap).Msg("cannot get sekr emails from config")
-		}
-		emails.RoomManagement, ok = emailsMap["roommanagement"]
-		if !ok {
-			log.Error().Interface("emails", emailsMap).Msg("cannot get roommanagement emails from config")
-		}
-		emails.Kdp = emailsMap["kdp"]
-		if emails.Kdp == "" {
-			log.Debug().Msg("no kdp email in config")
-		}
-		emails.Lbaba = emailsMap["lbaba"]
-		if emails.Lbaba == "" {
-			log.Debug().Msg("no lbaba email in config")
-		}
-
-		emails.AdditionalExamer = viper.GetStringSlice("semesterConfig.additionalexamer")
-		if len(emails.AdditionalExamer) == 0 {
-			log.Debug().Msg("no additionalexamer emails in config")
-		}
-
-		p.semesterConfig = &model.SemesterConfig{
-			Days:       days,
-			Starttimes: starttimes,
-			Slots:      slots,
-			GoDay0:     viper.GetTime("semesterConfig.goDay0").Local(),
-			Emails:     emails,
-			// GoSlotsRaw: [][]int{},
-			GoSlots:        slots,
-			From:           from,
-			FromFk07:       fromFK07,
-			Until:          until,
-			ForbiddenSlots: forbiddenSlots,
-		}
-	}
-	p.setGoSlots()
 }
 
 func (p *Plexams) PrintSemesterConfig() {

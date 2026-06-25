@@ -10,13 +10,14 @@ import (
 type CollectionName string
 
 const (
-	collectionNameSemesterConfig = "semester_config"
-	collectionConstraints        = "constraints"
-	collectionNameConnectedExams = "connected_exams"
-	collectionNameNTAs           = "nta"
-	collectionNamePlan           = "plan"
-	collectionNamePlanBackup     = "plan_backup"
-	collectionAnnyBookings       = "anny_bookings"
+	collectionNameSemesterConfig      = "semester_config"
+	collectionNameSemesterConfigInput = "semester_config_input"
+	collectionConstraints             = "constraints"
+	collectionNameConnectedExams      = "connected_exams"
+	collectionNameNTAs                = "nta"
+	collectionNamePlan                = "plan"
+	collectionNamePlanBackup          = "plan_backup"
+	collectionAnnyBookings            = "anny_bookings"
 
 	collectionStudentRegsPerStudentPlanned = "studentregs_per_student_planned"
 	collectionZpaStudents                  = "zpastudents"

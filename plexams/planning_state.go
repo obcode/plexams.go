@@ -40,6 +40,7 @@ var planningPhaseDefs = []planningPhaseDef{
 // planning condition keys (use the constants when marking from operations).
 const (
 	condExahmRequested            = "exahmRequested"
+	condAnnyRoomsBooked           = "annyRoomsBooked"
 	condZPAImported               = "zpaImported"
 	condConstraintsRequested      = "constraintsRequested"
 	condConnectedExams            = "connectedExams"
@@ -68,6 +69,7 @@ const (
 
 var planningConditionDefs = []planningConditionDef{
 	{condExahmRequested, "EXaHM/SEB-Abfrage verschickt", "phaseMinus1", ""},
+	{condAnnyRoomsBooked, "Anny-Räume gebucht", "phaseMinus1", ""},
 	{condZPAImported, "Prüfungen & Personen aus ZPA importiert", "phase0", ""},
 	{condConstraintsRequested, "Constraints-Abfrage verschickt", "phase0", ""},
 	{condConnectedExams, "ConnectedExams erstellt", "phase1", ""},

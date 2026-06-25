@@ -140,13 +140,6 @@ func (r *roomsForSlotResolver) Rooms(ctx context.Context, obj *model.RoomsForSlo
 	return r.plexams.RoomsFromRoomNames(ctx, obj.RoomNames)
 }
 
-// GenerateRoomsForSlots is the resolver for the generateRoomsForSlots field.
-func (r *subscriptionResolver) GenerateRoomsForSlots(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
-		return r.plexams.PrepareRoomsForSlots(ctx, reporter)
-	}), nil
-}
-
 // GenerateRoomsForExams is the resolver for the generateRoomsForExams field.
 func (r *subscriptionResolver) GenerateRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error) {
 	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {

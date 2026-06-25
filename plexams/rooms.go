@@ -503,12 +503,40 @@ func (p *Plexams) UpdateRoom(ctx context.Context, input model.RoomInput) (*model
 	return room, nil
 }
 
+// RoomsForSlots computes the allowed rooms per slot live from the current state
+// (global rooms, EXaHM/Anny bookings, building-management requests, room blocks).
+// There is no stored cache anymore.
 func (p *Plexams) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) {
-	return p.dbClient.RoomsForSlots(ctx)
+	return p.computeRoomsForSlots(ctx, newDiscardReporter())
 }
 
+// RoomsForSlot returns the allowed rooms for a single slot (computed live). For
+// loops, compute the map once via roomsForSlotsMap instead.
 func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) (*model.RoomsForSlot, error) {
-	return p.dbClient.RoomsForSlot(ctx, day, time)
+	roomsForSlots, err := p.computeRoomsForSlots(ctx, newDiscardReporter())
+	if err != nil {
+		return nil, err
+	}
+	for _, rfs := range roomsForSlots {
+		if rfs.Day == day && rfs.Slot == time {
+			return rfs, nil
+		}
+	}
+	return nil, nil
+}
+
+// roomsForSlotsMap computes the allowed rooms once and indexes them by slot, for
+// callers that need many slots (validations, generation).
+func (p *Plexams) roomsForSlotsMap(ctx context.Context) (map[SlotNumber][]string, error) {
+	roomsForSlots, err := p.computeRoomsForSlots(ctx, newDiscardReporter())
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[SlotNumber][]string, len(roomsForSlots))
+	for _, rfs := range roomsForSlots {
+		m[SlotNumber{day: rfs.Day, slot: rfs.Slot}] = rfs.RoomNames
+	}
+	return m, nil
 }
 
 func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName string, mtknr *string, reserve bool, seats *int) (bool, error) {

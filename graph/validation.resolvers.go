@@ -61,11 +61,6 @@ func (r *subscriptionResolver) ValidateRoomsBlocked(ctx context.Context) (<-chan
 	return r.runValidation(ctx, "rooms-blocked", r.plexams.ValidateRoomsBlocked), nil
 }
 
-// ValidateRoomsForSlotsFresh is the resolver for the validateRoomsForSlotsFresh field.
-func (r *subscriptionResolver) ValidateRoomsForSlotsFresh(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, "rooms-for-slots-fresh", r.plexams.ValidateRoomsForSlotsFresh), nil
-}
-
 // ValidateRoomsEnoughSeats is the resolver for the validateRoomsEnoughSeats field.
 func (r *subscriptionResolver) ValidateRoomsEnoughSeats(ctx context.Context) (<-chan *model.LogLine, error) {
 	return r.runValidation(ctx, "rooms-enough-seats", r.plexams.ValidateRoomsEnoughSeats), nil

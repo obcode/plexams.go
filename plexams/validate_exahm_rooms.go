@@ -36,6 +36,13 @@ func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.Valida
 		roomsMap[room.Name] = room
 	}
 
+	// allowed rooms per slot, computed once (no stored cache anymore)
+	roomsForSlots, err := p.roomsForSlotsMap(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot compute rooms for slots")
+		return nil, err
+	}
+
 	for _, exam := range exams {
 		prePlannedRooms, err := p.dbClient.PrePlannedRoomsForExam(ctx, exam.Ancode)
 		if err != nil {
@@ -70,17 +77,7 @@ func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.Valida
 				"Exam %d. %s (%s) has no plan entry yet",
 				exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer)
 		} else {
-			roomsForSlot, err := p.RoomsForSlot(ctx, planEntry.DayNumber, planEntry.SlotNumber)
-			if err != nil {
-				log.Error().Err(err).
-					Int("day", planEntry.DayNumber).
-					Int("slot", planEntry.SlotNumber).
-					Msg("cannot rooms for slot")
-			}
-			var allowedRoomNames []string
-			if roomsForSlot != nil {
-				allowedRoomNames = roomsForSlot.RoomNames
-			}
+			allowedRoomNames := roomsForSlots[SlotNumber{day: planEntry.DayNumber, slot: planEntry.SlotNumber}]
 			for _, prePlannedRoom := range prePlannedRooms {
 				found := false
 				for _, roomInSlot := range allowedRoomNames {

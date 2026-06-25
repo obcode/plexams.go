@@ -52,9 +52,7 @@ extend type Mutation {
 # exclusive operations they are blocked while a validation or another
 # transfer/email/generation runs.
 extend type Subscription {
-  "Recompute the allowed rooms per slot (rooms-for-slots) and stream the output. Writes only the derived slot→rooms cache; useful to preview it after editing rooms or room requests."
-  generateRoomsForSlots: LogLine!
-  "Assign rooms to all exams (rooms-for-exams) and stream the output. Recomputes rooms-for-slots first, then writes the planned rooms; no separate rooms-for-slots step needed."
+  "Assign rooms to all exams (rooms-for-exams) and stream the output. The allowed rooms per slot are computed live from the current rooms/requests/bookings; there is no separate rooms-for-slots step or cache."
   generateRoomsForExams: LogLine!
   "Fetch the room bookings from anny.eu and store them (used for the EXaHM room slots). Streams its output."
   importAnnyBookings: LogLine!

@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -127,79 +126,6 @@ func (db *DB) Rooms(ctx context.Context) ([]*model.Room, error) {
 	}
 
 	return rooms, nil
-}
-
-func (db *DB) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, error) {
-	collection := db.getCollectionSemester(collectionRoomsForSlots)
-	findOptions := options.Find()
-	findOptions.SetSort(bson.D{{Key: "day", Value: 1}, {Key: "slot", Value: 1}})
-	cur, err := collection.Find(ctx, bson.M{}, findOptions)
-	if err != nil {
-		log.Error().Err(err).Str("collectionName", collectionRoomsForSlots).
-			Msg("cannot find rooms for slots")
-		return nil, err
-	}
-	defer cur.Close(ctx) //nolint:errcheck
-
-	var roomsForSlots []*model.RoomsForSlot
-	if err := cur.All(ctx, &roomsForSlots); err != nil {
-		log.Error().Err(err).Str("collectionName", collectionRoomsForSlots).
-			Msg("cannot decode rooms for slots")
-		return nil, err
-	}
-
-	return roomsForSlots, nil
-}
-
-func (db *DB) RoomsForSlot(ctx context.Context, day int, time int) (*model.RoomsForSlot, error) {
-	collection := db.getCollectionSemester(collectionRoomsForSlots)
-
-	filter := bson.M{
-		"$and": []bson.M{
-			{"day": day},
-			{"slot": time},
-		},
-	}
-
-	res := collection.FindOne(ctx, filter)
-	var roomsForSlot model.RoomsForSlot
-
-	err := res.Decode(&roomsForSlot)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
-		log.Error().Err(err).Str("collection", collectionRoomsForSlots).
-			Int("day", day).Int("slot", time).
-			Msg("Cannot decode to rooms for slot")
-		return nil, err
-	}
-
-	return &roomsForSlot, nil
-}
-
-func (db *DB) SaveRoomsForSlots(ctx context.Context, roomsForSlots []*model.RoomsForSlot) error {
-	collection := db.getCollectionSemester(collectionRoomsForSlots)
-
-	err := collection.Drop(ctx)
-	if err != nil {
-		log.Error().Err(err).
-			Str("collectionName", collectionRoomsForSlots).
-			Msg("cannot drop collection")
-		return err
-	}
-	roomsForSlotsToInsert := make([]interface{}, 0, len(roomsForSlots))
-	for _, roomForSlot := range roomsForSlots {
-		roomsForSlotsToInsert = append(roomsForSlotsToInsert, roomForSlot)
-	}
-	_, err = collection.InsertMany(ctx, roomsForSlotsToInsert)
-	if err != nil {
-		log.Error().Err(err).
-			Str("collectionName", collectionRoomsForSlots).
-			Msg("cannot insert rooms for slots")
-		return err
-	}
-	return nil
 }
 
 func (db *DB) PrePlannedRooms(ctx context.Context) ([]*model.PrePlannedRoom, error) {

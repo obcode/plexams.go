@@ -3,7 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -41,6 +40,13 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 			"exam %d: %d %s without a room in slot (%d/%d)", u.Ancode, len(u.Mtknrs), what, u.Day, u.Slot)
 	}
 
+	// allowed rooms per slot, computed once (no stored cache anymore)
+	roomsForSlots, err := p.roomsForSlotsMap(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot compute rooms for slots")
+		return nil, err
+	}
+
 	for _, slot := range slots {
 
 		plannedExams, err := p.dbClient.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
@@ -60,23 +66,12 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 		v.step("checking slot (%d/%d) with %d rooms in %d exams",
 			slot.DayNumber, slot.SlotNumber, len(plannedRooms), len(plannedExams))
 
-		allowedRooms, err := p.RoomsForSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		// allowed rooms for this slot (empty for forbidden/pre-period slots — any
+		// room planned there is then flagged below).
+		allAllowedRooms, err := p.RoomsFromRoomNames(ctx, roomsForSlots[SlotNumber{day: slot.DayNumber, slot: slot.SlotNumber}])
 		if err != nil {
 			log.Error().Err(err).
-				Int("day", slot.DayNumber).
-				Int("time", slot.SlotNumber).
-				Msg("error while getting allowed rooms for slot")
-			return nil, err
-		}
-		if allowedRooms == nil {
-			// no rooms configured for this slot (e.g. a forbidden/pre-period slot) —
-			// treat as "no allowed rooms"; any room planned here is then flagged below.
-			allowedRooms = &model.RoomsForSlot{}
-		}
-		allAllowedRooms, err := p.RoomsFromRoomNames(ctx, allowedRooms.RoomNames)
-		if err != nil {
-			log.Error().Err(err).
-				Interface("room names", allowedRooms.RoomNames).
+				Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
 				Msg("error while getting rooms from names")
 		}
 
@@ -260,52 +255,6 @@ func (p *Plexams) ValidateRoomsBlocked(reporter Reporter) (*model.ValidationRepo
 			v.errorf(ref{Room: ptr(b.Room), Day: ptr(b.Day), Slot: ptr(b.Slot)},
 				"room %s is blocked in slot (%d/%d) but still planned there; regenerate rooms for exams",
 				b.Room, b.Day, b.Slot)
-		}
-	}
-
-	return v.finish(), nil
-}
-
-// ValidateRoomsForSlotsFresh warns when the stored rooms-for-slots cache differs
-// from a fresh recompute, i.e. it is stale after editing rooms, room requests or
-// blocks and rooms-for-exams should be regenerated.
-func (p *Plexams) ValidateRoomsForSlotsFresh(reporter Reporter) (*model.ValidationReport, error) {
-	ctx := context.Background()
-	v := newValidation(reporter, "rooms-for-slots-fresh", "validating that the rooms-for-slots cache is up to date")
-
-	v.step("recomputing rooms for slots")
-	computed, err := p.computeRoomsForSlots(ctx, newDiscardReporter())
-	if err != nil {
-		return nil, err
-	}
-	stored, err := p.dbClient.RoomsForSlots(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	roomsKey := func(rfs []*model.RoomsForSlot) map[SlotNumber]string {
-		m := make(map[SlotNumber]string, len(rfs))
-		for _, r := range rfs {
-			names := make([]string, len(r.RoomNames))
-			copy(names, r.RoomNames)
-			sort.Strings(names)
-			m[SlotNumber{day: r.Day, slot: r.Slot}] = strings.Join(names, ",")
-		}
-		return m
-	}
-	computedMap := roomsKey(computed)
-	storedMap := roomsKey(stored)
-
-	for slot, want := range computedMap {
-		if got, ok := storedMap[slot]; !ok || got != want {
-			v.warnf(ref{Day: ptr(slot.day), Slot: ptr(slot.slot)},
-				"rooms for slot (%d/%d) are out of date; regenerate rooms for exams", slot.day, slot.slot)
-		}
-	}
-	for slot := range storedMap {
-		if _, ok := computedMap[slot]; !ok {
-			v.warnf(ref{Day: ptr(slot.day), Slot: ptr(slot.slot)},
-				"slot (%d/%d) is in the cache but no longer computed; regenerate rooms for exams", slot.day, slot.slot)
 		}
 	}
 

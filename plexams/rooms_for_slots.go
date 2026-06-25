@@ -28,31 +28,11 @@ func (p *Plexams) RoomsFromRoomNames(ctx context.Context, roomNames []string) ([
 	return rooms, nil
 }
 
-// PrepareRoomsForSlots (re)computes, for every slot, the set of rooms that may be
-// used in it, and stores the result in the rooms_for_slots collection. This is a
-// derived cache: it is recomputed entirely from the current rooms, their
-// (de)activation, the active building-management room requests, EXaHM bookings
-// and the config room constraints. It is run automatically as the first step of
-// PrepareRoomForExams, but can also be triggered on its own to preview the
-// allowed rooms per slot.
-func (p *Plexams) PrepareRoomsForSlots(ctx context.Context, reporter Reporter) error {
-	if err := p.generationAllowed(ctx, model.PlanningGateRooms); err != nil {
-		return err
-	}
-	roomsForSlots, err := p.computeRoomsForSlots(ctx, reporter)
-	if err != nil {
-		return err
-	}
-	if err := p.dbClient.SaveRoomsForSlots(ctx, roomsForSlots); err != nil {
-		return err
-	}
-	reporter.StopProgress(fmt.Sprintf("rooms for %d slots prepared", len(roomsForSlots)))
-	return nil
-}
-
-// computeRoomsForSlots computes the allowed rooms per slot from the current
-// state, without storing anything. PrepareRoomsForSlots saves the result; the
-// staleness validation compares it against the stored cache.
+// computeRoomsForSlots computes, for every slot, the set of rooms that may be used
+// in it — entirely from the current state (rooms and their (de)activation, the
+// active building-management room requests, EXaHM/Anny bookings, per-slot room
+// blocks). This is the single source of truth (no stored cache); RoomsForSlots /
+// RoomsForSlot / roomsForSlotsMap and the room generation/validations call it.
 func (p *Plexams) computeRoomsForSlots(ctx context.Context, reporter Reporter) ([]*model.RoomsForSlot, error) {
 	reporter.Step("getting global rooms")
 	allRooms, err := p.dbClient.Rooms(ctx)

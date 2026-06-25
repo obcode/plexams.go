@@ -14,19 +14,13 @@ import (
 )
 
 // PrepareRoomForExams assigns rooms to all planned exams and stores the result in
-// planned_rooms. It first (re)computes the allowed rooms per slot
-// (PrepareRoomsForSlots), so that step no longer has to be run separately: the
-// room-for-exams generation always works on an up-to-date rooms-for-slots cache.
+// planned_rooms. The allowed rooms per slot are computed live once (see
+// prepareRoomsCfg / computeRoomsForSlots) — there is no separate rooms-for-slots
+// step or stored cache anymore.
 func (p *Plexams) PrepareRoomForExams(ctx context.Context, reporter Reporter) error {
 	if err := p.generationAllowed(ctx, model.PlanningGateRooms); err != nil {
 		return err
 	}
-	reporter.Println(aurora.Sprintf(aurora.Cyan("preparing rooms for slots")))
-	if err := p.PrepareRoomsForSlots(ctx, reporter); err != nil {
-		log.Error().Err(err).Msg("cannot prepare rooms for slots")
-		return err
-	}
-
 	prepareRoomsCfg, err := p.prepareRoomsCfg(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get prepare rooms config")
@@ -468,6 +462,7 @@ type prepareRoomsCfg struct {
 	roomsNotUsableInSlot      set.Set[string]
 	blockedRooms              map[SlotNumber]set.Set[string] // slot -> blocked room names
 	exactSeatRooms            map[int]map[string]bool        // ancode -> room names with an exact seat count (do not refill with this exam)
+	roomsForSlots             map[SlotNumber][]string        // slot -> allowed room names (computed once)
 }
 
 type plannedRoomsWithFreeSeats struct {
@@ -501,12 +496,19 @@ func (p *Plexams) prepareRoomsCfg(ctx context.Context) (*prepareRoomsCfg, error)
 		blockedRooms[key].Add(b.Room)
 	}
 
+	roomsForSlots, err := p.roomsForSlotsMap(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot compute rooms for slots")
+		return nil, err
+	}
+
 	prepareRoomsCfg := &prepareRoomsCfg{
 		roomInfo:        roomInfo,
 		prePlannedRooms: p.prePlannedRooms(ctx, roomInfo),
 		additionalSeats: additionalSeats(),
 		blockedRooms:    blockedRooms,
 		exactSeatRooms:  make(map[int]map[string]bool),
+		roomsForSlots:   roomsForSlots,
 	}
 
 	log.Info().Interface("prePlannedRooms", prepareRoomsCfg.prePlannedRooms).Msg("prepareRoomsCfg initialized")
@@ -644,18 +646,12 @@ func (p *Plexams) mkExamsMap(prepareRoomsCfg *prepareRoomsCfg, examsInPlan []*mo
 }
 
 func (p *Plexams) availableRoomsInSlot(ctx context.Context, prepareRoomsCfg *prepareRoomsCfg) ([]*model.Room, error) {
-	slotWithRooms, err := p.RoomsForSlot(ctx, prepareRoomsCfg.slot.DayNumber, prepareRoomsCfg.slot.SlotNumber)
-	if err != nil {
-		log.Error().Err(err).Int("day", prepareRoomsCfg.slot.DayNumber).Int("time", prepareRoomsCfg.slot.SlotNumber).
-			Msg("error while trying to get rooms for slot")
-		return nil, err
-	}
-	if slotWithRooms == nil {
-		return nil, fmt.Errorf("no rooms configured for slot (%d/%d)",
-			prepareRoomsCfg.slot.DayNumber, prepareRoomsCfg.slot.SlotNumber)
-	}
+	slotRoomNames := prepareRoomsCfg.roomsForSlots[SlotNumber{
+		day:  prepareRoomsCfg.slot.DayNumber,
+		slot: prepareRoomsCfg.slot.SlotNumber,
+	}]
 
-	roomNames := set.NewSet(slotWithRooms.RoomNames...).Difference(prepareRoomsCfg.roomsNotUsableInSlot)
+	roomNames := set.NewSet(slotRoomNames...).Difference(prepareRoomsCfg.roomsNotUsableInSlot)
 	prepareRoomsCfg.roomsNotUsableInSlot = set.NewSet[string]()
 
 	rooms := make([]*model.Room, 0, roomNames.Cardinality())

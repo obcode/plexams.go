@@ -32,7 +32,6 @@ const (
 	collectionGeneratedExams = "generated_exams"
 
 	collectionGlobalRooms     = "rooms"
-	collectionRoomsForSlots   = "rooms_for_slots"
 	collectionRoomsPrePlanned = "rooms_pre_planned"
 	collectionRoomsPlanned    = "rooms_planned"
 	collectionRoomsUnplaced   = "rooms_unplaced"

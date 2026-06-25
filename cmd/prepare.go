@@ -24,12 +24,11 @@ var (
 	add-mucdai-exams                       --- add all mucdai-exams
 	generated-exams                        --- generate exams from connected-exams and primuss-data
 	studentregs                            --- regs per exam & regs per student (needs connected-exams)
-	rooms-for-slots                        --- prepare rooms which are allowed to use
 	rooms-for-exams                        --- rooms for exams
 	self-invigilations                     --- set main examer as invigilator if possible
 	invigilator-todos                      --- cache snapshot
 	`,
-		ValidArgs: []string{"connected-exams", "connected-exam", "connect-exam", "add-mucdai-exam", "generated-exams", "studentregs", "rooms-for-slots", "rooms-for-exams", "self-invigilations", "invigilator-todos"},
+		ValidArgs: []string{"connected-exams", "connected-exam", "connect-exam", "add-mucdai-exam", "generated-exams", "studentregs", "rooms-for-exams", "self-invigilations", "invigilator-todos"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -156,13 +155,6 @@ var (
 			case "studentregs":
 				err := plexams.PrepareStudentRegs()
 				if err != nil {
-					os.Exit(1)
-				}
-
-			case "rooms-for-slots":
-				err := plexams.PrepareRoomsForSlots(context.Background(), plx.NewConsoleReporter())
-				if err != nil {
-					fmt.Printf("error: %v\n", err)
 					os.Exit(1)
 				}
 

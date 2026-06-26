@@ -9,7 +9,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 	"github.com/theckman/yacspin"
 )
 
@@ -56,17 +55,11 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		zpaStudentsMap[zpaStudent.Mtknr] = zpaStudent
 	}
 
-	durationMap := make(map[int]int)
-	d := viper.Get("duration")
-	durationRaw, ok := d.([]interface{})
-	if !ok {
-		log.Debug().Msg("cannot get durations")
-	}
-	for _, duration := range durationRaw {
-		durationM := duration.(map[string]interface{})
-		ancode := durationM["ancode"].(int)
-		duration := durationM["duration"].(int)
-		durationMap[ancode] = duration
+	// per-ancode duration overrides (DB); applied only to exams with ZPA duration 0
+	durationMap, err := p.examDurationOverridesMap(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get exam duration overrides")
+		return err
 	}
 
 	// externalExams, err := p.ExternalExams(ctx)
@@ -198,9 +191,11 @@ func (p *Plexams) PrepareGeneratedExams() error {
 			conflicts = append(conflicts, conflictsMap[key])
 		}
 
-		// maybe fix duration
-		if d, ok := durationMap[connectedExam.ZpaExam.AnCode]; ok {
-			connectedExam.ZpaExam.Duration = d
+		// duration override only for exams without a ZPA duration (0)
+		if connectedExam.ZpaExam.Duration == 0 {
+			if d, ok := durationMap[connectedExam.ZpaExam.AnCode]; ok {
+				connectedExam.ZpaExam.Duration = d
+			}
 		}
 
 		duration := connectedExam.ZpaExam.Duration

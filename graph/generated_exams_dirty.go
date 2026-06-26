@@ -36,6 +36,9 @@ var generatedExamsDirtyOps = map[string]bool{
 	"addNTA":       true,
 	"updateNTA":    true,
 	"setNTAActive": true,
+	// per-ancode duration overrides
+	"setExamDuration":    true,
+	"removeExamDuration": true,
 	// imports that change exams/students
 	"importExamsFromZPA":    true,
 	"importStudentsFromZPA": true,

@@ -206,6 +206,11 @@ type ComplexityRoot struct {
 		Number func(childComplexity int) int
 	}
 
+	ExamDurationOverride struct {
+		Ancode   func(childComplexity int) int
+		Duration func(childComplexity int) int
+	}
+
 	ExamTime struct {
 		From  func(childComplexity int) int
 		Until func(childComplexity int) int
@@ -426,6 +431,7 @@ type ComplexityRoot struct {
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
+		RemoveExamDuration            func(childComplexity int, ancode int) int
 		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
 		RemovePermanentNonInvigilator func(childComplexity int, teacherID int) int
 		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
@@ -439,6 +445,7 @@ type ComplexityRoot struct {
 		SameSlot                      func(childComplexity int, ancode int, ancodes []int) int
 		Seb                           func(childComplexity int, ancode int) int
 		SeedStudyProgramsFromConfig   func(childComplexity int) int
+		SetExamDuration               func(childComplexity int, ancode int, duration int) int
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
@@ -702,6 +709,7 @@ type ComplexityRoot struct {
 		ConnectedExams                func(childComplexity int) int
 		ConstraintForAncode           func(childComplexity int, ancode int) int
 		EmailAttachments              func(childComplexity int, kind string) int
+		ExamDurationOverrides         func(childComplexity int) int
 		ExamerInPlan                  func(childComplexity int) int
 		ExamersWithExamsPlannedByMe   func(childComplexity int) int
 		ExamsInSlot                   func(childComplexity int, day int, time int) int
@@ -1184,6 +1192,8 @@ type MutationResolver interface {
 	AddPrimussAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) (*model.ConnectedExam, error)
 	RemovePrimussAncode(ctx context.Context, zpaAncode int, program string) (*model.ConnectedExam, error)
 	FixPrimussAncode(ctx context.Context, zpaAncode int, program string, fromAncode int, toAncode int) (*model.ConnectedExam, error)
+	SetExamDuration(ctx context.Context, ancode int, duration int) (*model.ExamDurationOverride, error)
+	RemoveExamDuration(ctx context.Context, ancode int) (bool, error)
 	GenerateGeneratedExams(ctx context.Context) (*model.GenerateGeneratedExamsResult, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
@@ -1264,6 +1274,7 @@ type QueryResolver interface {
 	PlannedExam(ctx context.Context, ancode int) (*model.PlannedExam, error)
 	MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error)
 	ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error)
+	ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurationOverride, error)
 	GeneratedExamsState(ctx context.Context) (*model.GeneratedExamsState, error)
 	InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error)
 	InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error)
@@ -2096,6 +2107,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamDay.Number(childComplexity), true
+
+	case "ExamDurationOverride.ancode":
+		if e.complexity.ExamDurationOverride.Ancode == nil {
+			break
+		}
+
+		return e.complexity.ExamDurationOverride.Ancode(childComplexity), true
+
+	case "ExamDurationOverride.duration":
+		if e.complexity.ExamDurationOverride.Duration == nil {
+			break
+		}
+
+		return e.complexity.ExamDurationOverride.Duration(childComplexity), true
 
 	case "ExamTime.from":
 		if e.complexity.ExamTime.From == nil {
@@ -3302,6 +3327,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string), args["seats"].(*int)), true
 
+	case "Mutation.removeExamDuration":
+		if e.complexity.Mutation.RemoveExamDuration == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeExamDuration_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveExamDuration(childComplexity, args["ancode"].(int)), true
+
 	case "Mutation.removeNtaRoomAloneWaiver":
 		if e.complexity.Mutation.RemoveNtaRoomAloneWaiver == nil {
 			break
@@ -3442,6 +3479,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SeedStudyProgramsFromConfig(childComplexity), true
+
+	case "Mutation.setExamDuration":
+		if e.complexity.Mutation.SetExamDuration == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setExamDuration_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetExamDuration(childComplexity, args["ancode"].(int), args["duration"].(int)), true
 
 	case "Mutation.setInvigilatorConstraints":
 		if e.complexity.Mutation.SetInvigilatorConstraints == nil {
@@ -4778,6 +4827,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.EmailAttachments(childComplexity, args["kind"].(string)), true
+
+	case "Query.examDurationOverrides":
+		if e.complexity.Query.ExamDurationOverrides == nil {
+			break
+		}
+
+		return e.complexity.Query.ExamDurationOverrides(childComplexity), true
 
 	case "Query.examerInPlan":
 		if e.complexity.Query.ExamerInPlan == nil {
@@ -7796,6 +7852,26 @@ type MucDaiExam {
   isRepeaterExam: Boolean!
   program: String!
   plannedBy: String!
+}
+`, BuiltIn: false},
+	{Name: "../exam_duration.graphqls", Input: `extend type Query {
+  """
+  Per-ancode exam duration overrides. They are only applied to exams whose ZPA
+  duration is 0 (i.e. not set in the ZPA); they feed the generated exams.
+  """
+  examDurationOverrides: [ExamDurationOverride!]!
+}
+
+extend type Mutation {
+  "Set the duration override (minutes) for an ancode. Applied only when the ZPA duration is 0."
+  setExamDuration(ancode: Int!, duration: Int!): ExamDurationOverride!
+  "Remove the duration override for an ancode. Returns false if there was none."
+  removeExamDuration(ancode: Int!): Boolean!
+}
+
+type ExamDurationOverride {
+  ancode: Int!
+  duration: Int!
 }
 `, BuiltIn: false},
 	{Name: "../generated_exams_state.graphqls", Input: `extend type Query {
@@ -10932,6 +11008,34 @@ func (ec *executionContext) field_Mutation_prePlanRoom_argsSeats(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_removeExamDuration_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_removeExamDuration_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_removeExamDuration_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_removeNtaRoomAloneWaiver_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11366,6 +11470,57 @@ func (ec *executionContext) field_Mutation_seb_argsAncode(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
 	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setExamDuration_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setExamDuration_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg0
+	arg1, err := ec.field_Mutation_setExamDuration_argsDuration(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["duration"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setExamDuration_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setExamDuration_argsDuration(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["duration"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("duration"))
+	if tmp, ok := rawArgs["duration"]; ok {
 		return ec.unmarshalNInt2int(ctx, tmp)
 	}
 
@@ -19304,6 +19459,94 @@ func (ec *executionContext) fieldContext_ExamDay_date(_ context.Context, field g
 	return fc, nil
 }
 
+func (ec *executionContext) _ExamDurationOverride_ancode(ctx context.Context, field graphql.CollectedField, obj *model.ExamDurationOverride) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamDurationOverride_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamDurationOverride_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamDurationOverride",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamDurationOverride_duration(ctx context.Context, field graphql.CollectedField, obj *model.ExamDurationOverride) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamDurationOverride_duration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Duration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamDurationOverride_duration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamDurationOverride",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ExamTime_from(ctx context.Context, field graphql.CollectedField, obj *model.ExamTime) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ExamTime_from(ctx, field)
 	if err != nil {
@@ -25716,6 +25959,122 @@ func (ec *executionContext) fieldContext_Mutation_fixPrimussAncode(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_fixPrimussAncode_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setExamDuration(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setExamDuration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetExamDuration(rctx, fc.Args["ancode"].(int), fc.Args["duration"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ExamDurationOverride)
+	fc.Result = res
+	return ec.marshalNExamDurationOverride2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamDurationOverride(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setExamDuration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_ExamDurationOverride_ancode(ctx, field)
+			case "duration":
+				return ec.fieldContext_ExamDurationOverride_duration(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamDurationOverride", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setExamDuration_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeExamDuration(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeExamDuration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveExamDuration(rctx, fc.Args["ancode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeExamDuration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeExamDuration_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -36711,6 +37070,56 @@ func (ec *executionContext) fieldContext_Query_conflictingAncodes(ctx context.Co
 	if fc.Args, err = ec.field_Query_conflictingAncodes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_examDurationOverrides(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_examDurationOverrides(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExamDurationOverrides(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ExamDurationOverride)
+	fc.Result = res
+	return ec.marshalNExamDurationOverride2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamDurationOverrideᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_examDurationOverrides(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_ExamDurationOverride_ancode(ctx, field)
+			case "duration":
+				return ec.fieldContext_ExamDurationOverride_duration(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamDurationOverride", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -58417,6 +58826,50 @@ func (ec *executionContext) _ExamDay(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var examDurationOverrideImplementors = []string{"ExamDurationOverride"}
+
+func (ec *executionContext) _ExamDurationOverride(ctx context.Context, sel ast.SelectionSet, obj *model.ExamDurationOverride) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, examDurationOverrideImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExamDurationOverride")
+		case "ancode":
+			out.Values[i] = ec._ExamDurationOverride_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "duration":
+			out.Values[i] = ec._ExamDurationOverride_duration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var examTimeImplementors = []string{"ExamTime"}
 
 func (ec *executionContext) _ExamTime(ctx context.Context, sel ast.SelectionSet, obj *model.ExamTime) graphql.Marshaler {
@@ -59880,6 +60333,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "fixPrimussAncode":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_fixPrimussAncode(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setExamDuration":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setExamDuration(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeExamDuration":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeExamDuration(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -62363,6 +62830,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_conflictingAncodes(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "examDurationOverrides":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_examDurationOverrides(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -67302,6 +67791,64 @@ func (ec *executionContext) marshalNExamDay2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._ExamDay(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExamDurationOverride2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamDurationOverride(ctx context.Context, sel ast.SelectionSet, v model.ExamDurationOverride) graphql.Marshaler {
+	return ec._ExamDurationOverride(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNExamDurationOverride2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamDurationOverrideᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamDurationOverride) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNExamDurationOverride2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamDurationOverride(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNExamDurationOverride2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamDurationOverride(ctx context.Context, sel ast.SelectionSet, v *model.ExamDurationOverride) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExamDurationOverride(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExamTime2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamTimeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamTime) graphql.Marshaler {

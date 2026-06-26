@@ -180,6 +180,11 @@ type ExamDay struct {
 	Date   time.Time `json:"date"`
 }
 
+type ExamDurationOverride struct {
+	Ancode   int `json:"ancode"`
+	Duration int `json:"duration"`
+}
+
 // ExamTime is the time span of one exam an invigilator is the main examer of:
 // from the start time of the slot until the end time (start + maxDuration of the
 // exam, i.e. the longest exam in the slot including NTA extensions).

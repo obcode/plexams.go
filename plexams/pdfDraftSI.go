@@ -13,33 +13,21 @@ import (
 	"github.com/johnfercher/maroto/pkg/props"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 func (p *Plexams) DraftSI(ctx context.Context) error {
-	sis := viper.Get("specialInterests")
-	sisRaw, ok := sis.([]interface{})
-	if !ok {
-		err := fmt.Errorf("cannot get special interests from config")
-		log.Error().Err(err).Interface("sisRaw", sisRaw).Msg("cannot get special interests from config")
+	sis, err := p.dbClient.SpecialInterests(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get special interests")
 		return err
 	}
 
-	for _, si := range sisRaw {
-		siMap := si.(map[string]interface{})
-		name := siMap["name"].(string)
-		log.Debug().Str("name", name).Msg("found name")
-		filename := siMap["filename"].(string)
-		log.Debug().Str("filename", filename).Msg("found filename")
-		ancodesRaw := siMap["ancodes"].([]interface{})
-		ancodes := make([]int, 0, len(ancodesRaw))
-		for _, ancode := range ancodesRaw {
-			ancodes = append(ancodes, ancode.(int))
-		}
-		log.Debug().Interface("ancodes", ancodes).Msg("found ancodes")
+	for _, si := range sis {
+		log.Debug().Str("name", si.Name).Str("filename", si.Filename).
+			Interface("ancodes", si.Ancodes).Msg("found special interest")
 
-		exams := make([]*model.PlannedExam, 0, len(ancodes))
-		for _, ancode := range ancodes {
+		exams := make([]*model.PlannedExam, 0, len(si.Ancodes))
+		for _, ancode := range si.Ancodes {
 			exam, err := p.PlannedExam(ctx, ancode)
 			if err != nil {
 				log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exams with ancode")
@@ -48,8 +36,7 @@ func (p *Plexams) DraftSI(ctx context.Context) error {
 			exams = append(exams, exam)
 		}
 
-		err := p.draftSI(name, filename, exams)
-		if err != nil {
+		if err := p.draftSI(si.Name, si.Filename, exams); err != nil {
 			log.Error().Err(err).Msg("cannot draft SI")
 		}
 	}

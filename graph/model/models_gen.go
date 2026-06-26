@@ -770,6 +770,19 @@ type SoftCostReport struct {
 	Breakdown []*SoftCostItem `json:"breakdown"`
 }
 
+type SpecialInterest struct {
+	Name string `json:"name"`
+	// output file name for the generated PDF.
+	Filename string `json:"filename"`
+	Ancodes  []int  `json:"ancodes"`
+}
+
+type SpecialInterestInput struct {
+	Name     string `json:"name"`
+	Filename string `json:"filename"`
+	Ancodes  []int  `json:"ancodes"`
+}
+
 type Starttime struct {
 	Number int    `json:"number"`
 	Start  string `json:"start"`

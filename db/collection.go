@@ -31,6 +31,7 @@ const (
 	collectionGeneratedExams       = "generated_exams"
 	collectionGeneratedExamsState  = "generated_exams_state"
 	collectionExamDurationOverride = "exam_duration_overrides"
+	collectionSpecialInterests     = "special_interests"
 
 	collectionGlobalRooms     = "rooms"
 	collectionRoomsPrePlanned = "rooms_pre_planned"

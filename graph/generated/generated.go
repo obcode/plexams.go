@@ -413,6 +413,7 @@ type ComplexityRoot struct {
 		CreateSemester                func(childComplexity int, semester string, input model.SemesterConfigInputData) int
 		DeleteInvigilatorConstraints  func(childComplexity int, teacherID int) int
 		DeletePreplanExam             func(childComplexity int, id int) int
+		DeleteSpecialInterest         func(childComplexity int, name string) int
 		DeleteStudyProgram            func(childComplexity int, shortname string) int
 		DisconnectPreplanExam         func(childComplexity int, id int) int
 		Exahm                         func(childComplexity int, ancode int) int
@@ -462,6 +463,7 @@ type ComplexityRoot struct {
 		UpdatePreplanExam             func(childComplexity int, id int, input model.PreplanExamInput) int
 		UpdateRoom                    func(childComplexity int, input model.RoomInput) int
 		UpdateRoomRequestTime         func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
+		UpsertSpecialInterest         func(childComplexity int, input model.SpecialInterestInput) int
 		UpsertStudyProgram            func(childComplexity int, input model.StudyProgramInput) int
 		ZpaExamsToPlan                func(childComplexity int, input []int) int
 	}
@@ -765,6 +767,7 @@ type ComplexityRoot struct {
 		Semester                      func(childComplexity int) int
 		SemesterConfig                func(childComplexity int) int
 		SemesterConfigInput           func(childComplexity int) int
+		SpecialInterests              func(childComplexity int) int
 		StudentByMtknr                func(childComplexity int, mtknr string) int
 		StudentRegsForProgram         func(childComplexity int, program string) int
 		StudentRegsImportErrors       func(childComplexity int) int
@@ -929,6 +932,12 @@ type ComplexityRoot struct {
 	SoftCostReport struct {
 		Breakdown func(childComplexity int) int
 		Total     func(childComplexity int) int
+	}
+
+	SpecialInterest struct {
+		Ancodes  func(childComplexity int) int
+		Filename func(childComplexity int) int
+		Name     func(childComplexity int) int
 	}
 
 	Starttime struct {
@@ -1239,6 +1248,8 @@ type MutationResolver interface {
 	UpdateRoomRequestTime(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
 	SetSemesterConfigInput(ctx context.Context, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
 	CreateSemester(ctx context.Context, semester string, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
+	UpsertSpecialInterest(ctx context.Context, input model.SpecialInterestInput) (*model.SpecialInterest, error)
+	DeleteSpecialInterest(ctx context.Context, name string) (bool, error)
 	UpsertStudyProgram(ctx context.Context, input model.StudyProgramInput) (*model.StudyProgram, error)
 	DeleteStudyProgram(ctx context.Context, shortname string) (bool, error)
 	SeedStudyProgramsFromConfig(ctx context.Context) (int, error)
@@ -1327,6 +1338,7 @@ type QueryResolver interface {
 	UnplacedExams(ctx context.Context) ([]*model.UnplacedExam, error)
 	RoomRequests(ctx context.Context) ([]*model.RoomRequest, error)
 	RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error)
+	SpecialInterests(ctx context.Context) ([]*model.SpecialInterest, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
 	Students(ctx context.Context) ([]*model.Student, error)
@@ -3131,6 +3143,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.DeletePreplanExam(childComplexity, args["id"].(int)), true
 
+	case "Mutation.deleteSpecialInterest":
+		if e.complexity.Mutation.DeleteSpecialInterest == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteSpecialInterest_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteSpecialInterest(childComplexity, args["name"].(string)), true
+
 	case "Mutation.deleteStudyProgram":
 		if e.complexity.Mutation.DeleteStudyProgram == nil {
 			break
@@ -3683,6 +3707,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateRoomRequestTime(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["from"].(time.Time), args["until"].(time.Time)), true
+
+	case "Mutation.upsertSpecialInterest":
+		if e.complexity.Mutation.UpsertSpecialInterest == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_upsertSpecialInterest_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpsertSpecialInterest(childComplexity, args["input"].(model.SpecialInterestInput)), true
 
 	case "Mutation.upsertStudyProgram":
 		if e.complexity.Mutation.UpsertStudyProgram == nil {
@@ -5310,6 +5346,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.SemesterConfigInput(childComplexity), true
 
+	case "Query.specialInterests":
+		if e.complexity.Query.SpecialInterests == nil {
+			break
+		}
+
+		return e.complexity.Query.SpecialInterests(childComplexity), true
+
 	case "Query.studentByMtknr":
 		if e.complexity.Query.StudentByMtknr == nil {
 			break
@@ -6119,6 +6162,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SoftCostReport.Total(childComplexity), true
+
+	case "SpecialInterest.ancodes":
+		if e.complexity.SpecialInterest.Ancodes == nil {
+			break
+		}
+
+		return e.complexity.SpecialInterest.Ancodes(childComplexity), true
+
+	case "SpecialInterest.filename":
+		if e.complexity.SpecialInterest.Filename == nil {
+			break
+		}
+
+		return e.complexity.SpecialInterest.Filename(childComplexity), true
+
+	case "SpecialInterest.name":
+		if e.complexity.SpecialInterest.Name == nil {
+			break
+		}
+
+		return e.complexity.SpecialInterest.Name(childComplexity), true
 
 	case "Starttime.number":
 		if e.complexity.Starttime.Number == nil {
@@ -7457,6 +7521,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRoomInput,
 		ec.unmarshalInputSemesterConfigInputData,
 		ec.unmarshalInputSlotInput,
+		ec.unmarshalInputSpecialInterestInput,
 		ec.unmarshalInputStudyProgramInput,
 	)
 	first := true
@@ -8949,6 +9014,31 @@ type SemesterConfig {
   emails: Emails!
 }
 `, BuiltIn: false},
+	{Name: "../special_interest.graphqls", Input: `extend type Query {
+  "Special-interest groups (named ancode lists) used for the Studierenden-Info PDFs."
+  specialInterests: [SpecialInterest!]!
+}
+
+extend type Mutation {
+  "Create or update a special-interest group (key: name)."
+  upsertSpecialInterest(input: SpecialInterestInput!): SpecialInterest!
+  "Delete a special-interest group by name. Returns false if there was none."
+  deleteSpecialInterest(name: String!): Boolean!
+}
+
+type SpecialInterest {
+  name: String!
+  "output file name for the generated PDF."
+  filename: String!
+  ancodes: [Int!]!
+}
+
+input SpecialInterestInput {
+  name: String!
+  filename: String!
+  ancodes: [Int!]!
+}
+`, BuiltIn: false},
 	{Name: "../stream.graphqls", Input: `"""
 LogLevel classifies a streamed LogLine. PROGRESS lines are throttled optimizer
 snapshots and should be rendered in-place (like a spinner) instead of appended.
@@ -10291,6 +10381,34 @@ func (ec *executionContext) field_Mutation_deletePreplanExam_argsID(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteSpecialInterest_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_deleteSpecialInterest_argsName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_deleteSpecialInterest_argsName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["name"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+	if tmp, ok := rawArgs["name"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -12479,6 +12597,34 @@ func (ec *executionContext) field_Mutation_updateRoom_argsInput(
 	}
 
 	var zeroVal model.RoomInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_upsertSpecialInterest_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_upsertSpecialInterest_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_upsertSpecialInterest_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.SpecialInterestInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal model.SpecialInterestInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNSpecialInterestInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpecialInterestInput(ctx, tmp)
+	}
+
+	var zeroVal model.SpecialInterestInput
 	return zeroVal, nil
 }
 
@@ -28932,6 +29078,124 @@ func (ec *executionContext) fieldContext_Mutation_createSemester(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_upsertSpecialInterest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_upsertSpecialInterest(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpsertSpecialInterest(rctx, fc.Args["input"].(model.SpecialInterestInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.SpecialInterest)
+	fc.Result = res
+	return ec.marshalNSpecialInterest2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpecialInterest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_upsertSpecialInterest(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_SpecialInterest_name(ctx, field)
+			case "filename":
+				return ec.fieldContext_SpecialInterest_filename(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_SpecialInterest_ancodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpecialInterest", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_upsertSpecialInterest_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteSpecialInterest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteSpecialInterest(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteSpecialInterest(rctx, fc.Args["name"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteSpecialInterest(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteSpecialInterest_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_upsertStudyProgram(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_upsertStudyProgram(ctx, field)
 	if err != nil {
@@ -40247,6 +40511,58 @@ func (ec *executionContext) fieldContext_Query_roomRequestsPreview(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_specialInterests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_specialInterests(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().SpecialInterests(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.SpecialInterest)
+	fc.Result = res
+	return ec.marshalNSpecialInterest2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpecialInterestᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_specialInterests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_SpecialInterest_name(ctx, field)
+			case "filename":
+				return ec.fieldContext_SpecialInterest_filename(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_SpecialInterest_ancodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpecialInterest", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_studentByMtknr(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_studentByMtknr(ctx, field)
 	if err != nil {
@@ -45720,6 +46036,138 @@ func (ec *executionContext) fieldContext_SoftCostReport_breakdown(_ context.Cont
 				return ec.fieldContext_SoftCostItem_cost(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SoftCostItem", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpecialInterest_name(ctx context.Context, field graphql.CollectedField, obj *model.SpecialInterest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpecialInterest_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpecialInterest_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpecialInterest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpecialInterest_filename(ctx context.Context, field graphql.CollectedField, obj *model.SpecialInterest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpecialInterest_filename(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Filename, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpecialInterest_filename(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpecialInterest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpecialInterest_ancodes(ctx context.Context, field graphql.CollectedField, obj *model.SpecialInterest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpecialInterest_ancodes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancodes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpecialInterest_ancodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpecialInterest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -57698,6 +58146,47 @@ func (ec *executionContext) unmarshalInputSlotInput(ctx context.Context, obj any
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSpecialInterestInput(ctx context.Context, obj any) (model.SpecialInterestInput, error) {
+	var it model.SpecialInterestInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "filename", "ancodes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "filename":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filename"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Filename = data
+		case "ancodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancodes"))
+			data, err := ec.unmarshalNInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Ancodes = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context, obj any) (model.StudyProgramInput, error) {
 	var it model.StudyProgramInput
 	asMap := map[string]any{}
@@ -60662,6 +61151,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createSemester":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createSemester(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "upsertSpecialInterest":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_upsertSpecialInterest(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteSpecialInterest":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteSpecialInterest(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -63939,6 +64442,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "specialInterests":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_specialInterests(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "studentByMtknr":
 			field := field
 
@@ -65368,6 +65893,55 @@ func (ec *executionContext) _SoftCostReport(ctx context.Context, sel ast.Selecti
 			}
 		case "breakdown":
 			out.Values[i] = ec._SoftCostReport_breakdown(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var specialInterestImplementors = []string{"SpecialInterest"}
+
+func (ec *executionContext) _SpecialInterest(ctx context.Context, sel ast.SelectionSet, obj *model.SpecialInterest) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, specialInterestImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpecialInterest")
+		case "name":
+			out.Values[i] = ec._SpecialInterest_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "filename":
+			out.Values[i] = ec._SpecialInterest_filename(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ancodes":
+			out.Values[i] = ec._SpecialInterest_ancodes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -70467,6 +71041,69 @@ func (ec *executionContext) marshalNSoftCostReport2ᚖgithubᚗcomᚋobcodeᚋpl
 		return graphql.Null
 	}
 	return ec._SoftCostReport(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSpecialInterest2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpecialInterest(ctx context.Context, sel ast.SelectionSet, v model.SpecialInterest) graphql.Marshaler {
+	return ec._SpecialInterest(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSpecialInterest2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpecialInterestᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SpecialInterest) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSpecialInterest2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpecialInterest(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSpecialInterest2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpecialInterest(ctx context.Context, sel ast.SelectionSet, v *model.SpecialInterest) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SpecialInterest(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSpecialInterestInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpecialInterestInput(ctx context.Context, v any) (model.SpecialInterestInput, error) {
+	res, err := ec.unmarshalInputSpecialInterestInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNStarttime2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStarttimeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Starttime) graphql.Marshaler {

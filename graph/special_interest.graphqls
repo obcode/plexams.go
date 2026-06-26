@@ -1,0 +1,24 @@
+extend type Query {
+  "Special-interest groups (named ancode lists) used for the Studierenden-Info PDFs."
+  specialInterests: [SpecialInterest!]!
+}
+
+extend type Mutation {
+  "Create or update a special-interest group (key: name)."
+  upsertSpecialInterest(input: SpecialInterestInput!): SpecialInterest!
+  "Delete a special-interest group by name. Returns false if there was none."
+  deleteSpecialInterest(name: String!): Boolean!
+}
+
+type SpecialInterest {
+  name: String!
+  "output file name for the generated PDF."
+  filename: String!
+  ancodes: [Int!]!
+}
+
+input SpecialInterestInput {
+  name: String!
+  filename: String!
+  ancodes: [Int!]!
+}

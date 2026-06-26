@@ -10,6 +10,11 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// GenerateGeneratedExams is the resolver for the generateGeneratedExams field.
+func (r *mutationResolver) GenerateGeneratedExams(ctx context.Context) (*model.GeneratedExamsState, error) {
+	return r.plexams.GenerateGeneratedExams(ctx)
+}
+
 // GeneratedExamsState is the resolver for the generatedExamsState field.
 func (r *queryResolver) GeneratedExamsState(ctx context.Context) (*model.GeneratedExamsState, error) {
 	return r.plexams.GeneratedExamsState(ctx)

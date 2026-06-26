@@ -400,6 +400,7 @@ type ComplexityRoot struct {
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
 		FixPrimussAncode              func(childComplexity int, zpaAncode int, program string, fromAncode int, toAncode int) int
+		GenerateGeneratedExams        func(childComplexity int) int
 		GeneratePreplanAssignment     func(childComplexity int, keepAssigned *bool) int
 		Lab                           func(childComplexity int, ancode int) int
 		MigrateInvigilatorConstraints func(childComplexity int) int
@@ -1168,6 +1169,7 @@ type MutationResolver interface {
 	AddPrimussAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) (*model.ConnectedExam, error)
 	RemovePrimussAncode(ctx context.Context, zpaAncode int, program string) (*model.ConnectedExam, error)
 	FixPrimussAncode(ctx context.Context, zpaAncode int, program string, fromAncode int, toAncode int) (*model.ConnectedExam, error)
+	GenerateGeneratedExams(ctx context.Context) (*model.GeneratedExamsState, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	PrePlanInvigilationInSlot(ctx context.Context, day int, slot int, roomName *string) (bool, error)
@@ -3099,6 +3101,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.FixPrimussAncode(childComplexity, args["zpaAncode"].(int), args["program"].(string), args["fromAncode"].(int), args["toAncode"].(int)), true
+
+	case "Mutation.generateGeneratedExams":
+		if e.complexity.Mutation.GenerateGeneratedExams == nil {
+			break
+		}
+
+		return e.complexity.Mutation.GenerateGeneratedExams(childComplexity), true
 
 	case "Mutation.generatePreplanAssignment":
 		if e.complexity.Mutation.GeneratePreplanAssignment == nil {
@@ -7713,6 +7722,14 @@ type MucDaiExam {
   stale and should be regenerated.
   """
   generatedExamsState: GeneratedExamsState!
+}
+
+extend type Mutation {
+  """
+  Regenerate the cached generated exams from the current data and clear the stale
+  flag. Fast (~100ms); returns the new state (dirty=false).
+  """
+  generateGeneratedExams: GeneratedExamsState!
 }
 
 type GeneratedExamsState {
@@ -25261,6 +25278,58 @@ func (ec *executionContext) fieldContext_Mutation_fixPrimussAncode(ctx context.C
 	if fc.Args, err = ec.field_Mutation_fixPrimussAncode_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_generateGeneratedExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_generateGeneratedExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().GenerateGeneratedExams(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.GeneratedExamsState)
+	fc.Result = res
+	return ec.marshalNGeneratedExamsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamsState(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_generateGeneratedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dirty":
+				return ec.fieldContext_GeneratedExamsState_dirty(ctx, field)
+			case "reason":
+				return ec.fieldContext_GeneratedExamsState_reason(ctx, field)
+			case "changedAt":
+				return ec.fieldContext_GeneratedExamsState_changedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneratedExamsState", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -59155,6 +59224,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "fixPrimussAncode":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_fixPrimussAncode(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "generateGeneratedExams":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_generateGeneratedExams(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

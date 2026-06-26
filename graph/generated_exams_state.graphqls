@@ -8,6 +8,14 @@ extend type Query {
   generatedExamsState: GeneratedExamsState!
 }
 
+extend type Mutation {
+  """
+  Regenerate the cached generated exams from the current data and clear the stale
+  flag. Fast (~100ms); returns the new state (dirty=false).
+  """
+  generateGeneratedExams: GeneratedExamsState!
+}
+
 type GeneratedExamsState {
   "true when the generated exams are stale relative to their inputs."
   dirty: Boolean!

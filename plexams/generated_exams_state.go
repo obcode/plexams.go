@@ -24,3 +24,13 @@ func (p *Plexams) MarkGeneratedExamsDirty(ctx context.Context, reason string) {
 func (p *Plexams) GeneratedExamsState(ctx context.Context) (*model.GeneratedExamsState, error) {
 	return p.dbClient.GetGeneratedExamsState(ctx)
 }
+
+// GenerateGeneratedExams regenerates the cached generated exams and returns the new
+// (no longer dirty) state.
+func (p *Plexams) GenerateGeneratedExams(ctx context.Context) (*model.GeneratedExamsState, error) {
+	if err := p.PrepareGeneratedExams(); err != nil {
+		log.Error().Err(err).Msg("cannot regenerate generated exams")
+		return nil, err
+	}
+	return p.GeneratedExamsState(ctx)
+}

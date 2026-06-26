@@ -11,9 +11,10 @@ extend type Query {
 extend type Mutation {
   """
   Regenerate the cached generated exams from the current data and clear the stale
-  flag. Fast (~100ms); returns the new state (dirty=false).
+  flag. Fast (~100ms); returns the new state plus the list of changes vs the
+  previously cached generated exams.
   """
-  generateGeneratedExams: GeneratedExamsState!
+  generateGeneratedExams: GenerateGeneratedExamsResult!
 }
 
 type GeneratedExamsState {
@@ -23,4 +24,20 @@ type GeneratedExamsState {
   reason: String
   "when they were last marked stale or (re)generated."
   changedAt: Time
+}
+
+type GenerateGeneratedExamsResult {
+  "the new state (dirty=false)."
+  state: GeneratedExamsState!
+  "what changed vs the previously cached generated exams (empty = nothing changed)."
+  changes: [GeneratedExamsChange!]!
+}
+
+type GeneratedExamsChange {
+  ancode: Int!
+  module: String!
+  "added | removed | changed"
+  kind: String!
+  "human-readable change descriptions, e.g. 'Anmeldungen 42 → 43'."
+  details: [String!]!
 }

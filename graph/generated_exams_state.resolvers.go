@@ -11,7 +11,7 @@ import (
 )
 
 // GenerateGeneratedExams is the resolver for the generateGeneratedExams field.
-func (r *mutationResolver) GenerateGeneratedExams(ctx context.Context) (*model.GeneratedExamsState, error) {
+func (r *mutationResolver) GenerateGeneratedExams(ctx context.Context) (*model.GenerateGeneratedExamsResult, error) {
 	return r.plexams.GenerateGeneratedExams(ctx)
 }
 

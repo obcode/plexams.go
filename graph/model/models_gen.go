@@ -210,6 +210,22 @@ type FairnessDistribution struct {
 	Buckets []*DistributionBucket `json:"buckets"`
 }
 
+type GenerateGeneratedExamsResult struct {
+	// the new state (dirty=false).
+	State *GeneratedExamsState `json:"state"`
+	// what changed vs the previously cached generated exams (empty = nothing changed).
+	Changes []*GeneratedExamsChange `json:"changes"`
+}
+
+type GeneratedExamsChange struct {
+	Ancode int    `json:"ancode"`
+	Module string `json:"module"`
+	// added | removed | changed
+	Kind string `json:"kind"`
+	// human-readable change descriptions, e.g. 'Anmeldungen 42 → 43'.
+	Details []string `json:"details"`
+}
+
 type GeneratedExamsState struct {
 	// true when the generated exams are stale relative to their inputs.
 	Dirty bool `json:"dirty"`

@@ -260,6 +260,12 @@ type GenerateGeneratedExamsResult struct {
 	Changes []*GeneratedExamsChange `json:"changes"`
 }
 
+type GenerateStudentRegsResult struct {
+	State *StudentRegsState `json:"state"`
+	// number of students with planned registrations after the (re)generation.
+	StudentCount int `json:"studentCount"`
+}
+
 type GeneratedExamsChange struct {
 	Ancode int    `json:"ancode"`
 	Module string `json:"module"`
@@ -883,6 +889,14 @@ type StudentRegsPerAncodeAndProgram struct {
 type StudentRegsPerStudent struct {
 	Student *Student `json:"student"`
 	Ancodes []int    `json:"ancodes"`
+}
+
+type StudentRegsState struct {
+	Dirty bool `json:"dirty"`
+	// the operation that last marked them stale (mutation/subscription name).
+	Reason *string `json:"reason,omitempty"`
+	// when they were last marked stale or (re)generated.
+	ChangedAt *time.Time `json:"changedAt,omitempty"`
 }
 
 type StudyProgramInput struct {

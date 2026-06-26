@@ -1,0 +1,31 @@
+extend type Query {
+  """
+  State of the prepared student registrations (the per-student planned regs shown
+  via `students`). dirty=true means an input changed since the last generation
+  (connected exams, which exams are planned, NTAs, ZPA imports), so they should be
+  regenerated.
+  """
+  studentRegsState: StudentRegsState!
+}
+
+extend type Mutation {
+  """
+  Regenerate the per-student planned registrations from the current data and clear
+  the stale flag. Returns the new state plus the number of students.
+  """
+  generateStudentRegs: GenerateStudentRegsResult!
+}
+
+type StudentRegsState {
+  dirty: Boolean!
+  "the operation that last marked them stale (mutation/subscription name)."
+  reason: String
+  "when they were last marked stale or (re)generated."
+  changedAt: Time
+}
+
+type GenerateStudentRegsResult {
+  state: StudentRegsState!
+  "number of students with planned registrations after the (re)generation."
+  studentCount: Int!
+}

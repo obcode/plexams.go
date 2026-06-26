@@ -261,6 +261,11 @@ type ComplexityRoot struct {
 		State   func(childComplexity int) int
 	}
 
+	GenerateStudentRegsResult struct {
+		State        func(childComplexity int) int
+		StudentCount func(childComplexity int) int
+	}
+
 	GeneratedExam struct {
 		Ancode           func(childComplexity int) int
 		Conflicts        func(childComplexity int) int
@@ -455,6 +460,7 @@ type ComplexityRoot struct {
 		FixPrimussAncode              func(childComplexity int, zpaAncode int, program string, fromAncode int, toAncode int) int
 		GenerateGeneratedExams        func(childComplexity int) int
 		GeneratePreplanAssignment     func(childComplexity int, keepAssigned *bool) int
+		GenerateStudentRegs           func(childComplexity int) int
 		Lab                           func(childComplexity int, ancode int) int
 		MigrateInvigilatorConstraints func(childComplexity int) int
 		MigrateRoomRequestsFromConfig func(childComplexity int) int
@@ -809,6 +815,7 @@ type ComplexityRoot struct {
 		StudentByMtknr                func(childComplexity int, mtknr string) int
 		StudentRegsForProgram         func(childComplexity int, program string) int
 		StudentRegsImportErrors       func(childComplexity int) int
+		StudentRegsState              func(childComplexity int) int
 		Students                      func(childComplexity int) int
 		StudentsByName                func(childComplexity int, regex string) int
 		StudyPrograms                 func(childComplexity int) int
@@ -1017,6 +1024,12 @@ type ComplexityRoot struct {
 	StudentRegsPerStudent struct {
 		Ancodes func(childComplexity int) int
 		Student func(childComplexity int) int
+	}
+
+	StudentRegsState struct {
+		ChangedAt func(childComplexity int) int
+		Dirty     func(childComplexity int) int
+		Reason    func(childComplexity int) int
 	}
 
 	StudyProgram struct {
@@ -1291,6 +1304,7 @@ type MutationResolver interface {
 	CreateSemester(ctx context.Context, semester string, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
 	UpsertSpecialInterest(ctx context.Context, input model.SpecialInterestInput) (*model.SpecialInterest, error)
 	DeleteSpecialInterest(ctx context.Context, name string) (bool, error)
+	GenerateStudentRegs(ctx context.Context) (*model.GenerateStudentRegsResult, error)
 	UpsertStudyProgram(ctx context.Context, input model.StudyProgramInput) (*model.StudyProgram, error)
 	DeleteStudyProgram(ctx context.Context, shortname string) (bool, error)
 	SeedStudyProgramsFromConfig(ctx context.Context) (int, error)
@@ -1382,6 +1396,7 @@ type QueryResolver interface {
 	RoomRequests(ctx context.Context) ([]*model.RoomRequest, error)
 	RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error)
 	SpecialInterests(ctx context.Context) ([]*model.SpecialInterest, error)
+	StudentRegsState(ctx context.Context) (*model.StudentRegsState, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
 	Students(ctx context.Context) ([]*model.Student, error)
@@ -2358,6 +2373,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GenerateGeneratedExamsResult.State(childComplexity), true
+
+	case "GenerateStudentRegsResult.state":
+		if e.complexity.GenerateStudentRegsResult.State == nil {
+			break
+		}
+
+		return e.complexity.GenerateStudentRegsResult.State(childComplexity), true
+
+	case "GenerateStudentRegsResult.studentCount":
+		if e.complexity.GenerateStudentRegsResult.StudentCount == nil {
+			break
+		}
+
+		return e.complexity.GenerateStudentRegsResult.StudentCount(childComplexity), true
 
 	case "GeneratedExam.ancode":
 		if e.complexity.GeneratedExam.Ancode == nil {
@@ -3456,6 +3485,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.GeneratePreplanAssignment(childComplexity, args["keepAssigned"].(*bool)), true
+
+	case "Mutation.generateStudentRegs":
+		if e.complexity.Mutation.GenerateStudentRegs == nil {
+			break
+		}
+
+		return e.complexity.Mutation.GenerateStudentRegs(childComplexity), true
 
 	case "Mutation.lab":
 		if e.complexity.Mutation.Lab == nil {
@@ -5645,6 +5681,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.StudentRegsImportErrors(childComplexity), true
 
+	case "Query.studentRegsState":
+		if e.complexity.Query.StudentRegsState == nil {
+			break
+		}
+
+		return e.complexity.Query.StudentRegsState(childComplexity), true
+
 	case "Query.students":
 		if e.complexity.Query.Students == nil {
 			break
@@ -6605,6 +6648,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StudentRegsPerStudent.Student(childComplexity), true
+
+	case "StudentRegsState.changedAt":
+		if e.complexity.StudentRegsState.ChangedAt == nil {
+			break
+		}
+
+		return e.complexity.StudentRegsState.ChangedAt(childComplexity), true
+
+	case "StudentRegsState.dirty":
+		if e.complexity.StudentRegsState.Dirty == nil {
+			break
+		}
+
+		return e.complexity.StudentRegsState.Dirty(childComplexity), true
+
+	case "StudentRegsState.reason":
+		if e.complexity.StudentRegsState.Reason == nil {
+			break
+		}
+
+		return e.complexity.StudentRegsState.Reason(childComplexity), true
 
 	case "StudyProgram.active":
 		if e.complexity.StudyProgram.Active == nil {
@@ -9531,6 +9595,38 @@ type Subscription {
   defaults (0/null = keep config/default). The stream ends with a DONE line.
   """
   generateInvigilations(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
+}
+`, BuiltIn: false},
+	{Name: "../student_regs_state.graphqls", Input: `extend type Query {
+  """
+  State of the prepared student registrations (the per-student planned regs shown
+  via ` + "`" + `students` + "`" + `). dirty=true means an input changed since the last generation
+  (connected exams, which exams are planned, NTAs, ZPA imports), so they should be
+  regenerated.
+  """
+  studentRegsState: StudentRegsState!
+}
+
+extend type Mutation {
+  """
+  Regenerate the per-student planned registrations from the current data and clear
+  the stale flag. Returns the new state plus the number of students.
+  """
+  generateStudentRegs: GenerateStudentRegsResult!
+}
+
+type StudentRegsState {
+  dirty: Boolean!
+  "the operation that last marked them stale (mutation/subscription name)."
+  reason: String
+  "when they were last marked stale or (re)generated."
+  changedAt: Time
+}
+
+type GenerateStudentRegsResult {
+  state: StudentRegsState!
+  "number of students with planned registrations after the (re)generation."
+  studentCount: Int!
 }
 `, BuiltIn: false},
 	{Name: "../studentregs.graphqls", Input: `extend type Query {
@@ -21422,6 +21518,102 @@ func (ec *executionContext) fieldContext_GenerateGeneratedExamsResult_changes(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _GenerateStudentRegsResult_state(ctx context.Context, field graphql.CollectedField, obj *model.GenerateStudentRegsResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerateStudentRegsResult_state(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.State, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.StudentRegsState)
+	fc.Result = res
+	return ec.marshalNStudentRegsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegsState(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerateStudentRegsResult_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerateStudentRegsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dirty":
+				return ec.fieldContext_StudentRegsState_dirty(ctx, field)
+			case "reason":
+				return ec.fieldContext_StudentRegsState_reason(ctx, field)
+			case "changedAt":
+				return ec.fieldContext_StudentRegsState_changedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type StudentRegsState", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerateStudentRegsResult_studentCount(ctx context.Context, field graphql.CollectedField, obj *model.GenerateStudentRegsResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerateStudentRegsResult_studentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerateStudentRegsResult_studentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerateStudentRegsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GeneratedExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GeneratedExam_ancode(ctx, field)
 	if err != nil {
@@ -30914,6 +31106,56 @@ func (ec *executionContext) fieldContext_Mutation_deleteSpecialInterest(ctx cont
 	if fc.Args, err = ec.field_Mutation_deleteSpecialInterest_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_generateStudentRegs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_generateStudentRegs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().GenerateStudentRegs(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.GenerateStudentRegsResult)
+	fc.Result = res
+	return ec.marshalNGenerateStudentRegsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateStudentRegsResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_generateStudentRegs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "state":
+				return ec.fieldContext_GenerateStudentRegsResult_state(ctx, field)
+			case "studentCount":
+				return ec.fieldContext_GenerateStudentRegsResult_studentCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GenerateStudentRegsResult", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -42413,6 +42655,58 @@ func (ec *executionContext) fieldContext_Query_specialInterests(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_studentRegsState(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_studentRegsState(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().StudentRegsState(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.StudentRegsState)
+	fc.Result = res
+	return ec.marshalNStudentRegsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegsState(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_studentRegsState(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dirty":
+				return ec.fieldContext_StudentRegsState_dirty(ctx, field)
+			case "reason":
+				return ec.fieldContext_StudentRegsState_reason(ctx, field)
+			case "changedAt":
+				return ec.fieldContext_StudentRegsState_changedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type StudentRegsState", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_studentByMtknr(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_studentByMtknr(ctx, field)
 	if err != nil {
@@ -49112,6 +49406,132 @@ func (ec *executionContext) fieldContext_StudentRegsPerStudent_ancodes(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentRegsState_dirty(ctx context.Context, field graphql.CollectedField, obj *model.StudentRegsState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentRegsState_dirty(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Dirty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentRegsState_dirty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentRegsState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentRegsState_reason(ctx context.Context, field graphql.CollectedField, obj *model.StudentRegsState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentRegsState_reason(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Reason, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentRegsState_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentRegsState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentRegsState_changedAt(ctx context.Context, field graphql.CollectedField, obj *model.StudentRegsState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentRegsState_changedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChangedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentRegsState_changedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentRegsState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -61839,6 +62259,50 @@ func (ec *executionContext) _GenerateGeneratedExamsResult(ctx context.Context, s
 	return out
 }
 
+var generateStudentRegsResultImplementors = []string{"GenerateStudentRegsResult"}
+
+func (ec *executionContext) _GenerateStudentRegsResult(ctx context.Context, sel ast.SelectionSet, obj *model.GenerateStudentRegsResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, generateStudentRegsResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GenerateStudentRegsResult")
+		case "state":
+			out.Values[i] = ec._GenerateStudentRegsResult_state(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentCount":
+			out.Values[i] = ec._GenerateStudentRegsResult_studentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var generatedExamImplementors = []string{"GeneratedExam"}
 
 func (ec *executionContext) _GeneratedExam(ctx context.Context, sel ast.SelectionSet, obj *model.GeneratedExam) graphql.Marshaler {
@@ -63486,6 +63950,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteSpecialInterest":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteSpecialInterest(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "generateStudentRegs":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_generateStudentRegs(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -66829,6 +67300,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "studentRegsState":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_studentRegsState(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "studentByMtknr":
 			field := field
 
@@ -68623,6 +69116,49 @@ func (ec *executionContext) _StudentRegsPerStudent(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var studentRegsStateImplementors = []string{"StudentRegsState"}
+
+func (ec *executionContext) _StudentRegsState(ctx context.Context, sel ast.SelectionSet, obj *model.StudentRegsState) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, studentRegsStateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("StudentRegsState")
+		case "dirty":
+			out.Values[i] = ec._StudentRegsState_dirty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._StudentRegsState_reason(ctx, field, obj)
+		case "changedAt":
+			out.Values[i] = ec._StudentRegsState_changedAt(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -71127,6 +71663,20 @@ func (ec *executionContext) marshalNGenerateGeneratedExamsResult2ᚖgithubᚗcom
 		return graphql.Null
 	}
 	return ec._GenerateGeneratedExamsResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGenerateStudentRegsResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateStudentRegsResult(ctx context.Context, sel ast.SelectionSet, v model.GenerateStudentRegsResult) graphql.Marshaler {
+	return ec._GenerateStudentRegsResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGenerateStudentRegsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateStudentRegsResult(ctx context.Context, sel ast.SelectionSet, v *model.GenerateStudentRegsResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GenerateStudentRegsResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGeneratedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GeneratedExam) graphql.Marshaler {
@@ -73887,6 +74437,20 @@ func (ec *executionContext) marshalNStudentRegsPerAncodeAndProgram2ᚖgithubᚗc
 		return graphql.Null
 	}
 	return ec._StudentRegsPerAncodeAndProgram(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNStudentRegsState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegsState(ctx context.Context, sel ast.SelectionSet, v model.StudentRegsState) graphql.Marshaler {
+	return ec._StudentRegsState(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNStudentRegsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegsState(ctx context.Context, sel ast.SelectionSet, v *model.StudentRegsState) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._StudentRegsState(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNStudyProgram2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudyProgram(ctx context.Context, sel ast.SelectionSet, v model.StudyProgram) graphql.Marshaler {

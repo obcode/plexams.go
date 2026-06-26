@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"sort"
+	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
@@ -162,6 +163,10 @@ func (p *Plexams) PrepareStudentRegs() error {
 
 	if err := p.dbClient.SaveStudentRegs(ctx, studentRegsSlice); err != nil {
 		return err
+	}
+	// the prepared regs are now in sync with their inputs again
+	if err := p.dbClient.SetStudentRegsDirty(ctx, false, "", time.Now()); err != nil {
+		log.Error().Err(err).Msg("cannot clear student-regs dirty flag")
 	}
 	p.markCondition(ctx, condStudentRegs)
 	return nil

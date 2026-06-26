@@ -75,6 +75,32 @@ func (p *Plexams) PrepareGeneratedExams() error {
 	// 	return err
 	// }
 
+	// Batch-load student regs and conflicts once per program (indexed by ancode),
+	// instead of one DB lookup per primuss exam.
+	programsSet := make(map[string]bool)
+	for _, connectedExam := range connectedExams {
+		for _, primussExam := range connectedExam.PrimussExams {
+			programsSet[primussExam.Program] = true
+		}
+	}
+	studentRegsIdx := make(map[string]map[int][]*model.StudentReg, len(programsSet))
+	conflictsIdx := make(map[string]map[int]*model.Conflicts, len(programsSet))
+	for program := range programsSet {
+		studentRegs, err := p.dbClient.GetPrimussStudentRegsPerAncode(ctx, program)
+		if err != nil {
+			log.Error().Err(err).Str("program", program).Msg("cannot get student regs for program")
+			return err
+		}
+		studentRegsIdx[program] = studentRegs
+
+		conflicts, err := p.dbClient.GetPrimussConflictsPerAncode(ctx, program)
+		if err != nil {
+			log.Error().Err(err).Str("program", program).Msg("cannot get conflicts for program")
+			return err
+		}
+		conflictsIdx[program] = conflicts
+	}
+
 	// ancodesMap := primussAncodesToZpaAncodes(connectedExams, externalExams)
 	ancodesMap := primussAncodesToZpaAncodes(connectedExams)
 
@@ -117,12 +143,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 
 		enhancedPrimussExams := make([]*model.EnhancedPrimussExam, 0, len(connectedExam.PrimussExams))
 		for _, primussExam := range connectedExam.PrimussExams {
-			enhanced, err := p.primussToEnhanced(ctx, primussExam, ntaMap, zpaStudentsMap)
-			if err != nil {
-				log.Error().Err(err).Str("program", primussExam.Program).Int("ancode", primussExam.AnCode).
-					Msg("cannot enhance primuss exam")
-				return err
-			}
+			enhanced := enhancePrimussExam(primussExam, ntaMap, zpaStudentsMap, studentRegsIdx, conflictsIdx)
 
 			ntas = append(ntas, enhanced.Ntas...)
 			studentRegsCount += len(enhanced.StudentRegs)
@@ -313,32 +334,30 @@ func (p *Plexams) PrepareGeneratedExams() error {
 	if err := p.dbClient.CacheGeneratedExams(ctx, exams); err != nil {
 		return err
 	}
+	// the cache is now in sync with its inputs again
+	if err := p.dbClient.SetGeneratedExamsDirty(ctx, false, "", time.Now()); err != nil {
+		log.Error().Err(err).Msg("cannot clear generated-exams dirty flag")
+	}
 	p.markCondition(ctx, condGeneratedExams)
 	return nil
 }
 
-func (p *Plexams) primussToEnhanced(ctx context.Context, exam *model.PrimussExam, ntaMap map[string]*model.NTA, zpaStudents map[string]*model.ZPAStudent) (*model.EnhancedPrimussExam, error) {
-	studentRegs, err := p.GetStudentRegs(ctx, exam)
-	if err != nil {
-		log.Error().Err(err).Str("program", exam.Program).Int("ancode", exam.AnCode).
-			Msg("cannot get student regs for primuss exam")
-		return nil, err
-	}
+// enhancePrimussExam enriches a primuss exam with its student regs, conflicts and
+// NTAs from the preloaded per-program indices (pure, no DB access).
+func enhancePrimussExam(exam *model.PrimussExam, ntaMap map[string]*model.NTA, zpaStudents map[string]*model.ZPAStudent,
+	studentRegsIdx map[string]map[int][]*model.StudentReg, conflictsIdx map[string]map[int]*model.Conflicts) *model.EnhancedPrimussExam {
+	studentRegs := studentRegsIdx[exam.Program][exam.AnCode]
 
-	conflicts, err := p.GetConflicts(ctx, exam)
-	if err != nil {
-		log.Error().Err(err).Str("program", exam.Program).Int("ancode", exam.AnCode).
-			Msg("cannot get student regs for primuss exam")
-		return nil, err
+	var conflicts []*model.Conflict
+	if c, ok := conflictsIdx[exam.Program][exam.AnCode]; ok && c != nil {
+		conflicts = c.Conflicts
 	}
 
 	ntas := make([]*model.NTA, 0)
-
 	enhancedStudentRegs := make([]*model.EnhancedStudentReg, 0, len(studentRegs))
 
 	for _, studentReg := range studentRegs {
-		nta, ok := ntaMap[studentReg.Mtknr]
-		if ok {
+		if nta, ok := ntaMap[studentReg.Mtknr]; ok {
 			ntas = append(ntas, nta)
 		}
 		enhancedStudentRegs = append(enhancedStudentRegs, &model.EnhancedStudentReg{
@@ -352,17 +371,12 @@ func (p *Plexams) primussToEnhanced(ctx context.Context, exam *model.PrimussExam
 		})
 	}
 
-	if len(studentRegs) > 0 && !p.dbClient.CheckStudentRegsCount(ctx, exam.Program, exam.AnCode, len(studentRegs)) {
-		log.Error().Err(err).Str("program", exam.Program).Int("ancode", exam.AnCode).Int("count", len(studentRegs)).
-			Msg("student reg count does not match")
-	}
-
 	return &model.EnhancedPrimussExam{
 		Exam:        exam,
 		StudentRegs: enhancedStudentRegs,
-		Conflicts:   conflicts.Conflicts,
+		Conflicts:   conflicts,
 		Ntas:        ntas,
-	}, nil
+	}
 }
 
 type PrimussAncode struct {

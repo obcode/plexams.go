@@ -1,0 +1,26 @@
+package plexams
+
+import (
+	"context"
+	"time"
+
+	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
+)
+
+// MarkGeneratedExamsDirty flags the cached generated exams as stale (best-effort: a
+// failure here never affects the triggering operation). Called whenever an input of
+// the generation changes.
+func (p *Plexams) MarkGeneratedExamsDirty(ctx context.Context, reason string) {
+	if p.dbClient == nil {
+		return
+	}
+	if err := p.dbClient.SetGeneratedExamsDirty(ctx, true, reason, time.Now()); err != nil {
+		log.Error().Err(err).Str("reason", reason).Msg("cannot mark generated exams dirty")
+	}
+}
+
+// GeneratedExamsState returns whether the cached generated exams are stale.
+func (p *Plexams) GeneratedExamsState(ctx context.Context) (*model.GeneratedExamsState, error) {
+	return p.dbClient.GetGeneratedExamsState(ctx)
+}

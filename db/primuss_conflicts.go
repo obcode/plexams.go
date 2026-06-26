@@ -38,7 +38,42 @@ func (db *DB) GetPrimussConflictsForAncode(ctx context.Context, program string, 
 	if err != nil {
 		return nil, err
 	}
+	return conflictToModelConflicts(conflicts), nil
+}
 
+// GetPrimussConflictsPerAncode returns all conflicts of a program at once, keyed by
+// ancode. Used to compute generated exams without a per-exam DB lookup.
+func (db *DB) GetPrimussConflictsPerAncode(ctx context.Context, program string) (map[int]*model.Conflicts, error) {
+	collection := db.getCollection(program, Conflicts)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("MongoDB Find (conflicts)")
+		return nil, err
+	}
+	defer cur.Close(ctx) //nolint:errcheck
+
+	result := make(map[int]*model.Conflicts)
+	for cur.Next(ctx) {
+		raw := cur.Current
+		conflict, err := decode(&raw)
+		if err != nil {
+			log.Error().Err(err).Str("program", program).Msg("cannot decode raw to conflict")
+			return nil, err
+		}
+		result[conflict.AnCode] = conflictToModelConflicts(conflict)
+	}
+	if err := cur.Err(); err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Str("program", program).Msg("Cursor returned error")
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// conflictToModelConflicts turns the internal conflict (ancode -> count map) into the
+// model type with a stable, ancode-sorted slice.
+func conflictToModelConflicts(conflicts *Conflict) *model.Conflicts {
 	keys := make([]int, 0, len(conflicts.Conflicts))
 	for k := range conflicts.Conflicts {
 		keys = append(keys, k)
@@ -58,7 +93,7 @@ func (db *DB) GetPrimussConflictsForAncode(ctx context.Context, program string, 
 		Module:     conflicts.Module,
 		MainExamer: conflicts.MainExamer,
 		Conflicts:  conflictsSlice,
-	}, nil
+	}
 }
 
 type Conflict struct {

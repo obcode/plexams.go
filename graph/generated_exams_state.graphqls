@@ -1,0 +1,18 @@
+extend type Query {
+  """
+  State of the cached generated exams. dirty=true means an input changed since the
+  last generation (connected exams, zpa-exams-to-plan, constraints, NTAs, imports),
+  so the generated exams — and everything derived from them (planned exams) — are
+  stale and should be regenerated.
+  """
+  generatedExamsState: GeneratedExamsState!
+}
+
+type GeneratedExamsState {
+  "true when the generated exams are stale relative to their inputs."
+  dirty: Boolean!
+  "the operation that last marked them stale (mutation/subscription name)."
+  reason: String
+  "when they were last marked stale or (re)generated."
+  changedAt: Time
+}

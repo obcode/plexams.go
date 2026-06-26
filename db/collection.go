@@ -28,7 +28,8 @@ const (
 
 	collectionPrimussAncodes = "primuss_ancodes"
 
-	collectionGeneratedExams = "generated_exams"
+	collectionGeneratedExams      = "generated_exams"
+	collectionGeneratedExamsState = "generated_exams_state"
 
 	collectionGlobalRooms     = "rooms"
 	collectionRoomsPrePlanned = "rooms_pre_planned"

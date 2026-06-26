@@ -210,6 +210,15 @@ type FairnessDistribution struct {
 	Buckets []*DistributionBucket `json:"buckets"`
 }
 
+type GeneratedExamsState struct {
+	// true when the generated exams are stale relative to their inputs.
+	Dirty bool `json:"dirty"`
+	// the operation that last marked them stale (mutation/subscription name).
+	Reason *string `json:"reason,omitempty"`
+	// when they were last marked stale or (re)generated.
+	ChangedAt *time.Time `json:"changedAt,omitempty"`
+}
+
 type Invigilation struct {
 	RoomName           *string `json:"roomName,omitempty"`
 	Duration           int     `json:"duration"`

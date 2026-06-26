@@ -14,6 +14,11 @@ type AnCode struct {
 	Ancode int `json:"ancode"`
 }
 
+type ArgFilterInput struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 // BalanceReport: are all invigilators within ±tolerance of their target minutes.
 type BalanceReport struct {
 	Satisfied       bool `json:"satisfied"`
@@ -357,6 +362,26 @@ type MucDaiExam struct {
 }
 
 type Mutation struct {
+}
+
+type MutationLogArg struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type MutationLogEntry struct {
+	Time time.Time `json:"time"`
+	// GraphQL operation/field name, e.g. addPreplanExam.
+	Name string `json:"name"`
+	// mutation | subscription
+	Type string `json:"type"`
+	// The call arguments, flattened to key/value pairs (nested input objects included).
+	Args []*MutationLogArg `json:"args"`
+	// Ancodes referenced by the arguments (ancode / zpaAncode / primussAncode / …).
+	Ancodes []int `json:"ancodes"`
+	// Set when the operation returned an error (for subscriptions only the start error, if any).
+	Error      *string `json:"error,omitempty"`
+	DurationMs int     `json:"durationMs"`
 }
 
 type NTAInput struct {

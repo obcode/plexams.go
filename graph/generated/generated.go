@@ -440,6 +440,21 @@ type ComplexityRoot struct {
 		ZpaExamsToPlan                func(childComplexity int, input []int) int
 	}
 
+	MutationLogArg struct {
+		Key   func(childComplexity int) int
+		Value func(childComplexity int) int
+	}
+
+	MutationLogEntry struct {
+		Ancodes    func(childComplexity int) int
+		Args       func(childComplexity int) int
+		DurationMs func(childComplexity int) int
+		Error      func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Time       func(childComplexity int) int
+		Type       func(childComplexity int) int
+	}
+
 	NTA struct {
 		Compensation         func(childComplexity int) int
 		Deactivated          func(childComplexity int) int
@@ -685,6 +700,8 @@ type ComplexityRoot struct {
 		InvigilatorsForDay            func(childComplexity int, day int) int
 		InvigilatorsWithReq           func(childComplexity int) int
 		MucdaiExams                   func(childComplexity int) int
+		MutationLog                   func(childComplexity int, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) int
+		MutationLogNames              func(childComplexity int) int
 		NewSemesterConfigDefaults     func(childComplexity int) int
 		Nta                           func(childComplexity int, mtknr string) int
 		NtaRoomAloneWaivers           func(childComplexity int) int
@@ -1235,6 +1252,8 @@ type QueryResolver interface {
 	InvigilatorConstraints(ctx context.Context) ([]*model.InvigilatorConstraints, error)
 	PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error)
 	InvigilatorCandidates(ctx context.Context) ([]*model.Teacher, error)
+	MutationLog(ctx context.Context, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) ([]*model.MutationLogEntry, error)
+	MutationLogNames(ctx context.Context) ([]string, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
@@ -3552,6 +3571,69 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ZpaExamsToPlan(childComplexity, args["input"].([]int)), true
 
+	case "MutationLogArg.key":
+		if e.complexity.MutationLogArg.Key == nil {
+			break
+		}
+
+		return e.complexity.MutationLogArg.Key(childComplexity), true
+
+	case "MutationLogArg.value":
+		if e.complexity.MutationLogArg.Value == nil {
+			break
+		}
+
+		return e.complexity.MutationLogArg.Value(childComplexity), true
+
+	case "MutationLogEntry.ancodes":
+		if e.complexity.MutationLogEntry.Ancodes == nil {
+			break
+		}
+
+		return e.complexity.MutationLogEntry.Ancodes(childComplexity), true
+
+	case "MutationLogEntry.args":
+		if e.complexity.MutationLogEntry.Args == nil {
+			break
+		}
+
+		return e.complexity.MutationLogEntry.Args(childComplexity), true
+
+	case "MutationLogEntry.durationMs":
+		if e.complexity.MutationLogEntry.DurationMs == nil {
+			break
+		}
+
+		return e.complexity.MutationLogEntry.DurationMs(childComplexity), true
+
+	case "MutationLogEntry.error":
+		if e.complexity.MutationLogEntry.Error == nil {
+			break
+		}
+
+		return e.complexity.MutationLogEntry.Error(childComplexity), true
+
+	case "MutationLogEntry.name":
+		if e.complexity.MutationLogEntry.Name == nil {
+			break
+		}
+
+		return e.complexity.MutationLogEntry.Name(childComplexity), true
+
+	case "MutationLogEntry.time":
+		if e.complexity.MutationLogEntry.Time == nil {
+			break
+		}
+
+		return e.complexity.MutationLogEntry.Time(childComplexity), true
+
+	case "MutationLogEntry.type":
+		if e.complexity.MutationLogEntry.Type == nil {
+			break
+		}
+
+		return e.complexity.MutationLogEntry.Type(childComplexity), true
+
 	case "NTA.compensation":
 		if e.complexity.NTA.Compensation == nil {
 			break
@@ -4747,6 +4829,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.MucdaiExams(childComplexity), true
+
+	case "Query.mutationLog":
+		if e.complexity.Query.MutationLog == nil {
+			break
+		}
+
+		args, err := ec.field_Query_mutationLog_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.MutationLog(childComplexity, args["name"].(*string), args["ancode"].(*int), args["args"].([]*model.ArgFilterInput), args["since"].(*time.Time), args["until"].(*time.Time), args["limit"].(*int)), true
+
+	case "Query.mutationLogNames":
+		if e.complexity.Query.MutationLogNames == nil {
+			break
+		}
+
+		return e.complexity.Query.MutationLogNames(childComplexity), true
 
 	case "Query.newSemesterConfigDefaults":
 		if e.complexity.Query.NewSemesterConfigDefaults == nil {
@@ -7180,6 +7281,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputArgFilterInput,
 		ec.unmarshalInputConstraintsInput,
 		ec.unmarshalInputEmailsInput,
 		ec.unmarshalInputInvigilationTimeWindowInput,
@@ -7794,6 +7896,49 @@ type RoomWithInvigilator {
   invigilator: Teacher
   "true if the invigilation for this room in this slot is pre-planned (fixed)."
   prePlanned: Boolean!
+}
+`, BuiltIn: false},
+	{Name: "../mutation_log.graphqls", Input: `extend type Query {
+  """
+  Audit log of mutating operations (mutations + data-changing subscriptions),
+  newest first. Filter by operation name, by an ancode referenced in the
+  arguments, by arbitrary argument key/value pairs, and/or a time range.
+  """
+  mutationLog(
+    name: String
+    ancode: Int
+    args: [ArgFilterInput!]
+    since: Time
+    until: Time
+    limit: Int
+  ): [MutationLogEntry!]!
+  "Distinct operation names present in the mutation log (for a filter dropdown)."
+  mutationLogNames: [String!]!
+}
+
+type MutationLogEntry {
+  time: Time!
+  "GraphQL operation/field name, e.g. addPreplanExam."
+  name: String!
+  "mutation | subscription"
+  type: String!
+  "The call arguments, flattened to key/value pairs (nested input objects included)."
+  args: [MutationLogArg!]!
+  "Ancodes referenced by the arguments (ancode / zpaAncode / primussAncode / …)."
+  ancodes: [Int!]!
+  "Set when the operation returned an error (for subscriptions only the start error, if any)."
+  error: String
+  durationMs: Int!
+}
+
+type MutationLogArg {
+  key: String!
+  value: String!
+}
+
+input ArgFilterInput {
+  key: String!
+  value: String!
 }
 `, BuiltIn: false},
 	{Name: "../nta.graphqls", Input: `extend type Query {
@@ -12502,6 +12647,149 @@ func (ec *executionContext) field_Query_invigilatorsForDay_argsDay(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_mutationLog_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_mutationLog_argsName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	arg1, err := ec.field_Query_mutationLog_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg1
+	arg2, err := ec.field_Query_mutationLog_argsArgs(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["args"] = arg2
+	arg3, err := ec.field_Query_mutationLog_argsSince(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["since"] = arg3
+	arg4, err := ec.field_Query_mutationLog_argsUntil(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["until"] = arg4
+	arg5, err := ec.field_Query_mutationLog_argsLimit(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg5
+	return args, nil
+}
+func (ec *executionContext) field_Query_mutationLog_argsName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["name"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+	if tmp, ok := rawArgs["name"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_mutationLog_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_mutationLog_argsArgs(
+	ctx context.Context,
+	rawArgs map[string]any,
+) ([]*model.ArgFilterInput, error) {
+	if _, ok := rawArgs["args"]; !ok {
+		var zeroVal []*model.ArgFilterInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("args"))
+	if tmp, ok := rawArgs["args"]; ok {
+		return ec.unmarshalOArgFilterInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐArgFilterInputᚄ(ctx, tmp)
+	}
+
+	var zeroVal []*model.ArgFilterInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_mutationLog_argsSince(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*time.Time, error) {
+	if _, ok := rawArgs["since"]; !ok {
+		var zeroVal *time.Time
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("since"))
+	if tmp, ok := rawArgs["since"]; ok {
+		return ec.unmarshalOTime2ᚖtimeᚐTime(ctx, tmp)
+	}
+
+	var zeroVal *time.Time
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_mutationLog_argsUntil(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*time.Time, error) {
+	if _, ok := rawArgs["until"]; !ok {
+		var zeroVal *time.Time
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("until"))
+	if tmp, ok := rawArgs["until"]; ok {
+		return ec.unmarshalOTime2ᚖtimeᚐTime(ctx, tmp)
+	}
+
+	var zeroVal *time.Time
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_mutationLog_argsLimit(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["limit"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+	if tmp, ok := rawArgs["limit"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
 	return zeroVal, nil
 }
 
@@ -28040,6 +28328,405 @@ func (ec *executionContext) fieldContext_Mutation_rmZpaExamFromPlan(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _MutationLogArg_key(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogArg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogArg_key(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogArg_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogArg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MutationLogArg_value(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogArg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogArg_value(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogArg_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogArg",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MutationLogEntry_time(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogEntry_time(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Time, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogEntry_time(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MutationLogEntry_name(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogEntry_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogEntry_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MutationLogEntry_type(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogEntry_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogEntry_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MutationLogEntry_args(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogEntry_args(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Args, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.MutationLogArg)
+	fc.Result = res
+	return ec.marshalNMutationLogArg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMutationLogArgᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogEntry_args(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_MutationLogArg_key(ctx, field)
+			case "value":
+				return ec.fieldContext_MutationLogArg_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MutationLogArg", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MutationLogEntry_ancodes(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogEntry_ancodes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancodes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogEntry_ancodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MutationLogEntry_error(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogEntry_error(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Error, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogEntry_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MutationLogEntry_durationMs(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogEntry_durationMs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DurationMs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogEntry_durationMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _NTA_name(ctx context.Context, field graphql.CollectedField, obj *model.NTA) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_NTA_name(ctx, field)
 	if err != nil {
@@ -35998,6 +36685,121 @@ func (ec *executionContext) fieldContext_Query_invigilatorCandidates(_ context.C
 				return ec.fieldContext_Teacher_isActive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_mutationLog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_mutationLog(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().MutationLog(rctx, fc.Args["name"].(*string), fc.Args["ancode"].(*int), fc.Args["args"].([]*model.ArgFilterInput), fc.Args["since"].(*time.Time), fc.Args["until"].(*time.Time), fc.Args["limit"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.MutationLogEntry)
+	fc.Result = res
+	return ec.marshalNMutationLogEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMutationLogEntryᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_mutationLog(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "time":
+				return ec.fieldContext_MutationLogEntry_time(ctx, field)
+			case "name":
+				return ec.fieldContext_MutationLogEntry_name(ctx, field)
+			case "type":
+				return ec.fieldContext_MutationLogEntry_type(ctx, field)
+			case "args":
+				return ec.fieldContext_MutationLogEntry_args(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_MutationLogEntry_ancodes(ctx, field)
+			case "error":
+				return ec.fieldContext_MutationLogEntry_error(ctx, field)
+			case "durationMs":
+				return ec.fieldContext_MutationLogEntry_durationMs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MutationLogEntry", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_mutationLog_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_mutationLogNames(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_mutationLogNames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().MutationLogNames(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_mutationLogNames(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -55002,6 +55804,40 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputArgFilterInput(ctx context.Context, obj any) (model.ArgFilterInput, error) {
+	var it model.ArgFilterInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, obj any) (model.ConstraintsInput, error) {
 	var it model.ConstraintsInput
 	asMap := map[string]any{}
@@ -58511,6 +59347,116 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	return out
 }
 
+var mutationLogArgImplementors = []string{"MutationLogArg"}
+
+func (ec *executionContext) _MutationLogArg(ctx context.Context, sel ast.SelectionSet, obj *model.MutationLogArg) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationLogArgImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MutationLogArg")
+		case "key":
+			out.Values[i] = ec._MutationLogArg_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._MutationLogArg_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var mutationLogEntryImplementors = []string{"MutationLogEntry"}
+
+func (ec *executionContext) _MutationLogEntry(ctx context.Context, sel ast.SelectionSet, obj *model.MutationLogEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationLogEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MutationLogEntry")
+		case "time":
+			out.Values[i] = ec._MutationLogEntry_time(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._MutationLogEntry_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._MutationLogEntry_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "args":
+			out.Values[i] = ec._MutationLogEntry_args(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ancodes":
+			out.Values[i] = ec._MutationLogEntry_ancodes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._MutationLogEntry_error(ctx, field, obj)
+		case "durationMs":
+			out.Values[i] = ec._MutationLogEntry_durationMs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var nTAImplementors = []string{"NTA"}
 
 func (ec *executionContext) _NTA(ctx context.Context, sel ast.SelectionSet, obj *model.NTA) graphql.Marshaler {
@@ -60705,6 +61651,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_invigilatorCandidates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "mutationLog":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_mutationLog(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "mutationLogNames":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_mutationLogNames(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -64802,6 +65792,11 @@ func (ec *executionContext) marshalNAnnyBooking2ᚖgithubᚗcomᚋobcodeᚋplexa
 	return ec._AnnyBooking(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNArgFilterInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐArgFilterInput(ctx context.Context, v any) (*model.ArgFilterInput, error) {
+	res, err := ec.unmarshalInputArgFilterInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNBalanceReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBalanceReport(ctx context.Context, sel ast.SelectionSet, v *model.BalanceReport) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -65995,6 +66990,114 @@ func (ec *executionContext) marshalNMucDaiExam2ᚖgithubᚗcomᚋobcodeᚋplexam
 		return graphql.Null
 	}
 	return ec._MucDaiExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMutationLogArg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMutationLogArgᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MutationLogArg) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNMutationLogArg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMutationLogArg(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMutationLogArg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMutationLogArg(ctx context.Context, sel ast.SelectionSet, v *model.MutationLogArg) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MutationLogArg(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMutationLogEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMutationLogEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MutationLogEntry) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNMutationLogEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMutationLogEntry(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMutationLogEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMutationLogEntry(ctx context.Context, sel ast.SelectionSet, v *model.MutationLogEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MutationLogEntry(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNNTA2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTA(ctx context.Context, sel ast.SelectionSet, v model.NTA) graphql.Marshaler {
@@ -69104,6 +70207,24 @@ func (ec *executionContext) marshalOAnCode2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗ
 		return graphql.Null
 	}
 	return ec._AnCode(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOArgFilterInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐArgFilterInputᚄ(ctx context.Context, v any) ([]*model.ArgFilterInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.ArgFilterInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNArgFilterInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐArgFilterInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {

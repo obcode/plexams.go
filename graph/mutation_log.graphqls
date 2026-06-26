@@ -1,0 +1,42 @@
+extend type Query {
+  """
+  Audit log of mutating operations (mutations + data-changing subscriptions),
+  newest first. Filter by operation name, by an ancode referenced in the
+  arguments, by arbitrary argument key/value pairs, and/or a time range.
+  """
+  mutationLog(
+    name: String
+    ancode: Int
+    args: [ArgFilterInput!]
+    since: Time
+    until: Time
+    limit: Int
+  ): [MutationLogEntry!]!
+  "Distinct operation names present in the mutation log (for a filter dropdown)."
+  mutationLogNames: [String!]!
+}
+
+type MutationLogEntry {
+  time: Time!
+  "GraphQL operation/field name, e.g. addPreplanExam."
+  name: String!
+  "mutation | subscription"
+  type: String!
+  "The call arguments, flattened to key/value pairs (nested input objects included)."
+  args: [MutationLogArg!]!
+  "Ancodes referenced by the arguments (ancode / zpaAncode / primussAncode / …)."
+  ancodes: [Int!]!
+  "Set when the operation returned an error (for subscriptions only the start error, if any)."
+  error: String
+  durationMs: Int!
+}
+
+type MutationLogArg {
+  key: String!
+  value: String!
+}
+
+input ArgFilterInput {
+  key: String!
+  value: String!
+}

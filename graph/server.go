@@ -76,6 +76,10 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		return next(ctx)
 	})
 
+	// Log every mutating operation (mutations + data-changing subscriptions) to the
+	// per-semester mutation_log collection.
+	srv.AroundFields(mutationLogMiddleware(plexams))
+
 	// srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: plexamsResolver}))
 
 	router := chi.NewRouter()

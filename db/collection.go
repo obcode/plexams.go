@@ -36,6 +36,7 @@ const (
 	collectionRoomsPlanned    = "rooms_planned"
 	collectionRoomsUnplaced   = "rooms_unplaced"
 	collectionSyncLog         = "sync_log"
+	collectionMutationLog     = "mutation_log"
 	collectionRoomsBlocked    = "rooms_blocked"
 
 	collectionInvigilatorRequirements = "invigilator_requirements"

@@ -12,8 +12,8 @@ import (
 )
 
 // MutationLog is the resolver for the mutationLog field.
-func (r *queryResolver) MutationLog(ctx context.Context, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) ([]*model.MutationLogEntry, error) {
-	return r.plexams.MutationLog(ctx, name, ancode, args, since, until, limit)
+func (r *queryResolver) MutationLog(ctx context.Context, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) ([]*model.MutationLogEntry, error) {
+	return r.plexams.MutationLog(ctx, typeArg, name, ancode, args, since, until, limit)
 }
 
 // MutationLogNames is the resolver for the mutationLogNames field.

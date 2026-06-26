@@ -700,7 +700,7 @@ type ComplexityRoot struct {
 		InvigilatorsForDay            func(childComplexity int, day int) int
 		InvigilatorsWithReq           func(childComplexity int) int
 		MucdaiExams                   func(childComplexity int) int
-		MutationLog                   func(childComplexity int, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) int
+		MutationLog                   func(childComplexity int, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) int
 		MutationLogNames              func(childComplexity int) int
 		NewSemesterConfigDefaults     func(childComplexity int) int
 		Nta                           func(childComplexity int, mtknr string) int
@@ -1252,7 +1252,7 @@ type QueryResolver interface {
 	InvigilatorConstraints(ctx context.Context) ([]*model.InvigilatorConstraints, error)
 	PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error)
 	InvigilatorCandidates(ctx context.Context) ([]*model.Teacher, error)
-	MutationLog(ctx context.Context, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) ([]*model.MutationLogEntry, error)
+	MutationLog(ctx context.Context, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) ([]*model.MutationLogEntry, error)
 	MutationLogNames(ctx context.Context) ([]string, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
@@ -4840,7 +4840,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.MutationLog(childComplexity, args["name"].(*string), args["ancode"].(*int), args["args"].([]*model.ArgFilterInput), args["since"].(*time.Time), args["until"].(*time.Time), args["limit"].(*int)), true
+		return e.complexity.Query.MutationLog(childComplexity, args["type"].(*string), args["name"].(*string), args["ancode"].(*int), args["args"].([]*model.ArgFilterInput), args["since"].(*time.Time), args["until"].(*time.Time), args["limit"].(*int)), true
 
 	case "Query.mutationLogNames":
 		if e.complexity.Query.MutationLogNames == nil {
@@ -7905,6 +7905,8 @@ type RoomWithInvigilator {
   arguments, by arbitrary argument key/value pairs, and/or a time range.
   """
   mutationLog(
+    "filter by operation type: mutation | subscription | cli"
+    type: String
     name: String
     ancode: Int
     args: [ArgFilterInput!]
@@ -12653,38 +12655,61 @@ func (ec *executionContext) field_Query_invigilatorsForDay_argsDay(
 func (ec *executionContext) field_Query_mutationLog_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_mutationLog_argsName(ctx, rawArgs)
+	arg0, err := ec.field_Query_mutationLog_argsType(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["name"] = arg0
-	arg1, err := ec.field_Query_mutationLog_argsAncode(ctx, rawArgs)
+	args["type"] = arg0
+	arg1, err := ec.field_Query_mutationLog_argsName(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["ancode"] = arg1
-	arg2, err := ec.field_Query_mutationLog_argsArgs(ctx, rawArgs)
+	args["name"] = arg1
+	arg2, err := ec.field_Query_mutationLog_argsAncode(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["args"] = arg2
-	arg3, err := ec.field_Query_mutationLog_argsSince(ctx, rawArgs)
+	args["ancode"] = arg2
+	arg3, err := ec.field_Query_mutationLog_argsArgs(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["since"] = arg3
-	arg4, err := ec.field_Query_mutationLog_argsUntil(ctx, rawArgs)
+	args["args"] = arg3
+	arg4, err := ec.field_Query_mutationLog_argsSince(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["until"] = arg4
-	arg5, err := ec.field_Query_mutationLog_argsLimit(ctx, rawArgs)
+	args["since"] = arg4
+	arg5, err := ec.field_Query_mutationLog_argsUntil(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["limit"] = arg5
+	args["until"] = arg5
+	arg6, err := ec.field_Query_mutationLog_argsLimit(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg6
 	return args, nil
 }
+func (ec *executionContext) field_Query_mutationLog_argsType(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["type"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+	if tmp, ok := rawArgs["type"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query_mutationLog_argsName(
 	ctx context.Context,
 	rawArgs map[string]any,
@@ -36704,7 +36729,7 @@ func (ec *executionContext) _Query_mutationLog(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().MutationLog(rctx, fc.Args["name"].(*string), fc.Args["ancode"].(*int), fc.Args["args"].([]*model.ArgFilterInput), fc.Args["since"].(*time.Time), fc.Args["until"].(*time.Time), fc.Args["limit"].(*int))
+		return ec.resolvers.Query().MutationLog(rctx, fc.Args["type"].(*string), fc.Args["name"].(*string), fc.Args["ancode"].(*int), fc.Args["args"].([]*model.ArgFilterInput), fc.Args["since"].(*time.Time), fc.Args["until"].(*time.Time), fc.Args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

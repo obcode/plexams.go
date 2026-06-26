@@ -21,13 +21,13 @@ func (p *Plexams) LogMutation(ctx context.Context, entry *model.MutationLogEntry
 
 // MutationLog returns the mutation log filtered by the given criteria (newest
 // first). limit nil/<=0 returns all.
-func (p *Plexams) MutationLog(ctx context.Context, name *string, ancode *int,
+func (p *Plexams) MutationLog(ctx context.Context, opType, name *string, ancode *int,
 	args []*model.ArgFilterInput, since, until *time.Time, limit *int) ([]*model.MutationLogEntry, error) {
 	l := 0
 	if limit != nil {
 		l = *limit
 	}
-	return p.dbClient.MutationLog(ctx, name, ancode, args, since, until, l)
+	return p.dbClient.MutationLog(ctx, opType, name, ancode, args, since, until, l)
 }
 
 // MutationLogNames returns the distinct operation names in the log.

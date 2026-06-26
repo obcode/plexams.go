@@ -24,11 +24,14 @@ func (db *DB) AddMutationLogEntry(ctx context.Context, entry *model.MutationLogE
 // MutationLog returns the mutation log, newest first, filtered by operation name,
 // a referenced ancode, argument key/value pairs and/or a time range. limit <= 0
 // returns all.
-func (db *DB) MutationLog(ctx context.Context, name *string, ancode *int,
+func (db *DB) MutationLog(ctx context.Context, opType, name *string, ancode *int,
 	argFilters []*model.ArgFilterInput, since, until *time.Time, limit int) ([]*model.MutationLogEntry, error) {
 	collection := db.getCollectionSemester(collectionMutationLog)
 
 	filter := bson.M{}
+	if opType != nil && *opType != "" {
+		filter["type"] = *opType
+	}
 	if name != nil && *name != "" {
 		filter["name"] = *name
 	}

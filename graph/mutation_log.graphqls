@@ -5,6 +5,8 @@ extend type Query {
   arguments, by arbitrary argument key/value pairs, and/or a time range.
   """
   mutationLog(
+    "filter by operation type: mutation | subscription | cli"
+    type: String
     name: String
     ancode: Int
     args: [ArgFilterInput!]

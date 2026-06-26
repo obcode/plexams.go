@@ -106,39 +106,12 @@ server:
 
 ## 6. Betriebliche Keys — **noch** in der YAML (nicht in der DB)
 
-Diese werden weiterhin aus der Config gelesen (global oder per-Semester-YAML).
-Sie sollen perspektivisch in die DB wandern, sind aktuell aber hier nötig, wenn
-die jeweiligen Funktionen genutzt werden:
+Diese werden weiterhin aus der Config gelesen. Sie sollen perspektivisch noch in
+die DB wandern, sind aktuell aber hier nötig, wenn die jeweiligen Funktionen
+genutzt werden:
 
 ```yaml
-# Studiengänge der Kooperationen / Sonstige (Seed für die globale StudyProgram-Stammdaten)
-mucdaiprograms: [DE, GS, ID]
-miscprograms:   [GN]
-
-# Räume
-rooms:
-  timelag: 15                  # Minuten Puffer zwischen Belegungen
-roomconstraints:
-  additionalseats: 0
-
-# Aufsichten-Generator (Simulated Annealing)
-invigilation:
-  optimizer:
-    tolerance: 60
-    iterations: 1000000
-    startTemp: 20000
-    endTemp: 0.5
-    weights:
-      beyondTolerance: ...
-      minuteBalance: ...
-      coverage: ...
-      distribution: ...
-      daySpan: ...
-      maxDays: ...
-      preferExamDays: ...
-      overTargetFactor: ...
-
-# Datei-Ausgaben / Vorlagen
+# Datei-Ausgaben / Vorlagen (lokale Pfade — bleiben vorerst in der Datei)
 invigilationStats:
   dir: ...
   prefix: ...
@@ -146,19 +119,21 @@ coverPages:
   dir: ...
   prefix: ...
 
-# Diverses
-duration: 90                   # Default-Prüfungsdauer
-donotpublish: [<ancode>, ...]  # diese Ancodes nicht ins ZPA hochladen
-publish:
-  additionalExams: [...]
+# Bekannte/akzeptierte StudentReg-Konflikte (in der Validierung unterdrückt)
 knownConflicts:
   studentRegs: ...
-specialInterests: [...]
 ```
 
 > `invigilatorConstraints` wurde in die DB migriert (GUI-CRUD). Der YAML-Eintrag
 > wird nur noch für die einmalige Erst-Migration gelesen und kann danach entfernt
 > werden.
+
+> `mucdaiprograms`/`miscprograms` und `externalExamsBase.<prog>` werden nur noch
+> von `seedStudyProgramsFromConfig` als Seed gelesen; zur Laufzeit kommt alles aus
+> den `StudyProgram`-Stammdaten. Nach dem Seeden können sie aus der YAML entfallen.
+
+> `invigilation.optimizer.*`, `rooms.timelag` werden nur noch als Default-Seed
+> gelesen, solange keine `generationConfig` in der DB gespeichert ist (s. u.).
 
 ---
 
@@ -175,6 +150,17 @@ YAML-Block überflüssig:
 - `semesterConfig.emails.*` (profs, lbas, lbaslastsemester, fs, sekr, roommanagement, kdp, lbaba)
 - `semesterConfig.additionalexamer`
 - `mucdaislots` (MUC.DAI-Slots als absolute `[Tag, Slot]`-Paare)
+
+Außerdem (über eigene Collections / GUI gepflegt, YAML nur noch Seed/Fallback):
+
+- `mucdaiprograms` / `miscprograms` → `StudyProgram`-Stammdaten (Kategorie)
+- `externalExamsBase.<prog>` → Feld `externalExamsBase` am `StudyProgram`
+- `duration` (Dauer-Overrides pro Ancode) → `setExamDuration` (greift nur bei ZPA-Dauer 0)
+- `donotpublish` → Constraint `doNotPublish` an der Prüfung
+- `roomconstraints.additionalseats` → Constraint `additionalSeats` (RoomConstraints)
+- `rooms.timelag` + `invigilation.optimizer.*` → globale `generationConfig` (DB)
+- `specialInterests` → `upsertSpecialInterest` (DB)
+- `publish.additionalExams` → `upsertAdditionalExam` (DB)
 
 ## 8. Entfallen — bitte **löschen**
 

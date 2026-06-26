@@ -31,6 +31,45 @@ func TestParseMucDaiCSVSemicolonAndUmlauts(t *testing.T) {
 	}
 }
 
+// the real MUC.DAI format: tab-separated, mongoimport type suffixes in the header.
+func TestParseMucDaiCSVRealTabTypedHeader(t *testing.T) {
+	csv := "Nr.int32()\tModulname.string()\tPrüfungsform.string()\tBewertung.string()\tDauer.int32()\tErstpruefender.string()\tZweitpruefender.string()\tIstWiederholung.string()\tStudiengruppe.string()\tPrüfungsplanung.string()\n" +
+		"101\tComputational Thinking\tschrP\tbenotet\t90\tDietrich, Benedikt\tHobelsberger, Martin\tx\tDE\tFK07\n" +
+		"112\tElektrotechnik\tschrP\tbenotet\t60\tPalme, Frank\tKüpper, Tilman\tx\tDE\tFK03\n" +
+		"301\tStatistik und Stochastik\tschrP\tbenotet\t60\tShao, Shuai\tBrockhaus, Sarah\tx\tID\tFK07\n"
+
+	byProgram, err := parseMucDaiCSV(csv)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(byProgram["DE"]) != 2 || len(byProgram["ID"]) != 1 {
+		t.Fatalf("grouping wrong: DE=%d ID=%d", len(byProgram["DE"]), len(byProgram["ID"]))
+	}
+	de0 := byProgram["DE"][0]
+	if de0.PrimussAncode != 101 || de0.Module != "Computational Thinking" || de0.Duration != 90 || de0.Planer != "FK07" {
+		t.Errorf("DE[0] wrong: %+v", de0)
+	}
+	if byProgram["DE"][1].Duration != 60 || byProgram["DE"][1].MainExamer != "Palme, Frank" {
+		t.Errorf("DE[1] wrong: %+v", byProgram["DE"][1])
+	}
+}
+
+func TestParseMucDaiCSVLatin1(t *testing.T) {
+	// "Prüfungsform" / "mündlich" as ISO-8859-1 (ü = 0xFC)
+	latin1 := "Nr;Modulname;Pr\xfcfungsform;Studiengruppe;Pr\xfcfungsplanung\n" +
+		"5;M\xfcndliche;m\xfcndlich;DE;FK07\n"
+	byProgram, err := parseMucDaiCSV(latin1)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(byProgram["DE"]) != 1 {
+		t.Fatalf("want 1 DE row, got %d", len(byProgram["DE"]))
+	}
+	if byProgram["DE"][0].ExamType != "mündlich" {
+		t.Errorf("latin1 decode failed: examType=%q", byProgram["DE"][0].ExamType)
+	}
+}
+
 func TestParseMucDaiCSVCommaAndMissingNr(t *testing.T) {
 	csv := "Nr,Modulname,Studiengruppe,Prüfungsplanung\n" +
 		"7,Test,GS,FK08\n" +

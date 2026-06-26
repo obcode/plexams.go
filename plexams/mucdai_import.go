@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
@@ -135,6 +137,10 @@ var mucDaiColumns = map[string]string{
 // parseMucDaiCSV parses the CSV text (comma/semicolon/tab auto-detected) into
 // db.MucDaiExam grouped by program (Studiengruppe).
 func parseMucDaiCSV(csvText string) (map[string][]*db.MucDaiExam, error) {
+	// MUC.DAI files are often ISO-8859-1; decode to UTF-8 if not already valid.
+	if !utf8.ValidString(csvText) {
+		csvText = latin1ToUTF8(csvText)
+	}
 	csvText = strings.TrimPrefix(csvText, "\ufeff") // strip BOM
 	firstLine := csvText
 	if i := strings.IndexAny(csvText, "\r\n"); i >= 0 {
@@ -155,10 +161,10 @@ func parseMucDaiCSV(csvText string) (map[string][]*db.MucDaiExam, error) {
 		return nil, fmt.Errorf("CSV has no data rows")
 	}
 
-	// header -> column index
+	// header -> column index (tolerating mongoimport type suffixes like ".int32()")
 	field2col := make(map[string]int)
 	for i, h := range rows[0] {
-		key := strings.ToLower(strings.TrimSpace(h))
+		key := normalizeMucDaiHeader(h)
 		if field, ok := mucDaiColumns[key]; ok {
 			field2col[field] = i
 		}
@@ -204,6 +210,26 @@ func parseMucDaiCSV(csvText string) (map[string][]*db.MucDaiExam, error) {
 		})
 	}
 	return byProgram, nil
+}
+
+// mucDaiHeaderTypeSuffix matches a mongoimport type suffix, e.g. ".int32()" in
+// "Nr.int32()" or ".string()" in "Modulname.string()".
+var mucDaiHeaderTypeSuffix = regexp.MustCompile(`\.\w+\(\)\s*$`)
+
+// normalizeMucDaiHeader lowercases a header and strips a mongoimport type suffix, so
+// both "Nr" and "Nr.int32()" map to "nr".
+func normalizeMucDaiHeader(h string) string {
+	h = mucDaiHeaderTypeSuffix.ReplaceAllString(strings.TrimSpace(h), "")
+	return strings.ToLower(strings.TrimSpace(h))
+}
+
+// latin1ToUTF8 decodes ISO-8859-1 bytes to a UTF-8 string (each byte is a code point).
+func latin1ToUTF8(s string) string {
+	runes := make([]rune, 0, len(s))
+	for _, b := range []byte(s) {
+		runes = append(runes, rune(b))
+	}
+	return string(runes)
 }
 
 // detectDelimiter picks the most frequent of ';' '\t' ',' in the header line.

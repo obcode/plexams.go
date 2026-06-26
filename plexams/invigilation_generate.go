@@ -12,7 +12,6 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/invigplan"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 // GenerateInvigilations refreshes the self-invigilations and the todos, builds
@@ -348,16 +347,14 @@ func distributionString(d invigplan.Distribution) string {
 
 // OptimizerOptionsFromConfig builds the optimizer options from viper, applying
 // the given seed and iteration overrides (0 = keep config/default).
-func (p *Plexams) OptimizerOptionsFromConfig(seed int64, iterations int) invigplan.Options {
+func (p *Plexams) OptimizerOptionsFromConfig(ctx context.Context, seed int64, iterations int) invigplan.Options {
 	opts := invigplan.DefaultOptions()
-	if viper.IsSet("invigilation.optimizer.iterations") {
-		opts.Iterations = viper.GetInt("invigilation.optimizer.iterations")
-	}
-	if viper.IsSet("invigilation.optimizer.startTemp") {
-		opts.StartTemp = viper.GetFloat64("invigilation.optimizer.startTemp")
-	}
-	if viper.IsSet("invigilation.optimizer.endTemp") {
-		opts.EndTemp = viper.GetFloat64("invigilation.optimizer.endTemp")
+	if cfg, err := p.GenerationConfig(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot get generation config, using defaults")
+	} else {
+		opts.Iterations = cfg.Iterations
+		opts.StartTemp = cfg.StartTemp
+		opts.EndTemp = cfg.EndTemp
 	}
 	if iterations > 0 {
 		opts.Iterations = iterations
@@ -646,14 +643,18 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		invigilators = append(invigilators, gi)
 	}
 
+	cfg, err := p.GenerationConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
 	problem := &invigplan.Problem{
 		Positions:    positions,
 		Invigilators: invigilators,
 		Fixed:        fixed,
-		TimelagMin:   viper.GetInt("rooms.timelag"),
-		ToleranceMin: viper.GetInt("invigilation.optimizer.tolerance"),
-		MaxSpanHours: viper.GetFloat64("invigilation.optimizer.maxSpanHours"),
-		Weights:      weightsFromConfig(),
+		TimelagMin:   cfg.TimelagMin,
+		ToleranceMin: cfg.ToleranceMin,
+		MaxSpanHours: cfg.MaxSpanHours,
+		Weights:      optimizerWeights(cfg),
 	}
 	problem.Prepare()
 
@@ -666,35 +667,4 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		Msg("built invigilation problem")
 
 	return problem, nil
-}
-
-// weightsFromConfig reads the soft-constraint weights from viper, falling back
-// to the package defaults for any value that is not set.
-func weightsFromConfig() invigplan.Weights {
-	w := invigplan.DefaultWeights()
-	if viper.IsSet("invigilation.optimizer.weights.minuteBalance") {
-		w.MinuteBalance = viper.GetFloat64("invigilation.optimizer.weights.minuteBalance")
-	}
-	if viper.IsSet("invigilation.optimizer.weights.beyondTolerance") {
-		w.BeyondTolerance = viper.GetFloat64("invigilation.optimizer.weights.beyondTolerance")
-	}
-	if viper.IsSet("invigilation.optimizer.weights.overTargetFactor") {
-		w.OverTargetFactor = viper.GetFloat64("invigilation.optimizer.weights.overTargetFactor")
-	}
-	if viper.IsSet("invigilation.optimizer.weights.coverage") {
-		w.Coverage = viper.GetFloat64("invigilation.optimizer.weights.coverage")
-	}
-	if viper.IsSet("invigilation.optimizer.weights.maxDays") {
-		w.MaxDays = viper.GetFloat64("invigilation.optimizer.weights.maxDays")
-	}
-	if viper.IsSet("invigilation.optimizer.weights.preferExamDays") {
-		w.PreferExamDays = viper.GetFloat64("invigilation.optimizer.weights.preferExamDays")
-	}
-	if viper.IsSet("invigilation.optimizer.weights.distribution") {
-		w.Distribution = viper.GetFloat64("invigilation.optimizer.weights.distribution")
-	}
-	if viper.IsSet("invigilation.optimizer.weights.daySpan") {
-		w.DaySpan = viper.GetFloat64("invigilation.optimizer.weights.daySpan")
-	}
-	return w
 }

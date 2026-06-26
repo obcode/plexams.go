@@ -28,7 +28,7 @@ func (r *subscriptionResolver) GenerateInvigilations(ctx context.Context, dryRun
 	if iterations != nil {
 		iterVal = *iterations
 	}
-	opts := r.plexams.OptimizerOptionsFromConfig(seedVal, iterVal)
+	opts := r.plexams.OptimizerOptionsFromConfig(ctx, seedVal, iterVal)
 	reporter := newStreamReporter(ctx, ch)
 
 	go func() {

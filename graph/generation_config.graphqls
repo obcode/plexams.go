@@ -1,0 +1,49 @@
+extend type Query {
+  """
+  Global generation tuning: the room time lag and the invigilation optimizer
+  (simulated annealing) parameters. Stored in the global plexams database; the
+  config file is only a seed/fallback. Steers room and invigilation generation.
+  """
+  generationConfig: GenerationConfig!
+}
+
+extend type Mutation {
+  "Store the generation config (global). Returns the saved config."
+  setGenerationConfig(input: GenerationConfigInput!): GenerationConfig!
+}
+
+type GenerationConfig {
+  "minutes buffer between two uses of a room / between invigilations."
+  timelagMin: Int!
+  iterations: Int!
+  startTemp: Float!
+  endTemp: Float!
+  "allowed deviation (minutes) from an invigilator's target workload."
+  toleranceMin: Int!
+  maxSpanHours: Float!
+  weightMinuteBalance: Float!
+  weightBeyondTolerance: Float!
+  weightOverTargetFactor: Float!
+  weightCoverage: Float!
+  weightMaxDays: Float!
+  weightPreferExamDays: Float!
+  weightDistribution: Float!
+  weightDaySpan: Float!
+}
+
+input GenerationConfigInput {
+  timelagMin: Int!
+  iterations: Int!
+  startTemp: Float!
+  endTemp: Float!
+  toleranceMin: Int!
+  maxSpanHours: Float!
+  weightMinuteBalance: Float!
+  weightBeyondTolerance: Float!
+  weightOverTargetFactor: Float!
+  weightCoverage: Float!
+  weightMaxDays: Float!
+  weightPreferExamDays: Float!
+  weightDistribution: Float!
+  weightDaySpan: Float!
+}

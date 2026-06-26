@@ -9,7 +9,6 @@ import (
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationReport, error) {
@@ -516,7 +515,7 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 
 func (p *Plexams) ValidateRoomsTimeDistance(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	timelag := viper.GetInt("rooms.timelag")
+	timelag := p.generationTimelagMin(ctx)
 
 	v := newValidation(reporter, "rooms-time-distance",
 		fmt.Sprintf("validating time lag of planned rooms (%d minutes)", timelag))

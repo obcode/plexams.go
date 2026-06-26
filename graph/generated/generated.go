@@ -270,6 +270,23 @@ type ComplexityRoot struct {
 		Reason    func(childComplexity int) int
 	}
 
+	GenerationConfig struct {
+		EndTemp                func(childComplexity int) int
+		Iterations             func(childComplexity int) int
+		MaxSpanHours           func(childComplexity int) int
+		StartTemp              func(childComplexity int) int
+		TimelagMin             func(childComplexity int) int
+		ToleranceMin           func(childComplexity int) int
+		WeightBeyondTolerance  func(childComplexity int) int
+		WeightCoverage         func(childComplexity int) int
+		WeightDaySpan          func(childComplexity int) int
+		WeightDistribution     func(childComplexity int) int
+		WeightMaxDays          func(childComplexity int) int
+		WeightMinuteBalance    func(childComplexity int) int
+		WeightOverTargetFactor func(childComplexity int) int
+		WeightPreferExamDays   func(childComplexity int) int
+	}
+
 	Invigilation struct {
 		Duration           func(childComplexity int) int
 		InvigilatorID      func(childComplexity int) int
@@ -447,6 +464,7 @@ type ComplexityRoot struct {
 		Seb                           func(childComplexity int, ancode int) int
 		SeedStudyProgramsFromConfig   func(childComplexity int) int
 		SetExamDuration               func(childComplexity int, ancode int, duration int) int
+		SetGenerationConfig           func(childComplexity int, input model.GenerationConfigInput) int
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
@@ -721,6 +739,7 @@ type ComplexityRoot struct {
 		GeneratedExam                 func(childComplexity int, ancode int) int
 		GeneratedExams                func(childComplexity int) int
 		GeneratedExamsState           func(childComplexity int) int
+		GenerationConfig              func(childComplexity int) int
 		Invigilator                   func(childComplexity int, room string, day int, time int) int
 		InvigilatorCandidates         func(childComplexity int) int
 		InvigilatorConstraints        func(childComplexity int) int
@@ -1204,6 +1223,7 @@ type MutationResolver interface {
 	SetExamDuration(ctx context.Context, ancode int, duration int) (*model.ExamDurationOverride, error)
 	RemoveExamDuration(ctx context.Context, ancode int) (bool, error)
 	GenerateGeneratedExams(ctx context.Context) (*model.GenerateGeneratedExamsResult, error)
+	SetGenerationConfig(ctx context.Context, input model.GenerationConfigInput) (*model.GenerationConfig, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	PrePlanInvigilationInSlot(ctx context.Context, day int, slot int, roomName *string) (bool, error)
@@ -1287,6 +1307,7 @@ type QueryResolver interface {
 	ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error)
 	ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurationOverride, error)
 	GeneratedExamsState(ctx context.Context) (*model.GeneratedExamsState, error)
+	GenerationConfig(ctx context.Context) (*model.GenerationConfig, error)
 	InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error)
 	InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error)
 	InvigilatorsExcludedByConfig(ctx context.Context) ([]*model.Invigilator, error)
@@ -2357,6 +2378,104 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GeneratedExamsState.Reason(childComplexity), true
+
+	case "GenerationConfig.endTemp":
+		if e.complexity.GenerationConfig.EndTemp == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.EndTemp(childComplexity), true
+
+	case "GenerationConfig.iterations":
+		if e.complexity.GenerationConfig.Iterations == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.Iterations(childComplexity), true
+
+	case "GenerationConfig.maxSpanHours":
+		if e.complexity.GenerationConfig.MaxSpanHours == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.MaxSpanHours(childComplexity), true
+
+	case "GenerationConfig.startTemp":
+		if e.complexity.GenerationConfig.StartTemp == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.StartTemp(childComplexity), true
+
+	case "GenerationConfig.timelagMin":
+		if e.complexity.GenerationConfig.TimelagMin == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.TimelagMin(childComplexity), true
+
+	case "GenerationConfig.toleranceMin":
+		if e.complexity.GenerationConfig.ToleranceMin == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ToleranceMin(childComplexity), true
+
+	case "GenerationConfig.weightBeyondTolerance":
+		if e.complexity.GenerationConfig.WeightBeyondTolerance == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.WeightBeyondTolerance(childComplexity), true
+
+	case "GenerationConfig.weightCoverage":
+		if e.complexity.GenerationConfig.WeightCoverage == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.WeightCoverage(childComplexity), true
+
+	case "GenerationConfig.weightDaySpan":
+		if e.complexity.GenerationConfig.WeightDaySpan == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.WeightDaySpan(childComplexity), true
+
+	case "GenerationConfig.weightDistribution":
+		if e.complexity.GenerationConfig.WeightDistribution == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.WeightDistribution(childComplexity), true
+
+	case "GenerationConfig.weightMaxDays":
+		if e.complexity.GenerationConfig.WeightMaxDays == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.WeightMaxDays(childComplexity), true
+
+	case "GenerationConfig.weightMinuteBalance":
+		if e.complexity.GenerationConfig.WeightMinuteBalance == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.WeightMinuteBalance(childComplexity), true
+
+	case "GenerationConfig.weightOverTargetFactor":
+		if e.complexity.GenerationConfig.WeightOverTargetFactor == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.WeightOverTargetFactor(childComplexity), true
+
+	case "GenerationConfig.weightPreferExamDays":
+		if e.complexity.GenerationConfig.WeightPreferExamDays == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.WeightPreferExamDays(childComplexity), true
 
 	case "Invigilation.duration":
 		if e.complexity.Invigilation.Duration == nil {
@@ -3515,6 +3634,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetExamDuration(childComplexity, args["ancode"].(int), args["duration"].(int)), true
+
+	case "Mutation.setGenerationConfig":
+		if e.complexity.Mutation.SetGenerationConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setGenerationConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetGenerationConfig(childComplexity, args["input"].(model.GenerationConfigInput)), true
 
 	case "Mutation.setInvigilatorConstraints":
 		if e.complexity.Mutation.SetInvigilatorConstraints == nil {
@@ -4943,6 +5074,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.GeneratedExamsState(childComplexity), true
+
+	case "Query.generationConfig":
+		if e.complexity.Query.GenerationConfig == nil {
+			break
+		}
+
+		return e.complexity.Query.GenerationConfig(childComplexity), true
 
 	case "Query.invigilator":
 		if e.complexity.Query.Invigilator == nil {
@@ -7513,6 +7651,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputArgFilterInput,
 		ec.unmarshalInputConstraintsInput,
 		ec.unmarshalInputEmailsInput,
+		ec.unmarshalInputGenerationConfigInput,
 		ec.unmarshalInputInvigilationTimeWindowInput,
 		ec.unmarshalInputInvigilatorConstraintsInput,
 		ec.unmarshalInputNTAInput,
@@ -7981,6 +8120,56 @@ type GeneratedExamsChange {
   kind: String!
   "human-readable change descriptions, e.g. 'Anmeldungen 42 → 43'."
   details: [String!]!
+}
+`, BuiltIn: false},
+	{Name: "../generation_config.graphqls", Input: `extend type Query {
+  """
+  Global generation tuning: the room time lag and the invigilation optimizer
+  (simulated annealing) parameters. Stored in the global plexams database; the
+  config file is only a seed/fallback. Steers room and invigilation generation.
+  """
+  generationConfig: GenerationConfig!
+}
+
+extend type Mutation {
+  "Store the generation config (global). Returns the saved config."
+  setGenerationConfig(input: GenerationConfigInput!): GenerationConfig!
+}
+
+type GenerationConfig {
+  "minutes buffer between two uses of a room / between invigilations."
+  timelagMin: Int!
+  iterations: Int!
+  startTemp: Float!
+  endTemp: Float!
+  "allowed deviation (minutes) from an invigilator's target workload."
+  toleranceMin: Int!
+  maxSpanHours: Float!
+  weightMinuteBalance: Float!
+  weightBeyondTolerance: Float!
+  weightOverTargetFactor: Float!
+  weightCoverage: Float!
+  weightMaxDays: Float!
+  weightPreferExamDays: Float!
+  weightDistribution: Float!
+  weightDaySpan: Float!
+}
+
+input GenerationConfigInput {
+  timelagMin: Int!
+  iterations: Int!
+  startTemp: Float!
+  endTemp: Float!
+  toleranceMin: Int!
+  maxSpanHours: Float!
+  weightMinuteBalance: Float!
+  weightBeyondTolerance: Float!
+  weightOverTargetFactor: Float!
+  weightCoverage: Float!
+  weightMaxDays: Float!
+  weightPreferExamDays: Float!
+  weightDistribution: Float!
+  weightDaySpan: Float!
 }
 `, BuiltIn: false},
 	{Name: "../invigilation.graphqls", Input: `extend type Query {
@@ -11643,6 +11832,34 @@ func (ec *executionContext) field_Mutation_setExamDuration_argsDuration(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setGenerationConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setGenerationConfig_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setGenerationConfig_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.GenerationConfigInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal model.GenerationConfigInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNGenerationConfigInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerationConfigInput(ctx, tmp)
+	}
+
+	var zeroVal model.GenerationConfigInput
 	return zeroVal, nil
 }
 
@@ -21332,6 +21549,622 @@ func (ec *executionContext) fieldContext_GeneratedExamsState_changedAt(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _GenerationConfig_timelagMin(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_timelagMin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimelagMin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_timelagMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_iterations(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_iterations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Iterations, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_iterations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_startTemp(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_startTemp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartTemp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_startTemp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_endTemp(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_endTemp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EndTemp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_endTemp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_toleranceMin(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_toleranceMin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ToleranceMin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_toleranceMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_maxSpanHours(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_maxSpanHours(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxSpanHours, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_maxSpanHours(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_weightMinuteBalance(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_weightMinuteBalance(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeightMinuteBalance, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_weightMinuteBalance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_weightBeyondTolerance(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_weightBeyondTolerance(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeightBeyondTolerance, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_weightBeyondTolerance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_weightOverTargetFactor(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_weightOverTargetFactor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeightOverTargetFactor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_weightOverTargetFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_weightCoverage(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_weightCoverage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeightCoverage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_weightCoverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_weightMaxDays(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_weightMaxDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeightMaxDays, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_weightMaxDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_weightPreferExamDays(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_weightPreferExamDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeightPreferExamDays, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_weightPreferExamDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_weightDistribution(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_weightDistribution(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeightDistribution, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_weightDistribution(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_weightDaySpan(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_weightDaySpan(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeightDaySpan, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_weightDaySpan(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Invigilation_roomName(ctx context.Context, field graphql.CollectedField, obj *model.Invigilation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Invigilation_roomName(ctx, field)
 	if err != nil {
@@ -26273,6 +27106,91 @@ func (ec *executionContext) fieldContext_Mutation_generateGeneratedExams(_ conte
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GenerateGeneratedExamsResult", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setGenerationConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setGenerationConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetGenerationConfig(rctx, fc.Args["input"].(model.GenerationConfigInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.GenerationConfig)
+	fc.Result = res
+	return ec.marshalNGenerationConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerationConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setGenerationConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "timelagMin":
+				return ec.fieldContext_GenerationConfig_timelagMin(ctx, field)
+			case "iterations":
+				return ec.fieldContext_GenerationConfig_iterations(ctx, field)
+			case "startTemp":
+				return ec.fieldContext_GenerationConfig_startTemp(ctx, field)
+			case "endTemp":
+				return ec.fieldContext_GenerationConfig_endTemp(ctx, field)
+			case "toleranceMin":
+				return ec.fieldContext_GenerationConfig_toleranceMin(ctx, field)
+			case "maxSpanHours":
+				return ec.fieldContext_GenerationConfig_maxSpanHours(ctx, field)
+			case "weightMinuteBalance":
+				return ec.fieldContext_GenerationConfig_weightMinuteBalance(ctx, field)
+			case "weightBeyondTolerance":
+				return ec.fieldContext_GenerationConfig_weightBeyondTolerance(ctx, field)
+			case "weightOverTargetFactor":
+				return ec.fieldContext_GenerationConfig_weightOverTargetFactor(ctx, field)
+			case "weightCoverage":
+				return ec.fieldContext_GenerationConfig_weightCoverage(ctx, field)
+			case "weightMaxDays":
+				return ec.fieldContext_GenerationConfig_weightMaxDays(ctx, field)
+			case "weightPreferExamDays":
+				return ec.fieldContext_GenerationConfig_weightPreferExamDays(ctx, field)
+			case "weightDistribution":
+				return ec.fieldContext_GenerationConfig_weightDistribution(ctx, field)
+			case "weightDaySpan":
+				return ec.fieldContext_GenerationConfig_weightDaySpan(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GenerationConfig", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setGenerationConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -37435,6 +38353,80 @@ func (ec *executionContext) fieldContext_Query_generatedExamsState(_ context.Con
 				return ec.fieldContext_GeneratedExamsState_changedAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GeneratedExamsState", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_generationConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_generationConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GenerationConfig(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.GenerationConfig)
+	fc.Result = res
+	return ec.marshalNGenerationConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerationConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_generationConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "timelagMin":
+				return ec.fieldContext_GenerationConfig_timelagMin(ctx, field)
+			case "iterations":
+				return ec.fieldContext_GenerationConfig_iterations(ctx, field)
+			case "startTemp":
+				return ec.fieldContext_GenerationConfig_startTemp(ctx, field)
+			case "endTemp":
+				return ec.fieldContext_GenerationConfig_endTemp(ctx, field)
+			case "toleranceMin":
+				return ec.fieldContext_GenerationConfig_toleranceMin(ctx, field)
+			case "maxSpanHours":
+				return ec.fieldContext_GenerationConfig_maxSpanHours(ctx, field)
+			case "weightMinuteBalance":
+				return ec.fieldContext_GenerationConfig_weightMinuteBalance(ctx, field)
+			case "weightBeyondTolerance":
+				return ec.fieldContext_GenerationConfig_weightBeyondTolerance(ctx, field)
+			case "weightOverTargetFactor":
+				return ec.fieldContext_GenerationConfig_weightOverTargetFactor(ctx, field)
+			case "weightCoverage":
+				return ec.fieldContext_GenerationConfig_weightCoverage(ctx, field)
+			case "weightMaxDays":
+				return ec.fieldContext_GenerationConfig_weightMaxDays(ctx, field)
+			case "weightPreferExamDays":
+				return ec.fieldContext_GenerationConfig_weightPreferExamDays(ctx, field)
+			case "weightDistribution":
+				return ec.fieldContext_GenerationConfig_weightDistribution(ctx, field)
+			case "weightDaySpan":
+				return ec.fieldContext_GenerationConfig_weightDaySpan(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GenerationConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -57667,6 +58659,124 @@ func (ec *executionContext) unmarshalInputEmailsInput(ctx context.Context, obj a
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Context, obj any) (model.GenerationConfigInput, error) {
+	var it model.GenerationConfigInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"timelagMin", "iterations", "startTemp", "endTemp", "toleranceMin", "maxSpanHours", "weightMinuteBalance", "weightBeyondTolerance", "weightOverTargetFactor", "weightCoverage", "weightMaxDays", "weightPreferExamDays", "weightDistribution", "weightDaySpan"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "timelagMin":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timelagMin"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TimelagMin = data
+		case "iterations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iterations"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Iterations = data
+		case "startTemp":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startTemp"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StartTemp = data
+		case "endTemp":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endTemp"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EndTemp = data
+		case "toleranceMin":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("toleranceMin"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ToleranceMin = data
+		case "maxSpanHours":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxSpanHours"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxSpanHours = data
+		case "weightMinuteBalance":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weightMinuteBalance"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WeightMinuteBalance = data
+		case "weightBeyondTolerance":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weightBeyondTolerance"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WeightBeyondTolerance = data
+		case "weightOverTargetFactor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weightOverTargetFactor"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WeightOverTargetFactor = data
+		case "weightCoverage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weightCoverage"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WeightCoverage = data
+		case "weightMaxDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weightMaxDays"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WeightMaxDays = data
+		case "weightPreferExamDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weightPreferExamDays"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WeightPreferExamDays = data
+		case "weightDistribution":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weightDistribution"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WeightDistribution = data
+		case "weightDaySpan":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weightDaySpan"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WeightDaySpan = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputInvigilationTimeWindowInput(ctx context.Context, obj any) (model.InvigilationTimeWindowInput, error) {
 	var it model.InvigilationTimeWindowInput
 	asMap := map[string]any{}
@@ -59847,6 +60957,110 @@ func (ec *executionContext) _GeneratedExamsState(ctx context.Context, sel ast.Se
 	return out
 }
 
+var generationConfigImplementors = []string{"GenerationConfig"}
+
+func (ec *executionContext) _GenerationConfig(ctx context.Context, sel ast.SelectionSet, obj *model.GenerationConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, generationConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GenerationConfig")
+		case "timelagMin":
+			out.Values[i] = ec._GenerationConfig_timelagMin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "iterations":
+			out.Values[i] = ec._GenerationConfig_iterations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startTemp":
+			out.Values[i] = ec._GenerationConfig_startTemp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "endTemp":
+			out.Values[i] = ec._GenerationConfig_endTemp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "toleranceMin":
+			out.Values[i] = ec._GenerationConfig_toleranceMin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxSpanHours":
+			out.Values[i] = ec._GenerationConfig_maxSpanHours(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weightMinuteBalance":
+			out.Values[i] = ec._GenerationConfig_weightMinuteBalance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weightBeyondTolerance":
+			out.Values[i] = ec._GenerationConfig_weightBeyondTolerance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weightOverTargetFactor":
+			out.Values[i] = ec._GenerationConfig_weightOverTargetFactor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weightCoverage":
+			out.Values[i] = ec._GenerationConfig_weightCoverage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weightMaxDays":
+			out.Values[i] = ec._GenerationConfig_weightMaxDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weightPreferExamDays":
+			out.Values[i] = ec._GenerationConfig_weightPreferExamDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weightDistribution":
+			out.Values[i] = ec._GenerationConfig_weightDistribution(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weightDaySpan":
+			out.Values[i] = ec._GenerationConfig_weightDaySpan(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var invigilationImplementors = []string{"Invigilation"}
 
 func (ec *executionContext) _Invigilation(ctx context.Context, sel ast.SelectionSet, obj *model.Invigilation) graphql.Marshaler {
@@ -60843,6 +62057,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "generateGeneratedExams":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_generateGeneratedExams(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setGenerationConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setGenerationConfig(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -63374,6 +64595,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_generatedExamsState(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "generationConfig":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_generationConfig(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -68747,6 +69990,25 @@ func (ec *executionContext) marshalNGeneratedExamsState2ᚖgithubᚗcomᚋobcode
 		return graphql.Null
 	}
 	return ec._GeneratedExamsState(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGenerationConfig2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerationConfig(ctx context.Context, sel ast.SelectionSet, v model.GenerationConfig) graphql.Marshaler {
+	return ec._GenerationConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGenerationConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerationConfig(ctx context.Context, sel ast.SelectionSet, v *model.GenerationConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GenerationConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNGenerationConfigInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerationConfigInput(ctx context.Context, v any) (model.GenerationConfigInput, error) {
+	res, err := ec.unmarshalInputGenerationConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {

@@ -244,6 +244,42 @@ type GeneratedExamsState struct {
 	ChangedAt *time.Time `json:"changedAt,omitempty"`
 }
 
+type GenerationConfig struct {
+	// minutes buffer between two uses of a room / between invigilations.
+	TimelagMin int     `json:"timelagMin"`
+	Iterations int     `json:"iterations"`
+	StartTemp  float64 `json:"startTemp"`
+	EndTemp    float64 `json:"endTemp"`
+	// allowed deviation (minutes) from an invigilator's target workload.
+	ToleranceMin           int     `json:"toleranceMin"`
+	MaxSpanHours           float64 `json:"maxSpanHours"`
+	WeightMinuteBalance    float64 `json:"weightMinuteBalance"`
+	WeightBeyondTolerance  float64 `json:"weightBeyondTolerance"`
+	WeightOverTargetFactor float64 `json:"weightOverTargetFactor"`
+	WeightCoverage         float64 `json:"weightCoverage"`
+	WeightMaxDays          float64 `json:"weightMaxDays"`
+	WeightPreferExamDays   float64 `json:"weightPreferExamDays"`
+	WeightDistribution     float64 `json:"weightDistribution"`
+	WeightDaySpan          float64 `json:"weightDaySpan"`
+}
+
+type GenerationConfigInput struct {
+	TimelagMin             int     `json:"timelagMin"`
+	Iterations             int     `json:"iterations"`
+	StartTemp              float64 `json:"startTemp"`
+	EndTemp                float64 `json:"endTemp"`
+	ToleranceMin           int     `json:"toleranceMin"`
+	MaxSpanHours           float64 `json:"maxSpanHours"`
+	WeightMinuteBalance    float64 `json:"weightMinuteBalance"`
+	WeightBeyondTolerance  float64 `json:"weightBeyondTolerance"`
+	WeightOverTargetFactor float64 `json:"weightOverTargetFactor"`
+	WeightCoverage         float64 `json:"weightCoverage"`
+	WeightMaxDays          float64 `json:"weightMaxDays"`
+	WeightPreferExamDays   float64 `json:"weightPreferExamDays"`
+	WeightDistribution     float64 `json:"weightDistribution"`
+	WeightDaySpan          float64 `json:"weightDaySpan"`
+}
+
 type Invigilation struct {
 	RoomName           *string `json:"roomName,omitempty"`
 	Duration           int     `json:"duration"`

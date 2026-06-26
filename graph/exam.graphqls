@@ -15,22 +15,20 @@ extend type Query {
 
 extend type Mutation {
   """
-  Add a Primuss ancode mapping to a ZPA exam and rebuild only this connected exam.
-  Returns the rebuilt connected exam.
+  Add a Primuss ancode mapping to a ZPA exam.
+  Returns the (live computed) connected exam.
   """
   addPrimussAncode(zpaAncode: Int!, program: String!, primussAncode: Int!): ConnectedExam!
   """
-  Remove a (manually added) Primuss ancode mapping of a program from a ZPA exam and
-  rebuild only this connected exam.
+  Remove a (manually added) Primuss ancode mapping of a program from a ZPA exam.
+  Returns the (live computed) connected exam.
   """
   removePrimussAncode(zpaAncode: Int!, program: String!): ConnectedExam!
   """
   Renumber a Primuss exam (exam + student regs + conflicts) from fromAncode to
-  toAncode within a program, then rebuild the given ZPA exam's connected exam.
+  toAncode within a program. Returns the (live computed) connected exam.
   """
   fixPrimussAncode(zpaAncode: Int!, program: String!, fromAncode: Int!, toAncode: Int!): ConnectedExam!
-  "Rebuild only the connected exam of the given ZPA ancode."
-  rebuildConnectedExam(zpaAncode: Int!): ConnectedExam!
 }
 
 type ExamWithRegsAndRooms {

@@ -43,7 +43,6 @@ const (
 	condAnnyRoomsBooked           = "annyRoomsBooked"
 	condZPAImported               = "zpaImported"
 	condConstraintsRequested      = "constraintsRequested"
-	condConnectedExams            = "connectedExams"
 	condGeneratedExams            = "generatedExams"
 	condStudentRegs               = "studentRegs"
 	condStudentRegsUploaded       = "studentRegsUploaded"
@@ -72,7 +71,6 @@ var planningConditionDefs = []planningConditionDef{
 	{condAnnyRoomsBooked, "Anny-Räume gebucht", "phaseMinus1", ""},
 	{condZPAImported, "Prüfungen & Personen aus ZPA importiert", "phase0", ""},
 	{condConstraintsRequested, "Constraints-Abfrage verschickt", "phase0", ""},
-	{condConnectedExams, "ConnectedExams erstellt", "phase1", ""},
 	{condGeneratedExams, "GeneratedExams erstellt", "phase1", ""},
 	{condStudentRegs, "StudentRegs erstellt", "phase1", ""},
 	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase1", ""},

@@ -13,7 +13,6 @@ const (
 	collectionNameSemesterConfig      = "semester_config"
 	collectionNameSemesterConfigInput = "semester_config_input"
 	collectionConstraints             = "constraints"
-	collectionNameConnectedExams      = "connected_exams"
 	collectionNameNTAs                = "nta"
 	collectionNamePlan                = "plan"
 	collectionNamePlanBackup          = "plan_backup"

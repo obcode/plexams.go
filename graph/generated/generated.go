@@ -406,7 +406,6 @@ type ComplexityRoot struct {
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
-		RebuildConnectedExam          func(childComplexity int, zpaAncode int) int
 		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
 		RemovePermanentNonInvigilator func(childComplexity int, teacherID int) int
 		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
@@ -1162,7 +1161,6 @@ type MutationResolver interface {
 	AddPrimussAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) (*model.ConnectedExam, error)
 	RemovePrimussAncode(ctx context.Context, zpaAncode int, program string) (*model.ConnectedExam, error)
 	FixPrimussAncode(ctx context.Context, zpaAncode int, program string, fromAncode int, toAncode int) (*model.ConnectedExam, error)
-	RebuildConnectedExam(ctx context.Context, zpaAncode int) (*model.ConnectedExam, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
 	PrePlanInvigilationInSlot(ctx context.Context, day int, slot int, roomName *string) (bool, error)
@@ -3201,18 +3199,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string), args["seats"].(*int)), true
-
-	case "Mutation.rebuildConnectedExam":
-		if e.complexity.Mutation.RebuildConnectedExam == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_rebuildConnectedExam_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.RebuildConnectedExam(childComplexity, args["zpaAncode"].(int)), true
 
 	case "Mutation.removeNtaRoomAloneWaiver":
 		if e.complexity.Mutation.RemoveNtaRoomAloneWaiver == nil {
@@ -7592,22 +7578,20 @@ extend type Mutation {
 
 extend type Mutation {
   """
-  Add a Primuss ancode mapping to a ZPA exam and rebuild only this connected exam.
-  Returns the rebuilt connected exam.
+  Add a Primuss ancode mapping to a ZPA exam.
+  Returns the (live computed) connected exam.
   """
   addPrimussAncode(zpaAncode: Int!, program: String!, primussAncode: Int!): ConnectedExam!
   """
-  Remove a (manually added) Primuss ancode mapping of a program from a ZPA exam and
-  rebuild only this connected exam.
+  Remove a (manually added) Primuss ancode mapping of a program from a ZPA exam.
+  Returns the (live computed) connected exam.
   """
   removePrimussAncode(zpaAncode: Int!, program: String!): ConnectedExam!
   """
   Renumber a Primuss exam (exam + student regs + conflicts) from fromAncode to
-  toAncode within a program, then rebuild the given ZPA exam's connected exam.
+  toAncode within a program. Returns the (live computed) connected exam.
   """
   fixPrimussAncode(zpaAncode: Int!, program: String!, fromAncode: Int!, toAncode: Int!): ConnectedExam!
-  "Rebuild only the connected exam of the given ZPA ancode."
-  rebuildConnectedExam(zpaAncode: Int!): ConnectedExam!
 }
 
 type ExamWithRegsAndRooms {
@@ -10765,34 +10749,6 @@ func (ec *executionContext) field_Mutation_prePlanRoom_argsSeats(
 	}
 
 	var zeroVal *int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_rebuildConnectedExam_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_rebuildConnectedExam_argsZpaAncode(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["zpaAncode"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_rebuildConnectedExam_argsZpaAncode(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["zpaAncode"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("zpaAncode"))
-	if tmp, ok := rawArgs["zpaAncode"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
 	return zeroVal, nil
 }
 
@@ -25122,71 +25078,6 @@ func (ec *executionContext) fieldContext_Mutation_fixPrimussAncode(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_fixPrimussAncode_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_rebuildConnectedExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_rebuildConnectedExam(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RebuildConnectedExam(rctx, fc.Args["zpaAncode"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.ConnectedExam)
-	fc.Result = res
-	return ec.marshalNConnectedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConnectedExam(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_rebuildConnectedExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "zpaExam":
-				return ec.fieldContext_ConnectedExam_zpaExam(ctx, field)
-			case "primussExams":
-				return ec.fieldContext_ConnectedExam_primussExams(ctx, field)
-			case "otherPrimussExams":
-				return ec.fieldContext_ConnectedExam_otherPrimussExams(ctx, field)
-			case "warnings":
-				return ec.fieldContext_ConnectedExam_warnings(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ConnectedExam", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_rebuildConnectedExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -58988,13 +58879,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "fixPrimussAncode":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_fixPrimussAncode(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "rebuildConnectedExam":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_rebuildConnectedExam(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

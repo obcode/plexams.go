@@ -31,11 +31,6 @@ func (r *mutationResolver) FixPrimussAncode(ctx context.Context, zpaAncode int, 
 	return r.plexams.FixPrimussAncode(ctx, zpaAncode, program, fromAncode, toAncode)
 }
 
-// RebuildConnectedExam is the resolver for the rebuildConnectedExam field.
-func (r *mutationResolver) RebuildConnectedExam(ctx context.Context, zpaAncode int) (*model.ConnectedExam, error) {
-	return r.plexams.RebuildConnectedExam(ctx, zpaAncode)
-}
-
 // MainExamer is the resolver for the mainExamer field.
 func (r *plannedExamResolver) MainExamer(ctx context.Context, obj *model.PlannedExam) (*model.Teacher, error) {
 	return r.plexams.GetTeacher(ctx, obj.ZpaExam.MainExamerID)

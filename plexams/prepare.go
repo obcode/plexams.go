@@ -18,7 +18,7 @@ func (p *Plexams) PrepareStudentRegs() error {
 		return err
 	}
 
-	connectedExams, err := p.dbClient.GetConnectedExams(ctx)
+	connectedExams, err := p.GetConnectedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get connected exams")
 		return err

@@ -52,12 +52,50 @@ func (p *Plexams) ExamersWithExamsPlannedByMe(ctx context.Context) ([]*model.Tea
 	return teachers, nil
 }
 
-func (p *Plexams) prepareConnectedZPAExam(ctx context.Context, ancode int, allPrograms []string) (*model.ConnectedExam, error) {
-	zpaExam, err := p.dbClient.GetZpaExamByAncode(ctx, ancode)
-	if err != nil {
-		return nil, err
-	}
+// primussExamIndex holds all Primuss exams of all programs loaded once, indexed by
+// program -> ancode and program -> all exams. It lets connected exams be computed
+// on the fly without per-exam/per-program DB lookups.
+type primussExamIndex struct {
+	byAncode  map[string]map[int]*model.PrimussExam
+	byProgram map[string][]*model.PrimussExam
+}
 
+// buildPrimussExamIndex loads every program's Primuss exams once (~one query per
+// program) and indexes them in memory.
+func (p *Plexams) buildPrimussExamIndex(ctx context.Context, programs []string) (*primussExamIndex, error) {
+	idx := &primussExamIndex{
+		byAncode:  make(map[string]map[int]*model.PrimussExam, len(programs)),
+		byProgram: make(map[string][]*model.PrimussExam, len(programs)),
+	}
+	for _, program := range programs {
+		exams, err := p.dbClient.PrimussExamsForProgram(ctx, program)
+		if err != nil {
+			// a program may not be (fully) imported yet — treat as empty, do not fail
+			log.Debug().Err(err).Str("program", program).Msg("cannot get primuss exams for program")
+			continue
+		}
+		byAncode := make(map[int]*model.PrimussExam, len(exams))
+		for _, exam := range exams {
+			byAncode[exam.AnCode] = exam
+		}
+		idx.byAncode[program] = byAncode
+		idx.byProgram[program] = exams
+	}
+	return idx, nil
+}
+
+// get returns the Primuss exam of a program/ancode from the index, if present.
+func (idx *primussExamIndex) get(program string, ancode int) (*model.PrimussExam, bool) {
+	if byAncode, ok := idx.byAncode[program]; ok {
+		exam, ok := byAncode[ancode]
+		return exam, ok
+	}
+	return nil, false
+}
+
+// computeConnectedZPAExam connects one ZPA exam to its Primuss registrations using
+// the preloaded index (pure, no DB access).
+func (p *Plexams) computeConnectedZPAExam(zpaExam *model.ZPAExam, allPrograms []string, idx *primussExamIndex) *model.ConnectedExam {
 	primussExams := make([]*model.PrimussExam, 0)
 	warnings := make([]*model.ConnectedExamWarning, 0)
 
@@ -79,9 +117,9 @@ func (p *Plexams) prepareConnectedZPAExam(ctx context.Context, ancode int, allPr
 			continue
 		}
 
-		primussExam, err := p.GetPrimussExam(ctx, primussAncode.Program, primussAncode.Ancode)
-		if err != nil {
-			warnings = append(warnings, p.primussNotFoundWarning(ctx, zpaExam, primussAncode.Program, primussAncode.Ancode))
+		primussExam, ok := idx.get(primussAncode.Program, primussAncode.Ancode)
+		if !ok {
+			warnings = append(warnings, primussNotFoundWarning(zpaExam, primussAncode.Program, primussAncode.Ancode, idx))
 		} else {
 			primussExams = append(primussExams, primussExam)
 			if w := examerMismatchWarning(primussAncode.Program, primussAncode.Ancode, zpaExam.MainExamer, primussExam.MainExamer); w != nil {
@@ -93,8 +131,8 @@ func (p *Plexams) prepareConnectedZPAExam(ctx context.Context, ancode int, allPr
 	otherPrograms := make([]string, 0, len(allPrograms)-len(zpaExam.PrimussAncodes))
 OUTER:
 	for _, aP := range allPrograms {
-		for _, p := range primussExams {
-			if aP == p.Program {
+		for _, pe := range primussExams {
+			if aP == pe.Program {
 				continue OUTER
 			}
 		}
@@ -107,8 +145,8 @@ OUTER:
 	// program when the examer matches, otherwise most likely a coincidental number
 	// (e.g. MUC.DAI) — only a hint.
 	for _, program := range otherPrograms {
-		primussExam, err := p.GetPrimussExam(ctx, program, ancode)
-		if err == nil {
+		primussExam, ok := idx.get(program, zpaExam.AnCode)
+		if ok {
 			if otherPrimussExams == nil {
 				otherPrimussExams = make([]*model.PrimussExam, 0)
 			}
@@ -116,12 +154,12 @@ OUTER:
 			if sameExamer(zpaExam.MainExamer, primussExam.MainExamer) {
 				warnings = append(warnings, primussRefWarning("warning",
 					fmt.Sprintf("gleiche Nummer auch in %s/%d (%s: %s) — zusätzlicher Studiengang?",
-						program, ancode, primussExam.MainExamer, primussExam.Module),
+						program, zpaExam.AnCode, primussExam.MainExamer, primussExam.Module),
 					program, primussExam.AnCode, primussExam.Module, primussExam.MainExamer))
 			} else {
 				warnings = append(warnings, primussRefWarning("info",
 					fmt.Sprintf("gleiche Nummer in %s/%d (anderer Prüfer: %s, %s) — vermutlich Zufall",
-						program, ancode, primussExam.MainExamer, primussExam.Module),
+						program, zpaExam.AnCode, primussExam.MainExamer, primussExam.Module),
 					program, primussExam.AnCode, primussExam.Module, primussExam.MainExamer))
 			}
 		}
@@ -132,15 +170,15 @@ OUTER:
 		PrimussExams:      primussExams,
 		OtherPrimussExams: otherPrimussExams,
 		Warnings:          warnings,
-	}, nil
+	}
 }
 
 // primussNotFoundWarning classifies a missing mapped primuss exam: when a likely
 // counterpart (same examer, similar module) exists in the program it is a warning
 // with a concrete suggestion, otherwise just an info (e.g. a program that isn't
 // (fully) imported this semester).
-func (p *Plexams) primussNotFoundWarning(ctx context.Context, zpaExam *model.ZPAExam, program string, ancode int) *model.ConnectedExamWarning {
-	if suggestion := p.suggestPrimussExam(ctx, program, zpaExam.MainExamer, zpaExam.Module); suggestion != nil {
+func primussNotFoundWarning(zpaExam *model.ZPAExam, program string, ancode int, idx *primussExamIndex) *model.ConnectedExamWarning {
+	if suggestion := suggestPrimussExam(idx, program, zpaExam.MainExamer, zpaExam.Module); suggestion != nil {
 		return primussRefWarning("warning",
 			fmt.Sprintf("%s/%d nicht gefunden — evtl. %s/%d (gleicher Prüfer, Modul „%s“)",
 				program, ancode, program, suggestion.AnCode, suggestion.Module),
@@ -173,12 +211,8 @@ func primussRefWarning(level, message, program string, ancode int, module, exame
 
 // suggestPrimussExam looks in one program for a primuss exam with the same examer
 // (surname) and a similar module name as the given ZPA exam.
-func (p *Plexams) suggestPrimussExam(ctx context.Context, program, zpaExamer, zpaModule string) *model.PrimussExam {
-	exams, err := p.dbClient.PrimussExamsForProgram(ctx, program)
-	if err != nil {
-		return nil
-	}
-	for _, exam := range exams {
+func suggestPrimussExam(idx *primussExamIndex, program, zpaExamer, zpaModule string) *model.PrimussExam {
+	for _, exam := range idx.byProgram[program] {
 		if sameExamer(zpaExamer, exam.MainExamer) && similarModule(zpaModule, exam.Module) {
 			return exam
 		}
@@ -252,23 +286,18 @@ func normalizeModule(s string) string {
 	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(s))), " ")
 }
 
-func (p *Plexams) prepareConnectedNonZPAExam(ctx context.Context, ancode int, nonZPAExam *model.ZPAExam) (*model.ConnectedExam, error) {
-	if nonZPAExam == nil {
-		var err error
-		nonZPAExam, err = p.dbClient.NonZpaExam(ctx, ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get non zpa exam by ancode")
-			return nil, err
-		}
-	}
-
+// computeConnectedNonZPAExam connects one non-ZPA (locally created) exam to its
+// Primuss registrations using the preloaded index (pure, no DB access).
+func computeConnectedNonZPAExam(nonZPAExam *model.ZPAExam, idx *primussExamIndex) *model.ConnectedExam {
 	primussExams := make([]*model.PrimussExam, 0)
+	warnings := make([]*model.ConnectedExamWarning, 0)
 	for _, primuss := range nonZPAExam.PrimussAncodes {
-		primussExam, err := p.GetPrimussExam(ctx, primuss.Program, primuss.Ancode)
-		if err != nil {
-			log.Error().Err(err).Str("program", primuss.Program).Int("ancode", primuss.Ancode).
-				Msg("cannot get primuss exam")
-			return nil, err
+		primussExam, ok := idx.get(primuss.Program, primuss.Ancode)
+		if !ok {
+			warnings = append(warnings, primussRefWarning("info",
+				fmt.Sprintf("%s/%d nicht gefunden", primuss.Program, primuss.Ancode),
+				primuss.Program, primuss.Ancode, "", ""))
+			continue
 		}
 		primussExams = append(primussExams, primussExam)
 	}
@@ -277,122 +306,98 @@ func (p *Plexams) prepareConnectedNonZPAExam(ctx context.Context, ancode int, no
 		ZpaExam:           nonZPAExam,
 		PrimussExams:      primussExams,
 		OtherPrimussExams: nil,
-		Warnings:          []*model.ConnectedExamWarning{},
-	}, nil
-}
-
-func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
-	return p.dbClient.GetConnectedExams(ctx)
-}
-
-func (p *Plexams) GetConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error) {
-	return p.dbClient.GetConnectedExam(ctx, ancode)
-}
-
-func (p *Plexams) PrepareConnectedExams() error {
-	ctx := context.Background()
-	ancodes, err := p.GetZpaAnCodesToPlan(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get zpa ancodes")
-		return err
+		Warnings:          warnings,
 	}
+}
 
+// GetConnectedExams computes all connected exams on the fly: it loads all Primuss
+// exams once into an index and connects every ZPA-exam-to-plan and non-ZPA exam in
+// memory, so the result is always consistent with the current data (no cache).
+func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
 	allPrograms, err := p.dbClient.GetPrograms(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get programs")
-		return err
+		return nil, err
 	}
 
-	exams := make([]*model.ConnectedExam, 0)
-	for _, ancode := range ancodes {
-		exam, err := p.prepareConnectedZPAExam(ctx, ancode.Ancode, allPrograms)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", ancode.Ancode).
-				Msg("cannot connected exam")
-			return err
-		}
-		exams = append(exams, exam)
+	idx, err := p.buildPrimussExamIndex(ctx, allPrograms)
+	if err != nil {
+		return nil, err
+	}
+
+	zpaExams, err := p.GetZpaExamsToPlan(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get zpa exams to plan")
+		return nil, err
+	}
+
+	exams := make([]*model.ConnectedExam, 0, len(zpaExams))
+	for _, zpaExam := range zpaExams {
+		exams = append(exams, p.computeConnectedZPAExam(zpaExam, allPrograms, idx))
 	}
 
 	nonZPAExams, err := p.dbClient.NonZpaExams(ctx)
 	if err == nil {
 		for _, nonZPAExam := range nonZPAExams {
-			connectedExam, err := p.prepareConnectedNonZPAExam(ctx, nonZPAExam.AnCode, nonZPAExam)
-			if err != nil {
-				log.Error().Err(err).Int("ancode", nonZPAExam.AnCode).
-					Msg("cannot prepare connected non zpa exam")
-				return err
-			}
-			exams = append(exams, connectedExam)
+			exams = append(exams, computeConnectedNonZPAExam(nonZPAExam, idx))
 		}
 	}
 
-	err = p.dbClient.SaveConnectedExams(ctx, exams)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot save connected exams")
-		return err
-	}
+	sort.Slice(exams, func(i, j int) bool { return exams[i].ZpaExam.AnCode < exams[j].ZpaExam.AnCode })
 
-	p.markCondition(ctx, condConnectedExams)
-	return nil
+	return exams, nil
 }
 
-// PrepareConnectedExam rebuilds a single connected exam (CLI entry point).
-func (p *Plexams) PrepareConnectedExam(ancode int) error {
-	_, err := p.RebuildConnectedExam(context.Background(), ancode)
-	return err
-}
-
-// RebuildConnectedExam (re)builds the connected exam of one ancode, upserts it and
-// returns it. Used after a fix (add/remove/fix ancode) so only this exam is rebuilt.
-func (p *Plexams) RebuildConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error) {
+// GetConnectedExam computes a single connected exam on the fly.
+func (p *Plexams) GetConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error) {
 	allPrograms, err := p.dbClient.GetPrograms(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get programs")
 		return nil, err
 	}
 
-	var exam *model.ConnectedExam
-	if ancode < 1000 {
-		exam, err = p.prepareConnectedZPAExam(ctx, ancode, allPrograms)
-	} else {
-		exam, err = p.prepareConnectedNonZPAExam(ctx, ancode, nil)
-	}
+	idx, err := p.buildPrimussExamIndex(ctx, allPrograms)
 	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("cannot build connected exam")
 		return nil, err
-	}
-	if exam == nil {
-		return nil, fmt.Errorf("connected exam %d could not be built", ancode)
 	}
 
-	if err := p.dbClient.ReplaceConnectedExam(ctx, exam); err != nil {
-		log.Error().Err(err).Msg("cannot save connected exam")
+	if ancode < 1000 {
+		zpaExam, err := p.dbClient.GetZpaExamByAncode(ctx, ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get zpa exam")
+			return nil, err
+		}
+		return p.computeConnectedZPAExam(zpaExam, allPrograms, idx), nil
+	}
+
+	nonZPAExam, err := p.dbClient.NonZpaExam(ctx, ancode)
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get non zpa exam")
 		return nil, err
 	}
-	return exam, nil
+	return computeConnectedNonZPAExam(nonZPAExam, idx), nil
 }
 
-// AddPrimussAncode adds a Primuss ancode mapping to a ZPA exam and rebuilds only
-// this connected exam.
+// AddPrimussAncode adds a Primuss ancode mapping to a ZPA exam and returns the
+// freshly computed connected exam.
 func (p *Plexams) AddPrimussAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) (*model.ConnectedExam, error) {
 	if err := p.dbClient.AddAncode(ctx, zpaAncode, program, primussAncode); err != nil {
 		return nil, err
 	}
-	return p.RebuildConnectedExam(ctx, zpaAncode)
+	return p.GetConnectedExam(ctx, zpaAncode)
 }
 
 // RemovePrimussAncode removes a (manually added) Primuss ancode mapping of a program
-// from a ZPA exam and rebuilds only this connected exam.
+// from a ZPA exam and returns the freshly computed connected exam.
 func (p *Plexams) RemovePrimussAncode(ctx context.Context, zpaAncode int, program string) (*model.ConnectedExam, error) {
 	if _, err := p.dbClient.RemoveAddedAncode(ctx, zpaAncode, program); err != nil {
 		return nil, err
 	}
-	return p.RebuildConnectedExam(ctx, zpaAncode)
+	return p.GetConnectedExam(ctx, zpaAncode)
 }
 
 // FixPrimussAncode renumbers a Primuss exam (exam + student regs + conflicts) within
-// a program and rebuilds the given ZPA exam's connected exam.
+// a program and returns the freshly computed connected exam of the given ZPA exam.
 func (p *Plexams) FixPrimussAncode(ctx context.Context, zpaAncode int, program string, fromAncode, toAncode int) (*model.ConnectedExam, error) {
 	if _, err := p.ChangeAncode(ctx, program, fromAncode, toAncode); err != nil {
 		return nil, fmt.Errorf("cannot change primuss exam ancode %s/%d->%d: %w", program, fromAncode, toAncode, err)
@@ -403,10 +408,11 @@ func (p *Plexams) FixPrimussAncode(ctx context.Context, zpaAncode int, program s
 	if _, err := p.ChangeAncodeInConflicts(ctx, program, fromAncode, toAncode); err != nil {
 		return nil, fmt.Errorf("cannot change conflicts ancode %s/%d->%d: %w", program, fromAncode, toAncode, err)
 	}
-	return p.RebuildConnectedExam(ctx, zpaAncode)
+	return p.GetConnectedExam(ctx, zpaAncode)
 }
 
-// TODO: check if there are Exams with same Ancode in other programs
+// ConnectExam connects a Primuss exam (same ancode, given program) to a ZPA exam by
+// adding the Primuss ancode mapping; the connected exam is computed live afterwards.
 func (p *Plexams) ConnectExam(ancode int, program string) error {
 	ctx := context.Background()
 	connectedExam, err := p.GetConnectedExam(ctx, ancode)
@@ -422,29 +428,12 @@ func (p *Plexams) ConnectExam(ancode int, program string) error {
 		}
 	}
 
-	primussExam, err := p.GetPrimussExam(ctx, program, ancode)
-	if err != nil {
+	if _, err := p.GetPrimussExam(ctx, program, ancode); err != nil {
 		log.Error().Err(err).Str("program", program).Int("ancode", ancode).Msg("cannot get primuss exam")
 		return err
 	}
 
-	connectedExam.PrimussExams = append(connectedExam.PrimussExams, primussExam)
-
-	if len(connectedExam.OtherPrimussExams) > 0 {
-		otherPrimussExams := make([]*model.PrimussExam, 0)
-		for _, exam := range connectedExam.OtherPrimussExams {
-			if exam.AnCode != ancode || exam.Program != program {
-				otherPrimussExams = append(otherPrimussExams, exam)
-			}
-			if len(otherPrimussExams) > 0 {
-				connectedExam.OtherPrimussExams = otherPrimussExams
-			} else {
-				connectedExam.OtherPrimussExams = nil
-			}
-		}
-	}
-
-	return p.dbClient.ReplaceConnectedExam(ctx, connectedExam)
+	return p.dbClient.AddAncode(ctx, ancode, program, ancode)
 }
 
 func (p *Plexams) ExamInfo(ancode int) (string, error) {

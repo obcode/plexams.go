@@ -18,7 +18,6 @@ var (
 		Use:   "prepare",
 		Short: "prepare [subcommand]",
 		Long: `Prepare collections.
-	connected-exams                        --- prepare connected exams
 	connect-exam ancode program            --- connect an unconnected exam
 	add-mucdai-exam program primuss-ancode --- add an external mucdai-exam exam
 	add-mucdai-exams                       --- add all mucdai-exams
@@ -28,7 +27,7 @@ var (
 	self-invigilations                     --- set main examer as invigilator if possible
 	invigilator-todos                      --- cache snapshot
 	`,
-		ValidArgs: []string{"connected-exams", "connected-exam", "connect-exam", "add-mucdai-exam", "generated-exams", "studentregs", "rooms-for-exams", "self-invigilations", "invigilator-todos"},
+		ValidArgs: []string{"connect-exam", "add-mucdai-exam", "generated-exams", "studentregs", "rooms-for-exams", "self-invigilations", "invigilator-todos"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -109,26 +108,6 @@ var (
 
 				// Print the pretty-printed JSON
 				fmt.Println(string(prettyJSON))
-
-			case "connected-exams":
-				err := plexams.PrepareConnectedExams()
-				if err != nil {
-					os.Exit(1)
-				}
-
-			case "connected-exam":
-				if len(args) < 2 {
-					log.Fatal("need ancode")
-				}
-				ancode, err := strconv.Atoi(args[1])
-				if err != nil {
-					fmt.Printf("cannot use %s as ancode", args[1])
-					os.Exit(1)
-				}
-				err = plexams.PrepareConnectedExam(ancode)
-				if err != nil {
-					os.Exit(1)
-				}
 
 			case "connect-exam":
 				if len(args) < 3 {

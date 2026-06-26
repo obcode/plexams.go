@@ -21,6 +21,28 @@ type MucDaiExam struct {
 	Planer         string `bson:"Prüfungsplanung"`
 }
 
+// ReplaceMucDaiExamsForProgram drops and refills the mucdai_<program> collection.
+func (db *DB) ReplaceMucDaiExamsForProgram(ctx context.Context, program string, exams []*MucDaiExam) error {
+	collection := db.getMucDaiCollection(program)
+
+	if err := collection.Drop(ctx); err != nil {
+		log.Error().Err(err).Str("program", program).Msg("cannot drop MUC.DAI collection")
+		return err
+	}
+	if len(exams) == 0 {
+		return nil
+	}
+	docs := make([]interface{}, 0, len(exams))
+	for _, exam := range exams {
+		docs = append(docs, exam)
+	}
+	if _, err := collection.InsertMany(ctx, docs); err != nil {
+		log.Error().Err(err).Str("program", program).Msg("cannot insert MUC.DAI exams")
+		return err
+	}
+	return nil
+}
+
 func (db *DB) MucDaiExamsForProgram(ctx context.Context, program string) ([]*MucDaiExam, error) {
 	collection := db.getMucDaiCollection(program)
 

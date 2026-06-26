@@ -1,0 +1,24 @@
+extend type Mutation {
+  """
+  Import MUC.DAI exams from a CSV (the file you get from MUC.DAI; columns Nr,
+  Modulname, Prüfungsform, Bewertung, Dauer, Erstpruefender, Zweitpruefender,
+  IstWiederholung, Studiengruppe, Prüfungsplanung). Replaces the mucdai_<program>
+  data and generates the non-ZPA exams for everything not planned by FK07 (FK07
+  exams already exist as ZPA exams and are only linked). The GUI sends the file
+  content as text.
+  """
+  importMucDaiExams(csv: String!): ImportMucDaiResult!
+}
+
+type ImportMucDaiResult {
+  "programs (Studiengruppen) found in the CSV."
+  programs: [String!]!
+  "total exam rows imported into the mucdai_<program> collections."
+  examsImported: Int!
+  "new non-ZPA exams created (non-FK07, not existing yet)."
+  examsCreated: Int!
+  "non-FK07 exams that already existed (kept with their ancode)."
+  examsExisting: Int!
+  "FK07 exams skipped (they exist as ZPA exams, only linked)."
+  examsSkippedFK07: Int!
+}

@@ -308,6 +308,14 @@ type ComplexityRoot struct {
 		WeightPreferExamDays   func(childComplexity int) int
 	}
 
+	ImportMucDaiResult struct {
+		ExamsCreated     func(childComplexity int) int
+		ExamsExisting    func(childComplexity int) int
+		ExamsImported    func(childComplexity int) int
+		ExamsSkippedFk07 func(childComplexity int) int
+		Programs         func(childComplexity int) int
+	}
+
 	Invigilation struct {
 		Duration           func(childComplexity int) int
 		InvigilatorID      func(childComplexity int) int
@@ -461,6 +469,7 @@ type ComplexityRoot struct {
 		GenerateGeneratedExams        func(childComplexity int) int
 		GeneratePreplanAssignment     func(childComplexity int, keepAssigned *bool) int
 		GenerateStudentRegs           func(childComplexity int) int
+		ImportMucDaiExams             func(childComplexity int, csv string) int
 		Lab                           func(childComplexity int, ancode int) int
 		MigrateInvigilatorConstraints func(childComplexity int) int
 		MigrateRoomRequestsFromConfig func(childComplexity int) int
@@ -1267,6 +1276,7 @@ type MutationResolver interface {
 	MigrateInvigilatorConstraints(ctx context.Context) (int, error)
 	SetPermanentNonInvigilator(ctx context.Context, teacherID int, name string, reason string) (*model.PermanentNonInvigilator, error)
 	RemovePermanentNonInvigilator(ctx context.Context, teacherID int) (bool, error)
+	ImportMucDaiExams(ctx context.Context, csv string) (*model.ImportMucDaiResult, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
@@ -2598,6 +2608,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.GenerationConfig.WeightPreferExamDays(childComplexity), true
 
+	case "ImportMucDaiResult.examsCreated":
+		if e.complexity.ImportMucDaiResult.ExamsCreated == nil {
+			break
+		}
+
+		return e.complexity.ImportMucDaiResult.ExamsCreated(childComplexity), true
+
+	case "ImportMucDaiResult.examsExisting":
+		if e.complexity.ImportMucDaiResult.ExamsExisting == nil {
+			break
+		}
+
+		return e.complexity.ImportMucDaiResult.ExamsExisting(childComplexity), true
+
+	case "ImportMucDaiResult.examsImported":
+		if e.complexity.ImportMucDaiResult.ExamsImported == nil {
+			break
+		}
+
+		return e.complexity.ImportMucDaiResult.ExamsImported(childComplexity), true
+
+	case "ImportMucDaiResult.examsSkippedFK07":
+		if e.complexity.ImportMucDaiResult.ExamsSkippedFk07 == nil {
+			break
+		}
+
+		return e.complexity.ImportMucDaiResult.ExamsSkippedFk07(childComplexity), true
+
+	case "ImportMucDaiResult.programs":
+		if e.complexity.ImportMucDaiResult.Programs == nil {
+			break
+		}
+
+		return e.complexity.ImportMucDaiResult.Programs(childComplexity), true
+
 	case "Invigilation.duration":
 		if e.complexity.Invigilation.Duration == nil {
 			break
@@ -3492,6 +3537,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.GenerateStudentRegs(childComplexity), true
+
+	case "Mutation.importMucDaiExams":
+		if e.complexity.Mutation.ImportMucDaiExams == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_importMucDaiExams_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ImportMucDaiExams(childComplexity, args["csv"].(string)), true
 
 	case "Mutation.lab":
 		if e.complexity.Mutation.Lab == nil {
@@ -8623,6 +8680,31 @@ type RoomWithInvigilator {
   prePlanned: Boolean!
 }
 `, BuiltIn: false},
+	{Name: "../mucdai.graphqls", Input: `extend type Mutation {
+  """
+  Import MUC.DAI exams from a CSV (the file you get from MUC.DAI; columns Nr,
+  Modulname, Prüfungsform, Bewertung, Dauer, Erstpruefender, Zweitpruefender,
+  IstWiederholung, Studiengruppe, Prüfungsplanung). Replaces the mucdai_<program>
+  data and generates the non-ZPA exams for everything not planned by FK07 (FK07
+  exams already exist as ZPA exams and are only linked). The GUI sends the file
+  content as text.
+  """
+  importMucDaiExams(csv: String!): ImportMucDaiResult!
+}
+
+type ImportMucDaiResult {
+  "programs (Studiengruppen) found in the CSV."
+  programs: [String!]!
+  "total exam rows imported into the mucdai_<program> collections."
+  examsImported: Int!
+  "new non-ZPA exams created (non-FK07, not existing yet)."
+  examsCreated: Int!
+  "non-FK07 exams that already existed (kept with their ancode)."
+  examsExisting: Int!
+  "FK07 exams skipped (they exist as ZPA exams, only linked)."
+  examsSkippedFK07: Int!
+}
+`, BuiltIn: false},
 	{Name: "../mutation_log.graphqls", Input: `extend type Query {
   """
   Audit log of mutating operations (mutations + data-changing subscriptions),
@@ -11156,6 +11238,34 @@ func (ec *executionContext) field_Mutation_generatePreplanAssignment_argsKeepAss
 	}
 
 	var zeroVal *bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_importMucDaiExams_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_importMucDaiExams_argsCSV(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["csv"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_importMucDaiExams_argsCSV(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["csv"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("csv"))
+	if tmp, ok := rawArgs["csv"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -23041,6 +23151,226 @@ func (ec *executionContext) fieldContext_GenerationConfig_weightDaySpan(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _ImportMucDaiResult_programs(ctx context.Context, field graphql.CollectedField, obj *model.ImportMucDaiResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImportMucDaiResult_programs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Programs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImportMucDaiResult_programs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportMucDaiResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportMucDaiResult_examsImported(ctx context.Context, field graphql.CollectedField, obj *model.ImportMucDaiResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImportMucDaiResult_examsImported(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamsImported, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImportMucDaiResult_examsImported(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportMucDaiResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportMucDaiResult_examsCreated(ctx context.Context, field graphql.CollectedField, obj *model.ImportMucDaiResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImportMucDaiResult_examsCreated(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamsCreated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImportMucDaiResult_examsCreated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportMucDaiResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportMucDaiResult_examsExisting(ctx context.Context, field graphql.CollectedField, obj *model.ImportMucDaiResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImportMucDaiResult_examsExisting(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamsExisting, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImportMucDaiResult_examsExisting(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportMucDaiResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportMucDaiResult_examsSkippedFK07(ctx context.Context, field graphql.CollectedField, obj *model.ImportMucDaiResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImportMucDaiResult_examsSkippedFK07(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamsSkippedFk07, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImportMucDaiResult_examsSkippedFK07(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportMucDaiResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Invigilation_roomName(ctx context.Context, field graphql.CollectedField, obj *model.Invigilation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Invigilation_roomName(ctx, field)
 	if err != nil {
@@ -28676,6 +29006,73 @@ func (ec *executionContext) fieldContext_Mutation_removePermanentNonInvigilator(
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removePermanentNonInvigilator_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_importMucDaiExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_importMucDaiExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ImportMucDaiExams(rctx, fc.Args["csv"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ImportMucDaiResult)
+	fc.Result = res
+	return ec.marshalNImportMucDaiResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐImportMucDaiResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_importMucDaiExams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "programs":
+				return ec.fieldContext_ImportMucDaiResult_programs(ctx, field)
+			case "examsImported":
+				return ec.fieldContext_ImportMucDaiResult_examsImported(ctx, field)
+			case "examsCreated":
+				return ec.fieldContext_ImportMucDaiResult_examsCreated(ctx, field)
+			case "examsExisting":
+				return ec.fieldContext_ImportMucDaiResult_examsExisting(ctx, field)
+			case "examsSkippedFK07":
+				return ec.fieldContext_ImportMucDaiResult_examsSkippedFK07(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImportMucDaiResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_importMucDaiExams_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -62611,6 +63008,65 @@ func (ec *executionContext) _GenerationConfig(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var importMucDaiResultImplementors = []string{"ImportMucDaiResult"}
+
+func (ec *executionContext) _ImportMucDaiResult(ctx context.Context, sel ast.SelectionSet, obj *model.ImportMucDaiResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, importMucDaiResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImportMucDaiResult")
+		case "programs":
+			out.Values[i] = ec._ImportMucDaiResult_programs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examsImported":
+			out.Values[i] = ec._ImportMucDaiResult_examsImported(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examsCreated":
+			out.Values[i] = ec._ImportMucDaiResult_examsCreated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examsExisting":
+			out.Values[i] = ec._ImportMucDaiResult_examsExisting(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examsSkippedFK07":
+			out.Values[i] = ec._ImportMucDaiResult_examsSkippedFK07(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var invigilationImplementors = []string{"Invigilation"}
 
 func (ec *executionContext) _Invigilation(ctx context.Context, sel ast.SelectionSet, obj *model.Invigilation) graphql.Marshaler {
@@ -63691,6 +64147,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "removePermanentNonInvigilator":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removePermanentNonInvigilator(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "importMucDaiExams":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_importMucDaiExams(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -71818,6 +72281,20 @@ func (ec *executionContext) marshalNGenerationConfig2ᚖgithubᚗcomᚋobcodeᚋ
 func (ec *executionContext) unmarshalNGenerationConfigInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerationConfigInput(ctx context.Context, v any) (model.GenerationConfigInput, error) {
 	res, err := ec.unmarshalInputGenerationConfigInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNImportMucDaiResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐImportMucDaiResult(ctx context.Context, sel ast.SelectionSet, v model.ImportMucDaiResult) graphql.Marshaler {
+	return ec._ImportMucDaiResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNImportMucDaiResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐImportMucDaiResult(ctx context.Context, sel ast.SelectionSet, v *model.ImportMucDaiResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImportMucDaiResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {

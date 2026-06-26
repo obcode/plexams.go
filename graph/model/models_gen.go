@@ -320,6 +320,19 @@ type GenerationConfigInput struct {
 	WeightDaySpan          float64 `json:"weightDaySpan"`
 }
 
+type ImportMucDaiResult struct {
+	// programs (Studiengruppen) found in the CSV.
+	Programs []string `json:"programs"`
+	// total exam rows imported into the mucdai_<program> collections.
+	ExamsImported int `json:"examsImported"`
+	// new non-ZPA exams created (non-FK07, not existing yet).
+	ExamsCreated int `json:"examsCreated"`
+	// non-FK07 exams that already existed (kept with their ancode).
+	ExamsExisting int `json:"examsExisting"`
+	// FK07 exams skipped (they exist as ZPA exams, only linked).
+	ExamsSkippedFk07 int `json:"examsSkippedFK07"`
+}
+
 type Invigilation struct {
 	RoomName           *string `json:"roomName,omitempty"`
 	Duration           int     `json:"duration"`

@@ -19,7 +19,6 @@ extend type Query {
 
 extend type Mutation {
   addExamToSlot(day: Int!, time: Int!, ancode: Int!): Boolean!
-  rmExamFromSlot(ancode: Int!): Boolean!
 }
 
 type Emails {

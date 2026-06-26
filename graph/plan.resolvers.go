@@ -18,11 +18,6 @@ func (r *mutationResolver) AddExamToSlot(ctx context.Context, day int, time int,
 	panic(fmt.Errorf("not implemented: AddExamToSlot - addExamToSlot"))
 }
 
-// RmExamFromSlot is the resolver for the rmExamFromSlot field.
-func (r *mutationResolver) RmExamFromSlot(ctx context.Context, ancode int) (bool, error) {
-	panic(fmt.Errorf("not implemented: RmExamFromSlot - rmExamFromSlot"))
-}
-
 // Starttime is the resolver for the starttime field.
 func (r *planEntryResolver) Starttime(ctx context.Context, obj *model.PlanEntry) (*time.Time, error) {
 	return r.plexams.GetStarttime(obj.DayNumber, obj.SlotNumber)

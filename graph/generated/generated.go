@@ -492,7 +492,6 @@ type ComplexityRoot struct {
 		ResetInvigilations            func(childComplexity int) int
 		ResetRoomsForExams            func(childComplexity int) int
 		RmConstraints                 func(childComplexity int, ancode int) int
-		RmExamFromSlot                func(childComplexity int, ancode int) int
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
 		SameSlot                      func(childComplexity int, ancode int, ancodes []int) int
 		Seb                           func(childComplexity int, ancode int) int
@@ -1287,7 +1286,6 @@ type MutationResolver interface {
 	AddNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int, reason string) (*model.NtaRoomAloneWaiver, error)
 	RemoveNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int) (bool, error)
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
-	RmExamFromSlot(ctx context.Context, ancode int) (bool, error)
 	SetPlaner(ctx context.Context, name string, email string) (*model.Planer, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
 	GeneratePreplanAssignment(ctx context.Context, keepAssigned *bool) (*model.PreplanValidation, error)
@@ -3782,18 +3780,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RmConstraints(childComplexity, args["ancode"].(int)), true
-
-	case "Mutation.rmExamFromSlot":
-		if e.complexity.Mutation.RmExamFromSlot == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_rmExamFromSlot_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.RmExamFromSlot(childComplexity, args["ancode"].(int)), true
 
 	case "Mutation.rmZpaExamFromPlan":
 		if e.complexity.Mutation.RmZpaExamFromPlan == nil {
@@ -8897,7 +8883,6 @@ extend type Mutation {
 
 extend type Mutation {
   addExamToSlot(day: Int!, time: Int!, ancode: Int!): Boolean!
-  rmExamFromSlot(ancode: Int!): Boolean!
 }
 
 type Emails {
@@ -12085,34 +12070,6 @@ func (ec *executionContext) field_Mutation_rmConstraints_args(ctx context.Contex
 	return args, nil
 }
 func (ec *executionContext) field_Mutation_rmConstraints_argsAncode(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
-	if tmp, ok := rawArgs["ancode"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_rmExamFromSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_rmExamFromSlot_argsAncode(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_rmExamFromSlot_argsAncode(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (int, error) {
@@ -29759,61 +29716,6 @@ func (ec *executionContext) fieldContext_Mutation_addExamToSlot(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addExamToSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_rmExamFromSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_rmExamFromSlot(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RmExamFromSlot(rctx, fc.Args["ancode"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_rmExamFromSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_rmExamFromSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -64481,13 +64383,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "addExamToSlot":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addExamToSlot(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "rmExamFromSlot":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_rmExamFromSlot(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

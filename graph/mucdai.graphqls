@@ -8,6 +8,12 @@ extend type Mutation {
   content as text.
   """
   importMucDaiExams(csv: String!): ImportMucDaiResult!
+  """
+  Set the external date/time of an exam (e.g. a MUC.DAI exam planned by another
+  faculty). The matching slot is computed and stored as the plan entry's
+  externalTime. date: dd.mm.yyyy, time: HH:MM.
+  """
+  setExternalExamTime(ancode: Int!, date: String!, time: String!): Boolean!
 }
 
 type ImportMucDaiResult {

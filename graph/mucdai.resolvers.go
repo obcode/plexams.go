@@ -14,3 +14,8 @@ import (
 func (r *mutationResolver) ImportMucDaiExams(ctx context.Context, csv string) (*model.ImportMucDaiResult, error) {
 	return r.plexams.ImportMucDaiExams(ctx, csv)
 }
+
+// SetExternalExamTime is the resolver for the setExternalExamTime field.
+func (r *mutationResolver) SetExternalExamTime(ctx context.Context, ancode int, date string, time string) (bool, error) {
+	return r.plexams.SetExternalExamTime(ctx, ancode, date, time)
+}

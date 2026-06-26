@@ -11,6 +11,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// SetExternalExamTime sets the external date/time of an exam (e.g. a MUC.DAI exam
+// planned by another faculty): it computes the matching slot and stores it as the
+// plan entry's externalTime. date is dd.mm.yyyy, t is HH:MM (Europe/Berlin).
+func (p *Plexams) SetExternalExamTime(ctx context.Context, ancode int, date, t string) (bool, error) {
+	slottime, err := time.ParseInLocation("02.01.2006 15:04", date+" "+t, time.Local)
+	if err != nil {
+		return false, fmt.Errorf("cannot parse date/time %q %q (expected dd.mm.yyyy and HH:MM): %w", date, t, err)
+	}
+	return p.AddExamToSlottime(ctx, ancode, slottime)
+}
+
 func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, time time.Time) (bool, error) {
 	exam, err := p.GetZpaExamByAncode(ctx, ancode)
 	duration := 90 // good default

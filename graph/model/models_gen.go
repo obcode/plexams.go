@@ -331,6 +331,8 @@ type ImportMucDaiResult struct {
 	ExamsExisting int `json:"examsExisting"`
 	// FK07 exams skipped (they exist as ZPA exams, only linked).
 	ExamsSkippedFk07 int `json:"examsSkippedFK07"`
+	// generated exams of the imported programs removed because they are no longer in the CSV (or flipped to FK07).
+	ExamsRemoved int `json:"examsRemoved"`
 }
 
 type Invigilation struct {

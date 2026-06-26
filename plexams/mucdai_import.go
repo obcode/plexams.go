@@ -63,6 +63,13 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 		nextAncode = maxAncode + 1
 	}
 
+	importedPrograms := make(map[string]bool, len(programs))
+	for _, program := range programs {
+		importedPrograms[program] = true
+	}
+	// keys that should have a generated exam after this import (non-FK07)
+	validKeys := make(map[primussKey]bool)
+
 	for _, program := range programs {
 		modelExams, err := p.MucDaiExamsForProgram(ctx, program)
 		if err != nil {
@@ -73,7 +80,9 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 				result.ExamsSkippedFk07++
 				continue
 			}
-			if _, ok := existing[primussKey{exam.Program, exam.PrimussAncode}]; ok {
+			key := primussKey{exam.Program, exam.PrimussAncode}
+			validKeys[key] = true
+			if _, ok := existing[key]; ok {
 				result.ExamsExisting++
 				continue
 			}
@@ -82,10 +91,25 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 					Msg("cannot create mucdai exam")
 				return nil, err
 			}
-			existing[primussKey{exam.Program, exam.PrimussAncode}] = nextAncode
+			existing[key] = nextAncode
 			result.ExamsCreated++
 			nextAncode++
 		}
+	}
+
+	// remove generated exams of the imported programs that are no longer in the CSV
+	// (or flipped to FK07): drop the non-ZPA exam and any plan entry.
+	for key, ancode := range existing {
+		if !importedPrograms[key.program] || validKeys[key] {
+			continue
+		}
+		if err := p.dbClient.DeleteNonZpaExam(ctx, ancode); err != nil {
+			return nil, err
+		}
+		if err := p.dbClient.RemovePlanEntry(ctx, ancode); err != nil {
+			return nil, err
+		}
+		result.ExamsRemoved++
 	}
 
 	return result, nil

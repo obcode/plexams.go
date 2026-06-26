@@ -27,4 +27,6 @@ type ImportMucDaiResult {
   examsExisting: Int!
   "FK07 exams skipped (they exist as ZPA exams, only linked)."
   examsSkippedFK07: Int!
+  "generated exams of the imported programs removed because they are no longer in the CSV (or flipped to FK07)."
+  examsRemoved: Int!
 }

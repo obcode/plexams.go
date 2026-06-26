@@ -312,6 +312,7 @@ type ComplexityRoot struct {
 		ExamsCreated     func(childComplexity int) int
 		ExamsExisting    func(childComplexity int) int
 		ExamsImported    func(childComplexity int) int
+		ExamsRemoved     func(childComplexity int) int
 		ExamsSkippedFk07 func(childComplexity int) int
 		Programs         func(childComplexity int) int
 	}
@@ -2630,6 +2631,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ImportMucDaiResult.ExamsImported(childComplexity), true
+
+	case "ImportMucDaiResult.examsRemoved":
+		if e.complexity.ImportMucDaiResult.ExamsRemoved == nil {
+			break
+		}
+
+		return e.complexity.ImportMucDaiResult.ExamsRemoved(childComplexity), true
 
 	case "ImportMucDaiResult.examsSkippedFK07":
 		if e.complexity.ImportMucDaiResult.ExamsSkippedFk07 == nil {
@@ -8734,6 +8742,8 @@ type ImportMucDaiResult {
   examsExisting: Int!
   "FK07 exams skipped (they exist as ZPA exams, only linked)."
   examsSkippedFK07: Int!
+  "generated exams of the imported programs removed because they are no longer in the CSV (or flipped to FK07)."
+  examsRemoved: Int!
 }
 `, BuiltIn: false},
 	{Name: "../mutation_log.graphqls", Input: `extend type Query {
@@ -23447,6 +23457,50 @@ func (ec *executionContext) fieldContext_ImportMucDaiResult_examsSkippedFK07(_ c
 	return fc, nil
 }
 
+func (ec *executionContext) _ImportMucDaiResult_examsRemoved(ctx context.Context, field graphql.CollectedField, obj *model.ImportMucDaiResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ImportMucDaiResult_examsRemoved(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamsRemoved, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ImportMucDaiResult_examsRemoved(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportMucDaiResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Invigilation_roomName(ctx context.Context, field graphql.CollectedField, obj *model.Invigilation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Invigilation_roomName(ctx, field)
 	if err != nil {
@@ -29233,6 +29287,8 @@ func (ec *executionContext) fieldContext_Mutation_importMucDaiExams(ctx context.
 				return ec.fieldContext_ImportMucDaiResult_examsExisting(ctx, field)
 			case "examsSkippedFK07":
 				return ec.fieldContext_ImportMucDaiResult_examsSkippedFK07(ctx, field)
+			case "examsRemoved":
+				return ec.fieldContext_ImportMucDaiResult_examsRemoved(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ImportMucDaiResult", field.Name)
 		},
@@ -63217,6 +63273,11 @@ func (ec *executionContext) _ImportMucDaiResult(ctx context.Context, sel ast.Sel
 			}
 		case "examsSkippedFK07":
 			out.Values[i] = ec._ImportMucDaiResult_examsSkippedFK07(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examsRemoved":
+			out.Values[i] = ec._ImportMucDaiResult_examsRemoved(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

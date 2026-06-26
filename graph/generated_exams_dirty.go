@@ -42,6 +42,8 @@ var generatedExamsDirtyOps = map[string]bool{
 	// imports that change exams/students
 	"importExamsFromZPA":    true,
 	"importStudentsFromZPA": true,
+	// MUC.DAI import adds/removes non-ZPA exams
+	"importMucDaiExams": true,
 }
 
 // generatedExamsDirtyMiddleware marks the cached generated exams stale after a

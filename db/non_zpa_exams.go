@@ -13,6 +13,26 @@ func (db *DB) AddNonZpaExam(ctx context.Context, exam *model.ZPAExam) error {
 	return err
 }
 
+// DeleteNonZpaExam removes a non-ZPA exam by its ancode.
+func (db *DB) DeleteNonZpaExam(ctx context.Context, ancode int) error {
+	_, err := db.Client.Database(db.databaseName).Collection(collectionNonZpaExams).
+		DeleteOne(ctx, bson.M{"ancode": ancode})
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot delete non zpa exam")
+	}
+	return err
+}
+
+// RemovePlanEntry removes the plan entry (if any) of an ancode.
+func (db *DB) RemovePlanEntry(ctx context.Context, ancode int) error {
+	_, err := db.Client.Database(db.databaseName).Collection(collectionNamePlan).
+		DeleteMany(ctx, bson.M{"ancode": ancode})
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot remove plan entry")
+	}
+	return err
+}
+
 func (db *DB) NonZpaExam(ctx context.Context, ancode int) (*model.ZPAExam, error) {
 	var exam model.ZPAExam
 	err := db.Client.Database(db.databaseName).Collection(collectionNonZpaExams).FindOne(ctx, bson.M{"ancode": ancode}).Decode(&exam)

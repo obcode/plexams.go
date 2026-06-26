@@ -27,6 +27,8 @@ var studentRegsDirtyOps = map[string]bool{
 	// imports that change exams/students
 	"importExamsFromZPA":    true,
 	"importStudentsFromZPA": true,
+	// MUC.DAI import adds/removes non-ZPA exams
+	"importMucDaiExams": true,
 }
 
 // studentRegsDirtyMiddleware marks the prepared student regs stale after a

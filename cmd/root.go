@@ -47,7 +47,14 @@ var (
 				return nil
 			}
 
-			return initConfig()
+			if err := initConfig(); err != nil {
+				return err
+			}
+
+			// audit-log mutating CLI invocations (same mutation_log collection as
+			// the GraphQL middleware); read-only commands are skipped.
+			logCLIInvocation(cmd, args)
+			return nil
 		},
 	}
 )

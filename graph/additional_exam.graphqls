@@ -1,0 +1,48 @@
+extend type Query {
+  """
+  Additional exams: fully specified entries that are appended to the ZPA upload
+  but are not part of the normal plan (replaces publish.additionalExams).
+  """
+  additionalExams: [AdditionalExam!]!
+}
+
+extend type Mutation {
+  "Create or update an additional exam (key: ancode)."
+  upsertAdditionalExam(input: AdditionalExamInput!): AdditionalExam!
+  "Delete an additional exam by ancode. Returns false if there was none."
+  deleteAdditionalExam(ancode: Int!): Boolean!
+}
+
+type AdditionalExam {
+  ancode: Int!
+  "date in dd.mm.yyyy."
+  date: String!
+  "time in HH:MM."
+  time: String!
+  rooms: [AdditionalExamRoom!]!
+}
+
+type AdditionalExamRoom {
+  roomName: String!
+  invigilatorID: Int!
+  duration: Int!
+  isReserve: Boolean!
+  studentCount: Int!
+  isHandicap: Boolean!
+}
+
+input AdditionalExamInput {
+  ancode: Int!
+  date: String!
+  time: String!
+  rooms: [AdditionalExamRoomInput!]!
+}
+
+input AdditionalExamRoomInput {
+  roomName: String!
+  invigilatorID: Int!
+  duration: Int!
+  isReserve: Boolean!
+  studentCount: Int!
+  isHandicap: Boolean!
+}

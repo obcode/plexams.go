@@ -54,6 +54,22 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	AdditionalExam struct {
+		Ancode func(childComplexity int) int
+		Date   func(childComplexity int) int
+		Rooms  func(childComplexity int) int
+		Time   func(childComplexity int) int
+	}
+
+	AdditionalExamRoom struct {
+		Duration      func(childComplexity int) int
+		InvigilatorID func(childComplexity int) int
+		IsHandicap    func(childComplexity int) int
+		IsReserve     func(childComplexity int) int
+		RoomName      func(childComplexity int) int
+		StudentCount  func(childComplexity int) int
+	}
+
 	AnCode struct {
 		Ancode func(childComplexity int) int
 	}
@@ -428,6 +444,7 @@ type ComplexityRoot struct {
 		ClearEmailAttachments         func(childComplexity int, kind string) int
 		ConnectPreplanExamToAncode    func(childComplexity int, id int, ancode int) int
 		CreateSemester                func(childComplexity int, semester string, input model.SemesterConfigInputData) int
+		DeleteAdditionalExam          func(childComplexity int, ancode int) int
 		DeleteInvigilatorConstraints  func(childComplexity int, teacherID int) int
 		DeletePreplanExam             func(childComplexity int, id int) int
 		DeleteSpecialInterest         func(childComplexity int, name string) int
@@ -481,6 +498,7 @@ type ComplexityRoot struct {
 		UpdatePreplanExam             func(childComplexity int, id int, input model.PreplanExamInput) int
 		UpdateRoom                    func(childComplexity int, input model.RoomInput) int
 		UpdateRoomRequestTime         func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
+		UpsertAdditionalExam          func(childComplexity int, input model.AdditionalExamInput) int
 		UpsertSpecialInterest         func(childComplexity int, input model.SpecialInterestInput) int
 		UpsertStudyProgram            func(childComplexity int, input model.StudyProgramInput) int
 		ZpaExamsToPlan                func(childComplexity int, input []int) int
@@ -716,6 +734,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		AdditionalExams               func(childComplexity int) int
 		AllAnnyBookings               func(childComplexity int) int
 		AllProgramsInPlan             func(childComplexity int) int
 		AllSemesterNames              func(childComplexity int) int
@@ -1205,6 +1224,8 @@ type GeneratedExamResolver interface {
 	MainExamer(ctx context.Context, obj *model.GeneratedExam) (*model.Teacher, error)
 }
 type MutationResolver interface {
+	UpsertAdditionalExam(ctx context.Context, input model.AdditionalExamInput) (*model.AdditionalExam, error)
+	DeleteAdditionalExam(ctx context.Context, ancode int) (bool, error)
 	NotPlannedByMe(ctx context.Context, ancode int) (bool, error)
 	ExcludeDays(ctx context.Context, ancode int, days []string) (bool, error)
 	PossibleDays(ctx context.Context, ancode int, days []string) (bool, error)
@@ -1292,6 +1313,7 @@ type QueryResolver interface {
 	SemesterConfig(ctx context.Context) (*model.SemesterConfig, error)
 	SemesterConfigInput(ctx context.Context) (*model.SemesterConfigInput, error)
 	NewSemesterConfigDefaults(ctx context.Context) (*model.SemesterConfigInput, error)
+	AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error)
 	AnnyBookings(ctx context.Context, room *string) ([]*model.AnnyBooking, error)
 	AllAnnyBookings(ctx context.Context) ([]*model.AnnyBooking, error)
 	ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error)
@@ -1454,6 +1476,76 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "AdditionalExam.ancode":
+		if e.complexity.AdditionalExam.Ancode == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExam.Ancode(childComplexity), true
+
+	case "AdditionalExam.date":
+		if e.complexity.AdditionalExam.Date == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExam.Date(childComplexity), true
+
+	case "AdditionalExam.rooms":
+		if e.complexity.AdditionalExam.Rooms == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExam.Rooms(childComplexity), true
+
+	case "AdditionalExam.time":
+		if e.complexity.AdditionalExam.Time == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExam.Time(childComplexity), true
+
+	case "AdditionalExamRoom.duration":
+		if e.complexity.AdditionalExamRoom.Duration == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExamRoom.Duration(childComplexity), true
+
+	case "AdditionalExamRoom.invigilatorID":
+		if e.complexity.AdditionalExamRoom.InvigilatorID == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExamRoom.InvigilatorID(childComplexity), true
+
+	case "AdditionalExamRoom.isHandicap":
+		if e.complexity.AdditionalExamRoom.IsHandicap == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExamRoom.IsHandicap(childComplexity), true
+
+	case "AdditionalExamRoom.isReserve":
+		if e.complexity.AdditionalExamRoom.IsReserve == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExamRoom.IsReserve(childComplexity), true
+
+	case "AdditionalExamRoom.roomName":
+		if e.complexity.AdditionalExamRoom.RoomName == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExamRoom.RoomName(childComplexity), true
+
+	case "AdditionalExamRoom.studentCount":
+		if e.complexity.AdditionalExamRoom.StudentCount == nil {
+			break
+		}
+
+		return e.complexity.AdditionalExamRoom.StudentCount(childComplexity), true
 
 	case "AnCode.ancode":
 		if e.complexity.AnCode.Ancode == nil {
@@ -3238,6 +3330,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.CreateSemester(childComplexity, args["semester"].(string), args["input"].(model.SemesterConfigInputData)), true
 
+	case "Mutation.deleteAdditionalExam":
+		if e.complexity.Mutation.DeleteAdditionalExam == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteAdditionalExam_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteAdditionalExam(childComplexity, args["ancode"].(int)), true
+
 	case "Mutation.deleteInvigilatorConstraints":
 		if e.complexity.Mutation.DeleteInvigilatorConstraints == nil {
 			break
@@ -3838,6 +3942,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateRoomRequestTime(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["from"].(time.Time), args["until"].(time.Time)), true
+
+	case "Mutation.upsertAdditionalExam":
+		if e.complexity.Mutation.UpsertAdditionalExam == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_upsertAdditionalExam_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpsertAdditionalExam(childComplexity, args["input"].(model.AdditionalExamInput)), true
 
 	case "Mutation.upsertSpecialInterest":
 		if e.complexity.Mutation.UpsertSpecialInterest == nil {
@@ -4868,6 +4984,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PrimussExamWithCount.StudentRegsCount(childComplexity), true
+
+	case "Query.additionalExams":
+		if e.complexity.Query.AdditionalExams == nil {
+			break
+		}
+
+		return e.complexity.Query.AdditionalExams(childComplexity), true
 
 	case "Query.allAnnyBookings":
 		if e.complexity.Query.AllAnnyBookings == nil {
@@ -7648,6 +7771,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAdditionalExamInput,
+		ec.unmarshalInputAdditionalExamRoomInput,
 		ec.unmarshalInputArgFilterInput,
 		ec.unmarshalInputConstraintsInput,
 		ec.unmarshalInputEmailsInput,
@@ -7776,6 +7901,55 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
+	{Name: "../additional_exam.graphqls", Input: `extend type Query {
+  """
+  Additional exams: fully specified entries that are appended to the ZPA upload
+  but are not part of the normal plan (replaces publish.additionalExams).
+  """
+  additionalExams: [AdditionalExam!]!
+}
+
+extend type Mutation {
+  "Create or update an additional exam (key: ancode)."
+  upsertAdditionalExam(input: AdditionalExamInput!): AdditionalExam!
+  "Delete an additional exam by ancode. Returns false if there was none."
+  deleteAdditionalExam(ancode: Int!): Boolean!
+}
+
+type AdditionalExam {
+  ancode: Int!
+  "date in dd.mm.yyyy."
+  date: String!
+  "time in HH:MM."
+  time: String!
+  rooms: [AdditionalExamRoom!]!
+}
+
+type AdditionalExamRoom {
+  roomName: String!
+  invigilatorID: Int!
+  duration: Int!
+  isReserve: Boolean!
+  studentCount: Int!
+  isHandicap: Boolean!
+}
+
+input AdditionalExamInput {
+  ancode: Int!
+  date: String!
+  time: String!
+  rooms: [AdditionalExamRoomInput!]!
+}
+
+input AdditionalExamRoomInput {
+  roomName: String!
+  invigilatorID: Int!
+  duration: Int!
+  isReserve: Boolean!
+  studentCount: Int!
+  isHandicap: Boolean!
+}
+`, BuiltIn: false},
 	{Name: "../anny.graphqls", Input: `extend type Query {
   annyBookings(room: String): [AnnyBooking!]!
   allAnnyBookings: [AnnyBooking!]!
@@ -10517,6 +10691,34 @@ func (ec *executionContext) field_Mutation_createSemester_argsInput(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteAdditionalExam_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_deleteAdditionalExam_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_deleteAdditionalExam_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteInvigilatorConstraints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12814,6 +13016,34 @@ func (ec *executionContext) field_Mutation_updateRoom_argsInput(
 	}
 
 	var zeroVal model.RoomInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_upsertAdditionalExam_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_upsertAdditionalExam_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_upsertAdditionalExam_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.AdditionalExamInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal model.AdditionalExamInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNAdditionalExamInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamInput(ctx, tmp)
+	}
+
+	var zeroVal model.AdditionalExamInput
 	return zeroVal, nil
 }
 
@@ -15372,6 +15602,460 @@ func (ec *executionContext) field___Type_fields_argsIncludeDeprecated(
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _AdditionalExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExam_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExam_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdditionalExam_date(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExam_date(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Date, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExam_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdditionalExam_time(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExam_time(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Time, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExam_time(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdditionalExam_rooms(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExam_rooms(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rooms, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.AdditionalExamRoom)
+	fc.Result = res
+	return ec.marshalNAdditionalExamRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamRoomᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExam_rooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "roomName":
+				return ec.fieldContext_AdditionalExamRoom_roomName(ctx, field)
+			case "invigilatorID":
+				return ec.fieldContext_AdditionalExamRoom_invigilatorID(ctx, field)
+			case "duration":
+				return ec.fieldContext_AdditionalExamRoom_duration(ctx, field)
+			case "isReserve":
+				return ec.fieldContext_AdditionalExamRoom_isReserve(ctx, field)
+			case "studentCount":
+				return ec.fieldContext_AdditionalExamRoom_studentCount(ctx, field)
+			case "isHandicap":
+				return ec.fieldContext_AdditionalExamRoom_isHandicap(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdditionalExamRoom", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdditionalExamRoom_roomName(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExamRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExamRoom_roomName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExamRoom_roomName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExamRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdditionalExamRoom_invigilatorID(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExamRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExamRoom_invigilatorID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InvigilatorID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExamRoom_invigilatorID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExamRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdditionalExamRoom_duration(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExamRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExamRoom_duration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Duration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExamRoom_duration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExamRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdditionalExamRoom_isReserve(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExamRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExamRoom_isReserve(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsReserve, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExamRoom_isReserve(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExamRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdditionalExamRoom_studentCount(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExamRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExamRoom_studentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExamRoom_studentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExamRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdditionalExamRoom_isHandicap(ctx context.Context, field graphql.CollectedField, obj *model.AdditionalExamRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdditionalExamRoom_isHandicap(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsHandicap, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdditionalExamRoom_isHandicap(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdditionalExamRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _AnCode_ancode(ctx context.Context, field graphql.CollectedField, obj *model.AnCode) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AnCode_ancode(ctx, field)
@@ -26063,6 +26747,126 @@ func (ec *executionContext) fieldContext_MucDaiExam_plannedBy(_ context.Context,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_upsertAdditionalExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_upsertAdditionalExam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpsertAdditionalExam(rctx, fc.Args["input"].(model.AdditionalExamInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.AdditionalExam)
+	fc.Result = res
+	return ec.marshalNAdditionalExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_upsertAdditionalExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_AdditionalExam_ancode(ctx, field)
+			case "date":
+				return ec.fieldContext_AdditionalExam_date(ctx, field)
+			case "time":
+				return ec.fieldContext_AdditionalExam_time(ctx, field)
+			case "rooms":
+				return ec.fieldContext_AdditionalExam_rooms(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdditionalExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_upsertAdditionalExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteAdditionalExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteAdditionalExam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteAdditionalExam(rctx, fc.Args["ancode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteAdditionalExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteAdditionalExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -37347,6 +38151,60 @@ func (ec *executionContext) fieldContext_Query_newSemesterConfigDefaults(_ conte
 				return ec.fieldContext_SemesterConfigInput_emails(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfigInput", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_additionalExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_additionalExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().AdditionalExams(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.AdditionalExam)
+	fc.Result = res
+	return ec.marshalNAdditionalExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_additionalExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_AdditionalExam_ancode(ctx, field)
+			case "date":
+				return ec.fieldContext_AdditionalExam_date(ctx, field)
+			case "time":
+				return ec.fieldContext_AdditionalExam_time(ctx, field)
+			case "rooms":
+				return ec.fieldContext_AdditionalExam_rooms(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdditionalExam", field.Name)
 		},
 	}
 	return fc, nil
@@ -58403,6 +59261,116 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAdditionalExamInput(ctx context.Context, obj any) (model.AdditionalExamInput, error) {
+	var it model.AdditionalExamInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"ancode", "date", "time", "rooms"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "ancode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Ancode = data
+		case "date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Date = data
+		case "time":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("time"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Time = data
+		case "rooms":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rooms"))
+			data, err := ec.unmarshalNAdditionalExamRoomInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamRoomInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Rooms = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAdditionalExamRoomInput(ctx context.Context, obj any) (model.AdditionalExamRoomInput, error) {
+	var it model.AdditionalExamRoomInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"roomName", "invigilatorID", "duration", "isReserve", "studentCount", "isHandicap"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "roomName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomName"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomName = data
+		case "invigilatorID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("invigilatorID"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InvigilatorID = data
+		case "duration":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("duration"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Duration = data
+		case "isReserve":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isReserve"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsReserve = data
+		case "studentCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("studentCount"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StudentCount = data
+		case "isHandicap":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isHandicap"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsHandicap = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputArgFilterInput(ctx context.Context, obj any) (model.ArgFilterInput, error) {
 	var it model.ArgFilterInput
 	asMap := map[string]any{}
@@ -59373,6 +60341,124 @@ func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context,
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
+
+var additionalExamImplementors = []string{"AdditionalExam"}
+
+func (ec *executionContext) _AdditionalExam(ctx context.Context, sel ast.SelectionSet, obj *model.AdditionalExam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, additionalExamImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdditionalExam")
+		case "ancode":
+			out.Values[i] = ec._AdditionalExam_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "date":
+			out.Values[i] = ec._AdditionalExam_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "time":
+			out.Values[i] = ec._AdditionalExam_time(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rooms":
+			out.Values[i] = ec._AdditionalExam_rooms(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var additionalExamRoomImplementors = []string{"AdditionalExamRoom"}
+
+func (ec *executionContext) _AdditionalExamRoom(ctx context.Context, sel ast.SelectionSet, obj *model.AdditionalExamRoom) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, additionalExamRoomImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdditionalExamRoom")
+		case "roomName":
+			out.Values[i] = ec._AdditionalExamRoom_roomName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "invigilatorID":
+			out.Values[i] = ec._AdditionalExamRoom_invigilatorID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "duration":
+			out.Values[i] = ec._AdditionalExamRoom_duration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isReserve":
+			out.Values[i] = ec._AdditionalExamRoom_isReserve(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentCount":
+			out.Values[i] = ec._AdditionalExamRoom_studentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isHandicap":
+			out.Values[i] = ec._AdditionalExamRoom_isHandicap(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
 
 var anCodeImplementors = []string{"AnCode"}
 
@@ -61935,6 +63021,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
+		case "upsertAdditionalExam":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_upsertAdditionalExam(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteAdditionalExam":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteAdditionalExam(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "notPlannedByMe":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_notPlannedByMe(ctx, field)
@@ -64280,6 +65380,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_newSemesterConfigDefaults(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "additionalExams":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_additionalExams(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -68986,6 +70108,143 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 // endregion **************************** object.gotpl ****************************
 
 // region    ***************************** type.gotpl *****************************
+
+func (ec *executionContext) marshalNAdditionalExam2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExam(ctx context.Context, sel ast.SelectionSet, v model.AdditionalExam) graphql.Marshaler {
+	return ec._AdditionalExam(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAdditionalExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AdditionalExam) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAdditionalExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAdditionalExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExam(ctx context.Context, sel ast.SelectionSet, v *model.AdditionalExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdditionalExam(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAdditionalExamInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamInput(ctx context.Context, v any) (model.AdditionalExamInput, error) {
+	res, err := ec.unmarshalInputAdditionalExamInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAdditionalExamRoom2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamRoomᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AdditionalExamRoom) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAdditionalExamRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamRoom(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAdditionalExamRoom2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamRoom(ctx context.Context, sel ast.SelectionSet, v *model.AdditionalExamRoom) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdditionalExamRoom(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAdditionalExamRoomInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamRoomInputᚄ(ctx context.Context, v any) ([]*model.AdditionalExamRoomInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.AdditionalExamRoomInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAdditionalExamRoomInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamRoomInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNAdditionalExamRoomInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamRoomInput(ctx context.Context, v any) (*model.AdditionalExamRoomInput, error) {
+	res, err := ec.unmarshalInputAdditionalExamRoomInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
 
 func (ec *executionContext) marshalNAnnyBooking2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyBookingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AnnyBooking) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))

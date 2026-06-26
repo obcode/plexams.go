@@ -10,7 +10,6 @@ import (
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile string, reporter Reporter) ([]*model.ZPAStudentReg, []*model.RegWithError, error) {
@@ -296,55 +295,12 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		})
 	}
 
-	// publish - additionalExams
-	additionalExamsRaw := viper.Get("publish.additionalExams")
-
-	additionalExams := make([]*model.ZPAExamPlan, 0)
-	if additionalExamsRaw != nil {
-		additionalExamsRawSlice := additionalExamsRaw.([]interface{})
-		for _, additionalExamRaw := range additionalExamsRawSlice {
-			additionalExam := additionalExamRaw.(map[string]interface{})
-			ancode := additionalExam["ancode"].(int)
-			// studentCount := int(additionalExam["studentCount"].(float64))
-			date := additionalExam["date"].(string)
-			time := additionalExam["time"].(string)
-			// room := additionalExam["room"].(string)
-			// invigilatorID := int(additionalExam["invigilatorID"].(float64))
-
-			rooms := make([]*model.ZPAExamPlanRoom, 0)
-
-			if _, ok := additionalExam["rooms"]; ok {
-				roomsRaw := additionalExam["rooms"].([]interface{})
-				for _, roomRaw := range roomsRaw {
-					room := roomRaw.(map[string]interface{})
-					roomName := room["room_name"].(string)
-					invigilatorID := room["invigilator_id"].(int)
-					duration := room["duration"].(int)
-					reserveRoom := room["reserve_room"].(bool)
-					numberStudents := room["number_students"].(int)
-					handicapCompensation := room["handicap_compensation"].(bool)
-
-					rooms = append(rooms, &model.ZPAExamPlanRoom{
-						RoomName:      roomName,
-						InvigilatorID: invigilatorID,
-						Duration:      duration,
-						IsReserve:     reserveRoom,
-						StudentCount:  numberStudents,
-						IsHandicap:    handicapCompensation,
-					})
-				}
-			}
-			additionalExams = append(additionalExams, &model.ZPAExamPlan{
-				Semester:             p.semester,
-				AnCode:               ancode,
-				Date:                 date,
-				Time:                 time,
-				ReserveInvigilatorID: 0,
-				Rooms:                rooms,
-			})
-		}
+	// publish - additionalExams (publish-only entries from the DB)
+	additionalExams, err := p.additionalExamPlans(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get additional exams")
+		return nil, err
 	}
-
 	for _, exam := range additionalExams {
 		reporter.Printf("additional exam: %d. %s. %s", exam.AnCode, exam.Date, exam.Time)
 		exams = append(exams, exam)

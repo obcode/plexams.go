@@ -10,6 +10,40 @@ import (
 	"time"
 )
 
+type AdditionalExam struct {
+	Ancode int `json:"ancode"`
+	// date in dd.mm.yyyy.
+	Date string `json:"date"`
+	// time in HH:MM.
+	Time  string                `json:"time"`
+	Rooms []*AdditionalExamRoom `json:"rooms"`
+}
+
+type AdditionalExamInput struct {
+	Ancode int                        `json:"ancode"`
+	Date   string                     `json:"date"`
+	Time   string                     `json:"time"`
+	Rooms  []*AdditionalExamRoomInput `json:"rooms"`
+}
+
+type AdditionalExamRoom struct {
+	RoomName      string `json:"roomName"`
+	InvigilatorID int    `json:"invigilatorID"`
+	Duration      int    `json:"duration"`
+	IsReserve     bool   `json:"isReserve"`
+	StudentCount  int    `json:"studentCount"`
+	IsHandicap    bool   `json:"isHandicap"`
+}
+
+type AdditionalExamRoomInput struct {
+	RoomName      string `json:"roomName"`
+	InvigilatorID int    `json:"invigilatorID"`
+	Duration      int    `json:"duration"`
+	IsReserve     bool   `json:"isReserve"`
+	StudentCount  int    `json:"studentCount"`
+	IsHandicap    bool   `json:"isHandicap"`
+}
+
 type AnCode struct {
 	Ancode int `json:"ancode"`
 }

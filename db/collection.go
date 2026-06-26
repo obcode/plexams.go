@@ -33,6 +33,7 @@ const (
 	collectionExamDurationOverride = "exam_duration_overrides"
 	collectionSpecialInterests     = "special_interests"
 	collectionGenerationConfig     = "generation_config"
+	collectionAdditionalExams      = "additional_exams"
 
 	collectionGlobalRooms     = "rooms"
 	collectionRoomsPrePlanned = "rooms_pre_planned"

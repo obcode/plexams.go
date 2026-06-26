@@ -963,12 +963,13 @@ type ComplexityRoot struct {
 	}
 
 	StudyProgram struct {
-		Active    func(childComplexity int) int
-		Category  func(childComplexity int) int
-		Degree    func(childComplexity int) int
-		Name      func(childComplexity int) int
-		Retired   func(childComplexity int) int
-		Shortname func(childComplexity int) int
+		Active            func(childComplexity int) int
+		Category          func(childComplexity int) int
+		Degree            func(childComplexity int) int
+		ExternalExamsBase func(childComplexity int) int
+		Name              func(childComplexity int) int
+		Retired           func(childComplexity int) int
+		Shortname         func(childComplexity int) int
 	}
 
 	Subscription struct {
@@ -6229,6 +6230,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StudyProgram.Degree(childComplexity), true
 
+	case "StudyProgram.externalExamsBase":
+		if e.complexity.StudyProgram.ExternalExamsBase == nil {
+			break
+		}
+
+		return e.complexity.StudyProgram.ExternalExamsBase(childComplexity), true
+
 	case "StudyProgram.name":
 		if e.complexity.StudyProgram.Name == nil {
 			break
@@ -9041,6 +9049,12 @@ type StudyProgram {
   active: Boolean!
   "A retired fk07 program counts as an \"old program\" (no longer planned)."
   retired: Boolean!
+  """
+  Base ancode for external (e.g. MUC.DAI) exams of this program: the local ZPA
+  ancode is externalExamsBase + primussAncode. Only for externally imported
+  programs (mucdai/misc).
+  """
+  externalExamsBase: Int
 }
 
 input StudyProgramInput {
@@ -9050,6 +9064,7 @@ input StudyProgramInput {
   category: String!
   active: Boolean!
   retired: Boolean!
+  externalExamsBase: Int
 }
 `, BuiltIn: false},
 	{Name: "../validation.graphqls", Input: `"""ValidationLevel classifies a single validation finding."""
@@ -28537,6 +28552,8 @@ func (ec *executionContext) fieldContext_Mutation_upsertStudyProgram(ctx context
 				return ec.fieldContext_StudyProgram_active(ctx, field)
 			case "retired":
 				return ec.fieldContext_StudyProgram_retired(ctx, field)
+			case "externalExamsBase":
+				return ec.fieldContext_StudyProgram_externalExamsBase(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type StudyProgram", field.Name)
 		},
@@ -39999,6 +40016,8 @@ func (ec *executionContext) fieldContext_Query_studyPrograms(_ context.Context, 
 				return ec.fieldContext_StudyProgram_active(ctx, field)
 			case "retired":
 				return ec.fieldContext_StudyProgram_retired(ctx, field)
+			case "externalExamsBase":
+				return ec.fieldContext_StudyProgram_externalExamsBase(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type StudyProgram", field.Name)
 		},
@@ -46528,6 +46547,47 @@ func (ec *executionContext) fieldContext_StudyProgram_retired(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudyProgram_externalExamsBase(ctx context.Context, field graphql.CollectedField, obj *model.StudyProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudyProgram_externalExamsBase(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExternalExamsBase, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudyProgram_externalExamsBase(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudyProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -57101,7 +57161,7 @@ func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"shortname", "name", "degree", "category", "active", "retired"}
+	fieldsInOrder := [...]string{"shortname", "name", "degree", "category", "active", "retired", "externalExamsBase"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -57150,6 +57210,13 @@ func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context,
 				return it, err
 			}
 			it.Retired = data
+		case "externalExamsBase":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalExamsBase"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExternalExamsBase = data
 		}
 	}
 
@@ -65047,6 +65114,8 @@ func (ec *executionContext) _StudyProgram(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "externalExamsBase":
+			out.Values[i] = ec._StudyProgram_externalExamsBase(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

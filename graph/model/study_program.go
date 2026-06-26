@@ -16,4 +16,8 @@ type StudyProgram struct {
 	// Retired marks a discontinued program. A retired fk07 program is treated as
 	// an "old program" (no longer planned, but still relevant for old exams).
 	Retired bool `json:"retired" bson:"retired"`
+	// ExternalExamsBase is the base ancode for external (e.g. MUC.DAI) exams of this
+	// program: the local ZPA ancode is base + primussAncode. Only relevant for
+	// programs whose exams are imported externally (mucdai/misc).
+	ExternalExamsBase *int `json:"externalExamsBase,omitempty" bson:"externalExamsBase,omitempty"`
 }

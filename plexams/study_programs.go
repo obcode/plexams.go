@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -56,12 +57,13 @@ func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) 
 	seedSets := []struct {
 		category   string
 		retired    bool
+		external   bool // read externalExamsBase.<shortname> from config
 		shortnames []string
 	}{
-		{"fk07", false, viper.GetStringSlice("zpa.fk07programs")},
-		{"fk07", true, viper.GetStringSlice("zpa.oldprograms")},
-		{"mucdai", false, viper.GetStringSlice("mucdaiprograms")},
-		{"misc", false, miscPrograms},
+		{"fk07", false, false, viper.GetStringSlice("zpa.fk07programs")},
+		{"fk07", true, false, viper.GetStringSlice("zpa.oldprograms")},
+		{"mucdai", false, true, viper.GetStringSlice("mucdaiprograms")},
+		{"misc", false, true, miscPrograms},
 	}
 
 	created := 0
@@ -74,13 +76,20 @@ func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) 
 			if _, ok := known[shortname]; ok {
 				continue
 			}
-			if err := p.dbClient.UpsertStudyProgram(ctx, &model.StudyProgram{
+			program := &model.StudyProgram{
 				Shortname: shortname,
 				Name:      "",
 				Category:  set.category,
 				Active:    !set.retired,
 				Retired:   set.retired,
-			}); err != nil {
+			}
+			if set.external {
+				if base := viper.GetInt(fmt.Sprintf("externalExamsBase.%s", shortname)); base > 0 {
+					b := base
+					program.ExternalExamsBase = &b
+				}
+			}
+			if err := p.dbClient.UpsertStudyProgram(ctx, program); err != nil {
 				return created, err
 			}
 			known[shortname] = struct{}{}
@@ -88,6 +97,22 @@ func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) 
 		}
 	}
 	return created, nil
+}
+
+// externalExamsBaseForProgram returns the base ancode for external (e.g. MUC.DAI)
+// exams of a program from the StudyProgram master data.
+func (p *Plexams) externalExamsBaseForProgram(ctx context.Context, program string) (int, bool) {
+	programs, err := p.dbClient.StudyPrograms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot read study programs for external exams base")
+		return 0, false
+	}
+	for _, prog := range programs {
+		if prog.Shortname == program && prog.ExternalExamsBase != nil {
+			return *prog.ExternalExamsBase, true
+		}
+	}
+	return 0, false
 }
 
 // fk07ProgramsFromStudyPrograms returns the current and old FK07 program shortnames

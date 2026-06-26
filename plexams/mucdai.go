@@ -2,16 +2,15 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 // mucdaiProgramNames returns the MUC.DAI program shortnames from the StudyProgram
-// master data (category mucdai); falls back to the config (mucdaiprograms) when no
-// such study programs are stored yet.
+// master data (category mucdai).
 func (p *Plexams) mucdaiProgramNames(ctx context.Context) []string {
 	programs, err := p.dbClient.StudyPrograms(ctx)
 	if err != nil {
@@ -22,9 +21,6 @@ func (p *Plexams) mucdaiProgramNames(ctx context.Context) []string {
 		if prog.Category == "mucdai" {
 			names = append(names, prog.Shortname)
 		}
-	}
-	if len(names) == 0 {
-		return viper.GetStringSlice("mucdaiprograms")
 	}
 	return names
 }
@@ -80,6 +76,16 @@ func (p *Plexams) mkMucdaiExam(mucdaiExam *db.MucDaiExam) *model.MucDaiExam {
 		Program:        mucdaiExam.Program,
 		PlannedBy:      mucdaiExam.Planer,
 	}
+}
+
+// AddMucDaiExamByProgram adds a MUC.DAI exam, deriving the local ZPA ancode from the
+// program's externalExamsBase (base + primussAncode) in the StudyProgram master data.
+func (p *Plexams) AddMucDaiExamByProgram(ctx context.Context, mucdaiExam *model.MucDaiExam) (*model.ZPAExam, error) {
+	base, ok := p.externalExamsBaseForProgram(ctx, mucdaiExam.Program)
+	if !ok {
+		return nil, fmt.Errorf("no externalExamsBase set for program %s (StudyProgram master data)", mucdaiExam.Program)
+	}
+	return p.AddMucDaiExam(ctx, base+mucdaiExam.PrimussAncode, mucdaiExam)
 }
 
 func (p *Plexams) AddMucDaiExam(ctx context.Context, zpaAncode int, mucdaiExam *model.MucDaiExam) (*model.ZPAExam, error) {

@@ -13,12 +13,13 @@ import (
 // UpsertStudyProgram is the resolver for the upsertStudyProgram field.
 func (r *mutationResolver) UpsertStudyProgram(ctx context.Context, input model.StudyProgramInput) (*model.StudyProgram, error) {
 	program := &model.StudyProgram{
-		Shortname: input.Shortname,
-		Name:      input.Name,
-		Degree:    input.Degree,
-		Category:  input.Category,
-		Active:    input.Active,
-		Retired:   input.Retired,
+		Shortname:         input.Shortname,
+		Name:              input.Name,
+		Degree:            input.Degree,
+		Category:          input.Category,
+		Active:            input.Active,
+		Retired:           input.Retired,
+		ExternalExamsBase: input.ExternalExamsBase,
 	}
 	return r.plexams.UpsertStudyProgram(ctx, program)
 }

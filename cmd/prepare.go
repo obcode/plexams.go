@@ -10,7 +10,6 @@ import (
 
 	plx "github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -50,14 +49,11 @@ var (
 						continue
 					}
 
-					// generate Ancode == prefix + PrimussAncode
-					zpaAncode := viper.Get(fmt.Sprintf("externalExamsBase.%s", mucdaiExam.Program)).(int) + mucdaiExam.PrimussAncode
-					fmt.Printf("zpaAncode: %d\n", zpaAncode)
-
-					zpaExam, err := plexams.AddMucDaiExam(ctx, zpaAncode, mucdaiExam)
+					zpaExam, err := plexams.AddMucDaiExamByProgram(ctx, mucdaiExam)
 					if err != nil {
 						os.Exit(1)
 					}
+					fmt.Printf("zpaAncode: %d\n", zpaExam.AnCode)
 					prettyJSON, err := json.MarshalIndent(zpaExam, "", "    ")
 					if err != nil {
 						fmt.Println("Failed to generate json", err)
@@ -91,14 +87,11 @@ var (
 					os.Exit(0)
 				}
 
-				// generate Ancode == prefix + PrimussAncode
-				zpaAncode := viper.Get(fmt.Sprintf("externalExamsBase.%s", mucdaiExam.Program)).(int) + mucdaiExam.PrimussAncode
-				fmt.Printf("zpaAncode: %d\n", zpaAncode)
-
-				zpaExam, err := plexams.AddMucDaiExam(ctx, zpaAncode, mucdaiExam)
+				zpaExam, err := plexams.AddMucDaiExamByProgram(ctx, mucdaiExam)
 				if err != nil {
-					os.Exit(1)
+					log.Fatal(err)
 				}
+				fmt.Printf("zpaAncode: %d\n", zpaExam.AnCode)
 
 				prettyJSON, err := json.MarshalIndent(zpaExam, "", "    ")
 				if err != nil {

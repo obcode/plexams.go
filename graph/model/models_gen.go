@@ -792,12 +792,13 @@ type StudentRegsPerStudent struct {
 }
 
 type StudyProgramInput struct {
-	Shortname string  `json:"shortname"`
-	Name      string  `json:"name"`
-	Degree    *string `json:"degree,omitempty"`
-	Category  string  `json:"category"`
-	Active    bool    `json:"active"`
-	Retired   bool    `json:"retired"`
+	Shortname         string  `json:"shortname"`
+	Name              string  `json:"name"`
+	Degree            *string `json:"degree,omitempty"`
+	Category          string  `json:"category"`
+	Active            bool    `json:"active"`
+	Retired           bool    `json:"retired"`
+	ExternalExamsBase *int    `json:"externalExamsBase,omitempty"`
 }
 
 type Subscription struct {

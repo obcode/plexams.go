@@ -97,11 +97,12 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 	}
 
 	if len(validationMessages) > 0 {
-		mucdaiPrograms := viper.GetStringSlice("mucdaiprograms")
+		mucdaiPrograms := p.mucdaiProgramNames(ctx)
 		mucdaiprogram := make(map[int]string)
-		for _, p := range mucdaiPrograms {
-			base := viper.GetInt(fmt.Sprintf("externalExamsBase.%s", p))
-			mucdaiprogram[base] = p
+		for _, prog := range mucdaiPrograms {
+			if base, ok := p.externalExamsBaseForProgram(ctx, prog); ok {
+				mucdaiprogram[base] = prog
+			}
 		}
 
 		v.reporter.StopProgressFail(aurora.Sprintf(aurora.Red("%d known conflicts, but %d problems found"),

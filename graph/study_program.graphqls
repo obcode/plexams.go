@@ -27,6 +27,12 @@ type StudyProgram {
   active: Boolean!
   "A retired fk07 program counts as an \"old program\" (no longer planned)."
   retired: Boolean!
+  """
+  Base ancode for external (e.g. MUC.DAI) exams of this program: the local ZPA
+  ancode is externalExamsBase + primussAncode. Only for externally imported
+  programs (mucdai/misc).
+  """
+  externalExamsBase: Int
 }
 
 input StudyProgramInput {
@@ -36,4 +42,5 @@ input StudyProgramInput {
   category: String!
   active: Boolean!
   retired: Boolean!
+  externalExamsBase: Int
 }

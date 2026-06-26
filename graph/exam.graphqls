@@ -103,5 +103,14 @@ type MucDaiExam {
   duration: Int!
   isRepeaterExam: Boolean!
   program: String!
+  "the responsible faculty (Prüfungsplanung), e.g. FK07 / FK03 / FK08 / FK12."
   plannedBy: String!
+  """
+  Ancode of the created/linked exam: our ZPA ancode for FK07-planned exams, the
+  auto-assigned ancode for exams planned by other faculties. null if not yet
+  created/linked.
+  """
+  ancode: Int
+  "The plan entry, if planned: dayNumber/slotNumber = my time, externalTime = the other faculty's time."
+  planEntry: PlanEntry
 }

@@ -39,7 +39,52 @@ func (p *Plexams) MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error) 
 		}
 	}
 
+	p.enrichMucDaiExams(ctx, exams)
 	return exams, nil
+}
+
+// enrichMucDaiExams fills in the linked/created ancode and plan entry of each MUC.DAI
+// exam: the auto-assigned non-ZPA ancode for exams planned by other faculties, our
+// connected ZPA ancode for FK07-planned ones.
+func (p *Plexams) enrichMucDaiExams(ctx context.Context, exams []*model.MucDaiExam) {
+	nonZpaMap, _, err := p.existingNonZpaByPrimuss(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get non-zpa exams for mucdai enrichment")
+		return
+	}
+
+	connectedAncodeMap := make(map[primussKey]int)
+	if connectedExams, err := p.GetConnectedExams(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot get connected exams for mucdai enrichment")
+	} else {
+		for pa, zpaAncode := range primussAncodesToZpaAncodes(connectedExams) {
+			connectedAncodeMap[primussKey{pa.Program, pa.Ancode}] = zpaAncode
+		}
+	}
+
+	planEntries := make(map[int]*model.PlanEntry)
+	if entries, err := p.dbClient.PlanEntries(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot get plan entries for mucdai enrichment")
+	} else {
+		for _, entry := range entries {
+			planEntries[entry.Ancode] = entry
+		}
+	}
+
+	for _, exam := range exams {
+		key := primussKey{exam.Program, exam.PrimussAncode}
+		ancode, ok := nonZpaMap[key]
+		if !ok {
+			ancode, ok = connectedAncodeMap[key]
+		}
+		if ok {
+			a := ancode
+			exam.Ancode = &a
+			if entry, ok := planEntries[ancode]; ok {
+				exam.PlanEntry = entry
+			}
+		}
+	}
 }
 
 func (p *Plexams) MucDaiExamsForProgram(ctx context.Context, program string) ([]*model.MucDaiExam, error) {

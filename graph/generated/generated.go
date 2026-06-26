@@ -430,12 +430,14 @@ type ComplexityRoot struct {
 	}
 
 	MucDaiExam struct {
+		Ancode         func(childComplexity int) int
 		Duration       func(childComplexity int) int
 		ExamType       func(childComplexity int) int
 		IsRepeaterExam func(childComplexity int) int
 		MainExamer     func(childComplexity int) int
 		MainExamerID   func(childComplexity int) int
 		Module         func(childComplexity int) int
+		PlanEntry      func(childComplexity int) int
 		PlannedBy      func(childComplexity int) int
 		PrimussAncode  func(childComplexity int) int
 		Program        func(childComplexity int) int
@@ -3161,6 +3163,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.MinutesReport.WithinTolerance(childComplexity), true
 
+	case "MucDaiExam.ancode":
+		if e.complexity.MucDaiExam.Ancode == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.Ancode(childComplexity), true
+
 	case "MucDaiExam.duration":
 		if e.complexity.MucDaiExam.Duration == nil {
 			break
@@ -3202,6 +3211,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.MucDaiExam.Module(childComplexity), true
+
+	case "MucDaiExam.planEntry":
+		if e.complexity.MucDaiExam.PlanEntry == nil {
+			break
+		}
+
+		return e.complexity.MucDaiExam.PlanEntry(childComplexity), true
 
 	case "MucDaiExam.plannedBy":
 		if e.complexity.MucDaiExam.PlannedBy == nil {
@@ -8350,7 +8366,16 @@ type MucDaiExam {
   duration: Int!
   isRepeaterExam: Boolean!
   program: String!
+  "the responsible faculty (Prüfungsplanung), e.g. FK07 / FK03 / FK08 / FK12."
   plannedBy: String!
+  """
+  Ancode of the created/linked exam: our ZPA ancode for FK07-planned exams, the
+  auto-assigned ancode for exams planned by other faculties. null if not yet
+  created/linked.
+  """
+  ancode: Int
+  "The plan entry, if planned: dayNumber/slotNumber = my time, externalTime = the other faculty's time."
+  planEntry: PlanEntry
 }
 `, BuiltIn: false},
 	{Name: "../exam_duration.graphqls", Input: `extend type Query {
@@ -27273,6 +27298,102 @@ func (ec *executionContext) fieldContext_MucDaiExam_plannedBy(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _MucDaiExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MucDaiExam_planEntry(ctx context.Context, field graphql.CollectedField, obj *model.MucDaiExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MucDaiExam_planEntry(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PlanEntry, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.PlanEntry)
+	fc.Result = res
+	return ec.marshalOPlanEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanEntry(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MucDaiExam_planEntry(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MucDaiExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_PlanEntry_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_PlanEntry_starttime(ctx, field)
+			case "externalTime":
+				return ec.fieldContext_PlanEntry_externalTime(ctx, field)
+			case "ancode":
+				return ec.fieldContext_PlanEntry_ancode(ctx, field)
+			case "locked":
+				return ec.fieldContext_PlanEntry_locked(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_upsertAdditionalExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_upsertAdditionalExam(ctx, field)
 	if err != nil {
@@ -39688,6 +39809,10 @@ func (ec *executionContext) fieldContext_Query_mucdaiExams(_ context.Context, fi
 				return ec.fieldContext_MucDaiExam_program(ctx, field)
 			case "plannedBy":
 				return ec.fieldContext_MucDaiExam_plannedBy(ctx, field)
+			case "ancode":
+				return ec.fieldContext_MucDaiExam_ancode(ctx, field)
+			case "planEntry":
+				return ec.fieldContext_MucDaiExam_planEntry(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MucDaiExam", field.Name)
 		},
@@ -63899,6 +64024,10 @@ func (ec *executionContext) _MucDaiExam(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "ancode":
+			out.Values[i] = ec._MucDaiExam_ancode(ctx, field, obj)
+		case "planEntry":
+			out.Values[i] = ec._MucDaiExam_planEntry(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

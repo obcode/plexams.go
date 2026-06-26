@@ -481,7 +481,14 @@ type MucDaiExam struct {
 	Duration       int    `json:"duration"`
 	IsRepeaterExam bool   `json:"isRepeaterExam"`
 	Program        string `json:"program"`
-	PlannedBy      string `json:"plannedBy"`
+	// the responsible faculty (Prüfungsplanung), e.g. FK07 / FK03 / FK08 / FK12.
+	PlannedBy string `json:"plannedBy"`
+	// Ancode of the created/linked exam: our ZPA ancode for FK07-planned exams, the
+	// auto-assigned ancode for exams planned by other faculties. null if not yet
+	// created/linked.
+	Ancode *int `json:"ancode,omitempty"`
+	// The plan entry, if planned: dayNumber/slotNumber = my time, externalTime = the other faculty's time.
+	PlanEntry *PlanEntry `json:"planEntry,omitempty"`
 }
 
 type Mutation struct {

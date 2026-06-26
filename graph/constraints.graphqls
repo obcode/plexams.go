@@ -23,6 +23,8 @@ extend type Mutation {
 type Constraints {
   ancode: Int!
   notPlannedByMe: Boolean!
+  "do not upload this exam to the ZPA when publishing the plan."
+  doNotPublish: Boolean!
   excludeDays: [Time!]
   possibleDays: [Time!]
   fixedDay: Time
@@ -40,12 +42,15 @@ type RoomConstraints {
   seb: Boolean!
   kdpJiraURL: String
   maxStudents: Int
+  "extra seats to reserve on top of the registered students (capacity buffer)."
+  additionalSeats: Int
   comments: String
 }
 
 input ConstraintsInput {
   allowedRooms: [String!]
   notPlannedByMe: Boolean
+  doNotPublish: Boolean
   excludeDays: [Time!]
   possibleDays: [Time!]
   fixedDay: Time
@@ -58,5 +63,6 @@ input ConstraintsInput {
   seb: Boolean
   kdpJiraURL: String
   maxStudents: Int
+  additionalSeats: Int
   comments: String
 }

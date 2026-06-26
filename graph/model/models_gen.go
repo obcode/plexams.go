@@ -74,8 +74,10 @@ type ConnectedExamWarning struct {
 }
 
 type Constraints struct {
-	Ancode          int              `json:"ancode"`
-	NotPlannedByMe  bool             `json:"notPlannedByMe"`
+	Ancode         int  `json:"ancode"`
+	NotPlannedByMe bool `json:"notPlannedByMe"`
+	// do not upload this exam to the ZPA when publishing the plan.
+	DoNotPublish    bool             `json:"doNotPublish"`
 	ExcludeDays     []*time.Time     `json:"excludeDays,omitempty"`
 	PossibleDays    []*time.Time     `json:"possibleDays,omitempty"`
 	FixedDay        *time.Time       `json:"fixedDay,omitempty"`
@@ -88,6 +90,7 @@ type Constraints struct {
 type ConstraintsInput struct {
 	AllowedRooms     []string     `json:"allowedRooms,omitempty"`
 	NotPlannedByMe   *bool        `json:"notPlannedByMe,omitempty"`
+	DoNotPublish     *bool        `json:"doNotPublish,omitempty"`
 	ExcludeDays      []*time.Time `json:"excludeDays,omitempty"`
 	PossibleDays     []*time.Time `json:"possibleDays,omitempty"`
 	FixedDay         *time.Time   `json:"fixedDay,omitempty"`
@@ -100,6 +103,7 @@ type ConstraintsInput struct {
 	Seb              *bool        `json:"seb,omitempty"`
 	KdpJiraURL       *string      `json:"kdpJiraURL,omitempty"`
 	MaxStudents      *int         `json:"maxStudents,omitempty"`
+	AdditionalSeats  *int         `json:"additionalSeats,omitempty"`
 	Comments         *string      `json:"comments,omitempty"`
 }
 
@@ -627,7 +631,9 @@ type RoomConstraints struct {
 	Seb              bool     `json:"seb"`
 	KdpJiraURL       *string  `json:"kdpJiraURL,omitempty"`
 	MaxStudents      *int     `json:"maxStudents,omitempty"`
-	Comments         *string  `json:"comments,omitempty"`
+	// extra seats to reserve on top of the registered students (capacity buffer).
+	AdditionalSeats *int    `json:"additionalSeats,omitempty"`
+	Comments        *string `json:"comments,omitempty"`
 }
 
 // One exam's use of a room in a slot.

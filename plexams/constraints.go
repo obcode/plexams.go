@@ -142,6 +142,11 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 	constraints := &model.Constraints{
 		Ancode: ancode,
 	}
+	// independent of notPlannedByMe: an exam planned by someone else can still be
+	// excluded from the ZPA upload.
+	if constraintsInput.DoNotPublish != nil {
+		constraints.DoNotPublish = *constraintsInput.DoNotPublish
+	}
 	if constraintsInput.NotPlannedByMe != nil && *constraintsInput.NotPlannedByMe {
 		constraints.NotPlannedByMe = *constraintsInput.NotPlannedByMe
 	} else { // ignore everything else if exam is not planned by me
@@ -152,6 +157,7 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 			constraintsInput.Lab != nil ||
 			constraintsInput.Seb != nil ||
 			constraintsInput.Exahm != nil ||
+			constraintsInput.AdditionalSeats != nil ||
 			constraintsInput.AllowedRooms != nil {
 			constraints.RoomConstraints = &model.RoomConstraints{}
 			if len(constraintsInput.AllowedRooms) > 0 {
@@ -182,6 +188,9 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 			}
 			if constraintsInput.MaxStudents != nil && *constraintsInput.MaxStudents > 0 {
 				constraints.RoomConstraints.MaxStudents = constraintsInput.MaxStudents
+			}
+			if constraintsInput.AdditionalSeats != nil && *constraintsInput.AdditionalSeats > 0 {
+				constraints.RoomConstraints.AdditionalSeats = constraintsInput.AdditionalSeats
 			}
 			if constraintsInput.Comments != nil && *constraintsInput.Comments != "" {
 				constraints.RoomConstraints.Comments = constraintsInput.Comments

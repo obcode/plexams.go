@@ -142,6 +142,7 @@ type ComplexityRoot struct {
 
 	Constraints struct {
 		Ancode          func(childComplexity int) int
+		DoNotPublish    func(childComplexity int) int
 		ExcludeDays     func(childComplexity int) int
 		FixedDay        func(childComplexity int) int
 		FixedTime       func(childComplexity int) int
@@ -809,6 +810,7 @@ type ComplexityRoot struct {
 	}
 
 	RoomConstraints struct {
+		AdditionalSeats  func(childComplexity int) int
 		AllowedRooms     func(childComplexity int) int
 		Comments         func(childComplexity int) int
 		Exahm            func(childComplexity int) int
@@ -1807,6 +1809,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Constraints.Ancode(childComplexity), true
+
+	case "Constraints.doNotPublish":
+		if e.complexity.Constraints.DoNotPublish == nil {
+			break
+		}
+
+		return e.complexity.Constraints.DoNotPublish(childComplexity), true
 
 	case "Constraints.excludeDays":
 		if e.complexity.Constraints.ExcludeDays == nil {
@@ -5551,6 +5560,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RoomAndExam.Room(childComplexity), true
 
+	case "RoomConstraints.additionalSeats":
+		if e.complexity.RoomConstraints.AdditionalSeats == nil {
+			break
+		}
+
+		return e.complexity.RoomConstraints.AdditionalSeats(childComplexity), true
+
 	case "RoomConstraints.allowedRooms":
 		if e.complexity.RoomConstraints.AllowedRooms == nil {
 			break
@@ -7555,6 +7571,8 @@ extend type Mutation {
 type Constraints {
   ancode: Int!
   notPlannedByMe: Boolean!
+  "do not upload this exam to the ZPA when publishing the plan."
+  doNotPublish: Boolean!
   excludeDays: [Time!]
   possibleDays: [Time!]
   fixedDay: Time
@@ -7572,12 +7590,15 @@ type RoomConstraints {
   seb: Boolean!
   kdpJiraURL: String
   maxStudents: Int
+  "extra seats to reserve on top of the registered students (capacity buffer)."
+  additionalSeats: Int
   comments: String
 }
 
 input ConstraintsInput {
   allowedRooms: [String!]
   notPlannedByMe: Boolean
+  doNotPublish: Boolean
   excludeDays: [Time!]
   possibleDays: [Time!]
   fixedDay: Time
@@ -7590,6 +7611,7 @@ input ConstraintsInput {
   seb: Boolean
   kdpJiraURL: String
   maxStudents: Int
+  additionalSeats: Int
   comments: String
 }
 `, BuiltIn: false},
@@ -17445,6 +17467,50 @@ func (ec *executionContext) fieldContext_Constraints_notPlannedByMe(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Constraints_doNotPublish(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Constraints_doNotPublish(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DoNotPublish, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Constraints_doNotPublish(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Constraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Constraints_excludeDays(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Constraints_excludeDays(ctx, field)
 	if err != nil {
@@ -17744,6 +17810,8 @@ func (ec *executionContext) fieldContext_Constraints_roomConstraints(_ context.C
 				return ec.fieldContext_RoomConstraints_kdpJiraURL(ctx, field)
 			case "maxStudents":
 				return ec.fieldContext_RoomConstraints_maxStudents(ctx, field)
+			case "additionalSeats":
+				return ec.fieldContext_RoomConstraints_additionalSeats(ctx, field)
 			case "comments":
 				return ec.fieldContext_RoomConstraints_comments(ctx, field)
 			}
@@ -20340,6 +20408,8 @@ func (ec *executionContext) fieldContext_GeneratedExam_constraints(_ context.Con
 				return ec.fieldContext_Constraints_ancode(ctx, field)
 			case "notPlannedByMe":
 				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "doNotPublish":
+				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
 			case "excludeDays":
 				return ec.fieldContext_Constraints_excludeDays(ctx, field)
 			case "possibleDays":
@@ -25313,6 +25383,8 @@ func (ec *executionContext) fieldContext_Mutation_addConstraints(ctx context.Con
 				return ec.fieldContext_Constraints_ancode(ctx, field)
 			case "notPlannedByMe":
 				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "doNotPublish":
+				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
 			case "excludeDays":
 				return ec.fieldContext_Constraints_excludeDays(ctx, field)
 			case "possibleDays":
@@ -31241,6 +31313,8 @@ func (ec *executionContext) fieldContext_PlannedExam_constraints(_ context.Conte
 				return ec.fieldContext_Constraints_ancode(ctx, field)
 			case "notPlannedByMe":
 				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "doNotPublish":
+				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
 			case "excludeDays":
 				return ec.fieldContext_Constraints_excludeDays(ctx, field)
 			case "possibleDays":
@@ -32668,6 +32742,8 @@ func (ec *executionContext) fieldContext_PreExam_constraints(_ context.Context, 
 				return ec.fieldContext_Constraints_ancode(ctx, field)
 			case "notPlannedByMe":
 				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "doNotPublish":
+				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
 			case "excludeDays":
 				return ec.fieldContext_Constraints_excludeDays(ctx, field)
 			case "possibleDays":
@@ -35966,6 +36042,8 @@ func (ec *executionContext) fieldContext_Query_constraintForAncode(ctx context.C
 				return ec.fieldContext_Constraints_ancode(ctx, field)
 			case "notPlannedByMe":
 				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "doNotPublish":
+				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
 			case "excludeDays":
 				return ec.fieldContext_Constraints_excludeDays(ctx, field)
 			case "possibleDays":
@@ -42189,6 +42267,47 @@ func (ec *executionContext) _RoomConstraints_maxStudents(ctx context.Context, fi
 }
 
 func (ec *executionContext) fieldContext_RoomConstraints_maxStudents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomConstraints_additionalSeats(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomConstraints_additionalSeats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AdditionalSeats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomConstraints_additionalSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RoomConstraints",
 		Field:      field,
@@ -53432,6 +53551,8 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_constraints(_ co
 				return ec.fieldContext_Constraints_ancode(ctx, field)
 			case "notPlannedByMe":
 				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "doNotPublish":
+				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
 			case "excludeDays":
 				return ec.fieldContext_Constraints_excludeDays(ctx, field)
 			case "possibleDays":
@@ -56474,7 +56595,7 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"allowedRooms", "notPlannedByMe", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "placesWithSocket", "lab", "exahm", "seb", "kdpJiraURL", "maxStudents", "comments"}
+	fieldsInOrder := [...]string{"allowedRooms", "notPlannedByMe", "doNotPublish", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "placesWithSocket", "lab", "exahm", "seb", "kdpJiraURL", "maxStudents", "additionalSeats", "comments"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -56495,6 +56616,13 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 				return it, err
 			}
 			it.NotPlannedByMe = data
+		case "doNotPublish":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("doNotPublish"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DoNotPublish = data
 		case "excludeDays":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("excludeDays"))
 			data, err := ec.unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx, v)
@@ -56579,6 +56707,13 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 				return it, err
 			}
 			it.MaxStudents = data
+		case "additionalSeats":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("additionalSeats"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AdditionalSeats = data
 		case "comments":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("comments"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -57839,6 +57974,11 @@ func (ec *executionContext) _Constraints(ctx context.Context, sel ast.SelectionS
 			}
 		case "notPlannedByMe":
 			out.Values[i] = ec._Constraints_notPlannedByMe(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "doNotPublish":
+			out.Values[i] = ec._Constraints_doNotPublish(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -63965,6 +64105,8 @@ func (ec *executionContext) _RoomConstraints(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._RoomConstraints_kdpJiraURL(ctx, field, obj)
 		case "maxStudents":
 			out.Values[i] = ec._RoomConstraints_maxStudents(ctx, field, obj)
+		case "additionalSeats":
+			out.Values[i] = ec._RoomConstraints_additionalSeats(ctx, field, obj)
 		case "comments":
 			out.Values[i] = ec._RoomConstraints_comments(ctx, field, obj)
 		default:

@@ -152,11 +152,6 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		return nil, err
 	}
 
-	doNotPublish := viper.GetIntSlice("donotpublish")
-	for _, ancodeNotToPublish := range doNotPublish {
-		reporter.Printf("do not publish: %d", ancodeNotToPublish)
-	}
-
 	exams := make([]*model.ZPAExamPlan, 0)
 	for _, exam := range plannedExams {
 		if exam.PlanEntry == nil {
@@ -168,10 +163,9 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		if exam.Ancode >= 1000 {
 			continue
 		}
-		for _, ancodeNotToPublish := range doNotPublish {
-			if exam.ZpaExam.AnCode == ancodeNotToPublish {
-				continue
-			}
+		if exam.Constraints != nil && exam.Constraints.DoNotPublish {
+			reporter.Printf("do not publish: %d", exam.Ancode)
+			continue
 		}
 		// slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
 		// if err != nil {

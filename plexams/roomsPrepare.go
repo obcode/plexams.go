@@ -10,7 +10,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 // PrepareRoomForExams assigns rooms to all planned exams and stores the result in
@@ -505,7 +504,7 @@ func (p *Plexams) prepareRoomsCfg(ctx context.Context) (*prepareRoomsCfg, error)
 	prepareRoomsCfg := &prepareRoomsCfg{
 		roomInfo:        roomInfo,
 		prePlannedRooms: p.prePlannedRooms(ctx, roomInfo),
-		additionalSeats: additionalSeats(),
+		additionalSeats: p.additionalSeats(ctx),
 		blockedRooms:    blockedRooms,
 		exactSeatRooms:  make(map[int]map[string]bool),
 		roomsForSlots:   roomsForSlots,
@@ -516,23 +515,19 @@ func (p *Plexams) prepareRoomsCfg(ctx context.Context) (*prepareRoomsCfg, error)
 	return prepareRoomsCfg, nil
 }
 
-func additionalSeats() map[int]int {
+// additionalSeats returns the extra seats to reserve per ancode, read from the
+// per-exam room constraints (RoomConstraints.additionalSeats).
+func (p *Plexams) additionalSeats(ctx context.Context) map[int]int {
 	additionalSeats := make(map[int]int) // ancode -> seats
-	additionalSeatsViper := viper.Get("roomconstraints.additionalseats")
 
-	additionalSeatsSlice, ok := additionalSeatsViper.([]interface{})
-	if ok {
-		for _, addSeat := range additionalSeatsSlice {
-			entry, ok := addSeat.(map[string]interface{})
-			if !ok {
-				log.Error().Interface("addSeat", addSeat).Msg("cannot convert addSeat to map")
-			}
-			ancode, okAncode := entry["ancode"].(int)
-			seats, okSeats := entry["seats"].(int)
-
-			if okAncode && okSeats {
-				additionalSeats[ancode] = seats
-			}
+	constraints, err := p.Constraints(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get constraints for additional seats")
+		return additionalSeats
+	}
+	for _, c := range constraints {
+		if c.RoomConstraints != nil && c.RoomConstraints.AdditionalSeats != nil && *c.RoomConstraints.AdditionalSeats > 0 {
+			additionalSeats[c.Ancode] = *c.RoomConstraints.AdditionalSeats
 		}
 	}
 

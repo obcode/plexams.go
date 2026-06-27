@@ -45,11 +45,10 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry
 		return nil, nil
 	}
 
-	// Only consider rooms configured under anny.rooms
-	configRooms := viper.GetStringSlice("anny.rooms")
-	allowedRooms := make(map[string]struct{}, len(configRooms))
-	for _, r := range configRooms {
-		allowedRooms[strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(r), " ", ""))] = struct{}{}
+	// Only consider rooms marked as Anny rooms in the rooms master data (RequestWith==ANNY)
+	allowedRooms, err := p.annyRoomNames(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get anny rooms: %w", err)
 	}
 
 	entries := make([]BookedEntry, 0, len(dbBookings))

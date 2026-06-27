@@ -85,17 +85,22 @@ smtp:
 
 ## 4. Anny (Raumbuchungen, nur lesend)
 
+Nur der **Token** muss in die YAML; `url` ist optional (Default gesetzt). Es werden
+**alle** Buchungen im Zeitraum geholt und gespeichert (so sieht man im GUI, wer wann
+was gebucht hat).
+
 ```yaml
 anny:
   url: https://b.anny.eu/api/v1/bookings    # optional, Default ist genau das
-  token: <anny-token>                       # Secret (Read-only)
-  personalization_name:                     # ein Name ODER eine Liste
-    - Oliver Braun
-    - Michael Heinl
-  rooms:                                     # nur diese Räume berücksichtigen
-    - R1.046
-    # ...
+  token: <anny-token>                       # Secret (Read-only) — Pflicht für Anny
 ```
+
+> `anny.personalization_name` und `anny.rooms` werden **nicht mehr** benötigt:
+> - die Namen, die „unsere" Buchungen markieren (`mine`), liegen in der DB und sind
+>   über das GUI setzbar (`setAnnyPersonalizationNames`); die YAML dient nur noch
+>   als einmaliger Seed.
+> - die relevanten Räume sind die Räume mit `requestWith: ANNY` in den globalen
+>   Raum-Stammdaten (DB). Die YAML-Liste entfällt.
 
 ## 5. Sonstiges (Bootstrap)
 

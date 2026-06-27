@@ -84,16 +84,7 @@ type annyBookingsPage struct {
 func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
 	reporter.Step("fetching bookings from anny.eu")
 	token := viper.GetString("anny.token")
-	personalizationNames := personalizationNamesFromConfig()
-	configRooms := viper.GetStringSlice("anny.rooms")
-	allowedRooms := make(map[string]struct{}, len(configRooms))
-	for _, room := range configRooms {
-		normalizedRoom := normalizeRoomName(room)
-		if normalizedRoom == "" {
-			continue
-		}
-		allowedRooms[normalizedRoom] = struct{}{}
-	}
+	personalizationNames := p.annyPersonalizationNames(ctx)
 
 	if strings.TrimSpace(token) == "" {
 		return fmt.Errorf("anny token is empty")
@@ -167,53 +158,14 @@ func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
 		resourceIDToRoom[booking.ResourceID] = booking.Room
 	}
 
-	if len(allowedRooms) > 0 {
-		remainingRooms := make([]string, 0, len(allowedRooms))
-		for room := range allowedRooms {
-			isMapped := false
-			for _, mappedRoom := range resourceIDToRoom {
-				if mappedRoom == room {
-					isMapped = true
-					break
-				}
-			}
-			if !isMapped {
-				remainingRooms = append(remainingRooms, room)
-			}
-		}
-
-		unknownResourceIDs := make(map[string]struct{})
-		for _, booking := range allBookings {
-			if booking.ResourceID == "" || booking.Room != "" {
-				continue
-			}
-			if _, known := resourceIDToRoom[booking.ResourceID]; known {
-				continue
-			}
-			unknownResourceIDs[booking.ResourceID] = struct{}{}
-		}
-
-		if len(remainingRooms) == 1 && len(unknownResourceIDs) == 1 {
-			for resourceID := range unknownResourceIDs {
-				resourceIDToRoom[resourceID] = remainingRooms[0]
-			}
-		}
-	}
-
+	// Keep all bookings (all rooms, all people) so the GUI can show who booked what
+	// and when. "Ours" is flagged via the personalization names at query time, not
+	// filtered away here.
 	bookings := make([]AnnyBooking, 0, len(allBookings))
 	for _, booking := range allBookings {
 		if booking.Room == "" {
 			if inferredRoom, ok := resourceIDToRoom[booking.ResourceID]; ok {
 				booking.Room = inferredRoom
-			}
-		}
-
-		if !matchesAnyPersonalization(booking.PersonalizationName, personalizationNames) {
-			continue
-		}
-		if len(allowedRooms) > 0 {
-			if _, ok := allowedRooms[normalizeRoomName(booking.Room)]; !ok {
-				continue
 			}
 		}
 		bookings = append(bookings, booking)

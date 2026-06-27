@@ -29,4 +29,7 @@ type AnnyBooking struct {
 	CancelableUntil        *time.Time `json:"cancelableUntil,omitempty" bson:"cancelable_until,omitempty"`
 	HasCustomDescription   bool       `json:"hasCustomDescription" bson:"has_custom_description"`
 	ResourceID             string     `json:"-" bson:"resource_id,omitempty"`
+	// Mine is computed at query time (not stored): true when PersonalizationName
+	// matches one of the configured personalization names.
+	Mine bool `json:"mine" bson:"-"`
 }

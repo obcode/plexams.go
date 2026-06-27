@@ -10,6 +10,11 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// SetAnnyPersonalizationNames is the resolver for the setAnnyPersonalizationNames field.
+func (r *mutationResolver) SetAnnyPersonalizationNames(ctx context.Context, names []string) (*model.AnnyConfig, error) {
+	return r.plexams.SetAnnyPersonalizationNames(ctx, names)
+}
+
 // AnnyBookings is the resolver for the annyBookings field.
 func (r *queryResolver) AnnyBookings(ctx context.Context, room *string) ([]*model.AnnyBooking, error) {
 	return r.plexams.AnnyBookings(ctx, room)
@@ -18,4 +23,9 @@ func (r *queryResolver) AnnyBookings(ctx context.Context, room *string) ([]*mode
 // AllAnnyBookings is the resolver for the allAnnyBookings field.
 func (r *queryResolver) AllAnnyBookings(ctx context.Context) ([]*model.AnnyBooking, error) {
 	return r.plexams.AllAnnyBookings(ctx)
+}
+
+// AnnyConfig is the resolver for the annyConfig field.
+func (r *queryResolver) AnnyConfig(ctx context.Context) (*model.AnnyConfig, error) {
+	return r.plexams.AnnyConfig(ctx)
 }

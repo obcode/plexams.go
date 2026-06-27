@@ -1,6 +1,18 @@
 extend type Query {
   annyBookings(room: String): [AnnyBooking!]!
   allAnnyBookings: [AnnyBooking!]!
+  "The Anny settings stored in the DB (the token stays in the config file)."
+  annyConfig: AnnyConfig!
+}
+
+extend type Mutation {
+  "Set the personalization names that mark 'our' Anny bookings (mine=true). Does not filter; all bookings are still fetched and shown."
+  setAnnyPersonalizationNames(names: [String!]!): AnnyConfig!
+}
+
+type AnnyConfig {
+  "names whose bookings are flagged as ours (mine=true)."
+  personalizationNames: [String!]!
 }
 
 type AnnyBooking {
@@ -26,4 +38,6 @@ type AnnyBooking {
   bookingGroupIdentifier: String
   cancelableUntil: Time
   hasCustomDescription: Boolean!
+  "true when the booking's personalization name is one of ours (annyConfig.personalizationNames)."
+  mine: Boolean!
 }

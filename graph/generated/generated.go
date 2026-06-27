@@ -89,6 +89,7 @@ type ComplexityRoot struct {
 		IsBlocker              func(childComplexity int) int
 		IsEditable             func(childComplexity int) int
 		ManuallyCreated        func(childComplexity int) int
+		Mine                   func(childComplexity int) int
 		Note                   func(childComplexity int) int
 		Number                 func(childComplexity int) int
 		PersonalizationName    func(childComplexity int) int
@@ -97,6 +98,10 @@ type ComplexityRoot struct {
 		StartDate              func(childComplexity int) int
 		Status                 func(childComplexity int) int
 		UpdatedAt              func(childComplexity int) int
+	}
+
+	AnnyConfig struct {
+		PersonalizationNames func(childComplexity int) int
 	}
 
 	BalanceReport struct {
@@ -498,6 +503,7 @@ type ComplexityRoot struct {
 		SameSlot                      func(childComplexity int, ancode int, ancodes []int) int
 		Seb                           func(childComplexity int, ancode int) int
 		SeedStudyProgramsFromConfig   func(childComplexity int) int
+		SetAnnyPersonalizationNames   func(childComplexity int, names []string) int
 		SetExamDuration               func(childComplexity int, ancode int, duration int) int
 		SetExternalExamTime           func(childComplexity int, ancode int, date string, time string) int
 		SetGenerationConfig           func(childComplexity int, input model.GenerationConfigInput) int
@@ -762,6 +768,7 @@ type ComplexityRoot struct {
 		AllowedSlots                  func(childComplexity int, ancode int) int
 		AncodesInPlan                 func(childComplexity int) int
 		AnnyBookings                  func(childComplexity int, room *string) int
+		AnnyConfig                    func(childComplexity int) int
 		AwkwardSlots                  func(childComplexity int, ancode int) int
 		BlockedRooms                  func(childComplexity int) int
 		ConflictingAncodes            func(childComplexity int, ancode int) int
@@ -1258,6 +1265,7 @@ type GeneratedExamResolver interface {
 type MutationResolver interface {
 	UpsertAdditionalExam(ctx context.Context, input model.AdditionalExamInput) (*model.AdditionalExam, error)
 	DeleteAdditionalExam(ctx context.Context, ancode int) (bool, error)
+	SetAnnyPersonalizationNames(ctx context.Context, names []string) (*model.AnnyConfig, error)
 	NotPlannedByMe(ctx context.Context, ancode int) (bool, error)
 	ExcludeDays(ctx context.Context, ancode int, days []string) (bool, error)
 	PossibleDays(ctx context.Context, ancode int, days []string) (bool, error)
@@ -1353,6 +1361,7 @@ type QueryResolver interface {
 	AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error)
 	AnnyBookings(ctx context.Context, room *string) ([]*model.AnnyBooking, error)
 	AllAnnyBookings(ctx context.Context) ([]*model.AnnyBooking, error)
+	AnnyConfig(ctx context.Context) (*model.AnnyConfig, error)
 	ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error)
 	ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error)
 	EmailAttachments(ctx context.Context, kind string) ([]*model.EmailAttachmentInfo, error)
@@ -1690,6 +1699,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AnnyBooking.ManuallyCreated(childComplexity), true
 
+	case "AnnyBooking.mine":
+		if e.complexity.AnnyBooking.Mine == nil {
+			break
+		}
+
+		return e.complexity.AnnyBooking.Mine(childComplexity), true
+
 	case "AnnyBooking.note":
 		if e.complexity.AnnyBooking.Note == nil {
 			break
@@ -1745,6 +1761,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AnnyBooking.UpdatedAt(childComplexity), true
+
+	case "AnnyConfig.personalizationNames":
+		if e.complexity.AnnyConfig.PersonalizationNames == nil {
+			break
+		}
+
+		return e.complexity.AnnyConfig.PersonalizationNames(childComplexity), true
 
 	case "BalanceReport.invigilators":
 		if e.complexity.BalanceReport.Invigilators == nil {
@@ -3854,6 +3877,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SeedStudyProgramsFromConfig(childComplexity), true
 
+	case "Mutation.setAnnyPersonalizationNames":
+		if e.complexity.Mutation.SetAnnyPersonalizationNames == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setAnnyPersonalizationNames_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetAnnyPersonalizationNames(childComplexity, args["names"].([]string)), true
+
 	case "Mutation.setExamDuration":
 		if e.complexity.Mutation.SetExamDuration == nil {
 			break
@@ -5206,6 +5241,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.AnnyBookings(childComplexity, args["room"].(*string)), true
+
+	case "Query.annyConfig":
+		if e.complexity.Query.AnnyConfig == nil {
+			break
+		}
+
+		return e.complexity.Query.AnnyConfig(childComplexity), true
 
 	case "Query.awkwardSlots":
 		if e.complexity.Query.AwkwardSlots == nil {
@@ -8172,6 +8214,18 @@ input AdditionalExamRoomInput {
 	{Name: "../anny.graphqls", Input: `extend type Query {
   annyBookings(room: String): [AnnyBooking!]!
   allAnnyBookings: [AnnyBooking!]!
+  "The Anny settings stored in the DB (the token stays in the config file)."
+  annyConfig: AnnyConfig!
+}
+
+extend type Mutation {
+  "Set the personalization names that mark 'our' Anny bookings (mine=true). Does not filter; all bookings are still fetched and shown."
+  setAnnyPersonalizationNames(names: [String!]!): AnnyConfig!
+}
+
+type AnnyConfig {
+  "names whose bookings are flagged as ours (mine=true)."
+  personalizationNames: [String!]!
 }
 
 type AnnyBooking {
@@ -8197,6 +8251,8 @@ type AnnyBooking {
   bookingGroupIdentifier: String
   cancelableUntil: Time
   hasCustomDescription: Boolean!
+  "true when the booking's personalization name is one of ours (annyConfig.personalizationNames)."
+  mine: Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../constraints.graphqls", Input: `scalar Time
@@ -12359,6 +12415,34 @@ func (ec *executionContext) field_Mutation_seb_argsAncode(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setAnnyPersonalizationNames_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setAnnyPersonalizationNames_argsNames(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["names"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setAnnyPersonalizationNames_argsNames(
+	ctx context.Context,
+	rawArgs map[string]any,
+) ([]string, error) {
+	if _, ok := rawArgs["names"]; !ok {
+		var zeroVal []string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("names"))
+	if tmp, ok := rawArgs["names"]; ok {
+		return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+	}
+
+	var zeroVal []string
 	return zeroVal, nil
 }
 
@@ -17581,6 +17665,94 @@ func (ec *executionContext) fieldContext_AnnyBooking_hasCustomDescription(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyBooking_mine(ctx context.Context, field graphql.CollectedField, obj *model.AnnyBooking) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyBooking_mine(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mine, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyBooking_mine(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyBooking",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnnyConfig_personalizationNames(ctx context.Context, field graphql.CollectedField, obj *model.AnnyConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnnyConfig_personalizationNames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PersonalizationNames, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AnnyConfig_personalizationNames(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnnyConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -27850,6 +28022,65 @@ func (ec *executionContext) fieldContext_Mutation_deleteAdditionalExam(ctx conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteAdditionalExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setAnnyPersonalizationNames(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setAnnyPersonalizationNames(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetAnnyPersonalizationNames(rctx, fc.Args["names"].([]string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.AnnyConfig)
+	fc.Result = res
+	return ec.marshalNAnnyConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setAnnyPersonalizationNames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "personalizationNames":
+				return ec.fieldContext_AnnyConfig_personalizationNames(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AnnyConfig", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setAnnyPersonalizationNames_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -39614,6 +39845,8 @@ func (ec *executionContext) fieldContext_Query_annyBookings(ctx context.Context,
 				return ec.fieldContext_AnnyBooking_cancelableUntil(ctx, field)
 			case "hasCustomDescription":
 				return ec.fieldContext_AnnyBooking_hasCustomDescription(ctx, field)
+			case "mine":
+				return ec.fieldContext_AnnyBooking_mine(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AnnyBooking", field.Name)
 		},
@@ -39715,8 +39948,58 @@ func (ec *executionContext) fieldContext_Query_allAnnyBookings(_ context.Context
 				return ec.fieldContext_AnnyBooking_cancelableUntil(ctx, field)
 			case "hasCustomDescription":
 				return ec.fieldContext_AnnyBooking_hasCustomDescription(ctx, field)
+			case "mine":
+				return ec.fieldContext_AnnyBooking_mine(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AnnyBooking", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_annyConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_annyConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().AnnyConfig(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.AnnyConfig)
+	fc.Result = res
+	return ec.marshalNAnnyConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_annyConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "personalizationNames":
+				return ec.fieldContext_AnnyConfig_personalizationNames(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AnnyConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -62281,6 +62564,50 @@ func (ec *executionContext) _AnnyBooking(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "mine":
+			out.Values[i] = ec._AnnyBooking_mine(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var annyConfigImplementors = []string{"AnnyConfig"}
+
+func (ec *executionContext) _AnnyConfig(ctx context.Context, sel ast.SelectionSet, obj *model.AnnyConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, annyConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AnnyConfig")
+		case "personalizationNames":
+			out.Values[i] = ec._AnnyConfig_personalizationNames(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -64820,6 +65147,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setAnnyPersonalizationNames":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setAnnyPersonalizationNames(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "notPlannedByMe":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_notPlannedByMe(ctx, field)
@@ -67266,6 +67600,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_allAnnyBookings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "annyConfig":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_annyConfig(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -72197,6 +72553,20 @@ func (ec *executionContext) marshalNAnnyBooking2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._AnnyBooking(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAnnyConfig2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyConfig(ctx context.Context, sel ast.SelectionSet, v model.AnnyConfig) graphql.Marshaler {
+	return ec._AnnyConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAnnyConfig2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyConfig(ctx context.Context, sel ast.SelectionSet, v *model.AnnyConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AnnyConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNArgFilterInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐArgFilterInput(ctx context.Context, v any) (*model.ArgFilterInput, error) {

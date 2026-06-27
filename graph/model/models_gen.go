@@ -48,6 +48,11 @@ type AnCode struct {
 	Ancode int `json:"ancode"`
 }
 
+type AnnyConfig struct {
+	// names whose bookings are flagged as ours (mine=true).
+	PersonalizationNames []string `json:"personalizationNames"`
+}
+
 type ArgFilterInput struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`

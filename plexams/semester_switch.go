@@ -8,26 +8,26 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// SwitchSemester repoints the running instance to another semester/database (e.g.
-// "2026 SS", "2026-SS" or a clone like "2026-SS-Test"). It reloads the per-semester
-// config and refreshes the DB-derived globals. Single-user only: it refuses to
-// switch while an operation (validation/import/email/upload) is running, and the
-// GUI must refetch all data afterwards.
-func (p *Plexams) SwitchSemester(ctx context.Context, name string) (*model.Semester, error) {
+// SwitchSemester repoints the running instance to another semester at runtime.
+//
+// semester is the logical semester used against external systems (ZPA download/
+// upload, stored doc labels), e.g. "2026 SS" — it stays the real semester even when
+// the data lives in a differently named database. database is where the data lives;
+// empty derives it from the semester. So a replay clone is switched with
+// semester="2026 SS", database="2026-SS-Test", and a fresh re-import into an empty
+// "2026-SS-Test" likewise keeps semester="2026 SS" so the ZPA import is correct.
+//
+// Single-user only: refused while an operation (validation/import/email/upload) is
+// running; the GUI must refetch all data afterwards. The target may be empty (no
+// config yet) — the config is then nil until created/imported.
+func (p *Plexams) SwitchSemester(ctx context.Context, semester, database string) (*model.Semester, error) {
 	if !p.WritesAllowed() {
 		return nil, fmt.Errorf("cannot switch semester while an operation (validation/import/email/upload) is running")
 	}
 
-	// the target database must already carry a semester config
-	input, err := p.dbClient.GetSemesterConfigInputForSemester(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	if input == nil {
-		return nil, fmt.Errorf("no semester config found for %q — create or clone it first", name)
-	}
-
-	p.semester = p.dbClient.SetSemester(name)
+	p.semester = p.dbClient.SetSemester(semester, database)
+	// force the ZPA client to be recreated with the new semester
+	p.zpa.client = nil
 	log.Info().Str("semester", p.semester).Msg("switched semester")
 
 	p.loadSemesterConfig(ctx)
@@ -35,6 +35,8 @@ func (p *Plexams) SwitchSemester(ctx context.Context, name string) (*model.Semes
 		if err := p.dbClient.SaveSemesterConfig(ctx, p.semesterConfig); err != nil {
 			log.Error().Err(err).Msg("cannot save semester config after switch")
 		}
+	} else {
+		log.Warn().Str("semester", p.semester).Msg("switched to a semester/database without config (needs setup or import)")
 	}
 	p.setRoomInfo()
 

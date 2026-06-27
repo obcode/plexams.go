@@ -26,12 +26,15 @@ extend type Mutation {
   """
   createSemester(semester: String!, input: SemesterConfigInputData!): SaveSemesterConfigResult!
   """
-  Switch the running server to another semester/database (one of allSemesterNames,
-  e.g. "2026 SS" or a clone like "2026 SS-Test"). The target must already have a
-  config. Refused while an operation is running. The GUI must refetch all data
-  afterwards (everything is semester-scoped).
+  Switch the running server to another semester at runtime. `semester` is the
+  logical semester used against external systems (ZPA etc.), e.g. "2026 SS" — it
+  stays the real semester even when the data lives in a differently named database.
+  `database` is where the data lives (default: derived from semester); pass a clone
+  like "2026-SS-Test" to replay into it while keeping ZPA on "2026 SS". The target
+  may be empty (config is then null until created/imported). Refused while an
+  operation is running. The GUI must refetch all data afterwards.
   """
-  setSemester(name: String!): Semester!
+  setSemester(semester: String!, database: String): Semester!
 }
 
 """

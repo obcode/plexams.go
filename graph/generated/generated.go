@@ -509,7 +509,7 @@ type ComplexityRoot struct {
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
 		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
-		SetSemester                   func(childComplexity int, name string) int
+		SetSemester                   func(childComplexity int, semester string, database *string) int
 		SetSemesterConfigInput        func(childComplexity int, input model.SemesterConfigInputData) int
 		UnblockRoomForSlot            func(childComplexity int, room string, day int, slot int) int
 		UnblockRoomForSlots           func(childComplexity int, room string, slots []*model.SlotInput) int
@@ -1316,7 +1316,7 @@ type MutationResolver interface {
 	UpdateRoomRequestTime(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
 	SetSemesterConfigInput(ctx context.Context, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
 	CreateSemester(ctx context.Context, semester string, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
-	SetSemester(ctx context.Context, name string) (*model.Semester, error)
+	SetSemester(ctx context.Context, semester string, database *string) (*model.Semester, error)
 	UpsertSpecialInterest(ctx context.Context, input model.SpecialInterestInput) (*model.SpecialInterest, error)
 	DeleteSpecialInterest(ctx context.Context, name string) (bool, error)
 	GenerateStudentRegs(ctx context.Context) (*model.GenerateStudentRegsResult, error)
@@ -3988,7 +3988,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetSemester(childComplexity, args["name"].(string)), true
+		return e.complexity.Mutation.SetSemester(childComplexity, args["semester"].(string), args["database"].(*string)), true
 
 	case "Mutation.setSemesterConfigInput":
 		if e.complexity.Mutation.SetSemesterConfigInput == nil {
@@ -9510,12 +9510,15 @@ extend type Mutation {
   """
   createSemester(semester: String!, input: SemesterConfigInputData!): SaveSemesterConfigResult!
   """
-  Switch the running server to another semester/database (one of allSemesterNames,
-  e.g. "2026 SS" or a clone like "2026 SS-Test"). The target must already have a
-  config. Refused while an operation is running. The GUI must refetch all data
-  afterwards (everything is semester-scoped).
+  Switch the running server to another semester at runtime. ` + "`" + `semester` + "`" + ` is the
+  logical semester used against external systems (ZPA etc.), e.g. "2026 SS" — it
+  stays the real semester even when the data lives in a differently named database.
+  ` + "`" + `database` + "`" + ` is where the data lives (default: derived from semester); pass a clone
+  like "2026-SS-Test" to replay into it while keeping ZPA on "2026 SS". The target
+  may be empty (config is then null until created/imported). Refused while an
+  operation is running. The GUI must refetch all data afterwards.
   """
-  setSemester(name: String!): Semester!
+  setSemester(semester: String!, database: String): Semester!
 }
 
 """
@@ -12982,28 +12985,51 @@ func (ec *executionContext) field_Mutation_setSemesterConfigInput_argsInput(
 func (ec *executionContext) field_Mutation_setSemester_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_setSemester_argsName(ctx, rawArgs)
+	arg0, err := ec.field_Mutation_setSemester_argsSemester(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["name"] = arg0
+	args["semester"] = arg0
+	arg1, err := ec.field_Mutation_setSemester_argsDatabase(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["database"] = arg1
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_setSemester_argsName(
+func (ec *executionContext) field_Mutation_setSemester_argsSemester(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (string, error) {
-	if _, ok := rawArgs["name"]; !ok {
+	if _, ok := rawArgs["semester"]; !ok {
 		var zeroVal string
 		return zeroVal, nil
 	}
 
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-	if tmp, ok := rawArgs["name"]; ok {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("semester"))
+	if tmp, ok := rawArgs["semester"]; ok {
 		return ec.unmarshalNString2string(ctx, tmp)
 	}
 
 	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemester_argsDatabase(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["database"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("database"))
+	if tmp, ok := rawArgs["database"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -31679,7 +31705,7 @@ func (ec *executionContext) _Mutation_setSemester(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetSemester(rctx, fc.Args["name"].(string))
+		return ec.resolvers.Mutation().SetSemester(rctx, fc.Args["semester"].(string), fc.Args["database"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

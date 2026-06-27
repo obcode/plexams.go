@@ -87,13 +87,17 @@ func databaseNameForSemester(semester string) string {
 	return strings.Replace(semester, " ", "-", 1)
 }
 
-// SetSemester repoints the DB to another semester/database (reusing the same mongo
-// client). It accepts "2026 SS", "2026-SS" or a custom database name like
-// "2026-SS-Test" and returns the normalized semester label.
-func (db *DB) SetSemester(nameOrDB string) string {
-	dbName := databaseNameForSemester(nameOrDB)
-	db.databaseName = dbName
-	db.semester = semesterName(dbName)
+// SetSemester repoints the DB (reusing the same mongo client). semester is the
+// logical semester (used verbatim against external systems like ZPA, e.g.
+// "2026 SS"); database is where the data lives and may differ from the semester
+// (e.g. a clone "2026-SS-Test") — empty means derive it from the semester. Returns
+// the normalized semester label.
+func (db *DB) SetSemester(semester, database string) string {
+	db.semester = semesterName(databaseNameForSemester(semester))
+	if database == "" {
+		database = databaseNameForSemester(semester)
+	}
+	db.databaseName = database
 	return db.semester
 }
 

@@ -8,10 +8,12 @@ import (
 )
 
 // readOnlyExemptMutations are mutations allowed even on a read-only database: they
-// don't change the semester's data, only which semester is active / its protection.
+// don't change the active database's data — only which database is active, its
+// protection, or they create a separate new database.
 var readOnlyExemptMutations = map[string]bool{
 	"setSemester":         true,
 	"setSemesterReadOnly": true,
+	"createWorkspace":     true, // writes into a new, separate database
 }
 
 // isDataChangingOperation reports whether the operation would change the semester's

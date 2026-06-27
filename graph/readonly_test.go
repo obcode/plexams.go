@@ -27,6 +27,7 @@ func TestIsDataChangingOperation(t *testing.T) {
 		{"normal mutation changes", opCtx(ast.Mutation, "addNTA"), true},
 		{"setSemester exempt", opCtx(ast.Mutation, "setSemester"), false},
 		{"setSemesterReadOnly exempt", opCtx(ast.Mutation, "setSemesterReadOnly"), false},
+		{"createWorkspace exempt", opCtx(ast.Mutation, "createWorkspace"), false},
 		{"mixed mutation changes", opCtx(ast.Mutation, "setSemester", "addNTA"), true},
 		{"validation subscription ok", opCtx(ast.Subscription, "validateConflicts"), false},
 		{"import subscription changes", opCtx(ast.Subscription, "importExamsFromZPA"), true},

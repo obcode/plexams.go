@@ -3,8 +3,6 @@ package zpa
 import (
 	"fmt"
 	"strings"
-
-	"github.com/rs/zerolog/log"
 )
 
 type SupervisorRequirements struct {
@@ -20,21 +18,14 @@ type SupervisorRequirements struct {
 	OvertimeThisSemester   float64  `json:"overtime_this_semester"`
 }
 
-func (zpa *ZPA) GetSupervisorRequirements() []*SupervisorRequirements {
-	err := zpa.getSupervisorRequirements()
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get supervisor requirements")
-		return nil
+func (zpa *ZPA) GetSupervisorRequirements() ([]*SupervisorRequirements, error) {
+	if err := zpa.getSupervisorRequirements(); err != nil {
+		return nil, err
 	}
-	return zpa.supervisorRequirements
+	return zpa.supervisorRequirements, nil
 }
 
 func (zpa *ZPA) getSupervisorRequirements() error {
-	err := zpa.get(fmt.Sprintf("supervisorrequirements?semester=%s", strings.Replace(zpa.semester, " ", "%20", 1)),
+	return zpa.get(fmt.Sprintf("supervisorrequirements?semester=%s", strings.Replace(zpa.semester, " ", "%20", 1)),
 		&zpa.supervisorRequirements)
-	if err != nil {
-		fmt.Printf("Error %s", err)
-		return err
-	}
-	return nil
 }

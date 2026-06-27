@@ -281,9 +281,9 @@ func (p *Plexams) GetSupervisorRequirements(ctx context.Context) ([]*zpa.Supervi
 	if err := p.SetZPA(); err != nil {
 		return nil, err
 	}
-	supervisorRequirements := p.zpa.client.GetSupervisorRequirements()
-	if supervisorRequirements == nil {
-		return nil, fmt.Errorf("cannot get supervisor requirements")
+	supervisorRequirements, err := p.zpa.client.GetSupervisorRequirements()
+	if err != nil {
+		return nil, fmt.Errorf("cannot get supervisor requirements: %w", err)
 	}
 
 	reqInterface := make([]interface{}, 0, len(supervisorRequirements))
@@ -291,7 +291,7 @@ func (p *Plexams) GetSupervisorRequirements(ctx context.Context) ([]*zpa.Supervi
 		reqInterface = append(reqInterface, req)
 	}
 
-	err := p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "invigilator_requirements"), reqInterface)
+	err = p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "invigilator_requirements"), reqInterface)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot save invigilator requirements")
 		return supervisorRequirements, err

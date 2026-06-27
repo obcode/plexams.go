@@ -35,10 +35,14 @@ func main() {
 		fmt.Printf("%+v\n", exam)
 	}
 
-	for _, supReq := range zpa.GetSupervisorRequirements() {
+	supReqs, err := zpa.GetSupervisorRequirements()
+	if err != nil {
+		fmt.Printf("cannot get supervisor requirements: %v\n", err)
+	}
+	for _, supReq := range supReqs {
 		fmt.Printf("%+v\n", supReq)
 	}
 
 	fmt.Printf("%d teachers, %d exams, %d supervisor requirements\n",
-		len(zpa.GetTeachers()), len(zpa.GetExams()), len(zpa.GetSupervisorRequirements()))
+		len(zpa.GetTeachers()), len(zpa.GetExams()), len(supReqs))
 }

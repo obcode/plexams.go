@@ -56,48 +56,41 @@ func NewZPA(baseurl, username, password, tokenFromConfig, semester string) (*ZPA
 		}
 		userRequestJson, err := json.Marshal(user)
 		if err != nil {
-			fmt.Printf("%s", err)
-			return nil, err
+			return nil, fmt.Errorf("cannot encode ZPA credentials: %w", err)
 		}
 		req, err := http.NewRequest("POST", fmt.Sprintf("%s/api-token-auth", baseurl), bytes.NewBuffer(userRequestJson))
 		if err != nil {
-			fmt.Printf("error %s", err)
-			return nil, err
+			return nil, fmt.Errorf("cannot build ZPA auth request: %w", err)
 		}
 		req.Header.Add("Accept", "*/*")
 		req.Header.Add("Content-Type", "application/json")
 
 		resp, err := c.Do(req)
 		if err != nil {
-			fmt.Printf("Error %s", err)
-			return nil, err
+			return nil, fmt.Errorf("cannot reach ZPA for authentication: %w", err)
 		}
 		defer resp.Body.Close() //nolint:errcheck
 		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return nil, fmt.Errorf("ZPA authentication failed (%s): %s", resp.Status, bodySnippet(body))
+		}
 
 		var token Token
-		err = json.Unmarshal(body, &token)
-		if err != nil {
-			fmt.Printf("Error %s", err)
-			return nil, err
+		if err := json.Unmarshal(body, &token); err != nil {
+			return nil, fmt.Errorf("ZPA returned an unexpected authentication response: %s", bodySnippet(body))
 		}
 
 		zpa.token = token
 	}
 
-	err := zpa.getTeachers()
-	if err != nil {
-		fmt.Printf("cannot get teachers: %v", err)
+	// Eagerly load the semester-independent teachers and the semester's exams; a
+	// failure here (e.g. a wrong semester) is surfaced so the caller/GUI sees it
+	// instead of an empty result. Supervisor requirements are loaded on demand.
+	if err := zpa.getTeachers(); err != nil {
+		return nil, fmt.Errorf("cannot load teachers from ZPA: %w", err)
 	}
-
-	err = zpa.getExams()
-	if err != nil {
-		fmt.Printf("cannot get exams: %v", err)
-	}
-
-	err = zpa.getSupervisorRequirements()
-	if err != nil {
-		fmt.Printf("cannot get teachers: %v", err)
+	if err := zpa.getExams(); err != nil {
+		return nil, fmt.Errorf("cannot load exams from ZPA: %w", err)
 	}
 
 	return &zpa, nil

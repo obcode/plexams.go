@@ -13,12 +13,7 @@ func (zpa *ZPA) GetExams() []*model.ZPAExam {
 }
 
 func (zpa *ZPA) getExams() error {
-	err := zpa.get(fmt.Sprintf("exams?semester=%s&all=true", strings.Replace(zpa.semester, " ", "%20", 1)), &zpa.exams)
-	if err != nil {
-		fmt.Printf("Error %s", err)
-		return err
-	}
-	return nil
+	return zpa.get(fmt.Sprintf("exams?semester=%s&all=true", strings.Replace(zpa.semester, " ", "%20", 1)), &zpa.exams)
 }
 
 func (zpa *ZPA) PostExams(exams []*model.ZPAExamPlan) (string, []byte, error) {

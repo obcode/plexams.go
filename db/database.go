@@ -87,6 +87,16 @@ func databaseNameForSemester(semester string) string {
 	return strings.Replace(semester, " ", "-", 1)
 }
 
+// SetSemester repoints the DB to another semester/database (reusing the same mongo
+// client). It accepts "2026 SS", "2026-SS" or a custom database name like
+// "2026-SS-Test" and returns the normalized semester label.
+func (db *DB) SetSemester(nameOrDB string) string {
+	dbName := databaseNameForSemester(nameOrDB)
+	db.databaseName = dbName
+	db.semester = semesterName(dbName)
+	return db.semester
+}
+
 // legacyConfigInput decodes a stored config including the removed/renamed fields,
 // used for the one-time migration.
 type legacyConfigInput struct {

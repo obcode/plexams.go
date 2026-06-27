@@ -509,6 +509,7 @@ type ComplexityRoot struct {
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
 		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
+		SetSemester                   func(childComplexity int, name string) int
 		SetSemesterConfigInput        func(childComplexity int, input model.SemesterConfigInputData) int
 		UnblockRoomForSlot            func(childComplexity int, room string, day int, slot int) int
 		UnblockRoomForSlots           func(childComplexity int, room string, slots []*model.SlotInput) int
@@ -1315,6 +1316,7 @@ type MutationResolver interface {
 	UpdateRoomRequestTime(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
 	SetSemesterConfigInput(ctx context.Context, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
 	CreateSemester(ctx context.Context, semester string, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
+	SetSemester(ctx context.Context, name string) (*model.Semester, error)
 	UpsertSpecialInterest(ctx context.Context, input model.SpecialInterestInput) (*model.SpecialInterest, error)
 	DeleteSpecialInterest(ctx context.Context, name string) (bool, error)
 	GenerateStudentRegs(ctx context.Context) (*model.GenerateStudentRegsResult, error)
@@ -3975,6 +3977,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetRoomRequestApproved(childComplexity, args["room"].(string), args["day"].(int), args["slot"].(int), args["approved"].(bool)), true
+
+	case "Mutation.setSemester":
+		if e.complexity.Mutation.SetSemester == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setSemester_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetSemester(childComplexity, args["name"].(string)), true
 
 	case "Mutation.setSemesterConfigInput":
 		if e.complexity.Mutation.SetSemesterConfigInput == nil {
@@ -9492,10 +9506,16 @@ extend type Mutation {
   """
   Create a new semester (in its own database) with the given config. The
   semester must match YYYY-SS / YYYY-WS and must not already have a config.
-  Note: the running server stays bound to its current semester — switch to the
-  new one by (re)starting plexams for it.
+  Use setSemester to switch the running server to it afterwards.
   """
   createSemester(semester: String!, input: SemesterConfigInputData!): SaveSemesterConfigResult!
+  """
+  Switch the running server to another semester/database (one of allSemesterNames,
+  e.g. "2026 SS" or a clone like "2026 SS-Test"). The target must already have a
+  config. Refused while an operation is running. The GUI must refetch all data
+  afterwards (everything is semester-scoped).
+  """
+  setSemester(name: String!): Semester!
 }
 
 """
@@ -12956,6 +12976,34 @@ func (ec *executionContext) field_Mutation_setSemesterConfigInput_argsInput(
 	}
 
 	var zeroVal model.SemesterConfigInputData
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemester_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setSemester_argsName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setSemester_argsName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["name"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+	if tmp, ok := rawArgs["name"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -31611,6 +31659,65 @@ func (ec *executionContext) fieldContext_Mutation_createSemester(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createSemester_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setSemester(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setSemester(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetSemester(rctx, fc.Args["name"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Semester)
+	fc.Result = res
+	return ec.marshalNSemester2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemester(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setSemester(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Semester_id(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Semester", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setSemester_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -64640,6 +64747,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createSemester":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createSemester(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setSemester":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setSemester(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

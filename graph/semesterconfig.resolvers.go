@@ -21,6 +21,11 @@ func (r *mutationResolver) CreateSemester(ctx context.Context, semester string, 
 	return r.plexams.CreateSemester(ctx, semester, &input)
 }
 
+// SetSemester is the resolver for the setSemester field.
+func (r *mutationResolver) SetSemester(ctx context.Context, name string) (*model.Semester, error) {
+	return r.plexams.SwitchSemester(ctx, name)
+}
+
 // AllSemesterNames is the resolver for the allSemesterNames field.
 func (r *queryResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return r.plexams.GetAllSemesterNames(ctx)

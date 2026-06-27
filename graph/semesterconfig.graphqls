@@ -22,10 +22,16 @@ extend type Mutation {
   """
   Create a new semester (in its own database) with the given config. The
   semester must match YYYY-SS / YYYY-WS and must not already have a config.
-  Note: the running server stays bound to its current semester — switch to the
-  new one by (re)starting plexams for it.
+  Use setSemester to switch the running server to it afterwards.
   """
   createSemester(semester: String!, input: SemesterConfigInputData!): SaveSemesterConfigResult!
+  """
+  Switch the running server to another semester/database (one of allSemesterNames,
+  e.g. "2026 SS" or a clone like "2026 SS-Test"). The target must already have a
+  config. Refused while an operation is running. The GUI must refetch all data
+  afterwards (everything is semester-scoped).
+  """
+  setSemester(name: String!): Semester!
 }
 
 """

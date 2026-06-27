@@ -55,9 +55,16 @@ func (db *DB) DatabaseHasConfig(ctx context.Context, databaseName string) bool {
 // semester. The returned database is empty when it should be derived from the
 // semester. ok is false when nothing usable exists.
 func (db *DB) ResolveStartSemester(ctx context.Context) (semester, database string, ok bool) {
-	if active, _ := db.GetActiveSemester(ctx); active != nil && active.Semester != "" {
+	if active, _ := db.GetActiveSemester(ctx); active != nil && active.Database != "" {
 		if db.DatabaseHasConfig(ctx, active.Database) {
-			return active.Semester, active.Database, true
+			logical := db.metaSemesterOf(ctx, active.Database)
+			if logical == "" {
+				logical = active.Semester
+			}
+			if logical == "" {
+				logical = semesterName(active.Database)
+			}
+			return logical, active.Database, true
 		}
 	}
 	// AllSemesterNames is sorted newest first.
@@ -65,7 +72,12 @@ func (db *DB) ResolveStartSemester(ctx context.Context) (semester, database stri
 	if err == nil {
 		for _, s := range sems {
 			if s.Compatible {
-				return s.ID, "", true
+				dbName := databaseNameForSemester(s.ID)
+				logical := db.metaSemesterOf(ctx, dbName)
+				if logical == "" {
+					logical = s.ID
+				}
+				return logical, dbName, true
 			}
 		}
 	}

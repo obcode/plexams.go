@@ -26,15 +26,16 @@ extend type Mutation {
   """
   createSemester(semester: String!, input: SemesterConfigInputData!): SaveSemesterConfigResult!
   """
-  Switch the running server to another semester at runtime. `semester` is the
-  logical semester used against external systems (ZPA etc.), e.g. "2026 SS" — it
-  stays the real semester even when the data lives in a differently named database.
-  `database` is where the data lives (default: derived from semester); pass a clone
-  like "2026-SS-Test" to replay into it while keeping ZPA on "2026 SS". The target
-  may be empty (config is then null until created/imported). Refused while an
-  operation is running. The GUI must refetch all data afterwards.
+  Switch the running server to another database at runtime. `name` is the database
+  label from allSemesterNames (e.g. "2026 SS" or a clone "2026 SS-Test"). The
+  logical semester used against external systems (ZPA) is taken from the database's
+  own stored semester, so a clone keeps the real semester (e.g. "2026 SS") instead
+  of its database name. `semester` is an optional override, only needed for an empty
+  database that has no stored semester yet (then it is remembered). The target may
+  be empty (config null until created/imported). Refused while an operation is
+  running. The GUI must refetch all data afterwards.
   """
-  setSemester(semester: String!, database: String): Semester!
+  setSemester(name: String!, semester: String): Semester!
   """
   Protect or unprotect the current database: when read-only, all data-changing
   operations (mutations and imports/generation/uploads) are rejected, but the
@@ -90,7 +91,10 @@ type SaveSemesterConfigResult {
 }
 
 type Semester {
+  "the database label (e.g. '2026 SS' or a clone '2026 SS-Test'); selects the database."
   id: String!
+  "the logical semester used against external systems (ZPA), e.g. '2026 SS' — for a clone this stays the real semester, not the database name."
+  semester: String
   "false for databases that cannot be used with this code (no semester config)."
   compatible: Boolean!
   "true when the database is protected: it can be selected, but all mutations fail."

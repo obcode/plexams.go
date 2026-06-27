@@ -42,6 +42,10 @@ func (db *DB) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 			sem.ReadOnly = meta.ReadOnly
 			v := meta.SchemaVersion
 			sem.SchemaVersion = &v
+			if meta.Semester != "" {
+				s := meta.Semester
+				sem.Semester = &s
+			}
 		}
 		semester[n-i-1] = sem
 	}
@@ -94,20 +98,6 @@ func (db *DB) SaveSemesterConfigInputForSemester(ctx context.Context, semester s
 // MongoDB database name ("2026-WS").
 func databaseNameForSemester(semester string) string {
 	return strings.Replace(semester, " ", "-", 1)
-}
-
-// SetSemester repoints the DB (reusing the same mongo client). semester is the
-// logical semester (used verbatim against external systems like ZPA, e.g.
-// "2026 SS"); database is where the data lives and may differ from the semester
-// (e.g. a clone "2026-SS-Test") — empty means derive it from the semester. Returns
-// the normalized semester label.
-func (db *DB) SetSemester(semester, database string) string {
-	db.semester = semesterName(databaseNameForSemester(semester))
-	if database == "" {
-		database = databaseNameForSemester(semester)
-	}
-	db.databaseName = database
-	return db.semester
 }
 
 // legacyConfigInput decodes a stored config including the removed/renamed fields,

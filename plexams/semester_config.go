@@ -295,6 +295,11 @@ func (p *Plexams) createSemesterWithInput(ctx context.Context, semester string, 
 	if err := p.dbClient.SaveSemesterConfigInputForSemester(ctx, semester, input); err != nil {
 		return nil, fmt.Errorf("cannot save config for new semester: %w", err)
 	}
+	// stamp the new database with its (authoritative) logical semester
+	logical := strings.Replace(semester, "-", " ", 1)
+	if err := p.dbClient.SetMetaSemesterForSemester(ctx, logical, currentSchemaVersion); err != nil {
+		log.Error().Err(err).Str("semester", logical).Msg("cannot stamp semester on new database")
+	}
 	return &model.SaveSemesterConfigResult{Ok: true, Warnings: []string{}}, nil
 }
 

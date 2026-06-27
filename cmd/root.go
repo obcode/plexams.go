@@ -168,6 +168,8 @@ func initPlexamsConfig() *plexams.Plexams {
 	if semester == "" {
 		semester = viper.GetString("semester")
 	}
+	// an explicitly pinned semester is authoritative for its database (persisted below)
+	semesterPinned := strings.TrimSpace(semester) != ""
 	dbOverride := viper.GetString("db.database")
 
 	// No semester pinned: derive it from a pinned database, else auto-select the last
@@ -203,6 +205,11 @@ func initPlexamsConfig() *plexams.Plexams {
 		panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
 	}
 
+	// a pinned semester is authoritative for its database (e.g. a replay clone with
+	// semester=2026-SS + db.database=2026-SS-Test): remember the real semester there.
+	if semesterPinned {
+		plexams.PersistSemester(context.Background())
+	}
 	// remember what we started with, so the next start can resume it
 	plexams.RememberActiveSemester(context.Background())
 

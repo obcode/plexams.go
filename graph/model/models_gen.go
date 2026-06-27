@@ -820,7 +820,10 @@ type SaveSemesterConfigResult struct {
 }
 
 type Semester struct {
+	// the database label (e.g. '2026 SS' or a clone '2026 SS-Test'); selects the database.
 	ID string `json:"id"`
+	// the logical semester used against external systems (ZPA), e.g. '2026 SS' — for a clone this stays the real semester, not the database name.
+	Semester *string `json:"semester,omitempty"`
 	// false for databases that cannot be used with this code (no semester config).
 	Compatible bool `json:"compatible"`
 	// true when the database is protected: it can be selected, but all mutations fail.

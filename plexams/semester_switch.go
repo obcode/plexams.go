@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -21,15 +22,15 @@ func (p *Plexams) IsReadOnly() bool {
 	return p.readOnly
 }
 
-// loadSemesterMeta stamps the schema version (once, if the DB has a config) and
-// loads the read-only flag of the current database into p.readOnly.
+// loadSemesterMeta stamps the schema version and logical semester (when the DB has
+// a config) and loads the read-only flag of the current database into p.readOnly.
 func (p *Plexams) loadSemesterMeta(ctx context.Context) {
 	if p.dbClient == nil {
 		return
 	}
 	if p.semesterConfig != nil {
-		if err := p.dbClient.EnsureSchemaVersion(ctx, currentSchemaVersion); err != nil {
-			log.Error().Err(err).Msg("cannot ensure schema version")
+		if err := p.dbClient.EnsureMeta(ctx, currentSchemaVersion); err != nil {
+			log.Error().Err(err).Msg("cannot ensure semester meta")
 		}
 	}
 	p.readOnly = false
@@ -37,6 +38,18 @@ func (p *Plexams) loadSemesterMeta(ctx context.Context) {
 		log.Error().Err(err).Msg("cannot read semester meta")
 	} else if meta != nil {
 		p.readOnly = meta.ReadOnly
+	}
+}
+
+// PersistSemester force-stores the current logical semester as the database's own
+// (authoritative) semester. Use only for explicit values (a pin or override), never
+// for a derived guess.
+func (p *Plexams) PersistSemester(ctx context.Context) {
+	if p.dbClient == nil {
+		return
+	}
+	if err := p.dbClient.SetMetaSemester(ctx, p.semester, currentSchemaVersion); err != nil {
+		log.Error().Err(err).Msg("cannot persist semester")
 	}
 }
 
@@ -50,27 +63,26 @@ func (p *Plexams) SetSemesterReadOnly(ctx context.Context, readOnly bool) (*mode
 	return p.GetSemester(ctx), nil
 }
 
-// SwitchSemester repoints the running instance to another semester at runtime.
+// SwitchSemester repoints the running instance to another database at runtime.
 //
-// semester is the logical semester used against external systems (ZPA download/
-// upload, stored doc labels), e.g. "2026 SS" — it stays the real semester even when
-// the data lives in a differently named database. database is where the data lives;
-// empty derives it from the semester. So a replay clone is switched with
-// semester="2026 SS", database="2026-SS-Test", and a fresh re-import into an empty
-// "2026-SS-Test" likewise keeps semester="2026 SS" so the ZPA import is correct.
+// name identifies the target database (an allSemesterNames label, e.g. "2026 SS" or
+// a clone "2026 SS-Test"). The logical semester used against external systems (ZPA)
+// is the database's own stored semester, so a clone keeps the real semester (e.g.
+// "2026 SS") instead of its database name. semesterOverride is only needed for an
+// empty database that has no stored semester yet (it is then remembered).
 //
 // Single-user only: refused while an operation (validation/import/email/upload) is
 // running; the GUI must refetch all data afterwards. The target may be empty (no
 // config yet) — the config is then nil until created/imported.
-func (p *Plexams) SwitchSemester(ctx context.Context, semester, database string) (*model.Semester, error) {
+func (p *Plexams) SwitchSemester(ctx context.Context, name, semesterOverride string) (*model.Semester, error) {
 	if !p.WritesAllowed() {
 		return nil, fmt.Errorf("cannot switch semester while an operation (validation/import/email/upload) is running")
 	}
 
-	p.semester = p.dbClient.SetSemester(semester, database)
+	p.semester = p.dbClient.SwitchTo(ctx, name, semesterOverride)
 	// force the ZPA client to be recreated with the new semester
 	p.zpa.client = nil
-	log.Info().Str("semester", p.semester).Msg("switched semester")
+	log.Info().Str("database", name).Str("semester", p.semester).Msg("switched semester")
 
 	p.loadSemesterConfig(ctx)
 	if p.semesterConfig != nil {
@@ -81,6 +93,10 @@ func (p *Plexams) SwitchSemester(ctx context.Context, semester, database string)
 		log.Warn().Str("semester", p.semester).Msg("switched to a semester/database without config (needs setup or import)")
 	}
 	p.loadSemesterMeta(ctx)
+	// an explicit override is authoritative for this database — remember it.
+	if strings.TrimSpace(semesterOverride) != "" {
+		p.PersistSemester(ctx)
+	}
 	p.setRoomInfo()
 
 	// keep the DB-derived globals consistent with the new semester's data

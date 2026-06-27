@@ -22,12 +22,12 @@ func (r *mutationResolver) CreateSemester(ctx context.Context, semester string, 
 }
 
 // SetSemester is the resolver for the setSemester field.
-func (r *mutationResolver) SetSemester(ctx context.Context, semester string, database *string) (*model.Semester, error) {
-	db := ""
-	if database != nil {
-		db = *database
+func (r *mutationResolver) SetSemester(ctx context.Context, name string, semester *string) (*model.Semester, error) {
+	override := ""
+	if semester != nil {
+		override = *semester
 	}
-	return r.plexams.SwitchSemester(ctx, semester, db)
+	return r.plexams.SwitchSemester(ctx, name, override)
 }
 
 // SetSemesterReadOnly is the resolver for the setSemesterReadOnly field.

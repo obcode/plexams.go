@@ -175,8 +175,10 @@ func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, e
 
 func (p *Plexams) GetSemester(ctx context.Context) *model.Semester {
 	v := currentSchemaVersion
+	s := p.semester
 	return &model.Semester{
 		ID:            p.semester,
+		Semester:      &s,
 		Compatible:    p.semesterConfig != nil,
 		ReadOnly:      p.readOnly,
 		SchemaVersion: &v,

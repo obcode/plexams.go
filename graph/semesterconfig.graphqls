@@ -35,6 +35,13 @@ extend type Mutation {
   operation is running. The GUI must refetch all data afterwards.
   """
   setSemester(semester: String!, database: String): Semester!
+  """
+  Protect or unprotect the current database: when read-only, all data-changing
+  operations (mutations and imports/generation/uploads) are rejected, but the
+  semester can still be viewed and validated, and you can switch away. Useful to
+  guard the real semester while replaying in a clone.
+  """
+  setSemesterReadOnly(readOnly: Boolean!): Semester!
 }
 
 """
@@ -84,6 +91,12 @@ type SaveSemesterConfigResult {
 
 type Semester {
   id: String!
+  "false for databases that cannot be used with this code (no semester config)."
+  compatible: Boolean!
+  "true when the database is protected: it can be selected, but all mutations fail."
+  readOnly: Boolean!
+  "data schema version of the database (null when unknown/never stamped)."
+  schemaVersion: Int
 }
 
 type AnCode {

@@ -13,8 +13,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
-	dbs, err := db.Client.ListDatabaseNames(context.Background(),
+func (db *DB) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
+	dbs, err := db.Client.ListDatabaseNames(ctx,
 		bson.D{primitive.E{
 			Key: "name",
 			Value: bson.D{
@@ -32,9 +32,18 @@ func (db *DB) AllSemesterNames() ([]*model.Semester, error) {
 	semester := make([]*model.Semester, len(dbs))
 	n := len(dbs)
 	for i, dbName := range dbs {
-		semester[n-i-1] = &model.Semester{
-			ID: semesterName(dbName),
+		// compatible = the database carries a semester config (the new format).
+		config, _ := db.getSemesterConfigInputFrom(ctx, dbName)
+		sem := &model.Semester{
+			ID:         semesterName(dbName),
+			Compatible: config != nil,
 		}
+		if meta, _ := db.getSemesterMetaFrom(ctx, dbName); meta != nil {
+			sem.ReadOnly = meta.ReadOnly
+			v := meta.SchemaVersion
+			sem.SchemaVersion = &v
+		}
+		semester[n-i-1] = sem
 	}
 
 	return semester, nil

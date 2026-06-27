@@ -70,8 +70,16 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	// GUI cannot mutate the plan underneath a running check.
 	srv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
 		oc := graphql.GetOperationContext(ctx)
-		if oc.Operation != nil && oc.Operation.Operation == ast.Mutation && !plexams.WritesAllowed() {
-			return graphql.OneShot(graphql.ErrorResponse(ctx, "writes are blocked while a validation is running"))
+		if oc.Operation != nil {
+			op := oc.Operation.Operation
+			if op == ast.Mutation && !plexams.WritesAllowed() {
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "writes are blocked while a validation is running"))
+			}
+			// read-only database: reject data-changing operations, but allow queries,
+			// validations, switching the semester and toggling read-only.
+			if plexams.IsReadOnly() && isDataChangingOperation(oc) {
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "semester is read-only"))
+			}
 		}
 		return next(ctx)
 	})

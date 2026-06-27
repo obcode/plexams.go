@@ -31,6 +31,7 @@ const (
 	collectionGeneratedExams       = "generated_exams"
 	collectionGeneratedExamsState  = "generated_exams_state"
 	collectionStudentRegsState     = "student_regs_state"
+	collectionSemesterMeta         = "semester_meta"
 	collectionExamDurationOverride = "exam_duration_overrides"
 	collectionSpecialInterests     = "special_interests"
 	collectionGenerationConfig     = "generation_config"

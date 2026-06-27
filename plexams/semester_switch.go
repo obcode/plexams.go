@@ -8,6 +8,48 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// currentSchemaVersion is the data/schema version this code writes; bump it on a
+// breaking change to a semester database's layout. minSupportedSchemaVersion is the
+// oldest version this code can still work with.
+const (
+	currentSchemaVersion      = 1
+	minSupportedSchemaVersion = 1
+)
+
+// IsReadOnly reports whether the current semester database is protected.
+func (p *Plexams) IsReadOnly() bool {
+	return p.readOnly
+}
+
+// loadSemesterMeta stamps the schema version (once, if the DB has a config) and
+// loads the read-only flag of the current database into p.readOnly.
+func (p *Plexams) loadSemesterMeta(ctx context.Context) {
+	if p.dbClient == nil {
+		return
+	}
+	if p.semesterConfig != nil {
+		if err := p.dbClient.EnsureSchemaVersion(ctx, currentSchemaVersion); err != nil {
+			log.Error().Err(err).Msg("cannot ensure schema version")
+		}
+	}
+	p.readOnly = false
+	if meta, err := p.dbClient.GetSemesterMeta(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot read semester meta")
+	} else if meta != nil {
+		p.readOnly = meta.ReadOnly
+	}
+}
+
+// SetSemesterReadOnly protects/unprotects the current semester database.
+func (p *Plexams) SetSemesterReadOnly(ctx context.Context, readOnly bool) (*model.Semester, error) {
+	if err := p.dbClient.SetSemesterReadOnly(ctx, readOnly); err != nil {
+		return nil, err
+	}
+	p.readOnly = readOnly
+	log.Info().Str("semester", p.semester).Bool("readOnly", readOnly).Msg("set read-only")
+	return p.GetSemester(ctx), nil
+}
+
 // SwitchSemester repoints the running instance to another semester at runtime.
 //
 // semester is the logical semester used against external systems (ZPA download/
@@ -38,6 +80,7 @@ func (p *Plexams) SwitchSemester(ctx context.Context, semester, database string)
 	} else {
 		log.Warn().Str("semester", p.semester).Msg("switched to a semester/database without config (needs setup or import)")
 	}
+	p.loadSemesterMeta(ctx)
 	p.setRoomInfo()
 
 	// keep the DB-derived globals consistent with the new semester's data

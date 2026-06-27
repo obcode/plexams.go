@@ -30,6 +30,11 @@ func (r *mutationResolver) SetSemester(ctx context.Context, semester string, dat
 	return r.plexams.SwitchSemester(ctx, semester, db)
 }
 
+// SetSemesterReadOnly is the resolver for the setSemesterReadOnly field.
+func (r *mutationResolver) SetSemesterReadOnly(ctx context.Context, readOnly bool) (*model.Semester, error) {
+	return r.plexams.SetSemesterReadOnly(ctx, readOnly)
+}
+
 // AllSemesterNames is the resolver for the allSemesterNames field.
 func (r *queryResolver) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return r.plexams.GetAllSemesterNames(ctx)

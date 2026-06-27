@@ -27,6 +27,10 @@ type Plexams struct {
 	allDays  []*model.ExamDay
 	allSlots []*model.Slot
 	roomInfo map[string]*model.Room
+	// readOnly, when true, makes the AroundOperations middleware reject all
+	// data-changing operations (so a semester can be inspected without changing it);
+	// loaded per database from the semester meta on boot/switch.
+	readOnly bool
 	guard    *opGuard
 	// mailCollector, when non-nil, captures dry-run mails so a whole batch can be
 	// flushed as a single mail of .eml attachments (see email.go). opGuard ensures
@@ -143,6 +147,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			log.Error().Err(err).Msg("cannot save semester config")
 		}
 	}
+	plexams.loadSemesterMeta(context.Background())
 
 	plexams.setRoomInfo()
 
@@ -165,12 +170,16 @@ func (p *Plexams) GetMucDaiSlots() [][]int {
 }
 
 func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
-	return p.dbClient.AllSemesterNames()
+	return p.dbClient.AllSemesterNames(ctx)
 }
 
 func (p *Plexams) GetSemester(ctx context.Context) *model.Semester {
+	v := currentSchemaVersion
 	return &model.Semester{
-		ID: p.semester,
+		ID:            p.semester,
+		Compatible:    p.semesterConfig != nil,
+		ReadOnly:      p.readOnly,
+		SchemaVersion: &v,
 	}
 }
 

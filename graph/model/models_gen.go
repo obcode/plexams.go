@@ -821,6 +821,12 @@ type SaveSemesterConfigResult struct {
 
 type Semester struct {
 	ID string `json:"id"`
+	// false for databases that cannot be used with this code (no semester config).
+	Compatible bool `json:"compatible"`
+	// true when the database is protected: it can be selected, but all mutations fail.
+	ReadOnly bool `json:"readOnly"`
+	// data schema version of the database (null when unknown/never stamped).
+	SchemaVersion *int `json:"schemaVersion,omitempty"`
 }
 
 type SemesterConfig struct {

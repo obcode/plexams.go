@@ -511,6 +511,7 @@ type ComplexityRoot struct {
 		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
 		SetSemester                   func(childComplexity int, semester string, database *string) int
 		SetSemesterConfigInput        func(childComplexity int, input model.SemesterConfigInputData) int
+		SetSemesterReadOnly           func(childComplexity int, readOnly bool) int
 		UnblockRoomForSlot            func(childComplexity int, room string, day int, slot int) int
 		UnblockRoomForSlots           func(childComplexity int, room string, slots []*model.SlotInput) int
 		UpdateNta                     func(childComplexity int, input model.NTAInput) int
@@ -952,7 +953,10 @@ type ComplexityRoot struct {
 	}
 
 	Semester struct {
-		ID func(childComplexity int) int
+		Compatible    func(childComplexity int) int
+		ID            func(childComplexity int) int
+		ReadOnly      func(childComplexity int) int
+		SchemaVersion func(childComplexity int) int
 	}
 
 	SemesterConfig struct {
@@ -1317,6 +1321,7 @@ type MutationResolver interface {
 	SetSemesterConfigInput(ctx context.Context, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
 	CreateSemester(ctx context.Context, semester string, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
 	SetSemester(ctx context.Context, semester string, database *string) (*model.Semester, error)
+	SetSemesterReadOnly(ctx context.Context, readOnly bool) (*model.Semester, error)
 	UpsertSpecialInterest(ctx context.Context, input model.SpecialInterestInput) (*model.SpecialInterest, error)
 	DeleteSpecialInterest(ctx context.Context, name string) (bool, error)
 	GenerateStudentRegs(ctx context.Context) (*model.GenerateStudentRegsResult, error)
@@ -4002,6 +4007,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetSemesterConfigInput(childComplexity, args["input"].(model.SemesterConfigInputData)), true
 
+	case "Mutation.setSemesterReadOnly":
+		if e.complexity.Mutation.SetSemesterReadOnly == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setSemesterReadOnly_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetSemesterReadOnly(childComplexity, args["readOnly"].(bool)), true
+
 	case "Mutation.unblockRoomForSlot":
 		if e.complexity.Mutation.UnblockRoomForSlot == nil {
 			break
@@ -6401,12 +6418,33 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SaveSemesterConfigResult.Warnings(childComplexity), true
 
+	case "Semester.compatible":
+		if e.complexity.Semester.Compatible == nil {
+			break
+		}
+
+		return e.complexity.Semester.Compatible(childComplexity), true
+
 	case "Semester.id":
 		if e.complexity.Semester.ID == nil {
 			break
 		}
 
 		return e.complexity.Semester.ID(childComplexity), true
+
+	case "Semester.readOnly":
+		if e.complexity.Semester.ReadOnly == nil {
+			break
+		}
+
+		return e.complexity.Semester.ReadOnly(childComplexity), true
+
+	case "Semester.schemaVersion":
+		if e.complexity.Semester.SchemaVersion == nil {
+			break
+		}
+
+		return e.complexity.Semester.SchemaVersion(childComplexity), true
 
 	case "SemesterConfig.days":
 		if e.complexity.SemesterConfig.Days == nil {
@@ -9519,6 +9557,13 @@ extend type Mutation {
   operation is running. The GUI must refetch all data afterwards.
   """
   setSemester(semester: String!, database: String): Semester!
+  """
+  Protect or unprotect the current database: when read-only, all data-changing
+  operations (mutations and imports/generation/uploads) are rejected, but the
+  semester can still be viewed and validated, and you can switch away. Useful to
+  guard the real semester while replaying in a clone.
+  """
+  setSemesterReadOnly(readOnly: Boolean!): Semester!
 }
 
 """
@@ -9568,6 +9613,12 @@ type SaveSemesterConfigResult {
 
 type Semester {
   id: String!
+  "false for databases that cannot be used with this code (no semester config)."
+  compatible: Boolean!
+  "true when the database is protected: it can be selected, but all mutations fail."
+  readOnly: Boolean!
+  "data schema version of the database (null when unknown/never stamped)."
+  schemaVersion: Int
 }
 
 type AnCode {
@@ -12979,6 +13030,34 @@ func (ec *executionContext) field_Mutation_setSemesterConfigInput_argsInput(
 	}
 
 	var zeroVal model.SemesterConfigInputData
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemesterReadOnly_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setSemesterReadOnly_argsReadOnly(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["readOnly"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setSemesterReadOnly_argsReadOnly(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["readOnly"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("readOnly"))
+	if tmp, ok := rawArgs["readOnly"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
 	return zeroVal, nil
 }
 
@@ -31732,6 +31811,12 @@ func (ec *executionContext) fieldContext_Mutation_setSemester(ctx context.Contex
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Semester_id(ctx, field)
+			case "compatible":
+				return ec.fieldContext_Semester_compatible(ctx, field)
+			case "readOnly":
+				return ec.fieldContext_Semester_readOnly(ctx, field)
+			case "schemaVersion":
+				return ec.fieldContext_Semester_schemaVersion(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Semester", field.Name)
 		},
@@ -31744,6 +31829,71 @@ func (ec *executionContext) fieldContext_Mutation_setSemester(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setSemester_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setSemesterReadOnly(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setSemesterReadOnly(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetSemesterReadOnly(rctx, fc.Args["readOnly"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Semester)
+	fc.Result = res
+	return ec.marshalNSemester2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemester(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setSemesterReadOnly(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Semester_id(ctx, field)
+			case "compatible":
+				return ec.fieldContext_Semester_compatible(ctx, field)
+			case "readOnly":
+				return ec.fieldContext_Semester_readOnly(ctx, field)
+			case "schemaVersion":
+				return ec.fieldContext_Semester_schemaVersion(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Semester", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setSemesterReadOnly_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -38927,6 +39077,12 @@ func (ec *executionContext) fieldContext_Query_allSemesterNames(_ context.Contex
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Semester_id(ctx, field)
+			case "compatible":
+				return ec.fieldContext_Semester_compatible(ctx, field)
+			case "readOnly":
+				return ec.fieldContext_Semester_readOnly(ctx, field)
+			case "schemaVersion":
+				return ec.fieldContext_Semester_schemaVersion(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Semester", field.Name)
 		},
@@ -38975,6 +39131,12 @@ func (ec *executionContext) fieldContext_Query_semester(_ context.Context, field
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Semester_id(ctx, field)
+			case "compatible":
+				return ec.fieldContext_Semester_compatible(ctx, field)
+			case "readOnly":
+				return ec.fieldContext_Semester_readOnly(ctx, field)
+			case "schemaVersion":
+				return ec.fieldContext_Semester_schemaVersion(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Semester", field.Name)
 		},
@@ -47904,6 +48066,135 @@ func (ec *executionContext) fieldContext_Semester_id(_ context.Context, field gr
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Semester_compatible(ctx context.Context, field graphql.CollectedField, obj *model.Semester) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Semester_compatible(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Compatible, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Semester_compatible(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Semester",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Semester_readOnly(ctx context.Context, field graphql.CollectedField, obj *model.Semester) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Semester_readOnly(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ReadOnly, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Semester_readOnly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Semester",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Semester_schemaVersion(ctx context.Context, field graphql.CollectedField, obj *model.Semester) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Semester_schemaVersion(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SchemaVersion, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Semester_schemaVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Semester",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -64784,6 +65075,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setSemesterReadOnly":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setSemesterReadOnly(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "upsertSpecialInterest":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_upsertSpecialInterest(ctx, field)
@@ -69330,6 +69628,18 @@ func (ec *executionContext) _Semester(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "compatible":
+			out.Values[i] = ec._Semester_compatible(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "readOnly":
+			out.Values[i] = ec._Semester_readOnly(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "schemaVersion":
+			out.Values[i] = ec._Semester_schemaVersion(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -96,5 +96,18 @@ func (p *Plexams) SwitchSemester(ctx context.Context, semester, database string)
 		p.planer = &Planer{Name: planer.Name, Email: planer.Email}
 	}
 
+	p.RememberActiveSemester(ctx)
+
 	return p.GetSemester(ctx), nil
+}
+
+// RememberActiveSemester records the current semester/database as the last active
+// one, so the next start can resume it (best-effort).
+func (p *Plexams) RememberActiveSemester(ctx context.Context) {
+	if p.dbClient == nil {
+		return
+	}
+	if err := p.dbClient.SaveActiveSemester(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot remember active semester")
+	}
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/logrusorgru/aurora"
 	"github.com/mitchellh/go-homedir"
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph"
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/zerolog"
@@ -88,50 +90,10 @@ func initConfig() error {
 		if semester == "" {
 			semester = viper.GetString("semester")
 		}
-		if strings.TrimSpace(semester) == "" {
-			return fmt.Errorf("missing setting 'semester' in .plexams.yaml")
-		}
-		p := viper.GetString("semester-path")
-		p = os.ExpandEnv(p)      // $HOME, $USER, ...
-		p, _ = homedir.Expand(p) // ~ und ~user
-
-		semesterViper := viper.New()
-		semesterViper.SetConfigName(semester)
-		semesterViper.SetConfigType("yaml")
-		semesterViper.AddConfigPath(".")
-		semesterViper.AddConfigPath(home)
-		if p != "" {
-			semesterViper.AddConfigPath(p)
-		}
-
-		err = semesterViper.ReadInConfig()
-		if err != nil {
-			var notFound viper.ConfigFileNotFoundError
-			if errors.As(err, &notFound) {
-				// The per-semester YAML is optional: the semester config is now
-				// stored in (and loaded from) the database. Without the file we
-				// simply skip the merge and rely on the DB.
-				log.Debug().Str("semester", semester).Msg("no per-semester YAML found, using config from the database")
-			} else {
-				return fmt.Errorf("cannot read semester config '%s.yaml': %w", semester, err)
-			}
-		} else {
-			if err := viper.MergeConfigMap(semesterViper.AllSettings()); err != nil {
-				return fmt.Errorf("cannot merge semester config: %w", err)
-			}
-
-			// Beobachte die per-Semester-Config, damit Änderungen an der YAML ohne
-			// Neustart wirksam werden. viper liest die Datei vor
-			// dem Callback selbst neu ein, wir mergen die frischen Werte ins globale
-			// viper. Hinweis: Merge entfernt keine im File gelöschten Schlüssel – dafür
-			// ist weiterhin ein Neustart nötig.
-			semesterViper.OnConfigChange(func(e fsnotify.Event) {
-				log.Info().Str("file", e.Name).Msg("semester config changed, reloading")
-				if err := viper.MergeConfigMap(semesterViper.AllSettings()); err != nil {
-					log.Error().Err(err).Msg("cannot re-merge semester config after change")
-				}
-			})
-			semesterViper.WatchConfig()
+		// A pinned semester loads its optional per-semester YAML; without a pin the
+		// semester is auto-selected from the database later (initPlexamsConfig).
+		if strings.TrimSpace(semester) != "" {
+			loadPerSemesterYAML(semester, home)
 		}
 	} else {
 		var notFound viper.ConfigFileNotFoundError
@@ -142,6 +104,49 @@ func initConfig() error {
 	}
 
 	return nil
+}
+
+// loadPerSemesterYAML merges the optional <semester>.yaml (from semester-path) into
+// the global viper config and watches it for changes. The file is optional: the
+// semester config is otherwise loaded from the database.
+func loadPerSemesterYAML(semester, home string) {
+	p := viper.GetString("semester-path")
+	p = os.ExpandEnv(p)      // $HOME, $USER, ...
+	p, _ = homedir.Expand(p) // ~ und ~user
+
+	semesterViper := viper.New()
+	semesterViper.SetConfigName(semester)
+	semesterViper.SetConfigType("yaml")
+	semesterViper.AddConfigPath(".")
+	semesterViper.AddConfigPath(home)
+	if p != "" {
+		semesterViper.AddConfigPath(p)
+	}
+
+	if err := semesterViper.ReadInConfig(); err != nil {
+		var notFound viper.ConfigFileNotFoundError
+		if errors.As(err, &notFound) {
+			log.Debug().Str("semester", semester).Msg("no per-semester YAML found, using config from the database")
+		} else {
+			log.Error().Err(err).Str("semester", semester).Msg("cannot read per-semester config")
+		}
+		return
+	}
+
+	if err := viper.MergeConfigMap(semesterViper.AllSettings()); err != nil {
+		log.Error().Err(err).Msg("cannot merge semester config")
+		return
+	}
+
+	// Watch the per-semester config so YAML changes take effect without a restart.
+	// Note: merge does not remove keys deleted in the file – that still needs a restart.
+	semesterViper.OnConfigChange(func(e fsnotify.Event) {
+		log.Info().Str("file", e.Name).Msg("semester config changed, reloading")
+		if err := viper.MergeConfigMap(semesterViper.AllSettings()); err != nil {
+			log.Error().Err(err).Msg("cannot re-merge semester config after change")
+		}
+	})
+	semesterViper.WatchConfig()
 }
 
 func isConfigOptionalCommand(cmd *cobra.Command) bool {
@@ -163,6 +168,25 @@ func initPlexamsConfig() *plexams.Plexams {
 	if semester == "" {
 		semester = viper.GetString("semester")
 	}
+	dbOverride := viper.GetString("db.database")
+
+	// No semester pinned: derive it from a pinned database, else auto-select the last
+	// active / newest compatible semester from the database.
+	if strings.TrimSpace(semester) == "" {
+		if strings.TrimSpace(dbOverride) != "" {
+			semester = dbOverride
+		} else {
+			resolved, database, ok := resolveStartSemester(dbURI)
+			if !ok {
+				log.Fatal().Msg("no semester pinned and no usable (compatible) semester found in the database")
+			}
+			semester = resolved
+			if database != "" {
+				viper.Set("db.database", database)
+			}
+			log.Info().Str("semester", semester).Msg("auto-selected start semester")
+		}
+	}
 
 	plexams, err := plexams.NewPlexams(
 		strings.Replace(semester, "-", " ", 1),
@@ -179,6 +203,25 @@ func initPlexamsConfig() *plexams.Plexams {
 		panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
 	}
 
+	// remember what we started with, so the next start can resume it
+	plexams.RememberActiveSemester(context.Background())
+
 	plexams.PrintInfo()
 	return plexams
+}
+
+// resolveStartSemester opens a temporary DB connection to pick the start semester
+// (last active, else newest compatible). Returns ok=false when nothing usable.
+func resolveStartSemester(dbURI string) (semester, database string, ok bool) {
+	client, err := db.NewDB(dbURI, "plexams", nil)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot connect to resolve start semester")
+		return "", "", false
+	}
+	defer func() {
+		if err := client.Client.Disconnect(context.Background()); err != nil {
+			log.Debug().Err(err).Msg("cannot disconnect temporary client")
+		}
+	}()
+	return client.ResolveStartSemester(context.Background())
 }

@@ -16,13 +16,20 @@ die (noch) nicht in der DB liegen**. Die eigentliche Semester-Planung (`from`,
 ## 1. Erforderlich (Bootstrap)
 
 ```yaml
-semester: 2026-SS              # Pflicht
+semester: 2026-SS              # optional (Pin); ohne Angabe wird beim Start das
+                               # zuletzt aktive bzw. neueste kompatible Semester gewählt
 semester-path: ~/semester      # optional: nur nötig, wenn noch per-Semester-YAMLs benutzt werden
 
 db:
-  uri: mongodb://localhost:27013
-  database: ""                 # optional, Default = Semestername (z. B. "2026-SS")
+  uri: mongodb://localhost:27013   # Pflicht
+  database: ""                 # optional, Default = Semestername (z. B. "2026-SS");
+                               # als Pin/Override z. B. für einen Replay-Klon "2026-SS-Test"
 ```
+
+> Einzige echte Pflicht ist `db.uri`. `semester` ist nur noch ein optionaler Pin:
+> ist es nicht gesetzt (und kein `db.database`-Pin), startet plexams mit dem zuletzt
+> im GUI aktiven Semester, sonst mit dem neuesten kompatiblen. Umschalten geht zur
+> Laufzeit über `setSemester` (GUI).
 
 Der **Planer** (`planer.name`/`planer.email`) liegt inzwischen in der DB (global,
 GUI-editierbar über `setPlaner`); der Config-Block ist nur noch Bootstrap/Fallback

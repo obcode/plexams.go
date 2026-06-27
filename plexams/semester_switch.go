@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -115,6 +116,56 @@ func (p *Plexams) SwitchSemester(ctx context.Context, name, semesterOverride str
 	p.RememberActiveSemester(ctx)
 
 	return p.GetSemester(ctx), nil
+}
+
+// workspaceNameRE restricts workspace database names to safe characters.
+var workspaceNameRE = regexp.MustCompile(`^[A-Za-z0-9 _-]+$`)
+
+// CreateWorkspace creates a new, independent database (a workspace) for the logical
+// semester of fromSemester, copying that semester's config so dates/slots match.
+// The data stays empty — import it (e.g. from ZPA, which uses the logical semester).
+func (p *Plexams) CreateWorkspace(ctx context.Context, database, fromSemester string) (*model.Semester, error) {
+	database = strings.TrimSpace(database)
+	if !workspaceNameRE.MatchString(database) {
+		return nil, fmt.Errorf("invalid database name %q (use letters, digits, space, - and _)", database)
+	}
+	if systemDB(database) {
+		return nil, fmt.Errorf("%q is a reserved database name", database)
+	}
+	if existing, err := p.dbClient.SemesterConfigInputForDatabase(ctx, database); err != nil {
+		return nil, err
+	} else if existing != nil {
+		return nil, fmt.Errorf("database %q already exists as a workspace", database)
+	}
+
+	srcDB := strings.Replace(fromSemester, " ", "-", 1)
+	srcConfig, err := p.dbClient.SemesterConfigInputForDatabase(ctx, srcDB)
+	if err != nil {
+		return nil, err
+	}
+	if srcConfig == nil {
+		return nil, fmt.Errorf("source semester %q has no config to copy from", fromSemester)
+	}
+	logical := p.dbClient.SemesterForDatabase(ctx, srcDB)
+
+	if err := p.dbClient.SaveSemesterConfigInputToDatabase(ctx, database, srcConfig); err != nil {
+		return nil, err
+	}
+	if err := p.dbClient.SetMetaSemesterForDatabase(ctx, database, logical, currentSchemaVersion); err != nil {
+		return nil, err
+	}
+	log.Info().Str("database", database).Str("semester", logical).Msg("created workspace")
+
+	v := currentSchemaVersion
+	return &model.Semester{ID: database, Semester: &logical, Compatible: true, SchemaVersion: &v}, nil
+}
+
+func systemDB(name string) bool {
+	switch name {
+	case "admin", "local", "config", "plexams":
+		return true
+	}
+	return false
 }
 
 // RememberActiveSemester records the current semester/database as the last active

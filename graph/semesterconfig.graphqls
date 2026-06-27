@@ -26,16 +26,23 @@ extend type Mutation {
   """
   createSemester(semester: String!, input: SemesterConfigInputData!): SaveSemesterConfigResult!
   """
-  Switch the running server to another database at runtime. `name` is the database
-  label from allSemesterNames (e.g. "2026 SS" or a clone "2026 SS-Test"). The
-  logical semester used against external systems (ZPA) is taken from the database's
-  own stored semester, so a clone keeps the real semester (e.g. "2026 SS") instead
-  of its database name. `semester` is an optional override, only needed for an empty
-  database that has no stored semester yet (then it is remembered). The target may
-  be empty (config null until created/imported). Refused while an operation is
-  running. The GUI must refetch all data afterwards.
+  Switch the running server to another database (workspace) at runtime. `name` is
+  the database name from allSemesterNames (id), e.g. "2026-SS" or "test-v2". The
+  logical semester used against external systems (ZPA) is the database's own stored
+  semester — independent of the database name. `semester` is an optional override,
+  only needed for a database that has no stored semester yet (then it is
+  remembered). The target may be empty (config null until created/imported).
+  Refused while an operation is running. The GUI must refetch all data afterwards.
   """
   setSemester(name: String!, semester: String): Semester!
+  """
+  Create a new, independent database (workspace) for the logical semester of
+  `fromSemester` (e.g. "2026-SS"), copying that semester's config (dates/slots/
+  emails) so it matches. `database` is the new database name (e.g. "test-v2"); it
+  must not exist yet. The data stays empty — switch to it and import (e.g. from ZPA,
+  which uses the logical semester). Returns the new workspace.
+  """
+  createWorkspace(database: String!, fromSemester: String!): Semester!
   """
   Protect or unprotect the current database: when read-only, all data-changing
   operations (mutations and imports/generation/uploads) are rejected, but the

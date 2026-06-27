@@ -67,17 +67,13 @@ func (db *DB) ResolveStartSemester(ctx context.Context) (semester, database stri
 			return logical, active.Database, true
 		}
 	}
-	// AllSemesterNames is sorted newest first.
+	// otherwise the first compatible workspace (id == database name).
 	sems, err := db.AllSemesterNames(ctx)
 	if err == nil {
 		for _, s := range sems {
 			if s.Compatible {
-				dbName := databaseNameForSemester(s.ID)
-				logical := db.metaSemesterOf(ctx, dbName)
-				if logical == "" {
-					logical = s.ID
-				}
-				return logical, dbName, true
+				logical := db.SemesterForDatabase(ctx, s.ID)
+				return logical, s.ID, true
 			}
 		}
 	}

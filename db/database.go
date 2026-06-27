@@ -9,36 +9,42 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// systemDatabases are never plexams workspaces.
+var systemDatabases = map[string]bool{"admin": true, "local": true, "config": true, "plexams": true}
+
+// DatabaseName returns the name of the database the client is currently pointed at.
+func (db *DB) DatabaseName() string {
+	return db.databaseName
+}
+
+// AllSemesterNames lists the plexams workspaces: every database carrying a semester
+// config or meta. The id is the database name (the switch key); semester is the
+// logical semester (for ZPA), which may differ from the database name.
 func (db *DB) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
-	dbs, err := db.Client.ListDatabaseNames(ctx,
-		bson.D{primitive.E{
-			Key: "name",
-			Value: bson.D{
-				primitive.E{Key: "$regex",
-					Value: primitive.Regex{Pattern: "[0-9]{4}-[WS]S"},
-				},
-			},
-		}})
+	dbs, err := db.Client.ListDatabaseNames(ctx, bson.M{})
 	if err != nil {
 		return nil, err
 	}
-
 	sort.Strings(dbs)
 
-	semester := make([]*model.Semester, len(dbs))
-	n := len(dbs)
-	for i, dbName := range dbs {
-		// compatible = the database carries a semester config (the new format).
+	semester := make([]*model.Semester, 0, len(dbs))
+	for _, dbName := range dbs {
+		if systemDatabases[dbName] {
+			continue
+		}
 		config, _ := db.getSemesterConfigInputFrom(ctx, dbName)
+		meta, _ := db.getSemesterMetaFrom(ctx, dbName)
+		if config == nil && meta == nil {
+			continue // not a plexams workspace
+		}
 		sem := &model.Semester{
-			ID:         semesterName(dbName),
+			ID:         dbName,
 			Compatible: config != nil,
 		}
-		if meta, _ := db.getSemesterMetaFrom(ctx, dbName); meta != nil {
+		if meta != nil {
 			sem.ReadOnly = meta.ReadOnly
 			v := meta.SchemaVersion
 			sem.SchemaVersion = &v
@@ -47,7 +53,7 @@ func (db *DB) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 				sem.Semester = &s
 			}
 		}
-		semester[n-i-1] = sem
+		semester = append(semester, sem)
 	}
 
 	return semester, nil
@@ -83,15 +89,27 @@ func (db *DB) getSemesterConfigInputFrom(ctx context.Context, databaseName strin
 // SaveSemesterConfigInputForSemester writes the raw config into another
 // semester's database (used when creating a new semester).
 func (db *DB) SaveSemesterConfigInputForSemester(ctx context.Context, semester string, input *model.SemesterConfigInput) error {
-	collection := db.Client.Database(databaseNameForSemester(semester)).Collection(collectionNameSemesterConfigInput)
+	return db.SaveSemesterConfigInputToDatabase(ctx, databaseNameForSemester(semester), input)
+}
+
+// SaveSemesterConfigInputToDatabase writes the raw config into a specific database
+// (by exact name; used when creating a workspace with an arbitrary database name).
+func (db *DB) SaveSemesterConfigInputToDatabase(ctx context.Context, database string, input *model.SemesterConfigInput) error {
+	collection := db.Client.Database(database).Collection(collectionNameSemesterConfigInput)
 	if err := collection.Drop(ctx); err != nil {
 		return err
 	}
 	if _, err := collection.InsertOne(ctx, input); err != nil {
-		log.Error().Err(err).Str("semester", semester).Msg("cannot save semester config input for semester")
+		log.Error().Err(err).Str("database", database).Msg("cannot save semester config input")
 		return err
 	}
 	return nil
+}
+
+// SemesterConfigInputForDatabase returns the raw config stored in a specific
+// database (by exact name), or nil when none.
+func (db *DB) SemesterConfigInputForDatabase(ctx context.Context, database string) (*model.SemesterConfigInput, error) {
+	return db.getSemesterConfigInputFrom(ctx, database)
 }
 
 // databaseNameForSemester maps a semester (e.g. "2026 WS" or "2026-WS") to its

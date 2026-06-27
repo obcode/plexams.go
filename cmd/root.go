@@ -172,21 +172,21 @@ func initPlexamsConfig() *plexams.Plexams {
 	semesterPinned := strings.TrimSpace(semester) != ""
 	dbOverride := viper.GetString("db.database")
 
-	// No semester pinned: derive it from a pinned database, else auto-select the last
-	// active / newest compatible semester from the database.
+	// No semester pinned: take the logical semester of a pinned database, else
+	// auto-select the last active / newest compatible workspace from the database.
 	if strings.TrimSpace(semester) == "" {
 		if strings.TrimSpace(dbOverride) != "" {
-			semester = dbOverride
+			semester = logicalSemesterForDatabase(dbURI, dbOverride)
 		} else {
 			resolved, database, ok := resolveStartSemester(dbURI)
 			if !ok {
-				log.Fatal().Msg("no semester pinned and no usable (compatible) semester found in the database")
+				log.Fatal().Msg("no semester pinned and no usable (compatible) workspace found in the database")
 			}
 			semester = resolved
 			if database != "" {
 				viper.Set("db.database", database)
 			}
-			log.Info().Str("semester", semester).Msg("auto-selected start semester")
+			log.Info().Str("database", database).Str("semester", semester).Msg("auto-selected start workspace")
 		}
 	}
 
@@ -231,4 +231,20 @@ func resolveStartSemester(dbURI string) (semester, database string, ok bool) {
 		}
 	}()
 	return client.ResolveStartSemester(context.Background())
+}
+
+// logicalSemesterForDatabase opens a temporary DB connection to read the logical
+// semester stored in a specific database (else derives it from the name).
+func logicalSemesterForDatabase(dbURI, database string) string {
+	client, err := db.NewDB(dbURI, "plexams", nil)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot connect to read database semester")
+		return database
+	}
+	defer func() {
+		if err := client.Client.Disconnect(context.Background()); err != nil {
+			log.Debug().Err(err).Msg("cannot disconnect temporary client")
+		}
+	}()
+	return client.SemesterForDatabase(context.Background(), database)
 }

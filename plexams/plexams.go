@@ -177,7 +177,7 @@ func (p *Plexams) GetSemester(ctx context.Context) *model.Semester {
 	v := currentSchemaVersion
 	s := p.semester
 	return &model.Semester{
-		ID:            p.semester,
+		ID:            p.dbClient.DatabaseName(),
 		Semester:      &s,
 		Compatible:    p.semesterConfig != nil,
 		ReadOnly:      p.readOnly,

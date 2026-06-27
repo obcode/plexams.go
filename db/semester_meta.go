@@ -100,22 +100,36 @@ func (db *DB) metaSemesterOf(ctx context.Context, databaseName string) string {
 	return ""
 }
 
-// SwitchTo repoints the DB to the database identified by id (an allSemesterNames
-// label, e.g. "2026 SS" or a clone "2026 SS-Test"). The logical semester is the
+// SwitchTo repoints the DB to the database named database (verbatim; an
+// allSemesterNames id, e.g. "2026-SS" or "test-v2"). The logical semester is the
 // override when given, else the database's own stored semester, else derived from
-// the id. Returns the resolved logical semester.
-func (db *DB) SwitchTo(ctx context.Context, id, override string) string {
-	dbName := databaseNameForSemester(id)
+// the database name. Returns the resolved logical semester.
+func (db *DB) SwitchTo(ctx context.Context, database, override string) string {
 	logical := strings.TrimSpace(override)
 	if logical == "" {
-		logical = db.metaSemesterOf(ctx, dbName)
+		logical = db.metaSemesterOf(ctx, database)
 	}
 	if logical == "" {
-		logical = semesterName(dbName)
+		logical = semesterName(database)
 	}
 	db.semester = logical
-	db.databaseName = dbName
+	db.databaseName = database
 	return logical
+}
+
+// SemesterForDatabase returns the logical semester of a database (its stored value,
+// else derived from the name).
+func (db *DB) SemesterForDatabase(ctx context.Context, database string) string {
+	if logical := db.metaSemesterOf(ctx, database); logical != "" {
+		return logical
+	}
+	return semesterName(database)
+}
+
+// SetMetaSemesterForDatabase force-writes the logical semester into a specific
+// database (by exact name; used when creating a workspace).
+func (db *DB) SetMetaSemesterForDatabase(ctx context.Context, database, semester string, version int) error {
+	return db.setMetaSemesterIn(ctx, database, semester, version)
 }
 
 // SetSemesterReadOnly sets the read-only flag of the current database (upsert,

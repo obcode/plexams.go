@@ -3,22 +3,14 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// cost weights for the pre-exam assignment: a shared study program in a slot
-// (the only conflict signal we have without Primuss data) dominates; seat
-// overflow beyond the EXaHM/SEB room capacity is a softer secondary penalty.
-const (
-	preplanConflictWeight = 1000
-	preplanOverflowWeight = 1
-	// same-slot pre-exams must end up in the same slot; a dominating penalty keeps
-	// them together.
-	preplanSameSlotWeight = 100000
-)
+// preplanCapacityFactor leaves ~10% of a slot's booked Anny seats free instead of
+// filling rooms to the brim (e.g. ~108 of ~120 seats in the 4 T-building rooms).
+const preplanCapacityFactor = 0.9
 
 // ValidatePreplanAssignment checks the current slot assignment of the pre-exams:
 // unassigned exams, per-slot/kind capacity overflow, and study programs shared by
@@ -150,11 +142,13 @@ func kindBookingMessages(key [2]int, kind string, needed, available int, rooms [
 	return []string{msg}
 }
 
-// GeneratePreplanAssignment assigns the pre-exams to the EXaHM/SEB go-slots,
-// minimizing shared study programs per slot and seat overflow (greedy, largest
-// first, then a short hill-climbing polish). With keepAssigned the already-slotted
-// exams stay put and only the unassigned ones are placed. The new assignment is
-// persisted; the result is its validation.
+// GeneratePreplanAssignment distributes the pre-exams over the MUC.DAI slots that
+// already have Anny rooms booked, up to ~90% of each slot's booked capacity (never
+// brim-full). The most important exams are placed first (EXaHM, then large SEB);
+// small SEB that no longer fit are left without a slot. Exams of the same study
+// program never share a slot and are spread across different days where possible.
+// Same-slot exams stay together. When no Anny rooms are booked anywhere, nothing is
+// assigned. With keepAssigned, exams already sitting in a booked slot keep it.
 func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bool) (*model.PreplanValidation, error) {
 	preExams, err := p.dbClient.PreplanExams(ctx)
 	if err != nil {
@@ -163,7 +157,6 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	if len(preExams) == 0 {
 		return &model.PreplanValidation{Ok: true, Messages: []string{}, UnassignedIDs: []int{}}, nil
 	}
-
 	mucDaiSlots := p.semesterConfig.MucDaiSlots
 	if len(mucDaiSlots) == 0 {
 		return nil, fmt.Errorf("no MUC.DAI slots configured for this semester")
@@ -172,174 +165,191 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	if err != nil {
 		return nil, err
 	}
-	exahmAvail, sebAvail := totalSeats(exahmRooms), totalSeats(sebRooms)
 
-	// candidate slots = the MUC.DAI slots
-	type slotRef struct{ day, slot int }
-	slots := make([]slotRef, 0, len(mucDaiSlots))
+	// booked Anny capacity per MUC.DAI slot
+	allKeys := make([][2]int, 0, len(mucDaiSlots))
 	for _, s := range mucDaiSlots {
-		slots = append(slots, slotRef{day: s.DayNumber, slot: s.SlotNumber})
+		allKeys = append(allKeys, [2]int{s.DayNumber, s.SlotNumber})
+	}
+	booked, err := p.annyBookedBySlot(ctx, allKeys)
+	if err != nil {
+		return nil, err
 	}
 
-	// assignment: index into slots per exam, or -1 = unassigned/fixed-elsewhere.
-	// fixed[i] true => exam i keeps its current slot and is not moved.
-	assign := make([]int, len(preExams))
-	fixed := make([]bool, len(preExams))
-	slotByKey := make(map[slotRef]int, len(slots))
-	for i, s := range slots {
-		slotByKey[s] = i
+	// candidate slots: only those with booked Anny rooms; usable capacity = 90%
+	type cslot struct {
+		day, slotNo int
+		capacity    int
+		used        int
+		programs    map[string]bool
 	}
-	for i, pe := range preExams {
-		assign[i] = -1
-		if keepAssigned && pe.PlannedDayNumber != nil && pe.PlannedSlotNumber != nil {
-			fixed[i] = true
-			if idx, ok := slotByKey[slotRef{*pe.PlannedDayNumber, *pe.PlannedSlotNumber}]; ok {
-				assign[i] = idx
-			} else {
-				// fixed to a non-go-slot: leave it where it is, exclude from cost slots
-				fixed[i] = true
+	slots := make([]*cslot, 0)
+	slotByKey := make(map[[2]int]*cslot)
+	for _, s := range mucDaiSlots {
+		sb := booked[[2]int{s.DayNumber, s.SlotNumber}]
+		if sb == nil {
+			continue
+		}
+		capacity := int(float64(sb.seats) * preplanCapacityFactor)
+		if capacity <= 0 {
+			continue
+		}
+		cs := &cslot{day: s.DayNumber, slotNo: s.SlotNumber, capacity: capacity, programs: map[string]bool{}}
+		slots = append(slots, cs)
+		slotByKey[[2]int{s.DayNumber, s.SlotNumber}] = cs
+	}
+
+	// the booked slot all members of a unit currently sit in, or nil otherwise
+	currentUnitSlot := func(members []int) *cslot {
+		var slot *cslot
+		for _, i := range members {
+			pe := preExams[i]
+			if pe.PlannedDayNumber == nil || pe.PlannedSlotNumber == nil {
+				return nil
 			}
+			cs := slotByKey[[2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber}]
+			if cs == nil {
+				return nil
+			}
+			if slot == nil {
+				slot = cs
+			} else if slot != cs {
+				return nil
+			}
+		}
+		return slot
+	}
+
+	programDays := make(map[string]map[int]bool) // program -> days it already occupies
+
+	occupy := func(s *cslot, seats int, programs map[string]bool) {
+		s.used += seats
+		for prog := range programs {
+			s.programs[prog] = true
+			if programDays[prog] == nil {
+				programDays[prog] = map[int]bool{}
+			}
+			programDays[prog][s.day] = true
 		}
 	}
 
-	// same-slot pre-exam pairs (by index) — they must share a slot
+	// same-slot groups (union-find over indices)
 	idToIdx := make(map[int]int, len(preExams))
 	for i, pe := range preExams {
 		idToIdx[pe.ID] = i
 	}
-	sameSlotPairs := make([][2]int, 0)
-	seenPair := make(map[[2]int]bool)
+	parent := make([]int, len(preExams))
+	for i := range parent {
+		parent[i] = i
+	}
+	find := func(x int) int {
+		for parent[x] != x {
+			parent[x] = parent[parent[x]]
+			x = parent[x]
+		}
+		return x
+	}
 	for i, pe := range preExams {
 		if pe.Constraints == nil {
 			continue
 		}
 		for _, otherID := range pe.Constraints.SameSlot {
-			j, ok := idToIdx[otherID]
-			if !ok || j == i {
-				continue
-			}
-			pair := [2]int{i, j}
-			if pair[0] > pair[1] {
-				pair[0], pair[1] = pair[1], pair[0]
-			}
-			if !seenPair[pair] {
-				seenPair[pair] = true
-				sameSlotPairs = append(sameSlotPairs, pair)
+			if j, ok := idToIdx[otherID]; ok {
+				parent[find(i)] = find(j)
 			}
 		}
 	}
 
-	// cost over the candidate slots given the current assignment
-	cost := func(a []int) int {
-		type load struct {
-			exahm, seb int
-			progs      map[string]int
+	type unit struct {
+		members  []int
+		seats    int
+		programs map[string]bool
+		hasExahm bool
+		minID    int
+	}
+	groups := make(map[int]*unit)
+	for i, pe := range preExams {
+		r := find(i)
+		u := groups[r]
+		if u == nil {
+			u = &unit{programs: map[string]bool{}, minID: pe.ID}
+			groups[r] = u
 		}
-		perSlot := make(map[int]*load)
-		for i, pe := range preExams {
-			si := a[i]
-			if si < 0 {
-				continue
-			}
-			l := perSlot[si]
-			if l == nil {
-				l = &load{progs: map[string]int{}}
-				perSlot[si] = l
-			}
-			switch pe.ExamKind {
-			case "EXaHM":
-				l.exahm += pe.ExpectedStudents
-			case "SEB":
-				l.seb += pe.ExpectedStudents
-			}
-			for _, prog := range pe.Programs {
-				l.progs[prog]++
-			}
+		u.members = append(u.members, i)
+		u.seats += pe.ExpectedStudents
+		if pe.ExamKind == "EXaHM" {
+			u.hasExahm = true
 		}
-		total := 0
-		for _, l := range perSlot {
-			for _, cnt := range l.progs {
-				if cnt > 1 {
-					total += preplanConflictWeight * (cnt - 1)
+		for _, prog := range pe.Programs {
+			u.programs[prog] = true
+		}
+		if pe.ID < u.minID {
+			u.minID = pe.ID
+		}
+	}
+
+	// keepAssigned: units already sitting in a booked slot keep it (pre-occupy)
+	assignSlot := make(map[int]*cslot)
+	units := make([]*unit, 0, len(groups))
+	for _, u := range groups {
+		if keepAssigned {
+			if cs := currentUnitSlot(u.members); cs != nil {
+				occupy(cs, u.seats, u.programs)
+				for _, i := range u.members {
+					assignSlot[i] = cs
 				}
-			}
-			if l.exahm > exahmAvail {
-				total += preplanOverflowWeight * (l.exahm - exahmAvail)
-			}
-			if l.seb > sebAvail {
-				total += preplanOverflowWeight * (l.seb - sebAvail)
+				continue
 			}
 		}
-		// same-slot pairs assigned to different slots
-		for _, pr := range sameSlotPairs {
-			if a[pr[0]] >= 0 && a[pr[1]] >= 0 && a[pr[0]] != a[pr[1]] {
-				total += preplanSameSlotWeight
-			}
-		}
-		return total
+		units = append(units, u)
 	}
 
-	// movable exams, largest first (better packing)
-	movable := make([]int, 0, len(preExams))
-	for i := range preExams {
-		if !fixed[i] {
-			movable = append(movable, i)
+	// priority: EXaHM units first, then largest first (so small SEB are placed last)
+	sort.Slice(units, func(a, b int) bool {
+		if units[a].hasExahm != units[b].hasExahm {
+			return units[a].hasExahm
 		}
-	}
-	sort.Slice(movable, func(a, b int) bool {
-		if preExams[movable[a]].ExpectedStudents != preExams[movable[b]].ExpectedStudents {
-			return preExams[movable[a]].ExpectedStudents > preExams[movable[b]].ExpectedStudents
+		if units[a].seats != units[b].seats {
+			return units[a].seats > units[b].seats
 		}
-		return preExams[movable[a]].ID < preExams[movable[b]].ID
+		return units[a].minID < units[b].minID
 	})
 
-	// greedy: place each movable exam in the slot with the smallest marginal cost
-	for _, i := range movable {
-		bestSlot, bestCost := -1, 0
-		for si := range slots {
-			assign[i] = si
-			c := cost(assign)
-			if bestSlot == -1 || c < bestCost {
-				bestSlot, bestCost = si, c
+	for _, u := range units {
+		var best *cslot
+		bestPenalty := 0
+		for _, s := range slots {
+			if s.capacity-s.used < u.seats {
+				continue // would exceed the 90% booked capacity
+			}
+			if overlapsProgram(u.programs, s.programs) {
+				continue // same study program never in the same slot
+			}
+			penalty := dayClashes(u.programs, programDays, s.day) // prefer different days
+			free := s.capacity - s.used
+			if best == nil || penalty < bestPenalty ||
+				(penalty == bestPenalty && free > best.capacity-best.used) {
+				best, bestPenalty = s, penalty
 			}
 		}
-		assign[i] = bestSlot
-	}
-
-	// short hill-climbing polish (deterministic seed)
-	if len(movable) > 0 {
-		rng := rand.New(rand.NewSource(1)) //nolint:gosec // not security relevant
-		current := cost(assign)
-		iterations := 4000
-		for it := 0; it < iterations; it++ {
-			i := movable[rng.Intn(len(movable))]
-			old := assign[i]
-			cand := rng.Intn(len(slots))
-			if cand == old {
-				continue
-			}
-			assign[i] = cand
-			c := cost(assign)
-			if c <= current {
-				current = c
-			} else {
-				assign[i] = old
-			}
+		if best == nil {
+			continue // no booked slot with room for it → leave unassigned
+		}
+		occupy(best, u.seats, u.programs)
+		for _, i := range u.members {
+			assignSlot[i] = best
 		}
 	}
 
 	// persist
 	for i, pe := range preExams {
-		if fixed[i] {
-			continue
-		}
-		if assign[i] < 0 {
-			pe.PlannedDayNumber = nil
-			pe.PlannedSlotNumber = nil
-		} else {
-			day, slot := slots[assign[i]].day, slots[assign[i]].slot
+		if s := assignSlot[i]; s != nil {
+			day, slot := s.day, s.slotNo
 			pe.PlannedDayNumber = &day
 			pe.PlannedSlotNumber = &slot
+		} else {
+			pe.PlannedDayNumber = nil
+			pe.PlannedSlotNumber = nil
 		}
 		if _, err := p.dbClient.ReplacePreplanExam(ctx, pe); err != nil {
 			return nil, err
@@ -352,12 +362,36 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 			slotKeys = append(slotKeys, [2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber})
 		}
 	}
-	booked, err := p.annyBookedBySlot(ctx, slotKeys)
+	bookedAfter, err := p.annyBookedBySlot(ctx, slotKeys)
 	if err != nil {
 		return nil, err
 	}
+	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter)
+	if len(slots) == 0 {
+		result.Ok = false
+		result.Messages = append([]string{"keine Anny-Räume gebucht — nichts zugeordnet (zuerst Anny-Räume buchen und importieren)"}, result.Messages...)
+	}
+	return result, nil
+}
 
-	return validatePreplan(preExams, exahmRooms, sebRooms, booked), nil
+func overlapsProgram(a, b map[string]bool) bool {
+	for prog := range a {
+		if b[prog] {
+			return true
+		}
+	}
+	return false
+}
+
+// dayClashes counts how many of the unit's programs already occupy the given day.
+func dayClashes(programs map[string]bool, programDays map[string]map[int]bool, day int) int {
+	n := 0
+	for prog := range programs {
+		if programDays[prog] != nil && programDays[prog][day] {
+			n++
+		}
+	}
+	return n
 }
 
 func joinStrings(s []string) string {

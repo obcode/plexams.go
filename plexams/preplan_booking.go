@@ -12,6 +12,7 @@ import (
 type slotBooking struct {
 	exahmSeats int
 	sebSeats   int
+	seats      int             // total physical seats of the booked rooms (each room once)
 	rooms      map[string]bool // normalized names of rooms already booked for the slot
 }
 
@@ -83,6 +84,7 @@ func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[
 				}
 				sb.sebSeats += seats
 			}
+			sb.seats += room.Seats // physical seats, each booked room once
 			sb.rooms[n] = true
 		}
 	}

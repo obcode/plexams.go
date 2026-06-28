@@ -159,9 +159,12 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	if len(preExams) == 0 {
 		return &model.PreplanValidation{Ok: true, Messages: []string{}, UnassignedIDs: []int{}}, nil
 	}
-	mucDaiSlots := p.semesterConfig.MucDaiSlots
-	if len(mucDaiSlots) == 0 {
-		return nil, fmt.Errorf("no MUC.DAI slots configured for this semester")
+	// candidate slots = ALL regular exam slots (not only the MUC.DAI slots): the
+	// pre-exams go wherever we have booked Anny rooms, and those bookings sit on the
+	// normal slot grid (08:30/10:30/12:30/14:30/16:30), not just the MUC.DAI pattern.
+	regularSlots := p.semesterConfig.Slots
+	if len(regularSlots) == 0 {
+		return nil, fmt.Errorf("no slots configured for this semester")
 	}
 	exahmRooms, sebRooms, err := p.preplanRoomCapacities(ctx)
 	if err != nil {
@@ -174,9 +177,9 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		return nil, err
 	}
 
-	// booked Anny capacity per MUC.DAI slot
-	allKeys := make([][2]int, 0, len(mucDaiSlots))
-	for _, s := range mucDaiSlots {
+	// booked Anny capacity per regular slot
+	allKeys := make([][2]int, 0, len(regularSlots))
+	for _, s := range regularSlots {
 		allKeys = append(allKeys, [2]int{s.DayNumber, s.SlotNumber})
 	}
 	booked, err := p.annyBookedBySlot(ctx, allKeys)
@@ -187,7 +190,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	// candidate slots: only those with booked Anny rooms; usable capacity = 90%
 	slots := make([]*preplanSlot, 0)
 	slotIdxByKey := make(map[[2]int]int)
-	for _, s := range mucDaiSlots {
+	for _, s := range regularSlots {
 		sb := booked[[2]int{s.DayNumber, s.SlotNumber}]
 		if sb == nil {
 			continue

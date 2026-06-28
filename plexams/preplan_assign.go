@@ -24,6 +24,10 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 	if err != nil {
 		return nil, err
 	}
+	rBauSebThreshold, err := p.maxNonAnnySebRoom(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	slotKeys := make([][2]int, 0)
 	for _, pe := range preExams {
@@ -36,21 +40,32 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 		return nil, err
 	}
 
-	return validatePreplan(preExams, exahmRooms, sebRooms, booked), nil
+	return validatePreplan(preExams, exahmRooms, sebRooms, booked, rBauSebThreshold), nil
 }
 
 // validatePreplan builds the validation result from an in-memory set of pre-exams.
 // booked (Anny bookings per slot) may be nil; when present, missing bookings are
-// reported so the planner can book step by step.
-func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomCapacity, booked map[[2]int]*slotBooking) *model.PreplanValidation {
+// reported so the planner can book step by step. SEB exams that fit a single R-building
+// lab (seats <= rBauSebThreshold) are reported as "plan in the R-building" instead of
+// being counted as genuinely unplaced.
+func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomCapacity, booked map[[2]int]*slotBooking, rBauSebThreshold int) *model.PreplanValidation {
 	messages := make([]string, 0)
 
 	unassigned := make([]int, 0)
+	genuineUnassigned := 0
+	smallSebNotes := make([]string, 0)
 	bySlot := make(map[[2]int][]*model.PreplanExam)
 	slotOrder := make([][2]int, 0)
 	for _, pe := range preExams {
 		if pe.PlannedDayNumber == nil || pe.PlannedSlotNumber == nil {
 			unassigned = append(unassigned, pe.ID)
+			if pe.ExamKind == "SEB" && pe.ExpectedStudents <= rBauSebThreshold {
+				smallSebNotes = append(smallSebNotes, fmt.Sprintf(
+					"SEB %d (%s, %d Plätze): klein genug für den R-Bau (≤ %d) — dort einplanen, nicht in Anny",
+					pe.ID, pe.Module, pe.ExpectedStudents, rBauSebThreshold))
+			} else {
+				genuineUnassigned++
+			}
 			continue
 		}
 		key := [2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber}
@@ -66,9 +81,11 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomC
 		return slotOrder[i][1] < slotOrder[j][1]
 	})
 
-	if len(unassigned) > 0 {
-		messages = append(messages, fmt.Sprintf("%s ohne Slot", pluralN(len(unassigned), "Prüfung", "Prüfungen")))
+	if genuineUnassigned > 0 {
+		messages = append(messages, fmt.Sprintf("%s ohne Slot — gebuchte Anny-Plätze reichen nicht, bitte mehr Anny-Slots buchen",
+			pluralN(genuineUnassigned, "Prüfung", "Prüfungen")))
 	}
+	messages = append(messages, smallSebNotes...)
 
 	for _, key := range slotOrder {
 		exams := bySlot[key]
@@ -262,7 +279,6 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 
 	solveUnits := make([]*preplanUnit, 0, len(groupOrder))
 	solveMembers := make([][]int, 0, len(groupOrder)) // members per solve unit, by solve index
-	smallSeb := make([]int, 0)                        // pre-exam indices to plan in the R-building
 
 	for _, r := range groupOrder {
 		members := groupMembers[r]
@@ -320,11 +336,11 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 
 		// small SEB (fits a single R-building lab) → plan in the R-building, not Anny
+		// (validatePreplan re-derives these from the threshold and emits the note)
 		if !hasExahm && seats <= rBauSebThreshold {
 			for _, i := range members {
 				finalSlot[i] = nil
 				finalFixed[i] = false
-				smallSeb = append(smallSeb, i)
 			}
 			continue
 		}
@@ -437,39 +453,13 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	if err != nil {
 		return nil, err
 	}
-	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter)
-
-	// notes for the small SEB that are deliberately left out of the Anny planning
-	smallByID := make(map[int]bool, len(smallSeb))
-	for _, i := range smallSeb {
-		pe := preExams[i]
-		smallByID[pe.ID] = true
-		result.Messages = append(result.Messages, fmt.Sprintf(
-			"SEB %d (%s, %d Plätze): klein genug für den R-Bau (≤ %d) — dort einplanen, nicht in Anny",
-			pe.ID, pe.Module, pe.ExpectedStudents, rBauSebThreshold))
-	}
-
-	// EXaHM / large SEB that could not be placed → not enough booked Anny capacity
-	mustPlaceUnplaced := 0
-	for _, id := range result.UnassignedIDs {
-		if !smallByID[id] {
-			mustPlaceUnplaced++
-		}
-	}
-	if mustPlaceUnplaced > 0 {
-		totalCap := 0
-		for _, s := range slots {
-			totalCap += s.capacity
-		}
-		result.Messages = append(result.Messages, fmt.Sprintf(
-			"%d EXaHM/große SEB ohne Slot — gebuchte Anny-Plätze reichen nicht (nutzbar %d bei %d Slots); bitte mehr Anny-Slots buchen",
-			mustPlaceUnplaced, totalCap, len(slots)))
-	}
-
+	// validatePreplan reports the small-SEB R-building notes and the genuinely-unplaced
+	// must-place exams (threshold-aware), so no extra messages are added here.
+	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter, rBauSebThreshold)
 	if len(slots) == 0 {
 		result.Messages = append([]string{"keine Anny-Räume gebucht — nichts zugeordnet (zuerst Anny-Räume buchen und importieren)"}, result.Messages...)
+		result.Ok = false
 	}
-	result.Ok = len(result.Messages) == 0
 	return result, nil
 }
 

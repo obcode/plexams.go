@@ -45,6 +45,11 @@ func (r *mutationResolver) SetPreplanExamFixed(ctx context.Context, id int, fixe
 	return r.plexams.SetPreplanExamFixed(ctx, id, fixed)
 }
 
+// SetPreplanExamNotSameSlot is the resolver for the setPreplanExamNotSameSlot field.
+func (r *mutationResolver) SetPreplanExamNotSameSlot(ctx context.Context, id int, otherID int, conflict bool) (*model.PreplanExam, error) {
+	return r.plexams.SetPreplanExamNotSameSlot(ctx, id, otherID, conflict)
+}
+
 // SetPreplanExamConstraints is the resolver for the setPreplanExamConstraints field.
 func (r *mutationResolver) SetPreplanExamConstraints(ctx context.Context, id int, constraints model.ConstraintsInput) (*model.PreplanExam, error) {
 	return r.plexams.SetPreplanExamConstraints(ctx, id, &constraints)

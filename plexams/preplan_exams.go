@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -114,6 +115,57 @@ func (p *Plexams) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (
 		return nil, err
 	}
 	return preplanExam, nil
+}
+
+// SetPreplanExamNotSameSlot marks (conflict=true) or unmarks (false) otherID as a
+// "must not run at the same time" partner of id (same students). The link is kept
+// symmetric. Soft: the automatic assignment then spreads the two apart.
+func (p *Plexams) SetPreplanExamNotSameSlot(ctx context.Context, id, otherID int, conflict bool) (*model.PreplanExam, error) {
+	if id == otherID {
+		return nil, fmt.Errorf("a pre-exam cannot conflict with itself")
+	}
+	if conflict {
+		if other, err := p.dbClient.PreplanExam(ctx, otherID); err != nil {
+			return nil, err
+		} else if other == nil {
+			return nil, fmt.Errorf("pre-exam %d not found", otherID)
+		}
+	}
+	if err := p.updateNotSameSlot(ctx, id, otherID, conflict); err != nil {
+		return nil, err
+	}
+	if err := p.updateNotSameSlot(ctx, otherID, id, conflict); err != nil {
+		return nil, err
+	}
+	return p.dbClient.PreplanExam(ctx, id)
+}
+
+// updateNotSameSlot adds or removes other from id's NotSameSlot list (one direction).
+func (p *Plexams) updateNotSameSlot(ctx context.Context, id, other int, add bool) error {
+	pe, err := p.dbClient.PreplanExam(ctx, id)
+	if err != nil {
+		return err
+	}
+	if pe == nil {
+		return fmt.Errorf("pre-exam %d not found", id)
+	}
+	set := make(map[int]bool, len(pe.NotSameSlot))
+	for _, x := range pe.NotSameSlot {
+		set[x] = true
+	}
+	if add {
+		set[other] = true
+	} else {
+		delete(set, other)
+	}
+	kept := make([]int, 0, len(set))
+	for x := range set {
+		kept = append(kept, x)
+	}
+	sort.Ints(kept)
+	pe.NotSameSlot = kept
+	_, err = p.dbClient.ReplacePreplanExam(ctx, pe)
+	return err
 }
 
 // preplanExamFromInput validates a PreplanExamInput and builds a PreplanExam, snapshotting the

@@ -22,6 +22,10 @@ type PreplanExam struct {
 	// IsFixed pins the current slot: it survives a re-run of the automatic
 	// assignment (which otherwise re-plans all non-fixed pre-exams).
 	IsFixed bool `json:"isFixed" bson:"isfixed"`
+	// NotSameSlot holds PRE-EXAM ids that should NOT run at the same time as this one
+	// (same students, even when the study program does not show it). Kept symmetric.
+	// Soft: the solver spreads them apart (different days, else max slot distance).
+	NotSameSlot []int `json:"notSameSlot,omitempty" bson:"notsameslot,omitempty"`
 	// Ancode is set once the pre-exam is linked to a real ZPA exam (phase 4).
 	Ancode *int   `json:"ancode,omitempty" bson:"ancode,omitempty"`
 	Notes  string `json:"notes,omitempty" bson:"notes,omitempty"`

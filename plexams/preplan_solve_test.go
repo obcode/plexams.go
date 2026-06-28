@@ -140,6 +140,49 @@ func TestSolvePreplanRespectsAllowedSlots(t *testing.T) {
 	}
 }
 
+// An explicit "nicht gleichzeitig" pair (no shared program) is spread apart: different
+// days when possible, and never the same slot.
+func TestSolvePreplanExplicitConflictSpreads(t *testing.T) {
+	a := unit(1, 10, false, "AA")
+	b := unit(2, 10, false, "BB")
+	a.conflicts = map[int]int{1: preplanExplicitConflictWeight}
+	b.conflicts = map[int]int{0: preplanExplicitConflictWeight}
+	units := []*preplanUnit{a, b}
+	slots := []*preplanSlot{
+		{day: 1, slotNo: 1, capacity: 100},
+		{day: 1, slotNo: 2, capacity: 100},
+		{day: 2, slotNo: 1, capacity: 100},
+	}
+	fu, fp := emptyFixed(len(slots))
+
+	assign := solvePreplan(units, slots, fu, fp)
+	if countUnplaced(assign) != 0 {
+		t.Fatalf("both should be placed: %v", assign)
+	}
+	if slots[assign[0]].day == slots[assign[1]].day {
+		t.Errorf("explicit-conflict units should be on different days: %v", assign)
+	}
+}
+
+func TestProximityPenalty(t *testing.T) {
+	s := func(d, n int) *preplanSlot { return &preplanSlot{day: d, slotNo: n} }
+	cases := []struct {
+		a, b *preplanSlot
+		want int
+	}{
+		{s(1, 1), s(1, 1), 100}, // same slot → full
+		{s(1, 1), s(1, 2), 90},  // same day, 1 apart
+		{s(1, 1), s(1, 5), 60},  // same day, 4 apart
+		{s(1, 1), s(2, 1), 0},   // different day → 0
+		{s(1, 1), s(3, 3), 0},   // far → 0
+	}
+	for _, c := range cases {
+		if got := proximityPenalty(c.a, c.b, 100); got != c.want {
+			t.Errorf("proximityPenalty(%v,%v)=%d want %d", c.a, c.b, got, c.want)
+		}
+	}
+}
+
 // Same program → different days when slots are spread over days.
 func TestSolvePreplanSpreadsAcrossDays(t *testing.T) {
 	units := []*preplanUnit{unit(1, 10, false, "IF"), unit(2, 10, false, "IF")}

@@ -22,11 +22,13 @@ const (
 	// preplanExahmKeep is added to an EXaHM unit's drop cost so EXaHM (and, via the
 	// seat term, large SEB) are never dropped while anything smaller could be.
 	preplanExahmKeep = 1000000
-	// preplanSameSlotProgWeight penalises the same study program twice in one slot.
-	preplanSameSlotProgWeight = 50
-	// preplanSameDayProgWeight penalises the same study program twice on one day
-	// (in different slots) — a weaker pull than the same-slot one.
-	preplanSameDayProgWeight = 5
+	// preplanProgramConflictWeight is the base penalty for two exams that share a study
+	// program; preplanExplicitConflictWeight for an explicit "nicht gleichzeitig" pair.
+	// Both are soft (well below preplanDropBase) and scaled by temporal proximity, so
+	// the solver spreads such exams (different days, else max slot distance) but never
+	// leaves one unplaced just to separate them.
+	preplanProgramConflictWeight  = 100
+	preplanExplicitConflictWeight = 1000
 
 	preplanSAIterations = 20000
 	preplanSAStartTemp  = 20000.0
@@ -52,6 +54,28 @@ type preplanUnit struct {
 	// allowedSlots restricts the unit to a subset of slot indices (nil = any slot).
 	// Used so MUC.DAI exams (programs DE/GS/ID) only land in MUC.DAI slots.
 	allowedSlots map[int]bool
+	// conflicts maps another unit index to the penalty weight for placing the two
+	// close in time (shared study program, or an explicit "nicht gleichzeitig" pair).
+	conflicts map[int]int
+}
+
+// proximityPenalty is the soft cost of placing two conflicting units in slots a and b:
+// p0 when in the same slot, scaled down with temporal distance, and 0 once they are on
+// different days (different days are always "far enough"). Within a day it rewards the
+// maximum slot distance.
+func proximityPenalty(a, b *preplanSlot, p0 int) int {
+	dist := absInt(a.day-b.day)*10 + absInt(a.slotNo-b.slotNo)
+	if dist >= 10 {
+		return 0
+	}
+	return p0 * (10 - dist) / 10
+}
+
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // solvePreplan distributes the units over the candidate slots. fixedUsed/fixedProgs
@@ -67,6 +91,22 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 		return assign
 	}
 
+	// units sharing a study program conflict softly; merge with any explicit conflicts
+	// already set by the caller (those use the stronger explicit weight and win).
+	for i := range units {
+		if units[i].conflicts == nil {
+			units[i].conflicts = map[int]int{}
+		}
+	}
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			if shareProgram(units[i], units[j]) && units[i].conflicts[j] < preplanProgramConflictWeight {
+				units[i].conflicts[j] = preplanProgramConflictWeight
+				units[j].conflicts[i] = preplanProgramConflictWeight
+			}
+		}
+	}
+
 	// seats used + non-fixed occupants per slot for an assignment
 	occupancy := func(a []int) (used []int, occ [][]int) {
 		used = make([]int, len(slots))
@@ -78,34 +118,6 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 			}
 			used[s] += units[u].seats
 			occ[s] = append(occ[s], u)
-		}
-		return
-	}
-
-	// program counts per slot and per day, including the fixed occupants (as one each)
-	counts := func(a []int) (slotCnt map[string]map[int]int, dayCnt map[string]map[int]int) {
-		slotCnt = map[string]map[int]int{}
-		dayCnt = map[string]map[int]int{}
-		bump := func(m map[string]map[int]int, prog string, key int) {
-			if m[prog] == nil {
-				m[prog] = map[int]int{}
-			}
-			m[prog][key]++
-		}
-		for s := range slots {
-			for prog := range fixedProgs[s] {
-				bump(slotCnt, prog, s)
-				bump(dayCnt, prog, slots[s].day)
-			}
-		}
-		for u, s := range a {
-			if s < 0 {
-				continue
-			}
-			for prog := range units[u].programs {
-				bump(slotCnt, prog, s)
-				bump(dayCnt, prog, slots[s].day)
-			}
 		}
 		return
 	}
@@ -143,22 +155,31 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 		if len(bestFeasible) == 0 {
 			continue // no slot has room right now → leave for the SA repair
 		}
-		assign[best] = chooseSlot(units[best], bestFeasible, assign, units, slots, used, counts)
+		assign[best] = chooseSlot(best, bestFeasible, assign, units, slots, used, fixedProgs)
 	}
 
-	// --- simulated-annealing repair, only if something is still unplaced ---
-	if countUnplaced(assign) == 0 {
-		return assign
-	}
-
+	// --- simulated-annealing pass: place any remaining units AND optimise the soft
+	// proximity cost (spread conflicting exams across days / max slot distance) ---
 	cost := func(a []int) float64 {
 		total := 0.0
 		for u, s := range a {
 			if s < 0 {
 				total += float64(units[u].dropCost)
+				continue
+			}
+			// proximity to fixed occupants that share a study program
+			for f := range slots {
+				if len(fixedProgs[f]) > 0 && shareProgramSet(units[u].programs, fixedProgs[f]) {
+					total += float64(proximityPenalty(slots[s], slots[f], preplanProgramConflictWeight))
+				}
+			}
+			// conflicting unit pairs (counted once via v > u)
+			for v, p0 := range units[u].conflicts {
+				if v > u && a[v] >= 0 {
+					total += float64(proximityPenalty(slots[s], slots[a[v]], p0))
+				}
 			}
 		}
-		total += softProgramCost(a, units, slots, counts)
 		return total
 	}
 
@@ -198,26 +219,51 @@ func dsaturBefore(u *preplanUnit, fu int, v *preplanUnit, fv int) bool {
 	return u.minID < v.minID
 }
 
-// chooseSlot picks, among the feasible slots, the one that adds the least
-// program-overlap cost (same program in slot, then same program on day), tie-broken by
-// most free capacity.
-func chooseSlot(u *preplanUnit, feasibleSlots []int, assign []int, units []*preplanUnit, slots []*preplanSlot,
-	used []int, counts func([]int) (map[string]map[int]int, map[string]map[int]int)) int {
-	slotCnt, dayCnt := counts(assign)
+// chooseSlot picks, among the feasible slots, the one that adds the least conflict
+// proximity cost (conflicting units / shared-program fixed occupants placed close in
+// time), tie-broken by most free capacity.
+func chooseSlot(u int, feasibleSlots []int, assign []int, units []*preplanUnit, slots []*preplanSlot,
+	used []int, fixedProgs []map[string]bool) int {
 	best, bestPenalty, bestFree := -1, math.MaxInt, -1
 	for _, s := range feasibleSlots {
-		ps, pd := 0, 0
-		for prog := range u.programs {
-			ps += slotCnt[prog][s]
-			pd += dayCnt[prog][slots[s].day]
-		}
-		penalty := preplanSameSlotProgWeight*ps + preplanSameDayProgWeight*(pd-ps)
+		penalty := conflictCostAt(u, s, assign, units, slots, fixedProgs)
 		free := slots[s].capacity - used[s]
 		if best == -1 || penalty < bestPenalty || (penalty == bestPenalty && free > bestFree) {
 			best, bestPenalty, bestFree = s, penalty, free
 		}
 	}
 	return best
+}
+
+// conflictCostAt is the proximity cost added by placing unit u in slot s, given the
+// current assignment: against every already-placed conflicting unit and every fixed
+// occupant that shares a study program.
+func conflictCostAt(u, s int, assign []int, units []*preplanUnit, slots []*preplanSlot, fixedProgs []map[string]bool) int {
+	pen := 0
+	for v, p0 := range units[u].conflicts {
+		if assign[v] >= 0 {
+			pen += proximityPenalty(slots[s], slots[assign[v]], p0)
+		}
+	}
+	for f := range slots {
+		if len(fixedProgs[f]) > 0 && shareProgramSet(units[u].programs, fixedProgs[f]) {
+			pen += proximityPenalty(slots[s], slots[f], preplanProgramConflictWeight)
+		}
+	}
+	return pen
+}
+
+func shareProgram(u, v *preplanUnit) bool {
+	return shareProgramSet(u.programs, v.programs)
+}
+
+func shareProgramSet(progs, set map[string]bool) bool {
+	for p := range progs {
+		if set[p] {
+			return true
+		}
+	}
+	return false
 }
 
 // proposeMove relocates a random unit to a random slot, ejecting up to
@@ -227,6 +273,32 @@ func chooseSlot(u *preplanUnit, feasibleSlots []int, assign []int, units []*prep
 func proposeMove(a []int, rng *rand.Rand, units []*preplanUnit, slots []*preplanSlot,
 	occupancy func([]int) ([]int, [][]int)) bool {
 	n := len(units)
+
+	// half the time: swap two placed units' slots (keeps everyone placed; explores the
+	// soft proximity cost without freeing/creating capacity gaps).
+	if rng.Float64() < 0.5 {
+		u, v := rng.Intn(n), rng.Intn(n)
+		if u == v || a[u] < 0 || a[v] < 0 || a[u] == a[v] {
+			return false
+		}
+		su, sv := a[u], a[v]
+		if units[u].allowedSlots != nil && !units[u].allowedSlots[sv] {
+			return false
+		}
+		if units[v].allowedSlots != nil && !units[v].allowedSlots[su] {
+			return false
+		}
+		used, _ := occupancy(a)
+		if used[su]-units[u].seats+units[v].seats > slots[su].capacity {
+			return false
+		}
+		if used[sv]-units[v].seats+units[u].seats > slots[sv].capacity {
+			return false
+		}
+		a[u], a[v] = sv, su
+		return true
+	}
+
 	u := rng.Intn(n)
 	s := rng.Intn(len(slots))
 	if a[u] == s {
@@ -264,25 +336,6 @@ func proposeMove(a []int, rng *rand.Rand, units []*preplanUnit, slots []*preplan
 	}
 	a[u] = s
 	return true
-}
-
-// softProgramCost sums the program-overlap penalties of an assignment: same study
-// program twice in a slot, and (more weakly) same program twice on a day.
-func softProgramCost(a []int, units []*preplanUnit, slots []*preplanSlot,
-	counts func([]int) (map[string]map[int]int, map[string]map[int]int)) float64 {
-	slotCnt, dayCnt := counts(a)
-	pairs := func(m map[string]map[int]int) int {
-		total := 0
-		for _, byKey := range m {
-			for _, c := range byKey {
-				total += c * (c - 1) / 2
-			}
-		}
-		return total
-	}
-	slotPairs := pairs(slotCnt)
-	dayPairs := pairs(dayCnt)
-	return float64(preplanSameSlotProgWeight*slotPairs + preplanSameDayProgWeight*(dayPairs-slotPairs))
 }
 
 func countUnplaced(a []int) int {

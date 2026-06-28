@@ -351,6 +351,34 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		solveMembers = append(solveMembers, members)
 	}
 
+	// explicit "nicht gleichzeitig" pairs (PreplanExam.NotSameSlot) → strong conflicts
+	unitOfExam := make(map[int]int, len(preExams))
+	for ui, members := range solveMembers {
+		for _, mi := range members {
+			unitOfExam[preExams[mi].ID] = ui
+		}
+	}
+	for _, pe := range preExams {
+		ui, ok := unitOfExam[pe.ID]
+		if !ok {
+			continue
+		}
+		for _, otherID := range pe.NotSameSlot {
+			uj, ok := unitOfExam[otherID]
+			if !ok || uj == ui {
+				continue
+			}
+			if solveUnits[ui].conflicts == nil {
+				solveUnits[ui].conflicts = map[int]int{}
+			}
+			if solveUnits[uj].conflicts == nil {
+				solveUnits[uj].conflicts = map[int]int{}
+			}
+			solveUnits[ui].conflicts[uj] = preplanExplicitConflictWeight
+			solveUnits[uj].conflicts[ui] = preplanExplicitConflictWeight
+		}
+	}
+
 	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs)
 	for u, members := range solveMembers {
 		var ps *preplanSlot

@@ -514,6 +514,7 @@ type ComplexityRoot struct {
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
 		SetPreplanExamConstraints     func(childComplexity int, id int, constraints model.ConstraintsInput) int
 		SetPreplanExamFixed           func(childComplexity int, id int, fixed bool) int
+		SetPreplanExamNotSameSlot     func(childComplexity int, id int, otherID int, conflict bool) int
 		SetPreplanExamSlot            func(childComplexity int, id int, dayNumber *int, slotNumber *int) int
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
@@ -692,6 +693,7 @@ type ComplexityRoot struct {
 		ID                func(childComplexity int) int
 		IsFixed           func(childComplexity int) int
 		Module            func(childComplexity int) int
+		NotSameSlot       func(childComplexity int) int
 		Notes             func(childComplexity int) int
 		PlannedDayNumber  func(childComplexity int) int
 		PlannedSlotNumber func(childComplexity int) int
@@ -1316,6 +1318,7 @@ type MutationResolver interface {
 	ConnectPreplanExamToAncode(ctx context.Context, id int, ancode int) (*model.PreplanExam, error)
 	DisconnectPreplanExam(ctx context.Context, id int) (*model.PreplanExam, error)
 	SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (*model.PreplanExam, error)
+	SetPreplanExamNotSameSlot(ctx context.Context, id int, otherID int, conflict bool) (*model.PreplanExam, error)
 	SetPreplanExamConstraints(ctx context.Context, id int, constraints model.ConstraintsInput) (*model.PreplanExam, error)
 	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string, seats *int) (bool, error)
 	RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error)
@@ -4015,6 +4018,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetPreplanExamFixed(childComplexity, args["id"].(int), args["fixed"].(bool)), true
 
+	case "Mutation.setPreplanExamNotSameSlot":
+		if e.complexity.Mutation.SetPreplanExamNotSameSlot == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setPreplanExamNotSameSlot_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetPreplanExamNotSameSlot(childComplexity, args["id"].(int), args["otherID"].(int), args["conflict"].(bool)), true
+
 	case "Mutation.setPreplanExamSlot":
 		if e.complexity.Mutation.SetPreplanExamSlot == nil {
 			break
@@ -4925,6 +4940,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PreplanExam.Module(childComplexity), true
+
+	case "PreplanExam.notSameSlot":
+		if e.complexity.PreplanExam.NotSameSlot == nil {
+			break
+		}
+
+		return e.complexity.PreplanExam.NotSameSlot(childComplexity), true
 
 	case "PreplanExam.notes":
 		if e.complexity.PreplanExam.Notes == nil {
@@ -9241,6 +9263,12 @@ extend type Mutation {
   """
   setPreplanExamFixed(id: Int!, fixed: Boolean!): PreplanExam!
   """
+  Mark (conflict=true) or unmark (false) another pre-exam as "must not run at the same
+  time" as this one (same students). The link is kept symmetric. Soft: the automatic
+  assignment then spreads the two apart (different days, else max slot distance).
+  """
+  setPreplanExamNotSameSlot(id: Int!, otherID: Int!, conflict: Boolean!): PreplanExam!
+  """
   Set the constraints of a pre-exam (room restrictions, same-slot, …). Reuses the
   normal ConstraintsInput, but its ` + "`" + `sameSlot` + "`" + ` references other PRE-EXAM ids (not
   ancodes) — they are kept symmetric. On connectPreplanExamToAncode these
@@ -9269,6 +9297,11 @@ type PreplanExam {
   plannedSlotNumber: Int
   "True when the slot is pinned and survives a re-run of the automatic assignment."
   isFixed: Boolean!
+  """
+  PRE-EXAM ids that should not run at the same time as this one (same students). Soft:
+  the assignment spreads them apart (different days, else maximum slot distance).
+  """
+  notSameSlot: [Int!]
   "Set once linked to a real ZPA exam."
   ancode: Int
   notes: String
@@ -13016,6 +13049,80 @@ func (ec *executionContext) field_Mutation_setPreplanExamFixed_argsFixed(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("fixed"))
 	if tmp, ok := rawArgs["fixed"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPreplanExamNotSameSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setPreplanExamNotSameSlot_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := ec.field_Mutation_setPreplanExamNotSameSlot_argsOtherID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["otherID"] = arg1
+	arg2, err := ec.field_Mutation_setPreplanExamNotSameSlot_argsConflict(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["conflict"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setPreplanExamNotSameSlot_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["id"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPreplanExamNotSameSlot_argsOtherID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["otherID"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("otherID"))
+	if tmp, ok := rawArgs["otherID"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPreplanExamNotSameSlot_argsConflict(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["conflict"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("conflict"))
+	if tmp, ok := rawArgs["conflict"]; ok {
 		return ec.unmarshalNBoolean2bool(ctx, tmp)
 	}
 
@@ -30663,6 +30770,8 @@ func (ec *executionContext) fieldContext_Mutation_addPreplanExam(ctx context.Con
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -30748,6 +30857,8 @@ func (ec *executionContext) fieldContext_Mutation_updatePreplanExam(ctx context.
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -30888,6 +30999,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamSlot(ctx context
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -30973,6 +31086,8 @@ func (ec *executionContext) fieldContext_Mutation_connectPreplanExamToAncode(ctx
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -31058,6 +31173,8 @@ func (ec *executionContext) fieldContext_Mutation_disconnectPreplanExam(ctx cont
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -31143,6 +31260,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamFixed(ctx contex
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -31161,6 +31280,93 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamFixed(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setPreplanExamFixed_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setPreplanExamNotSameSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setPreplanExamNotSameSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetPreplanExamNotSameSlot(rctx, fc.Args["id"].(int), fc.Args["otherID"].(int), fc.Args["conflict"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PreplanExam)
+	fc.Result = res
+	return ec.marshalNPreplanExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setPreplanExamNotSameSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_PreplanExam_id(ctx, field)
+			case "examKind":
+				return ec.fieldContext_PreplanExam_examKind(ctx, field)
+			case "examerID":
+				return ec.fieldContext_PreplanExam_examerID(ctx, field)
+			case "examerName":
+				return ec.fieldContext_PreplanExam_examerName(ctx, field)
+			case "module":
+				return ec.fieldContext_PreplanExam_module(ctx, field)
+			case "programs":
+				return ec.fieldContext_PreplanExam_programs(ctx, field)
+			case "expectedStudents":
+				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
+			case "duration":
+				return ec.fieldContext_PreplanExam_duration(ctx, field)
+			case "plannedDayNumber":
+				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
+			case "plannedSlotNumber":
+				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
+			case "ancode":
+				return ec.fieldContext_PreplanExam_ancode(ctx, field)
+			case "notes":
+				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setPreplanExamNotSameSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -31228,6 +31434,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamConstraints(ctx 
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -37966,6 +38174,47 @@ func (ec *executionContext) fieldContext_PreplanExam_isFixed(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanExam_notSameSlot(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NotSameSlot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalOInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanExam_notSameSlot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreplanExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreplanExam_ancode(ctx, field)
 	if err != nil {
@@ -43109,6 +43358,8 @@ func (ec *executionContext) fieldContext_Query_preplanExams(_ context.Context, f
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -43180,6 +43431,8 @@ func (ec *executionContext) fieldContext_Query_preplanExam(ctx context.Context, 
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "notSameSlot":
+				return ec.fieldContext_PreplanExam_notSameSlot(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -65950,6 +66203,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setPreplanExamNotSameSlot":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setPreplanExamNotSameSlot(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setPreplanExamConstraints":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPreplanExamConstraints(ctx, field)
@@ -67397,6 +67657,8 @@ func (ec *executionContext) _PreplanExam(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "notSameSlot":
+			out.Values[i] = ec._PreplanExam_notSameSlot(ctx, field, obj)
 		case "ancode":
 			out.Values[i] = ec._PreplanExam_ancode(ctx, field, obj)
 		case "notes":

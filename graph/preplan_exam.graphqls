@@ -31,6 +31,12 @@ extend type Mutation {
   """
   setPreplanExamFixed(id: Int!, fixed: Boolean!): PreplanExam!
   """
+  Mark (conflict=true) or unmark (false) another pre-exam as "must not run at the same
+  time" as this one (same students). The link is kept symmetric. Soft: the automatic
+  assignment then spreads the two apart (different days, else max slot distance).
+  """
+  setPreplanExamNotSameSlot(id: Int!, otherID: Int!, conflict: Boolean!): PreplanExam!
+  """
   Set the constraints of a pre-exam (room restrictions, same-slot, …). Reuses the
   normal ConstraintsInput, but its `sameSlot` references other PRE-EXAM ids (not
   ancodes) — they are kept symmetric. On connectPreplanExamToAncode these
@@ -59,6 +65,11 @@ type PreplanExam {
   plannedSlotNumber: Int
   "True when the slot is pinned and survives a re-run of the automatic assignment."
   isFixed: Boolean!
+  """
+  PRE-EXAM ids that should not run at the same time as this one (same students). Soft:
+  the assignment spreads them apart (different days, else maximum slot distance).
+  """
+  notSameSlot: [Int!]
   "Set once linked to a real ZPA exam."
   ancode: Int
   notes: String

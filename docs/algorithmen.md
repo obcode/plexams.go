@@ -97,11 +97,17 @@ Konflikten** (verwandt mit Graphfärbung / Timetabling):
   Slot (`preplanUnit.allowedSlots`).
 - **Same-slot (hart):** manche Prüfungen *müssen* zusammen (z. B. beide Varianten von
   „Betriebssysteme I") — sie werden zu einer Einheit verschmolzen.
-- **Studiengang-Überschneidung (weich):** zwei Prüfungen desselben Studiengangs *dürfen*
-  im selben Slot liegen (in verschiedenen Anny-Räumen) — das ist erlaubt, weil es nicht
-  zwingend dieselben Studierenden betrifft. Es wird aber **bestraft** und damit
-  gespreizt: stärker für denselben **Slot** (`preplanSameSlotProgWeight`), schwächer für
-  denselben **Tag** (`preplanSameDayProgWeight`).
+- **Studiengang-Überschneidung (weich, distanzbasiert):** zwei Prüfungen desselben
+  Studiengangs *dürfen* im selben Slot liegen (verschiedene Anny-Räume) — erlaubt, weil
+  es nicht zwingend dieselben Studierenden sind. Es wird aber über die **zeitliche
+  Distanz** bestraft (`proximityPenalty`): voll bei selbem Slot, weniger je größer der
+  Slot-Abstand am selben Tag, **0 sobald an verschiedenen Tagen**. So gilt „möglichst
+  verschiedene Tage; wenn selber Tag, maximale Slot-Entfernung".
+- **Explizit „nicht gleichzeitig" (weich, stärker):** für Paare, die *dieselben*
+  Studierenden betreffen, ohne dass der Studiengang das zeigt, kann pro Prüfung ein
+  Konfliktpartner gesetzt werden (`PreplanExam.NotSameSlot`, Mutation
+  `setPreplanExamNotSameSlot`, symmetrisch). Gleiche Distanzlogik, aber mit dem höheren
+  Gewicht `preplanExplicitConflictWeight`.
 - **Priorität:** **alle EXaHM** und **große SEB** werden bevorzugt platziert und nie
   zugunsten kleinerer fallen gelassen (hoher Drop-Kostenzuschlag). **Kleine SEB** (die
   in einen einzelnen R-Bau-Laborraum passen, Größe ≤ größter Nicht-Anny-SEB-Raum) werden
@@ -135,41 +141,32 @@ In `solvePreplan` ([preplan_solve.go](../plexams/preplan_solve.go)):
 2. Wähle die Einheit mit den **wenigsten** passenden Slots zuerst (`dsaturBefore`); bei
    Gleichstand: höhere Priorität (EXaHM/große SEB über die Drop-Kosten), dann kleinere
    ID — deterministisch.
-3. Platziere sie im Slot, der die **wenigsten Studiengang-Überschneidungen** verursacht
-   (erst Slot-, dann Tagesebene, `chooseSlot`), bei Gleichstand in den mit der meisten
-   Restkapazität.
-4. Passt eine Einheit in keinen Slot, wird sie übersprungen und der Reparatur überlassen.
+3. Platziere sie im Slot, der die **geringste Konflikt-Nähe** verursacht (`chooseSlot`
+   über `proximityPenalty`), bei Gleichstand in den mit der meisten Restkapazität.
+4. Passt eine Einheit in keinen Slot, wird sie übersprungen und der SA-Phase überlassen.
 
 DSATUR legt damit gezielt die „schwierigen" (großen) Prüfungen früh und packt den Rest
 dazu.
 
-### Phase B — Simulated-Annealing-Reparatur (nur bei Bedarf)
+### Phase B — Simulated Annealing (immer)
 
-Lässt Phase A nichts liegen, ist man fertig. Andernfalls läuft eine **SA-Reparatur**
-nach demselben Prinzip wie die Aufsichtenplanung, aber eigenständig und auf das
-Vorplanungsproblem zugeschnitten:
+Nach DSATUR läuft **immer** eine SA-Phase — nicht nur, um Übriggebliebenes zu platzieren,
+sondern auch, um die **weiche Spreizung** zu optimieren (DSATUR-Greedy allein verteilt
+gleiche Studiengänge sonst nicht gut genug). Prinzip wie bei der Aufsichtenplanung, aber
+eigenständig:
 
 - **Kostenfunktion:** Summe der **Drop-Kosten** aller nicht platzierten Einheiten plus
-  der weiche **Studiengang-Spreizungsterm** (gleicher Studiengang im selben Slot bzw.
-  am selben Tag). Die Drop-Kosten dominieren, also platziert die Suche zuerst so viele
-  Prüfungen wie möglich. EXaHM bekommt einen sehr hohen Zuschlag (`preplanExahmKeep`),
-  große SEB über den Sitzplatzterm — so werden diese **nie** die Fallenden.
-- **Move mit Ejection:** eine zufällige Einheit wird in einen zufälligen Slot
-  verschoben; reicht dort die **Kapazität** nicht, werden bis zu `preplanEjectDepth`
-  (= 3) der *kleinsten* dortigen Einheiten „hinausgeworfen" (auf *unplaziert* gesetzt),
-  um Platz zu schaffen. Fixierte Belegungen werden nie hinausgeworfen. Der Move hält den
-  Slot innerhalb der Kapazität; Studiengang-Überschneidungen sind erlaubt und schlagen
-  nur über den weichen Term zu Buche.
-- **Akzeptanz & Abkühlung:** identisch zu SA oben — `delta ≤ 0` immer, sonst mit
-  `exp(−delta/T)`; `T` kühlt geometrisch von `preplanSAStartTemp` auf
-  `preplanSAEndTemp`. Der beste je gesehene Zustand wird zurückgegeben.
-- **Deterministisch:** fester Zufalls-Seed (`rand.NewSource(1)`), damit dieselbe
-  Eingabe immer dasselbe Ergebnis liefert.
-
-Die hinausgeworfenen Einheiten werden in späteren Iterationen wieder eingeplant; über
-die Kostenfunktion „wandert" so eine wichtige Prüfung in einen vollen Slot und schiebt
-weniger wichtige in andere Slots — eine Kettenreaktion, die First-Fit nicht leisten
-kann.
+  der distanzbasierten **Konflikt-Nähe** (`proximityPenalty`) über alle konfligierenden
+  Paare (Studiengang oder explizit). Die Drop-Kosten dominieren, also wird zuerst
+  platziert; EXaHM (`preplanExahmKeep`) und große SEB sind **nie** die Fallenden.
+- **Zwei Move-Typen:** (1) **Swap** — zwei platzierte Einheiten tauschen ihre Slots
+  (alle bleiben platziert; optimiert die Spreizung in vollen Plänen); (2) **Relocate
+  mit Ejection** — eine Einheit in einen Slot verschieben; reicht die **Kapazität**
+  nicht, werden bis zu `preplanEjectDepth` (= 3) der *kleinsten* dortigen Einheiten
+  hinausgeworfen. Fixierte Belegungen werden nie verschoben/geworfen.
+- **Akzeptanz & Abkühlung:** `delta ≤ 0` immer, sonst mit `exp(−delta/T)`; `T` kühlt
+  geometrisch von `preplanSAStartTemp` auf `preplanSAEndTemp`. Der beste je gesehene
+  Zustand wird zurückgegeben. Fester Seed (`rand.NewSource(1)`) → deterministisch.
 
 ### Einordnung
 
@@ -198,14 +195,14 @@ geplant, wenn der Terminplan-Generator als zweiter echter Abnehmer dazukommt (si
 
 | Konstante                   | Default   | Wirkung |
 |-----------------------------|-----------|---------|
-| `preplanDropBase`           | 10 000    | Grundkosten, eine Einheit *nicht* zu platzieren. |
-| `preplanExahmKeep`          | 1 000 000 | Zuschlag, damit EXaHM nie gedroppt wird. |
-| `preplanSameSlotProgWeight` | 50        | Strafe je Studiengang-Paar im selben Slot. |
-| `preplanSameDayProgWeight`  | 5         | Strafe je Studiengang-Paar am selben Tag. |
-| `preplanSAIterations`       | 20 000    | Schritte der Reparatur-Suche. |
-| `preplanSAStartTemp`        | 20 000    | Anfangstemperatur der Reparatur. |
-| `preplanSAEndTemp`          | 1         | Endtemperatur der Reparatur. |
-| `preplanEjectDepth`         | 3         | Max. Einheiten, die ein Move aus einem Slot wirft. |
+| `preplanDropBase`               | 10 000    | Grundkosten, eine Einheit *nicht* zu platzieren. |
+| `preplanExahmKeep`              | 1 000 000 | Zuschlag, damit EXaHM nie gedroppt wird. |
+| `preplanProgramConflictWeight`  | 100       | Basisstrafe für gemeinsamen Studiengang (× Nähe). |
+| `preplanExplicitConflictWeight` | 1 000     | Basisstrafe für explizites „nicht gleichzeitig" (× Nähe). |
+| `preplanSAIterations`           | 20 000    | Schritte der SA-Suche. |
+| `preplanSAStartTemp`            | 20 000    | Anfangstemperatur. |
+| `preplanSAEndTemp`              | 1         | Endtemperatur. |
+| `preplanEjectDepth`             | 3         | Max. Einheiten, die ein Relocate-Move aus einem Slot wirft. |
 
 Und in [preplan_assign.go](../plexams/preplan_assign.go):
 
@@ -219,7 +216,8 @@ Und in [preplan_assign.go](../plexams/preplan_assign.go):
 
 Der Vorplanungs-Solver ist deterministisch und direkt testbar:
 [plexams/preplan_solve_test.go](../plexams/preplan_solve_test.go) prüft u. a., dass bei
-ausreichender Kapazität *alle* Einheiten platziert werden (auch wenn sie denselben
-Studiengang teilen), dass bei Engpass die *kleinste* SEB gedroppt wird und EXaHM/große
-SEB bleiben, sowie die Spreizung gleicher Studiengänge über Slots und Tage. Der
-invigplan-Optimizer hat eigene Tests im selben Paket.
+ausreichender Kapazität *alle* Einheiten platziert werden (auch bei gemeinsamem
+Studiengang), dass bei Engpass die *kleinste* SEB gedroppt wird und EXaHM/große SEB
+bleiben, die Spreizung gleicher Studiengänge bzw. expliziter „nicht gleichzeitig"-Paare
+über Slots und Tage, die `proximityPenalty`-Distanzkurve sowie die `allowedSlots`-
+Restriktion (MUC.DAI). Der invigplan-Optimizer hat eigene Tests im selben Paket.

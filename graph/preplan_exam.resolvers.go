@@ -40,6 +40,11 @@ func (r *mutationResolver) DisconnectPreplanExam(ctx context.Context, id int) (*
 	return r.plexams.DisconnectPreplanExam(ctx, id)
 }
 
+// SetPreplanExamFixed is the resolver for the setPreplanExamFixed field.
+func (r *mutationResolver) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (*model.PreplanExam, error) {
+	return r.plexams.SetPreplanExamFixed(ctx, id, fixed)
+}
+
 // SetPreplanExamConstraints is the resolver for the setPreplanExamConstraints field.
 func (r *mutationResolver) SetPreplanExamConstraints(ctx context.Context, id int, constraints model.ConstraintsInput) (*model.PreplanExam, error) {
 	return r.plexams.SetPreplanExamConstraints(ctx, id, &constraints)

@@ -513,6 +513,7 @@ type ComplexityRoot struct {
 		SetPlaner                     func(childComplexity int, name string, email string) int
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
 		SetPreplanExamConstraints     func(childComplexity int, id int, constraints model.ConstraintsInput) int
+		SetPreplanExamFixed           func(childComplexity int, id int, fixed bool) int
 		SetPreplanExamSlot            func(childComplexity int, id int, dayNumber *int, slotNumber *int) int
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
@@ -689,6 +690,7 @@ type ComplexityRoot struct {
 		ExamerName        func(childComplexity int) int
 		ExpectedStudents  func(childComplexity int) int
 		ID                func(childComplexity int) int
+		IsFixed           func(childComplexity int) int
 		Module            func(childComplexity int) int
 		Notes             func(childComplexity int) int
 		PlannedDayNumber  func(childComplexity int) int
@@ -1313,6 +1315,7 @@ type MutationResolver interface {
 	SetPreplanExamSlot(ctx context.Context, id int, dayNumber *int, slotNumber *int) (*model.PreplanExam, error)
 	ConnectPreplanExamToAncode(ctx context.Context, id int, ancode int) (*model.PreplanExam, error)
 	DisconnectPreplanExam(ctx context.Context, id int) (*model.PreplanExam, error)
+	SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (*model.PreplanExam, error)
 	SetPreplanExamConstraints(ctx context.Context, id int, constraints model.ConstraintsInput) (*model.PreplanExam, error)
 	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string, seats *int) (bool, error)
 	RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error)
@@ -4000,6 +4003,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetPreplanExamConstraints(childComplexity, args["id"].(int), args["constraints"].(model.ConstraintsInput)), true
 
+	case "Mutation.setPreplanExamFixed":
+		if e.complexity.Mutation.SetPreplanExamFixed == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setPreplanExamFixed_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetPreplanExamFixed(childComplexity, args["id"].(int), args["fixed"].(bool)), true
+
 	case "Mutation.setPreplanExamSlot":
 		if e.complexity.Mutation.SetPreplanExamSlot == nil {
 			break
@@ -4896,6 +4911,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PreplanExam.ID(childComplexity), true
+
+	case "PreplanExam.isFixed":
+		if e.complexity.PreplanExam.IsFixed == nil {
+			break
+		}
+
+		return e.complexity.PreplanExam.IsFixed(childComplexity), true
 
 	case "PreplanExam.module":
 		if e.complexity.PreplanExam.Module == nil {
@@ -9164,9 +9186,13 @@ extend type Mutation {
 
 extend type Mutation {
   """
-  Generate a slot assignment for the pre-exams (EXaHM/SEB go-slots), minimizing
-  shared study programs per slot and seat overflow. With keepAssigned the
-  already-slotted exams stay put and only the unassigned ones are placed. The new
+  Generate a slot assignment for the pre-exams, distributing them only over the
+  MUC.DAI slots that already have Anny rooms booked (up to ~90% of each slot's
+  booked seats). Exams of the same study program never share a slot and are spread
+  across days; the most important exams (EXaHM, then large SEB) are placed first.
+  Uses a DSATUR constructive pass with a simulated-annealing repair for the hard
+  residue. Fixed pre-exams keep their slot; all non-fixed exams are re-planned
+  (with keepAssigned, currently-slotted non-fixed exams are kept too). The new
   assignment is persisted; the result is its validation.
   """
   generatePreplanAssignment(keepAssigned: Boolean): PreplanValidation!
@@ -9210,6 +9236,11 @@ extend type Mutation {
   "Remove the ZPA link from a pre-exam."
   disconnectPreplanExam(id: Int!): PreplanExam!
   """
+  Pin/unpin the pre-exam's current slot. A fixed pre-exam keeps its slot when the
+  automatic assignment is (re-)generated; all non-fixed exams are re-planned.
+  """
+  setPreplanExamFixed(id: Int!, fixed: Boolean!): PreplanExam!
+  """
   Set the constraints of a pre-exam (room restrictions, same-slot, …). Reuses the
   normal ConstraintsInput, but its ` + "`" + `sameSlot` + "`" + ` references other PRE-EXAM ids (not
   ancodes) — they are kept symmetric. On connectPreplanExamToAncode these
@@ -9236,6 +9267,8 @@ type PreplanExam {
   duration: Int
   plannedDayNumber: Int
   plannedSlotNumber: Int
+  "True when the slot is pinned and survives a re-run of the automatic assignment."
+  isFixed: Boolean!
   "Set once linked to a real ZPA exam."
   ancode: Int
   notes: String
@@ -12936,6 +12969,57 @@ func (ec *executionContext) field_Mutation_setPreplanExamConstraints_argsConstra
 	}
 
 	var zeroVal model.ConstraintsInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPreplanExamFixed_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setPreplanExamFixed_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := ec.field_Mutation_setPreplanExamFixed_argsFixed(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["fixed"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setPreplanExamFixed_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["id"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPreplanExamFixed_argsFixed(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["fixed"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("fixed"))
+	if tmp, ok := rawArgs["fixed"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
 	return zeroVal, nil
 }
 
@@ -30577,6 +30661,8 @@ func (ec *executionContext) fieldContext_Mutation_addPreplanExam(ctx context.Con
 				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
 			case "plannedSlotNumber":
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -30660,6 +30746,8 @@ func (ec *executionContext) fieldContext_Mutation_updatePreplanExam(ctx context.
 				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
 			case "plannedSlotNumber":
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -30798,6 +30886,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamSlot(ctx context
 				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
 			case "plannedSlotNumber":
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -30881,6 +30971,8 @@ func (ec *executionContext) fieldContext_Mutation_connectPreplanExamToAncode(ctx
 				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
 			case "plannedSlotNumber":
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -30964,6 +31056,8 @@ func (ec *executionContext) fieldContext_Mutation_disconnectPreplanExam(ctx cont
 				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
 			case "plannedSlotNumber":
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -30982,6 +31076,91 @@ func (ec *executionContext) fieldContext_Mutation_disconnectPreplanExam(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_disconnectPreplanExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setPreplanExamFixed(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setPreplanExamFixed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetPreplanExamFixed(rctx, fc.Args["id"].(int), fc.Args["fixed"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PreplanExam)
+	fc.Result = res
+	return ec.marshalNPreplanExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setPreplanExamFixed(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_PreplanExam_id(ctx, field)
+			case "examKind":
+				return ec.fieldContext_PreplanExam_examKind(ctx, field)
+			case "examerID":
+				return ec.fieldContext_PreplanExam_examerID(ctx, field)
+			case "examerName":
+				return ec.fieldContext_PreplanExam_examerName(ctx, field)
+			case "module":
+				return ec.fieldContext_PreplanExam_module(ctx, field)
+			case "programs":
+				return ec.fieldContext_PreplanExam_programs(ctx, field)
+			case "expectedStudents":
+				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
+			case "duration":
+				return ec.fieldContext_PreplanExam_duration(ctx, field)
+			case "plannedDayNumber":
+				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
+			case "plannedSlotNumber":
+				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
+			case "ancode":
+				return ec.fieldContext_PreplanExam_ancode(ctx, field)
+			case "notes":
+				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setPreplanExamFixed_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -31047,6 +31226,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamConstraints(ctx 
 				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
 			case "plannedSlotNumber":
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -37741,6 +37922,50 @@ func (ec *executionContext) fieldContext_PreplanExam_plannedSlotNumber(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanExam_isFixed(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanExam_isFixed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsFixed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanExam_isFixed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreplanExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreplanExam_ancode(ctx, field)
 	if err != nil {
@@ -42882,6 +43107,8 @@ func (ec *executionContext) fieldContext_Query_preplanExams(_ context.Context, f
 				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
 			case "plannedSlotNumber":
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -42951,6 +43178,8 @@ func (ec *executionContext) fieldContext_Query_preplanExam(ctx context.Context, 
 				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
 			case "plannedSlotNumber":
 				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "isFixed":
+				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
@@ -65714,6 +65943,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setPreplanExamFixed":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setPreplanExamFixed(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setPreplanExamConstraints":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPreplanExamConstraints(ctx, field)
@@ -67156,6 +67392,11 @@ func (ec *executionContext) _PreplanExam(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._PreplanExam_plannedDayNumber(ctx, field, obj)
 		case "plannedSlotNumber":
 			out.Values[i] = ec._PreplanExam_plannedSlotNumber(ctx, field, obj)
+		case "isFixed":
+			out.Values[i] = ec._PreplanExam_isFixed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "ancode":
 			out.Values[i] = ec._PreplanExam_ancode(ctx, field, obj)
 		case "notes":

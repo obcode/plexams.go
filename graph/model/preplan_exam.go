@@ -19,6 +19,9 @@ type PreplanExam struct {
 	// = not yet slotted).
 	PlannedDayNumber  *int `json:"plannedDayNumber,omitempty" bson:"planneddaynumber,omitempty"`
 	PlannedSlotNumber *int `json:"plannedSlotNumber,omitempty" bson:"plannedslotnumber,omitempty"`
+	// IsFixed pins the current slot: it survives a re-run of the automatic
+	// assignment (which otherwise re-plans all non-fixed pre-exams).
+	IsFixed bool `json:"isFixed" bson:"isfixed"`
 	// Ancode is set once the pre-exam is linked to a real ZPA exam (phase 4).
 	Ancode *int   `json:"ancode,omitempty" bson:"ancode,omitempty"`
 	Notes  string `json:"notes,omitempty" bson:"notes,omitempty"`

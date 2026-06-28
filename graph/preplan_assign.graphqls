@@ -5,9 +5,13 @@ extend type Query {
 
 extend type Mutation {
   """
-  Generate a slot assignment for the pre-exams (EXaHM/SEB go-slots), minimizing
-  shared study programs per slot and seat overflow. With keepAssigned the
-  already-slotted exams stay put and only the unassigned ones are placed. The new
+  Generate a slot assignment for the pre-exams, distributing them only over the
+  MUC.DAI slots that already have Anny rooms booked (up to ~90% of each slot's
+  booked seats). Exams of the same study program never share a slot and are spread
+  across days; the most important exams (EXaHM, then large SEB) are placed first.
+  Uses a DSATUR constructive pass with a simulated-annealing repair for the hard
+  residue. Fixed pre-exams keep their slot; all non-fixed exams are re-planned
+  (with keepAssigned, currently-slotted non-fixed exams are kept too). The new
   assignment is persisted; the result is its validation.
   """
   generatePreplanAssignment(keepAssigned: Boolean): PreplanValidation!

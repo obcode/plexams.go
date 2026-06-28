@@ -94,6 +94,28 @@ func (p *Plexams) SetPreplanExamSlot(ctx context.Context, id int, dayNumber, slo
 	return preplanExam, nil
 }
 
+// SetPreplanExamFixed pins or unpins the pre-exam's current slot. A fixed pre-exam
+// keeps its slot when the automatic assignment is regenerated. Fixing only makes
+// sense for a slotted exam, so it is rejected when the exam has no slot.
+func (p *Plexams) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (*model.PreplanExam, error) {
+	preplanExam, err := p.dbClient.PreplanExam(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if preplanExam == nil {
+		return nil, fmt.Errorf("pre-exam %d not found", id)
+	}
+	if fixed && (preplanExam.PlannedDayNumber == nil || preplanExam.PlannedSlotNumber == nil) {
+		return nil, fmt.Errorf("cannot fix pre-exam %d: it has no slot yet", id)
+	}
+
+	preplanExam.IsFixed = fixed
+	if _, err := p.dbClient.ReplacePreplanExam(ctx, preplanExam); err != nil {
+		return nil, err
+	}
+	return preplanExam, nil
+}
+
 // preplanExamFromInput validates a PreplanExamInput and builds a PreplanExam, snapshotting the
 // examer's name from the linked teacher.
 func (p *Plexams) preplanExamFromInput(ctx context.Context, input *model.PreplanExamInput) (*model.PreplanExam, error) {

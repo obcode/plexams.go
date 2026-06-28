@@ -26,6 +26,11 @@ extend type Mutation {
   "Remove the ZPA link from a pre-exam."
   disconnectPreplanExam(id: Int!): PreplanExam!
   """
+  Pin/unpin the pre-exam's current slot. A fixed pre-exam keeps its slot when the
+  automatic assignment is (re-)generated; all non-fixed exams are re-planned.
+  """
+  setPreplanExamFixed(id: Int!, fixed: Boolean!): PreplanExam!
+  """
   Set the constraints of a pre-exam (room restrictions, same-slot, …). Reuses the
   normal ConstraintsInput, but its `sameSlot` references other PRE-EXAM ids (not
   ancodes) — they are kept symmetric. On connectPreplanExamToAncode these
@@ -52,6 +57,8 @@ type PreplanExam {
   duration: Int
   plannedDayNumber: Int
   plannedSlotNumber: Int
+  "True when the slot is pinned and survives a re-run of the automatic assignment."
+  isFixed: Boolean!
   "Set once linked to a real ZPA exam."
   ancode: Int
   notes: String

@@ -88,9 +88,13 @@ für die wir bereits Anny-Räume gebucht haben. Formal ist es **Bin-Packing mit 
 Konflikten** (verwandt mit Graphfärbung / Timetabling):
 
 - **Knoten:** jede Prüfung (bzw. eine `same-slot`-Gruppe als eine unteilbare *Einheit*).
-- **Behälter (Slot):** jeder gebuchte Anny-Slot mit einem **Sitzplatz-Limit** (≈ 90 %
-  der gebuchten physischen Plätze, `preplanCapacityFactor = 0.9`, also „nie randvoll").
-  Das ist die **einzige harte** Schranke.
+- **Behälter (Slot):** **jeder reguläre Prüfungs-Slot** (08:30/10:30/…), in dem wir
+  Anny-Räume gebucht haben — *nicht* nur die MUC.DAI-Slots. Sitzplatz-Limit =
+  `preplanCapacityFactor` × gebuchte physische Plätze (Default 1.0 = randvoll). Das ist
+  die **einzige harte** Schranke.
+- **MUC.DAI-Slots (reserviert):** Prüfungen mit einem MUC.DAI-Studiengang (DE/GS/ID)
+  dürfen **nur** in (gebuchte) MUC.DAI-Slots; alle anderen Prüfungen in jeden gebuchten
+  Slot (`preplanUnit.allowedSlots`).
 - **Same-slot (hart):** manche Prüfungen *müssen* zusammen (z. B. beide Varianten von
   „Betriebssysteme I") — sie werden zu einer Einheit verschmolzen.
 - **Studiengang-Überschneidung (weich):** zwei Prüfungen desselben Studiengangs *dürfen*
@@ -111,11 +115,12 @@ der gerade passt. Das ist eine der schwächsten Heuristiken. Sobald die ersten S
 „verstopft" waren, fanden spätere Prüfungen *keinen* Slot mehr — obwohl eine andere
 **Reihenfolge** mehr untergebracht hätte.
 
-> **Wichtig:** Wenn der Gesamtbedarf die gebuchte Anny-Kapazität übersteigt (in
-> `Test26SS`: ~1379 Plätze „must-place" vs. ~972 nutzbare Plätze in 10 gebuchten Slots),
-> kann *kein* Algorithmus alles unterbringen — dann müssen erst **mehr Anny-Slots
-> gebucht** werden. Der Algorithmus platziert in dem Fall alle EXaHM + die größten SEB
-> und meldet den Engpass.
+> **Wichtig:** Wenn der Gesamtbedarf die gebuchte Anny-Kapazität übersteigt, kann *kein*
+> Algorithmus alles unterbringen — dann müssen erst **mehr Anny-Slots gebucht** werden.
+> Der Algorithmus platziert in dem Fall alle EXaHM + die größten SEB und meldet den
+> Engpass. (Anfänglich wurden in `Test26SS` zu wenige Slots erkannt, weil die Kandidaten
+> fälschlich auf MUC.DAI-Slots beschränkt waren — siehe oben: jetzt zählen alle
+> gebuchten regulären Slots.)
 
 ### Phase A — DSATUR (konstruktiv)
 
@@ -206,7 +211,7 @@ Und in [preplan_assign.go](../plexams/preplan_assign.go):
 
 | Konstante               | Default | Wirkung |
 |-------------------------|---------|---------|
-| `preplanCapacityFactor` | 0.9     | Nutzbarer Anteil der gebuchten Sitzplätze (10 % frei). |
+| `preplanCapacityFactor` | 1.0     | Nutzbarer Anteil der gebuchten Sitzplätze (1.0 = randvoll). |
 
 ---
 

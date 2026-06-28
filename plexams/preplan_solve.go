@@ -49,6 +49,9 @@ type preplanUnit struct {
 	hasExahm bool
 	dropCost int
 	minID    int
+	// allowedSlots restricts the unit to a subset of slot indices (nil = any slot).
+	// Used so MUC.DAI exams (programs DE/GS/ID) only land in MUC.DAI slots.
+	allowedSlots map[int]bool
 }
 
 // solvePreplan distributes the units over the candidate slots. fixedUsed/fixedProgs
@@ -107,7 +110,12 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 		return
 	}
 
-	fits := func(u, s int, used []int) bool { return used[s]+units[u].seats <= slots[s].capacity }
+	fits := func(u, s int, used []int) bool {
+		if units[u].allowedSlots != nil && !units[u].allowedSlots[s] {
+			return false
+		}
+		return used[s]+units[u].seats <= slots[s].capacity
+	}
 
 	// --- DSATUR constructive pass: most constrained / most important unit first ---
 	done := make([]bool, n)
@@ -222,6 +230,9 @@ func proposeMove(a []int, rng *rand.Rand, units []*preplanUnit, slots []*preplan
 	u := rng.Intn(n)
 	s := rng.Intn(len(slots))
 	if a[u] == s {
+		return false
+	}
+	if units[u].allowedSlots != nil && !units[u].allowedSlots[s] {
 		return false
 	}
 	used, occ := occupancy(a)

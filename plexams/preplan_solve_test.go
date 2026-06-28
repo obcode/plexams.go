@@ -113,6 +113,33 @@ func TestSolvePreplanSeparatesSameProgramBySlot(t *testing.T) {
 	}
 }
 
+// A unit restricted to certain slots (MUC.DAI exams → MUC.DAI slots) must land in one
+// of them, even when other slots have more room.
+func TestSolvePreplanRespectsAllowedSlots(t *testing.T) {
+	mucdai := unit(1, 70, true, "DE", "GS", "ID")
+	mucdai.allowedSlots = map[int]bool{2: true} // only slot index 2 is allowed
+	units := []*preplanUnit{
+		unit(2, 60, false, "IF"),
+		unit(3, 60, false, "IF"),
+		mucdai,
+	}
+	slots := []*preplanSlot{
+		{day: 1, slotNo: 1, capacity: 108},
+		{day: 2, slotNo: 1, capacity: 108},
+		{day: 3, slotNo: 1, capacity: 108}, // the only allowed slot for the MUC.DAI unit
+	}
+	fu, fp := emptyFixed(len(slots))
+
+	assign := solvePreplan(units, slots, fu, fp)
+	checkCapacity(t, units, slots, assign)
+	if assign[2] != 2 {
+		t.Errorf("MUC.DAI unit must be in its only allowed slot (2), got %d", assign[2])
+	}
+	if countUnplaced(assign) != 0 {
+		t.Errorf("all units should be placed: %v", assign)
+	}
+}
+
 // Same program → different days when slots are spread over days.
 func TestSolvePreplanSpreadsAcrossDays(t *testing.T) {
 	units := []*preplanUnit{unit(1, 10, false, "IF"), unit(2, 10, false, "IF")}

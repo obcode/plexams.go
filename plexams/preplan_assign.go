@@ -8,9 +8,9 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// preplanCapacityFactor leaves ~10% of a slot's booked Anny seats free instead of
-// filling rooms to the brim (e.g. ~108 of ~120 seats in the 4 T-building rooms).
-const preplanCapacityFactor = 0.9
+// preplanCapacityFactor is the usable fraction of a slot's booked Anny seats. 1.0 =
+// fill the booked rooms completely (no reserve).
+const preplanCapacityFactor = 1.0
 
 // ValidatePreplanAssignment checks the current slot assignment of the pre-exams:
 // unassigned exams, per-slot/kind capacity overflow, and study programs shared by
@@ -203,6 +203,19 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		slots = append(slots, &preplanSlot{day: s.DayNumber, slotNo: s.SlotNumber, capacity: capacity})
 	}
 
+	// MUC.DAI slots are reserved: an exam with a MUC.DAI program (DE/GS/ID) may ONLY be
+	// placed in a (booked) MUC.DAI slot; all other exams may use any booked slot.
+	mucdaiProgs := make(map[string]bool)
+	for _, prog := range p.mucdaiProgramNames(ctx) {
+		mucdaiProgs[prog] = true
+	}
+	mucdaiSlotIdx := make(map[int]bool)
+	for _, s := range p.semesterConfig.MucDaiSlots {
+		if idx, ok := slotIdxByKey[[2]int{s.DayNumber, s.SlotNumber}]; ok {
+			mucdaiSlotIdx[idx] = true
+		}
+	}
+
 	// same-slot groups → units (union-find over pre-exam indices)
 	idToIdx := make(map[int]int, len(preExams))
 	for i, pe := range preExams {
@@ -323,9 +336,17 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		if hasExahm {
 			dropCost += preplanExahmKeep
 		}
+		var allowedSlots map[int]bool
+		for prog := range programs {
+			if mucdaiProgs[prog] {
+				allowedSlots = mucdaiSlotIdx // restrict MUC.DAI exams to MUC.DAI slots
+				break
+			}
+		}
 		solveUnits = append(solveUnits, &preplanUnit{
 			members: members, seats: seats, programs: programs,
 			hasExahm: hasExahm, dropCost: dropCost, minID: minID,
+			allowedSlots: allowedSlots,
 		})
 		solveMembers = append(solveMembers, members)
 	}

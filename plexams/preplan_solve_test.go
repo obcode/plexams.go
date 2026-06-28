@@ -164,6 +164,32 @@ func TestSolvePreplanExplicitConflictSpreads(t *testing.T) {
 	}
 }
 
+// Two same-program units marked compatible must NOT be forced apart: with only one slot
+// that has room for both, they may share it (no spreading penalty cancels placement).
+func TestSolvePreplanCompatibleMayShareSlot(t *testing.T) {
+	a := unit(1, 30, false, "WD", "WT")
+	b := unit(2, 30, false, "WD", "WT")
+	a.compatible = map[int]bool{1: true}
+	b.compatible = map[int]bool{0: true}
+	units := []*preplanUnit{a, b}
+	// one roomy slot + one tiny slot: without the exemption the solver would push b into
+	// the tiny slot (and fail capacity); the exemption lets both share the roomy one.
+	slots := []*preplanSlot{
+		{day: 1, slotNo: 1, capacity: 100},
+		{day: 1, slotNo: 2, capacity: 10},
+	}
+	fu, fp := emptyFixed(len(slots))
+
+	assign := solvePreplan(units, slots, fu, fp)
+	checkCapacity(t, units, slots, assign)
+	if countUnplaced(assign) != 0 {
+		t.Fatalf("both should be placed: %v", assign)
+	}
+	if assign[0] != 0 || assign[1] != 0 {
+		t.Errorf("compatible same-program units should share the roomy slot 0: %v", assign)
+	}
+}
+
 func TestProximityPenalty(t *testing.T) {
 	s := func(d, n int) *preplanSlot { return &preplanSlot{day: d, slotNo: n} }
 	cases := []struct {

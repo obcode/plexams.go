@@ -37,6 +37,12 @@ extend type Mutation {
   """
   setPreplanExamNotSameSlot(id: Int!, otherID: Int!, conflict: Boolean!): PreplanExam!
   """
+  Mark (canShare=true) or unmark (false) another pre-exam as "may run at the same time /
+  right after" this one despite a shared study program (no common students). The link is
+  kept symmetric and cancels the program-based spreading for that pair.
+  """
+  setPreplanExamCanShareSlot(id: Int!, otherID: Int!, canShare: Boolean!): PreplanExam!
+  """
   Set the constraints of a pre-exam (room restrictions, same-slot, …). Reuses the
   normal ConstraintsInput, but its `sameSlot` references other PRE-EXAM ids (not
   ancodes) — they are kept symmetric. On connectPreplanExamToAncode these
@@ -70,6 +76,11 @@ type PreplanExam {
   the assignment spreads them apart (different days, else maximum slot distance).
   """
   notSameSlot: [Int!]
+  """
+  PRE-EXAM ids that may run at the same time / right after this one despite sharing a
+  study program (no common students). Cancels the spreading for that pair.
+  """
+  canShareSlot: [Int!]
   "Set once linked to a real ZPA exam."
   ancode: Int
   notes: String

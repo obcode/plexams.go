@@ -57,6 +57,9 @@ type preplanUnit struct {
 	// conflicts maps another unit index to the penalty weight for placing the two
 	// close in time (shared study program, or an explicit "nicht gleichzeitig" pair).
 	conflicts map[int]int
+	// compatible holds unit indices that are exempt from the program-based spreading
+	// (an explicit "darf zusammen / direkt nacheinander" pair).
+	compatible map[int]bool
 }
 
 // proximityPenalty is the soft cost of placing two conflicting units in slots a and b:
@@ -100,6 +103,9 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 	}
 	for i := 0; i < n; i++ {
 		for j := i + 1; j < n; j++ {
+			if units[i].compatible[j] {
+				continue // explicitly allowed to share a slot / be adjacent
+			}
 			if shareProgram(units[i], units[j]) && units[i].conflicts[j] < preplanProgramConflictWeight {
 				units[i].conflicts[j] = preplanProgramConflictWeight
 				units[j].conflicts[i] = preplanProgramConflictWeight

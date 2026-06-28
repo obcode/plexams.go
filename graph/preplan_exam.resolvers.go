@@ -50,6 +50,11 @@ func (r *mutationResolver) SetPreplanExamNotSameSlot(ctx context.Context, id int
 	return r.plexams.SetPreplanExamNotSameSlot(ctx, id, otherID, conflict)
 }
 
+// SetPreplanExamCanShareSlot is the resolver for the setPreplanExamCanShareSlot field.
+func (r *mutationResolver) SetPreplanExamCanShareSlot(ctx context.Context, id int, otherID int, canShare bool) (*model.PreplanExam, error) {
+	return r.plexams.SetPreplanExamCanShareSlot(ctx, id, otherID, canShare)
+}
+
 // SetPreplanExamConstraints is the resolver for the setPreplanExamConstraints field.
 func (r *mutationResolver) SetPreplanExamConstraints(ctx context.Context, id int, constraints model.ConstraintsInput) (*model.PreplanExam, error) {
 	return r.plexams.SetPreplanExamConstraints(ctx, id, &constraints)

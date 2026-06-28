@@ -26,6 +26,10 @@ type PreplanExam struct {
 	// (same students, even when the study program does not show it). Kept symmetric.
 	// Soft: the solver spreads them apart (different days, else max slot distance).
 	NotSameSlot []int `json:"notSameSlot,omitempty" bson:"notsameslot,omitempty"`
+	// CanShareSlot holds PRE-EXAM ids that MAY run at the same time / right after this
+	// one despite sharing a study program (no common students). Kept symmetric. It
+	// cancels the program-based spreading penalty for that pair.
+	CanShareSlot []int `json:"canShareSlot,omitempty" bson:"canshareslot,omitempty"`
 	// Ancode is set once the pre-exam is linked to a real ZPA exam (phase 4).
 	Ancode *int   `json:"ancode,omitempty" bson:"ancode,omitempty"`
 	Notes  string `json:"notes,omitempty" bson:"notes,omitempty"`

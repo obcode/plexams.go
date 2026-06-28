@@ -121,27 +121,46 @@ func (p *Plexams) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (
 // "must not run at the same time" partner of id (same students). The link is kept
 // symmetric. Soft: the automatic assignment then spreads the two apart.
 func (p *Plexams) SetPreplanExamNotSameSlot(ctx context.Context, id, otherID int, conflict bool) (*model.PreplanExam, error) {
+	return p.setPreplanPairLink(ctx, id, otherID, conflict,
+		func(pe *model.PreplanExam) []int { return pe.NotSameSlot },
+		func(pe *model.PreplanExam, ids []int) { pe.NotSameSlot = ids })
+}
+
+// SetPreplanExamCanShareSlot marks (canShare=true) or unmarks (false) otherID as "may
+// run at the same time / right after" id despite a shared study program. The link is
+// kept symmetric and cancels the program-based spreading for that pair.
+func (p *Plexams) SetPreplanExamCanShareSlot(ctx context.Context, id, otherID int, canShare bool) (*model.PreplanExam, error) {
+	return p.setPreplanPairLink(ctx, id, otherID, canShare,
+		func(pe *model.PreplanExam) []int { return pe.CanShareSlot },
+		func(pe *model.PreplanExam, ids []int) { pe.CanShareSlot = ids })
+}
+
+// setPreplanPairLink adds (add=true) or removes a symmetric pre-exam link between id and
+// otherID, using get/set to access the relevant id list on each pre-exam.
+func (p *Plexams) setPreplanPairLink(ctx context.Context, id, otherID int, add bool,
+	get func(*model.PreplanExam) []int, set func(*model.PreplanExam, []int)) (*model.PreplanExam, error) {
 	if id == otherID {
-		return nil, fmt.Errorf("a pre-exam cannot conflict with itself")
+		return nil, fmt.Errorf("a pre-exam cannot be linked to itself")
 	}
-	if conflict {
+	if add {
 		if other, err := p.dbClient.PreplanExam(ctx, otherID); err != nil {
 			return nil, err
 		} else if other == nil {
 			return nil, fmt.Errorf("pre-exam %d not found", otherID)
 		}
 	}
-	if err := p.updateNotSameSlot(ctx, id, otherID, conflict); err != nil {
+	if err := p.updatePreplanPair(ctx, id, otherID, add, get, set); err != nil {
 		return nil, err
 	}
-	if err := p.updateNotSameSlot(ctx, otherID, id, conflict); err != nil {
+	if err := p.updatePreplanPair(ctx, otherID, id, add, get, set); err != nil {
 		return nil, err
 	}
 	return p.dbClient.PreplanExam(ctx, id)
 }
 
-// updateNotSameSlot adds or removes other from id's NotSameSlot list (one direction).
-func (p *Plexams) updateNotSameSlot(ctx context.Context, id, other int, add bool) error {
+// updatePreplanPair adds or removes other from id's link list (one direction).
+func (p *Plexams) updatePreplanPair(ctx context.Context, id, other int, add bool,
+	get func(*model.PreplanExam) []int, set func(*model.PreplanExam, []int)) error {
 	pe, err := p.dbClient.PreplanExam(ctx, id)
 	if err != nil {
 		return err
@@ -149,21 +168,21 @@ func (p *Plexams) updateNotSameSlot(ctx context.Context, id, other int, add bool
 	if pe == nil {
 		return fmt.Errorf("pre-exam %d not found", id)
 	}
-	set := make(map[int]bool, len(pe.NotSameSlot))
-	for _, x := range pe.NotSameSlot {
-		set[x] = true
+	ids := make(map[int]bool, len(get(pe)))
+	for _, x := range get(pe) {
+		ids[x] = true
 	}
 	if add {
-		set[other] = true
+		ids[other] = true
 	} else {
-		delete(set, other)
+		delete(ids, other)
 	}
-	kept := make([]int, 0, len(set))
-	for x := range set {
+	kept := make([]int, 0, len(ids))
+	for x := range ids {
 		kept = append(kept, x)
 	}
 	sort.Ints(kept)
-	pe.NotSameSlot = kept
+	set(pe, kept)
 	_, err = p.dbClient.ReplacePreplanExam(ctx, pe)
 	return err
 }

@@ -108,6 +108,12 @@ Konflikten** (verwandt mit Graphfärbung / Timetabling):
   Konfliktpartner gesetzt werden (`PreplanExam.NotSameSlot`, Mutation
   `setPreplanExamNotSameSlot`, symmetrisch). Gleiche Distanzlogik, aber mit dem höheren
   Gewicht `preplanExplicitConflictWeight`.
+- **Explizit „darf zusammen / direkt nacheinander" (Ausnahme):** teilen sich zwei
+  Prüfungen einen Studiengang, betreffen aber *nicht* dieselben Studierenden (z. B. zwei
+  Wirtschaftsinformatik-Prüfungen), kann das Paar von der Spreizung ausgenommen werden
+  (`PreplanExam.CanShareSlot`, Mutation `setPreplanExamCanShareSlot`, symmetrisch) — die
+  Studiengang-Strafe entfällt dann für genau dieses Paar, sie dürfen also denselben Slot
+  (sofern die Kapazität reicht) oder direkt benachbarte Slots belegen.
 - **Priorität:** **alle EXaHM** und **große SEB** werden bevorzugt platziert und nie
   zugunsten kleinerer fallen gelassen (hoher Drop-Kostenzuschlag). **Kleine SEB** (die
   in einen einzelnen R-Bau-Laborraum passen, Größe ≤ größter Nicht-Anny-SEB-Raum) werden

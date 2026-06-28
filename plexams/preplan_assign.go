@@ -379,6 +379,29 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 	}
 
+	// explicit "darf zusammen / direkt nacheinander" pairs (PreplanExam.CanShareSlot)
+	// → exempt that pair from the program-based spreading
+	for _, pe := range preExams {
+		ui, ok := unitOfExam[pe.ID]
+		if !ok {
+			continue
+		}
+		for _, otherID := range pe.CanShareSlot {
+			uj, ok := unitOfExam[otherID]
+			if !ok || uj == ui {
+				continue
+			}
+			if solveUnits[ui].compatible == nil {
+				solveUnits[ui].compatible = map[int]bool{}
+			}
+			if solveUnits[uj].compatible == nil {
+				solveUnits[uj].compatible = map[int]bool{}
+			}
+			solveUnits[ui].compatible[uj] = true
+			solveUnits[uj].compatible[ui] = true
+		}
+	}
+
 	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs)
 	for u, members := range solveMembers {
 		var ps *preplanSlot

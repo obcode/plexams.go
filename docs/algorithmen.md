@@ -81,52 +81,62 @@ in der Praxis deutlich bessere Pläne.
 
 ## 3. DSATUR + SA-Reparatur (Vorplanung SEB/EXaHM)
 
-### Das Problem ist Graphfärbung mit Kapazität
+### Das Problem ist Bin-Packing mit weichen Überschneidungen
 
 Die Vorplanung verteilt vorgeplante Prüfungen (`PreplanExam`) auf die MUC.DAI-Slots,
-für die wir bereits Anny-Räume gebucht haben. Das ist formal **Graphfärbung mit
-Behälter-Kapazitäten** (ein Timetabling-Problem):
+für die wir bereits Anny-Räume gebucht haben. Formal ist es **Bin-Packing mit weichen
+Konflikten** (verwandt mit Graphfärbung / Timetabling):
 
 - **Knoten:** jede Prüfung (bzw. eine `same-slot`-Gruppe als eine unteilbare *Einheit*).
-- **Kante:** zwei Prüfungen mit gemeinsamem Studiengang dürfen **nicht** in denselben
-  Slot (harte Bedingung „nie gleichzeitig").
-- **Farbe:** jeder gebuchte Anny-Slot ist eine Farbe mit einem **Sitzplatz-Limit**
-  (≈ 90 % der gebuchten physischen Plätze, `preplanCapacityFactor = 0.9`, also „nie
-  randvoll").
-- **Weiche Ziele:** gleichen Studiengang über verschiedene **Tage** spreizen; EXaHM
-  und große SEB bevorzugt platzieren (kleine SEB dürfen notfalls leer ausgehen).
+- **Behälter (Slot):** jeder gebuchte Anny-Slot mit einem **Sitzplatz-Limit** (≈ 90 %
+  der gebuchten physischen Plätze, `preplanCapacityFactor = 0.9`, also „nie randvoll").
+  Das ist die **einzige harte** Schranke.
+- **Same-slot (hart):** manche Prüfungen *müssen* zusammen (z. B. beide Varianten von
+  „Betriebssysteme I") — sie werden zu einer Einheit verschmolzen.
+- **Studiengang-Überschneidung (weich):** zwei Prüfungen desselben Studiengangs *dürfen*
+  im selben Slot liegen (in verschiedenen Anny-Räumen) — das ist erlaubt, weil es nicht
+  zwingend dieselben Studierenden betrifft. Es wird aber **bestraft** und damit
+  gespreizt: stärker für denselben **Slot** (`preplanSameSlotProgWeight`), schwächer für
+  denselben **Tag** (`preplanSameDayProgWeight`).
+- **Priorität:** **alle EXaHM** und **große SEB** werden bevorzugt platziert und nie
+  zugunsten kleinerer fallen gelassen (hoher Drop-Kostenzuschlag). **Kleine SEB** (die
+  in einen einzelnen R-Bau-Laborraum passen, Größe ≤ größter Nicht-Anny-SEB-Raum) werden
+  gar nicht erst in Anny gelegt, sondern mit der Anmerkung „im R-Bau planen" markiert.
 - **Fixiert:** Prüfungen mit `isFixed` behalten ihren Slot und werden vorbelegt.
 
 ### Warum die alte „First-Fit"-Heuristik versagte
 
 Die frühere Lösung war **First-Fit, größte zuerst**: jede Prüfung in den ersten Slot,
-der gerade passt. Das ist eine der schwächsten Färbe-Heuristiken. Sobald die ersten
-Slots mit Studiengängen „verstopft" sind, finden spätere Prüfungen *keinen* Slot mehr —
-obwohl eine andere **Reihenfolge** alles untergebracht hätte. Konkret blieben in
-`Test26SS` 11 von 27 Prüfungen ohne Slot, trotz freier Räume. (Der Klassiker dazu ist
-der *Crown-Graph*: 2-färbbar, aber First-Fit braucht 3 Farben und strandet bei nur 2
-verfügbaren Slots — genau dieser Fall wird im Test reproduziert.)
+der gerade passt. Das ist eine der schwächsten Heuristiken. Sobald die ersten Slots
+„verstopft" waren, fanden spätere Prüfungen *keinen* Slot mehr — obwohl eine andere
+**Reihenfolge** mehr untergebracht hätte.
+
+> **Wichtig:** Wenn der Gesamtbedarf die gebuchte Anny-Kapazität übersteigt (in
+> `Test26SS`: ~1379 Plätze „must-place" vs. ~972 nutzbare Plätze in 10 gebuchten Slots),
+> kann *kein* Algorithmus alles unterbringen — dann müssen erst **mehr Anny-Slots
+> gebucht** werden. Der Algorithmus platziert in dem Fall alle EXaHM + die größten SEB
+> und meldet den Engpass.
 
 ### Phase A — DSATUR (konstruktiv)
 
-**DSATUR** (degree of saturation) ist eine Färbe-Heuristik, die immer den **am
-stärksten eingeschränkten** Knoten zuerst färbt — nicht den größten. „Saturation" =
-wie viele Farben/Slots für diesen Knoten bereits blockiert sind.
+**DSATUR** (degree of saturation) färbt immer den **am stärksten eingeschränkten**
+Knoten zuerst — nicht den größten. Hier: die Einheit mit den wenigsten Slots, in die sie
+kapazitiv noch passt.
 
 In `solvePreplan` ([preplan_solve.go](../plexams/preplan_solve.go)):
 
-1. Berechne für jede noch nicht platzierte Einheit die Menge der **zulässigen** Slots
-   (Kapazität frei *und* kein Studiengang-Konflikt).
-2. Wähle die Einheit mit den **wenigsten** zulässigen Slots zuerst (`dsaturBefore`);
-   bei Gleichstand: höhere Priorität (EXaHM/große SEB über die Drop-Kosten), dann
-   kleinere ID — deterministisch.
-3. Platziere sie im Slot, der die **Tage am besten spreizt** (`chooseSlot`), bei
-   Gleichstand in den mit der meisten Restkapazität.
-4. Bleibt für eine Einheit kein zulässiger Slot, wird sie zunächst übersprungen und
-   der Reparatur überlassen.
+1. Berechne für jede noch nicht platzierte Einheit die Menge der Slots, in die sie
+   **kapazitiv passt**.
+2. Wähle die Einheit mit den **wenigsten** passenden Slots zuerst (`dsaturBefore`); bei
+   Gleichstand: höhere Priorität (EXaHM/große SEB über die Drop-Kosten), dann kleinere
+   ID — deterministisch.
+3. Platziere sie im Slot, der die **wenigsten Studiengang-Überschneidungen** verursacht
+   (erst Slot-, dann Tagesebene, `chooseSlot`), bei Gleichstand in den mit der meisten
+   Restkapazität.
+4. Passt eine Einheit in keinen Slot, wird sie übersprungen und der Reparatur überlassen.
 
-DSATUR legt damit gezielt die „schwierigen" Prüfungen früh und packt den Rest dazu —
-das löst die allermeisten Fälle bereits vollständig.
+DSATUR legt damit gezielt die „schwierigen" (großen) Prüfungen früh und packt den Rest
+dazu.
 
 ### Phase B — Simulated-Annealing-Reparatur (nur bei Bedarf)
 
@@ -135,15 +145,16 @@ nach demselben Prinzip wie die Aufsichtenplanung, aber eigenständig und auf das
 Vorplanungsproblem zugeschnitten:
 
 - **Kostenfunktion:** Summe der **Drop-Kosten** aller nicht platzierten Einheiten plus
-  ein kleiner Tages-Spreizungsterm. Die Drop-Kosten dominieren, also platziert die
-  Suche zuerst so viele Prüfungen wie möglich. EXaHM bekommt einen sehr hohen Zuschlag
-  (`preplanExahmKeep`), große SEB über den Sitzplatzterm — so werden diese **nie** die
-  Fallenden; notfalls bleibt eine *kleine* SEB ohne Slot.
+  der weiche **Studiengang-Spreizungsterm** (gleicher Studiengang im selben Slot bzw.
+  am selben Tag). Die Drop-Kosten dominieren, also platziert die Suche zuerst so viele
+  Prüfungen wie möglich. EXaHM bekommt einen sehr hohen Zuschlag (`preplanExahmKeep`),
+  große SEB über den Sitzplatzterm — so werden diese **nie** die Fallenden.
 - **Move mit Ejection:** eine zufällige Einheit wird in einen zufälligen Slot
-  verschoben; bis zu `preplanEjectDepth` (= 2) dort konfligierende Einheiten werden
-  „hinausgeworfen" (auf *unplaziert* gesetzt), um Platz zu schaffen. Fixierte
-  Belegungen werden nie hinausgeworfen. Der Move hält den Slot hart-zulässig
-  (Kapazität + Studiengang-disjunkt).
+  verschoben; reicht dort die **Kapazität** nicht, werden bis zu `preplanEjectDepth`
+  (= 3) der *kleinsten* dortigen Einheiten „hinausgeworfen" (auf *unplaziert* gesetzt),
+  um Platz zu schaffen. Fixierte Belegungen werden nie hinausgeworfen. Der Move hält den
+  Slot innerhalb der Kapazität; Studiengang-Überschneidungen sind erlaubt und schlagen
+  nur über den weichen Term zu Buche.
 - **Akzeptanz & Abkühlung:** identisch zu SA oben — `delta ≤ 0` immer, sonst mit
   `exp(−delta/T)`; `T` kühlt geometrisch von `preplanSAStartTemp` auf
   `preplanSAEndTemp`. Der beste je gesehene Zustand wird zurückgegeben.
@@ -180,15 +191,16 @@ geplant, wenn der Terminplan-Generator als zweiter echter Abnehmer dazukommt (si
 
 ### Vorplanung — Konstanten in [preplan_solve.go](../plexams/preplan_solve.go)
 
-| Konstante              | Default   | Wirkung |
-|------------------------|-----------|---------|
-| `preplanDropBase`      | 10 000    | Grundkosten, eine Einheit *nicht* zu platzieren. |
-| `preplanExahmKeep`     | 1 000 000 | Zuschlag, damit EXaHM nie gedroppt wird. |
-| `preplanDaySpreadCost` | 1         | Strafe je doppeltem Studiengang am selben Tag. |
-| `preplanSAIterations`  | 20 000    | Schritte der Reparatur-Suche. |
-| `preplanSAStartTemp`   | 20 000    | Anfangstemperatur der Reparatur. |
-| `preplanSAEndTemp`     | 1         | Endtemperatur der Reparatur. |
-| `preplanEjectDepth`    | 2         | Max. Einheiten, die ein Move aus einem Slot wirft. |
+| Konstante                   | Default   | Wirkung |
+|-----------------------------|-----------|---------|
+| `preplanDropBase`           | 10 000    | Grundkosten, eine Einheit *nicht* zu platzieren. |
+| `preplanExahmKeep`          | 1 000 000 | Zuschlag, damit EXaHM nie gedroppt wird. |
+| `preplanSameSlotProgWeight` | 50        | Strafe je Studiengang-Paar im selben Slot. |
+| `preplanSameDayProgWeight`  | 5         | Strafe je Studiengang-Paar am selben Tag. |
+| `preplanSAIterations`       | 20 000    | Schritte der Reparatur-Suche. |
+| `preplanSAStartTemp`        | 20 000    | Anfangstemperatur der Reparatur. |
+| `preplanSAEndTemp`          | 1         | Endtemperatur der Reparatur. |
+| `preplanEjectDepth`         | 3         | Max. Einheiten, die ein Move aus einem Slot wirft. |
 
 Und in [preplan_assign.go](../plexams/preplan_assign.go):
 
@@ -201,7 +213,8 @@ Und in [preplan_assign.go](../plexams/preplan_assign.go):
 ## 5. Tests
 
 Der Vorplanungs-Solver ist deterministisch und direkt testbar:
-[plexams/preplan_solve_test.go](../plexams/preplan_solve_test.go) prüft u. a. den
-Crown-Graph (alle Einheiten trotz First-Fit-Falle platziert), das korrekte Droppen der
-*kleinsten* SEB bei Kapazitätsengpass und die Tages-Spreizung. Der invigplan-Optimizer
-hat eigene Tests im selben Paket.
+[plexams/preplan_solve_test.go](../plexams/preplan_solve_test.go) prüft u. a., dass bei
+ausreichender Kapazität *alle* Einheiten platziert werden (auch wenn sie denselben
+Studiengang teilen), dass bei Engpass die *kleinste* SEB gedroppt wird und EXaHM/große
+SEB bleiben, sowie die Spreizung gleicher Studiengänge über Slots und Tage. Der
+invigplan-Optimizer hat eigene Tests im selben Paket.

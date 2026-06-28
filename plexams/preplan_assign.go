@@ -167,6 +167,12 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	if err != nil {
 		return nil, err
 	}
+	// SEB exams that fit into a single R-building lab are "small": they are NOT placed
+	// into the booked Anny slots, only flagged to be planned in the R-building.
+	rBauSebThreshold, err := p.maxNonAnnySebRoom(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	// booked Anny capacity per MUC.DAI slot
 	allKeys := make([][2]int, 0, len(mucDaiSlots))
@@ -243,6 +249,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 
 	solveUnits := make([]*preplanUnit, 0, len(groupOrder))
 	solveMembers := make([][]int, 0, len(groupOrder)) // members per solve unit, by solve index
+	smallSeb := make([]int, 0)                        // pre-exam indices to plan in the R-building
 
 	for _, r := range groupOrder {
 		members := groupMembers[r]
@@ -299,6 +306,16 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 			continue
 		}
 
+		// small SEB (fits a single R-building lab) → plan in the R-building, not Anny
+		if !hasExahm && seats <= rBauSebThreshold {
+			for _, i := range members {
+				finalSlot[i] = nil
+				finalFixed[i] = false
+				smallSeb = append(smallSeb, i)
+			}
+			continue
+		}
+
 		dropCost := preplanDropBase + seats
 		if hasExahm {
 			dropCost += preplanExahmKeep
@@ -349,10 +366,38 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		return nil, err
 	}
 	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter)
+
+	// notes for the small SEB that are deliberately left out of the Anny planning
+	smallByID := make(map[int]bool, len(smallSeb))
+	for _, i := range smallSeb {
+		pe := preExams[i]
+		smallByID[pe.ID] = true
+		result.Messages = append(result.Messages, fmt.Sprintf(
+			"SEB %d (%s, %d Plätze): klein genug für den R-Bau (≤ %d) — dort einplanen, nicht in Anny",
+			pe.ID, pe.Module, pe.ExpectedStudents, rBauSebThreshold))
+	}
+
+	// EXaHM / large SEB that could not be placed → not enough booked Anny capacity
+	mustPlaceUnplaced := 0
+	for _, id := range result.UnassignedIDs {
+		if !smallByID[id] {
+			mustPlaceUnplaced++
+		}
+	}
+	if mustPlaceUnplaced > 0 {
+		totalCap := 0
+		for _, s := range slots {
+			totalCap += s.capacity
+		}
+		result.Messages = append(result.Messages, fmt.Sprintf(
+			"%d EXaHM/große SEB ohne Slot — gebuchte Anny-Plätze reichen nicht (nutzbar %d bei %d Slots); bitte mehr Anny-Slots buchen",
+			mustPlaceUnplaced, totalCap, len(slots)))
+	}
+
 	if len(slots) == 0 {
-		result.Ok = false
 		result.Messages = append([]string{"keine Anny-Räume gebucht — nichts zugeordnet (zuerst Anny-Räume buchen und importieren)"}, result.Messages...)
 	}
+	result.Ok = len(result.Messages) == 0
 	return result, nil
 }
 

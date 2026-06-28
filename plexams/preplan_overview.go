@@ -139,6 +139,31 @@ func (p *Plexams) preplanRoomCapacities(ctx context.Context) (exahm, seb []roomC
 	return exahm, seb, nil
 }
 
+// maxNonAnnySebRoom returns the seat capacity of the largest single SEB room that is
+// NOT an Anny (T-building) room — i.e. the largest R-building lab a SEB exam can use.
+// A SEB pre-exam that fits into such a room counts as "small" and is planned in the
+// R-building instead of consuming a booked Anny slot.
+func (p *Plexams) maxNonAnnySebRoom(ctx context.Context) (int, error) {
+	rooms, err := p.dbClient.Rooms(ctx)
+	if err != nil {
+		return 0, err
+	}
+	maxSeats := 0
+	for _, room := range rooms {
+		if room.Deactivated || !room.Seb || room.RequestWith == model.RoomRequestTypeAnny {
+			continue
+		}
+		seats := room.Seats
+		if room.SebSeats != nil {
+			seats = *room.SebSeats
+		}
+		if seats > maxSeats {
+			maxSeats = seats
+		}
+	}
+	return maxSeats, nil
+}
+
 func totalSeats(rooms []roomCapacity) int {
 	total := 0
 	for _, r := range rooms {

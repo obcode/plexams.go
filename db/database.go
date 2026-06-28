@@ -28,7 +28,6 @@ func (db *DB) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(dbs)
 
 	semester := make([]*model.Semester, 0, len(dbs))
 	for _, dbName := range dbs {
@@ -55,6 +54,22 @@ func (db *DB) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 		}
 		semester = append(semester, sem)
 	}
+
+	// newest first: by logical semester descending (e.g. 2026 WS > 2026 SS > 2025 WS),
+	// then the canonical database before test workspaces of the same semester.
+	logicalOf := func(s *model.Semester) string {
+		if s.Semester != nil {
+			return *s.Semester
+		}
+		return semesterName(s.ID)
+	}
+	sort.Slice(semester, func(i, j int) bool {
+		li, lj := logicalOf(semester[i]), logicalOf(semester[j])
+		if li != lj {
+			return li > lj
+		}
+		return semester[i].ID < semester[j].ID
+	})
 
 	return semester, nil
 }

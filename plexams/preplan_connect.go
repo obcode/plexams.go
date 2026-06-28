@@ -43,6 +43,16 @@ func (p *Plexams) ConnectPreplanExamToAncode(ctx context.Context, id, ancode int
 	if _, err := p.dbClient.ReplacePreplanExam(ctx, preExam); err != nil {
 		return nil, err
 	}
+
+	// carry the pre-planning constraints over to the real ZPA exam (same-slot
+	// references are translated to the ancodes of the already-linked pre-exams).
+	if preExam.Constraints != nil {
+		input := p.preplanConstraintsToInput(ctx, preExam.Constraints)
+		if _, err := p.AddConstraints(ctx, ancode, input); err != nil {
+			return nil, fmt.Errorf("cannot carry over pre-plan constraints to ancode %d: %w", ancode, err)
+		}
+	}
+
 	return preExam, nil
 }
 

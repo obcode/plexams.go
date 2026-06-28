@@ -44,6 +44,8 @@ var generatedExamsDirtyOps = map[string]bool{
 	"importStudentsFromZPA": true,
 	// MUC.DAI import adds/removes non-ZPA exams
 	"importMucDaiExams": true,
+	// linking a pre-exam carries its constraints over to the ZPA exam
+	"connectPreplanExamToAncode": true,
 }
 
 // generatedExamsDirtyMiddleware marks the cached generated exams stale after a

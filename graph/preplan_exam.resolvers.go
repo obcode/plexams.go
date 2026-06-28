@@ -40,6 +40,11 @@ func (r *mutationResolver) DisconnectPreplanExam(ctx context.Context, id int) (*
 	return r.plexams.DisconnectPreplanExam(ctx, id)
 }
 
+// SetPreplanExamConstraints is the resolver for the setPreplanExamConstraints field.
+func (r *mutationResolver) SetPreplanExamConstraints(ctx context.Context, id int, constraints model.ConstraintsInput) (*model.PreplanExam, error) {
+	return r.plexams.SetPreplanExamConstraints(ctx, id, &constraints)
+}
+
 // PreplanExams is the resolver for the preplanExams field.
 func (r *queryResolver) PreplanExams(ctx context.Context) ([]*model.PreplanExam, error) {
 	return r.plexams.PreplanExams(ctx)

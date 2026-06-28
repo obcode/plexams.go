@@ -22,4 +22,7 @@ type PreplanExam struct {
 	// Ancode is set once the pre-exam is linked to a real ZPA exam (phase 4).
 	Ancode *int   `json:"ancode,omitempty" bson:"ancode,omitempty"`
 	Notes  string `json:"notes,omitempty" bson:"notes,omitempty"`
+	// Constraints captured during pre-planning (carried over to the ZPA exam on
+	// linking). In Constraints.SameSlot the ints are PRE-EXAM ids, not ancodes.
+	Constraints *Constraints `json:"constraints,omitempty" bson:"constraints,omitempty"`
 }

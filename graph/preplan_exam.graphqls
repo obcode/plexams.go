@@ -25,6 +25,13 @@ extend type Mutation {
   connectPreplanExamToAncode(id: Int!, ancode: Int!): PreplanExam!
   "Remove the ZPA link from a pre-exam."
   disconnectPreplanExam(id: Int!): PreplanExam!
+  """
+  Set the constraints of a pre-exam (room restrictions, same-slot, …). Reuses the
+  normal ConstraintsInput, but its `sameSlot` references other PRE-EXAM ids (not
+  ancodes) — they are kept symmetric. On connectPreplanExamToAncode these
+  constraints are carried over to the ZPA exam (sameSlot translated to ancodes).
+  """
+  setPreplanExamConstraints(id: Int!, constraints: ConstraintsInput!): PreplanExam!
 }
 
 """
@@ -48,6 +55,11 @@ type PreplanExam {
   "Set once linked to a real ZPA exam."
   ancode: Int
   notes: String
+  """
+  Constraints captured during pre-planning (room restrictions, same-slot, …),
+  carried over to the ZPA exam on linking. In sameSlot the ints are PRE-EXAM ids.
+  """
+  constraints: Constraints
 }
 
 input PreplanExamInput {

@@ -15,6 +15,9 @@ import (
 const (
 	preplanConflictWeight = 1000
 	preplanOverflowWeight = 1
+	// same-slot pre-exams must end up in the same slot; a dominating penalty keeps
+	// them together.
+	preplanSameSlotWeight = 100000
 )
 
 // ValidatePreplanAssignment checks the current slot assignment of the pre-exams:
@@ -197,6 +200,33 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 	}
 
+	// same-slot pre-exam pairs (by index) — they must share a slot
+	idToIdx := make(map[int]int, len(preExams))
+	for i, pe := range preExams {
+		idToIdx[pe.ID] = i
+	}
+	sameSlotPairs := make([][2]int, 0)
+	seenPair := make(map[[2]int]bool)
+	for i, pe := range preExams {
+		if pe.Constraints == nil {
+			continue
+		}
+		for _, otherID := range pe.Constraints.SameSlot {
+			j, ok := idToIdx[otherID]
+			if !ok || j == i {
+				continue
+			}
+			pair := [2]int{i, j}
+			if pair[0] > pair[1] {
+				pair[0], pair[1] = pair[1], pair[0]
+			}
+			if !seenPair[pair] {
+				seenPair[pair] = true
+				sameSlotPairs = append(sameSlotPairs, pair)
+			}
+		}
+	}
+
 	// cost over the candidate slots given the current assignment
 	cost := func(a []int) int {
 		type load struct {
@@ -236,6 +266,12 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 			}
 			if l.seb > sebAvail {
 				total += preplanOverflowWeight * (l.seb - sebAvail)
+			}
+		}
+		// same-slot pairs assigned to different slots
+		for _, pr := range sameSlotPairs {
+			if a[pr[0]] >= 0 && a[pr[1]] >= 0 && a[pr[0]] != a[pr[1]] {
+				total += preplanSameSlotWeight
 			}
 		}
 		return total

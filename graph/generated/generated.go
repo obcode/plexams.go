@@ -512,6 +512,7 @@ type ComplexityRoot struct {
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
 		SetPlaner                     func(childComplexity int, name string, email string) int
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
+		SetPreplanExamConstraints     func(childComplexity int, id int, constraints model.ConstraintsInput) int
 		SetPreplanExamSlot            func(childComplexity int, id int, dayNumber *int, slotNumber *int) int
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
@@ -681,6 +682,7 @@ type ComplexityRoot struct {
 
 	PreplanExam struct {
 		Ancode            func(childComplexity int) int
+		Constraints       func(childComplexity int) int
 		Duration          func(childComplexity int) int
 		ExamKind          func(childComplexity int) int
 		ExamerID          func(childComplexity int) int
@@ -1311,6 +1313,7 @@ type MutationResolver interface {
 	SetPreplanExamSlot(ctx context.Context, id int, dayNumber *int, slotNumber *int) (*model.PreplanExam, error)
 	ConnectPreplanExamToAncode(ctx context.Context, id int, ancode int) (*model.PreplanExam, error)
 	DisconnectPreplanExam(ctx context.Context, id int) (*model.PreplanExam, error)
+	SetPreplanExamConstraints(ctx context.Context, id int, constraints model.ConstraintsInput) (*model.PreplanExam, error)
 	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string, seats *int) (bool, error)
 	RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error)
 	BlockRoomForSlot(ctx context.Context, room string, day int, slot int, reason *string) (*model.BlockedRoom, error)
@@ -3985,6 +3988,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetPlanningCondition(childComplexity, args["key"].(string), args["done"].(bool)), true
 
+	case "Mutation.setPreplanExamConstraints":
+		if e.complexity.Mutation.SetPreplanExamConstraints == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setPreplanExamConstraints_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetPreplanExamConstraints(childComplexity, args["id"].(int), args["constraints"].(model.ConstraintsInput)), true
+
 	case "Mutation.setPreplanExamSlot":
 		if e.complexity.Mutation.SetPreplanExamSlot == nil {
 			break
@@ -4832,6 +4847,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PreplanExam.Ancode(childComplexity), true
+
+	case "PreplanExam.constraints":
+		if e.complexity.PreplanExam.Constraints == nil {
+			break
+		}
+
+		return e.complexity.PreplanExam.Constraints(childComplexity), true
 
 	case "PreplanExam.duration":
 		if e.complexity.PreplanExam.Duration == nil {
@@ -9187,6 +9209,13 @@ extend type Mutation {
   connectPreplanExamToAncode(id: Int!, ancode: Int!): PreplanExam!
   "Remove the ZPA link from a pre-exam."
   disconnectPreplanExam(id: Int!): PreplanExam!
+  """
+  Set the constraints of a pre-exam (room restrictions, same-slot, …). Reuses the
+  normal ConstraintsInput, but its ` + "`" + `sameSlot` + "`" + ` references other PRE-EXAM ids (not
+  ancodes) — they are kept symmetric. On connectPreplanExamToAncode these
+  constraints are carried over to the ZPA exam (sameSlot translated to ancodes).
+  """
+  setPreplanExamConstraints(id: Int!, constraints: ConstraintsInput!): PreplanExam!
 }
 
 """
@@ -9210,6 +9239,11 @@ type PreplanExam {
   "Set once linked to a real ZPA exam."
   ancode: Int
   notes: String
+  """
+  Constraints captured during pre-planning (room restrictions, same-slot, …),
+  carried over to the ZPA exam on linking. In sameSlot the ints are PRE-EXAM ids.
+  """
+  constraints: Constraints
 }
 
 input PreplanExamInput {
@@ -12851,6 +12885,57 @@ func (ec *executionContext) field_Mutation_setPlanningCondition_argsDone(
 	}
 
 	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPreplanExamConstraints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setPreplanExamConstraints_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := ec.field_Mutation_setPreplanExamConstraints_argsConstraints(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["constraints"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setPreplanExamConstraints_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["id"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPreplanExamConstraints_argsConstraints(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.ConstraintsInput, error) {
+	if _, ok := rawArgs["constraints"]; !ok {
+		var zeroVal model.ConstraintsInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("constraints"))
+	if tmp, ok := rawArgs["constraints"]; ok {
+		return ec.unmarshalNConstraintsInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraintsInput(ctx, tmp)
+	}
+
+	var zeroVal model.ConstraintsInput
 	return zeroVal, nil
 }
 
@@ -30496,6 +30581,8 @@ func (ec *executionContext) fieldContext_Mutation_addPreplanExam(ctx context.Con
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
 				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
 		},
@@ -30577,6 +30664,8 @@ func (ec *executionContext) fieldContext_Mutation_updatePreplanExam(ctx context.
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
 				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
 		},
@@ -30713,6 +30802,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamSlot(ctx context
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
 				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
 		},
@@ -30794,6 +30885,8 @@ func (ec *executionContext) fieldContext_Mutation_connectPreplanExamToAncode(ctx
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
 				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
 		},
@@ -30875,6 +30968,8 @@ func (ec *executionContext) fieldContext_Mutation_disconnectPreplanExam(ctx cont
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
 				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
 		},
@@ -30887,6 +30982,89 @@ func (ec *executionContext) fieldContext_Mutation_disconnectPreplanExam(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_disconnectPreplanExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setPreplanExamConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setPreplanExamConstraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetPreplanExamConstraints(rctx, fc.Args["id"].(int), fc.Args["constraints"].(model.ConstraintsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PreplanExam)
+	fc.Result = res
+	return ec.marshalNPreplanExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setPreplanExamConstraints(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_PreplanExam_id(ctx, field)
+			case "examKind":
+				return ec.fieldContext_PreplanExam_examKind(ctx, field)
+			case "examerID":
+				return ec.fieldContext_PreplanExam_examerID(ctx, field)
+			case "examerName":
+				return ec.fieldContext_PreplanExam_examerName(ctx, field)
+			case "module":
+				return ec.fieldContext_PreplanExam_module(ctx, field)
+			case "programs":
+				return ec.fieldContext_PreplanExam_programs(ctx, field)
+			case "expectedStudents":
+				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
+			case "duration":
+				return ec.fieldContext_PreplanExam_duration(ctx, field)
+			case "plannedDayNumber":
+				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
+			case "plannedSlotNumber":
+				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "ancode":
+				return ec.fieldContext_PreplanExam_ancode(ctx, field)
+			case "notes":
+				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setPreplanExamConstraints_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -37645,6 +37823,69 @@ func (ec *executionContext) fieldContext_PreplanExam_notes(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanExam_constraints(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanExam_constraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Constraints, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Constraints)
+	fc.Result = res
+	return ec.marshalOConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraints(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanExam_constraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_Constraints_ancode(ctx, field)
+			case "notPlannedByMe":
+				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "doNotPublish":
+				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
+			case "excludeDays":
+				return ec.fieldContext_Constraints_excludeDays(ctx, field)
+			case "possibleDays":
+				return ec.fieldContext_Constraints_possibleDays(ctx, field)
+			case "fixedDay":
+				return ec.fieldContext_Constraints_fixedDay(ctx, field)
+			case "fixedTime":
+				return ec.fieldContext_Constraints_fixedTime(ctx, field)
+			case "sameSlot":
+				return ec.fieldContext_Constraints_sameSlot(ctx, field)
+			case "online":
+				return ec.fieldContext_Constraints_online(ctx, field)
+			case "roomConstraints":
+				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Constraints", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreplanKindNeed_examCount(ctx context.Context, field graphql.CollectedField, obj *model.PreplanKindNeed) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreplanKindNeed_examCount(ctx, field)
 	if err != nil {
@@ -42645,6 +42886,8 @@ func (ec *executionContext) fieldContext_Query_preplanExams(_ context.Context, f
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
 				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
 		},
@@ -42712,6 +42955,8 @@ func (ec *executionContext) fieldContext_Query_preplanExam(ctx context.Context, 
 				return ec.fieldContext_PreplanExam_ancode(ctx, field)
 			case "notes":
 				return ec.fieldContext_PreplanExam_notes(ctx, field)
+			case "constraints":
+				return ec.fieldContext_PreplanExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanExam", field.Name)
 		},
@@ -65469,6 +65714,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setPreplanExamConstraints":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setPreplanExamConstraints(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "prePlanRoom":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_prePlanRoom(ctx, field)
@@ -66908,6 +67160,8 @@ func (ec *executionContext) _PreplanExam(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._PreplanExam_ancode(ctx, field, obj)
 		case "notes":
 			out.Values[i] = ec._PreplanExam_notes(ctx, field, obj)
+		case "constraints":
+			out.Values[i] = ec._PreplanExam_constraints(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

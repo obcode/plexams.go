@@ -88,8 +88,8 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 				need.Starttime = start
 			}
 			if sb := booked[[2]int{day, slot}]; sb != nil {
+				// only EXaHM is booked via Anny; SEB runs in the labs.
 				applyBooking(need.Exahm, sb.exahmSeats, exahmRooms, sb.rooms)
-				applyBooking(need.Seb, sb.sebSeats, sebRooms, sb.rooms)
 			}
 		}
 		slots = append(slots, need)
@@ -119,10 +119,13 @@ func (p *Plexams) preplanRoomCapacities(ctx context.Context) (exahm, seb []roomC
 		if room.Deactivated {
 			continue
 		}
-		if room.Exahm {
+		anny := room.RequestWith == model.RoomRequestTypeAnny
+		// EXaHM pre-planning works only with the T-building (Anny) rooms.
+		if room.Exahm && anny {
 			exahm = append(exahm, roomCapacity{name: room.Name, seats: room.Seats})
 		}
-		if room.Seb {
+		// SEB runs in the labs (not booked via Anny).
+		if room.Seb && !anny {
 			seats := room.Seats
 			if room.SebSeats != nil {
 				seats = *room.SebSeats

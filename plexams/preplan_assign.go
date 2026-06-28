@@ -95,8 +95,9 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomC
 		if booked != nil {
 			sb = booked[key]
 		}
-		messages = append(messages, kindBookingMessages(key, "EXaHM", exahm, exahmAvail, exahmRooms, sb)...)
-		messages = append(messages, kindBookingMessages(key, "SEB", seb, sebAvail, sebRooms, sb)...)
+		// EXaHM is booked via Anny (T-building); SEB runs in the labs (capacity only).
+		messages = append(messages, kindBookingMessages(key, "EXaHM", exahm, exahmAvail, exahmRooms, sb, true)...)
+		messages = append(messages, kindBookingMessages(key, "SEB", seb, sebAvail, sebRooms, nil, false)...)
 
 		for _, c := range programConflicts(exams) {
 			messages = append(messages, fmt.Sprintf("Slot %d/%d: Studiengang %s in %d Prüfungen (%s)",
@@ -114,9 +115,10 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomC
 }
 
 // kindBookingMessages reports, for one slot and kind, a physical-capacity overflow
-// (can't fit even fully booked) or — when within capacity — the Anny bookings still
-// missing to cover the demand.
-func kindBookingMessages(key [2]int, kind string, needed, available int, rooms []roomCapacity, sb *slotBooking) []string {
+// (can't fit even fully booked) or — when within capacity and the kind is booked via
+// Anny — the Anny bookings still missing to cover the demand. SEB (annyBooked=false)
+// runs in the labs and gets only the capacity check.
+func kindBookingMessages(key [2]int, kind string, needed, available int, rooms []roomCapacity, sb *slotBooking, annyBooked bool) []string {
 	if needed == 0 {
 		return nil
 	}
@@ -124,16 +126,15 @@ func kindBookingMessages(key [2]int, kind string, needed, available int, rooms [
 		return []string{fmt.Sprintf("Slot %d/%d: %s %d Plätze nötig, nur %d verfügbar (Kapazität reicht nicht)",
 			key[0], key[1], kind, needed, available)}
 	}
+	if !annyBooked {
+		return nil // not booked via Anny (e.g. SEB in the labs): capacity is enough
+	}
 
 	bookedSeats := 0
 	var bookedRooms map[string]bool
 	if sb != nil {
 		bookedRooms = sb.rooms
-		if kind == "EXaHM" {
-			bookedSeats = sb.exahmSeats
-		} else {
-			bookedSeats = sb.sebSeats
-		}
+		bookedSeats = sb.exahmSeats
 	}
 	if bookedSeats >= needed {
 		return nil

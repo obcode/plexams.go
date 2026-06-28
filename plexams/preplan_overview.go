@@ -26,8 +26,6 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 	if err != nil {
 		return nil, err
 	}
-	exahmAvail := totalSeats(exahmRooms)
-	sebAvail := totalSeats(sebRooms)
 
 	// group pre-exams by slot key; "" = unslotted
 	type slotKey struct {
@@ -76,8 +74,8 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 		exams := groups[key]
 
 		need := &model.PreplanSlotNeed{
-			Exahm:     kindNeed(exams, "EXaHM", exahmRooms, exahmAvail),
-			Seb:       kindNeed(exams, "SEB", sebRooms, sebAvail),
+			Exahm:     kindNeed(exams, "EXaHM", exahmRooms),
+			Seb:       kindNeed(exams, "SEB", sebRooms),
 			Conflicts: programConflicts(exams),
 		}
 		if key.slotted {
@@ -88,8 +86,8 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 				need.Starttime = start
 			}
 			if sb := booked[[2]int{day, slot}]; sb != nil {
-				// only EXaHM is booked via Anny; SEB runs in the labs.
-				applyBooking(need.Exahm, sb.exahmSeats, exahmRooms, sb.rooms)
+				applyBooking(need.Exahm, sb.exahmSeats, roomsForKind(exams, "EXaHM", exahmRooms), sb.rooms)
+				applyBooking(need.Seb, sb.sebSeats, roomsForKind(exams, "SEB", sebRooms), sb.rooms)
 			}
 		}
 		slots = append(slots, need)
@@ -119,13 +117,16 @@ func (p *Plexams) preplanRoomCapacities(ctx context.Context) (exahm, seb []roomC
 		if room.Deactivated {
 			continue
 		}
-		anny := room.RequestWith == model.RoomRequestTypeAnny
-		// EXaHM pre-planning works only with the T-building (Anny) rooms.
-		if room.Exahm && anny {
+		// pre-planning only distributes into the T-building (Anny) rooms — for both
+		// EXaHM and SEB. (Labs may be used later during real room planning, but Anny
+		// rooms always have priority.)
+		if room.RequestWith != model.RoomRequestTypeAnny {
+			continue
+		}
+		if room.Exahm {
 			exahm = append(exahm, roomCapacity{name: room.Name, seats: room.Seats})
 		}
-		// SEB runs in the labs (not booked via Anny).
-		if room.Seb && !anny {
+		if room.Seb {
 			seats := room.Seats
 			if room.SebSeats != nil {
 				seats = *room.SebSeats
@@ -147,8 +148,8 @@ func totalSeats(rooms []roomCapacity) int {
 }
 
 // kindNeed sums the seat demand of the pre-exams of one kind in a slot and greedily
-// picks rooms (largest first) to cover it.
-func kindNeed(exams []*model.PreplanExam, kind string, rooms []roomCapacity, available int) *model.PreplanKindNeed {
+// picks rooms (largest first) to cover it, honouring per-exam room restrictions.
+func kindNeed(exams []*model.PreplanExam, kind string, rooms []roomCapacity) *model.PreplanKindNeed {
 	count, seats := 0, 0
 	for _, pe := range exams {
 		if pe.ExamKind == kind {
@@ -157,9 +158,12 @@ func kindNeed(exams []*model.PreplanExam, kind string, rooms []roomCapacity, ava
 		}
 	}
 
+	pool := roomsForKind(exams, kind, rooms)
+	available := totalSeats(pool)
+
 	roomNames := make([]string, 0)
 	remaining := seats
-	for _, r := range rooms {
+	for _, r := range pool {
 		if remaining <= 0 {
 			break
 		}
@@ -176,6 +180,42 @@ func kindNeed(exams []*model.PreplanExam, kind string, rooms []roomCapacity, ava
 		SeatsBooked:    0,
 		RoomsToBook:    []string{},
 	}
+}
+
+// roomsForKind restricts the candidate rooms by the per-exam allowedRooms of the
+// slot's exams of that kind: only when every such exam restricts its rooms is the
+// pool narrowed to the union of their allowedRooms (an exam without a restriction
+// may use any room, so the full set is kept).
+func roomsForKind(exams []*model.PreplanExam, kind string, rooms []roomCapacity) []roomCapacity {
+	allowed := make(map[string]bool)
+	hasRestriction, hasUnrestricted := false, false
+	for _, pe := range exams {
+		if pe.ExamKind != kind {
+			continue
+		}
+		var ar []string
+		if pe.Constraints != nil && pe.Constraints.RoomConstraints != nil {
+			ar = pe.Constraints.RoomConstraints.AllowedRooms
+		}
+		if len(ar) == 0 {
+			hasUnrestricted = true
+			continue
+		}
+		hasRestriction = true
+		for _, r := range ar {
+			allowed[normRoomName(r)] = true
+		}
+	}
+	if !hasRestriction || hasUnrestricted {
+		return rooms
+	}
+	filtered := make([]roomCapacity, 0, len(rooms))
+	for _, r := range rooms {
+		if allowed[normRoomName(r.name)] {
+			filtered = append(filtered, r)
+		}
+	}
+	return filtered
 }
 
 // programConflicts finds study programs that appear in more than one pre-exam of

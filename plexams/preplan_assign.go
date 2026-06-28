@@ -51,7 +51,6 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 // booked (Anny bookings per slot) may be nil; when present, missing bookings are
 // reported so the planner can book step by step.
 func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomCapacity, booked map[[2]int]*slotBooking) *model.PreplanValidation {
-	exahmAvail, sebAvail := totalSeats(exahmRooms), totalSeats(sebRooms)
 	messages := make([]string, 0)
 
 	unassigned := make([]int, 0)
@@ -95,9 +94,11 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomC
 		if booked != nil {
 			sb = booked[key]
 		}
-		// EXaHM is booked via Anny (T-building); SEB runs in the labs (capacity only).
-		messages = append(messages, kindBookingMessages(key, "EXaHM", exahm, exahmAvail, exahmRooms, sb, true)...)
-		messages = append(messages, kindBookingMessages(key, "SEB", seb, sebAvail, sebRooms, nil, false)...)
+		// honour per-exam room restrictions for the suggestion/capacity
+		exahmPool := roomsForKind(exams, "EXaHM", exahmRooms)
+		sebPool := roomsForKind(exams, "SEB", sebRooms)
+		messages = append(messages, kindBookingMessages(key, "EXaHM", exahm, totalSeats(exahmPool), exahmPool, sb)...)
+		messages = append(messages, kindBookingMessages(key, "SEB", seb, totalSeats(sebPool), sebPool, sb)...)
 
 		for _, c := range programConflicts(exams) {
 			messages = append(messages, fmt.Sprintf("Slot %d/%d: Studiengang %s in %d Prüfungen (%s)",
@@ -115,10 +116,9 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomC
 }
 
 // kindBookingMessages reports, for one slot and kind, a physical-capacity overflow
-// (can't fit even fully booked) or — when within capacity and the kind is booked via
-// Anny — the Anny bookings still missing to cover the demand. SEB (annyBooked=false)
-// runs in the labs and gets only the capacity check.
-func kindBookingMessages(key [2]int, kind string, needed, available int, rooms []roomCapacity, sb *slotBooking, annyBooked bool) []string {
+// (can't fit even fully booked) or — when within capacity — the Anny bookings still
+// missing to cover the demand.
+func kindBookingMessages(key [2]int, kind string, needed, available int, rooms []roomCapacity, sb *slotBooking) []string {
 	if needed == 0 {
 		return nil
 	}
@@ -126,15 +126,16 @@ func kindBookingMessages(key [2]int, kind string, needed, available int, rooms [
 		return []string{fmt.Sprintf("Slot %d/%d: %s %d Plätze nötig, nur %d verfügbar (Kapazität reicht nicht)",
 			key[0], key[1], kind, needed, available)}
 	}
-	if !annyBooked {
-		return nil // not booked via Anny (e.g. SEB in the labs): capacity is enough
-	}
 
 	bookedSeats := 0
 	var bookedRooms map[string]bool
 	if sb != nil {
 		bookedRooms = sb.rooms
-		bookedSeats = sb.exahmSeats
+		if kind == "EXaHM" {
+			bookedSeats = sb.exahmSeats
+		} else {
+			bookedSeats = sb.sebSeats
+		}
 	}
 	if bookedSeats >= needed {
 		return nil

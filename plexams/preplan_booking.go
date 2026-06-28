@@ -7,10 +7,11 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// slotBooking is the EXaHM capacity WE have already booked in Anny for one slot.
-// (SEB runs in labs, not booked via Anny, so it is not tracked here.)
+// slotBooking is the EXaHM/SEB capacity WE have already booked in Anny (T-building)
+// for one slot.
 type slotBooking struct {
 	exahmSeats int
+	sebSeats   int
 	rooms      map[string]bool // normalized names of rooms already booked for the slot
 }
 
@@ -18,7 +19,7 @@ func normRoomName(s string) string {
 	return strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(s), " ", ""))
 }
 
-// annyBookedBySlot returns, for each given slot, the EXaHM seats we have already
+// annyBookedBySlot returns, for each given slot, the EXaHM/SEB seats we have already
 // booked in Anny in the T-building rooms (a booking covers a slot when the slot's
 // start time lies within the booking window). Only our own bookings count (matched
 // by the configured personalization names; all bookings when none are configured).
@@ -38,14 +39,11 @@ func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[
 	if err != nil {
 		return nil, err
 	}
-	// only EXaHM-capable T-building (Anny) rooms count toward the booked capacity
-	exahmAnny := make(map[string]*model.Room, len(rooms))
+	// only T-building (Anny) rooms count toward the booked capacity
+	annyRoom := make(map[string]*model.Room, len(rooms))
 	for _, r := range rooms {
-		if r.Deactivated {
-			continue
-		}
-		if r.Exahm && r.RequestWith == model.RoomRequestTypeAnny {
-			exahmAnny[normRoomName(r.Name)] = r
+		if !r.Deactivated && r.RequestWith == model.RoomRequestTypeAnny {
+			annyRoom[normRoomName(r.Name)] = r
 		}
 	}
 
@@ -71,11 +69,20 @@ func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[
 			if sb.rooms[n] {
 				continue
 			}
-			room := exahmAnny[n]
+			room := annyRoom[n]
 			if room == nil {
 				continue
 			}
-			sb.exahmSeats += room.Seats
+			if room.Exahm {
+				sb.exahmSeats += room.Seats
+			}
+			if room.Seb {
+				seats := room.Seats
+				if room.SebSeats != nil {
+					seats = *room.SebSeats
+				}
+				sb.sebSeats += seats
+			}
 			sb.rooms[n] = true
 		}
 	}

@@ -91,11 +91,8 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomC
 		sebPool := roomsForKind(exams, "SEB", sebRooms)
 		messages = append(messages, kindBookingMessages(key, "EXaHM", exahm, totalSeats(exahmPool), exahmPool, sb)...)
 		messages = append(messages, kindBookingMessages(key, "SEB", seb, totalSeats(sebPool), sebPool, sb)...)
-
-		for _, c := range programConflicts(exams) {
-			messages = append(messages, fmt.Sprintf("Slot %d/%d: Studiengang %s in %d Prüfungen (%s)",
-				key[0], key[1], c.Program, len(c.PreplanExamIDs), joinStrings(c.Modules)))
-		}
+		// note: same study program in one slot is allowed (soft spreading only), so it
+		// is no longer reported as a finding here.
 	}
 
 	assignedCount := len(preExams) - len(unassigned)

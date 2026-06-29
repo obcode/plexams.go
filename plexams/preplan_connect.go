@@ -51,6 +51,15 @@ func (p *Plexams) ConnectPreplanExamToAncode(ctx context.Context, id, ancode int
 		return nil, fmt.Errorf("cannot carry over pre-plan constraints to ancode %d: %w", ancode, err)
 	}
 
+	// a FIXED pre-exam has a definitive slot, so the linked ZPA exam is pre-planned
+	// into that slot (like `plexams.go plan pre-plan-exam`).
+	if preExam.IsFixed && preExam.PlannedDayNumber != nil && preExam.PlannedSlotNumber != nil {
+		if _, err := p.PreAddExamToSlot(ctx, ancode, *preExam.PlannedDayNumber, *preExam.PlannedSlotNumber); err != nil {
+			return nil, fmt.Errorf("cannot pre-plan ancode %d into slot %d/%d: %w",
+				ancode, *preExam.PlannedDayNumber, *preExam.PlannedSlotNumber, err)
+		}
+	}
+
 	return preExam, nil
 }
 
@@ -66,6 +75,7 @@ func (p *Plexams) DisconnectPreplanExam(ctx context.Context, id int) (*model.Pre
 		return nil, fmt.Errorf("pre-exam %d not found", id)
 	}
 	freedAncode := preExam.Ancode
+	wasFixed := preExam.IsFixed
 	preExam.Ancode = nil
 	if _, err := p.dbClient.ReplacePreplanExam(ctx, preExam); err != nil {
 		return nil, err
@@ -79,6 +89,12 @@ func (p *Plexams) DisconnectPreplanExam(ctx context.Context, id int) (*model.Pre
 	if freedAncode != nil {
 		if _, err := p.RmConstraints(ctx, *freedAncode); err != nil {
 			log.Error().Err(err).Int("ancode", *freedAncode).Msg("cannot remove carried-over constraints on disconnect")
+		}
+		// undo the pre-planned slot placement of a fixed pre-exam (see connect).
+		if wasFixed {
+			if err := p.dbClient.RemovePlanEntry(ctx, *freedAncode); err != nil {
+				log.Error().Err(err).Int("ancode", *freedAncode).Msg("cannot remove pre-planned slot on disconnect")
+			}
 		}
 	}
 	return preExam, nil

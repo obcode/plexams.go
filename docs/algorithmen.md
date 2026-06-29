@@ -182,6 +182,25 @@ kompakt und in sich geschlossen. Eine generische „items→slots"-Engine ist er
 geplant, wenn der Terminplan-Generator als zweiter echter Abnehmer dazukommt (siehe
 [cli-to-gui-migration-plan.md](cli-to-gui-migration-plan.md)).
 
+### Vertrag mit dem künftigen Terminplan-Generator: „fix = gesperrt"
+
+Alle drei Planer trennen *fix* von *zu optimieren*: die Aufsichtenplanung über
+`Problem.Fixed`, die Vorplanung über `isFixed`/vorbelegte Slots. Der künftige
+**Terminplan-Generator** (eigener Schritt) wird dieselbe Linie nutzen:
+
+> **Ein gesperrter Plan-Eintrag (`PlanEntry.Locked == true`) ist hart fixiert** — der
+> Generator lässt ihn unverändert und optimiert nur die übrigen Prüfungen in die Slots.
+
+„Echtes Vorplanen" einer generierten Prüfung = ein gesperrter Plan-Eintrag. Das passiert
+heute schon an zwei Stellen, beide erzeugen `Locked=true`:
+- **Connect einer fixen Pre-Exam** (`isFixed`): die verknüpfte ZPA-Prüfung wird in ihren
+  Slot gesperrt vorgeplant; Disconnect entfernt den Eintrag wieder.
+- **`lockExam` / `unlockExam`**: generische pin/unpin-Operation für jede generierte
+  Prüfung (auch manuell im GUI).
+
+So muss der Generator später nur die gesperrten Einträge als feste Menge einlesen — kein
+neues Modell nötig.
+
 ---
 
 ## 4. Parameter zum Nachjustieren

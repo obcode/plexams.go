@@ -51,10 +51,16 @@ func (p *Plexams) ConnectPreplanExamToAncode(ctx context.Context, id, ancode int
 		return nil, fmt.Errorf("cannot carry over pre-plan constraints to ancode %d: %w", ancode, err)
 	}
 
-	// a FIXED pre-exam has a definitive slot, so the linked ZPA exam is pre-planned
-	// into that slot (like `plexams.go plan pre-plan-exam`).
+	// a FIXED pre-exam has a definitive slot, so the linked ZPA exam is pre-planned into
+	// that slot as a LOCKED plan entry — the contract the future Terminplan generator
+	// uses: locked entries stay fixed, everything else is optimized.
 	if preExam.IsFixed && preExam.PlannedDayNumber != nil && preExam.PlannedSlotNumber != nil {
-		if _, err := p.PreAddExamToSlot(ctx, ancode, *preExam.PlannedDayNumber, *preExam.PlannedSlotNumber); err != nil {
+		if _, err := p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
+			DayNumber:  *preExam.PlannedDayNumber,
+			SlotNumber: *preExam.PlannedSlotNumber,
+			Ancode:     ancode,
+			Locked:     true,
+		}); err != nil {
 			return nil, fmt.Errorf("cannot pre-plan ancode %d into slot %d/%d: %w",
 				ancode, *preExam.PlannedDayNumber, *preExam.PlannedSlotNumber, err)
 		}

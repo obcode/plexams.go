@@ -76,7 +76,7 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "go install github.com/HenriBeck/gowatch@latest; sudo chown -R ubuntu:ubuntu /shared/bin ; sudo chown -R ubuntu:ubuntu /workspace/plexams.go",
+  "postCreateCommand": "go install github.com/HenriBeck/gowatch@latest; sudo chown -R ubuntu:ubuntu /shared/bin ; sudo chown -R ubuntu:ubuntu /workspace/plexams.go ; bash .claude/link-memory.sh || true",
   "postStartCommand": "/shared/bin/gowatch",
   "remoteEnv": {
     "GOBIN": "/shared/bin",

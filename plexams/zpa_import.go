@@ -181,7 +181,75 @@ func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (in
 	p.logSync(ctx, rec)
 	p.markCondition(ctx, condZPAImported)
 	reporter.StopProgress(fmt.Sprintf("fetched %d exams", len(exams)))
+
+	// pre-select the planning status of exams that have no decision yet: written and
+	// practical exams ("schriftliche/praktische Prüfung") are to be planned, everything
+	// else is not. Manual decisions are preserved.
+	if toPlan, notToPlan, err := p.autoPreselectExamsToPlan(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot pre-select exams to plan")
+	} else if toPlan+notToPlan > 0 {
+		reporter.Step(fmt.Sprintf("Vorauswahl: %d Prüfungen zu planen, %d nicht planen (nur bisher unentschiedene)", toPlan, notToPlan))
+	}
+
 	return len(exams), nil
+}
+
+// examShouldBePlanned classifies a ZPA exam for the automatic pre-selection: written
+// and practical exams ("schriftliche/praktische Prüfung") are planned centrally, all
+// other types (Modularbeit, Präsentation, mündliche Prüfung, Schein, extern, …) are not.
+func examShouldBePlanned(e *model.ZPAExam) bool {
+	t := strings.ToLower(e.ExamTypeFull)
+	return strings.Contains(t, "schriftliche prüfung") || strings.Contains(t, "praktische prüfung")
+}
+
+// autoPreselectExamsToPlan sets the planning status of all exams that have none yet
+// (written/practical → to plan, rest → not to plan) while keeping every existing
+// manual decision. Returns how many were newly set to-plan / not-to-plan.
+func (p *Plexams) autoPreselectExamsToPlan(ctx context.Context) (toPlanAdded, notToPlanAdded int, err error) {
+	f := false
+	all, err := p.GetZPAExams(ctx, &f)
+	if err != nil {
+		return 0, 0, err
+	}
+	toPlan, err := p.dbClient.GetZPAExamsToPlan(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	notToPlan, err := p.dbClient.GetZPAExamsNotToPlan(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	decided := make(map[int]bool, len(toPlan)+len(notToPlan))
+	for _, e := range toPlan {
+		decided[e.AnCode] = true
+	}
+	for _, e := range notToPlan {
+		decided[e.AnCode] = true
+	}
+
+	newToPlan := append([]*model.ZPAExam{}, toPlan...)
+	newNotToPlan := append([]*model.ZPAExam{}, notToPlan...)
+	for _, e := range all {
+		if decided[e.AnCode] {
+			continue
+		}
+		if examShouldBePlanned(e) {
+			newToPlan = append(newToPlan, e)
+			toPlanAdded++
+		} else {
+			newNotToPlan = append(newNotToPlan, e)
+			notToPlanAdded++
+		}
+	}
+
+	if toPlanAdded+notToPlanAdded == 0 {
+		return 0, 0, nil // nothing undecided
+	}
+	if err := p.dbClient.SetZPAExamsToPlan(ctx, newToPlan, newNotToPlan); err != nil {
+		return 0, 0, err
+	}
+	return toPlanAdded, notToPlanAdded, nil
 }
 
 // ImportInvigilatorRequirementsFromZPA fetches the invigilator requirements from

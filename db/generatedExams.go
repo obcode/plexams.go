@@ -32,6 +32,12 @@ func (db *DB) CacheGeneratedExams(ctx context.Context, exams []*model.GeneratedE
 	return nil
 }
 
+// CountGeneratedExams returns how many generated exams are currently cached (0 before
+// the first generation).
+func (db *DB) CountGeneratedExams(ctx context.Context) (int64, error) {
+	return db.Client.Database(db.databaseName).Collection(collectionGeneratedExams).CountDocuments(ctx, bson.M{})
+}
+
 func (db *DB) GetGeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionGeneratedExams)
 

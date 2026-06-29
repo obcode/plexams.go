@@ -11,6 +11,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// CountStudentRegsPlanned returns how many planned student registrations are currently
+// prepared (0 before the first preparation).
+func (db *DB) CountStudentRegsPlanned(ctx context.Context) (int64, error) {
+	return db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned).CountDocuments(ctx, bson.M{})
+}
+
 func (db *DB) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.Student, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionStudentRegsPerStudentPlanned)
 

@@ -17,14 +17,30 @@ func (p *Plexams) MarkGeneratedExamsDirty(ctx context.Context, reason string) {
 	if p.dbClient == nil {
 		return
 	}
+	// nothing can be "stale" before the exams have been generated at least once (e.g.
+	// the first ZPA import, before any Primuss data, must not raise the banner).
+	if n, err := p.dbClient.CountGeneratedExams(ctx); err == nil && n == 0 {
+		return
+	}
 	if err := p.dbClient.SetGeneratedExamsDirty(ctx, true, reason, time.Now()); err != nil {
 		log.Error().Err(err).Str("reason", reason).Msg("cannot mark generated exams dirty")
 	}
 }
 
-// GeneratedExamsState returns whether the cached generated exams are stale.
+// GeneratedExamsState returns whether the cached generated exams are stale. They can
+// only be stale once they have been generated at least once; before that (e.g. right
+// after the first ZPA import) the state is reported as not dirty.
 func (p *Plexams) GeneratedExamsState(ctx context.Context) (*model.GeneratedExamsState, error) {
-	return p.dbClient.GetGeneratedExamsState(ctx)
+	state, err := p.dbClient.GetGeneratedExamsState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if state != nil && state.Dirty {
+		if n, err := p.dbClient.CountGeneratedExams(ctx); err == nil && n == 0 {
+			state.Dirty = false
+		}
+	}
+	return state, nil
 }
 
 // GenerateGeneratedExams regenerates the cached generated exams and returns the new

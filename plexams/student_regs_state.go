@@ -13,14 +13,29 @@ func (p *Plexams) MarkStudentRegsDirty(ctx context.Context, reason string) {
 	if p.dbClient == nil {
 		return
 	}
+	// nothing can be "stale" before the student regs have been prepared at least once.
+	if n, err := p.dbClient.CountStudentRegsPlanned(ctx); err == nil && n == 0 {
+		return
+	}
 	if err := p.dbClient.SetStudentRegsDirty(ctx, true, reason, time.Now()); err != nil {
 		log.Error().Err(err).Str("reason", reason).Msg("cannot mark student regs dirty")
 	}
 }
 
-// StudentRegsState returns whether the prepared student regs are stale.
+// StudentRegsState returns whether the prepared student regs are stale. They can only
+// be stale once they have been prepared at least once; before that the state is
+// reported as not dirty.
 func (p *Plexams) StudentRegsState(ctx context.Context) (*model.StudentRegsState, error) {
-	return p.dbClient.GetStudentRegsState(ctx)
+	state, err := p.dbClient.GetStudentRegsState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if state != nil && state.Dirty {
+		if n, err := p.dbClient.CountStudentRegsPlanned(ctx); err == nil && n == 0 {
+			state.Dirty = false
+		}
+	}
+	return state, nil
 }
 
 // GenerateStudentRegs regenerates the per-student planned registrations and returns

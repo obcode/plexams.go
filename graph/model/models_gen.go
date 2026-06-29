@@ -653,6 +653,21 @@ type PreplanProgramConflict struct {
 	Modules        []string `json:"modules"`
 }
 
+type PreplanSameSlotGroup struct {
+	Members []*PreplanSameSlotMember `json:"members"`
+	// true when every member is connected (the same-slot is fully carried over to the ZPA exams).
+	Complete bool `json:"complete"`
+}
+
+type PreplanSameSlotMember struct {
+	ID       int    `json:"id"`
+	Module   string `json:"module"`
+	ExamKind string `json:"examKind"`
+	// true when this member is linked to a ZPA ancode.
+	Connected bool `json:"connected"`
+	Ancode    *int `json:"ancode,omitempty"`
+}
+
 type PreplanSlotNeed struct {
 	// null day/slot = the bucket of pre-exams without a slot yet.
 	DayNumber  *int             `json:"dayNumber,omitempty"`

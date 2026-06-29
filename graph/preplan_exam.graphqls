@@ -7,6 +7,27 @@ extend type Query {
   teacher) and module-name similarity. Empty before the ZPA exams are imported.
   """
   preplanExamAncodeSuggestions(id: Int!): [ZPAExam!]!
+  """
+  Same-slot groups of pre-exams (>= 2 members) with each member's connection status, so
+  the GUI can show which members are still pending. The same-slot is only carried over to
+  the ZPA exams once every member of a group is connected (complete = true).
+  """
+  preplanSameSlotGroups: [PreplanSameSlotGroup!]!
+}
+
+type PreplanSameSlotMember {
+  id: Int!
+  module: String!
+  examKind: String!
+  "true when this member is linked to a ZPA ancode."
+  connected: Boolean!
+  ancode: Int
+}
+
+type PreplanSameSlotGroup {
+  members: [PreplanSameSlotMember!]!
+  "true when every member is connected (the same-slot is fully carried over to the ZPA exams)."
+  complete: Boolean!
 }
 
 extend type Mutation {

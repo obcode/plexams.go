@@ -74,3 +74,8 @@ func (r *queryResolver) PreplanExam(ctx context.Context, id int) (*model.Preplan
 func (r *queryResolver) PreplanExamAncodeSuggestions(ctx context.Context, id int) ([]*model.ZPAExam, error) {
 	return r.plexams.PreplanExamAncodeSuggestions(ctx, id)
 }
+
+// PreplanSameSlotGroups is the resolver for the preplanSameSlotGroups field.
+func (r *queryResolver) PreplanSameSlotGroups(ctx context.Context) ([]*model.PreplanSameSlotGroup, error) {
+	return r.plexams.PreplanSameSlotGroups(ctx)
+}

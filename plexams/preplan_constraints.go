@@ -101,28 +101,17 @@ func (p *Plexams) removePreplanSameSlot(ctx context.Context, id, remove int) err
 
 // preplanConstraintsFromInput maps a ConstraintsInput to a model.Constraints without
 // any persistence side effects. SameSlot is kept verbatim (pre-exam ids).
+// preplanConstraintsFromInput maps a ConstraintsInput to a pre-exam's stored
+// constraints. Pre-planning is deliberately slim: only same-slot (pre-exam ids) and
+// allowedRooms are kept; the SEB/EXaHM room kind comes from the exam itself, and the
+// other ZPA constraint fields cannot be set during pre-planning.
 func preplanConstraintsFromInput(input *model.ConstraintsInput) *model.Constraints {
 	c := &model.Constraints{}
 	if input == nil {
 		return c
 	}
-	if input.NotPlannedByMe != nil {
-		c.NotPlannedByMe = *input.NotPlannedByMe
-	}
-	if input.DoNotPublish != nil {
-		c.DoNotPublish = *input.DoNotPublish
-	}
-	if input.Online != nil {
-		c.Online = *input.Online
-	}
-	c.FixedDay = input.FixedDay
-	c.FixedTime = input.FixedTime
-	c.ExcludeDays = input.ExcludeDays
-	c.PossibleDays = input.PossibleDays
 	c.SameSlot = dedupeInts(input.SameSlot)
 
-	rc := &model.RoomConstraints{}
-	hasRoom := false
 	if len(input.AllowedRooms) > 0 {
 		rooms := make([]string, 0, len(input.AllowedRooms))
 		for _, r := range input.AllowedRooms {
@@ -131,81 +120,10 @@ func preplanConstraintsFromInput(input *model.ConstraintsInput) *model.Constrain
 			}
 		}
 		if len(rooms) > 0 {
-			rc.AllowedRooms = rooms
-			hasRoom = true
+			c.RoomConstraints = &model.RoomConstraints{AllowedRooms: rooms}
 		}
-	}
-	if input.PlacesWithSocket != nil && *input.PlacesWithSocket {
-		rc.PlacesWithSocket = true
-		hasRoom = true
-	}
-	if input.Lab != nil && *input.Lab {
-		rc.Lab = true
-		hasRoom = true
-	}
-	if input.Exahm != nil && *input.Exahm {
-		rc.Exahm = true
-		hasRoom = true
-	}
-	if input.Seb != nil && *input.Seb {
-		rc.Seb = true
-		hasRoom = true
-	}
-	if input.MaxStudents != nil && *input.MaxStudents > 0 {
-		rc.MaxStudents = input.MaxStudents
-		hasRoom = true
-	}
-	if input.AdditionalSeats != nil && *input.AdditionalSeats > 0 {
-		rc.AdditionalSeats = input.AdditionalSeats
-		hasRoom = true
-	}
-	if input.KdpJiraURL != nil && *input.KdpJiraURL != "" {
-		rc.KdpJiraURL = input.KdpJiraURL
-		hasRoom = true
-	}
-	if input.Comments != nil && *input.Comments != "" {
-		rc.Comments = input.Comments
-		hasRoom = true
-	}
-	if hasRoom {
-		c.RoomConstraints = rc
 	}
 	return c
-}
-
-// preplanConstraintsToInput converts a pre-exam's stored constraints into a normal
-// ConstraintsInput for AddConstraints, translating the same-slot pre-exam ids into
-// the ancodes of those pre-exams that are already linked to a ZPA exam.
-func (p *Plexams) preplanConstraintsToInput(ctx context.Context, c *model.Constraints) model.ConstraintsInput {
-	in := model.ConstraintsInput{
-		NotPlannedByMe: boolPtr(c.NotPlannedByMe),
-		DoNotPublish:   boolPtr(c.DoNotPublish),
-		Online:         boolPtr(c.Online),
-		FixedDay:       c.FixedDay,
-		FixedTime:      c.FixedTime,
-		ExcludeDays:    c.ExcludeDays,
-		PossibleDays:   c.PossibleDays,
-	}
-	if rc := c.RoomConstraints; rc != nil {
-		in.AllowedRooms = rc.AllowedRooms
-		in.PlacesWithSocket = boolPtr(rc.PlacesWithSocket)
-		in.Lab = boolPtr(rc.Lab)
-		in.Exahm = boolPtr(rc.Exahm)
-		in.Seb = boolPtr(rc.Seb)
-		in.MaxStudents = rc.MaxStudents
-		in.AdditionalSeats = rc.AdditionalSeats
-		in.KdpJiraURL = rc.KdpJiraURL
-		in.Comments = rc.Comments
-	}
-	ancodes := make([]int, 0, len(c.SameSlot))
-	for _, pid := range c.SameSlot {
-		other, err := p.dbClient.PreplanExam(ctx, pid)
-		if err == nil && other != nil && other.Ancode != nil {
-			ancodes = append(ancodes, *other.Ancode)
-		}
-	}
-	in.SameSlot = ancodes
-	return in
 }
 
 func boolPtr(b bool) *bool { return &b }

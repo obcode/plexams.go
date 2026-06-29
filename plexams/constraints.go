@@ -277,6 +277,9 @@ func (p *Plexams) rmSameSlotConstraints(ctx context.Context, ancode int) (*model
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("error while trying top get constraints for ancode")
 	}
+	if constraints == nil {
+		return nil, nil // nothing to clear (e.g. the ancode's constraints were removed)
+	}
 	constraints.SameSlot = nil
 
 	return p.dbClient.AddConstraints(ctx, ancode, constraints)

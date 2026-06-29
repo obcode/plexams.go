@@ -722,6 +722,19 @@ type ComplexityRoot struct {
 		Program        func(childComplexity int) int
 	}
 
+	PreplanSameSlotGroup struct {
+		Complete func(childComplexity int) int
+		Members  func(childComplexity int) int
+	}
+
+	PreplanSameSlotMember struct {
+		Ancode    func(childComplexity int) int
+		Connected func(childComplexity int) int
+		ExamKind  func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Module    func(childComplexity int) int
+	}
+
 	PreplanSlotNeed struct {
 		Conflicts  func(childComplexity int) int
 		DayNumber  func(childComplexity int) int
@@ -828,6 +841,7 @@ type ComplexityRoot struct {
 		PreplanExamAncodeSuggestions  func(childComplexity int, id int) int
 		PreplanExams                  func(childComplexity int) int
 		PreplanOverview               func(childComplexity int) int
+		PreplanSameSlotGroups         func(childComplexity int) int
 		PrimussExam                   func(childComplexity int, program string, ancode int) int
 		PrimussExams                  func(childComplexity int) int
 		PrimussExamsForAnCode         func(childComplexity int, ancode int) int
@@ -1420,6 +1434,7 @@ type QueryResolver interface {
 	PreplanExams(ctx context.Context) ([]*model.PreplanExam, error)
 	PreplanExam(ctx context.Context, id int) (*model.PreplanExam, error)
 	PreplanExamAncodeSuggestions(ctx context.Context, id int) ([]*model.ZPAExam, error)
+	PreplanSameSlotGroups(ctx context.Context) ([]*model.PreplanSameSlotGroup, error)
 	PreplanOverview(ctx context.Context) (*model.PreplanOverview, error)
 	PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error)
 	PrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error)
@@ -5075,6 +5090,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreplanProgramConflict.Program(childComplexity), true
 
+	case "PreplanSameSlotGroup.complete":
+		if e.complexity.PreplanSameSlotGroup.Complete == nil {
+			break
+		}
+
+		return e.complexity.PreplanSameSlotGroup.Complete(childComplexity), true
+
+	case "PreplanSameSlotGroup.members":
+		if e.complexity.PreplanSameSlotGroup.Members == nil {
+			break
+		}
+
+		return e.complexity.PreplanSameSlotGroup.Members(childComplexity), true
+
+	case "PreplanSameSlotMember.ancode":
+		if e.complexity.PreplanSameSlotMember.Ancode == nil {
+			break
+		}
+
+		return e.complexity.PreplanSameSlotMember.Ancode(childComplexity), true
+
+	case "PreplanSameSlotMember.connected":
+		if e.complexity.PreplanSameSlotMember.Connected == nil {
+			break
+		}
+
+		return e.complexity.PreplanSameSlotMember.Connected(childComplexity), true
+
+	case "PreplanSameSlotMember.examKind":
+		if e.complexity.PreplanSameSlotMember.ExamKind == nil {
+			break
+		}
+
+		return e.complexity.PreplanSameSlotMember.ExamKind(childComplexity), true
+
+	case "PreplanSameSlotMember.id":
+		if e.complexity.PreplanSameSlotMember.ID == nil {
+			break
+		}
+
+		return e.complexity.PreplanSameSlotMember.ID(childComplexity), true
+
+	case "PreplanSameSlotMember.module":
+		if e.complexity.PreplanSameSlotMember.Module == nil {
+			break
+		}
+
+		return e.complexity.PreplanSameSlotMember.Module(childComplexity), true
+
 	case "PreplanSlotNeed.conflicts":
 		if e.complexity.PreplanSlotNeed.Conflicts == nil {
 			break
@@ -5783,6 +5847,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PreplanOverview(childComplexity), true
+
+	case "Query.preplanSameSlotGroups":
+		if e.complexity.Query.PreplanSameSlotGroups == nil {
+			break
+		}
+
+		return e.complexity.Query.PreplanSameSlotGroups(childComplexity), true
 
 	case "Query.primussExam":
 		if e.complexity.Query.PrimussExam == nil {
@@ -9261,6 +9332,27 @@ type PreplanValidation {
   teacher) and module-name similarity. Empty before the ZPA exams are imported.
   """
   preplanExamAncodeSuggestions(id: Int!): [ZPAExam!]!
+  """
+  Same-slot groups of pre-exams (>= 2 members) with each member's connection status, so
+  the GUI can show which members are still pending. The same-slot is only carried over to
+  the ZPA exams once every member of a group is connected (complete = true).
+  """
+  preplanSameSlotGroups: [PreplanSameSlotGroup!]!
+}
+
+type PreplanSameSlotMember {
+  id: Int!
+  module: String!
+  examKind: String!
+  "true when this member is linked to a ZPA ancode."
+  connected: Boolean!
+  ancode: Int
+}
+
+type PreplanSameSlotGroup {
+  members: [PreplanSameSlotMember!]!
+  "true when every member is connected (the same-slot is fully carried over to the ZPA exams)."
+  complete: Boolean!
 }
 
 extend type Mutation {
@@ -39111,6 +39203,323 @@ func (ec *executionContext) fieldContext_PreplanProgramConflict_modules(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanSameSlotGroup_members(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSameSlotGroup) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSameSlotGroup_members(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Members, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PreplanSameSlotMember)
+	fc.Result = res
+	return ec.marshalNPreplanSameSlotMember2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSameSlotMemberᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSameSlotGroup_members(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSameSlotGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_PreplanSameSlotMember_id(ctx, field)
+			case "module":
+				return ec.fieldContext_PreplanSameSlotMember_module(ctx, field)
+			case "examKind":
+				return ec.fieldContext_PreplanSameSlotMember_examKind(ctx, field)
+			case "connected":
+				return ec.fieldContext_PreplanSameSlotMember_connected(ctx, field)
+			case "ancode":
+				return ec.fieldContext_PreplanSameSlotMember_ancode(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanSameSlotMember", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSameSlotGroup_complete(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSameSlotGroup) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSameSlotGroup_complete(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Complete, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSameSlotGroup_complete(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSameSlotGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSameSlotMember_id(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSameSlotMember) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSameSlotMember_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSameSlotMember_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSameSlotMember",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSameSlotMember_module(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSameSlotMember) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSameSlotMember_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSameSlotMember_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSameSlotMember",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSameSlotMember_examKind(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSameSlotMember) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSameSlotMember_examKind(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamKind, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSameSlotMember_examKind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSameSlotMember",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSameSlotMember_connected(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSameSlotMember) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSameSlotMember_connected(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Connected, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSameSlotMember_connected(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSameSlotMember",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanSameSlotMember_ancode(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSameSlotMember) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanSameSlotMember_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanSameSlotMember_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanSameSlotMember",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreplanSlotNeed_dayNumber(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSlotNeed) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreplanSlotNeed_dayNumber(ctx, field)
 	if err != nil {
@@ -43791,6 +44200,56 @@ func (ec *executionContext) fieldContext_Query_preplanExamAncodeSuggestions(ctx 
 	if fc.Args, err = ec.field_Query_preplanExamAncodeSuggestions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_preplanSameSlotGroups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_preplanSameSlotGroups(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PreplanSameSlotGroups(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PreplanSameSlotGroup)
+	fc.Result = res
+	return ec.marshalNPreplanSameSlotGroup2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSameSlotGroupᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_preplanSameSlotGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "members":
+				return ec.fieldContext_PreplanSameSlotGroup_members(ctx, field)
+			case "complete":
+				return ec.fieldContext_PreplanSameSlotGroup_complete(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanSameSlotGroup", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -68111,6 +68570,106 @@ func (ec *executionContext) _PreplanProgramConflict(ctx context.Context, sel ast
 	return out
 }
 
+var preplanSameSlotGroupImplementors = []string{"PreplanSameSlotGroup"}
+
+func (ec *executionContext) _PreplanSameSlotGroup(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanSameSlotGroup) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanSameSlotGroupImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanSameSlotGroup")
+		case "members":
+			out.Values[i] = ec._PreplanSameSlotGroup_members(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "complete":
+			out.Values[i] = ec._PreplanSameSlotGroup_complete(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var preplanSameSlotMemberImplementors = []string{"PreplanSameSlotMember"}
+
+func (ec *executionContext) _PreplanSameSlotMember(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanSameSlotMember) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanSameSlotMemberImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanSameSlotMember")
+		case "id":
+			out.Values[i] = ec._PreplanSameSlotMember_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._PreplanSameSlotMember_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examKind":
+			out.Values[i] = ec._PreplanSameSlotMember_examKind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "connected":
+			out.Values[i] = ec._PreplanSameSlotMember_connected(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ancode":
+			out.Values[i] = ec._PreplanSameSlotMember_ancode(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var preplanSlotNeedImplementors = []string{"PreplanSlotNeed"}
 
 func (ec *executionContext) _PreplanSlotNeed(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanSlotNeed) graphql.Marshaler {
@@ -69600,6 +70159,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_preplanExamAncodeSuggestions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "preplanSameSlotGroups":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_preplanSameSlotGroups(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -75856,6 +76437,114 @@ func (ec *executionContext) marshalNPreplanProgramConflict2ᚖgithubᚗcomᚋobc
 		return graphql.Null
 	}
 	return ec._PreplanProgramConflict(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPreplanSameSlotGroup2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSameSlotGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreplanSameSlotGroup) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPreplanSameSlotGroup2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSameSlotGroup(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPreplanSameSlotGroup2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSameSlotGroup(ctx context.Context, sel ast.SelectionSet, v *model.PreplanSameSlotGroup) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanSameSlotGroup(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPreplanSameSlotMember2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSameSlotMemberᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreplanSameSlotMember) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPreplanSameSlotMember2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSameSlotMember(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPreplanSameSlotMember2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSameSlotMember(ctx context.Context, sel ast.SelectionSet, v *model.PreplanSameSlotMember) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanSameSlotMember(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPreplanSlotNeed2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanSlotNeedᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreplanSlotNeed) graphql.Marshaler {

@@ -111,6 +111,17 @@ old eager preplanConstraintsToInput removed. notSameSlot/canShareSlot are pre-pl
 ZPA pendant). New query `preplanSameSlotGroups` → groups (size>=2) with per-member
 {connected, ancode} + `complete` flag, so the GUI shows pending (not-yet-connected) members.
 
+FIXED → LOCKED plan entry / Terminplan contract (commits c19419a, 2cb8b73): connecting a
+FIXED (isFixed) pre-exam writes a LOCKED PlanEntry (Locked=true) for the linked ancode in
+its slot (db.AddExamToSlot); disconnect removes it (RemovePlanEntry). Non-fixed connected
+exams get only constraints, NO plan entry. **Contract for the future Terminplan generator
+(next big step, like preplan/invigilation SA): a locked PlanEntry == hard-fixed; the
+generator keeps locked entries and optimizes the rest** (same fix/optimize split as
+invigplan Problem.Fixed + preplan isFixed). "Echtes Vorplanen" of any generated exam =
+a locked entry; lockExam/unlockExam is the generic pin/unpin. GUI shows "vorgeplant"
+should key off the real plan entry / isFixed, NOT the tentative pre-plan slot (every
+pre-exam has one). Documented in docs/algorithmen.md. [[planning-state-model]]
+
 NEW per-exam **isFixed** flag (commit 8776ec9): PreplanExam.IsFixed + mutation
 setPreplanExamFixed(id,fixed) (rejects fixing an unslotted exam). On
 generatePreplanAssignment: fixed exams keep their slot (pre-occupy capacity), ALL

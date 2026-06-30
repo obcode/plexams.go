@@ -1115,8 +1115,8 @@ type ComplexityRoot struct {
 	}
 
 	Subscription struct {
-		GenerateInvigilations                func(childComplexity int, dryRun bool, seed *int, iterations *int) int
-		GenerateRoomsForExams                func(childComplexity int) int
+		AssignInvigilations                  func(childComplexity int, dryRun bool, seed *int, iterations *int) int
+		AssignRoomsForExams                  func(childComplexity int) int
 		ImportAnnyBookings                   func(childComplexity int) int
 		ImportExamsFromZpa                   func(childComplexity int) int
 		ImportInvigilatorRequirementsFromZpa func(childComplexity int) int
@@ -1506,7 +1506,7 @@ type RoomsForSlotResolver interface {
 	Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error)
 }
 type SubscriptionResolver interface {
-	GenerateInvigilations(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error)
+	AssignInvigilations(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error)
 	SendEmailExaHm(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailExamPlanningInfo(ctx context.Context, run bool, teacherIDs []int) (<-chan *model.LogLine, error)
 	SendEmailDraft(ctx context.Context, run bool) (<-chan *model.LogLine, error)
@@ -1528,7 +1528,7 @@ type SubscriptionResolver interface {
 	SendEmailNewNta(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error)
 	SendEmailNTARoomAlone(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error)
 	SendEmailNTAPlanned(ctx context.Context, run bool) (<-chan *model.LogLine, error)
-	GenerateRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error)
+	AssignRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error)
 	ImportAnnyBookings(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateInvigilatorRequirements(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateInvigilationDuplicates(ctx context.Context) (<-chan *model.LogLine, error)
@@ -7222,24 +7222,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StudyProgram.Shortname(childComplexity), true
 
-	case "Subscription.generateInvigilations":
-		if e.complexity.Subscription.GenerateInvigilations == nil {
+	case "Subscription.assignInvigilations":
+		if e.complexity.Subscription.AssignInvigilations == nil {
 			break
 		}
 
-		args, err := ec.field_Subscription_generateInvigilations_args(ctx, rawArgs)
+		args, err := ec.field_Subscription_assignInvigilations_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Subscription.GenerateInvigilations(childComplexity, args["dryRun"].(bool), args["seed"].(*int), args["iterations"].(*int)), true
+		return e.complexity.Subscription.AssignInvigilations(childComplexity, args["dryRun"].(bool), args["seed"].(*int), args["iterations"].(*int)), true
 
-	case "Subscription.generateRoomsForExams":
-		if e.complexity.Subscription.GenerateRoomsForExams == nil {
+	case "Subscription.assignRoomsForExams":
+		if e.complexity.Subscription.AssignRoomsForExams == nil {
 			break
 		}
 
-		return e.complexity.Subscription.GenerateRoomsForExams(childComplexity), true
+		return e.complexity.Subscription.AssignRoomsForExams(childComplexity), true
 
 	case "Subscription.importAnnyBookings":
 		if e.complexity.Subscription.ImportAnnyBookings == nil {
@@ -8999,7 +8999,7 @@ extend type Mutation {
   fixed assignment, so it survives a re-run of the automatic planning.
   """
   prePlanInvigilationInSlot(day: Int!, slot: Int!, roomName: String): Boolean!
-  "Reset the generated invigilations (invigilations_other) so only the pre-planning remains; self-invigilations are refreshed on the next generation. Blocked while the invigilation plan is published."
+  "Reset the assigned invigilations (invigilations_other) so only the pre-planning remains; self-invigilations are refreshed on the next generation. Blocked while the invigilation plan is published."
   resetInvigilations: Boolean!
   "Create or replace the whole constraints record of one invigilator (key: teacherID)."
   setInvigilatorConstraints(input: InvigilatorConstraintsInput!): InvigilatorConstraints!
@@ -9833,7 +9833,7 @@ extend type Mutation {
   updateRoom(input: RoomInput!): Room!
   "One-time backfill: derive requestWith for all rooms (ANNY for request-rooms with a T name, MANAGEMENT for other request-rooms, NONE otherwise). Returns the number of rooms updated."
   migrateRoomsRequestWith: Int!
-  "Reset the generated room plan (planned_rooms) so only the pre-planning remains; re-generation re-applies it. Blocked while the room plan is published."
+  "Reset the assigned room plan (planned_rooms) so only the pre-planning remains; re-assignment re-applies it. Blocked while the room plan is published."
   resetRoomsForExams: Boolean!
 }
 
@@ -9843,7 +9843,7 @@ extend type Mutation {
 # transfer/email/generation runs.
 extend type Subscription {
   "Assign rooms to all exams (rooms-for-exams) and stream the output. The allowed rooms per slot are computed live from the current rooms/requests/bookings; there is no separate rooms-for-slots step or cache."
-  generateRoomsForExams: LogLine!
+  assignRoomsForExams: LogLine!
   "Fetch the room bookings from anny.eu and store them (used for the EXaHM room slots). Streams its output."
   importAnnyBookings: LogLine!
 }
@@ -10224,7 +10224,7 @@ type LogLine {
 """
 InvigilationReport is the structured outcome of an invigilation generation run,
 mirroring the textual report. It is delivered once on the final RESULT line of
-the generateInvigilations subscription (also for dryRun, where nothing is
+the assignInvigilations subscription (also for dryRun, where nothing is
 written to the database).
 """
 type InvigilationReport {
@@ -10304,12 +10304,12 @@ type SoftCostItem {
 
 type Subscription {
   """
-  generateInvigilations runs the automatic invigilation planning and streams its
+  assignInvigilations runs the automatic invigilation planning and streams its
   output line by line (terminal style). With dryRun the optimizer only reports;
   nothing is written to the database. seed and iterations override the config
   defaults (0/null = keep config/default). The stream ends with a DONE line.
   """
-  generateInvigilations(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
+  assignInvigilations(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
 }
 `, BuiltIn: false},
 	{Name: "../student_regs_state.graphqls", Input: `extend type Query {
@@ -15943,27 +15943,27 @@ func (ec *executionContext) field_Query_zpaExams_argsFromZpa(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Subscription_generateInvigilations_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Subscription_assignInvigilations_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Subscription_generateInvigilations_argsDryRun(ctx, rawArgs)
+	arg0, err := ec.field_Subscription_assignInvigilations_argsDryRun(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["dryRun"] = arg0
-	arg1, err := ec.field_Subscription_generateInvigilations_argsSeed(ctx, rawArgs)
+	arg1, err := ec.field_Subscription_assignInvigilations_argsSeed(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["seed"] = arg1
-	arg2, err := ec.field_Subscription_generateInvigilations_argsIterations(ctx, rawArgs)
+	arg2, err := ec.field_Subscription_assignInvigilations_argsIterations(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["iterations"] = arg2
 	return args, nil
 }
-func (ec *executionContext) field_Subscription_generateInvigilations_argsDryRun(
+func (ec *executionContext) field_Subscription_assignInvigilations_argsDryRun(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (bool, error) {
@@ -15981,7 +15981,7 @@ func (ec *executionContext) field_Subscription_generateInvigilations_argsDryRun(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Subscription_generateInvigilations_argsSeed(
+func (ec *executionContext) field_Subscription_assignInvigilations_argsSeed(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (*int, error) {
@@ -15999,7 +15999,7 @@ func (ec *executionContext) field_Subscription_generateInvigilations_argsSeed(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Subscription_generateInvigilations_argsIterations(
+func (ec *executionContext) field_Subscription_assignInvigilations_argsIterations(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (*int, error) {
@@ -54046,8 +54046,8 @@ func (ec *executionContext) fieldContext_StudyProgram_externalExamsBase(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Subscription_generateInvigilations(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	fc, err := ec.fieldContext_Subscription_generateInvigilations(ctx, field)
+func (ec *executionContext) _Subscription_assignInvigilations(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_assignInvigilations(ctx, field)
 	if err != nil {
 		return nil
 	}
@@ -54060,7 +54060,7 @@ func (ec *executionContext) _Subscription_generateInvigilations(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Subscription().GenerateInvigilations(rctx, fc.Args["dryRun"].(bool), fc.Args["seed"].(*int), fc.Args["iterations"].(*int))
+		return ec.resolvers.Subscription().AssignInvigilations(rctx, fc.Args["dryRun"].(bool), fc.Args["seed"].(*int), fc.Args["iterations"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -54091,7 +54091,7 @@ func (ec *executionContext) _Subscription_generateInvigilations(ctx context.Cont
 	}
 }
 
-func (ec *executionContext) fieldContext_Subscription_generateInvigilations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Subscription_assignInvigilations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Subscription",
 		Field:      field,
@@ -54120,7 +54120,7 @@ func (ec *executionContext) fieldContext_Subscription_generateInvigilations(ctx 
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Subscription_generateInvigilations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Subscription_assignInvigilations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -55828,8 +55828,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailNTAPlanned(ctx co
 	return fc, nil
 }
 
-func (ec *executionContext) _Subscription_generateRoomsForExams(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	fc, err := ec.fieldContext_Subscription_generateRoomsForExams(ctx, field)
+func (ec *executionContext) _Subscription_assignRoomsForExams(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_assignRoomsForExams(ctx, field)
 	if err != nil {
 		return nil
 	}
@@ -55842,7 +55842,7 @@ func (ec *executionContext) _Subscription_generateRoomsForExams(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Subscription().GenerateRoomsForExams(rctx)
+		return ec.resolvers.Subscription().AssignRoomsForExams(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -55873,7 +55873,7 @@ func (ec *executionContext) _Subscription_generateRoomsForExams(ctx context.Cont
 	}
 }
 
-func (ec *executionContext) fieldContext_Subscription_generateRoomsForExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Subscription_assignRoomsForExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Subscription",
 		Field:      field,
@@ -73942,8 +73942,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	}
 
 	switch fields[0].Name {
-	case "generateInvigilations":
-		return ec._Subscription_generateInvigilations(ctx, fields[0])
+	case "assignInvigilations":
+		return ec._Subscription_assignInvigilations(ctx, fields[0])
 	case "sendEmailExaHM":
 		return ec._Subscription_sendEmailExaHM(ctx, fields[0])
 	case "sendEmailExamPlanningInfo":
@@ -73986,8 +73986,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_sendEmailNTARoomAlone(ctx, fields[0])
 	case "sendEmailNTAPlanned":
 		return ec._Subscription_sendEmailNTAPlanned(ctx, fields[0])
-	case "generateRoomsForExams":
-		return ec._Subscription_generateRoomsForExams(ctx, fields[0])
+	case "assignRoomsForExams":
+		return ec._Subscription_assignRoomsForExams(ctx, fields[0])
 	case "importAnnyBookings":
 		return ec._Subscription_importAnnyBookings(ctx, fields[0])
 	case "validateInvigilatorRequirements":

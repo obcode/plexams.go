@@ -47,7 +47,7 @@ func (p *Plexams) PrepareRoomForExams(ctx context.Context, reporter Reporter) er
 	if err := p.dbClient.ReplaceUnplacedExams(ctx, unplaced); err != nil {
 		return err
 	}
-	p.markCondition(ctx, condRoomsGenerated)
+	p.markCondition(ctx, condRoomsAssigned)
 	if len(unplaced) > 0 {
 		reporter.StopProgress(fmt.Sprintf("%d planned rooms written, %d exam(s) with unplaced students", len(examRooms), len(unplaced)))
 	} else {
@@ -69,7 +69,7 @@ func (p *Plexams) ResetRoomsForExams(ctx context.Context) error {
 	if err := p.dbClient.ResetUnplacedExams(ctx); err != nil {
 		return err
 	}
-	p.unmarkCondition(ctx, condRoomsGenerated)
+	p.unmarkCondition(ctx, condRoomsAssigned)
 	return nil
 }
 

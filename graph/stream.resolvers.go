@@ -12,12 +12,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// GenerateInvigilations is the resolver for the generateInvigilations field. It
+// AssignInvigilations is the resolver for the assignInvigilations field. It
 // runs the automatic invigilation planning and streams its terminal-style output
 // line by line to the subscribing client. The operation itself runs on a
 // background context so that a started (non-dry-run) run finishes and writes even
 // if the client disconnects; the subscription context only governs the streaming.
-func (r *subscriptionResolver) GenerateInvigilations(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error) {
+func (r *subscriptionResolver) AssignInvigilations(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error) {
 	ch := make(chan *model.LogLine, 256)
 
 	var seedVal int64
@@ -33,7 +33,7 @@ func (r *subscriptionResolver) GenerateInvigilations(ctx context.Context, dryRun
 
 	go func() {
 		defer close(ch)
-		report, err := r.plexams.GenerateInvigilations(context.Background(), dryRun, opts, reporter)
+		report, err := r.plexams.AssignInvigilations(context.Background(), dryRun, opts, reporter)
 		if err != nil {
 			log.Error().Err(err).Msg("generate invigilations failed")
 			reporter.emit(model.LogLevelError, "error: "+err.Error())

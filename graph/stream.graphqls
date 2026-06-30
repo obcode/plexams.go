@@ -41,7 +41,7 @@ type LogLine {
 """
 InvigilationReport is the structured outcome of an invigilation generation run,
 mirroring the textual report. It is delivered once on the final RESULT line of
-the generateInvigilations subscription (also for dryRun, where nothing is
+the assignInvigilations subscription (also for dryRun, where nothing is
 written to the database).
 """
 type InvigilationReport {
@@ -121,10 +121,10 @@ type SoftCostItem {
 
 type Subscription {
   """
-  generateInvigilations runs the automatic invigilation planning and streams its
+  assignInvigilations runs the automatic invigilation planning and streams its
   output line by line (terminal style). With dryRun the optimizer only reports;
   nothing is written to the database. seed and iterations override the config
   defaults (0/null = keep config/default). The stream ends with a DONE line.
   """
-  generateInvigilations(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
+  assignInvigilations(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
 }

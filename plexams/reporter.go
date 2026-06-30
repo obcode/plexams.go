@@ -10,7 +10,7 @@ import (
 )
 
 // Reporter receives the human-readable output of a long-running operation
-// (e.g. GenerateInvigilations). It decouples the operation from where the output
+// (e.g. AssignInvigilations). It decouples the operation from where the output
 // goes: the CLI uses ConsoleReporter (stdout, colored, with a spinner), the
 // GraphQL server uses a streaming reporter that forwards every line to a
 // subscription. Implementations must be safe to call from the goroutine that

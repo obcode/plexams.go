@@ -165,7 +165,7 @@ assignment across runs, move it to the pre-planning (invigilation -p ...).`,
 		Run: func(cmd *cobra.Command, args []string) {
 			plxms := initPlexamsConfig()
 			opts := plxms.OptimizerOptionsFromConfig(context.Background(), generateSeed, generateIterations)
-			if _, err := plxms.GenerateInvigilations(context.Background(), generateDryRun, opts, plexams.NewConsoleReporter()); err != nil {
+			if _, err := plxms.AssignInvigilations(context.Background(), generateDryRun, opts, plexams.NewConsoleReporter()); err != nil {
 				log.Fatalf("got error: %v\n", err)
 			}
 		},

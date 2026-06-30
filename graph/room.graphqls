@@ -43,7 +43,7 @@ extend type Mutation {
   updateRoom(input: RoomInput!): Room!
   "One-time backfill: derive requestWith for all rooms (ANNY for request-rooms with a T name, MANAGEMENT for other request-rooms, NONE otherwise). Returns the number of rooms updated."
   migrateRoomsRequestWith: Int!
-  "Reset the generated room plan (planned_rooms) so only the pre-planning remains; re-generation re-applies it. Blocked while the room plan is published."
+  "Reset the assigned room plan (planned_rooms) so only the pre-planning remains; re-assignment re-applies it. Blocked while the room plan is published."
   resetRoomsForExams: Boolean!
 }
 
@@ -53,7 +53,7 @@ extend type Mutation {
 # transfer/email/generation runs.
 extend type Subscription {
   "Assign rooms to all exams (rooms-for-exams) and stream the output. The allowed rooms per slot are computed live from the current rooms/requests/bookings; there is no separate rooms-for-slots step or cache."
-  generateRoomsForExams: LogLine!
+  assignRoomsForExams: LogLine!
   "Fetch the room bookings from anny.eu and store them (used for the EXaHM room slots). Streams its output."
   importAnnyBookings: LogLine!
 }

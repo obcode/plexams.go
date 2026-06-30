@@ -374,7 +374,7 @@ type Invigilation struct {
 
 // InvigilationReport is the structured outcome of an invigilation generation run,
 // mirroring the textual report. It is delivered once on the final RESULT line of
-// the generateInvigilations subscription (also for dryRun, where nothing is
+// the assignInvigilations subscription (also for dryRun, where nothing is
 // written to the database).
 type InvigilationReport struct {
 	Seed          int                     `json:"seed"`

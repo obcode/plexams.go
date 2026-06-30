@@ -54,13 +54,13 @@ const (
 	condDraftSent                 = "draftSent"
 	condExamPlanPublished         = "examPlanPublished"
 	condRoomRequestsSent          = "roomRequestsSent"
-	condRoomsGenerated            = "roomsGenerated"
+	condRoomsAssigned             = "roomsAssigned"
 	condSecretariatRoomsSent      = "secretariatRoomsSent"
 	condRoomPlanPublished         = "roomPlanPublished"
 	condKdpRoomsSent              = "kdpRoomsSent"
 	condInvigReqsImported         = "invigReqsImported"
 	condInvigilationsRequested    = "invigilationsRequested"
-	condInvigilationsGenerated    = "invigilationsGenerated"
+	condInvigilationsAssigned     = "invigilationsAssigned"
 	condInvigilationPlanPublished = "invigilationPlanPublished"
 	condNTAPlannedSent            = "ntaPlannedSent"
 	condInvigSecretariatSent      = "invigSecretariatSent"
@@ -84,13 +84,13 @@ var planningConditionDefs = []planningConditionDef{
 	{condDraftSent, "Entwurf verschickt", "phase1", ""},
 	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", ""},
 	{condRoomRequestsSent, "Raum-Anfragen ans Gebäudemanagement verschickt", "phase2", ""},
-	{condRoomsGenerated, "Räume zugeordnet", "phase2", ""},
+	{condRoomsAssigned, "Räume zugeordnet", "phase2", ""},
 	{condSecretariatRoomsSent, "Raumbelegung ans Sekretariat verschickt", "phase2", ""},
 	{condRoomPlanPublished, "Raumplan veröffentlicht (E-Mail)", "phase2", model.PlanningGateRooms},
 	{condKdpRoomsSent, "EXaHM/SEB-Raumübersicht ans KDP verschickt", "phase2", ""},
 	{condInvigilationsRequested, "Aufsichts-Anforderungsabfrage verschickt", "phase3", ""},
 	{condInvigReqsImported, "Aufsichts-Anforderungen importiert", "phase3", ""},
-	{condInvigilationsGenerated, "Aufsichten eingeteilt", "phase3", ""},
+	{condInvigilationsAssigned, "Aufsichten eingeteilt", "phase3", ""},
 	{condInvigilationPlanPublished, "Aufsichtenplan veröffentlicht (E-Mail)", "phase3", model.PlanningGateInvigilations},
 	{condInvigSecretariatSent, "Info 'Aufsichten veröffentlicht' ans Sekretariat verschickt", "phase3", ""},
 	{condNTAPlannedSent, "Info an NTAs zu ihren Räumen verschickt", "phase3", ""},

@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// GenerateInvigilations refreshes the self-invigilations and the todos, builds
+// AssignInvigilations refreshes the self-invigilations and the todos, builds
 // the planning problem, optimizes it and (unless dryRun) writes the result to
 // invigilations_other, dropping the previous content. Self-invigilations stay
 // in invigilations_self; pre-planned invigilations are included as fixed seeds.
@@ -30,11 +30,11 @@ func (p *Plexams) ResetInvigilations(ctx context.Context) error {
 	if err := p.dbClient.ResetGeneratedInvigilations(ctx); err != nil {
 		return err
 	}
-	p.unmarkCondition(ctx, condInvigilationsGenerated)
+	p.unmarkCondition(ctx, condInvigilationsAssigned)
 	return nil
 }
 
-func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts invigplan.Options, reporter Reporter) (*model.InvigilationReport, error) {
+func (p *Plexams) AssignInvigilations(ctx context.Context, dryRun bool, opts invigplan.Options, reporter Reporter) (*model.InvigilationReport, error) {
 	if err := p.generationAllowed(ctx, model.PlanningGateInvigilations); err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (p *Plexams) GenerateInvigilations(ctx context.Context, dryRun bool, opts i
 	if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
 		return report, fmt.Errorf("cannot recalculate todos: %w", err)
 	}
-	p.markCondition(ctx, condInvigilationsGenerated)
+	p.markCondition(ctx, condInvigilationsAssigned)
 	reporter.Println("... done")
 	return report, nil
 }

@@ -36,7 +36,7 @@ extend type Mutation {
   fixed assignment, so it survives a re-run of the automatic planning.
   """
   prePlanInvigilationInSlot(day: Int!, slot: Int!, roomName: String): Boolean!
-  "Reset the generated invigilations (invigilations_other) so only the pre-planning remains; self-invigilations are refreshed on the next generation. Blocked while the invigilation plan is published."
+  "Reset the assigned invigilations (invigilations_other) so only the pre-planning remains; self-invigilations are refreshed on the next generation. Blocked while the invigilation plan is published."
   resetInvigilations: Boolean!
   "Create or replace the whole constraints record of one invigilator (key: teacherID)."
   setInvigilatorConstraints(input: InvigilatorConstraintsInput!): InvigilatorConstraints!

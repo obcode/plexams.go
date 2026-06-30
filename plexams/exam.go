@@ -171,6 +171,34 @@ OUTER:
 		}
 	}
 
+	// Fallback suggestion: for a program the exam belongs to (its groups) that we could
+	// not connect at all, propose a primuss exam with the same examer and a similar
+	// module — even with a different number (ZPA sometimes carries no primuss number,
+	// e.g. an empty primussancodes list).
+	covered := make(map[string]bool)
+	for _, pe := range primussExams {
+		covered[pe.Program] = true
+	}
+	for _, pe := range otherPrimussExams {
+		covered[pe.Program] = true
+	}
+	allProgSet := make(map[string]bool, len(allPrograms))
+	for _, ap := range allPrograms {
+		allProgSet[ap] = true
+	}
+	for _, g := range zpaExam.Groups {
+		if !allProgSet[g] || covered[g] {
+			continue
+		}
+		if sug := suggestPrimussExam(idx, g, zpaExam.MainExamer, zpaExam.Module); sug != nil {
+			covered[g] = true
+			warnings = append(warnings, primussRefWarning("warning",
+				fmt.Sprintf("kein ZPA-Eintrag für %s — evtl. %s/%d (gleicher Prüfer %s, Modul „%s“)?",
+					g, g, sug.AnCode, sug.MainExamer, sug.Module),
+				g, sug.AnCode, sug.Module, sug.MainExamer))
+		}
+	}
+
 	return &model.ConnectedExam{
 		ZpaExam:           zpaExam,
 		PrimussExams:      primussExams,

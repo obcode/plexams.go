@@ -43,6 +43,7 @@ const (
 	condAnnyRoomsBooked           = "annyRoomsBooked"
 	condZPAImported               = "zpaImported"
 	condMucDaiImported            = "mucDaiImported"
+	condPrimussImported           = "primussImported"
 	condExamPlanningInfoSent      = "examPlanningInfoSent"
 	condGeneratedExams            = "generatedExams"
 	condStudentRegs               = "studentRegs"
@@ -70,8 +71,9 @@ var planningConditionDefs = []planningConditionDef{
 	{condExahmRequested, "EXaHM/SEB-Abfrage verschickt", "phaseMinus1", ""},
 	{condAnnyRoomsBooked, "Anny-Räume gebucht", "phaseMinus1", ""},
 	{condZPAImported, "Prüfungen & Personen aus ZPA importiert", "phase0", ""},
-	{condMucDaiImported, "MUC.DAI-Prüfungen importiert & verknüpft", "phase0", ""},
 	{condExamPlanningInfoSent, "Prüfungsplanungs-Info an Prüfende verschickt", "phase0", ""},
+	{condMucDaiImported, "MUC.DAI-Prüfungen importiert & verknüpft", "phase0", ""},
+	{condPrimussImported, "Primuss-Anmeldedaten importiert", "phase0", ""},
 	{condGeneratedExams, "GeneratedExams erstellt", "phase1", ""},
 	{condStudentRegs, "StudentRegs erstellt", "phase1", ""},
 	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase1", ""},

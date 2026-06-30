@@ -111,6 +111,7 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	// attachments; the send subscriptions read them back from the DB.
 	router.Post("/upload/email-attachment", plexams.HTTPUploadEmailAttachment)
 	router.Post("/upload/email-attachments-zip", plexams.HTTPUploadEmailAttachmentsZip)
+	router.Post("/upload/primuss-zip", plexams.HTTPUploadPrimussZip)
 	router.Get("/download/planned-rooms.json", plexams.HTTPDownloadPlannedRooms)
 
 	server := &http.Server{Addr: fmt.Sprintf(":%s", port), Handler: router}

@@ -18,8 +18,9 @@ var primussCmd = &cobra.Command{
 	add-ancode zpa-ancode program primuss-ancode  --- add ancode to zpa-data
 	fix-ancode program from to         			  --- fix ancode in primuss data (exam and studentregs)
 	rm-studentreg program ancode mtknr 			  --- remove a student registration
-	add-studentreg program ancode mtknr           --- add a student registration`,
-	ValidArgs: []string{"add-ancode", "fix-ancode", "rm-studentreg", "add-studentreg"},
+	add-studentreg program ancode mtknr           --- add a student registration
+	import-xlsx dir                               --- import the Primuss Sammellisten XLSX (per program) from a directory`,
+	ValidArgs: []string{"add-ancode", "fix-ancode", "rm-studentreg", "add-studentreg", "import-xlsx"},
 	Args:      cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		plexams := initPlexamsConfig()
@@ -180,6 +181,21 @@ var primussCmd = &cobra.Command{
 			}
 
 			color.Green.Println("\n>>> please re-run `plexams.go prepare studentregs`")
+
+		case "import-xlsx":
+			if len(args) < 2 {
+				log.Fatal("need the directory with the Primuss Sammellisten XLSX")
+			}
+			ctx := context.Background()
+			result, err := plexams.ImportPrimussDir(ctx, args[1])
+			if err != nil {
+				log.Fatalf("cannot import primuss xlsx: %v", err)
+			}
+			for _, pr := range result.Programs {
+				fmt.Printf("  %-4s exams=%d studentregs=%d count=%d conflicts=%d changed=%d missing=%v\n",
+					pr.Program, pr.ExamsImported, pr.StudentRegs, pr.CountRows, pr.ConflictRows, len(pr.ChangedAncodes), pr.Missing)
+			}
+			color.Green.Printf("\n>>> imported %d program(s), %d file(s) skipped\n", len(result.Programs), len(result.Skipped))
 
 		default:
 			fmt.Println("primuss called with unknown sub command")

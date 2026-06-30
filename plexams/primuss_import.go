@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -125,6 +126,39 @@ func (p *Plexams) ImportPrimussZip(ctx context.Context, zipData []byte) (*Primus
 		result.Programs = append(result.Programs, prog)
 	}
 	return result, nil
+}
+
+// ImportPrimussDir zips all .xlsx under dir (recursively) in memory and imports them
+// like an uploaded ZIP. Convenience for the CLI / a server-side directory.
+func (p *Plexams) ImportPrimussDir(ctx context.Context, dir string) (*PrimussImportResult, error) {
+	buf := new(bytes.Buffer)
+	zw := zip.NewWriter(buf)
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.EqualFold(filepath.Ext(path), ".xlsx") {
+			return err
+		}
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		w, err := zw.Create(rel)
+		if err != nil {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(data)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return p.ImportPrimussZip(ctx, buf.Bytes())
 }
 
 func (p *Plexams) importPrimussProgram(ctx context.Context, program string, byKind map[string][]byte) (*PrimussImportProgram, error) {

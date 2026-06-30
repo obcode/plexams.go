@@ -112,6 +112,7 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 		result.ExamsRemoved++
 	}
 
+	p.markCondition(ctx, condMucDaiImported)
 	return result, nil
 }
 

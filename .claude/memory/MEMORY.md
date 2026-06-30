@@ -11,3 +11,4 @@
 - [invigilator no-duty carryover](invigilator-no-duty-carryover.md) — future: carry Präsident/Dekanin/Mutterschutz "keine Aufsicht" across semesters; reason required / "temporär" flag; err toward keeping exclusion.
 - [pre-planning SEB/EXaHM](preplanning-seb-exahm.md) — new feature: manual pseudo-exams in next-semester DB to size early Anny room bookings; global StudyProgram entity; GUI-only; link to ZPA ancode later.
 - [ZPA import behaviors](zpa-import-behaviors.md) — import auto-presets to-plan (schriftlich/praktisch→plan, rest→not); stale banners only after first generation.
+- [exam-planning info email](exam-planning-info-email.md) — consolidated per-examer mail replacing constraints+prepared; examPlanningMailRecipients + sendEmailExamPlanningInfo.

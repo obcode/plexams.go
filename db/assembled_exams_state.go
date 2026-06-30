@@ -11,13 +11,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// SetGeneratedExamsDirty upserts the (single) generated-exams state document:
+// SetAssembledExamsDirty upserts the (single) generated-exams state document:
 // dirty=true when an input changed, dirty=false right after a (re)generation.
-func (db *DB) SetGeneratedExamsDirty(ctx context.Context, dirty bool, reason string, t time.Time) error {
-	collection := db.getCollectionSemester(collectionGeneratedExamsState)
+func (db *DB) SetAssembledExamsDirty(ctx context.Context, dirty bool, reason string, t time.Time) error {
+	collection := db.getCollectionSemester(collectionAssembledExamsState)
 
 	tt := t
-	state := &model.GeneratedExamsState{
+	state := &model.AssembledExamsState{
 		Dirty:     dirty,
 		ChangedAt: &tt,
 	}
@@ -33,15 +33,15 @@ func (db *DB) SetGeneratedExamsDirty(ctx context.Context, dirty bool, reason str
 	return nil
 }
 
-// GetGeneratedExamsState returns the generated-exams state; a missing document means
+// GetAssembledExamsState returns the generated-exams state; a missing document means
 // nothing has been generated yet and is reported as not dirty.
-func (db *DB) GetGeneratedExamsState(ctx context.Context) (*model.GeneratedExamsState, error) {
-	collection := db.getCollectionSemester(collectionGeneratedExamsState)
+func (db *DB) GetAssembledExamsState(ctx context.Context) (*model.AssembledExamsState, error) {
+	collection := db.getCollectionSemester(collectionAssembledExamsState)
 
-	var state model.GeneratedExamsState
+	var state model.AssembledExamsState
 	err := collection.FindOne(ctx, bson.M{}).Decode(&state)
 	if err == mongo.ErrNoDocuments {
-		return &model.GeneratedExamsState{Dirty: false}, nil
+		return &model.AssembledExamsState{Dirty: false}, nil
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get generated-exams state")

@@ -29,8 +29,8 @@ const (
 
 	collectionPrimussAncodes = "primuss_ancodes"
 
-	collectionGeneratedExams       = "generated_exams"
-	collectionGeneratedExamsState  = "generated_exams_state"
+	collectionAssembledExams       = "assembled_exams"
+	collectionAssembledExamsState  = "assembled_exams_state"
 	collectionStudentRegsState     = "student_regs_state"
 	collectionSemesterMeta         = "semester_meta"
 	collectionActiveSemester       = "active_semester"

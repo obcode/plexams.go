@@ -12,7 +12,7 @@ func (p *Plexams) ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurat
 }
 
 // SetExamDuration sets the duration override (minutes) for an ancode. It is only
-// applied to generated exams whose ZPA duration is 0.
+// applied to assembled exams whose ZPA duration is 0.
 func (p *Plexams) SetExamDuration(ctx context.Context, ancode, duration int) (*model.ExamDurationOverride, error) {
 	return p.dbClient.SetExamDurationOverride(ctx, ancode, duration)
 }

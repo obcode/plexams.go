@@ -74,7 +74,7 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 	for _, prog := range p.mucdaiProgramNames(ctx) {
 		mucdaiPrograms[prog] = true
 	}
-	// keys that should have a generated exam after this import (non-FK07)
+	// keys that should have a assembled exam after this import (non-FK07)
 	validKeys := make(map[primussKey]bool)
 
 	for _, program := range programs {

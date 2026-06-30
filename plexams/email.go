@@ -20,9 +20,9 @@ import (
 //go:embed tmpl/draftEmailFSHTML.tmpl
 //go:embed tmpl/draftEmailZPA.tmpl
 //go:embed tmpl/draftEmailZPAHTML.tmpl
-//go:embed tmpl/generatedExamEmail.tmpl
-//go:embed tmpl/generatedExamEmailHTML.tmpl
-//go:embed tmpl/generatedExamMarkdown.tmpl
+//go:embed tmpl/assembledExamEmail.tmpl
+//go:embed tmpl/assembledExamEmailHTML.tmpl
+//go:embed tmpl/assembledExamMarkdown.tmpl
 //go:embed tmpl/handicapEmail.tmpl
 //go:embed tmpl/handicapEmailHTML.tmpl
 //go:embed tmpl/handicapEmailPlanned.tmpl

@@ -40,7 +40,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
-	GeneratedExam() GeneratedExamResolver
+	AssembledExam() AssembledExamResolver
 	Mutation() MutationResolver
 	PlanEntry() PlanEntryResolver
 	PlannedExam() PlannedExamResolver
@@ -102,6 +102,31 @@ type ComplexityRoot struct {
 
 	AnnyConfig struct {
 		PersonalizationNames func(childComplexity int) int
+	}
+
+	AssembledExam struct {
+		Ancode           func(childComplexity int) int
+		Conflicts        func(childComplexity int) int
+		Constraints      func(childComplexity int) int
+		MainExamer       func(childComplexity int) int
+		MaxDuration      func(childComplexity int) int
+		Ntas             func(childComplexity int) int
+		PrimussExams     func(childComplexity int) int
+		StudentRegsCount func(childComplexity int) int
+		ZpaExam          func(childComplexity int) int
+	}
+
+	AssembledExamsChange struct {
+		Ancode  func(childComplexity int) int
+		Details func(childComplexity int) int
+		Kind    func(childComplexity int) int
+		Module  func(childComplexity int) int
+	}
+
+	AssembledExamsState struct {
+		ChangedAt func(childComplexity int) int
+		Dirty     func(childComplexity int) int
+		Reason    func(childComplexity int) int
 	}
 
 	BalanceReport struct {
@@ -274,44 +299,19 @@ type ComplexityRoot struct {
 		Total   func(childComplexity int) int
 	}
 
-	GenerateGeneratedExamsResult struct {
+	GenerateAssembledExamsResult struct {
 		Changes func(childComplexity int) int
 		State   func(childComplexity int) int
 	}
 
 	GeneratePreparationResult struct {
-		GeneratedExams func(childComplexity int) int
+		AssembledExams func(childComplexity int) int
 		StudentRegs    func(childComplexity int) int
 	}
 
 	GenerateStudentRegsResult struct {
 		State        func(childComplexity int) int
 		StudentCount func(childComplexity int) int
-	}
-
-	GeneratedExam struct {
-		Ancode           func(childComplexity int) int
-		Conflicts        func(childComplexity int) int
-		Constraints      func(childComplexity int) int
-		MainExamer       func(childComplexity int) int
-		MaxDuration      func(childComplexity int) int
-		Ntas             func(childComplexity int) int
-		PrimussExams     func(childComplexity int) int
-		StudentRegsCount func(childComplexity int) int
-		ZpaExam          func(childComplexity int) int
-	}
-
-	GeneratedExamsChange struct {
-		Ancode  func(childComplexity int) int
-		Details func(childComplexity int) int
-		Kind    func(childComplexity int) int
-		Module  func(childComplexity int) int
-	}
-
-	GeneratedExamsState struct {
-		ChangedAt func(childComplexity int) int
-		Dirty     func(childComplexity int) int
-		Reason    func(childComplexity int) int
 	}
 
 	GenerationConfig struct {
@@ -494,7 +494,7 @@ type ComplexityRoot struct {
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
 		FixPrimussAncode              func(childComplexity int, zpaAncode int, program string, fromAncode int, toAncode int) int
-		GenerateGeneratedExams        func(childComplexity int) int
+		GenerateAssembledExams        func(childComplexity int) int
 		GeneratePreparation           func(childComplexity int) int
 		GeneratePreplanAssignment     func(childComplexity int, keepAssigned *bool) int
 		GenerateStudentRegs           func(childComplexity int) int
@@ -812,6 +812,9 @@ type ComplexityRoot struct {
 		AncodesInPlan                 func(childComplexity int) int
 		AnnyBookings                  func(childComplexity int, room *string) int
 		AnnyConfig                    func(childComplexity int) int
+		AssembledExam                 func(childComplexity int, ancode int) int
+		AssembledExams                func(childComplexity int) int
+		AssembledExamsState           func(childComplexity int) int
 		AwkwardSlots                  func(childComplexity int, ancode int) int
 		BlockedRooms                  func(childComplexity int) int
 		ConflictingAncodes            func(childComplexity int, ancode int) int
@@ -827,9 +830,6 @@ type ComplexityRoot struct {
 		ExamsWithNtas                 func(childComplexity int) int
 		ExamsWithoutSlot              func(childComplexity int) int
 		Fk07programs                  func(childComplexity int) int
-		GeneratedExam                 func(childComplexity int, ancode int) int
-		GeneratedExams                func(childComplexity int) int
-		GeneratedExamsState           func(childComplexity int) int
 		GenerationConfig              func(childComplexity int) int
 		Invigilator                   func(childComplexity int, room string, day int, time int) int
 		InvigilatorCandidates         func(childComplexity int) int
@@ -1304,13 +1304,14 @@ type ComplexityRoot struct {
 	}
 }
 
-type GeneratedExamResolver interface {
-	MainExamer(ctx context.Context, obj *model.GeneratedExam) (*model.Teacher, error)
+type AssembledExamResolver interface {
+	MainExamer(ctx context.Context, obj *model.AssembledExam) (*model.Teacher, error)
 }
 type MutationResolver interface {
 	UpsertAdditionalExam(ctx context.Context, input model.AdditionalExamInput) (*model.AdditionalExam, error)
 	DeleteAdditionalExam(ctx context.Context, ancode int) (bool, error)
 	SetAnnyPersonalizationNames(ctx context.Context, names []string) (*model.AnnyConfig, error)
+	GenerateAssembledExams(ctx context.Context) (*model.GenerateAssembledExamsResult, error)
 	NotPlannedByMe(ctx context.Context, ancode int) (bool, error)
 	ExcludeDays(ctx context.Context, ancode int, days []string) (bool, error)
 	PossibleDays(ctx context.Context, ancode int, days []string) (bool, error)
@@ -1328,7 +1329,6 @@ type MutationResolver interface {
 	FixPrimussAncode(ctx context.Context, zpaAncode int, program string, fromAncode int, toAncode int) (*model.ConnectedExam, error)
 	SetExamDuration(ctx context.Context, ancode int, duration int) (*model.ExamDurationOverride, error)
 	RemoveExamDuration(ctx context.Context, ancode int) (bool, error)
-	GenerateGeneratedExams(ctx context.Context) (*model.GenerateGeneratedExamsResult, error)
 	SetGenerationConfig(ctx context.Context, input model.GenerationConfigInput) (*model.GenerationConfig, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
@@ -1414,20 +1414,20 @@ type QueryResolver interface {
 	AnnyBookings(ctx context.Context, room *string) ([]*model.AnnyBooking, error)
 	AllAnnyBookings(ctx context.Context) ([]*model.AnnyBooking, error)
 	AnnyConfig(ctx context.Context) (*model.AnnyConfig, error)
+	AssembledExamsState(ctx context.Context) (*model.AssembledExamsState, error)
 	ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error)
 	ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error)
 	EmailAttachments(ctx context.Context, kind string) ([]*model.EmailAttachmentInfo, error)
 	ExamPlanningMailRecipients(ctx context.Context) ([]*model.ExamPlanningMailRecipient, error)
 	ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
-	GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error)
-	GeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error)
+	AssembledExams(ctx context.Context) ([]*model.AssembledExam, error)
+	AssembledExam(ctx context.Context, ancode int) (*model.AssembledExam, error)
 	PlannedExams(ctx context.Context) ([]*model.PlannedExam, error)
 	PlannedExam(ctx context.Context, ancode int) (*model.PlannedExam, error)
 	MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error)
 	ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error)
 	ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurationOverride, error)
-	GeneratedExamsState(ctx context.Context) (*model.GeneratedExamsState, error)
 	GenerationConfig(ctx context.Context) (*model.GenerationConfig, error)
 	InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error)
 	InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error)
@@ -1822,6 +1822,118 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AnnyConfig.PersonalizationNames(childComplexity), true
+
+	case "AssembledExam.ancode":
+		if e.complexity.AssembledExam.Ancode == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.Ancode(childComplexity), true
+
+	case "AssembledExam.conflicts":
+		if e.complexity.AssembledExam.Conflicts == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.Conflicts(childComplexity), true
+
+	case "AssembledExam.constraints":
+		if e.complexity.AssembledExam.Constraints == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.Constraints(childComplexity), true
+
+	case "AssembledExam.mainExamer":
+		if e.complexity.AssembledExam.MainExamer == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.MainExamer(childComplexity), true
+
+	case "AssembledExam.maxDuration":
+		if e.complexity.AssembledExam.MaxDuration == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.MaxDuration(childComplexity), true
+
+	case "AssembledExam.ntas":
+		if e.complexity.AssembledExam.Ntas == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.Ntas(childComplexity), true
+
+	case "AssembledExam.primussExams":
+		if e.complexity.AssembledExam.PrimussExams == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.PrimussExams(childComplexity), true
+
+	case "AssembledExam.studentRegsCount":
+		if e.complexity.AssembledExam.StudentRegsCount == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.StudentRegsCount(childComplexity), true
+
+	case "AssembledExam.zpaExam":
+		if e.complexity.AssembledExam.ZpaExam == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.ZpaExam(childComplexity), true
+
+	case "AssembledExamsChange.ancode":
+		if e.complexity.AssembledExamsChange.Ancode == nil {
+			break
+		}
+
+		return e.complexity.AssembledExamsChange.Ancode(childComplexity), true
+
+	case "AssembledExamsChange.details":
+		if e.complexity.AssembledExamsChange.Details == nil {
+			break
+		}
+
+		return e.complexity.AssembledExamsChange.Details(childComplexity), true
+
+	case "AssembledExamsChange.kind":
+		if e.complexity.AssembledExamsChange.Kind == nil {
+			break
+		}
+
+		return e.complexity.AssembledExamsChange.Kind(childComplexity), true
+
+	case "AssembledExamsChange.module":
+		if e.complexity.AssembledExamsChange.Module == nil {
+			break
+		}
+
+		return e.complexity.AssembledExamsChange.Module(childComplexity), true
+
+	case "AssembledExamsState.changedAt":
+		if e.complexity.AssembledExamsState.ChangedAt == nil {
+			break
+		}
+
+		return e.complexity.AssembledExamsState.ChangedAt(childComplexity), true
+
+	case "AssembledExamsState.dirty":
+		if e.complexity.AssembledExamsState.Dirty == nil {
+			break
+		}
+
+		return e.complexity.AssembledExamsState.Dirty(childComplexity), true
+
+	case "AssembledExamsState.reason":
+		if e.complexity.AssembledExamsState.Reason == nil {
+			break
+		}
+
+		return e.complexity.AssembledExamsState.Reason(childComplexity), true
 
 	case "BalanceReport.invigilators":
 		if e.complexity.BalanceReport.Invigilators == nil {
@@ -2509,26 +2621,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.FairnessDistribution.Total(childComplexity), true
 
-	case "GenerateGeneratedExamsResult.changes":
-		if e.complexity.GenerateGeneratedExamsResult.Changes == nil {
+	case "GenerateAssembledExamsResult.changes":
+		if e.complexity.GenerateAssembledExamsResult.Changes == nil {
 			break
 		}
 
-		return e.complexity.GenerateGeneratedExamsResult.Changes(childComplexity), true
+		return e.complexity.GenerateAssembledExamsResult.Changes(childComplexity), true
 
-	case "GenerateGeneratedExamsResult.state":
-		if e.complexity.GenerateGeneratedExamsResult.State == nil {
+	case "GenerateAssembledExamsResult.state":
+		if e.complexity.GenerateAssembledExamsResult.State == nil {
 			break
 		}
 
-		return e.complexity.GenerateGeneratedExamsResult.State(childComplexity), true
+		return e.complexity.GenerateAssembledExamsResult.State(childComplexity), true
 
-	case "GeneratePreparationResult.generatedExams":
-		if e.complexity.GeneratePreparationResult.GeneratedExams == nil {
+	case "GeneratePreparationResult.assembledExams":
+		if e.complexity.GeneratePreparationResult.AssembledExams == nil {
 			break
 		}
 
-		return e.complexity.GeneratePreparationResult.GeneratedExams(childComplexity), true
+		return e.complexity.GeneratePreparationResult.AssembledExams(childComplexity), true
 
 	case "GeneratePreparationResult.studentRegs":
 		if e.complexity.GeneratePreparationResult.StudentRegs == nil {
@@ -2550,118 +2662,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GenerateStudentRegsResult.StudentCount(childComplexity), true
-
-	case "GeneratedExam.ancode":
-		if e.complexity.GeneratedExam.Ancode == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExam.Ancode(childComplexity), true
-
-	case "GeneratedExam.conflicts":
-		if e.complexity.GeneratedExam.Conflicts == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExam.Conflicts(childComplexity), true
-
-	case "GeneratedExam.constraints":
-		if e.complexity.GeneratedExam.Constraints == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExam.Constraints(childComplexity), true
-
-	case "GeneratedExam.mainExamer":
-		if e.complexity.GeneratedExam.MainExamer == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExam.MainExamer(childComplexity), true
-
-	case "GeneratedExam.maxDuration":
-		if e.complexity.GeneratedExam.MaxDuration == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExam.MaxDuration(childComplexity), true
-
-	case "GeneratedExam.ntas":
-		if e.complexity.GeneratedExam.Ntas == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExam.Ntas(childComplexity), true
-
-	case "GeneratedExam.primussExams":
-		if e.complexity.GeneratedExam.PrimussExams == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExam.PrimussExams(childComplexity), true
-
-	case "GeneratedExam.studentRegsCount":
-		if e.complexity.GeneratedExam.StudentRegsCount == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExam.StudentRegsCount(childComplexity), true
-
-	case "GeneratedExam.zpaExam":
-		if e.complexity.GeneratedExam.ZpaExam == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExam.ZpaExam(childComplexity), true
-
-	case "GeneratedExamsChange.ancode":
-		if e.complexity.GeneratedExamsChange.Ancode == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExamsChange.Ancode(childComplexity), true
-
-	case "GeneratedExamsChange.details":
-		if e.complexity.GeneratedExamsChange.Details == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExamsChange.Details(childComplexity), true
-
-	case "GeneratedExamsChange.kind":
-		if e.complexity.GeneratedExamsChange.Kind == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExamsChange.Kind(childComplexity), true
-
-	case "GeneratedExamsChange.module":
-		if e.complexity.GeneratedExamsChange.Module == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExamsChange.Module(childComplexity), true
-
-	case "GeneratedExamsState.changedAt":
-		if e.complexity.GeneratedExamsState.ChangedAt == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExamsState.ChangedAt(childComplexity), true
-
-	case "GeneratedExamsState.dirty":
-		if e.complexity.GeneratedExamsState.Dirty == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExamsState.Dirty(childComplexity), true
-
-	case "GeneratedExamsState.reason":
-		if e.complexity.GeneratedExamsState.Reason == nil {
-			break
-		}
-
-		return e.complexity.GeneratedExamsState.Reason(childComplexity), true
 
 	case "GenerationConfig.endTemp":
 		if e.complexity.GenerationConfig.EndTemp == nil {
@@ -3705,12 +3705,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.FixPrimussAncode(childComplexity, args["zpaAncode"].(int), args["program"].(string), args["fromAncode"].(int), args["toAncode"].(int)), true
 
-	case "Mutation.generateGeneratedExams":
-		if e.complexity.Mutation.GenerateGeneratedExams == nil {
+	case "Mutation.generateAssembledExams":
+		if e.complexity.Mutation.GenerateAssembledExams == nil {
 			break
 		}
 
-		return e.complexity.Mutation.GenerateGeneratedExams(childComplexity), true
+		return e.complexity.Mutation.GenerateAssembledExams(childComplexity), true
 
 	case "Mutation.generatePreparation":
 		if e.complexity.Mutation.GeneratePreparation == nil {
@@ -5529,6 +5529,32 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.AnnyConfig(childComplexity), true
 
+	case "Query.assembledExam":
+		if e.complexity.Query.AssembledExam == nil {
+			break
+		}
+
+		args, err := ec.field_Query_assembledExam_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AssembledExam(childComplexity, args["ancode"].(int)), true
+
+	case "Query.assembledExams":
+		if e.complexity.Query.AssembledExams == nil {
+			break
+		}
+
+		return e.complexity.Query.AssembledExams(childComplexity), true
+
+	case "Query.assembledExamsState":
+		if e.complexity.Query.AssembledExamsState == nil {
+			break
+		}
+
+		return e.complexity.Query.AssembledExamsState(childComplexity), true
+
 	case "Query.awkwardSlots":
 		if e.complexity.Query.AwkwardSlots == nil {
 			break
@@ -5663,32 +5689,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Fk07programs(childComplexity), true
-
-	case "Query.generatedExam":
-		if e.complexity.Query.GeneratedExam == nil {
-			break
-		}
-
-		args, err := ec.field_Query_generatedExam_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.GeneratedExam(childComplexity, args["ancode"].(int)), true
-
-	case "Query.generatedExams":
-		if e.complexity.Query.GeneratedExams == nil {
-			break
-		}
-
-		return e.complexity.Query.GeneratedExams(childComplexity), true
-
-	case "Query.generatedExamsState":
-		if e.complexity.Query.GeneratedExamsState == nil {
-			break
-		}
-
-		return e.complexity.Query.GeneratedExamsState(childComplexity), true
 
 	case "Query.generationConfig":
 		if e.complexity.Query.GenerationConfig == nil {
@@ -8549,6 +8549,50 @@ type AnnyBooking {
   mine: Boolean!
 }
 `, BuiltIn: false},
+	{Name: "../assembled_exams_state.graphqls", Input: `extend type Query {
+  """
+  State of the cached assembled exams. dirty=true means an input changed since the
+  last generation (connected exams, zpa-exams-to-plan, constraints, NTAs, imports),
+  so the assembled exams — and everything derived from them (planned exams) — are
+  stale and should be regenerated.
+  """
+  assembledExamsState: AssembledExamsState!
+}
+
+extend type Mutation {
+  """
+  Regenerate the cached assembled exams from the current data and clear the stale
+  flag. Fast (~100ms); returns the new state plus the list of changes vs the
+  previously cached assembled exams.
+  """
+  generateAssembledExams: GenerateAssembledExamsResult!
+}
+
+type AssembledExamsState {
+  "true when the assembled exams are stale relative to their inputs."
+  dirty: Boolean!
+  "the operation that last marked them stale (mutation/subscription name)."
+  reason: String
+  "when they were last marked stale or (re)generated."
+  changedAt: Time
+}
+
+type GenerateAssembledExamsResult {
+  "the new state (dirty=false)."
+  state: AssembledExamsState!
+  "what changed vs the previously cached assembled exams (empty = nothing changed)."
+  changes: [AssembledExamsChange!]!
+}
+
+type AssembledExamsChange {
+  ancode: Int!
+  module: String!
+  "added | removed | changed"
+  kind: String!
+  "human-readable change descriptions, e.g. 'Anmeldungen 42 → 43'."
+  details: [String!]!
+}
+`, BuiltIn: false},
 	{Name: "../constraints.graphqls", Input: `scalar Time
 
 extend type Query {
@@ -8728,8 +8772,8 @@ extend type Mutation {
   connectedExam(ancode: Int!): ConnectedExam
   connectedExams: [ConnectedExam!]!
 
-  generatedExams: [GeneratedExam!]!
-  generatedExam(ancode: Int!): GeneratedExam
+  assembledExams: [AssembledExam!]!
+  assembledExam(ancode: Int!): AssembledExam
 
   plannedExams: [PlannedExam!]!
   plannedExam(ancode: Int!): PlannedExam
@@ -8788,7 +8832,7 @@ type ConnectedExamWarning {
   examer: String
 }
 
-type GeneratedExam {
+type AssembledExam {
   ancode: Int!
   zpaExam: ZPAExam!
   mainExamer: Teacher!
@@ -8850,7 +8894,7 @@ type MucDaiExam {
 	{Name: "../exam_duration.graphqls", Input: `extend type Query {
   """
   Per-ancode exam duration overrides. They are only applied to exams whose ZPA
-  duration is 0 (i.e. not set in the ZPA); they feed the generated exams.
+  duration is 0 (i.e. not set in the ZPA); they feed the assembled exams.
   """
   examDurationOverrides: [ExamDurationOverride!]!
 }
@@ -8865,50 +8909,6 @@ extend type Mutation {
 type ExamDurationOverride {
   ancode: Int!
   duration: Int!
-}
-`, BuiltIn: false},
-	{Name: "../generated_exams_state.graphqls", Input: `extend type Query {
-  """
-  State of the cached generated exams. dirty=true means an input changed since the
-  last generation (connected exams, zpa-exams-to-plan, constraints, NTAs, imports),
-  so the generated exams — and everything derived from them (planned exams) — are
-  stale and should be regenerated.
-  """
-  generatedExamsState: GeneratedExamsState!
-}
-
-extend type Mutation {
-  """
-  Regenerate the cached generated exams from the current data and clear the stale
-  flag. Fast (~100ms); returns the new state plus the list of changes vs the
-  previously cached generated exams.
-  """
-  generateGeneratedExams: GenerateGeneratedExamsResult!
-}
-
-type GeneratedExamsState {
-  "true when the generated exams are stale relative to their inputs."
-  dirty: Boolean!
-  "the operation that last marked them stale (mutation/subscription name)."
-  reason: String
-  "when they were last marked stale or (re)generated."
-  changedAt: Time
-}
-
-type GenerateGeneratedExamsResult {
-  "the new state (dirty=false)."
-  state: GeneratedExamsState!
-  "what changed vs the previously cached generated exams (empty = nothing changed)."
-  changes: [GeneratedExamsChange!]!
-}
-
-type GeneratedExamsChange {
-  ancode: Int!
-  module: String!
-  "added | removed | changed"
-  kind: String!
-  "human-readable change descriptions, e.g. 'Anmeldungen 42 → 43'."
-  details: [String!]!
 }
 `, BuiltIn: false},
 	{Name: "../generation_config.graphqls", Input: `extend type Query {
@@ -9221,7 +9221,7 @@ type ImportMucDaiResult {
   examsExisting: Int!
   "FK07 exams skipped (they exist as ZPA exams, only linked)."
   examsSkippedFK07: Int!
-  "generated exams of the imported programs removed because they are no longer in the CSV (or flipped to FK07)."
+  "assembled exams of the imported programs removed because they are no longer in the CSV (or flipped to FK07)."
   examsRemoved: Int!
 }
 `, BuiltIn: false},
@@ -9486,7 +9486,7 @@ extend type Mutation {
 `, BuiltIn: false},
 	{Name: "../preparation.graphqls", Input: `extend type Mutation {
   """
-  Regenerate both the cached generated exams and the per-student planned
+  Regenerate both the cached assembled exams and the per-student planned
   registrations in one step. They share the same inputs (connected exams + Primuss
   data) and are independent of each other, so they are always (re)generated together.
   Clears both stale flags and reports both results.
@@ -9495,7 +9495,7 @@ extend type Mutation {
 }
 
 type GeneratePreparationResult {
-  generatedExams: GenerateGeneratedExamsResult!
+  assembledExams: GenerateAssembledExamsResult!
   studentRegs: GenerateStudentRegsResult!
 }
 `, BuiltIn: false},
@@ -14633,6 +14633,34 @@ func (ec *executionContext) field_Query_annyBookings_argsRoom(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Query_assembledExam_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_assembledExam_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_assembledExam_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query_awkwardSlots_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14817,34 +14845,6 @@ func (ec *executionContext) field_Query_examsInSlot_argsTime(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("time"))
 	if tmp, ok := rawArgs["time"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_generatedExam_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Query_generatedExam_argsAncode(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Query_generatedExam_argsAncode(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
-	if tmp, ok := rawArgs["ancode"]; ok {
 		return ec.unmarshalNInt2int(ctx, tmp)
 	}
 
@@ -18604,6 +18604,817 @@ func (ec *executionContext) fieldContext_AnnyConfig_personalizationNames(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_zpaExam(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_zpaExam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ZpaExam, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ZPAExam)
+	fc.Result = res
+	return ec.marshalNZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_zpaExam(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaID":
+				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
+			case "semester":
+				return ec.fieldContext_ZPAExam_semester(ctx, field)
+			case "ancode":
+				return ec.fieldContext_ZPAExam_ancode(ctx, field)
+			case "module":
+				return ec.fieldContext_ZPAExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_ZPAExam_mainExamer(ctx, field)
+			case "mainExamerID":
+				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
+			case "examType":
+				return ec.fieldContext_ZPAExam_examType(ctx, field)
+			case "examTypeFull":
+				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
+			case "duration":
+				return ec.fieldContext_ZPAExam_duration(ctx, field)
+			case "isRepeaterExam":
+				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
+			case "groups":
+				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_mainExamer(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_mainExamer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AssembledExam().MainExamer(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Teacher)
+	fc.Result = res
+	return ec.marshalNTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_mainExamer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "shortname":
+				return ec.fieldContext_Teacher_shortname(ctx, field)
+			case "fullname":
+				return ec.fieldContext_Teacher_fullname(ctx, field)
+			case "isProf":
+				return ec.fieldContext_Teacher_isProf(ctx, field)
+			case "isLBA":
+				return ec.fieldContext_Teacher_isLBA(ctx, field)
+			case "isProfHC":
+				return ec.fieldContext_Teacher_isProfHC(ctx, field)
+			case "isStaff":
+				return ec.fieldContext_Teacher_isStaff(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_Teacher_lastSemester(ctx, field)
+			case "fk":
+				return ec.fieldContext_Teacher_fk(ctx, field)
+			case "id":
+				return ec.fieldContext_Teacher_id(ctx, field)
+			case "email":
+				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_primussExams(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_primussExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrimussExams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.EnhancedPrimussExam)
+	fc.Result = res
+	return ec.marshalNEnhancedPrimussExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEnhancedPrimussExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_primussExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "exam":
+				return ec.fieldContext_EnhancedPrimussExam_exam(ctx, field)
+			case "studentRegs":
+				return ec.fieldContext_EnhancedPrimussExam_studentRegs(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_EnhancedPrimussExam_conflicts(ctx, field)
+			case "ntas":
+				return ec.fieldContext_EnhancedPrimussExam_ntas(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EnhancedPrimussExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_constraints(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_constraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Constraints, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Constraints)
+	fc.Result = res
+	return ec.marshalOConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraints(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_constraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_Constraints_ancode(ctx, field)
+			case "notPlannedByMe":
+				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "doNotPublish":
+				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
+			case "excludeDays":
+				return ec.fieldContext_Constraints_excludeDays(ctx, field)
+			case "possibleDays":
+				return ec.fieldContext_Constraints_possibleDays(ctx, field)
+			case "fixedDay":
+				return ec.fieldContext_Constraints_fixedDay(ctx, field)
+			case "fixedTime":
+				return ec.fieldContext_Constraints_fixedTime(ctx, field)
+			case "sameSlot":
+				return ec.fieldContext_Constraints_sameSlot(ctx, field)
+			case "online":
+				return ec.fieldContext_Constraints_online(ctx, field)
+			case "roomConstraints":
+				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Constraints", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_conflicts(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_conflicts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Conflicts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ZPAConflict)
+	fc.Result = res
+	return ec.marshalNZPAConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAConflictᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_conflicts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_ZPAConflict_ancode(ctx, field)
+			case "numberOfStuds":
+				return ec.fieldContext_ZPAConflict_numberOfStuds(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAConflict_primussAncodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAConflict", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_studentRegsCount(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_studentRegsCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentRegsCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_studentRegsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_ntas(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_ntas(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ntas, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.NTA)
+	fc.Result = res
+	return ec.marshalNNTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_ntas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_NTA_name(ctx, field)
+			case "email":
+				return ec.fieldContext_NTA_email(ctx, field)
+			case "mtknr":
+				return ec.fieldContext_NTA_mtknr(ctx, field)
+			case "compensation":
+				return ec.fieldContext_NTA_compensation(ctx, field)
+			case "deltaDurationPercent":
+				return ec.fieldContext_NTA_deltaDurationPercent(ctx, field)
+			case "needsRoomAlone":
+				return ec.fieldContext_NTA_needsRoomAlone(ctx, field)
+			case "needsHardware":
+				return ec.fieldContext_NTA_needsHardware(ctx, field)
+			case "program":
+				return ec.fieldContext_NTA_program(ctx, field)
+			case "from":
+				return ec.fieldContext_NTA_from(ctx, field)
+			case "until":
+				return ec.fieldContext_NTA_until(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_NTA_lastSemester(ctx, field)
+			case "deactivated":
+				return ec.fieldContext_NTA_deactivated(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_maxDuration(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_maxDuration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxDuration, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_maxDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExamsChange_ancode(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExamsChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExamsChange_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExamsChange_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExamsChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExamsChange_module(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExamsChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExamsChange_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExamsChange_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExamsChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExamsChange_kind(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExamsChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExamsChange_kind(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Kind, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExamsChange_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExamsChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExamsChange_details(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExamsChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExamsChange_details(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Details, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExamsChange_details(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExamsChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExamsState_dirty(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExamsState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExamsState_dirty(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Dirty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExamsState_dirty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExamsState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExamsState_reason(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExamsState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExamsState_reason(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Reason, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExamsState_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExamsState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExamsState_changedAt(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExamsState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExamsState_changedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChangedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExamsState_changedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExamsState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -23229,8 +24040,8 @@ func (ec *executionContext) fieldContext_FairnessDistribution_buckets(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _GenerateGeneratedExamsResult_state(ctx context.Context, field graphql.CollectedField, obj *model.GenerateGeneratedExamsResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenerateGeneratedExamsResult_state(ctx, field)
+func (ec *executionContext) _GenerateAssembledExamsResult_state(ctx context.Context, field graphql.CollectedField, obj *model.GenerateAssembledExamsResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerateAssembledExamsResult_state(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -23255,34 +24066,34 @@ func (ec *executionContext) _GenerateGeneratedExamsResult_state(ctx context.Cont
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.GeneratedExamsState)
+	res := resTmp.(*model.AssembledExamsState)
 	fc.Result = res
-	return ec.marshalNGeneratedExamsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamsState(ctx, field.Selections, res)
+	return ec.marshalNAssembledExamsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamsState(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenerateGeneratedExamsResult_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GenerateAssembledExamsResult_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenerateGeneratedExamsResult",
+		Object:     "GenerateAssembledExamsResult",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "dirty":
-				return ec.fieldContext_GeneratedExamsState_dirty(ctx, field)
+				return ec.fieldContext_AssembledExamsState_dirty(ctx, field)
 			case "reason":
-				return ec.fieldContext_GeneratedExamsState_reason(ctx, field)
+				return ec.fieldContext_AssembledExamsState_reason(ctx, field)
 			case "changedAt":
-				return ec.fieldContext_GeneratedExamsState_changedAt(ctx, field)
+				return ec.fieldContext_AssembledExamsState_changedAt(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type GeneratedExamsState", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type AssembledExamsState", field.Name)
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _GenerateGeneratedExamsResult_changes(ctx context.Context, field graphql.CollectedField, obj *model.GenerateGeneratedExamsResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenerateGeneratedExamsResult_changes(ctx, field)
+func (ec *executionContext) _GenerateAssembledExamsResult_changes(ctx context.Context, field graphql.CollectedField, obj *model.GenerateAssembledExamsResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerateAssembledExamsResult_changes(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -23307,36 +24118,36 @@ func (ec *executionContext) _GenerateGeneratedExamsResult_changes(ctx context.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.GeneratedExamsChange)
+	res := resTmp.([]*model.AssembledExamsChange)
 	fc.Result = res
-	return ec.marshalNGeneratedExamsChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamsChangeᚄ(ctx, field.Selections, res)
+	return ec.marshalNAssembledExamsChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamsChangeᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GenerateGeneratedExamsResult_changes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GenerateAssembledExamsResult_changes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "GenerateGeneratedExamsResult",
+		Object:     "GenerateAssembledExamsResult",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "ancode":
-				return ec.fieldContext_GeneratedExamsChange_ancode(ctx, field)
+				return ec.fieldContext_AssembledExamsChange_ancode(ctx, field)
 			case "module":
-				return ec.fieldContext_GeneratedExamsChange_module(ctx, field)
+				return ec.fieldContext_AssembledExamsChange_module(ctx, field)
 			case "kind":
-				return ec.fieldContext_GeneratedExamsChange_kind(ctx, field)
+				return ec.fieldContext_AssembledExamsChange_kind(ctx, field)
 			case "details":
-				return ec.fieldContext_GeneratedExamsChange_details(ctx, field)
+				return ec.fieldContext_AssembledExamsChange_details(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type GeneratedExamsChange", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type AssembledExamsChange", field.Name)
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _GeneratePreparationResult_generatedExams(ctx context.Context, field graphql.CollectedField, obj *model.GeneratePreparationResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratePreparationResult_generatedExams(ctx, field)
+func (ec *executionContext) _GeneratePreparationResult_assembledExams(ctx context.Context, field graphql.CollectedField, obj *model.GeneratePreparationResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratePreparationResult_assembledExams(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -23349,7 +24160,7 @@ func (ec *executionContext) _GeneratePreparationResult_generatedExams(ctx contex
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.GeneratedExams, nil
+		return obj.AssembledExams, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23361,12 +24172,12 @@ func (ec *executionContext) _GeneratePreparationResult_generatedExams(ctx contex
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.GenerateGeneratedExamsResult)
+	res := resTmp.(*model.GenerateAssembledExamsResult)
 	fc.Result = res
-	return ec.marshalNGenerateGeneratedExamsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateGeneratedExamsResult(ctx, field.Selections, res)
+	return ec.marshalNGenerateAssembledExamsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateAssembledExamsResult(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_GeneratePreparationResult_generatedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_GeneratePreparationResult_assembledExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "GeneratePreparationResult",
 		Field:      field,
@@ -23375,11 +24186,11 @@ func (ec *executionContext) fieldContext_GeneratePreparationResult_generatedExam
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "state":
-				return ec.fieldContext_GenerateGeneratedExamsResult_state(ctx, field)
+				return ec.fieldContext_GenerateAssembledExamsResult_state(ctx, field)
 			case "changes":
-				return ec.fieldContext_GenerateGeneratedExamsResult_changes(ctx, field)
+				return ec.fieldContext_GenerateAssembledExamsResult_changes(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type GenerateGeneratedExamsResult", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type GenerateAssembledExamsResult", field.Name)
 		},
 	}
 	return fc, nil
@@ -23526,817 +24337,6 @@ func (ec *executionContext) fieldContext_GenerateStudentRegsResult_studentCount(
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExam_ancode(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Ancode, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExam_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExam_zpaExam(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExam_zpaExam(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ZpaExam, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.ZPAExam)
-	fc.Result = res
-	return ec.marshalNZPAExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExam(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExam_zpaExam(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "zpaID":
-				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
-			case "semester":
-				return ec.fieldContext_ZPAExam_semester(ctx, field)
-			case "ancode":
-				return ec.fieldContext_ZPAExam_ancode(ctx, field)
-			case "module":
-				return ec.fieldContext_ZPAExam_module(ctx, field)
-			case "mainExamer":
-				return ec.fieldContext_ZPAExam_mainExamer(ctx, field)
-			case "mainExamerID":
-				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
-			case "examType":
-				return ec.fieldContext_ZPAExam_examType(ctx, field)
-			case "examTypeFull":
-				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
-			case "duration":
-				return ec.fieldContext_ZPAExam_duration(ctx, field)
-			case "isRepeaterExam":
-				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
-			case "groups":
-				return ec.fieldContext_ZPAExam_groups(ctx, field)
-			case "primussAncodes":
-				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExam_mainExamer(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExam_mainExamer(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.GeneratedExam().MainExamer(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.Teacher)
-	fc.Result = res
-	return ec.marshalNTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExam_mainExamer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExam",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "shortname":
-				return ec.fieldContext_Teacher_shortname(ctx, field)
-			case "fullname":
-				return ec.fieldContext_Teacher_fullname(ctx, field)
-			case "isProf":
-				return ec.fieldContext_Teacher_isProf(ctx, field)
-			case "isLBA":
-				return ec.fieldContext_Teacher_isLBA(ctx, field)
-			case "isProfHC":
-				return ec.fieldContext_Teacher_isProfHC(ctx, field)
-			case "isStaff":
-				return ec.fieldContext_Teacher_isStaff(ctx, field)
-			case "lastSemester":
-				return ec.fieldContext_Teacher_lastSemester(ctx, field)
-			case "fk":
-				return ec.fieldContext_Teacher_fk(ctx, field)
-			case "id":
-				return ec.fieldContext_Teacher_id(ctx, field)
-			case "email":
-				return ec.fieldContext_Teacher_email(ctx, field)
-			case "isActive":
-				return ec.fieldContext_Teacher_isActive(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExam_primussExams(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExam_primussExams(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PrimussExams, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.EnhancedPrimussExam)
-	fc.Result = res
-	return ec.marshalNEnhancedPrimussExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEnhancedPrimussExamᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExam_primussExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "exam":
-				return ec.fieldContext_EnhancedPrimussExam_exam(ctx, field)
-			case "studentRegs":
-				return ec.fieldContext_EnhancedPrimussExam_studentRegs(ctx, field)
-			case "conflicts":
-				return ec.fieldContext_EnhancedPrimussExam_conflicts(ctx, field)
-			case "ntas":
-				return ec.fieldContext_EnhancedPrimussExam_ntas(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type EnhancedPrimussExam", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExam_constraints(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExam_constraints(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Constraints, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.Constraints)
-	fc.Result = res
-	return ec.marshalOConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraints(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExam_constraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "ancode":
-				return ec.fieldContext_Constraints_ancode(ctx, field)
-			case "notPlannedByMe":
-				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
-			case "doNotPublish":
-				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
-			case "excludeDays":
-				return ec.fieldContext_Constraints_excludeDays(ctx, field)
-			case "possibleDays":
-				return ec.fieldContext_Constraints_possibleDays(ctx, field)
-			case "fixedDay":
-				return ec.fieldContext_Constraints_fixedDay(ctx, field)
-			case "fixedTime":
-				return ec.fieldContext_Constraints_fixedTime(ctx, field)
-			case "sameSlot":
-				return ec.fieldContext_Constraints_sameSlot(ctx, field)
-			case "online":
-				return ec.fieldContext_Constraints_online(ctx, field)
-			case "roomConstraints":
-				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Constraints", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExam_conflicts(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExam_conflicts(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Conflicts, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.ZPAConflict)
-	fc.Result = res
-	return ec.marshalNZPAConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAConflictᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExam_conflicts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "ancode":
-				return ec.fieldContext_ZPAConflict_ancode(ctx, field)
-			case "numberOfStuds":
-				return ec.fieldContext_ZPAConflict_numberOfStuds(ctx, field)
-			case "primussAncodes":
-				return ec.fieldContext_ZPAConflict_primussAncodes(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAConflict", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExam_studentRegsCount(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExam_studentRegsCount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.StudentRegsCount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExam_studentRegsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExam_ntas(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExam_ntas(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Ntas, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.NTA)
-	fc.Result = res
-	return ec.marshalNNTA2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExam_ntas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_NTA_name(ctx, field)
-			case "email":
-				return ec.fieldContext_NTA_email(ctx, field)
-			case "mtknr":
-				return ec.fieldContext_NTA_mtknr(ctx, field)
-			case "compensation":
-				return ec.fieldContext_NTA_compensation(ctx, field)
-			case "deltaDurationPercent":
-				return ec.fieldContext_NTA_deltaDurationPercent(ctx, field)
-			case "needsRoomAlone":
-				return ec.fieldContext_NTA_needsRoomAlone(ctx, field)
-			case "needsHardware":
-				return ec.fieldContext_NTA_needsHardware(ctx, field)
-			case "program":
-				return ec.fieldContext_NTA_program(ctx, field)
-			case "from":
-				return ec.fieldContext_NTA_from(ctx, field)
-			case "until":
-				return ec.fieldContext_NTA_until(ctx, field)
-			case "lastSemester":
-				return ec.fieldContext_NTA_lastSemester(ctx, field)
-			case "deactivated":
-				return ec.fieldContext_NTA_deactivated(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExam_maxDuration(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExam_maxDuration(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.MaxDuration, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExam_maxDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExamsChange_ancode(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExamsChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExamsChange_ancode(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Ancode, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExamsChange_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExamsChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExamsChange_module(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExamsChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExamsChange_module(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Module, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExamsChange_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExamsChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExamsChange_kind(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExamsChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExamsChange_kind(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Kind, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExamsChange_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExamsChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExamsChange_details(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExamsChange) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExamsChange_details(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Details, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]string)
-	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExamsChange_details(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExamsChange",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExamsState_dirty(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExamsState) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExamsState_dirty(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Dirty, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExamsState_dirty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExamsState",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExamsState_reason(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExamsState) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExamsState_reason(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Reason, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExamsState_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExamsState",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _GeneratedExamsState_changedAt(ctx context.Context, field graphql.CollectedField, obj *model.GeneratedExamsState) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GeneratedExamsState_changedAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ChangedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GeneratedExamsState_changedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GeneratedExamsState",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -29443,6 +29443,56 @@ func (ec *executionContext) fieldContext_Mutation_setAnnyPersonalizationNames(ct
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_generateAssembledExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_generateAssembledExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().GenerateAssembledExams(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.GenerateAssembledExamsResult)
+	fc.Result = res
+	return ec.marshalNGenerateAssembledExamsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateAssembledExamsResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_generateAssembledExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "state":
+				return ec.fieldContext_GenerateAssembledExamsResult_state(ctx, field)
+			case "changes":
+				return ec.fieldContext_GenerateAssembledExamsResult_changes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GenerateAssembledExamsResult", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_notPlannedByMe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_notPlannedByMe(ctx, field)
 	if err != nil {
@@ -30432,56 +30482,6 @@ func (ec *executionContext) fieldContext_Mutation_removeExamDuration(ctx context
 	if fc.Args, err = ec.field_Mutation_removeExamDuration_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_generateGeneratedExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_generateGeneratedExams(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().GenerateGeneratedExams(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.GenerateGeneratedExamsResult)
-	fc.Result = res
-	return ec.marshalNGenerateGeneratedExamsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateGeneratedExamsResult(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_generateGeneratedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "state":
-				return ec.fieldContext_GenerateGeneratedExamsResult_state(ctx, field)
-			case "changes":
-				return ec.fieldContext_GenerateGeneratedExamsResult_changes(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type GenerateGeneratedExamsResult", field.Name)
-		},
 	}
 	return fc, nil
 }
@@ -31925,8 +31925,8 @@ func (ec *executionContext) fieldContext_Mutation_generatePreparation(_ context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "generatedExams":
-				return ec.fieldContext_GeneratePreparationResult_generatedExams(ctx, field)
+			case "assembledExams":
+				return ec.fieldContext_GeneratePreparationResult_assembledExams(ctx, field)
 			case "studentRegs":
 				return ec.fieldContext_GeneratePreparationResult_studentRegs(ctx, field)
 			}
@@ -42475,6 +42475,58 @@ func (ec *executionContext) fieldContext_Query_annyConfig(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_assembledExamsState(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_assembledExamsState(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().AssembledExamsState(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.AssembledExamsState)
+	fc.Result = res
+	return ec.marshalNAssembledExamsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamsState(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_assembledExamsState(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dirty":
+				return ec.fieldContext_AssembledExamsState_dirty(ctx, field)
+			case "reason":
+				return ec.fieldContext_AssembledExamsState_reason(ctx, field)
+			case "changedAt":
+				return ec.fieldContext_AssembledExamsState_changedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AssembledExamsState", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_constraintForAncode(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_constraintForAncode(ctx, field)
 	if err != nil {
@@ -42838,8 +42890,8 @@ func (ec *executionContext) fieldContext_Query_connectedExams(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_generatedExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_generatedExams(ctx, field)
+func (ec *executionContext) _Query_assembledExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_assembledExams(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -42852,7 +42904,7 @@ func (ec *executionContext) _Query_generatedExams(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GeneratedExams(rctx)
+		return ec.resolvers.Query().AssembledExams(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -42864,12 +42916,12 @@ func (ec *executionContext) _Query_generatedExams(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.GeneratedExam)
+	res := resTmp.([]*model.AssembledExam)
 	fc.Result = res
-	return ec.marshalNGeneratedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamᚄ(ctx, field.Selections, res)
+	return ec.marshalNAssembledExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_generatedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_assembledExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -42878,32 +42930,32 @@ func (ec *executionContext) fieldContext_Query_generatedExams(_ context.Context,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "ancode":
-				return ec.fieldContext_GeneratedExam_ancode(ctx, field)
+				return ec.fieldContext_AssembledExam_ancode(ctx, field)
 			case "zpaExam":
-				return ec.fieldContext_GeneratedExam_zpaExam(ctx, field)
+				return ec.fieldContext_AssembledExam_zpaExam(ctx, field)
 			case "mainExamer":
-				return ec.fieldContext_GeneratedExam_mainExamer(ctx, field)
+				return ec.fieldContext_AssembledExam_mainExamer(ctx, field)
 			case "primussExams":
-				return ec.fieldContext_GeneratedExam_primussExams(ctx, field)
+				return ec.fieldContext_AssembledExam_primussExams(ctx, field)
 			case "constraints":
-				return ec.fieldContext_GeneratedExam_constraints(ctx, field)
+				return ec.fieldContext_AssembledExam_constraints(ctx, field)
 			case "conflicts":
-				return ec.fieldContext_GeneratedExam_conflicts(ctx, field)
+				return ec.fieldContext_AssembledExam_conflicts(ctx, field)
 			case "studentRegsCount":
-				return ec.fieldContext_GeneratedExam_studentRegsCount(ctx, field)
+				return ec.fieldContext_AssembledExam_studentRegsCount(ctx, field)
 			case "ntas":
-				return ec.fieldContext_GeneratedExam_ntas(ctx, field)
+				return ec.fieldContext_AssembledExam_ntas(ctx, field)
 			case "maxDuration":
-				return ec.fieldContext_GeneratedExam_maxDuration(ctx, field)
+				return ec.fieldContext_AssembledExam_maxDuration(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type GeneratedExam", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type AssembledExam", field.Name)
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_generatedExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_generatedExam(ctx, field)
+func (ec *executionContext) _Query_assembledExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_assembledExam(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -42916,7 +42968,7 @@ func (ec *executionContext) _Query_generatedExam(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GeneratedExam(rctx, fc.Args["ancode"].(int))
+		return ec.resolvers.Query().AssembledExam(rctx, fc.Args["ancode"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -42925,12 +42977,12 @@ func (ec *executionContext) _Query_generatedExam(ctx context.Context, field grap
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.GeneratedExam)
+	res := resTmp.(*model.AssembledExam)
 	fc.Result = res
-	return ec.marshalOGeneratedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExam(ctx, field.Selections, res)
+	return ec.marshalOAssembledExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExam(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_generatedExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_assembledExam(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -42939,25 +42991,25 @@ func (ec *executionContext) fieldContext_Query_generatedExam(ctx context.Context
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "ancode":
-				return ec.fieldContext_GeneratedExam_ancode(ctx, field)
+				return ec.fieldContext_AssembledExam_ancode(ctx, field)
 			case "zpaExam":
-				return ec.fieldContext_GeneratedExam_zpaExam(ctx, field)
+				return ec.fieldContext_AssembledExam_zpaExam(ctx, field)
 			case "mainExamer":
-				return ec.fieldContext_GeneratedExam_mainExamer(ctx, field)
+				return ec.fieldContext_AssembledExam_mainExamer(ctx, field)
 			case "primussExams":
-				return ec.fieldContext_GeneratedExam_primussExams(ctx, field)
+				return ec.fieldContext_AssembledExam_primussExams(ctx, field)
 			case "constraints":
-				return ec.fieldContext_GeneratedExam_constraints(ctx, field)
+				return ec.fieldContext_AssembledExam_constraints(ctx, field)
 			case "conflicts":
-				return ec.fieldContext_GeneratedExam_conflicts(ctx, field)
+				return ec.fieldContext_AssembledExam_conflicts(ctx, field)
 			case "studentRegsCount":
-				return ec.fieldContext_GeneratedExam_studentRegsCount(ctx, field)
+				return ec.fieldContext_AssembledExam_studentRegsCount(ctx, field)
 			case "ntas":
-				return ec.fieldContext_GeneratedExam_ntas(ctx, field)
+				return ec.fieldContext_AssembledExam_ntas(ctx, field)
 			case "maxDuration":
-				return ec.fieldContext_GeneratedExam_maxDuration(ctx, field)
+				return ec.fieldContext_AssembledExam_maxDuration(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type GeneratedExam", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type AssembledExam", field.Name)
 		},
 	}
 	defer func() {
@@ -42967,7 +43019,7 @@ func (ec *executionContext) fieldContext_Query_generatedExam(ctx context.Context
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_generatedExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_assembledExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -43291,58 +43343,6 @@ func (ec *executionContext) fieldContext_Query_examDurationOverrides(_ context.C
 				return ec.fieldContext_ExamDurationOverride_duration(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamDurationOverride", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_generatedExamsState(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_generatedExamsState(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GeneratedExamsState(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.GeneratedExamsState)
-	fc.Result = res
-	return ec.marshalNGeneratedExamsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamsState(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_generatedExamsState(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "dirty":
-				return ec.fieldContext_GeneratedExamsState_dirty(ctx, field)
-			case "reason":
-				return ec.fieldContext_GeneratedExamsState_reason(ctx, field)
-			case "changedAt":
-				return ec.fieldContext_GeneratedExamsState_changedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type GeneratedExamsState", field.Name)
 		},
 	}
 	return fc, nil
@@ -65221,6 +65221,210 @@ func (ec *executionContext) _AnnyConfig(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var assembledExamImplementors = []string{"AssembledExam"}
+
+func (ec *executionContext) _AssembledExam(ctx context.Context, sel ast.SelectionSet, obj *model.AssembledExam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, assembledExamImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AssembledExam")
+		case "ancode":
+			out.Values[i] = ec._AssembledExam_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "zpaExam":
+			out.Values[i] = ec._AssembledExam_zpaExam(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "mainExamer":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AssembledExam_mainExamer(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "primussExams":
+			out.Values[i] = ec._AssembledExam_primussExams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "constraints":
+			out.Values[i] = ec._AssembledExam_constraints(ctx, field, obj)
+		case "conflicts":
+			out.Values[i] = ec._AssembledExam_conflicts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "studentRegsCount":
+			out.Values[i] = ec._AssembledExam_studentRegsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "ntas":
+			out.Values[i] = ec._AssembledExam_ntas(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "maxDuration":
+			out.Values[i] = ec._AssembledExam_maxDuration(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var assembledExamsChangeImplementors = []string{"AssembledExamsChange"}
+
+func (ec *executionContext) _AssembledExamsChange(ctx context.Context, sel ast.SelectionSet, obj *model.AssembledExamsChange) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, assembledExamsChangeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AssembledExamsChange")
+		case "ancode":
+			out.Values[i] = ec._AssembledExamsChange_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._AssembledExamsChange_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kind":
+			out.Values[i] = ec._AssembledExamsChange_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "details":
+			out.Values[i] = ec._AssembledExamsChange_details(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var assembledExamsStateImplementors = []string{"AssembledExamsState"}
+
+func (ec *executionContext) _AssembledExamsState(ctx context.Context, sel ast.SelectionSet, obj *model.AssembledExamsState) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, assembledExamsStateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AssembledExamsState")
+		case "dirty":
+			out.Values[i] = ec._AssembledExamsState_dirty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._AssembledExamsState_reason(ctx, field, obj)
+		case "changedAt":
+			out.Values[i] = ec._AssembledExamsState_changedAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var balanceReportImplementors = []string{"BalanceReport"}
 
 func (ec *executionContext) _BalanceReport(ctx context.Context, sel ast.SelectionSet, obj *model.BalanceReport) graphql.Marshaler {
@@ -66485,24 +66689,24 @@ func (ec *executionContext) _FairnessDistribution(ctx context.Context, sel ast.S
 	return out
 }
 
-var generateGeneratedExamsResultImplementors = []string{"GenerateGeneratedExamsResult"}
+var generateAssembledExamsResultImplementors = []string{"GenerateAssembledExamsResult"}
 
-func (ec *executionContext) _GenerateGeneratedExamsResult(ctx context.Context, sel ast.SelectionSet, obj *model.GenerateGeneratedExamsResult) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, generateGeneratedExamsResultImplementors)
+func (ec *executionContext) _GenerateAssembledExamsResult(ctx context.Context, sel ast.SelectionSet, obj *model.GenerateAssembledExamsResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, generateAssembledExamsResultImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("GenerateGeneratedExamsResult")
+			out.Values[i] = graphql.MarshalString("GenerateAssembledExamsResult")
 		case "state":
-			out.Values[i] = ec._GenerateGeneratedExamsResult_state(ctx, field, obj)
+			out.Values[i] = ec._GenerateAssembledExamsResult_state(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "changes":
-			out.Values[i] = ec._GenerateGeneratedExamsResult_changes(ctx, field, obj)
+			out.Values[i] = ec._GenerateAssembledExamsResult_changes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -66540,8 +66744,8 @@ func (ec *executionContext) _GeneratePreparationResult(ctx context.Context, sel 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GeneratePreparationResult")
-		case "generatedExams":
-			out.Values[i] = ec._GeneratePreparationResult_generatedExams(ctx, field, obj)
+		case "assembledExams":
+			out.Values[i] = ec._GeneratePreparationResult_assembledExams(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -66594,210 +66798,6 @@ func (ec *executionContext) _GenerateStudentRegsResult(ctx context.Context, sel 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var generatedExamImplementors = []string{"GeneratedExam"}
-
-func (ec *executionContext) _GeneratedExam(ctx context.Context, sel ast.SelectionSet, obj *model.GeneratedExam) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, generatedExamImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("GeneratedExam")
-		case "ancode":
-			out.Values[i] = ec._GeneratedExam_ancode(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "zpaExam":
-			out.Values[i] = ec._GeneratedExam_zpaExam(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "mainExamer":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._GeneratedExam_mainExamer(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "primussExams":
-			out.Values[i] = ec._GeneratedExam_primussExams(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "constraints":
-			out.Values[i] = ec._GeneratedExam_constraints(ctx, field, obj)
-		case "conflicts":
-			out.Values[i] = ec._GeneratedExam_conflicts(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "studentRegsCount":
-			out.Values[i] = ec._GeneratedExam_studentRegsCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "ntas":
-			out.Values[i] = ec._GeneratedExam_ntas(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "maxDuration":
-			out.Values[i] = ec._GeneratedExam_maxDuration(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var generatedExamsChangeImplementors = []string{"GeneratedExamsChange"}
-
-func (ec *executionContext) _GeneratedExamsChange(ctx context.Context, sel ast.SelectionSet, obj *model.GeneratedExamsChange) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, generatedExamsChangeImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("GeneratedExamsChange")
-		case "ancode":
-			out.Values[i] = ec._GeneratedExamsChange_ancode(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "module":
-			out.Values[i] = ec._GeneratedExamsChange_module(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "kind":
-			out.Values[i] = ec._GeneratedExamsChange_kind(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "details":
-			out.Values[i] = ec._GeneratedExamsChange_details(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var generatedExamsStateImplementors = []string{"GeneratedExamsState"}
-
-func (ec *executionContext) _GeneratedExamsState(ctx context.Context, sel ast.SelectionSet, obj *model.GeneratedExamsState) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, generatedExamsStateImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("GeneratedExamsState")
-		case "dirty":
-			out.Values[i] = ec._GeneratedExamsState_dirty(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "reason":
-			out.Values[i] = ec._GeneratedExamsState_reason(ctx, field, obj)
-		case "changedAt":
-			out.Values[i] = ec._GeneratedExamsState_changedAt(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -67893,6 +67893,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "generateAssembledExams":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_generateAssembledExams(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "notPlannedByMe":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_notPlannedByMe(ctx, field)
@@ -68008,13 +68015,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "removeExamDuration":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeExamDuration(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "generateGeneratedExams":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_generateGeneratedExams(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -70533,6 +70533,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "assembledExamsState":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_assembledExamsState(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "constraintForAncode":
 			field := field
 
@@ -70659,7 +70681,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "generatedExams":
+		case "assembledExams":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -70668,7 +70690,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_generatedExams(ctx, field)
+				res = ec._Query_assembledExams(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -70681,7 +70703,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "generatedExam":
+		case "assembledExam":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -70690,7 +70712,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_generatedExam(ctx, field)
+				res = ec._Query_assembledExam(ctx, field)
 				return res
 			}
 
@@ -70792,28 +70814,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_examDurationOverrides(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "generatedExamsState":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_generatedExamsState(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -75537,6 +75537,128 @@ func (ec *executionContext) unmarshalNArgFilterInput2ᚖgithubᚗcomᚋobcodeᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNAssembledExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AssembledExam) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAssembledExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAssembledExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExam(ctx context.Context, sel ast.SelectionSet, v *model.AssembledExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AssembledExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAssembledExamsChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamsChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AssembledExamsChange) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAssembledExamsChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamsChange(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAssembledExamsChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamsChange(ctx context.Context, sel ast.SelectionSet, v *model.AssembledExamsChange) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AssembledExamsChange(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAssembledExamsState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamsState(ctx context.Context, sel ast.SelectionSet, v model.AssembledExamsState) graphql.Marshaler {
+	return ec._AssembledExamsState(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAssembledExamsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExamsState(ctx context.Context, sel ast.SelectionSet, v *model.AssembledExamsState) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AssembledExamsState(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNBalanceReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBalanceReport(ctx context.Context, sel ast.SelectionSet, v *model.BalanceReport) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -76455,18 +76577,18 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
-func (ec *executionContext) marshalNGenerateGeneratedExamsResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateGeneratedExamsResult(ctx context.Context, sel ast.SelectionSet, v model.GenerateGeneratedExamsResult) graphql.Marshaler {
-	return ec._GenerateGeneratedExamsResult(ctx, sel, &v)
+func (ec *executionContext) marshalNGenerateAssembledExamsResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateAssembledExamsResult(ctx context.Context, sel ast.SelectionSet, v model.GenerateAssembledExamsResult) graphql.Marshaler {
+	return ec._GenerateAssembledExamsResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNGenerateGeneratedExamsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateGeneratedExamsResult(ctx context.Context, sel ast.SelectionSet, v *model.GenerateGeneratedExamsResult) graphql.Marshaler {
+func (ec *executionContext) marshalNGenerateAssembledExamsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateAssembledExamsResult(ctx context.Context, sel ast.SelectionSet, v *model.GenerateAssembledExamsResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._GenerateGeneratedExamsResult(ctx, sel, v)
+	return ec._GenerateAssembledExamsResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGeneratePreparationResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratePreparationResult(ctx context.Context, sel ast.SelectionSet, v model.GeneratePreparationResult) graphql.Marshaler {
@@ -76495,128 +76617,6 @@ func (ec *executionContext) marshalNGenerateStudentRegsResult2ᚖgithubᚗcomᚋ
 		return graphql.Null
 	}
 	return ec._GenerateStudentRegsResult(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNGeneratedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GeneratedExam) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNGeneratedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExam(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNGeneratedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExam(ctx context.Context, sel ast.SelectionSet, v *model.GeneratedExam) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._GeneratedExam(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNGeneratedExamsChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamsChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GeneratedExamsChange) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNGeneratedExamsChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamsChange(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNGeneratedExamsChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamsChange(ctx context.Context, sel ast.SelectionSet, v *model.GeneratedExamsChange) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._GeneratedExamsChange(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNGeneratedExamsState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamsState(ctx context.Context, sel ast.SelectionSet, v model.GeneratedExamsState) graphql.Marshaler {
-	return ec._GeneratedExamsState(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNGeneratedExamsState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExamsState(ctx context.Context, sel ast.SelectionSet, v *model.GeneratedExamsState) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._GeneratedExamsState(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGenerationConfig2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerationConfig(ctx context.Context, sel ast.SelectionSet, v model.GenerationConfig) graphql.Marshaler {
@@ -80465,6 +80465,13 @@ func (ec *executionContext) unmarshalOArgFilterInput2ᚕᚖgithubᚗcomᚋobcode
 	return res, nil
 }
 
+func (ec *executionContext) marshalOAssembledExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAssembledExam(ctx context.Context, sel ast.SelectionSet, v *model.AssembledExam) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AssembledExam(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -80608,13 +80615,6 @@ func (ec *executionContext) marshalOExamerInPlan2ᚕᚖgithubᚗcomᚋobcodeᚋp
 	}
 
 	return ret
-}
-
-func (ec *executionContext) marshalOGeneratedExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratedExam(ctx context.Context, sel ast.SelectionSet, v *model.GeneratedExam) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._GeneratedExam(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOInt2ᚕintᚄ(ctx context.Context, v any) ([]int, error) {

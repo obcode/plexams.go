@@ -124,7 +124,7 @@ func (p *Plexams) buildInvigilator(ctx context.Context, teacher *model.Teacher, 
 
 	examTimes := make([]*model.ExamTime, 0)
 	examStarttimes := make([]*time.Time, 0)
-	exams, err := p.GeneratedExamsForExamer(ctx, teacher.ID)
+	exams, err := p.AssembledExamsForExamer(ctx, teacher.ID)
 	if err != nil {
 		log.Error().Err(err).Str("name", teacher.Shortname).Msg("cannit get exams by main examer")
 	} else {

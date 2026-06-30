@@ -1,7 +1,7 @@
 extend type Query {
   """
   Per-ancode exam duration overrides. They are only applied to exams whose ZPA
-  duration is 0 (i.e. not set in the ZPA); they feed the generated exams.
+  duration is 0 (i.e. not set in the ZPA); they feed the assembled exams.
   """
   examDurationOverrides: [ExamDurationOverride!]!
 }

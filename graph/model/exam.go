@@ -5,7 +5,7 @@ type RemovedPrimussExam struct {
 	Program string `bson:"Stg"`
 }
 
-type GeneratedExam struct {
+type AssembledExam struct {
 	Ancode           int                    `json:"ancode"`
 	ZpaExam          *ZPAExam               `json:"zpaExam"`
 	PrimussExams     []*EnhancedPrimussExam `json:"primussExams"`

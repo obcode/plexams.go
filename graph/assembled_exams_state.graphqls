@@ -1,0 +1,43 @@
+extend type Query {
+  """
+  State of the cached assembled exams. dirty=true means an input changed since the
+  last generation (connected exams, zpa-exams-to-plan, constraints, NTAs, imports),
+  so the assembled exams — and everything derived from them (planned exams) — are
+  stale and should be regenerated.
+  """
+  assembledExamsState: AssembledExamsState!
+}
+
+extend type Mutation {
+  """
+  Regenerate the cached assembled exams from the current data and clear the stale
+  flag. Fast (~100ms); returns the new state plus the list of changes vs the
+  previously cached assembled exams.
+  """
+  generateAssembledExams: GenerateAssembledExamsResult!
+}
+
+type AssembledExamsState {
+  "true when the assembled exams are stale relative to their inputs."
+  dirty: Boolean!
+  "the operation that last marked them stale (mutation/subscription name)."
+  reason: String
+  "when they were last marked stale or (re)generated."
+  changedAt: Time
+}
+
+type GenerateAssembledExamsResult {
+  "the new state (dirty=false)."
+  state: AssembledExamsState!
+  "what changed vs the previously cached assembled exams (empty = nothing changed)."
+  changes: [AssembledExamsChange!]!
+}
+
+type AssembledExamsChange {
+  ancode: Int!
+  module: String!
+  "added | removed | changed"
+  kind: String!
+  "human-readable change descriptions, e.g. 'Anmeldungen 42 → 43'."
+  details: [String!]!
+}

@@ -7,11 +7,11 @@ import (
 	"github.com/obcode/plexams.go/plexams"
 )
 
-// generatedExamsDirtyOps are the root operations whose success invalidates the cached
-// generated exams, because they change one of the generation inputs: connected exams
+// assembledExamsDirtyOps are the root operations whose success invalidates the cached
+// assembled exams, because they change one of the generation inputs: connected exams
 // (added primuss ancodes), which exams are planned, constraints, NTAs, or the ZPA
 // imports. Keep this in sync when adding such mutations/subscriptions.
-var generatedExamsDirtyOps = map[string]bool{
+var assembledExamsDirtyOps = map[string]bool{
 	// connected exams (primuss <-> zpa mapping)
 	"addPrimussAncode":    true,
 	"removePrimussAncode": true,
@@ -48,10 +48,10 @@ var generatedExamsDirtyOps = map[string]bool{
 	"connectPreplanExamToAncode": true,
 }
 
-// generatedExamsDirtyMiddleware marks the cached generated exams stale after a
+// assembledExamsDirtyMiddleware marks the cached assembled exams stale after a
 // successful operation that changed one of their inputs, so the GUI can show a
 // "regenerate" banner.
-func generatedExamsDirtyMiddleware(p *plexams.Plexams) graphql.FieldMiddleware {
+func assembledExamsDirtyMiddleware(p *plexams.Plexams) graphql.FieldMiddleware {
 	return func(ctx context.Context, next graphql.Resolver) (interface{}, error) {
 		fc := graphql.GetFieldContext(ctx)
 		if fc == nil || fc.Field.ObjectDefinition == nil {
@@ -64,8 +64,8 @@ func generatedExamsDirtyMiddleware(p *plexams.Plexams) graphql.FieldMiddleware {
 		}
 
 		res, err := next(ctx)
-		if err == nil && generatedExamsDirtyOps[fc.Field.Name] {
-			p.MarkGeneratedExamsDirty(ctx, fc.Field.Name)
+		if err == nil && assembledExamsDirtyOps[fc.Field.Name] {
+			p.MarkAssembledExamsDirty(ctx, fc.Field.Name)
 		}
 		return res, err
 	}

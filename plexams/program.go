@@ -9,7 +9,7 @@ import (
 )
 
 func (p *Plexams) AllProgramsInPlan(ctx context.Context) ([]string, error) {
-	exams, err := p.GeneratedExams(ctx)
+	exams, err := p.AssembledExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get exams")
 	}

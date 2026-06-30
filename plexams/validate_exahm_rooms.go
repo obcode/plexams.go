@@ -11,15 +11,15 @@ func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.Valida
 	ctx := context.Background()
 	v := newValidation(reporter, "preplanned-exahm-rooms", "validating pre-planned exahm rooms (booked and enough seats)")
 
-	exams := make([]*model.GeneratedExam, 0)
-	generatedExams, err := p.dbClient.GetGeneratedExams(ctx)
+	exams := make([]*model.AssembledExam, 0)
+	assembledExams, err := p.dbClient.GetAssembledExams(ctx)
 	if err != nil {
 		log.Error().Err(err).
-			Msg("cannot get generated exams")
+			Msg("cannot get assembled exams")
 		return nil, err
 	}
 
-	for _, exam := range generatedExams {
+	for _, exam := range assembledExams {
 		if exam.Constraints != nil && exam.Constraints.RoomConstraints != nil &&
 			(exam.Constraints.RoomConstraints.Exahm || exam.Constraints.RoomConstraints.Seb) {
 			exams = append(exams, exam)

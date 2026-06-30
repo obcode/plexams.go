@@ -86,7 +86,7 @@ func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.Plan
 
 	exams := make([]*model.PlannedExam, 0, len(planEntries))
 	for _, planEntry := range planEntries {
-		exam, err := db.GetGeneratedExam(ctx, planEntry.Ancode)
+		exam, err := db.GetAssembledExam(ctx, planEntry.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
 			return nil, err
@@ -179,7 +179,7 @@ func (db *DB) PlanEntry(ctx context.Context, ancode int) (*model.PlanEntry, erro
 }
 
 func (db *DB) AncodesInPlan(ctx context.Context) ([]int, error) {
-	exams, err := db.GetGeneratedExams(ctx)
+	exams, err := db.GetAssembledExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get exams")
 	}
@@ -195,7 +195,7 @@ func (db *DB) AncodesInPlan(ctx context.Context) ([]int, error) {
 }
 
 func (db *DB) ExamerInPlan(ctx context.Context) ([]*model.ExamerInPlan, error) {
-	exams, err := db.GetGeneratedExams(ctx)
+	exams, err := db.GetAssembledExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get exam groups")
 	}

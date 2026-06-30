@@ -85,7 +85,7 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 	}
 
 	// check if exam with ancode exists
-	exam, err := p.GeneratedExam(ctx, ancode)
+	exam, err := p.AssembledExam(ctx, ancode)
 	if err != nil || exam == nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist or does not need to be planned")
 		return false, err
@@ -162,7 +162,7 @@ func (p *Plexams) PreAddExamToSlot(ctx context.Context, ancode int, dayNumber in
 }
 
 func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
-	exam, err := p.GeneratedExam(ctx, ancode)
+	exam, err := p.AssembledExam(ctx, ancode)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist")
 	}
@@ -216,7 +216,7 @@ func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 }
 
 func (p *Plexams) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
-	exam, err := p.GeneratedExam(ctx, ancode)
+	exam, err := p.AssembledExam(ctx, ancode)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist")
 	}
@@ -251,7 +251,7 @@ func (p *Plexams) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 	return awkwardSlots, nil
 }
 
-func (p *Plexams) slotsWithConflicts(ctx context.Context, exam *model.GeneratedExam) (set.Set[model.Slot], error) {
+func (p *Plexams) slotsWithConflicts(ctx context.Context, exam *model.AssembledExam) (set.Set[model.Slot], error) {
 	slotSet := set.NewSet[model.Slot]()
 	for _, conflict := range exam.Conflicts {
 		slot, err := p.SlotForAncode(ctx, conflict.Ancode)
@@ -299,9 +299,9 @@ func removeSlotsForDay(allSlots []*model.Slot, day *time.Time) []*model.Slot {
 }
 
 func (p *Plexams) ExamsWithoutSlot(ctx context.Context) ([]*model.PlannedExam, error) {
-	exams, err := p.dbClient.GetGeneratedExams(ctx)
+	exams, err := p.dbClient.GetAssembledExams(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get generated exams")
+		log.Error().Err(err).Msg("cannot get assembled exams")
 		return nil, err
 	}
 
@@ -433,24 +433,24 @@ func (p *Plexams) LockPlan(ctx context.Context) error {
 	return p.dbClient.LockPlan(ctx)
 }
 
-func (p *Plexams) LockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.GeneratedExam, error) {
+func (p *Plexams) LockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.AssembledExam, error) {
 	planEntry, err := p.dbClient.LockExam(ctx, ancode)
 	if err != nil {
 		return nil, nil, err
 	}
-	exam, err := p.dbClient.GetGeneratedExam(ctx, ancode)
+	exam, err := p.dbClient.GetAssembledExam(ctx, ancode)
 	if err != nil {
 		return planEntry, nil, err
 	}
 	return planEntry, exam, nil
 }
 
-func (p *Plexams) UnlockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.GeneratedExam, error) {
+func (p *Plexams) UnlockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.AssembledExam, error) {
 	planEntry, err := p.dbClient.UnlockExam(ctx, ancode)
 	if err != nil {
 		return nil, nil, err
 	}
-	exam, err := p.dbClient.GetGeneratedExam(ctx, ancode)
+	exam, err := p.dbClient.GetAssembledExam(ctx, ancode)
 	if err != nil {
 		return planEntry, nil, err
 	}

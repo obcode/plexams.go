@@ -6,14 +6,15 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
 // MainExamer is the resolver for the mainExamer field.
-func (r *generatedExamResolver) MainExamer(ctx context.Context, obj *model.GeneratedExam) (*model.Teacher, error) {
-	return r.plexams.GetTeacher(ctx, obj.ZpaExam.MainExamerID)
+func (r *assembledExamResolver) MainExamer(ctx context.Context, obj *model.AssembledExam) (*model.Teacher, error) {
+	panic(fmt.Errorf("not implemented: MainExamer - mainExamer"))
 }
 
 // AddPrimussAncode is the resolver for the addPrimussAncode field.
@@ -46,14 +47,14 @@ func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedE
 	return r.plexams.GetConnectedExams(ctx)
 }
 
-// GeneratedExams is the resolver for the generatedExams field.
-func (r *queryResolver) GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error) {
-	return r.plexams.GeneratedExams(ctx)
+// AssembledExams is the resolver for the assembledExams field.
+func (r *queryResolver) AssembledExams(ctx context.Context) ([]*model.AssembledExam, error) {
+	return r.plexams.AssembledExams(ctx)
 }
 
-// GeneratedExam is the resolver for the generatedExam field.
-func (r *queryResolver) GeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error) {
-	return r.plexams.GeneratedExam(ctx, ancode)
+// AssembledExam is the resolver for the assembledExam field.
+func (r *queryResolver) AssembledExam(ctx context.Context, ancode int) (*model.AssembledExam, error) {
+	return r.plexams.AssembledExam(ctx, ancode)
 }
 
 // PlannedExams is the resolver for the plannedExams field.
@@ -76,11 +77,11 @@ func (r *queryResolver) ConflictingAncodes(ctx context.Context, ancode int) ([]*
 	return r.plexams.ConflictingAncodes(ctx, ancode)
 }
 
-// GeneratedExam returns generated.GeneratedExamResolver implementation.
-func (r *Resolver) GeneratedExam() generated.GeneratedExamResolver { return &generatedExamResolver{r} }
+// AssembledExam returns generated.AssembledExamResolver implementation.
+func (r *Resolver) AssembledExam() generated.AssembledExamResolver { return &assembledExamResolver{r} }
 
 // PlannedExam returns generated.PlannedExamResolver implementation.
 func (r *Resolver) PlannedExam() generated.PlannedExamResolver { return &plannedExamResolver{r} }
 
-type generatedExamResolver struct{ *Resolver }
+type assembledExamResolver struct{ *Resolver }
 type plannedExamResolver struct{ *Resolver }

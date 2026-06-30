@@ -88,8 +88,8 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	// per-semester mutation_log collection.
 	srv.AroundFields(mutationLogMiddleware(plexams))
 
-	// Mark the cached generated exams stale when an input changes (for the GUI banner).
-	srv.AroundFields(generatedExamsDirtyMiddleware(plexams))
+	// Mark the cached assembled exams stale when an input changes (for the GUI banner).
+	srv.AroundFields(assembledExamsDirtyMiddleware(plexams))
 
 	// Mark the prepared student regs stale when an input changes (for the GUI banner).
 	srv.AroundFields(studentRegsDirtyMiddleware(plexams))

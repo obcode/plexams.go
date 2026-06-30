@@ -119,7 +119,7 @@ var (
 				}
 
 			case "generated-exams":
-				err := plexams.PrepareGeneratedExams()
+				err := plexams.PrepareAssembledExams()
 				if err != nil {
 					os.Exit(1)
 				}

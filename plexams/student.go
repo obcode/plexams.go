@@ -39,7 +39,7 @@ func (p *Plexams) PrintStudentInfo(name string, long, zpa bool) error {
 					examsToPlanSet.Add(exam.AnCode)
 				}
 				if examsToPlanSet.Contains(ancode) {
-					exam, err := p.GeneratedExam(ctx, ancode)
+					exam, err := p.AssembledExam(ctx, ancode)
 					if err != nil {
 						log.Debug().Err(err).Int("ancode", ancode).Msg("cannot get exam")
 					}

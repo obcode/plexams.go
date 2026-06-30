@@ -42,7 +42,7 @@ func (db *DB) GetPrimussConflictsForAncode(ctx context.Context, program string, 
 }
 
 // GetPrimussConflictsPerAncode returns all conflicts of a program at once, keyed by
-// ancode. Used to compute generated exams without a per-exam DB lookup.
+// ancode. Used to compute assembled exams without a per-exam DB lookup.
 func (db *DB) GetPrimussConflictsPerAncode(ctx context.Context, program string) (map[int]*model.Conflicts, error) {
 	collection := db.getCollection(program, Conflicts)
 

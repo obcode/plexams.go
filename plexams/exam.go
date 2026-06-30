@@ -561,7 +561,7 @@ func (p *Plexams) ExamInfo(ancode int) (string, error) {
 
 func (p *Plexams) ExamsWithoutDuration() (string, error) {
 	ctx := context.Background()
-	exams, err := p.GeneratedExams(ctx)
+	exams, err := p.AssembledExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get zpa exams to plan")
 		return "", err

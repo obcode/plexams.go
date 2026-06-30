@@ -26,9 +26,9 @@ func (p *Plexams) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 }
 
 func (p *Plexams) PlannedExam(ctx context.Context, ancode int) (*model.PlannedExam, error) {
-	exam, err := p.GeneratedExam(ctx, ancode)
+	exam, err := p.AssembledExam(ctx, ancode)
 	if err != nil {
-		log.Debug().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
+		log.Debug().Err(err).Int("ancode", ancode).Msg("cannot get assembled exam")
 		return nil, err
 	}
 
@@ -59,9 +59,9 @@ func (p *Plexams) PlannedExam(ctx context.Context, ancode int) (*model.PlannedEx
 }
 
 func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error) {
-	exams, err := p.GeneratedExams(ctx)
+	exams, err := p.AssembledExams(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get generated exams")
+		log.Error().Err(err).Msg("cannot get assembled exams")
 		return nil, err
 	}
 

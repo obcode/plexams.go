@@ -12,7 +12,7 @@ import (
 	"github.com/theckman/yacspin"
 )
 
-func (p *Plexams) PrepareGeneratedExams() error {
+func (p *Plexams) PrepareAssembledExams() error {
 	ctx := context.Background()
 	// from connected exams to exam generated
 	connectedExams, err := p.GetConnectedExams(ctx)
@@ -97,7 +97,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 	// ancodesMap := primussAncodesToZpaAncodes(connectedExams, externalExams)
 	ancodesMap := primussAncodesToZpaAncodes(connectedExams)
 
-	exams := make([]*model.GeneratedExam, 0, len(connectedExams))
+	exams := make([]*model.AssembledExam, 0, len(connectedExams))
 
 	for _, connectedExam := range connectedExams {
 		// // TODO: remove me
@@ -214,7 +214,7 @@ func (p *Plexams) PrepareGeneratedExams() error {
 			}
 		}
 
-		exams = append(exams, &model.GeneratedExam{
+		exams = append(exams, &model.AssembledExam{
 			Ancode:           connectedExam.ZpaExam.AnCode,
 			ZpaExam:          connectedExam.ZpaExam,
 			PrimussExams:     enhancedPrimussExams,
@@ -326,14 +326,14 @@ func (p *Plexams) PrepareGeneratedExams() error {
 		}
 	}
 
-	if err := p.dbClient.CacheGeneratedExams(ctx, exams); err != nil {
+	if err := p.dbClient.CacheAssembledExams(ctx, exams); err != nil {
 		return err
 	}
 	// the cache is now in sync with its inputs again
-	if err := p.dbClient.SetGeneratedExamsDirty(ctx, false, "", time.Now()); err != nil {
+	if err := p.dbClient.SetAssembledExamsDirty(ctx, false, "", time.Now()); err != nil {
 		log.Error().Err(err).Msg("cannot clear generated-exams dirty flag")
 	}
-	p.markCondition(ctx, condGeneratedExams)
+	p.markCondition(ctx, condAssembledExams)
 	return nil
 }
 
@@ -397,22 +397,22 @@ func primussAncodesToZpaAncodes(exams []*model.ConnectedExam) map[PrimussAncode]
 	return ancodesMap
 }
 
-func (p *Plexams) GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error) {
-	return p.dbClient.GetGeneratedExams(ctx)
+func (p *Plexams) AssembledExams(ctx context.Context) ([]*model.AssembledExam, error) {
+	return p.dbClient.GetAssembledExams(ctx)
 }
 
-func (p *Plexams) GeneratedExamsForExamer(ctx context.Context, examerID int) ([]*model.GeneratedExam, error) {
-	return p.dbClient.GetGeneratedExamsForExamer(ctx, examerID)
+func (p *Plexams) AssembledExamsForExamer(ctx context.Context, examerID int) ([]*model.AssembledExam, error) {
+	return p.dbClient.GetAssembledExamsForExamer(ctx, examerID)
 }
 
-func (p *Plexams) GeneratedExam(ctx context.Context, ancode int) (*model.GeneratedExam, error) {
-	return p.dbClient.GetGeneratedExam(ctx, ancode)
+func (p *Plexams) AssembledExam(ctx context.Context, ancode int) (*model.AssembledExam, error) {
+	return p.dbClient.GetAssembledExam(ctx, ancode)
 }
 
 func (p *Plexams) ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error) {
-	exam, err := p.dbClient.GetGeneratedExam(ctx, ancode)
+	exam, err := p.dbClient.GetAssembledExam(ctx, ancode)
 	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get assembled exam")
 		return nil, err
 	}
 

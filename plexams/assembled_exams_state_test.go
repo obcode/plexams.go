@@ -6,10 +6,10 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-func genExam(ancode, regs, maxDur int, conflicts, ntas int) *model.GeneratedExam {
+func genExam(ancode, regs, maxDur int, conflicts, ntas int) *model.AssembledExam {
 	cs := make([]*model.ZPAConflict, conflicts)
 	ns := make([]*model.NTA, ntas)
-	return &model.GeneratedExam{
+	return &model.AssembledExam{
 		Ancode:           ancode,
 		ZpaExam:          &model.ZPAExam{AnCode: ancode, Module: "M"},
 		StudentRegsCount: regs,
@@ -19,21 +19,21 @@ func genExam(ancode, regs, maxDur int, conflicts, ntas int) *model.GeneratedExam
 	}
 }
 
-func TestDiffGeneratedExams(t *testing.T) {
-	old := []*model.GeneratedExam{
+func TestDiffAssembledExams(t *testing.T) {
+	old := []*model.AssembledExam{
 		genExam(100, 42, 90, 5, 0), // unchanged
 		genExam(200, 30, 90, 2, 0), // changed (regs + conflicts)
 		genExam(300, 10, 90, 0, 0), // removed
 	}
-	newExams := []*model.GeneratedExam{
+	newExams := []*model.AssembledExam{
 		genExam(100, 42, 90, 5, 0), // unchanged
 		genExam(200, 31, 90, 3, 1), // changed
 		genExam(400, 5, 90, 0, 0),  // added
 	}
 
-	changes := diffGeneratedExams(old, newExams)
+	changes := diffAssembledExams(old, newExams)
 
-	byAncode := make(map[int]*model.GeneratedExamsChange)
+	byAncode := make(map[int]*model.AssembledExamsChange)
 	for _, c := range changes {
 		byAncode[c.Ancode] = c
 	}

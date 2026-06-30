@@ -61,7 +61,7 @@ invigilations-secretariat                     --- tell the secretariat the invig
 					log.Fatal("need ancode or all")
 				}
 				if args[1] == "all" {
-					err := plexams.SendGeneratedExamMails(context.Background(), false, run, plx.NewConsoleReporter())
+					err := plexams.SendAssembledExamMails(context.Background(), false, run, plx.NewConsoleReporter())
 					if err != nil {
 						log.Fatalf("got error: %v\n", err)
 					}
@@ -71,7 +71,7 @@ invigilations-secretariat                     --- tell the secretariat the invig
 						fmt.Printf("cannot use %s as ancode", args[1])
 						os.Exit(1)
 					}
-					err = plexams.SendGeneratedExamMail(context.Background(), ancode, updated, run, plx.NewConsoleReporter())
+					err = plexams.SendAssembledExamMail(context.Background(), ancode, updated, run, plx.NewConsoleReporter())
 					if err != nil {
 						log.Fatalf("got error: %v\n", err)
 					}

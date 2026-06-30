@@ -72,7 +72,7 @@ func (p *Plexams) NtaByMtknr(ctx context.Context, mtknr string) (*model.NTA, err
 func (p *Plexams) ExamsWithNtas(ctx context.Context) ([]*model.PlannedExam, error) {
 	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get generated exams")
+		log.Error().Err(err).Msg("cannot get assembled exams")
 	}
 	exams := make([]*model.PlannedExam, 0)
 	for _, exam := range plannedExams {

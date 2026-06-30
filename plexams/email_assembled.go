@@ -12,47 +12,47 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) SendGeneratedExamMail(ctx context.Context, ancode int, updated, run bool, reporter Reporter) error {
-	generatedExam, err := p.GeneratedExam(ctx, ancode)
+func (p *Plexams) SendAssembledExamMail(ctx context.Context, ancode int, updated, run bool, reporter Reporter) error {
+	assembledExam, err := p.AssembledExam(ctx, ancode)
 	if err != nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get generated exam")
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get assembled exam")
 		return err
 	}
 
-	if generatedExam.Constraints != nil && generatedExam.Constraints.NotPlannedByMe {
+	if assembledExam.Constraints != nil && assembledExam.Constraints.NotPlannedByMe {
 		return fmt.Errorf("not planned by me")
 	}
 
-	teacher, err := p.GetTeacher(ctx, generatedExam.ZpaExam.MainExamerID)
+	teacher, err := p.GetTeacher(ctx, assembledExam.ZpaExam.MainExamerID)
 	if err != nil {
-		log.Error().Err(err).Int("ancode", generatedExam.Ancode).Msg("cannot get teacher")
+		log.Error().Err(err).Int("ancode", assembledExam.Ancode).Msg("cannot get teacher")
 		return err
 	}
 
 	teachersMap := make(map[int]*model.Teacher)
 	teachersMap[teacher.ID] = teacher
 
-	err = p.sendGeneratedExamMail(generatedExam, teachersMap, updated, run, reporter)
+	err = p.sendAssembledExamMail(assembledExam, teachersMap, updated, run, reporter)
 	if err != nil {
-		log.Error().Err(err).Int("ancode", generatedExam.Ancode).Msg("cannot send email")
+		log.Error().Err(err).Int("ancode", assembledExam.Ancode).Msg("cannot send email")
 	}
 	return nil
 }
 
-func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, run bool, reporter Reporter) error {
+func (p *Plexams) SendAssembledExamMails(ctx context.Context, emailAddresses, run bool, reporter Reporter) error {
 	if err := p.emailSendAllowed(ctx, condPrimussDataAllSent, run); err != nil {
 		return err
 	}
-	generatedExams, err := p.GeneratedExams(ctx)
+	assembledExams, err := p.AssembledExams(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get generated exams")
+		log.Error().Err(err).Msg("cannot get assembled exams")
 		return err
 	}
 
 	notFromZPA := false
 	teachers, err := p.GetTeachers(ctx, &notFromZPA)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get generated exams")
+		log.Error().Err(err).Msg("cannot get assembled exams")
 		return err
 	}
 
@@ -61,8 +61,8 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, ru
 		teachersMap[teacher.ID] = teacher
 	}
 
-	for _, exam := range generatedExams {
-		err = p.sendGeneratedExamMail(exam, teachersMap, false, run, reporter)
+	for _, exam := range assembledExams {
+		err = p.sendAssembledExamMail(exam, teachersMap, false, run, reporter)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot send email")
 		}
@@ -70,11 +70,11 @@ func (p *Plexams) SendGeneratedExamMails(ctx context.Context, emailAddresses, ru
 	if run {
 		p.markCondition(ctx, condPrimussDataAllSent)
 	}
-	reporter.StopProgress(fmt.Sprintf("sent %d primuss-data emails", len(generatedExams)))
+	reporter.StopProgress(fmt.Sprintf("sent %d primuss-data emails", len(assembledExams)))
 	return nil
 }
 
-func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap map[int]*model.Teacher, updated, run bool, reporter Reporter) error {
+func (p *Plexams) sendAssembledExamMail(exam *model.AssembledExam, teachersMap map[int]*model.Teacher, updated, run bool, reporter Reporter) error {
 	reporter.Step(aurora.Sprintf(aurora.Cyan("sending email about exam %d. %s (%s)"),
 		aurora.Yellow(exam.ZpaExam.AnCode),
 		aurora.Magenta(exam.ZpaExam.Module),
@@ -102,7 +102,7 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 
 	log.Debug().Int("ancode", exam.Ancode).Bool("hasStudentRegs", hasStudentRegs).Msg("found student regs for exam")
 
-	if err := p.sendGeneratedExamMailToTeacher(run, to, &GeneratedExamMailData{
+	if err := p.sendAssembledExamMailToTeacher(run, to, &AssembledExamMailData{
 		FromDate:       p.semesterConfig.From.Format("02.01.2006"),
 		ToDate:         p.semesterConfig.Days[len(p.semesterConfig.Days)-1].Date.Format("02.01.2006"),
 		Exam:           exam,
@@ -117,29 +117,29 @@ func (p *Plexams) sendGeneratedExamMail(exam *model.GeneratedExam, teachersMap m
 	return nil
 }
 
-type GeneratedExamMailData struct {
+type AssembledExamMailData struct {
 	FromDate       string
 	ToDate         string
-	Exam           *model.GeneratedExam
+	Exam           *model.AssembledExam
 	Teacher        *model.Teacher
 	PlanerName     string
 	HasStudentRegs bool
 }
 
-func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedExamMailData *GeneratedExamMailData, updated bool) error {
+func (p *Plexams) sendAssembledExamMailToTeacher(run bool, to string, assembledExamMailData *AssembledExamMailData, updated bool) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	tmpl, err := template.New("generatedExamEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/generatedExamEmail.tmpl")
+	tmpl, err := template.New("assembledExamEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/assembledExamEmail.tmpl")
 	if err != nil {
 		return err
 	}
 	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, generatedExamMailData)
+	err = tmpl.Execute(bufText, assembledExamMailData)
 	if err != nil {
 		return err
 	}
 
-	bufHTML, err := p.renderMailHTML("tmpl/generatedExamEmailHTML.tmpl", true, generatedExamMailData)
+	bufHTML, err := p.renderMailHTML("tmpl/assembledExamEmailHTML.tmpl", true, assembledExamMailData)
 	if err != nil {
 		return err
 	}
@@ -150,26 +150,26 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedE
 	}
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] %s Anmeldedaten für Ihre Prüfung %s",
-		p.semester, attribute, generatedExamMailData.Exam.ZpaExam.Module)
-	if !generatedExamMailData.HasStudentRegs {
+		p.semester, attribute, assembledExamMailData.Exam.ZpaExam.Module)
+	if !assembledExamMailData.HasStudentRegs {
 		subject = fmt.Sprintf("[Prüfungsplanung %s] Keine Anmeldungen für Ihre Prüfung %s",
-			p.semester, generatedExamMailData.Exam.ZpaExam.Module)
+			p.semester, assembledExamMailData.Exam.ZpaExam.Module)
 	}
 
 	var attachments []*mailAttachment
 
-	if generatedExamMailData.HasStudentRegs {
+	if assembledExamMailData.HasStudentRegs {
 		attachments = make([]*mailAttachment, 0, 1)
 		var attachment *mailAttachment
 
-		if generatedExamMailData.HasStudentRegs {
+		if assembledExamMailData.HasStudentRegs {
 			attachment = &mailAttachment{
-				Filename:    fmt.Sprintf("Anmeldungen-%d.csv", generatedExamMailData.Exam.Ancode),
+				Filename:    fmt.Sprintf("Anmeldungen-%d.csv", assembledExamMailData.Exam.Ancode),
 				ContentType: "text/csv; charset=\"utf-8\"",
 				Content:     []byte("Mtknr;Name;Gender;E-Mail;Studiengang;Gruppe\n"),
 			}
 
-			for _, primussExam := range generatedExamMailData.Exam.PrimussExams {
+			for _, primussExam := range assembledExamMailData.Exam.PrimussExams {
 				for _, studentReg := range primussExam.StudentRegs {
 					// force Excel/Numbers to treat the field as text with leading zeros:
 					// write the Mtknr as an Excel formula: ="000123"
@@ -196,22 +196,22 @@ func (p *Plexams) sendGeneratedExamMailToTeacher(run bool, to string, generatedE
 		}
 		attachments = append(attachments, attachment)
 
-		txttmpl, err := txttmpl.New("generatedExamMarkdown.tmpl").Funcs(template.FuncMap{
+		txttmpl, err := txttmpl.New("assembledExamMarkdown.tmpl").Funcs(template.FuncMap{
 			"add": func(a, b int) int {
 				return a + b
 			},
-		}).ParseFS(emailTemplates, "tmpl/generatedExamMarkdown.tmpl")
+		}).ParseFS(emailTemplates, "tmpl/assembledExamMarkdown.tmpl")
 		if err != nil {
 			return err
 		}
 		bufMD := new(bytes.Buffer)
-		err = txttmpl.Execute(bufMD, generatedExamMailData)
+		err = txttmpl.Execute(bufMD, assembledExamMailData)
 		if err != nil {
 			return err
 		}
 
 		attachment = &mailAttachment{
-			Filename:    fmt.Sprintf("Anmeldungen-%d.md", generatedExamMailData.Exam.Ancode),
+			Filename:    fmt.Sprintf("Anmeldungen-%d.md", assembledExamMailData.Exam.Ancode),
 			ContentType: "text/plain; charset=\"utf-8\"",
 			Content:     bufMD.Bytes(),
 		}

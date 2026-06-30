@@ -134,14 +134,14 @@ func (r *subscriptionResolver) SendEmailInvigilationsSecretariat(ctx context.Con
 // SendEmailPrimussDataAll is the resolver for the sendEmailPrimussDataAll field.
 func (r *subscriptionResolver) SendEmailPrimussDataAll(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
 	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
-		return r.plexams.SendGeneratedExamMails(ctx, false, run, reporter)
+		return r.plexams.SendAssembledExamMails(ctx, false, run, reporter)
 	}), nil
 }
 
 // SendEmailPrimussData is the resolver for the sendEmailPrimussData field.
 func (r *subscriptionResolver) SendEmailPrimussData(ctx context.Context, ancode int, updated bool, run bool) (<-chan *model.LogLine, error) {
 	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
-		return r.plexams.SendGeneratedExamMail(ctx, ancode, updated, run, reporter)
+		return r.plexams.SendAssembledExamMail(ctx, ancode, updated, run, reporter)
 	}), nil
 }
 

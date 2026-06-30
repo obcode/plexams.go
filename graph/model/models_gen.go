@@ -58,6 +58,24 @@ type ArgFilterInput struct {
 	Value string `json:"value"`
 }
 
+type AssembledExamsChange struct {
+	Ancode int    `json:"ancode"`
+	Module string `json:"module"`
+	// added | removed | changed
+	Kind string `json:"kind"`
+	// human-readable change descriptions, e.g. 'Anmeldungen 42 → 43'.
+	Details []string `json:"details"`
+}
+
+type AssembledExamsState struct {
+	// true when the assembled exams are stale relative to their inputs.
+	Dirty bool `json:"dirty"`
+	// the operation that last marked them stale (mutation/subscription name).
+	Reason *string `json:"reason,omitempty"`
+	// when they were last marked stale or (re)generated.
+	ChangedAt *time.Time `json:"changedAt,omitempty"`
+}
+
 // BalanceReport: are all invigilators within ±tolerance of their target minutes.
 type BalanceReport struct {
 	Satisfied       bool `json:"satisfied"`
@@ -275,15 +293,15 @@ type FairnessDistribution struct {
 	Buckets []*DistributionBucket `json:"buckets"`
 }
 
-type GenerateGeneratedExamsResult struct {
+type GenerateAssembledExamsResult struct {
 	// the new state (dirty=false).
-	State *GeneratedExamsState `json:"state"`
-	// what changed vs the previously cached generated exams (empty = nothing changed).
-	Changes []*GeneratedExamsChange `json:"changes"`
+	State *AssembledExamsState `json:"state"`
+	// what changed vs the previously cached assembled exams (empty = nothing changed).
+	Changes []*AssembledExamsChange `json:"changes"`
 }
 
 type GeneratePreparationResult struct {
-	GeneratedExams *GenerateGeneratedExamsResult `json:"generatedExams"`
+	AssembledExams *GenerateAssembledExamsResult `json:"assembledExams"`
 	StudentRegs    *GenerateStudentRegsResult    `json:"studentRegs"`
 }
 
@@ -291,24 +309,6 @@ type GenerateStudentRegsResult struct {
 	State *StudentRegsState `json:"state"`
 	// number of students with planned registrations after the (re)generation.
 	StudentCount int `json:"studentCount"`
-}
-
-type GeneratedExamsChange struct {
-	Ancode int    `json:"ancode"`
-	Module string `json:"module"`
-	// added | removed | changed
-	Kind string `json:"kind"`
-	// human-readable change descriptions, e.g. 'Anmeldungen 42 → 43'.
-	Details []string `json:"details"`
-}
-
-type GeneratedExamsState struct {
-	// true when the generated exams are stale relative to their inputs.
-	Dirty bool `json:"dirty"`
-	// the operation that last marked them stale (mutation/subscription name).
-	Reason *string `json:"reason,omitempty"`
-	// when they were last marked stale or (re)generated.
-	ChangedAt *time.Time `json:"changedAt,omitempty"`
 }
 
 type GenerationConfig struct {
@@ -358,7 +358,7 @@ type ImportMucDaiResult struct {
 	ExamsExisting int `json:"examsExisting"`
 	// FK07 exams skipped (they exist as ZPA exams, only linked).
 	ExamsSkippedFk07 int `json:"examsSkippedFK07"`
-	// generated exams of the imported programs removed because they are no longer in the CSV (or flipped to FK07).
+	// assembled exams of the imported programs removed because they are no longer in the CSV (or flipped to FK07).
 	ExamsRemoved int `json:"examsRemoved"`
 }
 

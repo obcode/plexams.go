@@ -21,6 +21,11 @@ func (r *queryResolver) EmailAttachments(ctx context.Context, kind string) ([]*m
 	return r.plexams.EmailAttachmentInfos(ctx, kind)
 }
 
+// ExamPlanningMailRecipients is the resolver for the examPlanningMailRecipients field.
+func (r *queryResolver) ExamPlanningMailRecipients(ctx context.Context) ([]*model.ExamPlanningMailRecipient, error) {
+	return r.plexams.ExamPlanningMailRecipients(ctx)
+}
+
 // SendEmailExaHm is the resolver for the sendEmailExaHM field.
 func (r *subscriptionResolver) SendEmailExaHm(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
 	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {

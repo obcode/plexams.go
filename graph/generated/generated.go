@@ -232,6 +232,19 @@ type ComplexityRoot struct {
 		Duration func(childComplexity int) int
 	}
 
+	ExamPlanningMailExam struct {
+		Ancode      func(childComplexity int) int
+		Constraints func(childComplexity int) int
+		ExamType    func(childComplexity int) int
+		Module      func(childComplexity int) int
+	}
+
+	ExamPlanningMailRecipient struct {
+		Category func(childComplexity int) int
+		Exams    func(childComplexity int) int
+		Teacher  func(childComplexity int) int
+	}
+
 	ExamTime struct {
 		From  func(childComplexity int) int
 		Until func(childComplexity int) int
@@ -798,6 +811,7 @@ type ComplexityRoot struct {
 		ConstraintForAncode           func(childComplexity int, ancode int) int
 		EmailAttachments              func(childComplexity int, kind string) int
 		ExamDurationOverrides         func(childComplexity int) int
+		ExamPlanningMailRecipients    func(childComplexity int) int
 		ExamerInPlan                  func(childComplexity int) int
 		ExamersWithExamsPlannedByMe   func(childComplexity int) int
 		ExamsInSlot                   func(childComplexity int, day int, time int) int
@@ -1391,6 +1405,7 @@ type QueryResolver interface {
 	ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error)
 	ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error)
 	EmailAttachments(ctx context.Context, kind string) ([]*model.EmailAttachmentInfo, error)
+	ExamPlanningMailRecipients(ctx context.Context) ([]*model.ExamPlanningMailRecipient, error)
 	ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
 	GeneratedExams(ctx context.Context) ([]*model.GeneratedExam, error)
@@ -2334,6 +2349,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamDurationOverride.Duration(childComplexity), true
+
+	case "ExamPlanningMailExam.ancode":
+		if e.complexity.ExamPlanningMailExam.Ancode == nil {
+			break
+		}
+
+		return e.complexity.ExamPlanningMailExam.Ancode(childComplexity), true
+
+	case "ExamPlanningMailExam.constraints":
+		if e.complexity.ExamPlanningMailExam.Constraints == nil {
+			break
+		}
+
+		return e.complexity.ExamPlanningMailExam.Constraints(childComplexity), true
+
+	case "ExamPlanningMailExam.examType":
+		if e.complexity.ExamPlanningMailExam.ExamType == nil {
+			break
+		}
+
+		return e.complexity.ExamPlanningMailExam.ExamType(childComplexity), true
+
+	case "ExamPlanningMailExam.module":
+		if e.complexity.ExamPlanningMailExam.Module == nil {
+			break
+		}
+
+		return e.complexity.ExamPlanningMailExam.Module(childComplexity), true
+
+	case "ExamPlanningMailRecipient.category":
+		if e.complexity.ExamPlanningMailRecipient.Category == nil {
+			break
+		}
+
+		return e.complexity.ExamPlanningMailRecipient.Category(childComplexity), true
+
+	case "ExamPlanningMailRecipient.exams":
+		if e.complexity.ExamPlanningMailRecipient.Exams == nil {
+			break
+		}
+
+		return e.complexity.ExamPlanningMailRecipient.Exams(childComplexity), true
+
+	case "ExamPlanningMailRecipient.teacher":
+		if e.complexity.ExamPlanningMailRecipient.Teacher == nil {
+			break
+		}
+
+		return e.complexity.ExamPlanningMailRecipient.Teacher(childComplexity), true
 
 	case "ExamTime.from":
 		if e.complexity.ExamTime.From == nil {
@@ -5482,6 +5546,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.ExamDurationOverrides(childComplexity), true
 
+	case "Query.examPlanningMailRecipients":
+		if e.complexity.Query.ExamPlanningMailRecipients == nil {
+			break
+		}
+
+		return e.complexity.Query.ExamPlanningMailRecipients(childComplexity), true
+
 	case "Query.examerInPlan":
 		if e.complexity.Query.ExamerInPlan == nil {
 			break
@@ -8552,6 +8623,31 @@ type EmailAttachmentInfo {
 
 extend type Query {
   emailAttachments(kind: String!): [EmailAttachmentInfo!]!
+  """
+  Candidates for the consolidated exam-planning info email (replacing the separate
+  constraints + prepared emails): one entry per examer — every examer with at least one
+  exam I plan (toPlan and not notPlannedByMe, any faculty), plus the FK07 examers I plan
+  nothing for. Examers of other faculties without a planned exam are excluded. For
+  selecting/deselecting recipients before sending. No slot/date is included.
+  """
+  examPlanningMailRecipients: [ExamPlanningMailRecipient!]!
+}
+
+"One exam I plan for an examer, for the planning info email (no slot/date)."
+type ExamPlanningMailExam {
+  ancode: Int!
+  module: String!
+  "Human-readable exam type (ZPA full name)."
+  examType: String!
+  constraints: Constraints
+}
+
+type ExamPlanningMailRecipient {
+  teacher: Teacher!
+  "withExams = I plan at least one of their exams; fk07NoExams = FK07 examer I plan nothing for."
+  category: String!
+  "The exams I plan for this examer (empty for fk07NoExams)."
+  exams: [ExamPlanningMailExam!]!
 }
 
 extend type Mutation {
@@ -21765,6 +21861,367 @@ func (ec *executionContext) fieldContext_ExamDurationOverride_duration(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamPlanningMailExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.ExamPlanningMailExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamPlanningMailExam_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamPlanningMailExam_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamPlanningMailExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamPlanningMailExam_module(ctx context.Context, field graphql.CollectedField, obj *model.ExamPlanningMailExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamPlanningMailExam_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamPlanningMailExam_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamPlanningMailExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamPlanningMailExam_examType(ctx context.Context, field graphql.CollectedField, obj *model.ExamPlanningMailExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamPlanningMailExam_examType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamPlanningMailExam_examType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamPlanningMailExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamPlanningMailExam_constraints(ctx context.Context, field graphql.CollectedField, obj *model.ExamPlanningMailExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamPlanningMailExam_constraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Constraints, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Constraints)
+	fc.Result = res
+	return ec.marshalOConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraints(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamPlanningMailExam_constraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamPlanningMailExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_Constraints_ancode(ctx, field)
+			case "notPlannedByMe":
+				return ec.fieldContext_Constraints_notPlannedByMe(ctx, field)
+			case "doNotPublish":
+				return ec.fieldContext_Constraints_doNotPublish(ctx, field)
+			case "excludeDays":
+				return ec.fieldContext_Constraints_excludeDays(ctx, field)
+			case "possibleDays":
+				return ec.fieldContext_Constraints_possibleDays(ctx, field)
+			case "fixedDay":
+				return ec.fieldContext_Constraints_fixedDay(ctx, field)
+			case "fixedTime":
+				return ec.fieldContext_Constraints_fixedTime(ctx, field)
+			case "sameSlot":
+				return ec.fieldContext_Constraints_sameSlot(ctx, field)
+			case "online":
+				return ec.fieldContext_Constraints_online(ctx, field)
+			case "roomConstraints":
+				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Constraints", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamPlanningMailRecipient_teacher(ctx context.Context, field graphql.CollectedField, obj *model.ExamPlanningMailRecipient) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamPlanningMailRecipient_teacher(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Teacher, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Teacher)
+	fc.Result = res
+	return ec.marshalNTeacher2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacher(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamPlanningMailRecipient_teacher(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamPlanningMailRecipient",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "shortname":
+				return ec.fieldContext_Teacher_shortname(ctx, field)
+			case "fullname":
+				return ec.fieldContext_Teacher_fullname(ctx, field)
+			case "isProf":
+				return ec.fieldContext_Teacher_isProf(ctx, field)
+			case "isLBA":
+				return ec.fieldContext_Teacher_isLBA(ctx, field)
+			case "isProfHC":
+				return ec.fieldContext_Teacher_isProfHC(ctx, field)
+			case "isStaff":
+				return ec.fieldContext_Teacher_isStaff(ctx, field)
+			case "lastSemester":
+				return ec.fieldContext_Teacher_lastSemester(ctx, field)
+			case "fk":
+				return ec.fieldContext_Teacher_fk(ctx, field)
+			case "id":
+				return ec.fieldContext_Teacher_id(ctx, field)
+			case "email":
+				return ec.fieldContext_Teacher_email(ctx, field)
+			case "isActive":
+				return ec.fieldContext_Teacher_isActive(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamPlanningMailRecipient_category(ctx context.Context, field graphql.CollectedField, obj *model.ExamPlanningMailRecipient) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamPlanningMailRecipient_category(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Category, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamPlanningMailRecipient_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamPlanningMailRecipient",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamPlanningMailRecipient_exams(ctx context.Context, field graphql.CollectedField, obj *model.ExamPlanningMailRecipient) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamPlanningMailRecipient_exams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ExamPlanningMailExam)
+	fc.Result = res
+	return ec.marshalNExamPlanningMailExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamPlanningMailExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamPlanningMailRecipient_exams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamPlanningMailRecipient",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_ExamPlanningMailExam_ancode(ctx, field)
+			case "module":
+				return ec.fieldContext_ExamPlanningMailExam_module(ctx, field)
+			case "examType":
+				return ec.fieldContext_ExamPlanningMailExam_examType(ctx, field)
+			case "constraints":
+				return ec.fieldContext_ExamPlanningMailExam_constraints(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamPlanningMailExam", field.Name)
 		},
 	}
 	return fc, nil
@@ -41573,6 +42030,58 @@ func (ec *executionContext) fieldContext_Query_emailAttachments(ctx context.Cont
 	if fc.Args, err = ec.field_Query_emailAttachments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_examPlanningMailRecipients(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_examPlanningMailRecipients(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExamPlanningMailRecipients(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ExamPlanningMailRecipient)
+	fc.Result = res
+	return ec.marshalNExamPlanningMailRecipient2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamPlanningMailRecipientᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_examPlanningMailRecipients(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "teacher":
+				return ec.fieldContext_ExamPlanningMailRecipient_teacher(ctx, field)
+			case "category":
+				return ec.fieldContext_ExamPlanningMailRecipient_category(ctx, field)
+			case "exams":
+				return ec.fieldContext_ExamPlanningMailRecipient_exams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamPlanningMailRecipient", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -64998,6 +65507,106 @@ func (ec *executionContext) _ExamDurationOverride(ctx context.Context, sel ast.S
 	return out
 }
 
+var examPlanningMailExamImplementors = []string{"ExamPlanningMailExam"}
+
+func (ec *executionContext) _ExamPlanningMailExam(ctx context.Context, sel ast.SelectionSet, obj *model.ExamPlanningMailExam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, examPlanningMailExamImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExamPlanningMailExam")
+		case "ancode":
+			out.Values[i] = ec._ExamPlanningMailExam_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._ExamPlanningMailExam_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examType":
+			out.Values[i] = ec._ExamPlanningMailExam_examType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "constraints":
+			out.Values[i] = ec._ExamPlanningMailExam_constraints(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var examPlanningMailRecipientImplementors = []string{"ExamPlanningMailRecipient"}
+
+func (ec *executionContext) _ExamPlanningMailRecipient(ctx context.Context, sel ast.SelectionSet, obj *model.ExamPlanningMailRecipient) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, examPlanningMailRecipientImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExamPlanningMailRecipient")
+		case "teacher":
+			out.Values[i] = ec._ExamPlanningMailRecipient_teacher(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "category":
+			out.Values[i] = ec._ExamPlanningMailRecipient_category(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "exams":
+			out.Values[i] = ec._ExamPlanningMailRecipient_exams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var examTimeImplementors = []string{"ExamTime"}
 
 func (ec *executionContext) _ExamTime(ctx context.Context, sel ast.SelectionSet, obj *model.ExamTime) graphql.Marshaler {
@@ -69267,6 +69876,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_emailAttachments(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "examPlanningMailRecipients":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_examPlanningMailRecipients(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -74798,6 +75429,114 @@ func (ec *executionContext) marshalNExamDurationOverride2ᚖgithubᚗcomᚋobcod
 		return graphql.Null
 	}
 	return ec._ExamDurationOverride(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExamPlanningMailExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamPlanningMailExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamPlanningMailExam) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNExamPlanningMailExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamPlanningMailExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNExamPlanningMailExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamPlanningMailExam(ctx context.Context, sel ast.SelectionSet, v *model.ExamPlanningMailExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExamPlanningMailExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExamPlanningMailRecipient2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamPlanningMailRecipientᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamPlanningMailRecipient) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNExamPlanningMailRecipient2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamPlanningMailRecipient(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNExamPlanningMailRecipient2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamPlanningMailRecipient(ctx context.Context, sel ast.SelectionSet, v *model.ExamPlanningMailRecipient) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExamPlanningMailRecipient(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExamTime2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamTimeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamTime) graphql.Marshaler {

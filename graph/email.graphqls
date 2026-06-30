@@ -67,6 +67,31 @@ type EmailAttachmentInfo {
 
 extend type Query {
   emailAttachments(kind: String!): [EmailAttachmentInfo!]!
+  """
+  Candidates for the consolidated exam-planning info email (replacing the separate
+  constraints + prepared emails): one entry per examer — every examer with at least one
+  exam I plan (toPlan and not notPlannedByMe, any faculty), plus the FK07 examers I plan
+  nothing for. Examers of other faculties without a planned exam are excluded. For
+  selecting/deselecting recipients before sending. No slot/date is included.
+  """
+  examPlanningMailRecipients: [ExamPlanningMailRecipient!]!
+}
+
+"One exam I plan for an examer, for the planning info email (no slot/date)."
+type ExamPlanningMailExam {
+  ancode: Int!
+  module: String!
+  "Human-readable exam type (ZPA full name)."
+  examType: String!
+  constraints: Constraints
+}
+
+type ExamPlanningMailRecipient {
+  teacher: Teacher!
+  "withExams = I plan at least one of their exams; fk07NoExams = FK07 examer I plan nothing for."
+  category: String!
+  "The exams I plan for this examer (empty for fk07NoExams)."
+  exams: [ExamPlanningMailExam!]!
 }
 
 extend type Mutation {

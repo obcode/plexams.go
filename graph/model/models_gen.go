@@ -224,6 +224,23 @@ type ExamDurationOverride struct {
 	Duration int `json:"duration"`
 }
 
+// One exam I plan for an examer, for the planning info email (no slot/date).
+type ExamPlanningMailExam struct {
+	Ancode int    `json:"ancode"`
+	Module string `json:"module"`
+	// Human-readable exam type (ZPA full name).
+	ExamType    string       `json:"examType"`
+	Constraints *Constraints `json:"constraints,omitempty"`
+}
+
+type ExamPlanningMailRecipient struct {
+	Teacher *Teacher `json:"teacher"`
+	// withExams = I plan at least one of their exams; fk07NoExams = FK07 examer I plan nothing for.
+	Category string `json:"category"`
+	// The exams I plan for this examer (empty for fk07NoExams).
+	Exams []*ExamPlanningMailExam `json:"exams"`
+}
+
 // ExamTime is the time span of one exam an invigilator is the main examer of:
 // from the start time of the slot until the end time (start + maxDuration of the
 // exam, i.e. the longest exam in the slot including NTA extensions).

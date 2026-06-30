@@ -61,6 +61,16 @@ func (p *Plexams) ExamPlanningMailRecipients(ctx context.Context) ([]*model.Exam
 		teacherByID[t.ID] = t
 	}
 
+	// which examers have at least one exam in the current ZPA data at all
+	allExams, err := p.GetZPAExams(ctx, &fromZPA)
+	if err != nil {
+		return nil, err
+	}
+	hasExam := make(map[int]bool)
+	for _, e := range allExams {
+		hasExam[e.MainExamerID] = true
+	}
+
 	recipients := make([]*model.ExamPlanningMailRecipient, 0)
 
 	// examers with exams I plan (any faculty)
@@ -79,9 +89,9 @@ func (p *Plexams) ExamPlanningMailRecipients(ctx context.Context) ([]*model.Exam
 		})
 	}
 
-	// active FK07 examers I plan nothing for
+	// FK07 examers who have ZPA exam(s) this semester but none that I plan
 	for _, t := range teachers {
-		if t.FK == fk07 && t.IsActive && byExamer[t.ID] == nil {
+		if t.FK == fk07 && hasExam[t.ID] && byExamer[t.ID] == nil {
 			recipients = append(recipients, &model.ExamPlanningMailRecipient{
 				Teacher:  t,
 				Category: "fk07NoExams",

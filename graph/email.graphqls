@@ -77,9 +77,10 @@ extend type Query {
   """
   Candidates for the consolidated exam-planning info email (replacing the separate
   constraints + prepared emails): one entry per examer — every examer with at least one
-  exam I plan (toPlan and not notPlannedByMe, any faculty), plus the FK07 examers I plan
-  nothing for. Examers of other faculties without a planned exam are excluded. For
-  selecting/deselecting recipients before sending. No slot/date is included.
+  exam I plan (toPlan and not notPlannedByMe, any faculty), plus the FK07 examers who do
+  have ZPA exam(s) this semester but none that I plan. Examers without any ZPA exam, and
+  non-FK07 examers without a planned exam, are excluded. For selecting/deselecting
+  recipients before sending. No slot/date is included.
   """
   examPlanningMailRecipients: [ExamPlanningMailRecipient!]!
 }

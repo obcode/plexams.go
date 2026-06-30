@@ -1,5 +1,5 @@
 {{ define "content" }}
-<p>Liebe Prüfende,</p>
+<p>Hallo {{ .Teacher.Fullname }},</p>
 {{ if eq .Category "withExams" }}
 <p>als Prüfungsplanung der FK07 planen wir im Prüfungszeitraum vom
 <b>{{ .FromDate }}</b> bis <b>{{ .UntilDate }}</b> folgende Ihrer Prüfungen:</p>

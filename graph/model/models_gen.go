@@ -282,6 +282,11 @@ type GenerateGeneratedExamsResult struct {
 	Changes []*GeneratedExamsChange `json:"changes"`
 }
 
+type GeneratePreparationResult struct {
+	GeneratedExams *GenerateGeneratedExamsResult `json:"generatedExams"`
+	StudentRegs    *GenerateStudentRegsResult    `json:"studentRegs"`
+}
+
 type GenerateStudentRegsResult struct {
 	State *StudentRegsState `json:"state"`
 	// number of students with planned registrations after the (re)generation.

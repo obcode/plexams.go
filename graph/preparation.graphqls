@@ -1,0 +1,14 @@
+extend type Mutation {
+  """
+  Regenerate both the cached generated exams and the per-student planned
+  registrations in one step. They share the same inputs (connected exams + Primuss
+  data) and are independent of each other, so they are always (re)generated together.
+  Clears both stale flags and reports both results.
+  """
+  generatePreparation: GeneratePreparationResult!
+}
+
+type GeneratePreparationResult {
+  generatedExams: GenerateGeneratedExamsResult!
+  studentRegs: GenerateStudentRegsResult!
+}

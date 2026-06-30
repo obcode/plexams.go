@@ -279,6 +279,11 @@ type ComplexityRoot struct {
 		State   func(childComplexity int) int
 	}
 
+	GeneratePreparationResult struct {
+		GeneratedExams func(childComplexity int) int
+		StudentRegs    func(childComplexity int) int
+	}
+
 	GenerateStudentRegsResult struct {
 		State        func(childComplexity int) int
 		StudentCount func(childComplexity int) int
@@ -490,6 +495,7 @@ type ComplexityRoot struct {
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
 		FixPrimussAncode              func(childComplexity int, zpaAncode int, program string, fromAncode int, toAncode int) int
 		GenerateGeneratedExams        func(childComplexity int) int
+		GeneratePreparation           func(childComplexity int) int
 		GeneratePreplanAssignment     func(childComplexity int, keepAssigned *bool) int
 		GenerateStudentRegs           func(childComplexity int) int
 		ImportMucDaiExams             func(childComplexity int, csv string) int
@@ -1345,6 +1351,7 @@ type MutationResolver interface {
 	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	SetPlaner(ctx context.Context, name string, email string) (*model.Planer, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
+	GeneratePreparation(ctx context.Context) (*model.GeneratePreparationResult, error)
 	GeneratePreplanAssignment(ctx context.Context, keepAssigned *bool) (*model.PreplanValidation, error)
 	AddPreplanExam(ctx context.Context, input model.PreplanExamInput) (*model.PreplanExam, error)
 	UpdatePreplanExam(ctx context.Context, id int, input model.PreplanExamInput) (*model.PreplanExam, error)
@@ -2515,6 +2522,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GenerateGeneratedExamsResult.State(childComplexity), true
+
+	case "GeneratePreparationResult.generatedExams":
+		if e.complexity.GeneratePreparationResult.GeneratedExams == nil {
+			break
+		}
+
+		return e.complexity.GeneratePreparationResult.GeneratedExams(childComplexity), true
+
+	case "GeneratePreparationResult.studentRegs":
+		if e.complexity.GeneratePreparationResult.StudentRegs == nil {
+			break
+		}
+
+		return e.complexity.GeneratePreparationResult.StudentRegs(childComplexity), true
 
 	case "GenerateStudentRegsResult.state":
 		if e.complexity.GenerateStudentRegsResult.State == nil {
@@ -3690,6 +3711,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.GenerateGeneratedExams(childComplexity), true
+
+	case "Mutation.generatePreparation":
+		if e.complexity.Mutation.GeneratePreparation == nil {
+			break
+		}
+
+		return e.complexity.Mutation.GeneratePreparation(childComplexity), true
 
 	case "Mutation.generatePreplanAssignment":
 		if e.complexity.Mutation.GeneratePreplanAssignment == nil {
@@ -9454,6 +9482,21 @@ extend type Query {
 extend type Mutation {
   "Set or clear a planning condition by hand (e.g. mark/unmark a plan as published). Returns the new state."
   setPlanningCondition(key: String!, done: Boolean!): PlanningState!
+}
+`, BuiltIn: false},
+	{Name: "../preparation.graphqls", Input: `extend type Mutation {
+  """
+  Regenerate both the cached generated exams and the per-student planned
+  registrations in one step. They share the same inputs (connected exams + Primuss
+  data) and are independent of each other, so they are always (re)generated together.
+  Clears both stale flags and reports both results.
+  """
+  generatePreparation: GeneratePreparationResult!
+}
+
+type GeneratePreparationResult {
+  generatedExams: GenerateGeneratedExamsResult!
+  studentRegs: GenerateStudentRegsResult!
 }
 `, BuiltIn: false},
 	{Name: "../preplan_assign.graphqls", Input: `extend type Query {
@@ -23292,6 +23335,106 @@ func (ec *executionContext) fieldContext_GenerateGeneratedExamsResult_changes(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _GeneratePreparationResult_generatedExams(ctx context.Context, field graphql.CollectedField, obj *model.GeneratePreparationResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratePreparationResult_generatedExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.GeneratedExams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.GenerateGeneratedExamsResult)
+	fc.Result = res
+	return ec.marshalNGenerateGeneratedExamsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateGeneratedExamsResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratePreparationResult_generatedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratePreparationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "state":
+				return ec.fieldContext_GenerateGeneratedExamsResult_state(ctx, field)
+			case "changes":
+				return ec.fieldContext_GenerateGeneratedExamsResult_changes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GenerateGeneratedExamsResult", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneratePreparationResult_studentRegs(ctx context.Context, field graphql.CollectedField, obj *model.GeneratePreparationResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneratePreparationResult_studentRegs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentRegs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.GenerateStudentRegsResult)
+	fc.Result = res
+	return ec.marshalNGenerateStudentRegsResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateStudentRegsResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneratePreparationResult_studentRegs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneratePreparationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "state":
+				return ec.fieldContext_GenerateStudentRegsResult_state(ctx, field)
+			case "studentCount":
+				return ec.fieldContext_GenerateStudentRegsResult_studentCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GenerateStudentRegsResult", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GenerateStudentRegsResult_state(ctx context.Context, field graphql.CollectedField, obj *model.GenerateStudentRegsResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GenerateStudentRegsResult_state(ctx, field)
 	if err != nil {
@@ -31739,6 +31882,56 @@ func (ec *executionContext) fieldContext_Mutation_setPlanningCondition(ctx conte
 	if fc.Args, err = ec.field_Mutation_setPlanningCondition_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_generatePreparation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_generatePreparation(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().GeneratePreparation(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.GeneratePreparationResult)
+	fc.Result = res
+	return ec.marshalNGeneratePreparationResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratePreparationResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_generatePreparation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "generatedExams":
+				return ec.fieldContext_GeneratePreparationResult_generatedExams(ctx, field)
+			case "studentRegs":
+				return ec.fieldContext_GeneratePreparationResult_studentRegs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneratePreparationResult", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -66336,6 +66529,50 @@ func (ec *executionContext) _GenerateGeneratedExamsResult(ctx context.Context, s
 	return out
 }
 
+var generatePreparationResultImplementors = []string{"GeneratePreparationResult"}
+
+func (ec *executionContext) _GeneratePreparationResult(ctx context.Context, sel ast.SelectionSet, obj *model.GeneratePreparationResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, generatePreparationResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GeneratePreparationResult")
+		case "generatedExams":
+			out.Values[i] = ec._GeneratePreparationResult_generatedExams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentRegs":
+			out.Values[i] = ec._GeneratePreparationResult_studentRegs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var generateStudentRegsResultImplementors = []string{"GenerateStudentRegsResult"}
 
 func (ec *executionContext) _GenerateStudentRegsResult(ctx context.Context, sel ast.SelectionSet, obj *model.GenerateStudentRegsResult) graphql.Marshaler {
@@ -67932,6 +68169,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setPlanningCondition":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPlanningCondition(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "generatePreparation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_generatePreparation(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -76223,6 +76467,20 @@ func (ec *executionContext) marshalNGenerateGeneratedExamsResult2ᚖgithubᚗcom
 		return graphql.Null
 	}
 	return ec._GenerateGeneratedExamsResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNGeneratePreparationResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratePreparationResult(ctx context.Context, sel ast.SelectionSet, v model.GeneratePreparationResult) graphql.Marshaler {
+	return ec._GeneratePreparationResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNGeneratePreparationResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGeneratePreparationResult(ctx context.Context, sel ast.SelectionSet, v *model.GeneratePreparationResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GeneratePreparationResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGenerateStudentRegsResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐGenerateStudentRegsResult(ctx context.Context, sel ast.SelectionSet, v model.GenerateStudentRegsResult) graphql.Marshaler {

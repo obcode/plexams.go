@@ -181,7 +181,9 @@ func parseMucDaiCSV(csvText string) (map[string][]*db.MucDaiExam, error) {
 	reader := csv.NewReader(strings.NewReader(csvText))
 	reader.Comma = delim
 	reader.FieldsPerRecord = -1
-	reader.TrimLeadingSpace = true
+	// NB: do NOT set TrimLeadingSpace — with a whitespace delimiter (tab) it collapses
+	// empty fields between two tabs, shifting all later columns. Field values are
+	// trimmed in get() anyway.
 
 	rows, err := reader.ReadAll()
 	if err != nil {

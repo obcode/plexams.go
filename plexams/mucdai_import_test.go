@@ -93,3 +93,34 @@ func TestParseMucDaiCSVMissingRequiredColumn(t *testing.T) {
 		t.Error("expected error for missing Nr column")
 	}
 }
+
+// A TAB-separated CSV with an empty field (e.g. IstWiederholung) must keep the row and
+// its column alignment. With a whitespace delimiter, TrimLeadingSpace would collapse the
+// empty field between two tabs and shift all later columns (dropping/misfiling the row).
+func TestParseMucDaiCSVEmptyFieldTabSeparated(t *testing.T) {
+	csv := "Nr.int32()\tModulname.string()\tPrüfungsform.string()\tBewertung.string()\tDauer.int32()\tErstpruefender.string()\tZweitpruefender.string()\tIstWiederholung.string()\tStudiengruppe.string()\tPrüfungsplanung.string()\n" +
+		"101\tComputational Thinking\tschrP\tbenotet\t90\tDietrich, Benedikt\tHobelsberger, Martin\tx\tID\tFK07\n" +
+		"221\tMathematische Methoden\tschrP\tbenotet\t90\tBrockhaus, Sarah\tHögele, Wolfgang\t\tID\tFK07\n" +
+		"301\tStatistik und Stochastik\tschrP\tbenotet\t60\tShao, Shuai\tBrockhaus, Sarah\tx\tID\tFK07\n"
+
+	byProgram, err := parseMucDaiCSV(csv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(byProgram) != 1 || len(byProgram["ID"]) != 3 {
+		t.Fatalf("expected 3 ID exams only, got %d programs / ID=%d", len(byProgram), len(byProgram["ID"]))
+	}
+	found := false
+	for _, e := range byProgram["ID"] {
+		if e.PrimussAncode == 221 {
+			found = true
+			if e.Module != "Mathematische Methoden" || e.Program != "ID" || e.Planer != "FK07" || e.IsRepeaterExam != "" {
+				t.Errorf("221 columns shifted: module=%q program=%q planer=%q rep=%q",
+					e.Module, e.Program, e.Planer, e.IsRepeaterExam)
+			}
+		}
+	}
+	if !found {
+		t.Error("exam Nr 221 (empty IstWiederholung) was dropped")
+	}
+}

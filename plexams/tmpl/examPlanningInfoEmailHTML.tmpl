@@ -5,7 +5,7 @@
 <b>{{ .FromDate }}</b> bis <b>{{ .UntilDate }}</b> folgende Ihrer Prüfungen:</p>
 <ul>
 {{ range .Exams }}
-<li>{{ .Ancode }} — {{ .Module }} ({{ .ExamType }}){{ with constraintsText .Constraints }}<br />
+<li>{{ .Ancode }} — {{ .Module }}{{ with constraintsText .Constraints }}<br />
 <small>Besonderheiten: {{ . }}</small>{{ end }}</li>
 {{- end }}
 </ul>

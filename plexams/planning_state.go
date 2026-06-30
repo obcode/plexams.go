@@ -44,6 +44,7 @@ const (
 	condZPAImported               = "zpaImported"
 	condMucDaiImported            = "mucDaiImported"
 	condPrimussImported           = "primussImported"
+	condZpaPrimussConnected       = "zpaPrimussConnected"
 	condExamPlanningInfoSent      = "examPlanningInfoSent"
 	condGeneratedExams            = "generatedExams"
 	condStudentRegs               = "studentRegs"
@@ -74,11 +75,12 @@ var planningConditionDefs = []planningConditionDef{
 	{condExamPlanningInfoSent, "Prüfungsplanungs-Info an Prüfende verschickt", "phase0", ""},
 	{condMucDaiImported, "MUC.DAI-Prüfungen importiert & verknüpft", "phase0", ""},
 	{condPrimussImported, "Primuss-Anmeldedaten importiert", "phase0", ""},
-	{condGeneratedExams, "GeneratedExams erstellt", "phase1", ""},
-	{condStudentRegs, "StudentRegs erstellt", "phase1", ""},
-	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase1", ""},
-	{condPrimussDataAllSent, "Primuss-Daten an alle verschickt", "phase1", ""},
-	{condNTARoomAloneSent, "Info an NTAs mit eigenem Raum verschickt", "phase1", ""},
+	{condZpaPrimussConnected, "ZPA- & Primuss-Prüfungen verknüpft", "phase0", ""},
+	{condGeneratedExams, "GeneratedExams erstellt", "phase0", ""},
+	{condStudentRegs, "StudentRegs erstellt", "phase0", ""},
+	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase0", ""},
+	{condPrimussDataAllSent, "Primuss-Daten an alle verschickt", "phase0", ""},
+	{condNTARoomAloneSent, "Info an NTAs mit eigenem Raum verschickt", "phase0", ""},
 	{condDraftSent, "Draft-Plan verschickt", "phase1", ""},
 	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", ""},
 	{condRoomRequestsSent, "Raum-Anfragen ans Gebäudemanagement verschickt", "phase2", ""},

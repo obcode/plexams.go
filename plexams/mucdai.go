@@ -43,23 +43,17 @@ func (p *Plexams) MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error) 
 	return exams, nil
 }
 
-// enrichMucDaiExams fills in the linked/created ancode and plan entry of each MUC.DAI
-// exam: the auto-assigned non-ZPA ancode for exams planned by other faculties, our
-// connected ZPA ancode for FK07-planned ones.
+// enrichMucDaiExams fills each MUC.DAI exam's link status, linked ancode and plan entry
+// from the explicit mucdai_links collection (built at import time / via manual links).
 func (p *Plexams) enrichMucDaiExams(ctx context.Context, exams []*model.MucDaiExam) {
-	nonZpaMap, _, err := p.existingNonZpaByPrimuss(ctx)
+	links, err := p.dbClient.MucDaiLinks(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get non-zpa exams for mucdai enrichment")
+		log.Error().Err(err).Msg("cannot get mucdai links for enrichment")
 		return
 	}
-
-	connectedAncodeMap := make(map[primussKey]int)
-	if connectedExams, err := p.GetConnectedExams(ctx); err != nil {
-		log.Error().Err(err).Msg("cannot get connected exams for mucdai enrichment")
-	} else {
-		for pa, zpaAncode := range primussAncodesToZpaAncodes(connectedExams) {
-			connectedAncodeMap[primussKey{pa.Program, pa.Ancode}] = zpaAncode
-		}
+	linkByKey := make(map[primussKey]*db.MucDaiLink, len(links))
+	for _, l := range links {
+		linkByKey[primussKey{l.Program, l.PrimussAncode}] = l
 	}
 
 	planEntries := make(map[int]*model.PlanEntry)
@@ -72,15 +66,16 @@ func (p *Plexams) enrichMucDaiExams(ctx context.Context, exams []*model.MucDaiEx
 	}
 
 	for _, exam := range exams {
-		key := primussKey{exam.Program, exam.PrimussAncode}
-		ancode, ok := nonZpaMap[key]
-		if !ok {
-			ancode, ok = connectedAncodeMap[key]
+		link := linkByKey[primussKey{exam.Program, exam.PrimussAncode}]
+		if link == nil || link.Status == "unresolved" {
+			exam.LinkStatus = mucDaiLinkUnresolved
+			continue
 		}
-		if ok {
-			a := ancode
+		exam.LinkStatus = link.Kind // "external" | "zpa"
+		if link.Ancode != nil {
+			a := *link.Ancode
 			exam.Ancode = &a
-			if entry, ok := planEntries[ancode]; ok {
+			if entry, ok := planEntries[a]; ok {
 				exam.PlanEntry = entry
 			}
 		}

@@ -111,6 +111,12 @@ type MucDaiExam {
   created/linked.
   """
   ancode: Int
+  """
+  Link status to our data: "external" (auto-created external exam, linked), "zpa"
+  (linked to a ZPA exam), or "unresolved" (FK07 exam with no clear ZPA match — needs
+  manual linking).
+  """
+  linkStatus: String!
   "The plan entry, if planned: dayNumber/slotNumber = my time, externalTime = the other faculty's time."
   planEntry: PlanEntry
 }

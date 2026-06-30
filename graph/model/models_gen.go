@@ -511,6 +511,10 @@ type MucDaiExam struct {
 	// auto-assigned ancode for exams planned by other faculties. null if not yet
 	// created/linked.
 	Ancode *int `json:"ancode,omitempty"`
+	// Link status to our data: "external" (auto-created external exam, linked), "zpa"
+	// (linked to a ZPA exam), or "unresolved" (FK07 exam with no clear ZPA match — needs
+	// manual linking).
+	LinkStatus string `json:"linkStatus"`
 	// The plan entry, if planned: dayNumber/slotNumber = my time, externalTime = the other faculty's time.
 	PlanEntry *PlanEntry `json:"planEntry,omitempty"`
 }

@@ -112,6 +112,11 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 		result.ExamsRemoved++
 	}
 
+	// (re)build the explicit MUC.DAI ↔ external/ZPA links
+	if err := p.relinkMucDaiExams(ctx); err != nil {
+		return nil, err
+	}
+
 	p.markCondition(ctx, condMucDaiImported)
 	return result, nil
 }

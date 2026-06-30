@@ -128,7 +128,13 @@ func (p *Plexams) computeConnectedZPAExam(zpaExam *model.ZPAExam, allPrograms []
 		}
 	}
 
-	otherPrograms := make([]string, 0, len(allPrograms)-len(zpaExam.PrimussAncodes))
+	// cap is only a hint; clamp it, as an exam can reference more primuss ancodes than
+	// there are programs (e.g. before Primuss is imported) — a negative cap panics.
+	otherProgramsCap := len(allPrograms) - len(zpaExam.PrimussAncodes)
+	if otherProgramsCap < 0 {
+		otherProgramsCap = 0
+	}
+	otherPrograms := make([]string, 0, otherProgramsCap)
 OUTER:
 	for _, aP := range allPrograms {
 		for _, pe := range primussExams {

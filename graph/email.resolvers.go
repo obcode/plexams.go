@@ -33,20 +33,6 @@ func (r *subscriptionResolver) SendEmailExaHm(ctx context.Context, run bool) (<-
 	}), nil
 }
 
-// SendEmailConstraints is the resolver for the sendEmailConstraints field.
-func (r *subscriptionResolver) SendEmailConstraints(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
-		return r.plexams.SendEmailConstraints(ctx, run, reporter)
-	}), nil
-}
-
-// SendEmailPrepared is the resolver for the sendEmailPrepared field.
-func (r *subscriptionResolver) SendEmailPrepared(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
-	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
-		return r.plexams.SendEmailPrepared(ctx, run, reporter)
-	}), nil
-}
-
 // SendEmailExamPlanningInfo is the resolver for the sendEmailExamPlanningInfo field.
 func (r *subscriptionResolver) SendEmailExamPlanningInfo(ctx context.Context, run bool, teacherIDs []int) (<-chan *model.LogLine, error) {
 	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {

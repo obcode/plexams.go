@@ -42,13 +42,11 @@ const (
 	condExahmRequested            = "exahmRequested"
 	condAnnyRoomsBooked           = "annyRoomsBooked"
 	condZPAImported               = "zpaImported"
-	condConstraintsRequested      = "constraintsRequested"
 	condExamPlanningInfoSent      = "examPlanningInfoSent"
 	condGeneratedExams            = "generatedExams"
 	condStudentRegs               = "studentRegs"
 	condStudentRegsUploaded       = "studentRegsUploaded"
 	condPrimussDataAllSent        = "primussDataAllSent"
-	condExamsPrepared             = "examsPrepared"
 	condNTARoomAloneSent          = "ntaRoomAloneSent"
 	condDraftSent                 = "draftSent"
 	condExamPlanPublished         = "examPlanPublished"
@@ -71,13 +69,11 @@ var planningConditionDefs = []planningConditionDef{
 	{condExahmRequested, "EXaHM/SEB-Abfrage verschickt", "phaseMinus1", ""},
 	{condAnnyRoomsBooked, "Anny-Räume gebucht", "phaseMinus1", ""},
 	{condZPAImported, "Prüfungen & Personen aus ZPA importiert", "phase0", ""},
-	{condConstraintsRequested, "Constraints-Abfrage verschickt", "phase0", ""},
 	{condExamPlanningInfoSent, "Prüfungsplanungs-Info an Prüfende verschickt", "phase0", ""},
 	{condGeneratedExams, "GeneratedExams erstellt", "phase1", ""},
 	{condStudentRegs, "StudentRegs erstellt", "phase1", ""},
 	{condStudentRegsUploaded, "StudentRegs ins ZPA hochgeladen", "phase1", ""},
 	{condPrimussDataAllSent, "Primuss-Daten an alle verschickt", "phase1", ""},
-	{condExamsPrepared, "Ankündigung 'zu planende Prüfungen' verschickt", "phase1", ""},
 	{condNTARoomAloneSent, "Info an NTAs mit eigenem Raum verschickt", "phase1", ""},
 	{condDraftSent, "Draft-Plan verschickt", "phase1", ""},
 	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", ""},

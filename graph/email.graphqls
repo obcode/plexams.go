@@ -4,8 +4,6 @@
 # validation or another transfer/email runs.
 extend type Subscription {
   sendEmailExaHM(run: Boolean!): LogLine!
-  sendEmailConstraints(run: Boolean!): LogLine!
-  sendEmailPrepared(run: Boolean!): LogLine!
   """
   Send the consolidated exam-planning info email to the selected examers (teacherIDs;
   null/empty = all candidates from examPlanningMailRecipients). Per examer: the exams I

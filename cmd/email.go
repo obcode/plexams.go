@@ -19,8 +19,7 @@ var (
 exahm                                         --- send email about EXaHM and SEB exams NEXT semester
 primuss-data [all|<ancode>]                   --- send emails to teachers about primuss data and nta
 primuss-data-unplanned <program> <ancode>     --- send emails to teachers about primuss data and nta
-constraints                                   --- ask for constraints
-prepared                                      --- announce exams to plan and constraints
+exam-planning-info                            --- send the consolidated exam-planning info email to the examers
 draft                                         --- announce draft plan
 published-exams                               --- announce published exams
 published-rooms                               --- announce published rooms
@@ -37,7 +36,7 @@ kdp-exahm                                     --- send the EXaHM/SEB room overvi
 lba-repeaters                                 --- send the LBA repeat-exam overview (dates/invigilations) to the LBA-BA
 invigilations-secretariat                     --- tell the secretariat the invigilation plan is published (can be posted)
 `,
-		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "constraints", "prepared", "draft", "published-exams", "published-rooms", "invigilations", "invigilations-missing", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages", "room-requests", "rooms-secretariat", "kdp-exahm", "lba-repeaters", "invigilations-secretariat"},
+		ValidArgs: []string{"primuss-data", "primuss-data-unplanned", "exam-planning-info", "draft", "published-exams", "published-rooms", "invigilations", "invigilations-missing", "published-invigilations", "new-nta", "nta-with-room-alone", "nta-planned", "cover-pages", "room-requests", "rooms-secretariat", "kdp-exahm", "lba-repeaters", "invigilations-secretariat"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -92,13 +91,8 @@ invigilations-secretariat                     --- tell the secretariat the invig
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
-			case "constraints":
-				err := plexams.SendEmailConstraints(context.Background(), run, plx.NewConsoleReporter())
-				if err != nil {
-					log.Fatalf("got error: %v\n", err)
-				}
-			case "prepared":
-				err := plexams.SendEmailPrepared(context.Background(), run, plx.NewConsoleReporter())
+			case "exam-planning-info":
+				err := plexams.SendExamPlanningInfoMails(context.Background(), nil, run, plx.NewConsoleReporter())
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}

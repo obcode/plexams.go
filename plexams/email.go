@@ -12,8 +12,6 @@ import (
 	"github.com/wneessen/go-mail"
 )
 
-//go:embed tmpl/constraintsEmail.tmpl
-//go:embed tmpl/constraintsEmailHTML.tmpl
 //go:embed tmpl/exahmEmail.tmpl
 //go:embed tmpl/exahmEmailHTML.tmpl
 //go:embed tmpl/coverPageEmail.tmpl
@@ -33,8 +31,6 @@ import (
 //go:embed tmpl/handicapEmailRoomAloneHTML.tmpl
 //go:embed tmpl/newNTAEmail.tmpl
 //go:embed tmpl/newNTAEmailHTML.tmpl
-//go:embed tmpl/preparedEmail.tmpl
-//go:embed tmpl/preparedEmailHTML.tmpl
 //go:embed tmpl/examPlanningInfoEmail.tmpl
 //go:embed tmpl/examPlanningInfoEmailHTML.tmpl
 //go:embed tmpl/publishedEmailExams.tmpl

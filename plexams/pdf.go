@@ -1,7 +1,6 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -44,18 +43,6 @@ func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) er
 		return err
 	}
 	return nil
-}
-
-func (p *Plexams) generateExamsToPlanBuffer(ctx context.Context) (*bytes.Buffer, error) {
-	m, err := p.generateExamsToPlanMaroto(ctx)
-	if err != nil {
-		return nil, err
-	}
-	buf, err := m.Output()
-	if err != nil {
-		return nil, err
-	}
-	return &buf, nil
 }
 
 func (p *Plexams) generateExamsToPlanMaroto(ctx context.Context) (pdf.Maroto, error) {
@@ -273,18 +260,6 @@ func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
 		return err
 	}
 	return nil
-}
-
-func (p *Plexams) constraintsBuffer(ctx context.Context) (*bytes.Buffer, error) {
-	m, err := p.constraintsMaroto(ctx)
-	if err != nil {
-		return nil, err
-	}
-	buf, err := m.Output()
-	if err != nil {
-		return nil, err
-	}
-	return &buf, nil
 }
 
 func (p *Plexams) constraintsMaroto(ctx context.Context) (pdf.Maroto, error) {

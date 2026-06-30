@@ -47,6 +47,13 @@ func (r *subscriptionResolver) SendEmailPrepared(ctx context.Context, run bool) 
 	}), nil
 }
 
+// SendEmailExamPlanningInfo is the resolver for the sendEmailExamPlanningInfo field.
+func (r *subscriptionResolver) SendEmailExamPlanningInfo(ctx context.Context, run bool, teacherIDs []int) (<-chan *model.LogLine, error) {
+	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {
+		return r.plexams.SendExamPlanningInfoMails(ctx, teacherIDs, run, reporter)
+	}), nil
+}
+
 // SendEmailDraft is the resolver for the sendEmailDraft field.
 func (r *subscriptionResolver) SendEmailDraft(ctx context.Context, run bool) (<-chan *model.LogLine, error) {
 	return r.runEmailOp(ctx, run, func(ctx context.Context, reporter plexams.Reporter) error {

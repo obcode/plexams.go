@@ -35,6 +35,8 @@ import (
 //go:embed tmpl/newNTAEmailHTML.tmpl
 //go:embed tmpl/preparedEmail.tmpl
 //go:embed tmpl/preparedEmailHTML.tmpl
+//go:embed tmpl/examPlanningInfoEmail.tmpl
+//go:embed tmpl/examPlanningInfoEmailHTML.tmpl
 //go:embed tmpl/publishedEmailExams.tmpl
 //go:embed tmpl/publishedEmailExamsHTML.tmpl
 //go:embed tmpl/emailBaseHTML.tmpl
@@ -98,9 +100,10 @@ func zpaURL() string {
 
 // emailFuncs are the template helpers available in all email templates.
 var emailFuncs = map[string]any{
-	"plural":  pluralN,
-	"jiraURL": jiraURL,
-	"zpaURL":  zpaURL,
+	"plural":          pluralN,
+	"jiraURL":         jiraURL,
+	"zpaURL":          zpaURL,
+	"constraintsText": constraintsText,
 }
 
 // mailAttachment is a library-neutral attachment so the rest of the code base

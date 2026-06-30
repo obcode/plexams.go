@@ -1117,6 +1117,7 @@ type ComplexityRoot struct {
 		SendEmailCoverPages                  func(childComplexity int, run bool) int
 		SendEmailDraft                       func(childComplexity int, run bool) int
 		SendEmailExaHm                       func(childComplexity int, run bool) int
+		SendEmailExamPlanningInfo            func(childComplexity int, run bool, teacherIDs []int) int
 		SendEmailInvigilations               func(childComplexity int, run bool) int
 		SendEmailInvigilationsMissing        func(childComplexity int, run bool) int
 		SendEmailInvigilationsSecretariat    func(childComplexity int, run bool) int
@@ -1497,6 +1498,7 @@ type SubscriptionResolver interface {
 	SendEmailExaHm(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailConstraints(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailPrepared(ctx context.Context, run bool) (<-chan *model.LogLine, error)
+	SendEmailExamPlanningInfo(ctx context.Context, run bool, teacherIDs []int) (<-chan *model.LogLine, error)
 	SendEmailDraft(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailPublishedExams(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	SendEmailPublishedRooms(ctx context.Context, run bool) (<-chan *model.LogLine, error)
@@ -7260,6 +7262,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.SendEmailExaHm(childComplexity, args["run"].(bool)), true
 
+	case "Subscription.sendEmailExamPlanningInfo":
+		if e.complexity.Subscription.SendEmailExamPlanningInfo == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_sendEmailExamPlanningInfo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.SendEmailExamPlanningInfo(childComplexity, args["run"].(bool), args["teacherIDs"].([]int)), true
+
 	case "Subscription.sendEmailInvigilations":
 		if e.complexity.Subscription.SendEmailInvigilations == nil {
 			break
@@ -8562,6 +8576,13 @@ extend type Subscription {
   sendEmailExaHM(run: Boolean!): LogLine!
   sendEmailConstraints(run: Boolean!): LogLine!
   sendEmailPrepared(run: Boolean!): LogLine!
+  """
+  Send the consolidated exam-planning info email to the selected examers (teacherIDs;
+  null/empty = all candidates from examPlanningMailRecipients). Per examer: the exams I
+  plan with their constraints (no slot/date) and a Jira link for (further) constraints,
+  or — for FK07 examers I plan nothing for — a note that I plan none of their exams.
+  """
+  sendEmailExamPlanningInfo(run: Boolean!, teacherIDs: [Int!]): LogLine!
   sendEmailDraft(run: Boolean!): LogLine!
   sendEmailPublishedExams(run: Boolean!): LogLine!
   sendEmailPublishedRooms(run: Boolean!): LogLine!
@@ -15892,6 +15913,57 @@ func (ec *executionContext) field_Subscription_sendEmailExaHM_argsRun(
 	}
 
 	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailExamPlanningInfo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_sendEmailExamPlanningInfo_argsRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["run"] = arg0
+	arg1, err := ec.field_Subscription_sendEmailExamPlanningInfo_argsTeacherIDs(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["teacherIDs"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_sendEmailExamPlanningInfo_argsRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["run"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("run"))
+	if tmp, ok := rawArgs["run"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_sendEmailExamPlanningInfo_argsTeacherIDs(
+	ctx context.Context,
+	rawArgs map[string]any,
+) ([]int, error) {
+	if _, ok := rawArgs["teacherIDs"]; !ok {
+		var zeroVal []int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("teacherIDs"))
+	if tmp, ok := rawArgs["teacherIDs"]; ok {
+		return ec.unmarshalOInt2ᚕintᚄ(ctx, tmp)
+	}
+
+	var zeroVal []int
 	return zeroVal, nil
 }
 
@@ -53651,6 +53723,87 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPrepared(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_sendEmailExamPlanningInfo(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_sendEmailExamPlanningInfo(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().SendEmailExamPlanningInfo(rctx, fc.Args["run"].(bool), fc.Args["teacherIDs"].([]int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_sendEmailExamPlanningInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_sendEmailExamPlanningInfo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Subscription_sendEmailDraft(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	fc, err := ec.fieldContext_Subscription_sendEmailDraft(ctx, field)
 	if err != nil {
@@ -73220,6 +73373,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_sendEmailConstraints(ctx, fields[0])
 	case "sendEmailPrepared":
 		return ec._Subscription_sendEmailPrepared(ctx, fields[0])
+	case "sendEmailExamPlanningInfo":
+		return ec._Subscription_sendEmailExamPlanningInfo(ctx, fields[0])
 	case "sendEmailDraft":
 		return ec._Subscription_sendEmailDraft(ctx, fields[0])
 	case "sendEmailPublishedExams":

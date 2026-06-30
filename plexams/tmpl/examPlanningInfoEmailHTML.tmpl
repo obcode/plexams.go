@@ -1,0 +1,30 @@
+{{ define "content" }}
+<p>Liebe Prüfende,</p>
+{{ if eq .Category "withExams" }}
+<p>als Prüfungsplanung der FK07 planen wir im Prüfungszeitraum vom
+<b>{{ .FromDate }}</b> bis <b>{{ .UntilDate }}</b> folgende Ihrer Prüfungen:</p>
+<ul>
+{{ range .Exams }}
+<li>{{ .Ancode }} — {{ .Module }} ({{ .ExamType }}){{ with constraintsText .Constraints }}<br />
+<small>Besonderheiten: {{ . }}</small>{{ end }}</li>
+{{- end }}
+</ul>
+<p>Sollten hier Prüfungen fehlen, die wir planen sollen, oder welche aufgeführt sein,
+die Sie selbst außerhalb des Prüfungszeitraumes planen, melden Sie uns das bitte.</p>
+<p>Bitte teilen Sie uns außerdem (weitere) Besonderheiten/Constraints mit, die wir bei der
+Planung beachten müssen (z. B. „Prüfung X gleichzeitig mit Y", Labor, Steckdosen).</p>
+{{ else }}
+<p>als Prüfungsplanung der FK07 planen wir im Prüfungszeitraum vom
+<b>{{ .FromDate }}</b> bis <b>{{ .UntilDate }}</b> aktuell <b>keine</b> Ihrer Prüfungen.</p>
+<p>Wir planen alle schriftlichen und praktischen Prüfungen der FK07 im Prüfungszeitraum.
+Sollten wir eine Ihrer Prüfungen planen sollen, melden Sie uns das bitte.</p>
+{{ end }}
+<p>Öffnen Sie für Rückmeldungen bitte ein JIRA-Ticket (siehe unten) und verwenden Sie als
+Ticket-Art "Anforderungen an die Raumplanung" oder "allgemeine Anforderungen an Prüfungen".</p>
+<p>Besonderheiten zu Prüfungen mit EXaHM oder SEB werden separat über die KDP-Tickets abgefragt.
+Mündliche Prüfungen, Modularbeiten u. ä. planen Sie bitte selbst.</p>
+<p>Mit freundlichen Grüßen</p>
+<p>{{ .PlanerName }}<br />
+Prüfungsplanung der FK07
+</p>
+{{ end }}

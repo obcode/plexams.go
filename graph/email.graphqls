@@ -6,6 +6,13 @@ extend type Subscription {
   sendEmailExaHM(run: Boolean!): LogLine!
   sendEmailConstraints(run: Boolean!): LogLine!
   sendEmailPrepared(run: Boolean!): LogLine!
+  """
+  Send the consolidated exam-planning info email to the selected examers (teacherIDs;
+  null/empty = all candidates from examPlanningMailRecipients). Per examer: the exams I
+  plan with their constraints (no slot/date) and a Jira link for (further) constraints,
+  or — for FK07 examers I plan nothing for — a note that I plan none of their exams.
+  """
+  sendEmailExamPlanningInfo(run: Boolean!, teacherIDs: [Int!]): LogLine!
   sendEmailDraft(run: Boolean!): LogLine!
   sendEmailPublishedExams(run: Boolean!): LogLine!
   sendEmailPublishedRooms(run: Boolean!): LogLine!

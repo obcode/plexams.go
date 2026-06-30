@@ -229,23 +229,10 @@ var (
 				}
 
 			case "change-room":
-				if len(args) < 4 {
-					log.Fatal("need ancode, old room and new room names")
-				}
-				ancode, err := strconv.Atoi(args[1])
-				if err != nil {
-					log.Fatalf("cannot convert %s to int", args[1])
-				}
-				oldRoom := args[2]
-				newRoom := args[2]
-
-				success, err := plexams.ChangeRoom(context.Background(), ancode, oldRoom, newRoom)
-				if err != nil {
-					os.Exit(1)
-				}
-				if success {
-					fmt.Printf("successfully moved exam %d from %s to %s\n", ancode, oldRoom, newRoom)
-				}
+				// plexams.ChangeRoom is still a stub (always errors); surface that
+				// honestly instead of calling it (the always-non-nil error tripped
+				// staticcheck SA4023).
+				log.Fatal("change-room is not implemented yet")
 
 			case "lock-exam":
 				if len(args) < 2 {

@@ -67,6 +67,13 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 	for _, program := range programs {
 		importedPrograms[program] = true
 	}
+	// real MUC.DAI study programs (e.g. DE/GS/ID); an external exam whose program is not
+	// one of these is bogus (e.g. a faculty code that ended up in the program column) and
+	// is always removed.
+	mucdaiPrograms := make(map[string]bool)
+	for _, prog := range p.mucdaiProgramNames(ctx) {
+		mucdaiPrograms[prog] = true
+	}
 	// keys that should have a generated exam after this import (non-FK07)
 	validKeys := make(map[primussKey]bool)
 
@@ -97,10 +104,14 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 		}
 	}
 
-	// remove generated exams of the imported programs that are no longer in the CSV
-	// (or flipped to FK07): drop the non-ZPA exam and any plan entry.
+	// remove stale external exams: those of an imported program no longer in the CSV
+	// (or flipped to FK07), and any with a bogus program that is not a real MUC.DAI
+	// study program (e.g. leftovers from a faulty earlier import). Other MUC.DAI
+	// programs not part of this (incremental) import are kept.
 	for key, ancode := range existing {
-		if !importedPrograms[key.program] || validKeys[key] {
+		bogusProgram := !mucdaiPrograms[key.program]
+		staleInImported := importedPrograms[key.program] && !validKeys[key]
+		if !bogusProgram && !staleInImported {
 			continue
 		}
 		if err := p.dbClient.DeleteNonZpaExam(ctx, ancode); err != nil {

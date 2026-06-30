@@ -2,6 +2,8 @@ package plexams
 
 import (
 	"context"
+	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/obcode/plexams.go/db"
@@ -105,6 +107,128 @@ func autoMucDaiLink(e *model.MucDaiExam, zpaByPrimuss map[primussKey][]int, nonZ
 		}
 	}
 	return link
+}
+
+// SetMucDaiZpaLink manually links a MUC.DAI exam to a ZPA exam (the unresolved/wrong
+// FK07 cases). Stored as a manual link that survives re-imports. Returns the updated exam.
+func (p *Plexams) SetMucDaiZpaLink(ctx context.Context, program string, primussAncode, zpaAncode int) (*model.MucDaiExam, error) {
+	mucExam, err := p.dbClient.MucDaiExam(ctx, program, primussAncode)
+	if err != nil || mucExam == nil {
+		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
+	}
+	zpaExam, err := p.GetZpaExamByAncode(ctx, zpaAncode)
+	if err != nil || zpaExam == nil {
+		return nil, fmt.Errorf("no ZPA exam with ancode %d", zpaAncode)
+	}
+	a := zpaAncode
+	if err := p.dbClient.UpsertMucDaiLink(ctx, &db.MucDaiLink{
+		Program: program, PrimussAncode: primussAncode,
+		Kind: mucDaiLinkZPA, Ancode: &a, Status: "linked", Source: "manual",
+		Module: mucExam.Module, MainExamer: mucExam.MainExamer,
+	}); err != nil {
+		return nil, err
+	}
+	return p.enrichedMucDaiExam(ctx, program, primussAncode)
+}
+
+// RemoveMucDaiLink drops a (manual) link and falls back to automatic detection.
+func (p *Plexams) RemoveMucDaiLink(ctx context.Context, program string, primussAncode int) (*model.MucDaiExam, error) {
+	mucExam, err := p.dbClient.MucDaiExam(ctx, program, primussAncode)
+	if err != nil || mucExam == nil {
+		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
+	}
+	nonZpaMap, _, err := p.existingNonZpaByPrimuss(ctx)
+	if err != nil {
+		return nil, err
+	}
+	zpaByPrimuss, err := p.zpaExamsByPrimussAncode(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := p.dbClient.UpsertMucDaiLink(ctx, autoMucDaiLink(p.mkMucdaiExam(mucExam), zpaByPrimuss, nonZpaMap)); err != nil {
+		return nil, err
+	}
+	return p.enrichedMucDaiExam(ctx, program, primussAncode)
+}
+
+// enrichedMucDaiExam loads one MUC.DAI exam and fills its link status/ancode/plan entry.
+func (p *Plexams) enrichedMucDaiExam(ctx context.Context, program string, primussAncode int) (*model.MucDaiExam, error) {
+	mucExam, err := p.dbClient.MucDaiExam(ctx, program, primussAncode)
+	if err != nil || mucExam == nil {
+		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
+	}
+	exam := p.mkMucdaiExam(mucExam)
+	p.enrichMucDaiExams(ctx, []*model.MucDaiExam{exam})
+	return exam, nil
+}
+
+// MucDaiZpaCandidates suggests ZPA exams for linking an (unresolved) MUC.DAI exam,
+// ranked: the program carried with a missing number (0/-1) first, then same examer +
+// similar module, then either.
+func (p *Plexams) MucDaiZpaCandidates(ctx context.Context, program string, primussAncode int) ([]*model.ZPAExam, error) {
+	muc, err := p.dbClient.MucDaiExam(ctx, program, primussAncode)
+	if err != nil {
+		return nil, err
+	}
+	fromZPA := false
+	zpaExams, err := p.GetZPAExams(ctx, &fromZPA)
+	if err != nil {
+		return nil, err
+	}
+
+	type scored struct {
+		exam  *model.ZPAExam
+		score int
+	}
+	cands := make([]scored, 0)
+	for _, ze := range zpaExams {
+		score := -1
+		for _, pa := range ze.PrimussAncodes {
+			if pa.Program != program {
+				continue
+			}
+			if pa.Ancode == primussAncode {
+				score = 0 // exact (e.g. correcting an existing link)
+			} else if pa.Ancode <= 0 {
+				score = best(score, 1) // program present with a missing number
+			}
+		}
+		if muc != nil {
+			sameEx := sameExamer(muc.MainExamer, ze.MainExamer)
+			simMod := similarModule(muc.Module, ze.Module)
+			switch {
+			case sameEx && simMod:
+				score = best(score, 2)
+			case sameEx:
+				score = best(score, 3)
+			case simMod:
+				score = best(score, 4)
+			}
+		}
+		if score >= 0 {
+			cands = append(cands, scored{ze, score})
+		}
+	}
+	sort.SliceStable(cands, func(i, j int) bool {
+		if cands[i].score != cands[j].score {
+			return cands[i].score < cands[j].score
+		}
+		return cands[i].exam.AnCode < cands[j].exam.AnCode
+	})
+
+	result := make([]*model.ZPAExam, 0, len(cands))
+	for _, c := range cands {
+		result = append(result, c.exam)
+	}
+	return result, nil
+}
+
+// best returns the higher-priority (smaller, but >= 0) of two scores.
+func best(cur, candidate int) int {
+	if cur < 0 || candidate < cur {
+		return candidate
+	}
+	return cur
 }
 
 // zpaExamsByPrimussAncode maps (program, primussAncode) to the ZPA ancodes whose

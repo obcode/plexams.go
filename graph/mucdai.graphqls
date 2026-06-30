@@ -14,6 +14,24 @@ extend type Mutation {
   externalTime. date: dd.mm.yyyy, time: HH:MM.
   """
   setExternalExamTime(ancode: Int!, date: String!, time: String!): Boolean!
+  """
+  Manually link a MUC.DAI exam (program + primussAncode) to a ZPA exam (zpaAncode),
+  for the unresolved/wrong FK07 cases. Stored as a manual link that survives re-imports.
+  """
+  setMucDaiZpaLink(program: String!, primussAncode: Int!, zpaAncode: Int!): MucDaiExam!
+  """
+  Remove the (manual) link of a MUC.DAI exam and fall back to automatic detection.
+  """
+  removeMucDaiLink(program: String!, primussAncode: Int!): MucDaiExam!
+}
+
+extend type Query {
+  """
+  Suggested ZPA exams for linking an (unresolved) MUC.DAI exam, ranked: ZPA exams that
+  carry the program with a missing number (0/-1) first, then same-examer + similar
+  module, then either. For the GUI to confirm/correct the link.
+  """
+  mucDaiZpaCandidates(program: String!, primussAncode: Int!): [ZPAExam!]!
 }
 
 type ImportMucDaiResult {

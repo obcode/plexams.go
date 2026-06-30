@@ -19,3 +19,18 @@ func (r *mutationResolver) ImportMucDaiExams(ctx context.Context, csv string) (*
 func (r *mutationResolver) SetExternalExamTime(ctx context.Context, ancode int, date string, time string) (bool, error) {
 	return r.plexams.SetExternalExamTime(ctx, ancode, date, time)
 }
+
+// SetMucDaiZpaLink is the resolver for the setMucDaiZpaLink field.
+func (r *mutationResolver) SetMucDaiZpaLink(ctx context.Context, program string, primussAncode int, zpaAncode int) (*model.MucDaiExam, error) {
+	return r.plexams.SetMucDaiZpaLink(ctx, program, primussAncode, zpaAncode)
+}
+
+// RemoveMucDaiLink is the resolver for the removeMucDaiLink field.
+func (r *mutationResolver) RemoveMucDaiLink(ctx context.Context, program string, primussAncode int) (*model.MucDaiExam, error) {
+	return r.plexams.RemoveMucDaiLink(ctx, program, primussAncode)
+}
+
+// MucDaiZpaCandidates is the resolver for the mucDaiZpaCandidates field.
+func (r *queryResolver) MucDaiZpaCandidates(ctx context.Context, program string, primussAncode int) ([]*model.ZPAExam, error) {
+	return r.plexams.MucDaiZpaCandidates(ctx, program, primussAncode)
+}

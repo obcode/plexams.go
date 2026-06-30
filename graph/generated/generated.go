@@ -505,6 +505,7 @@ type ComplexityRoot struct {
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
 		RemoveExamDuration            func(childComplexity int, ancode int) int
+		RemoveMucDaiLink              func(childComplexity int, program string, primussAncode int) int
 		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
 		RemovePermanentNonInvigilator func(childComplexity int, teacherID int) int
 		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
@@ -522,6 +523,7 @@ type ComplexityRoot struct {
 		SetExternalExamTime           func(childComplexity int, ancode int, date string, time string) int
 		SetGenerationConfig           func(childComplexity int, input model.GenerationConfigInput) int
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
+		SetMucDaiZpaLink              func(childComplexity int, program string, primussAncode int, zpaAncode int) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
 		SetPlaner                     func(childComplexity int, name string, email string) int
@@ -831,6 +833,7 @@ type ComplexityRoot struct {
 		InvigilatorsExcludedByConfig  func(childComplexity int) int
 		InvigilatorsForDay            func(childComplexity int, day int) int
 		InvigilatorsWithReq           func(childComplexity int) int
+		MucDaiZpaCandidates           func(childComplexity int, program string, primussAncode int) int
 		MucdaiExams                   func(childComplexity int) int
 		MutationLog                   func(childComplexity int, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) int
 		MutationLogNames              func(childComplexity int) int
@@ -1332,6 +1335,8 @@ type MutationResolver interface {
 	RemovePermanentNonInvigilator(ctx context.Context, teacherID int) (bool, error)
 	ImportMucDaiExams(ctx context.Context, csv string) (*model.ImportMucDaiResult, error)
 	SetExternalExamTime(ctx context.Context, ancode int, date string, time string) (bool, error)
+	SetMucDaiZpaLink(ctx context.Context, program string, primussAncode int, zpaAncode int) (*model.MucDaiExam, error)
+	RemoveMucDaiLink(ctx context.Context, program string, primussAncode int) (*model.MucDaiExam, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
@@ -1427,6 +1432,7 @@ type QueryResolver interface {
 	InvigilatorConstraints(ctx context.Context) ([]*model.InvigilatorConstraints, error)
 	PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error)
 	InvigilatorCandidates(ctx context.Context) ([]*model.Teacher, error)
+	MucDaiZpaCandidates(ctx context.Context, program string, primussAncode int) ([]*model.ZPAExam, error)
 	MutationLog(ctx context.Context, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) ([]*model.MutationLogEntry, error)
 	MutationLogNames(ctx context.Context) ([]string, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
@@ -3845,6 +3851,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.RemoveExamDuration(childComplexity, args["ancode"].(int)), true
 
+	case "Mutation.removeMucDaiLink":
+		if e.complexity.Mutation.RemoveMucDaiLink == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeMucDaiLink_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveMucDaiLink(childComplexity, args["program"].(string), args["primussAncode"].(int)), true
+
 	case "Mutation.removeNtaRoomAloneWaiver":
 		if e.complexity.Mutation.RemoveNtaRoomAloneWaiver == nil {
 			break
@@ -4033,6 +4051,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetInvigilatorConstraints(childComplexity, args["input"].(model.InvigilatorConstraintsInput)), true
+
+	case "Mutation.setMucDaiZpaLink":
+		if e.complexity.Mutation.SetMucDaiZpaLink == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setMucDaiZpaLink_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetMucDaiZpaLink(childComplexity, args["program"].(string), args["primussAncode"].(int), args["zpaAncode"].(int)), true
 
 	case "Mutation.setNTAActive":
 		if e.complexity.Mutation.SetNTAActive == nil {
@@ -5704,6 +5734,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.InvigilatorsWithReq(childComplexity), true
+
+	case "Query.mucDaiZpaCandidates":
+		if e.complexity.Query.MucDaiZpaCandidates == nil {
+			break
+		}
+
+		args, err := ec.field_Query_mucDaiZpaCandidates_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.MucDaiZpaCandidates(childComplexity, args["program"].(string), args["primussAncode"].(int)), true
 
 	case "Query.mucdaiExams":
 		if e.complexity.Query.MucdaiExams == nil {
@@ -9120,6 +9162,24 @@ type RoomWithInvigilator {
   externalTime. date: dd.mm.yyyy, time: HH:MM.
   """
   setExternalExamTime(ancode: Int!, date: String!, time: String!): Boolean!
+  """
+  Manually link a MUC.DAI exam (program + primussAncode) to a ZPA exam (zpaAncode),
+  for the unresolved/wrong FK07 cases. Stored as a manual link that survives re-imports.
+  """
+  setMucDaiZpaLink(program: String!, primussAncode: Int!, zpaAncode: Int!): MucDaiExam!
+  """
+  Remove the (manual) link of a MUC.DAI exam and fall back to automatic detection.
+  """
+  removeMucDaiLink(program: String!, primussAncode: Int!): MucDaiExam!
+}
+
+extend type Query {
+  """
+  Suggested ZPA exams for linking an (unresolved) MUC.DAI exam, ranked: ZPA exams that
+  carry the program with a missing number (0/-1) first, then same-examer + similar
+  module, then either. For the GUI to confirm/correct the link.
+  """
+  mucDaiZpaCandidates(program: String!, primussAncode: Int!): [ZPAExam!]!
 }
 
 type ImportMucDaiResult {
@@ -12332,6 +12392,57 @@ func (ec *executionContext) field_Mutation_removeExamDuration_argsAncode(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_removeMucDaiLink_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_removeMucDaiLink_argsProgram(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg0
+	arg1, err := ec.field_Mutation_removeMucDaiLink_argsPrimussAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["primussAncode"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_removeMucDaiLink_argsProgram(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["program"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+	if tmp, ok := rawArgs["program"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removeMucDaiLink_argsPrimussAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["primussAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("primussAncode"))
+	if tmp, ok := rawArgs["primussAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_removeNtaRoomAloneWaiver_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12951,6 +13062,80 @@ func (ec *executionContext) field_Mutation_setInvigilatorConstraints_argsInput(
 	}
 
 	var zeroVal model.InvigilatorConstraintsInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setMucDaiZpaLink_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setMucDaiZpaLink_argsProgram(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg0
+	arg1, err := ec.field_Mutation_setMucDaiZpaLink_argsPrimussAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["primussAncode"] = arg1
+	arg2, err := ec.field_Mutation_setMucDaiZpaLink_argsZpaAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["zpaAncode"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setMucDaiZpaLink_argsProgram(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["program"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+	if tmp, ok := rawArgs["program"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setMucDaiZpaLink_argsPrimussAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["primussAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("primussAncode"))
+	if tmp, ok := rawArgs["primussAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setMucDaiZpaLink_argsZpaAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["zpaAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("zpaAncode"))
+	if tmp, ok := rawArgs["zpaAncode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
 	return zeroVal, nil
 }
 
@@ -14719,6 +14904,57 @@ func (ec *executionContext) field_Query_invigilatorsForDay_argsDay(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
 	if tmp, ok := rawArgs["day"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_mucDaiZpaCandidates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_mucDaiZpaCandidates_argsProgram(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg0
+	arg1, err := ec.field_Query_mucDaiZpaCandidates_argsPrimussAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["primussAncode"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Query_mucDaiZpaCandidates_argsProgram(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["program"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+	if tmp, ok := rawArgs["program"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_mucDaiZpaCandidates_argsPrimussAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["primussAncode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("primussAncode"))
+	if tmp, ok := rawArgs["primussAncode"]; ok {
 		return ec.unmarshalNInt2int(ctx, tmp)
 	}
 
@@ -30807,6 +31043,168 @@ func (ec *executionContext) fieldContext_Mutation_setExternalExamTime(ctx contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setMucDaiZpaLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setMucDaiZpaLink(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetMucDaiZpaLink(rctx, fc.Args["program"].(string), fc.Args["primussAncode"].(int), fc.Args["zpaAncode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MucDaiExam)
+	fc.Result = res
+	return ec.marshalNMucDaiExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMucDaiExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setMucDaiZpaLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "primussAncode":
+				return ec.fieldContext_MucDaiExam_primussAncode(ctx, field)
+			case "module":
+				return ec.fieldContext_MucDaiExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_MucDaiExam_mainExamer(ctx, field)
+			case "mainExamerID":
+				return ec.fieldContext_MucDaiExam_mainExamerID(ctx, field)
+			case "examType":
+				return ec.fieldContext_MucDaiExam_examType(ctx, field)
+			case "duration":
+				return ec.fieldContext_MucDaiExam_duration(ctx, field)
+			case "isRepeaterExam":
+				return ec.fieldContext_MucDaiExam_isRepeaterExam(ctx, field)
+			case "program":
+				return ec.fieldContext_MucDaiExam_program(ctx, field)
+			case "plannedBy":
+				return ec.fieldContext_MucDaiExam_plannedBy(ctx, field)
+			case "ancode":
+				return ec.fieldContext_MucDaiExam_ancode(ctx, field)
+			case "linkStatus":
+				return ec.fieldContext_MucDaiExam_linkStatus(ctx, field)
+			case "planEntry":
+				return ec.fieldContext_MucDaiExam_planEntry(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MucDaiExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setMucDaiZpaLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeMucDaiLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeMucDaiLink(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveMucDaiLink(rctx, fc.Args["program"].(string), fc.Args["primussAncode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MucDaiExam)
+	fc.Result = res
+	return ec.marshalNMucDaiExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMucDaiExam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeMucDaiLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "primussAncode":
+				return ec.fieldContext_MucDaiExam_primussAncode(ctx, field)
+			case "module":
+				return ec.fieldContext_MucDaiExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_MucDaiExam_mainExamer(ctx, field)
+			case "mainExamerID":
+				return ec.fieldContext_MucDaiExam_mainExamerID(ctx, field)
+			case "examType":
+				return ec.fieldContext_MucDaiExam_examType(ctx, field)
+			case "duration":
+				return ec.fieldContext_MucDaiExam_duration(ctx, field)
+			case "isRepeaterExam":
+				return ec.fieldContext_MucDaiExam_isRepeaterExam(ctx, field)
+			case "program":
+				return ec.fieldContext_MucDaiExam_program(ctx, field)
+			case "plannedBy":
+				return ec.fieldContext_MucDaiExam_plannedBy(ctx, field)
+			case "ancode":
+				return ec.fieldContext_MucDaiExam_ancode(ctx, field)
+			case "linkStatus":
+				return ec.fieldContext_MucDaiExam_linkStatus(ctx, field)
+			case "planEntry":
+				return ec.fieldContext_MucDaiExam_planEntry(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MucDaiExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeMucDaiLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addNTA(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_addNTA(ctx, field)
 	if err != nil {
@@ -43414,6 +43812,87 @@ func (ec *executionContext) fieldContext_Query_invigilatorCandidates(_ context.C
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_mucDaiZpaCandidates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_mucDaiZpaCandidates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().MucDaiZpaCandidates(rctx, fc.Args["program"].(string), fc.Args["primussAncode"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ZPAExam)
+	fc.Result = res
+	return ec.marshalNZPAExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_mucDaiZpaCandidates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaID":
+				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
+			case "semester":
+				return ec.fieldContext_ZPAExam_semester(ctx, field)
+			case "ancode":
+				return ec.fieldContext_ZPAExam_ancode(ctx, field)
+			case "module":
+				return ec.fieldContext_ZPAExam_module(ctx, field)
+			case "mainExamer":
+				return ec.fieldContext_ZPAExam_mainExamer(ctx, field)
+			case "mainExamerID":
+				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
+			case "examType":
+				return ec.fieldContext_ZPAExam_examType(ctx, field)
+			case "examTypeFull":
+				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
+			case "duration":
+				return ec.fieldContext_ZPAExam_duration(ctx, field)
+			case "isRepeaterExam":
+				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
+			case "groups":
+				return ec.fieldContext_ZPAExam_groups(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_mucDaiZpaCandidates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -67387,6 +67866,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setMucDaiZpaLink":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setMucDaiZpaLink(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeMucDaiLink":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeMucDaiLink(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addNTA":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addNTA(ctx, field)
@@ -70307,6 +70800,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_invigilatorCandidates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "mucDaiZpaCandidates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_mucDaiZpaCandidates(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -76212,6 +76727,10 @@ func (ec *executionContext) marshalNMinutesReport2ᚖgithubᚗcomᚋobcodeᚋple
 		return graphql.Null
 	}
 	return ec._MinutesReport(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMucDaiExam2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMucDaiExam(ctx context.Context, sel ast.SelectionSet, v model.MucDaiExam) graphql.Marshaler {
+	return ec._MucDaiExam(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNMucDaiExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMucDaiExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MucDaiExam) graphql.Marshaler {

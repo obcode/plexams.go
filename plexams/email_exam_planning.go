@@ -187,7 +187,9 @@ func (p *Plexams) SendExamPlanningInfoMails(ctx context.Context, teacherIDs []in
 	if run {
 		p.markCondition(ctx, condExamPlanningInfoSent)
 	}
-	reporter.Println(fmt.Sprintf("%d E-Mail(s) verschickt, %d übersprungen", sent, skipped))
+	// StopProgress (not Println) so the last transient per-recipient line is replaced
+	// by the summary instead of lingering.
+	reporter.StopProgress(fmt.Sprintf("%d E-Mail(s) verschickt, %d übersprungen", sent, skipped))
 	return nil
 }
 

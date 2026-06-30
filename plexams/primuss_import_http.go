@@ -54,6 +54,7 @@ func (p *Plexams) HTTPUploadPrimussZip(w http.ResponseWriter, r *http.Request) {
 			"count":          pr.CountRows,
 			"conflicts":      pr.ConflictRows,
 			"missing":        pr.Missing,
+			"firstImport":    pr.FirstImport,
 			"changedAncodes": pr.ChangedAncodes,
 		})
 	}

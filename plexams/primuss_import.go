@@ -31,7 +31,8 @@ type PrimussImportProgram struct {
 	CountRows      int
 	ConflictRows   int
 	Missing        []string // file types not present for this program
-	ChangedAncodes []int    // ancodes whose student registrations changed vs before
+	FirstImport    bool     // no prior studentregs for this program (initial import, not an update)
+	ChangedAncodes []int    // ancodes whose registrations changed vs before (empty on first import)
 }
 
 // primussGroupRE extracts the program code from a Sammellisten filename, e.g.
@@ -174,7 +175,13 @@ func (p *Plexams) importPrimussProgram(ctx context.Context, program string, byKi
 		if err != nil {
 			return nil, fmt.Errorf("studentregs: %w", err)
 		}
-		res.ChangedAncodes = changedAncodes(old, docs)
+		// changed ancodes only make sense as an update against prior data; the first
+		// import of a program is the initial data, not an update.
+		if len(old) == 0 {
+			res.FirstImport = true
+		} else {
+			res.ChangedAncodes = changedAncodes(old, docs)
+		}
 		n, err := p.dbClient.ReplaceRawCollection(ctx, "studentregs_"+program, docs)
 		if err != nil {
 			return nil, err

@@ -54,7 +54,7 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 	}
 
 	// generate the non-ZPA exams for non-FK07 exams
-	existing, maxAncode, err := p.existingNonZpaByPrimuss(ctx)
+	existing, maxAncode, err := p.existingExternalByPrimuss(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 		if !bogusProgram && !staleInImported {
 			continue
 		}
-		if err := p.dbClient.DeleteNonZpaExam(ctx, ancode); err != nil {
+		if err := p.dbClient.DeleteExternalExam(ctx, ancode); err != nil {
 			return nil, err
 		}
 		if err := p.dbClient.RemovePlanEntry(ctx, ancode); err != nil {
@@ -137,16 +137,16 @@ type primussKey struct {
 	ancode  int
 }
 
-// existingNonZpaByPrimuss maps (program, primussAncode) of all non-ZPA exams to their
+// existingExternalByPrimuss maps (program, primussAncode) of all non-ZPA exams to their
 // assigned ancode and returns the highest assigned ancode.
-func (p *Plexams) existingNonZpaByPrimuss(ctx context.Context) (map[primussKey]int, int, error) {
-	nonZpa, err := p.dbClient.NonZpaExams(ctx)
+func (p *Plexams) existingExternalByPrimuss(ctx context.Context) (map[primussKey]int, int, error) {
+	external, err := p.dbClient.ExternalExams(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	m := make(map[primussKey]int, len(nonZpa))
+	m := make(map[primussKey]int, len(external))
 	maxAncode := 0
-	for _, exam := range nonZpa {
+	for _, exam := range external {
 		if exam.AnCode > maxAncode {
 			maxAncode = exam.AnCode
 		}

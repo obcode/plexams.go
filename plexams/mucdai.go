@@ -149,7 +149,7 @@ func (p *Plexams) AddMucDaiExam(ctx context.Context, zpaAncode int, mucdaiExam *
 		}},
 	}
 
-	err := p.dbClient.AddNonZpaExam(ctx, zpaExam)
+	err := p.dbClient.AddExternalExam(ctx, zpaExam)
 
 	return zpaExam, err
 }

@@ -326,12 +326,12 @@ func normalizeModule(s string) string {
 	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(s))), " ")
 }
 
-// computeConnectedNonZPAExam connects one non-ZPA (locally created) exam to its
+// computeConnectedExternalExam connects one non-ZPA (locally created) exam to its
 // Primuss registrations using the preloaded index (pure, no DB access).
-func computeConnectedNonZPAExam(nonZPAExam *model.ZPAExam, idx *primussExamIndex) *model.ConnectedExam {
+func computeConnectedExternalExam(externalExam *model.ZPAExam, idx *primussExamIndex) *model.ConnectedExam {
 	primussExams := make([]*model.PrimussExam, 0)
 	warnings := make([]*model.ConnectedExamWarning, 0)
-	for _, primuss := range nonZPAExam.PrimussAncodes {
+	for _, primuss := range externalExam.PrimussAncodes {
 		primussExam, ok := idx.get(primuss.Program, primuss.Ancode)
 		if !ok {
 			warnings = append(warnings, primussRefWarning("info",
@@ -343,7 +343,7 @@ func computeConnectedNonZPAExam(nonZPAExam *model.ZPAExam, idx *primussExamIndex
 	}
 
 	return &model.ConnectedExam{
-		ZpaExam:           nonZPAExam,
+		ZpaExam:           externalExam,
 		PrimussExams:      primussExams,
 		OtherPrimussExams: nil,
 		Warnings:          warnings,
@@ -370,8 +370,8 @@ func (p *Plexams) claimedPrimussKeys(ctx context.Context) (map[primussKey]bool, 
 		}
 	}
 	add(zpaExams)
-	if nonZpa, err := p.dbClient.NonZpaExams(ctx); err == nil {
-		add(nonZpa)
+	if external, err := p.dbClient.ExternalExams(ctx); err == nil {
+		add(external)
 	}
 	return claimed, nil
 }
@@ -407,10 +407,10 @@ func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam
 		exams = append(exams, p.computeConnectedZPAExam(zpaExam, allPrograms, idx, claimed))
 	}
 
-	nonZPAExams, err := p.dbClient.NonZpaExams(ctx)
+	externalExams, err := p.dbClient.ExternalExams(ctx)
 	if err == nil {
-		for _, nonZPAExam := range nonZPAExams {
-			exams = append(exams, computeConnectedNonZPAExam(nonZPAExam, idx))
+		for _, externalExam := range externalExams {
+			exams = append(exams, computeConnectedExternalExam(externalExam, idx))
 		}
 	}
 
@@ -446,12 +446,12 @@ func (p *Plexams) GetConnectedExam(ctx context.Context, ancode int) (*model.Conn
 		return p.computeConnectedZPAExam(zpaExam, allPrograms, idx, claimed), nil
 	}
 
-	nonZPAExam, err := p.dbClient.NonZpaExam(ctx, ancode)
+	externalExam, err := p.dbClient.ExternalExam(ctx, ancode)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get non zpa exam")
 		return nil, err
 	}
-	return computeConnectedNonZPAExam(nonZPAExam, idx), nil
+	return computeConnectedExternalExam(externalExam, idx), nil
 }
 
 // AddPrimussAncode adds a Primuss ancode mapping to a ZPA exam and returns the

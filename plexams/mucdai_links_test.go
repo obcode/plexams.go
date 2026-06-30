@@ -11,7 +11,7 @@ func TestAutoMucDaiLink(t *testing.T) {
 		{"DE", 118}: {118},      // unique FK07 match
 		{"GS", 131}: {517, 999}, // ambiguous (two ZPA exams)
 	}
-	nonZpaMap := map[primussKey]int{
+	externalMap := map[primussKey]int{
 		{"DE", 200}: 90001, // external exam created
 	}
 
@@ -29,7 +29,7 @@ func TestAutoMucDaiLink(t *testing.T) {
 		{"external missing", &model.MucDaiExam{Program: "DE", PrimussAncode: 201, PlannedBy: "FK08"}, mucDaiLinkExternal, "unresolved", nil},
 	}
 	for _, c := range cases {
-		got := autoMucDaiLink(c.exam, zpaByPrimuss, nonZpaMap)
+		got := autoMucDaiLink(c.exam, zpaByPrimuss, externalMap)
 		if got.Kind != c.wantKind || got.Status != c.wantStatus {
 			t.Errorf("%s: kind/status = %s/%s, want %s/%s", c.name, got.Kind, got.Status, c.wantKind, c.wantStatus)
 		}

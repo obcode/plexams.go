@@ -35,7 +35,7 @@ func (p *Plexams) relinkMucDaiExams(ctx context.Context) error {
 		linkByKey[primussKey{l.Program, l.PrimussAncode}] = l
 	}
 
-	nonZpaMap, _, err := p.existingNonZpaByPrimuss(ctx)
+	externalMap, _, err := p.existingExternalByPrimuss(ctx)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (p *Plexams) relinkMucDaiExams(ctx context.Context) error {
 				continue
 			}
 
-			if err := p.dbClient.UpsertMucDaiLink(ctx, autoMucDaiLink(e, zpaByPrimuss, nonZpaMap)); err != nil {
+			if err := p.dbClient.UpsertMucDaiLink(ctx, autoMucDaiLink(e, zpaByPrimuss, externalMap)); err != nil {
 				return err
 			}
 		}
@@ -86,7 +86,7 @@ func (p *Plexams) relinkMucDaiExams(ctx context.Context) error {
 // link to the ZPA exam whose primussAncodes contain (program, primussAncode) exactly
 // (unique match → linked, else unresolved); other faculties' exams link to their
 // auto-created external exam. Pure (no DB), so it is unit-testable.
-func autoMucDaiLink(e *model.MucDaiExam, zpaByPrimuss map[primussKey][]int, nonZpaMap map[primussKey]int) *db.MucDaiLink {
+func autoMucDaiLink(e *model.MucDaiExam, zpaByPrimuss map[primussKey][]int, externalMap map[primussKey]int) *db.MucDaiLink {
 	key := primussKey{e.Program, e.PrimussAncode}
 	link := &db.MucDaiLink{
 		Program: e.Program, PrimussAncode: e.PrimussAncode,
@@ -101,7 +101,7 @@ func autoMucDaiLink(e *model.MucDaiExam, zpaByPrimuss map[primussKey][]int, nonZ
 		}
 	} else {
 		link.Kind = mucDaiLinkExternal
-		if a, ok := nonZpaMap[key]; ok {
+		if a, ok := externalMap[key]; ok {
 			aa := a
 			link.Ancode, link.Status = &aa, "linked"
 		}
@@ -137,7 +137,7 @@ func (p *Plexams) RemoveMucDaiLink(ctx context.Context, program string, primussA
 	if err != nil || mucExam == nil {
 		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
 	}
-	nonZpaMap, _, err := p.existingNonZpaByPrimuss(ctx)
+	externalMap, _, err := p.existingExternalByPrimuss(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (p *Plexams) RemoveMucDaiLink(ctx context.Context, program string, primussA
 	if err != nil {
 		return nil, err
 	}
-	if err := p.dbClient.UpsertMucDaiLink(ctx, autoMucDaiLink(p.mkMucdaiExam(mucExam), zpaByPrimuss, nonZpaMap)); err != nil {
+	if err := p.dbClient.UpsertMucDaiLink(ctx, autoMucDaiLink(p.mkMucdaiExam(mucExam), zpaByPrimuss, externalMap)); err != nil {
 		return nil, err
 	}
 	return p.enrichedMucDaiExam(ctx, program, primussAncode)

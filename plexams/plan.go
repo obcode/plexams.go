@@ -26,7 +26,7 @@ func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, time time.T
 	exam, err := p.GetZpaExamByAncode(ctx, ancode)
 	duration := 90 // good default
 	if err != nil {
-		exam, err = p.dbClient.NonZpaExam(ctx, ancode)
+		exam, err = p.dbClient.ExternalExam(ctx, ancode)
 		if err != nil {
 			return false, err
 		}
@@ -385,7 +385,7 @@ func (p *Plexams) PreExamsInSlot(ctx context.Context, day int, time int) ([]*mod
 		exam, err := p.GetZPAExam(ctx, planEntry.Ancode)
 		if err != nil {
 			// not a ZPA exam (e.g. a MUC.DAI / non-ZPA exam) — fall back
-			exam, err = p.dbClient.NonZpaExam(ctx, planEntry.Ancode)
+			exam, err = p.dbClient.ExternalExam(ctx, planEntry.Ancode)
 			if err != nil {
 				log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam (neither ZPA nor non-ZPA)")
 				return nil, err

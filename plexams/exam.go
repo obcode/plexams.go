@@ -95,7 +95,7 @@ func (idx *primussExamIndex) get(program string, ancode int) (*model.PrimussExam
 
 // computeConnectedZPAExam connects one ZPA exam to its Primuss registrations using
 // the preloaded index (pure, no DB access).
-func (p *Plexams) computeConnectedZPAExam(zpaExam *model.ZPAExam, allPrograms []string, idx *primussExamIndex) *model.ConnectedExam {
+func (p *Plexams) computeConnectedZPAExam(zpaExam *model.ZPAExam, allPrograms []string, idx *primussExamIndex, claimed map[primussKey]bool) *model.ConnectedExam {
 	primussExams := make([]*model.PrimussExam, 0)
 	warnings := make([]*model.ConnectedExamWarning, 0)
 
@@ -153,6 +153,9 @@ OUTER:
 	for _, program := range otherPrograms {
 		primussExam, ok := idx.get(program, zpaExam.AnCode)
 		if ok {
+			if claimed[primussKey{program, zpaExam.AnCode}] {
+				continue // already connected to another exam — don't suggest
+			}
 			if otherPrimussExams == nil {
 				otherPrimussExams = make([]*model.PrimussExam, 0)
 			}
@@ -191,6 +194,9 @@ OUTER:
 			continue
 		}
 		if sug := suggestPrimussExam(idx, g, zpaExam.MainExamer, zpaExam.Module); sug != nil {
+			if claimed[primussKey{g, sug.AnCode}] {
+				continue // the suggestion is already connected to another exam
+			}
 			covered[g] = true
 			warnings = append(warnings, primussRefWarning("warning",
 				fmt.Sprintf("kein ZPA-Eintrag für %s — evtl. %s/%d (gleicher Prüfer %s, Modul „%s“)?",
@@ -344,6 +350,32 @@ func computeConnectedNonZPAExam(nonZPAExam *model.ZPAExam, idx *primussExamIndex
 	}
 }
 
+// claimedPrimussKeys returns the (program, ancode) of every Primuss exam already mapped
+// to some exam (any ZPA exam's primussAncodes — incl. manually added — and the external
+// MUC.DAI exams), so suggestions never propose an already-connected Primuss exam.
+func (p *Plexams) claimedPrimussKeys(ctx context.Context) (map[primussKey]bool, error) {
+	fromZPA := false
+	zpaExams, err := p.GetZPAExams(ctx, &fromZPA)
+	if err != nil {
+		return nil, err
+	}
+	claimed := make(map[primussKey]bool)
+	add := func(exams []*model.ZPAExam) {
+		for _, e := range exams {
+			for _, pa := range e.PrimussAncodes {
+				if pa.Ancode > 0 {
+					claimed[primussKey{pa.Program, pa.Ancode}] = true
+				}
+			}
+		}
+	}
+	add(zpaExams)
+	if nonZpa, err := p.dbClient.NonZpaExams(ctx); err == nil {
+		add(nonZpa)
+	}
+	return claimed, nil
+}
+
 // GetConnectedExams computes all connected exams on the fly: it loads all Primuss
 // exams once into an index and connects every ZPA-exam-to-plan and non-ZPA exam in
 // memory, so the result is always consistent with the current data (no cache).
@@ -359,6 +391,11 @@ func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam
 		return nil, err
 	}
 
+	claimed, err := p.claimedPrimussKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	zpaExams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get zpa exams to plan")
@@ -367,7 +404,7 @@ func (p *Plexams) GetConnectedExams(ctx context.Context) ([]*model.ConnectedExam
 
 	exams := make([]*model.ConnectedExam, 0, len(zpaExams))
 	for _, zpaExam := range zpaExams {
-		exams = append(exams, p.computeConnectedZPAExam(zpaExam, allPrograms, idx))
+		exams = append(exams, p.computeConnectedZPAExam(zpaExam, allPrograms, idx, claimed))
 	}
 
 	nonZPAExams, err := p.dbClient.NonZpaExams(ctx)
@@ -395,13 +432,18 @@ func (p *Plexams) GetConnectedExam(ctx context.Context, ancode int) (*model.Conn
 		return nil, err
 	}
 
+	claimed, err := p.claimedPrimussKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if ancode < 1000 {
 		zpaExam, err := p.dbClient.GetZpaExamByAncode(ctx, ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get zpa exam")
 			return nil, err
 		}
-		return p.computeConnectedZPAExam(zpaExam, allPrograms, idx), nil
+		return p.computeConnectedZPAExam(zpaExam, allPrograms, idx, claimed), nil
 	}
 
 	nonZPAExam, err := p.dbClient.NonZpaExam(ctx, ancode)

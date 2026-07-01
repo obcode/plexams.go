@@ -795,6 +795,7 @@ type ComplexityRoot struct {
 
 	PrimussExamWithCount struct {
 		Ancode           func(childComplexity int) int
+		Connected        func(childComplexity int) int
 		ExamType         func(childComplexity int) int
 		MainExamer       func(childComplexity int) int
 		Module           func(childComplexity int) int
@@ -5421,6 +5422,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PrimussExamWithCount.Ancode(childComplexity), true
 
+	case "PrimussExamWithCount.connected":
+		if e.complexity.PrimussExamWithCount.Connected == nil {
+			break
+		}
+
+		return e.complexity.PrimussExamWithCount.Connected(childComplexity), true
+
 	case "PrimussExamWithCount.examType":
 		if e.complexity.PrimussExamWithCount.ExamType == nil {
 			break
@@ -9728,6 +9736,8 @@ type PrimussExamWithCount {
   examType: String!
   presence: String!
   studentRegsCount: Int!
+  "true if this Primuss exam is connected to a ZPA or external (MUC.DAI) exam."
+  connected: Boolean!
 }
 
 type PrimussExamByProgram {
@@ -41577,6 +41587,8 @@ func (ec *executionContext) fieldContext_PrimussExamByProgram_exams(_ context.Co
 				return ec.fieldContext_PrimussExamWithCount_presence(ctx, field)
 			case "studentRegsCount":
 				return ec.fieldContext_PrimussExamWithCount_studentRegsCount(ctx, field)
+			case "connected":
+				return ec.fieldContext_PrimussExamWithCount_connected(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PrimussExamWithCount", field.Name)
 		},
@@ -41887,6 +41899,50 @@ func (ec *executionContext) fieldContext_PrimussExamWithCount_studentRegsCount(_
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PrimussExamWithCount_connected(ctx context.Context, field graphql.CollectedField, obj *model.PrimussExamWithCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrimussExamWithCount_connected(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Connected, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrimussExamWithCount_connected(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrimussExamWithCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -70296,6 +70352,11 @@ func (ec *executionContext) _PrimussExamWithCount(ctx context.Context, sel ast.S
 			}
 		case "studentRegsCount":
 			out.Values[i] = ec._PrimussExamWithCount_studentRegsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "connected":
+			out.Values[i] = ec._PrimussExamWithCount_connected(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

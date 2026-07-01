@@ -8,7 +8,24 @@ import (
 )
 
 func (p *Plexams) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
-	return p.dbClient.GetPrimussExams(ctx)
+	byProgram, err := p.dbClient.GetPrimussExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// mark the connection status authoritatively: a Primuss exam is connected iff it is
+	// claimed by some ZPA exam (incl. manually added ancodes) or an external (MUC.DAI)
+	// exam — the same source the connected-exams view uses.
+	claimed, err := p.claimedPrimussKeys(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot compute claimed primuss keys for connection status")
+		return byProgram, nil
+	}
+	for _, prog := range byProgram {
+		for _, exam := range prog.Exams {
+			exam.Connected = claimed[primussKey{exam.Program, exam.Ancode}]
+		}
+	}
+	return byProgram, nil
 }
 
 func (p *Plexams) GetPrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error) {

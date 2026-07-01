@@ -29,6 +29,8 @@ type PrimussExamWithCount {
   examType: String!
   presence: String!
   studentRegsCount: Int!
+  "true if this Primuss exam is connected to a ZPA or external (MUC.DAI) exam."
+  connected: Boolean!
 }
 
 type PrimussExamByProgram {

@@ -20,12 +20,38 @@ func (p *Plexams) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgr
 		log.Error().Err(err).Msg("cannot compute claimed primuss keys for connection status")
 		return byProgram, nil
 	}
+	plannedZPA, err := p.toPlanZPAPrimussKeys(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot compute to-plan ZPA primuss keys")
+		plannedZPA = map[primussKey]bool{}
+	}
 	for _, prog := range byProgram {
 		for _, exam := range prog.Exams {
-			exam.Connected = claimed[primussKey{exam.Program, exam.Ancode}]
+			key := primussKey{exam.Program, exam.Ancode}
+			exam.Connected = claimed[key]
+			exam.PlannedZpa = plannedZPA[key]
 		}
 	}
 	return byProgram, nil
+}
+
+// toPlanZPAPrimussKeys returns the (program, ancode) of every Primuss exam claimed by a
+// ZPA exam selected to be planned (a subset of claimedPrimussKeys: excludes external /
+// MUC.DAI exams and ZPA exams marked not-to-plan).
+func (p *Plexams) toPlanZPAPrimussKeys(ctx context.Context) (map[primussKey]bool, error) {
+	toPlan, err := p.GetZpaExamsToPlan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	keys := make(map[primussKey]bool)
+	for _, e := range toPlan {
+		for _, pa := range e.PrimussAncodes {
+			if pa.Ancode > 0 {
+				keys[primussKey{pa.Program, pa.Ancode}] = true
+			}
+		}
+	}
+	return keys, nil
 }
 
 func (p *Plexams) GetPrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error) {

@@ -31,6 +31,8 @@ type PrimussExamWithCount {
   studentRegsCount: Int!
   "true if this Primuss exam is connected to a ZPA or external (MUC.DAI) exam."
   connected: Boolean!
+  "true if connected to a ZPA exam selected to be planned by us (a subset of connected; false for external/MUC.DAI links or not-to-plan ZPA exams)."
+  plannedZPA: Boolean!
 }
 
 type PrimussExamByProgram {

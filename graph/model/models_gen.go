@@ -741,6 +741,8 @@ type PrimussExamWithCount struct {
 	StudentRegsCount int    `json:"studentRegsCount"`
 	// true if this Primuss exam is connected to a ZPA or external (MUC.DAI) exam.
 	Connected bool `json:"connected"`
+	// true if connected to a ZPA exam selected to be planned by us (a subset of connected; false for external/MUC.DAI links or not-to-plan ZPA exams).
+	PlannedZpa bool `json:"plannedZPA"`
 }
 
 type Query struct {

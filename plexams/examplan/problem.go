@@ -88,15 +88,17 @@ type Weights struct {
 	Unplaced      float64 // penalty per unplaced unit (dominant)
 }
 
-// DefaultWeights returns starting weights (calibration pending). Ordered so the
-// spread dominates and clustering / slot-load are tie-breakers; Unplaced dominates
-// everything so the solver places all exams first.
+// DefaultWeights returns the calibrated weights (tuned against real data, Test26SS,
+// 2026-07-02: Adjacent/SameDay high enough to push directly-consecutive to 0 and
+// same-day exams down markedly, with a mild worst-case term protecting the least
+// well-spread students). Ordered so the spread dominates and clustering / slot-load
+// are tie-breakers; Unplaced dominates everything so the solver places all exams first.
 func DefaultWeights() Weights {
 	return Weights{
-		Adjacent:      1000,
-		SameDay:       400,
+		Adjacent:      2500,
+		SameDay:       900,
 		DayFactor:     200,
-		WorstCase:     0.01,
+		WorstCase:     0.05,
 		RepeatFactor:  0.3,
 		Attract:       50,
 		SlotLoad:      0.5,

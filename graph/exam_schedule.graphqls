@@ -5,7 +5,7 @@ extend type Subscription {
   final RESULT line carries the structured examReport either way. A non-dry-run write
   is refused while the plan is gated (draft sent / published).
   """
-  generateExamSchedule(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
+  generateExamSchedule(dryRun: Boolean!, seed: Int, iterations: Int, ignoreRatings: Boolean): LogLine!
 }
 
 extend type Query {

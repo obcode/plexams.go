@@ -39,7 +39,7 @@ type ExamScheduleResult struct {
 // current data: assembled exams to plan (movable), fixed obstacles (locked / external
 // / not-planned-by-me), per-student conflict pairs, EXaHM slot capacities and the
 // attract pairs (parallel sections / small same-examer exams).
-func (p *Plexams) buildExamPlanProblem(ctx context.Context) (*examplan.Problem, error) {
+func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (*examplan.Problem, error) {
 	sc := p.semesterConfig
 	if sc == nil {
 		return nil, fmt.Errorf("no semester config loaded")
@@ -242,30 +242,32 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context) (*examplan.Problem, 
 		}
 		return [2]int{ua, ub}, true
 	}
-	if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err == nil {
-		for _, pr := range pairs {
-			if up, ok := unitPair(pr[0], pr[1]); ok {
-				canShare[up] = true
+	if applyRatings {
+		if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err == nil {
+			for _, pr := range pairs {
+				if up, ok := unitPair(pr[0], pr[1]); ok {
+					canShare[up] = true
+				}
 			}
 		}
-	}
-	if ratings, err := p.dbClient.ConflictRatings(ctx); err == nil {
-		for _, r := range ratings {
-			up, ok := unitPair(r.Ancode1, r.Ancode2)
-			if !ok {
-				continue
-			}
-			switch r.Rating {
-			case model.ConflictRatingUndesired:
-				undesired[up] = true
-			case model.ConflictRatingForbidden:
-				forbidden[up] = true
-			case model.ConflictRatingAccepted:
-				if r.Mtknr != nil {
-					if accepted[*r.Mtknr] == nil {
-						accepted[*r.Mtknr] = make(map[[2]int]bool)
+		if ratings, err := p.dbClient.ConflictRatings(ctx); err == nil {
+			for _, r := range ratings {
+				up, ok := unitPair(r.Ancode1, r.Ancode2)
+				if !ok {
+					continue
+				}
+				switch r.Rating {
+				case model.ConflictRatingUndesired:
+					undesired[up] = true
+				case model.ConflictRatingForbidden:
+					forbidden[up] = true
+				case model.ConflictRatingAccepted:
+					if r.Mtknr != nil {
+						if accepted[*r.Mtknr] == nil {
+							accepted[*r.Mtknr] = make(map[[2]int]bool)
+						}
+						accepted[*r.Mtknr][up] = true
 					}
-					accepted[*r.Mtknr][up] = true
 				}
 			}
 		}
@@ -381,9 +383,12 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context) (*examplan.Problem, 
 // non-fixed plan entries (locked / external / not-planned-by-me stay untouched) and
 // removes stale entries of any exam that ended up unplaced. It refuses to write when
 // there are hard violations.
-func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed int64, iterations int, reporter Reporter) (*ExamScheduleResult, error) {
+func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed int64, iterations int, ignoreRatings bool, reporter Reporter) (*ExamScheduleResult, error) {
+	if ignoreRatings {
+		reporter.Println("Konflikt-Bewertungen werden für diesen Lauf ignoriert")
+	}
 	reporter.Step("Terminplan-Problem wird aufgebaut …")
-	prob, err := p.buildExamPlanProblem(ctx)
+	prob, err := p.buildExamPlanProblem(ctx, !ignoreRatings)
 	if err != nil {
 		reporter.StopProgressFail("Aufbau fehlgeschlagen: " + err.Error())
 		return nil, err

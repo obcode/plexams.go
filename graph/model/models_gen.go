@@ -101,6 +101,13 @@ type ConflictPerProgram struct {
 	Conflicts []*Conflict `json:"conflicts"`
 }
 
+type ConflictStudent struct {
+	Mtknr string `json:"mtknr"`
+	Name  string `json:"name"`
+	// true if this student already has an ACCEPTED rating for this pair.
+	Accepted bool `json:"accepted"`
+}
+
 type ConflictsPerProgramAncode struct {
 	Program   string     `json:"program"`
 	Ancode    int        `json:"ancode"`
@@ -299,6 +306,8 @@ type ExamScheduleConflict struct {
 	Rating *ConflictRating `json:"rating,omitempty"`
 	// true if the pair is declared can-share-slot.
 	CanShareSlot bool `json:"canShareSlot"`
+	// the affected students (registered in both), for per-student ACCEPTED ratings.
+	AffectedStudents []*ConflictStudent `json:"affectedStudents"`
 }
 
 // Quality report of a generated (or current) exam schedule.

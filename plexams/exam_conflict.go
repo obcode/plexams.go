@@ -209,10 +209,11 @@ func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamSched
 		return nil, err
 	}
 
+	type studInfo struct{ mtknr, name string }
 	type agg struct {
-		count int
-		rank  int
-		label string
+		rank     int
+		label    string
+		students []studInfo
 	}
 	byPair := make(map[[2]int]*agg)
 	for _, s := range students {
@@ -235,7 +236,7 @@ func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamSched
 					a = &agg{}
 					byPair[key] = a
 				}
-				a.count++
+				a.students = append(a.students, studInfo{s.Mtknr, s.Name})
 				if rank > a.rank {
 					a.rank, a.label = rank, label
 				}
@@ -244,10 +245,17 @@ func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamSched
 	}
 
 	ratingByPair := make(map[[2]int]model.ConflictRating)
+	acceptedByPair := make(map[[2]int]map[string]bool) // pair -> mtknr set (ACCEPTED)
 	if ratings, err := p.dbClient.ConflictRatings(ctx); err == nil {
 		for _, r := range ratings {
-			if r.Mtknr == nil { // pair-level
-				ratingByPair[[2]int{r.Ancode1, r.Ancode2}] = r.Rating
+			key := [2]int{r.Ancode1, r.Ancode2}
+			if r.Mtknr == nil {
+				ratingByPair[key] = r.Rating // pair-level
+			} else if r.Rating == model.ConflictRatingAccepted {
+				if acceptedByPair[key] == nil {
+					acceptedByPair[key] = make(map[string]bool)
+				}
+				acceptedByPair[key][*r.Mtknr] = true
 			}
 		}
 	}
@@ -262,10 +270,17 @@ func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamSched
 	out := make([]*model.ExamScheduleConflict, 0, len(byPair))
 	for key, a := range byPair {
 		ep := examPair(key[0], key[1], info)
+		acc := acceptedByPair[key]
+		affected := make([]*model.ConflictStudent, 0, len(a.students))
+		for _, s := range a.students {
+			affected = append(affected, &model.ConflictStudent{Mtknr: s.mtknr, Name: s.name, Accepted: acc[s.mtknr]})
+		}
+		sort.Slice(affected, func(i, j int) bool { return affected[i].Name < affected[j].Name })
 		c := &model.ExamScheduleConflict{
 			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1,
 			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2,
-			StudentCount: a.count, Proximity: a.label, CanShareSlot: canShare[key],
+			StudentCount: len(a.students), Proximity: a.label, CanShareSlot: canShare[key],
+			AffectedStudents: affected,
 		}
 		if r, ok := ratingByPair[key]; ok {
 			c.Rating = &r

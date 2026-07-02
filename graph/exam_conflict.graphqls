@@ -48,6 +48,15 @@ type ExamScheduleConflict {
   rating: ConflictRating
   "true if the pair is declared can-share-slot."
   canShareSlot: Boolean!
+  "the affected students (registered in both), for per-student ACCEPTED ratings."
+  affectedStudents: [ConflictStudent!]!
+}
+
+type ConflictStudent {
+  mtknr: String!
+  name: String!
+  "true if this student already has an ACCEPTED rating for this pair."
+  accepted: Boolean!
 }
 
 extend type Query {

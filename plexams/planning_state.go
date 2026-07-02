@@ -45,6 +45,7 @@ const (
 	condMucDaiImported            = "mucDaiImported"
 	condPrimussImported           = "primussImported"
 	condZpaPrimussConnected       = "zpaPrimussConnected"
+	condConstraintsEntered        = "constraintsEntered"
 	condExamPlanningInfoSent      = "examPlanningInfoSent"
 	condAssembledExams            = "assembledExams"
 	condStudentRegs               = "studentRegs"
@@ -76,6 +77,7 @@ var planningConditionDefs = []planningConditionDef{
 	{condMucDaiImported, "MUC.DAI-Prüfungen importiert & verknüpft", "phase0", ""},
 	{condPrimussImported, "Primuss-Anmeldedaten importiert", "phase0", ""},
 	{condZpaPrimussConnected, "ZPA- & Primuss-Prüfungen verknüpft", "phase0", ""},
+	{condConstraintsEntered, "Constraints eingepflegt", "phase0", ""},
 	{condAssembledExams, "Aufbereitete Prüfungen erstellt", "phase0", ""},
 	{condStudentRegs, "Anmeldungen erstellt", "phase0", ""},
 	{condStudentRegsUploaded, "Anmeldungen ins ZPA hochgeladen", "phase0", ""},

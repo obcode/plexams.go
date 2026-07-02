@@ -8,11 +8,22 @@ type ExamPair {
   mainExamer2: String!
 }
 
-"StudentConflictAcceptance records that a specific student's conflict between two exams is accepted (its proximity penalty is dropped for that student)."
-type StudentConflictAcceptance {
+"""
+ConflictDecision is an explicit per-student override of the automatic handling:
+ACCEPT drops that student's proximity penalty; VETO forces it to count at full weight
+(overriding an automatic repeat down-weighting).
+"""
+enum ConflictDecision {
+  ACCEPT
+  VETO
+}
+
+"StudentConflictDecision is a stored explicit decision for one student's conflict pair."
+type StudentConflictDecision {
   ancode1: Int!
   ancode2: Int!
   mtknr: String!
+  decision: ConflictDecision!
 }
 
 """
@@ -27,10 +38,16 @@ type ExamScheduleConflict {
   mainExamer1: String!
   "the study groups exam 1 is offered for (e.g. [\"IF2A\"])."
   groups1: [String!]!
+  "true if exam 1 is a repeater exam."
+  isRepeaterExam1: Boolean!
+  "the planned slot of exam 1."
+  slot1: Slot!
   ancode2: Int!
   module2: String!
   mainExamer2: String!
   groups2: [String!]!
+  isRepeaterExam2: Boolean!
+  slot2: Slot!
   "number of students registered in both, in the plan."
   studentCount: Int!
   "worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY."
@@ -50,15 +67,19 @@ type ConflictStudent {
   program: String!
   "the student's cohort/group, e.g. \"IF4B\"."
   group: String!
-  "true if this student's conflict for this pair is accepted."
+  "true if this is (heuristically) a repeat for this student (repeater exam or the student's semester is above the exam's) — auto down-weighted and accepted by default."
+  autoAccepted: Boolean!
+  "explicit decision for this student, if any (overrides the automatic handling)."
+  decision: ConflictDecision
+  "effective: penalty dropped for this student (explicit ACCEPT, or autoAccepted and not vetoed)."
   accepted: Boolean!
 }
 
 extend type Query {
   "Conflicts of the current plan, to review (accept per student)."
   examScheduleConflicts: [ExamScheduleConflict!]!
-  "All per-student conflict acceptances currently stored."
-  studentConflictAcceptances: [StudentConflictAcceptance!]!
+  "All explicit per-student conflict decisions currently stored."
+  studentConflictDecisions: [StudentConflictDecision!]!
   "Exam pairs declared as allowed to share a slot (no student legitimately sits both)."
   examsCanShareSlot: [ExamPair!]!
   "Auto-detected canShareSlot candidates (same module+program, different examer) not yet declared."
@@ -66,9 +87,10 @@ extend type Query {
 }
 
 extend type Mutation {
-  "Accept a specific student's conflict between two exams (drops that student's proximity penalty; same-slot stays hard)."
-  acceptStudentConflict(ancode1: Int!, ancode2: Int!, mtknr: String!): Boolean!
-  removeStudentConflictAcceptance(ancode1: Int!, ancode2: Int!, mtknr: String!): Boolean!
+  "Set an explicit decision for a student's conflict (ACCEPT drops the penalty; VETO forces it to count despite an automatic repeat down-weighting)."
+  setStudentConflictDecision(ancode1: Int!, ancode2: Int!, mtknr: String!, decision: ConflictDecision!): Boolean!
+  "Remove the explicit decision (back to automatic handling)."
+  removeStudentConflictDecision(ancode1: Int!, ancode2: Int!, mtknr: String!): Boolean!
   "Declare / undeclare that two exams may share a slot."
   setExamsCanShareSlot(ancode1: Int!, ancode2: Int!): Boolean!
   removeExamsCanShareSlot(ancode1: Int!, ancode2: Int!): Boolean!

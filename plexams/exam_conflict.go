@@ -18,31 +18,35 @@ func normPair(a, b int) (int, int) {
 	return a, b
 }
 
-// StudentConflictAcceptances returns all stored per-student conflict acceptances.
-func (p *Plexams) StudentConflictAcceptances(ctx context.Context) ([]*model.StudentConflictAcceptance, error) {
-	return p.dbClient.StudentConflictAcceptances(ctx)
+// StudentConflictDecisions returns all stored explicit per-student decisions.
+func (p *Plexams) StudentConflictDecisions(ctx context.Context) ([]*model.StudentConflictDecision, error) {
+	return p.dbClient.StudentConflictDecisions(ctx)
 }
 
-// AcceptStudentConflict accepts a specific student's conflict between two exams: that
-// student's proximity penalty is dropped (the hard same-slot ban stays).
-func (p *Plexams) AcceptStudentConflict(ctx context.Context, ancode1, ancode2 int, mtknr string) (bool, error) {
+// SetStudentConflictDecision sets an explicit per-student decision: ACCEPT drops that
+// student's proximity penalty (same-slot stays hard); VETO forces the conflict to count
+// at full weight, overriding an automatic repeat down-weighting.
+func (p *Plexams) SetStudentConflictDecision(ctx context.Context, ancode1, ancode2 int, mtknr string, decision model.ConflictDecision) (bool, error) {
 	if ancode1 == ancode2 {
-		return false, fmt.Errorf("cannot accept an exam against itself")
+		return false, fmt.Errorf("cannot decide an exam against itself")
 	}
 	if mtknr == "" {
 		return false, fmt.Errorf("mtknr required")
 	}
+	if !decision.IsValid() {
+		return false, fmt.Errorf("invalid decision %q", decision)
+	}
 	a, b := normPair(ancode1, ancode2)
-	if err := p.dbClient.UpsertAcceptance(ctx, a, b, mtknr); err != nil {
+	if err := p.dbClient.UpsertDecision(ctx, a, b, mtknr, string(decision)); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-// RemoveStudentConflictAcceptance removes a per-student acceptance.
-func (p *Plexams) RemoveStudentConflictAcceptance(ctx context.Context, ancode1, ancode2 int, mtknr string) (bool, error) {
+// RemoveStudentConflictDecision clears an explicit decision (back to automatic handling).
+func (p *Plexams) RemoveStudentConflictDecision(ctx context.Context, ancode1, ancode2 int, mtknr string) (bool, error) {
 	a, b := normPair(ancode1, ancode2)
-	return p.dbClient.DeleteAcceptance(ctx, a, b, mtknr)
+	return p.dbClient.DeleteDecision(ctx, a, b, mtknr)
 }
 
 // ExamsCanShareSlot returns the declared can-share-slot pairs with display info.
@@ -165,9 +169,11 @@ func (p *Plexams) sameSlotGroups(ctx context.Context) map[int]int {
 }
 
 type examInfo struct {
-	module string
-	examer string
-	groups []string
+	module   string
+	examer   string
+	groups   []string
+	repeater bool
+	minSem   int
 }
 
 func (p *Plexams) examInfoMap(ctx context.Context) map[int]examInfo {
@@ -181,7 +187,10 @@ func (p *Plexams) examInfoMap(ctx context.Context) map[int]examInfo {
 		if groups == nil {
 			groups = []string{}
 		}
-		m[e.Ancode] = examInfo{module: e.ZpaExam.Module, examer: e.ZpaExam.MainExamer, groups: groups}
+		m[e.Ancode] = examInfo{
+			module: e.ZpaExam.Module, examer: e.ZpaExam.MainExamer, groups: groups,
+			repeater: e.ZpaExam.IsRepeaterExam, minSem: minGroupSemester(e.ZpaExam.Groups),
+		}
 	}
 	return m
 }
@@ -285,14 +294,14 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		}
 	}
 
-	acceptedByPair := make(map[[2]int]map[string]bool) // pair -> mtknr set
-	if accs, err := p.dbClient.StudentConflictAcceptances(ctx); err == nil {
-		for _, a := range accs {
-			key := [2]int{a.Ancode1, a.Ancode2}
-			if acceptedByPair[key] == nil {
-				acceptedByPair[key] = make(map[string]bool)
+	decisionByPair := make(map[[2]int]map[string]model.ConflictDecision) // pair -> mtknr -> decision
+	if decs, err := p.dbClient.StudentConflictDecisions(ctx); err == nil {
+		for _, d := range decs {
+			key := [2]int{d.Ancode1, d.Ancode2}
+			if decisionByPair[key] == nil {
+				decisionByPair[key] = make(map[string]model.ConflictDecision)
 			}
-			acceptedByPair[key][a.Mtknr] = true
+			decisionByPair[key][d.Mtknr] = d.Decision
 		}
 	}
 	canShare := make(map[[2]int]bool)
@@ -314,15 +323,25 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 	out := make([]*model.ExamScheduleConflict, 0, len(byPair))
 	for key, a := range byPair {
 		ep := examPair(key[0], key[1], info)
-		acc := acceptedByPair[key]
+		i0, i1 := info[key[0]], info[key[1]]
+		decs := decisionByPair[key]
 		affected := make([]*model.ConflictStudent, 0, len(a.students))
 		for _, s := range a.students {
-			affected = append(affected, &model.ConflictStudent{Mtknr: s.mtknr, Name: s.name, Program: s.program, Group: s.group, Accepted: acc[s.mtknr]})
+			studSem := semesterOf(s.group)
+			autoAccepted := repeatForStudent(studSem, i0.repeater, i0.minSem) || repeatForStudent(studSem, i1.repeater, i1.minSem)
+			cs := &model.ConflictStudent{Mtknr: s.mtknr, Name: s.name, Program: s.program, Group: s.group, AutoAccepted: autoAccepted}
+			if d, ok := decs[s.mtknr]; ok {
+				dd := d
+				cs.Decision = &dd
+			}
+			cs.Accepted = cs.Decision != nil && *cs.Decision == model.ConflictDecisionAccept ||
+				(autoAccepted && (cs.Decision == nil || *cs.Decision != model.ConflictDecisionVeto))
+			affected = append(affected, cs)
 		}
 		sort.Slice(affected, func(i, j int) bool { return affected[i].Name < affected[j].Name })
 		c := &model.ExamScheduleConflict{
-			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1, Groups1: info[key[0]].groups,
-			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2, Groups2: info[key[1]].groups,
+			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1, Groups1: i0.groups, IsRepeaterExam1: i0.repeater, Slot1: slotByAncode[key[0]],
+			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2, Groups2: i1.groups, IsRepeaterExam2: i1.repeater, Slot2: slotByAncode[key[1]],
 			StudentCount: len(a.students), Proximity: a.label, CanShareSlot: canShare[key],
 			InfoOnly:         foreign(key[0]) && foreign(key[1]),
 			AffectedStudents: affected,

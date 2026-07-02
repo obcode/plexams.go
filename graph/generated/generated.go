@@ -158,11 +158,13 @@ type ComplexityRoot struct {
 	}
 
 	ConflictStudent struct {
-		Accepted func(childComplexity int) int
-		Group    func(childComplexity int) int
-		Mtknr    func(childComplexity int) int
-		Name     func(childComplexity int) int
-		Program  func(childComplexity int) int
+		Accepted     func(childComplexity int) int
+		AutoAccepted func(childComplexity int) int
+		Decision     func(childComplexity int) int
+		Group        func(childComplexity int) int
+		Mtknr        func(childComplexity int) int
+		Name         func(childComplexity int) int
+		Program      func(childComplexity int) int
 	}
 
 	Conflicts struct {
@@ -300,11 +302,15 @@ type ComplexityRoot struct {
 		Groups1          func(childComplexity int) int
 		Groups2          func(childComplexity int) int
 		InfoOnly         func(childComplexity int) int
+		IsRepeaterExam1  func(childComplexity int) int
+		IsRepeaterExam2  func(childComplexity int) int
 		MainExamer1      func(childComplexity int) int
 		MainExamer2      func(childComplexity int) int
 		Module1          func(childComplexity int) int
 		Module2          func(childComplexity int) int
 		Proximity        func(childComplexity int) int
+		Slot1            func(childComplexity int) int
+		Slot2            func(childComplexity int) int
 		StudentCount     func(childComplexity int) int
 	}
 
@@ -543,96 +549,96 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AcceptStudentConflict           func(childComplexity int, ancode1 int, ancode2 int, mtknr string) int
-		AddConstraints                  func(childComplexity int, ancode int, constraints model.ConstraintsInput) int
-		AddExamToSlot                   func(childComplexity int, day int, time int, ancode int) int
-		AddNta                          func(childComplexity int, input model.NTAInput) int
-		AddNtaRoomAloneWaiver           func(childComplexity int, mtknr string, ancode int, reason string) int
-		AddPreplanExam                  func(childComplexity int, input model.PreplanExamInput) int
-		AddPrimussAncode                func(childComplexity int, zpaAncode int, program string, primussAncode int) int
-		AddRoom                         func(childComplexity int, input model.RoomInput) int
-		AddRoomRequest                  func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
-		AddZpaExamToPlan                func(childComplexity int, ancode int) int
-		ApplyRoomRequestsPreview        func(childComplexity int, force bool) int
-		BlockRoomForSlot                func(childComplexity int, room string, day int, slot int, reason *string) int
-		BlockRoomForSlots               func(childComplexity int, room string, slots []*model.SlotInput, reason *string) int
-		ClearEmailAttachments           func(childComplexity int, kind string) int
-		ConnectPreplanExamToAncode      func(childComplexity int, id int, ancode int) int
-		CreateSemester                  func(childComplexity int, semester string, input model.SemesterConfigInputData) int
-		CreateWorkspace                 func(childComplexity int, database string, fromSemester string) int
-		DeleteAdditionalExam            func(childComplexity int, ancode int) int
-		DeleteInvigilatorConstraints    func(childComplexity int, teacherID int) int
-		DeletePreplanExam               func(childComplexity int, id int) int
-		DeleteSpecialInterest           func(childComplexity int, name string) int
-		DeleteStudyProgram              func(childComplexity int, shortname string) int
-		DisconnectPreplanExam           func(childComplexity int, id int) int
-		Exahm                           func(childComplexity int, ancode int) int
-		ExcludeDays                     func(childComplexity int, ancode int, days []string) int
-		FixPrimussAncode                func(childComplexity int, zpaAncode int, program string, fromAncode int, toAncode int) int
-		GenerateAssembledExams          func(childComplexity int) int
-		GeneratePreparation             func(childComplexity int) int
-		GeneratePreplanAssignment       func(childComplexity int, keepAssigned *bool) int
-		GenerateStudentRegs             func(childComplexity int) int
-		ImportMucDaiExams               func(childComplexity int, csv string) int
-		Lab                             func(childComplexity int, ancode int) int
-		MigrateInvigilatorConstraints   func(childComplexity int) int
-		MigrateRoomRequestsFromConfig   func(childComplexity int) int
-		MigrateRoomsRequestWith         func(childComplexity int) int
-		NotPlannedByMe                  func(childComplexity int, ancode int) int
-		Online                          func(childComplexity int, ancode int) int
-		PlacesWithSockets               func(childComplexity int, ancode int) int
-		PossibleDays                    func(childComplexity int, ancode int, days []string) int
-		PrePlanInvigilation             func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
-		PrePlanInvigilationInSlot       func(childComplexity int, day int, slot int, roomName *string) int
-		PrePlanRoom                     func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
-		RemoveExamDuration              func(childComplexity int, ancode int) int
-		RemoveExamsCanShareSlot         func(childComplexity int, ancode1 int, ancode2 int) int
-		RemoveMucDaiLink                func(childComplexity int, program string, primussAncode int) int
-		RemoveNtaRoomAloneWaiver        func(childComplexity int, mtknr string, ancode int) int
-		RemovePermanentNonInvigilator   func(childComplexity int, teacherID int) int
-		RemovePrePlannedInvigilation    func(childComplexity int, day int, slot int, roomName *string) int
-		RemovePrePlannedRoom            func(childComplexity int, ancode int, roomName string, mtknr *string) int
-		RemovePrimussAncode             func(childComplexity int, zpaAncode int, program string) int
-		RemoveStudentConflictAcceptance func(childComplexity int, ancode1 int, ancode2 int, mtknr string) int
-		ResetInvigilations              func(childComplexity int) int
-		ResetRoomsForExams              func(childComplexity int) int
-		RmConstraints                   func(childComplexity int, ancode int) int
-		RmZpaExamFromPlan               func(childComplexity int, ancode int) int
-		SameSlot                        func(childComplexity int, ancode int, ancodes []int) int
-		Seb                             func(childComplexity int, ancode int) int
-		SeedStudyProgramsFromConfig     func(childComplexity int) int
-		SetAnnyPersonalizationNames     func(childComplexity int, names []string) int
-		SetExamDuration                 func(childComplexity int, ancode int, duration int) int
-		SetExamsCanShareSlot            func(childComplexity int, ancode1 int, ancode2 int) int
-		SetExternalExamTime             func(childComplexity int, ancode int, date string, time string) int
-		SetGenerationConfig             func(childComplexity int, input model.GenerationConfigInput) int
-		SetInvigilatorConstraints       func(childComplexity int, input model.InvigilatorConstraintsInput) int
-		SetMucDaiZpaLink                func(childComplexity int, program string, primussAncode int, zpaAncode int) int
-		SetNTAActive                    func(childComplexity int, mtknr string, active bool) int
-		SetPermanentNonInvigilator      func(childComplexity int, teacherID int, name string, reason string) int
-		SetPlaner                       func(childComplexity int, name string, email string) int
-		SetPlanningCondition            func(childComplexity int, key string, done bool) int
-		SetPreplanExamCanShareSlot      func(childComplexity int, id int, otherID int, canShare bool) int
-		SetPreplanExamConstraints       func(childComplexity int, id int, constraints model.ConstraintsInput) int
-		SetPreplanExamFixed             func(childComplexity int, id int, fixed bool) int
-		SetPreplanExamNotSameSlot       func(childComplexity int, id int, otherID int, conflict bool) int
-		SetPreplanExamSlot              func(childComplexity int, id int, dayNumber *int, slotNumber *int) int
-		SetRoomActive                   func(childComplexity int, name string, active bool) int
-		SetRoomRequestActive            func(childComplexity int, room string, day int, slot int, active bool) int
-		SetRoomRequestApproved          func(childComplexity int, room string, day int, slot int, approved bool) int
-		SetSemester                     func(childComplexity int, name string, semester *string) int
-		SetSemesterConfigInput          func(childComplexity int, input model.SemesterConfigInputData) int
-		SetSemesterReadOnly             func(childComplexity int, readOnly bool) int
-		UnblockRoomForSlot              func(childComplexity int, room string, day int, slot int) int
-		UnblockRoomForSlots             func(childComplexity int, room string, slots []*model.SlotInput) int
-		UpdateNta                       func(childComplexity int, input model.NTAInput) int
-		UpdatePreplanExam               func(childComplexity int, id int, input model.PreplanExamInput) int
-		UpdateRoom                      func(childComplexity int, input model.RoomInput) int
-		UpdateRoomRequestTime           func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
-		UpsertAdditionalExam            func(childComplexity int, input model.AdditionalExamInput) int
-		UpsertSpecialInterest           func(childComplexity int, input model.SpecialInterestInput) int
-		UpsertStudyProgram              func(childComplexity int, input model.StudyProgramInput) int
-		ZpaExamsToPlan                  func(childComplexity int, input []int) int
+		AddConstraints                func(childComplexity int, ancode int, constraints model.ConstraintsInput) int
+		AddExamToSlot                 func(childComplexity int, day int, time int, ancode int) int
+		AddNta                        func(childComplexity int, input model.NTAInput) int
+		AddNtaRoomAloneWaiver         func(childComplexity int, mtknr string, ancode int, reason string) int
+		AddPreplanExam                func(childComplexity int, input model.PreplanExamInput) int
+		AddPrimussAncode              func(childComplexity int, zpaAncode int, program string, primussAncode int) int
+		AddRoom                       func(childComplexity int, input model.RoomInput) int
+		AddRoomRequest                func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
+		AddZpaExamToPlan              func(childComplexity int, ancode int) int
+		ApplyRoomRequestsPreview      func(childComplexity int, force bool) int
+		BlockRoomForSlot              func(childComplexity int, room string, day int, slot int, reason *string) int
+		BlockRoomForSlots             func(childComplexity int, room string, slots []*model.SlotInput, reason *string) int
+		ClearEmailAttachments         func(childComplexity int, kind string) int
+		ConnectPreplanExamToAncode    func(childComplexity int, id int, ancode int) int
+		CreateSemester                func(childComplexity int, semester string, input model.SemesterConfigInputData) int
+		CreateWorkspace               func(childComplexity int, database string, fromSemester string) int
+		DeleteAdditionalExam          func(childComplexity int, ancode int) int
+		DeleteInvigilatorConstraints  func(childComplexity int, teacherID int) int
+		DeletePreplanExam             func(childComplexity int, id int) int
+		DeleteSpecialInterest         func(childComplexity int, name string) int
+		DeleteStudyProgram            func(childComplexity int, shortname string) int
+		DisconnectPreplanExam         func(childComplexity int, id int) int
+		Exahm                         func(childComplexity int, ancode int) int
+		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
+		FixPrimussAncode              func(childComplexity int, zpaAncode int, program string, fromAncode int, toAncode int) int
+		GenerateAssembledExams        func(childComplexity int) int
+		GeneratePreparation           func(childComplexity int) int
+		GeneratePreplanAssignment     func(childComplexity int, keepAssigned *bool) int
+		GenerateStudentRegs           func(childComplexity int) int
+		ImportMucDaiExams             func(childComplexity int, csv string) int
+		Lab                           func(childComplexity int, ancode int) int
+		MigrateInvigilatorConstraints func(childComplexity int) int
+		MigrateRoomRequestsFromConfig func(childComplexity int) int
+		MigrateRoomsRequestWith       func(childComplexity int) int
+		NotPlannedByMe                func(childComplexity int, ancode int) int
+		Online                        func(childComplexity int, ancode int) int
+		PlacesWithSockets             func(childComplexity int, ancode int) int
+		PossibleDays                  func(childComplexity int, ancode int, days []string) int
+		PrePlanInvigilation           func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
+		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
+		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
+		RemoveExamDuration            func(childComplexity int, ancode int) int
+		RemoveExamsCanShareSlot       func(childComplexity int, ancode1 int, ancode2 int) int
+		RemoveMucDaiLink              func(childComplexity int, program string, primussAncode int) int
+		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
+		RemovePermanentNonInvigilator func(childComplexity int, teacherID int) int
+		RemovePrePlannedInvigilation  func(childComplexity int, day int, slot int, roomName *string) int
+		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
+		RemovePrimussAncode           func(childComplexity int, zpaAncode int, program string) int
+		RemoveStudentConflictDecision func(childComplexity int, ancode1 int, ancode2 int, mtknr string) int
+		ResetInvigilations            func(childComplexity int) int
+		ResetRoomsForExams            func(childComplexity int) int
+		RmConstraints                 func(childComplexity int, ancode int) int
+		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
+		SameSlot                      func(childComplexity int, ancode int, ancodes []int) int
+		Seb                           func(childComplexity int, ancode int) int
+		SeedStudyProgramsFromConfig   func(childComplexity int) int
+		SetAnnyPersonalizationNames   func(childComplexity int, names []string) int
+		SetExamDuration               func(childComplexity int, ancode int, duration int) int
+		SetExamsCanShareSlot          func(childComplexity int, ancode1 int, ancode2 int) int
+		SetExternalExamTime           func(childComplexity int, ancode int, date string, time string) int
+		SetGenerationConfig           func(childComplexity int, input model.GenerationConfigInput) int
+		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
+		SetMucDaiZpaLink              func(childComplexity int, program string, primussAncode int, zpaAncode int) int
+		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
+		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
+		SetPlaner                     func(childComplexity int, name string, email string) int
+		SetPlanningCondition          func(childComplexity int, key string, done bool) int
+		SetPreplanExamCanShareSlot    func(childComplexity int, id int, otherID int, canShare bool) int
+		SetPreplanExamConstraints     func(childComplexity int, id int, constraints model.ConstraintsInput) int
+		SetPreplanExamFixed           func(childComplexity int, id int, fixed bool) int
+		SetPreplanExamNotSameSlot     func(childComplexity int, id int, otherID int, conflict bool) int
+		SetPreplanExamSlot            func(childComplexity int, id int, dayNumber *int, slotNumber *int) int
+		SetRoomActive                 func(childComplexity int, name string, active bool) int
+		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
+		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
+		SetSemester                   func(childComplexity int, name string, semester *string) int
+		SetSemesterConfigInput        func(childComplexity int, input model.SemesterConfigInputData) int
+		SetSemesterReadOnly           func(childComplexity int, readOnly bool) int
+		SetStudentConflictDecision    func(childComplexity int, ancode1 int, ancode2 int, mtknr string, decision model.ConflictDecision) int
+		UnblockRoomForSlot            func(childComplexity int, room string, day int, slot int) int
+		UnblockRoomForSlots           func(childComplexity int, room string, slots []*model.SlotInput) int
+		UpdateNta                     func(childComplexity int, input model.NTAInput) int
+		UpdatePreplanExam             func(childComplexity int, id int, input model.PreplanExamInput) int
+		UpdateRoom                    func(childComplexity int, input model.RoomInput) int
+		UpdateRoomRequestTime         func(childComplexity int, room string, day int, slot int, from time.Time, until time.Time) int
+		UpsertAdditionalExam          func(childComplexity int, input model.AdditionalExamInput) int
+		UpsertSpecialInterest         func(childComplexity int, input model.SpecialInterestInput) int
+		UpsertStudyProgram            func(childComplexity int, input model.StudyProgramInput) int
+		ZpaExamsToPlan                func(childComplexity int, input []int) int
 	}
 
 	MutationLogArg struct {
@@ -974,7 +980,7 @@ type ComplexityRoot struct {
 		SemesterConfigInput           func(childComplexity int) int
 		SpecialInterests              func(childComplexity int) int
 		StudentByMtknr                func(childComplexity int, mtknr string) int
-		StudentConflictAcceptances    func(childComplexity int) int
+		StudentConflictDecisions      func(childComplexity int) int
 		StudentRegsForProgram         func(childComplexity int, program string) int
 		StudentRegsImportErrors       func(childComplexity int) int
 		StudentRegsState              func(childComplexity int) int
@@ -1167,10 +1173,11 @@ type ComplexityRoot struct {
 		ZpaStudent      func(childComplexity int) int
 	}
 
-	StudentConflictAcceptance struct {
-		Ancode1 func(childComplexity int) int
-		Ancode2 func(childComplexity int) int
-		Mtknr   func(childComplexity int) int
+	StudentConflictDecision struct {
+		Ancode1  func(childComplexity int) int
+		Ancode2  func(childComplexity int) int
+		Decision func(childComplexity int) int
+		Mtknr    func(childComplexity int) int
 	}
 
 	StudentReg struct {
@@ -1428,8 +1435,8 @@ type MutationResolver interface {
 	AddPrimussAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) (*model.ConnectedExam, error)
 	RemovePrimussAncode(ctx context.Context, zpaAncode int, program string) (*model.ConnectedExam, error)
 	FixPrimussAncode(ctx context.Context, zpaAncode int, program string, fromAncode int, toAncode int) (*model.ConnectedExam, error)
-	AcceptStudentConflict(ctx context.Context, ancode1 int, ancode2 int, mtknr string) (bool, error)
-	RemoveStudentConflictAcceptance(ctx context.Context, ancode1 int, ancode2 int, mtknr string) (bool, error)
+	SetStudentConflictDecision(ctx context.Context, ancode1 int, ancode2 int, mtknr string, decision model.ConflictDecision) (bool, error)
+	RemoveStudentConflictDecision(ctx context.Context, ancode1 int, ancode2 int, mtknr string) (bool, error)
 	SetExamsCanShareSlot(ctx context.Context, ancode1 int, ancode2 int) (bool, error)
 	RemoveExamsCanShareSlot(ctx context.Context, ancode1 int, ancode2 int) (bool, error)
 	SetExamDuration(ctx context.Context, ancode int, duration int) (*model.ExamDurationOverride, error)
@@ -1533,7 +1540,7 @@ type QueryResolver interface {
 	MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error)
 	ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error)
 	ExamScheduleConflicts(ctx context.Context) ([]*model.ExamScheduleConflict, error)
-	StudentConflictAcceptances(ctx context.Context) ([]*model.StudentConflictAcceptance, error)
+	StudentConflictDecisions(ctx context.Context) ([]*model.StudentConflictDecision, error)
 	ExamsCanShareSlot(ctx context.Context) ([]*model.ExamPair, error)
 	CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPair, error)
 	ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurationOverride, error)
@@ -2165,6 +2172,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ConflictStudent.Accepted(childComplexity), true
 
+	case "ConflictStudent.autoAccepted":
+		if e.complexity.ConflictStudent.AutoAccepted == nil {
+			break
+		}
+
+		return e.complexity.ConflictStudent.AutoAccepted(childComplexity), true
+
+	case "ConflictStudent.decision":
+		if e.complexity.ConflictStudent.Decision == nil {
+			break
+		}
+
+		return e.complexity.ConflictStudent.Decision(childComplexity), true
+
 	case "ConflictStudent.group":
 		if e.complexity.ConflictStudent.Group == nil {
 			break
@@ -2774,6 +2795,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamScheduleConflict.InfoOnly(childComplexity), true
 
+	case "ExamScheduleConflict.isRepeaterExam1":
+		if e.complexity.ExamScheduleConflict.IsRepeaterExam1 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.IsRepeaterExam1(childComplexity), true
+
+	case "ExamScheduleConflict.isRepeaterExam2":
+		if e.complexity.ExamScheduleConflict.IsRepeaterExam2 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.IsRepeaterExam2(childComplexity), true
+
 	case "ExamScheduleConflict.mainExamer1":
 		if e.complexity.ExamScheduleConflict.MainExamer1 == nil {
 			break
@@ -2808,6 +2843,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleConflict.Proximity(childComplexity), true
+
+	case "ExamScheduleConflict.slot1":
+		if e.complexity.ExamScheduleConflict.Slot1 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Slot1(childComplexity), true
+
+	case "ExamScheduleConflict.slot2":
+		if e.complexity.ExamScheduleConflict.Slot2 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Slot2(childComplexity), true
 
 	case "ExamScheduleConflict.studentCount":
 		if e.complexity.ExamScheduleConflict.StudentCount == nil {
@@ -3908,18 +3957,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.MucDaiExam.Program(childComplexity), true
 
-	case "Mutation.acceptStudentConflict":
-		if e.complexity.Mutation.AcceptStudentConflict == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_acceptStudentConflict_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.AcceptStudentConflict(childComplexity, args["ancode1"].(int), args["ancode2"].(int), args["mtknr"].(string)), true
-
 	case "Mutation.addConstraints":
 		if e.complexity.Mutation.AddConstraints == nil {
 			break
@@ -4478,17 +4515,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.RemovePrimussAncode(childComplexity, args["zpaAncode"].(int), args["program"].(string)), true
 
-	case "Mutation.removeStudentConflictAcceptance":
-		if e.complexity.Mutation.RemoveStudentConflictAcceptance == nil {
+	case "Mutation.removeStudentConflictDecision":
+		if e.complexity.Mutation.RemoveStudentConflictDecision == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_removeStudentConflictAcceptance_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_removeStudentConflictDecision_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RemoveStudentConflictAcceptance(childComplexity, args["ancode1"].(int), args["ancode2"].(int), args["mtknr"].(string)), true
+		return e.complexity.Mutation.RemoveStudentConflictDecision(childComplexity, args["ancode1"].(int), args["ancode2"].(int), args["mtknr"].(string)), true
 
 	case "Mutation.resetInvigilations":
 		if e.complexity.Mutation.ResetInvigilations == nil {
@@ -4822,6 +4859,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetSemesterReadOnly(childComplexity, args["readOnly"].(bool)), true
+
+	case "Mutation.setStudentConflictDecision":
+		if e.complexity.Mutation.SetStudentConflictDecision == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setStudentConflictDecision_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetStudentConflictDecision(childComplexity, args["ancode1"].(int), args["ancode2"].(int), args["mtknr"].(string), args["decision"].(model.ConflictDecision)), true
 
 	case "Mutation.unblockRoomForSlot":
 		if e.complexity.Mutation.UnblockRoomForSlot == nil {
@@ -6772,12 +6821,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.StudentByMtknr(childComplexity, args["mtknr"].(string)), true
 
-	case "Query.studentConflictAcceptances":
-		if e.complexity.Query.StudentConflictAcceptances == nil {
+	case "Query.studentConflictDecisions":
+		if e.complexity.Query.StudentConflictDecisions == nil {
 			break
 		}
 
-		return e.complexity.Query.StudentConflictAcceptances(childComplexity), true
+		return e.complexity.Query.StudentConflictDecisions(childComplexity), true
 
 	case "Query.studentRegsForProgram":
 		if e.complexity.Query.StudentRegsForProgram == nil {
@@ -7703,26 +7752,33 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Student.ZpaStudent(childComplexity), true
 
-	case "StudentConflictAcceptance.ancode1":
-		if e.complexity.StudentConflictAcceptance.Ancode1 == nil {
+	case "StudentConflictDecision.ancode1":
+		if e.complexity.StudentConflictDecision.Ancode1 == nil {
 			break
 		}
 
-		return e.complexity.StudentConflictAcceptance.Ancode1(childComplexity), true
+		return e.complexity.StudentConflictDecision.Ancode1(childComplexity), true
 
-	case "StudentConflictAcceptance.ancode2":
-		if e.complexity.StudentConflictAcceptance.Ancode2 == nil {
+	case "StudentConflictDecision.ancode2":
+		if e.complexity.StudentConflictDecision.Ancode2 == nil {
 			break
 		}
 
-		return e.complexity.StudentConflictAcceptance.Ancode2(childComplexity), true
+		return e.complexity.StudentConflictDecision.Ancode2(childComplexity), true
 
-	case "StudentConflictAcceptance.mtknr":
-		if e.complexity.StudentConflictAcceptance.Mtknr == nil {
+	case "StudentConflictDecision.decision":
+		if e.complexity.StudentConflictDecision.Decision == nil {
 			break
 		}
 
-		return e.complexity.StudentConflictAcceptance.Mtknr(childComplexity), true
+		return e.complexity.StudentConflictDecision.Decision(childComplexity), true
+
+	case "StudentConflictDecision.mtknr":
+		if e.complexity.StudentConflictDecision.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.StudentConflictDecision.Mtknr(childComplexity), true
 
 	case "StudentReg.ancode":
 		if e.complexity.StudentReg.AnCode == nil {
@@ -9576,11 +9632,22 @@ type ExamPair {
   mainExamer2: String!
 }
 
-"StudentConflictAcceptance records that a specific student's conflict between two exams is accepted (its proximity penalty is dropped for that student)."
-type StudentConflictAcceptance {
+"""
+ConflictDecision is an explicit per-student override of the automatic handling:
+ACCEPT drops that student's proximity penalty; VETO forces it to count at full weight
+(overriding an automatic repeat down-weighting).
+"""
+enum ConflictDecision {
+  ACCEPT
+  VETO
+}
+
+"StudentConflictDecision is a stored explicit decision for one student's conflict pair."
+type StudentConflictDecision {
   ancode1: Int!
   ancode2: Int!
   mtknr: String!
+  decision: ConflictDecision!
 }
 
 """
@@ -9595,10 +9662,16 @@ type ExamScheduleConflict {
   mainExamer1: String!
   "the study groups exam 1 is offered for (e.g. [\"IF2A\"])."
   groups1: [String!]!
+  "true if exam 1 is a repeater exam."
+  isRepeaterExam1: Boolean!
+  "the planned slot of exam 1."
+  slot1: Slot!
   ancode2: Int!
   module2: String!
   mainExamer2: String!
   groups2: [String!]!
+  isRepeaterExam2: Boolean!
+  slot2: Slot!
   "number of students registered in both, in the plan."
   studentCount: Int!
   "worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY."
@@ -9618,15 +9691,19 @@ type ConflictStudent {
   program: String!
   "the student's cohort/group, e.g. \"IF4B\"."
   group: String!
-  "true if this student's conflict for this pair is accepted."
+  "true if this is (heuristically) a repeat for this student (repeater exam or the student's semester is above the exam's) — auto down-weighted and accepted by default."
+  autoAccepted: Boolean!
+  "explicit decision for this student, if any (overrides the automatic handling)."
+  decision: ConflictDecision
+  "effective: penalty dropped for this student (explicit ACCEPT, or autoAccepted and not vetoed)."
   accepted: Boolean!
 }
 
 extend type Query {
   "Conflicts of the current plan, to review (accept per student)."
   examScheduleConflicts: [ExamScheduleConflict!]!
-  "All per-student conflict acceptances currently stored."
-  studentConflictAcceptances: [StudentConflictAcceptance!]!
+  "All explicit per-student conflict decisions currently stored."
+  studentConflictDecisions: [StudentConflictDecision!]!
   "Exam pairs declared as allowed to share a slot (no student legitimately sits both)."
   examsCanShareSlot: [ExamPair!]!
   "Auto-detected canShareSlot candidates (same module+program, different examer) not yet declared."
@@ -9634,9 +9711,10 @@ extend type Query {
 }
 
 extend type Mutation {
-  "Accept a specific student's conflict between two exams (drops that student's proximity penalty; same-slot stays hard)."
-  acceptStudentConflict(ancode1: Int!, ancode2: Int!, mtknr: String!): Boolean!
-  removeStudentConflictAcceptance(ancode1: Int!, ancode2: Int!, mtknr: String!): Boolean!
+  "Set an explicit decision for a student's conflict (ACCEPT drops the penalty; VETO forces it to count despite an automatic repeat down-weighting)."
+  setStudentConflictDecision(ancode1: Int!, ancode2: Int!, mtknr: String!, decision: ConflictDecision!): Boolean!
+  "Remove the explicit decision (back to automatic handling)."
+  removeStudentConflictDecision(ancode1: Int!, ancode2: Int!, mtknr: String!): Boolean!
   "Declare / undeclare that two exams may share a slot."
   setExamsCanShareSlot(ancode1: Int!, ancode2: Int!): Boolean!
   removeExamsCanShareSlot(ancode1: Int!, ancode2: Int!): Boolean!
@@ -11495,80 +11573,6 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
-
-func (ec *executionContext) field_Mutation_acceptStudentConflict_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_acceptStudentConflict_argsAncode1(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode1"] = arg0
-	arg1, err := ec.field_Mutation_acceptStudentConflict_argsAncode2(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode2"] = arg1
-	arg2, err := ec.field_Mutation_acceptStudentConflict_argsMtknr(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["mtknr"] = arg2
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_acceptStudentConflict_argsAncode1(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode1"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode1"))
-	if tmp, ok := rawArgs["ancode1"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_acceptStudentConflict_argsAncode2(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode2"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode2"))
-	if tmp, ok := rawArgs["ancode2"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_acceptStudentConflict_argsMtknr(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["mtknr"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
-	if tmp, ok := rawArgs["mtknr"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Mutation_addConstraints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -13717,27 +13721,27 @@ func (ec *executionContext) field_Mutation_removePrimussAncode_argsProgram(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Mutation_removeStudentConflictAcceptance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_removeStudentConflictDecision_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_removeStudentConflictAcceptance_argsAncode1(ctx, rawArgs)
+	arg0, err := ec.field_Mutation_removeStudentConflictDecision_argsAncode1(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["ancode1"] = arg0
-	arg1, err := ec.field_Mutation_removeStudentConflictAcceptance_argsAncode2(ctx, rawArgs)
+	arg1, err := ec.field_Mutation_removeStudentConflictDecision_argsAncode2(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["ancode2"] = arg1
-	arg2, err := ec.field_Mutation_removeStudentConflictAcceptance_argsMtknr(ctx, rawArgs)
+	arg2, err := ec.field_Mutation_removeStudentConflictDecision_argsMtknr(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["mtknr"] = arg2
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_removeStudentConflictAcceptance_argsAncode1(
+func (ec *executionContext) field_Mutation_removeStudentConflictDecision_argsAncode1(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (int, error) {
@@ -13755,7 +13759,7 @@ func (ec *executionContext) field_Mutation_removeStudentConflictAcceptance_argsA
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Mutation_removeStudentConflictAcceptance_argsAncode2(
+func (ec *executionContext) field_Mutation_removeStudentConflictDecision_argsAncode2(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (int, error) {
@@ -13773,7 +13777,7 @@ func (ec *executionContext) field_Mutation_removeStudentConflictAcceptance_argsA
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Mutation_removeStudentConflictAcceptance_argsMtknr(
+func (ec *executionContext) field_Mutation_removeStudentConflictDecision_argsMtknr(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (string, error) {
@@ -15160,6 +15164,103 @@ func (ec *executionContext) field_Mutation_setSemester_argsSemester(
 	}
 
 	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setStudentConflictDecision_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setStudentConflictDecision_argsAncode1(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode1"] = arg0
+	arg1, err := ec.field_Mutation_setStudentConflictDecision_argsAncode2(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode2"] = arg1
+	arg2, err := ec.field_Mutation_setStudentConflictDecision_argsMtknr(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mtknr"] = arg2
+	arg3, err := ec.field_Mutation_setStudentConflictDecision_argsDecision(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["decision"] = arg3
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setStudentConflictDecision_argsAncode1(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode1"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode1"))
+	if tmp, ok := rawArgs["ancode1"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setStudentConflictDecision_argsAncode2(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode2"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode2"))
+	if tmp, ok := rawArgs["ancode2"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setStudentConflictDecision_argsMtknr(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["mtknr"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setStudentConflictDecision_argsDecision(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.ConflictDecision, error) {
+	if _, ok := rawArgs["decision"]; !ok {
+		var zeroVal model.ConflictDecision
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("decision"))
+	if tmp, ok := rawArgs["decision"]; ok {
+		return ec.unmarshalNConflictDecision2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictDecision(ctx, tmp)
+	}
+
+	var zeroVal model.ConflictDecision
 	return zeroVal, nil
 }
 
@@ -21478,6 +21579,91 @@ func (ec *executionContext) fieldContext_ConflictStudent_group(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _ConflictStudent_autoAccepted(ctx context.Context, field graphql.CollectedField, obj *model.ConflictStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConflictStudent_autoAccepted(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AutoAccepted, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConflictStudent_autoAccepted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConflictStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConflictStudent_decision(ctx context.Context, field graphql.CollectedField, obj *model.ConflictStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConflictStudent_decision(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Decision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.ConflictDecision)
+	fc.Result = res
+	return ec.marshalOConflictDecision2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictDecision(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConflictStudent_decision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConflictStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ConflictDecision does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ConflictStudent_accepted(ctx context.Context, field graphql.CollectedField, obj *model.ConflictStudent) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ConflictStudent_accepted(ctx, field)
 	if err != nil {
@@ -25241,6 +25427,102 @@ func (ec *executionContext) fieldContext_ExamScheduleConflict_groups1(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _ExamScheduleConflict_isRepeaterExam1(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_isRepeaterExam1(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsRepeaterExam1, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_isRepeaterExam1(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_slot1(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_slot1(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slot1, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Slot)
+	fc.Result = res
+	return ec.marshalNSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlot(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_slot1(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_Slot_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_Slot_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_Slot_starttime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Slot", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ExamScheduleConflict_ancode2(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ExamScheduleConflict_ancode2(ctx, field)
 	if err != nil {
@@ -25412,6 +25694,102 @@ func (ec *executionContext) fieldContext_ExamScheduleConflict_groups2(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_isRepeaterExam2(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_isRepeaterExam2(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsRepeaterExam2, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_isRepeaterExam2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_slot2(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_slot2(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slot2, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Slot)
+	fc.Result = res
+	return ec.marshalNSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlot(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_slot2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dayNumber":
+				return ec.fieldContext_Slot_dayNumber(ctx, field)
+			case "slotNumber":
+				return ec.fieldContext_Slot_slotNumber(ctx, field)
+			case "starttime":
+				return ec.fieldContext_Slot_starttime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Slot", field.Name)
 		},
 	}
 	return fc, nil
@@ -25640,6 +26018,10 @@ func (ec *executionContext) fieldContext_ExamScheduleConflict_affectedStudents(_
 				return ec.fieldContext_ConflictStudent_program(ctx, field)
 			case "group":
 				return ec.fieldContext_ConflictStudent_group(ctx, field)
+			case "autoAccepted":
+				return ec.fieldContext_ConflictStudent_autoAccepted(ctx, field)
+			case "decision":
+				return ec.fieldContext_ConflictStudent_decision(ctx, field)
 			case "accepted":
 				return ec.fieldContext_ConflictStudent_accepted(ctx, field)
 			}
@@ -26966,6 +27348,10 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_conflicts(_ context.
 				return ec.fieldContext_ExamScheduleConflict_mainExamer1(ctx, field)
 			case "groups1":
 				return ec.fieldContext_ExamScheduleConflict_groups1(ctx, field)
+			case "isRepeaterExam1":
+				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam1(ctx, field)
+			case "slot1":
+				return ec.fieldContext_ExamScheduleConflict_slot1(ctx, field)
 			case "ancode2":
 				return ec.fieldContext_ExamScheduleConflict_ancode2(ctx, field)
 			case "module2":
@@ -26974,6 +27360,10 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_conflicts(_ context.
 				return ec.fieldContext_ExamScheduleConflict_mainExamer2(ctx, field)
 			case "groups2":
 				return ec.fieldContext_ExamScheduleConflict_groups2(ctx, field)
+			case "isRepeaterExam2":
+				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam2(ctx, field)
+			case "slot2":
+				return ec.fieldContext_ExamScheduleConflict_slot2(ctx, field)
 			case "studentCount":
 				return ec.fieldContext_ExamScheduleConflict_studentCount(ctx, field)
 			case "proximity":
@@ -34114,8 +34504,8 @@ func (ec *executionContext) fieldContext_Mutation_fixPrimussAncode(ctx context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_acceptStudentConflict(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_acceptStudentConflict(ctx, field)
+func (ec *executionContext) _Mutation_setStudentConflictDecision(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setStudentConflictDecision(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -34128,7 +34518,7 @@ func (ec *executionContext) _Mutation_acceptStudentConflict(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AcceptStudentConflict(rctx, fc.Args["ancode1"].(int), fc.Args["ancode2"].(int), fc.Args["mtknr"].(string))
+		return ec.resolvers.Mutation().SetStudentConflictDecision(rctx, fc.Args["ancode1"].(int), fc.Args["ancode2"].(int), fc.Args["mtknr"].(string), fc.Args["decision"].(model.ConflictDecision))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -34145,7 +34535,7 @@ func (ec *executionContext) _Mutation_acceptStudentConflict(ctx context.Context,
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_acceptStudentConflict(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_setStudentConflictDecision(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -34162,15 +34552,15 @@ func (ec *executionContext) fieldContext_Mutation_acceptStudentConflict(ctx cont
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_acceptStudentConflict_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_setStudentConflictDecision_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_removeStudentConflictAcceptance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_removeStudentConflictAcceptance(ctx, field)
+func (ec *executionContext) _Mutation_removeStudentConflictDecision(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeStudentConflictDecision(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -34183,7 +34573,7 @@ func (ec *executionContext) _Mutation_removeStudentConflictAcceptance(ctx contex
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RemoveStudentConflictAcceptance(rctx, fc.Args["ancode1"].(int), fc.Args["ancode2"].(int), fc.Args["mtknr"].(string))
+		return ec.resolvers.Mutation().RemoveStudentConflictDecision(rctx, fc.Args["ancode1"].(int), fc.Args["ancode2"].(int), fc.Args["mtknr"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -34200,7 +34590,7 @@ func (ec *executionContext) _Mutation_removeStudentConflictAcceptance(ctx contex
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_removeStudentConflictAcceptance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_removeStudentConflictDecision(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -34217,7 +34607,7 @@ func (ec *executionContext) fieldContext_Mutation_removeStudentConflictAcceptanc
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_removeStudentConflictAcceptance_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_removeStudentConflictDecision_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -47665,6 +48055,10 @@ func (ec *executionContext) fieldContext_Query_examScheduleConflicts(_ context.C
 				return ec.fieldContext_ExamScheduleConflict_mainExamer1(ctx, field)
 			case "groups1":
 				return ec.fieldContext_ExamScheduleConflict_groups1(ctx, field)
+			case "isRepeaterExam1":
+				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam1(ctx, field)
+			case "slot1":
+				return ec.fieldContext_ExamScheduleConflict_slot1(ctx, field)
 			case "ancode2":
 				return ec.fieldContext_ExamScheduleConflict_ancode2(ctx, field)
 			case "module2":
@@ -47673,6 +48067,10 @@ func (ec *executionContext) fieldContext_Query_examScheduleConflicts(_ context.C
 				return ec.fieldContext_ExamScheduleConflict_mainExamer2(ctx, field)
 			case "groups2":
 				return ec.fieldContext_ExamScheduleConflict_groups2(ctx, field)
+			case "isRepeaterExam2":
+				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam2(ctx, field)
+			case "slot2":
+				return ec.fieldContext_ExamScheduleConflict_slot2(ctx, field)
 			case "studentCount":
 				return ec.fieldContext_ExamScheduleConflict_studentCount(ctx, field)
 			case "proximity":
@@ -47690,8 +48088,8 @@ func (ec *executionContext) fieldContext_Query_examScheduleConflicts(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_studentConflictAcceptances(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_studentConflictAcceptances(ctx, field)
+func (ec *executionContext) _Query_studentConflictDecisions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_studentConflictDecisions(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -47704,7 +48102,7 @@ func (ec *executionContext) _Query_studentConflictAcceptances(ctx context.Contex
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().StudentConflictAcceptances(rctx)
+		return ec.resolvers.Query().StudentConflictDecisions(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -47716,12 +48114,12 @@ func (ec *executionContext) _Query_studentConflictAcceptances(ctx context.Contex
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.StudentConflictAcceptance)
+	res := resTmp.([]*model.StudentConflictDecision)
 	fc.Result = res
-	return ec.marshalNStudentConflictAcceptance2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentConflictAcceptanceᚄ(ctx, field.Selections, res)
+	return ec.marshalNStudentConflictDecision2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentConflictDecisionᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_studentConflictAcceptances(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_studentConflictDecisions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -47730,13 +48128,15 @@ func (ec *executionContext) fieldContext_Query_studentConflictAcceptances(_ cont
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "ancode1":
-				return ec.fieldContext_StudentConflictAcceptance_ancode1(ctx, field)
+				return ec.fieldContext_StudentConflictDecision_ancode1(ctx, field)
 			case "ancode2":
-				return ec.fieldContext_StudentConflictAcceptance_ancode2(ctx, field)
+				return ec.fieldContext_StudentConflictDecision_ancode2(ctx, field)
 			case "mtknr":
-				return ec.fieldContext_StudentConflictAcceptance_mtknr(ctx, field)
+				return ec.fieldContext_StudentConflictDecision_mtknr(ctx, field)
+			case "decision":
+				return ec.fieldContext_StudentConflictDecision_decision(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type StudentConflictAcceptance", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type StudentConflictDecision", field.Name)
 		},
 	}
 	return fc, nil
@@ -57624,8 +58024,8 @@ func (ec *executionContext) fieldContext_Student_nta(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _StudentConflictAcceptance_ancode1(ctx context.Context, field graphql.CollectedField, obj *model.StudentConflictAcceptance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_StudentConflictAcceptance_ancode1(ctx, field)
+func (ec *executionContext) _StudentConflictDecision_ancode1(ctx context.Context, field graphql.CollectedField, obj *model.StudentConflictDecision) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentConflictDecision_ancode1(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -57655,9 +58055,9 @@ func (ec *executionContext) _StudentConflictAcceptance_ancode1(ctx context.Conte
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_StudentConflictAcceptance_ancode1(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_StudentConflictDecision_ancode1(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "StudentConflictAcceptance",
+		Object:     "StudentConflictDecision",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -57668,8 +58068,8 @@ func (ec *executionContext) fieldContext_StudentConflictAcceptance_ancode1(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _StudentConflictAcceptance_ancode2(ctx context.Context, field graphql.CollectedField, obj *model.StudentConflictAcceptance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_StudentConflictAcceptance_ancode2(ctx, field)
+func (ec *executionContext) _StudentConflictDecision_ancode2(ctx context.Context, field graphql.CollectedField, obj *model.StudentConflictDecision) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentConflictDecision_ancode2(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -57699,9 +58099,9 @@ func (ec *executionContext) _StudentConflictAcceptance_ancode2(ctx context.Conte
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_StudentConflictAcceptance_ancode2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_StudentConflictDecision_ancode2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "StudentConflictAcceptance",
+		Object:     "StudentConflictDecision",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -57712,8 +58112,8 @@ func (ec *executionContext) fieldContext_StudentConflictAcceptance_ancode2(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _StudentConflictAcceptance_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.StudentConflictAcceptance) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_StudentConflictAcceptance_mtknr(ctx, field)
+func (ec *executionContext) _StudentConflictDecision_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.StudentConflictDecision) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentConflictDecision_mtknr(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -57743,14 +58143,58 @@ func (ec *executionContext) _StudentConflictAcceptance_mtknr(ctx context.Context
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_StudentConflictAcceptance_mtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_StudentConflictDecision_mtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "StudentConflictAcceptance",
+		Object:     "StudentConflictDecision",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentConflictDecision_decision(ctx context.Context, field graphql.CollectedField, obj *model.StudentConflictDecision) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentConflictDecision_decision(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Decision, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.ConflictDecision)
+	fc.Result = res
+	return ec.marshalNConflictDecision2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictDecision(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentConflictDecision_decision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentConflictDecision",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ConflictDecision does not have child fields")
 		},
 	}
 	return fc, nil
@@ -70604,6 +71048,13 @@ func (ec *executionContext) _ConflictStudent(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "autoAccepted":
+			out.Values[i] = ec._ConflictStudent_autoAccepted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "decision":
+			out.Values[i] = ec._ConflictStudent_decision(ctx, field, obj)
 		case "accepted":
 			out.Values[i] = ec._ConflictStudent_accepted(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -71582,6 +72033,16 @@ func (ec *executionContext) _ExamScheduleConflict(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "isRepeaterExam1":
+			out.Values[i] = ec._ExamScheduleConflict_isRepeaterExam1(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slot1":
+			out.Values[i] = ec._ExamScheduleConflict_slot1(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "ancode2":
 			out.Values[i] = ec._ExamScheduleConflict_ancode2(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -71599,6 +72060,16 @@ func (ec *executionContext) _ExamScheduleConflict(ctx context.Context, sel ast.S
 			}
 		case "groups2":
 			out.Values[i] = ec._ExamScheduleConflict_groups2(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isRepeaterExam2":
+			out.Values[i] = ec._ExamScheduleConflict_isRepeaterExam2(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slot2":
+			out.Values[i] = ec._ExamScheduleConflict_slot2(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -73421,16 +73892,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "acceptStudentConflict":
+		case "setStudentConflictDecision":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_acceptStudentConflict(ctx, field)
+				return ec._Mutation_setStudentConflictDecision(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "removeStudentConflictAcceptance":
+		case "removeStudentConflictDecision":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_removeStudentConflictAcceptance(ctx, field)
+				return ec._Mutation_removeStudentConflictDecision(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -76344,7 +76815,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "studentConflictAcceptances":
+		case "studentConflictDecisions":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -76353,7 +76824,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_studentConflictAcceptances(ctx, field)
+				res = ec._Query_studentConflictDecisions(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -79250,29 +79721,34 @@ func (ec *executionContext) _Student(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
-var studentConflictAcceptanceImplementors = []string{"StudentConflictAcceptance"}
+var studentConflictDecisionImplementors = []string{"StudentConflictDecision"}
 
-func (ec *executionContext) _StudentConflictAcceptance(ctx context.Context, sel ast.SelectionSet, obj *model.StudentConflictAcceptance) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, studentConflictAcceptanceImplementors)
+func (ec *executionContext) _StudentConflictDecision(ctx context.Context, sel ast.SelectionSet, obj *model.StudentConflictDecision) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, studentConflictDecisionImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("StudentConflictAcceptance")
+			out.Values[i] = graphql.MarshalString("StudentConflictDecision")
 		case "ancode1":
-			out.Values[i] = ec._StudentConflictAcceptance_ancode1(ctx, field, obj)
+			out.Values[i] = ec._StudentConflictDecision_ancode1(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "ancode2":
-			out.Values[i] = ec._StudentConflictAcceptance_ancode2(ctx, field, obj)
+			out.Values[i] = ec._StudentConflictDecision_ancode2(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "mtknr":
-			out.Values[i] = ec._StudentConflictAcceptance_mtknr(ctx, field, obj)
+			out.Values[i] = ec._StudentConflictDecision_mtknr(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "decision":
+			out.Values[i] = ec._StudentConflictDecision_decision(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -81474,6 +81950,16 @@ func (ec *executionContext) marshalNConflict2ᚖgithubᚗcomᚋobcodeᚋplexams�
 		return graphql.Null
 	}
 	return ec._Conflict(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNConflictDecision2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictDecision(ctx context.Context, v any) (model.ConflictDecision, error) {
+	var res model.ConflictDecision
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNConflictDecision2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictDecision(ctx context.Context, sel ast.SelectionSet, v model.ConflictDecision) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNConflictStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictStudentᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ConflictStudent) graphql.Marshaler {
@@ -85234,7 +85720,7 @@ func (ec *executionContext) marshalNStudent2ᚖgithubᚗcomᚋobcodeᚋplexams�
 	return ec._Student(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNStudentConflictAcceptance2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentConflictAcceptanceᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StudentConflictAcceptance) graphql.Marshaler {
+func (ec *executionContext) marshalNStudentConflictDecision2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentConflictDecisionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StudentConflictDecision) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -85258,7 +85744,7 @@ func (ec *executionContext) marshalNStudentConflictAcceptance2ᚕᚖgithubᚗcom
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNStudentConflictAcceptance2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentConflictAcceptance(ctx, sel, v[i])
+			ret[i] = ec.marshalNStudentConflictDecision2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentConflictDecision(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -85278,14 +85764,14 @@ func (ec *executionContext) marshalNStudentConflictAcceptance2ᚕᚖgithubᚗcom
 	return ret
 }
 
-func (ec *executionContext) marshalNStudentConflictAcceptance2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentConflictAcceptance(ctx context.Context, sel ast.SelectionSet, v *model.StudentConflictAcceptance) graphql.Marshaler {
+func (ec *executionContext) marshalNStudentConflictDecision2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentConflictDecision(ctx context.Context, sel ast.SelectionSet, v *model.StudentConflictDecision) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._StudentConflictAcceptance(ctx, sel, v)
+	return ec._StudentConflictDecision(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNStudentReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStudentRegᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StudentReg) graphql.Marshaler {
@@ -86560,6 +87046,22 @@ func (ec *executionContext) marshalOConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexa
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOConflictDecision2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictDecision(ctx context.Context, v any) (*model.ConflictDecision, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.ConflictDecision)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOConflictDecision2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictDecision(ctx context.Context, sel ast.SelectionSet, v *model.ConflictDecision) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOConflicts2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflicts(ctx context.Context, sel ast.SelectionSet, v *model.Conflicts) graphql.Marshaler {

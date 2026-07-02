@@ -229,7 +229,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 
 	// --- conflict ratings & canShareSlot (keyed by unit pair) ---
 	canShare := make(map[[2]int]bool)
-	accepted := make(map[string]map[[2]int]bool)
+	decisions := make(map[string]map[[2]int]model.ConflictDecision) // mtknr -> unit pair -> decision
 	unitPair := func(a, b int) ([2]int, bool) {
 		ua, ok1 := unitOf[a]
 		ub, ok2 := unitOf[b]
@@ -249,16 +249,16 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 				}
 			}
 		}
-		if accs, err := p.dbClient.StudentConflictAcceptances(ctx); err == nil {
-			for _, ac := range accs {
-				up, ok := unitPair(ac.Ancode1, ac.Ancode2)
+		if decs, err := p.dbClient.StudentConflictDecisions(ctx); err == nil {
+			for _, d := range decs {
+				up, ok := unitPair(d.Ancode1, d.Ancode2)
 				if !ok {
 					continue
 				}
-				if accepted[ac.Mtknr] == nil {
-					accepted[ac.Mtknr] = make(map[[2]int]bool)
+				if decisions[d.Mtknr] == nil {
+					decisions[d.Mtknr] = make(map[[2]int]model.ConflictDecision)
 				}
-				accepted[ac.Mtknr][up] = true
+				decisions[d.Mtknr][up] = d.Decision
 			}
 		}
 	}
@@ -295,13 +295,16 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 				if canShare[up] {
 					continue // declared shareable: drop hard + soft entirely
 				}
+				isRepeat := repeatForStudent(studSem, unitRepeater[a], unitSemester[a]) ||
+					repeatForStudent(studSem, unitRepeater[b], unitSemester[b])
 				weight := 1.0
-				if repeatForStudent(studSem, unitRepeater[a], unitSemester[a]) ||
-					repeatForStudent(studSem, unitRepeater[b], unitSemester[b]) {
-					weight *= w.RepeatFactor
-				}
-				if accepted[s.Mtknr][up] {
-					weight = 0 // per-student acceptance: no proximity penalty (same-slot still hard)
+				switch dec := decisions[s.Mtknr][up]; {
+				case dec == model.ConflictDecisionAccept:
+					weight = 0 // accepted: no proximity penalty (same-slot still hard)
+				case dec == model.ConflictDecisionVeto:
+					weight = 1.0 // vetoed: counts fully, overriding the repeat down-weight
+				case isRepeat:
+					weight = w.RepeatFactor // auto down-weight for (likely) repeats
 				}
 				pairs = append(pairs, examplan.Pair{A: a, B: b, Weight: weight})
 			}

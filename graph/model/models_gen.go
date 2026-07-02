@@ -108,7 +108,11 @@ type ConflictStudent struct {
 	Program string `json:"program"`
 	// the student's cohort/group, e.g. "IF4B".
 	Group string `json:"group"`
-	// true if this student's conflict for this pair is accepted.
+	// true if this is (heuristically) a repeat for this student (repeater exam or the student's semester is above the exam's) — auto down-weighted and accepted by default.
+	AutoAccepted bool `json:"autoAccepted"`
+	// explicit decision for this student, if any (overrides the automatic handling).
+	Decision *ConflictDecision `json:"decision,omitempty"`
+	// effective: penalty dropped for this student (explicit ACCEPT, or autoAccepted and not vetoed).
 	Accepted bool `json:"accepted"`
 }
 
@@ -294,11 +298,17 @@ type ExamScheduleConflict struct {
 	Module1     string `json:"module1"`
 	MainExamer1 string `json:"mainExamer1"`
 	// the study groups exam 1 is offered for (e.g. ["IF2A"]).
-	Groups1     []string `json:"groups1"`
-	Ancode2     int      `json:"ancode2"`
-	Module2     string   `json:"module2"`
-	MainExamer2 string   `json:"mainExamer2"`
-	Groups2     []string `json:"groups2"`
+	Groups1 []string `json:"groups1"`
+	// true if exam 1 is a repeater exam.
+	IsRepeaterExam1 bool `json:"isRepeaterExam1"`
+	// the planned slot of exam 1.
+	Slot1           *Slot    `json:"slot1"`
+	Ancode2         int      `json:"ancode2"`
+	Module2         string   `json:"module2"`
+	MainExamer2     string   `json:"mainExamer2"`
+	Groups2         []string `json:"groups2"`
+	IsRepeaterExam2 bool     `json:"isRepeaterExam2"`
+	Slot2           *Slot    `json:"slot2"`
 	// number of students registered in both, in the plan.
 	StudentCount int `json:"studentCount"`
 	// worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY.
@@ -1060,11 +1070,12 @@ type Student struct {
 	Nta             *NTA              `json:"nta,omitempty"`
 }
 
-// StudentConflictAcceptance records that a specific student's conflict between two exams is accepted (its proximity penalty is dropped for that student).
-type StudentConflictAcceptance struct {
-	Ancode1 int    `json:"ancode1"`
-	Ancode2 int    `json:"ancode2"`
-	Mtknr   string `json:"mtknr"`
+// StudentConflictDecision is a stored explicit decision for one student's conflict pair.
+type StudentConflictDecision struct {
+	Ancode1  int              `json:"ancode1"`
+	Ancode2  int              `json:"ancode2"`
+	Mtknr    string           `json:"mtknr"`
+	Decision ConflictDecision `json:"decision"`
 }
 
 type StudentRegsPerAncode struct {
@@ -1151,6 +1162,64 @@ type ZPAExamsForType struct {
 type ZPAInvigilator struct {
 	Teacher                  *Teacher `json:"teacher"`
 	HasSubmittedRequirements bool     `json:"hasSubmittedRequirements"`
+}
+
+// ConflictDecision is an explicit per-student override of the automatic handling:
+// ACCEPT drops that student's proximity penalty; VETO forces it to count at full weight
+// (overriding an automatic repeat down-weighting).
+type ConflictDecision string
+
+const (
+	ConflictDecisionAccept ConflictDecision = "ACCEPT"
+	ConflictDecisionVeto   ConflictDecision = "VETO"
+)
+
+var AllConflictDecision = []ConflictDecision{
+	ConflictDecisionAccept,
+	ConflictDecisionVeto,
+}
+
+func (e ConflictDecision) IsValid() bool {
+	switch e {
+	case ConflictDecisionAccept, ConflictDecisionVeto:
+		return true
+	}
+	return false
+}
+
+func (e ConflictDecision) String() string {
+	return string(e)
+}
+
+func (e *ConflictDecision) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ConflictDecision(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ConflictDecision", str)
+	}
+	return nil
+}
+
+func (e ConflictDecision) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ConflictDecision) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ConflictDecision) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 // LogLevel classifies a streamed LogLine. PROGRESS lines are throttled optimizer

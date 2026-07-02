@@ -10,14 +10,14 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// AcceptStudentConflict is the resolver for the acceptStudentConflict field.
-func (r *mutationResolver) AcceptStudentConflict(ctx context.Context, ancode1 int, ancode2 int, mtknr string) (bool, error) {
-	return r.plexams.AcceptStudentConflict(ctx, ancode1, ancode2, mtknr)
+// SetStudentConflictDecision is the resolver for the setStudentConflictDecision field.
+func (r *mutationResolver) SetStudentConflictDecision(ctx context.Context, ancode1 int, ancode2 int, mtknr string, decision model.ConflictDecision) (bool, error) {
+	return r.plexams.SetStudentConflictDecision(ctx, ancode1, ancode2, mtknr, decision)
 }
 
-// RemoveStudentConflictAcceptance is the resolver for the removeStudentConflictAcceptance field.
-func (r *mutationResolver) RemoveStudentConflictAcceptance(ctx context.Context, ancode1 int, ancode2 int, mtknr string) (bool, error) {
-	return r.plexams.RemoveStudentConflictAcceptance(ctx, ancode1, ancode2, mtknr)
+// RemoveStudentConflictDecision is the resolver for the removeStudentConflictDecision field.
+func (r *mutationResolver) RemoveStudentConflictDecision(ctx context.Context, ancode1 int, ancode2 int, mtknr string) (bool, error) {
+	return r.plexams.RemoveStudentConflictDecision(ctx, ancode1, ancode2, mtknr)
 }
 
 // SetExamsCanShareSlot is the resolver for the setExamsCanShareSlot field.
@@ -35,9 +35,9 @@ func (r *queryResolver) ExamScheduleConflicts(ctx context.Context) ([]*model.Exa
 	return r.plexams.ExamScheduleConflicts(ctx)
 }
 
-// StudentConflictAcceptances is the resolver for the studentConflictAcceptances field.
-func (r *queryResolver) StudentConflictAcceptances(ctx context.Context) ([]*model.StudentConflictAcceptance, error) {
-	return r.plexams.StudentConflictAcceptances(ctx)
+// StudentConflictDecisions is the resolver for the studentConflictDecisions field.
+func (r *queryResolver) StudentConflictDecisions(ctx context.Context) ([]*model.StudentConflictDecision, error) {
+	return r.plexams.StudentConflictDecisions(ctx)
 }
 
 // ExamsCanShareSlot is the resolver for the examsCanShareSlot field.

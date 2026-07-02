@@ -344,6 +344,8 @@ type ExamScheduleReport struct {
 	StoppedEarly     bool                     `json:"stoppedEarly"`
 	Written          bool                     `json:"written"`
 	Diagnostics      *ExamScheduleDiagnostics `json:"diagnostics"`
+	// conflicts of the generated schedule (to review/rate, also on a dry run).
+	Conflicts []*ExamScheduleConflict `json:"conflicts"`
 }
 
 // ExamTime is the time span of one exam an invigilator is the main examer of:

@@ -331,6 +331,7 @@ type ComplexityRoot struct {
 	}
 
 	ExamScheduleReport struct {
+		Conflicts        func(childComplexity int) int
 		Cost             func(childComplexity int) int
 		CostByConstraint func(childComplexity int) int
 		Diagnostics      func(childComplexity int) int
@@ -2923,6 +2924,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleDiagnostics.WorstStudentPenalty(childComplexity), true
+
+	case "ExamScheduleReport.conflicts":
+		if e.complexity.ExamScheduleReport.Conflicts == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Conflicts(childComplexity), true
 
 	case "ExamScheduleReport.cost":
 		if e.complexity.ExamScheduleReport.Cost == nil {
@@ -9702,6 +9710,8 @@ type ExamScheduleReport {
   stoppedEarly: Boolean!
   written: Boolean!
   diagnostics: ExamScheduleDiagnostics!
+  "conflicts of the generated schedule (to review/rate, also on a dry run)."
+  conflicts: [ExamScheduleConflict!]!
 }
 `, BuiltIn: false},
 	{Name: "../generation_config.graphqls", Input: `extend type Query {
@@ -26903,6 +26913,76 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_diagnostics(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _ExamScheduleReport_conflicts(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_conflicts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Conflicts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ExamScheduleConflict)
+	fc.Result = res
+	return ec.marshalNExamScheduleConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleConflictᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_conflicts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode1":
+				return ec.fieldContext_ExamScheduleConflict_ancode1(ctx, field)
+			case "module1":
+				return ec.fieldContext_ExamScheduleConflict_module1(ctx, field)
+			case "mainExamer1":
+				return ec.fieldContext_ExamScheduleConflict_mainExamer1(ctx, field)
+			case "ancode2":
+				return ec.fieldContext_ExamScheduleConflict_ancode2(ctx, field)
+			case "module2":
+				return ec.fieldContext_ExamScheduleConflict_module2(ctx, field)
+			case "mainExamer2":
+				return ec.fieldContext_ExamScheduleConflict_mainExamer2(ctx, field)
+			case "studentCount":
+				return ec.fieldContext_ExamScheduleConflict_studentCount(ctx, field)
+			case "proximity":
+				return ec.fieldContext_ExamScheduleConflict_proximity(ctx, field)
+			case "rating":
+				return ec.fieldContext_ExamScheduleConflict_rating(ctx, field)
+			case "canShareSlot":
+				return ec.fieldContext_ExamScheduleConflict_canShareSlot(ctx, field)
+			case "infoOnly":
+				return ec.fieldContext_ExamScheduleConflict_infoOnly(ctx, field)
+			case "affectedStudents":
+				return ec.fieldContext_ExamScheduleConflict_affectedStudents(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleConflict", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ExamTime_from(ctx context.Context, field graphql.CollectedField, obj *model.ExamTime) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ExamTime_from(ctx, field)
 	if err != nil {
@@ -32200,6 +32280,8 @@ func (ec *executionContext) fieldContext_LogLine_examReport(_ context.Context, f
 				return ec.fieldContext_ExamScheduleReport_written(ctx, field)
 			case "diagnostics":
 				return ec.fieldContext_ExamScheduleReport_diagnostics(ctx, field)
+			case "conflicts":
+				return ec.fieldContext_ExamScheduleReport_conflicts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleReport", field.Name)
 		},
@@ -71636,6 +71718,11 @@ func (ec *executionContext) _ExamScheduleReport(ctx context.Context, sel ast.Sel
 			}
 		case "diagnostics":
 			out.Values[i] = ec._ExamScheduleReport_diagnostics(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "conflicts":
+			out.Values[i] = ec._ExamScheduleReport_conflicts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -63,4 +63,6 @@ type ExamScheduleReport {
   stoppedEarly: Boolean!
   written: Boolean!
   diagnostics: ExamScheduleDiagnostics!
+  "conflicts of the generated schedule (to review/rate, also on a dry run)."
+  conflicts: [ExamScheduleConflict!]!
 }

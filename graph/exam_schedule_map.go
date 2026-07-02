@@ -45,5 +45,6 @@ func examScheduleReport(r *plexams.ExamScheduleResult) *model.ExamScheduleReport
 			SlotsOverThreshold:   d.SlotsOverThreshold,
 			MaxExamsPerSlot:      d.MaxExamsPerSlot,
 		},
+		Conflicts: r.Conflicts,
 	}
 }

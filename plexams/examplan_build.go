@@ -33,6 +33,7 @@ type ExamScheduleResult struct {
 	StoppedEarly     bool
 	Written          bool
 	Diagnostics      examplan.Diagnostics
+	Conflicts        []*model.ExamScheduleConflict
 }
 
 // buildExamPlanProblem assembles the exam-schedule optimization problem from the
@@ -436,6 +437,29 @@ func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed in
 			result.Placed++
 		}
 	}
+	// conflicts of the just-generated schedule (so they can be reviewed/rated even on a
+	// dry run, before anything is written)
+	slotModel := make(map[[2]int]*model.Slot, len(p.semesterConfig.Slots))
+	for _, s := range p.semesterConfig.Slots {
+		slotModel[[2]int{s.DayNumber, s.SlotNumber}] = s
+	}
+	slotByAncode := make(map[int]*model.Slot)
+	for i := range prob.Units {
+		if st.SlotOf[i] < 0 {
+			continue
+		}
+		if ms := slotModel[[2]int{prob.Slots[st.SlotOf[i]].Day, prob.Slots[st.SlotOf[i]].Slot}]; ms != nil {
+			for _, a := range prob.Units[i].Ancodes {
+				slotByAncode[a] = ms
+			}
+		}
+	}
+	if conflicts, err := p.conflictsFromSlots(ctx, slotByAncode); err == nil {
+		result.Conflicts = conflicts
+	} else {
+		log.Error().Err(err).Msg("cannot compute conflicts of generated schedule")
+	}
+
 	d := result.Diagnostics
 	reporter.Println(fmt.Sprintf("geplant %d, ungeplant %d, harte Verletzungen %d", result.Placed, result.Unplaced, len(hard)))
 	reporter.Println(fmt.Sprintf("direkt nacheinander %d, selber Tag %d (%d Studierende), Folgetag %d",

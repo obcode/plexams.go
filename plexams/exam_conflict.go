@@ -191,19 +191,25 @@ func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamSched
 	if err != nil {
 		return nil, err
 	}
+	slotModel := make(map[[2]int]*model.Slot, len(p.semesterConfig.Slots))
+	for _, s := range p.semesterConfig.Slots {
+		slotModel[[2]int{s.DayNumber, s.SlotNumber}] = s
+	}
 	slotByAncode := make(map[int]*model.Slot)
 	for _, pe := range planEntries {
 		if pe.DayNumber == 0 && pe.SlotNumber == 0 {
 			continue // external, outside the period → no slot
 		}
-		for _, s := range p.semesterConfig.Slots {
-			if s.DayNumber == pe.DayNumber && s.SlotNumber == pe.SlotNumber {
-				slotByAncode[pe.Ancode] = s
-				break
-			}
+		if s := slotModel[[2]int{pe.DayNumber, pe.SlotNumber}]; s != nil {
+			slotByAncode[pe.Ancode] = s
 		}
 	}
+	return p.conflictsFromSlots(ctx, slotByAncode)
+}
 
+// conflictsFromSlots computes the aggregated conflicts for a given ancode->slot
+// assignment (used both for the stored plan and for a freshly generated one).
+func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*model.Slot) ([]*model.ExamScheduleConflict, error) {
 	students, err := p.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
 		return nil, err

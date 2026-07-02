@@ -180,12 +180,25 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		allowedSets := make([][]int, 0, len(members))
 		repeater := false
 		minSem := 0
+		pinnedSlot := -1 // a fixed exam this group is sameSlot with: the movable group must go there
 		for _, a := range members {
 			e := rec[a].e
 			u.Ancodes = append(u.Ancodes, a)
 			u.Seats += e.StudentRegsCount
-			if c := constraints[a]; c != nil && c.RoomConstraints != nil && c.RoomConstraints.Exahm {
-				u.Exahm = true
+			if c := constraints[a]; c != nil {
+				if c.RoomConstraints != nil && c.RoomConstraints.Exahm {
+					u.Exahm = true
+				}
+				// sameSlot with a FIXED exam pins this group to that exam's slot (the
+				// movable-only union-find above cannot merge across fixed exams).
+				for _, other := range c.SameSlot {
+					if ro, ok := rec[other]; ok && ro.fixedSlot >= 0 {
+						if pinnedSlot >= 0 && pinnedSlot != ro.fixedSlot {
+							log.Warn().Int("ancode", a).Msg("sameSlot with fixed exams in different slots — cannot satisfy both")
+						}
+						pinnedSlot = ro.fixedSlot
+					}
+				}
 			}
 			if e.ZpaExam.IsRepeaterExam {
 				repeater = true
@@ -201,7 +214,11 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		u.Module = e0.ZpaExam.Module
 		u.Program = firstProgram(e0)
 		u.Location = locationOf(constraints[members[0]])
-		u.Allowed = intersectAllowed(allowedSets)
+		if pinnedSlot >= 0 {
+			u.Allowed = []int{pinnedSlot} // pinned to the fixed sameSlot partner's slot
+		} else {
+			u.Allowed = intersectAllowed(allowedSets)
+		}
 		units = append(units, u)
 		unitRepeater = append(unitRepeater, repeater)
 		unitSemester = append(unitSemester, minSem)
@@ -242,6 +259,19 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		}
 		return [2]int{ua, ub}, true
 	}
+	// sameSlot exams must run at the same time, so a shared student may of course have
+	// both in one slot — treat such pairs like canShareSlot (no same-slot veto/penalty
+	// between them). Movable-movable sameSlot are one merged unit already (unitPair
+	// returns false); this covers movable<->fixed sameSlot (distinct units).
+	for _, a := range ancodes {
+		if c := constraints[a]; c != nil {
+			for _, other := range c.SameSlot {
+				if up, ok := unitPair(a, other); ok {
+					canShare[up] = true
+				}
+			}
+		}
+	}
 	if applyRatings {
 		if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err == nil {
 			for _, pr := range pairs {
@@ -269,6 +299,40 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 	if err != nil {
 		return nil, err
 	}
+
+	// MUC.DAI restriction: any exam a MUC.DAI-program student (DE/GS/ID) is registered
+	// for must be scheduled in a MUC.DAI slot — this includes normal ZPA exams (e.g.
+	// 134/118) that a MUC.DAI student takes, not only the external MUC.DAI exams.
+	mucDaiProg := make(map[string]bool)
+	for _, prog := range p.mucdaiProgramNames(ctx) {
+		mucDaiProg[prog] = true
+	}
+	mucDaiSlotIdx := make([]int, 0)
+	for _, s := range sc.MucDaiSlots {
+		if idx, ok := slotIdx[[2]int{s.DayNumber, s.SlotNumber}]; ok {
+			mucDaiSlotIdx = append(mucDaiSlotIdx, idx)
+		}
+	}
+	if len(mucDaiProg) > 0 && len(mucDaiSlotIdx) > 0 {
+		mucDaiUnit := make(map[int]bool)
+		for _, s := range studentsRaw {
+			for _, rwp := range s.RegsWithProgram {
+				if mucDaiProg[rwp.Program] {
+					if u, ok := unitOf[rwp.Reg]; ok && !units[u].Fixed {
+						mucDaiUnit[u] = true
+					}
+				}
+			}
+		}
+		for u := range mucDaiUnit {
+			inter := intersectSlots(units[u].Allowed, mucDaiSlotIdx)
+			if len(inter) == 0 {
+				inter = []int{-1} // no MUC.DAI slot fits its other constraints → unplaceable (reported)
+			}
+			units[u].Allowed = inter
+		}
+	}
+
 	w := examplan.DefaultWeights()
 	students := make([]examplan.Student, 0, len(studentsRaw))
 	for _, s := range studentsRaw {
@@ -545,6 +609,27 @@ func semesterOf(group string) int {
 		n = n*10 + int(c-'0')
 	}
 	return n
+}
+
+// intersectSlots returns the slot indices in both a and b. An empty a means "all slots
+// allowed", so the result is b. The result may be empty (no overlap).
+func intersectSlots(a, b []int) []int {
+	if len(a) == 0 {
+		out := make([]int, len(b))
+		copy(out, b)
+		return out
+	}
+	set := make(map[int]bool, len(b))
+	for _, x := range b {
+		set[x] = true
+	}
+	out := make([]int, 0)
+	for _, x := range a {
+		if set[x] {
+			out = append(out, x)
+		}
+	}
+	return out
 }
 
 func locationOf(c *model.Constraints) string {

@@ -310,6 +310,9 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 			canShare[[2]int{pr[0], pr[1]}] = true
 		}
 	}
+	// sameSlot exams run simultaneously — a student can't sit both, so a conflict between
+	// them is spurious: treat like canShareSlot (auto-accepted, info only).
+	ssRoot := p.sameSlotGroups(ctx)
 	info := p.examInfoMap(ctx)
 	constraints, _ := p.ConstraintsMap(ctx)
 	foreign := func(ancode int) bool {
@@ -325,10 +328,16 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		ep := examPair(key[0], key[1], info)
 		i0, i1 := info[key[0]], info[key[1]]
 		decs := decisionByPair[key]
+		// canShareSlot declared, or the two are in the same sameSlot group -> no student
+		// legitimately sits both.
+		shareable := canShare[key]
+		if r0, ok := ssRoot[key[0]]; ok && r0 == ssRoot[key[1]] {
+			shareable = true
+		}
 		affected := make([]*model.ConflictStudent, 0, len(a.students))
 		for _, s := range a.students {
 			studSem := semesterOf(s.group)
-			autoAccepted := repeatForStudent(studSem, i0.repeater, i0.minSem) || repeatForStudent(studSem, i1.repeater, i1.minSem)
+			autoAccepted := shareable || repeatForStudent(studSem, i0.repeater, i0.minSem) || repeatForStudent(studSem, i1.repeater, i1.minSem)
 			cs := &model.ConflictStudent{Mtknr: s.mtknr, Name: s.name, Program: s.program, Group: s.group, AutoAccepted: autoAccepted}
 			if d, ok := decs[s.mtknr]; ok {
 				dd := d
@@ -342,7 +351,7 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		c := &model.ExamScheduleConflict{
 			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1, Groups1: i0.groups, IsRepeaterExam1: i0.repeater, Location1: locationOf(constraints[key[0]]), Slot1: slotByAncode[key[0]],
 			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2, Groups2: i1.groups, IsRepeaterExam2: i1.repeater, Location2: locationOf(constraints[key[1]]), Slot2: slotByAncode[key[1]],
-			StudentCount: len(a.students), Proximity: a.label, CanShareSlot: canShare[key],
+			StudentCount: len(a.students), Proximity: a.label, CanShareSlot: shareable,
 			InfoOnly:         foreign(key[0]) && foreign(key[1]),
 			AffectedStudents: affected,
 		}

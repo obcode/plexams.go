@@ -9,60 +9,56 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// conflictRatingDoc is the stored form of a conflict rating. Mtknr "" means a
-// pair-level rating (UNDESIRED/FORBIDDEN); a non-empty Mtknr is a per-student
-// ACCEPTED rating. Key: (ancode1, ancode2, mtknr).
-type conflictRatingDoc struct {
+// acceptanceDoc is a stored per-student conflict acceptance. Key: (ancode1, ancode2,
+// mtknr).
+type acceptanceDoc struct {
 	Ancode1 int    `bson:"ancode1"`
 	Ancode2 int    `bson:"ancode2"`
-	Rating  string `bson:"rating"`
 	Mtknr   string `bson:"mtknr"`
 }
 
-// ConflictRatings returns all stored conflict ratings.
-func (db *DB) ConflictRatings(ctx context.Context) ([]*model.ExamConflictRating, error) {
+// StudentConflictAcceptances returns all stored per-student conflict acceptances.
+func (db *DB) StudentConflictAcceptances(ctx context.Context) ([]*model.StudentConflictAcceptance, error) {
 	collection := db.getCollectionSemester(collectionExamConflictRatings)
 	cur, err := collection.Find(ctx, bson.M{})
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get conflict ratings")
+		log.Error().Err(err).Msg("cannot get conflict acceptances")
 		return nil, err
 	}
-	var docs []conflictRatingDoc
+	var docs []acceptanceDoc
 	if err := cur.All(ctx, &docs); err != nil {
-		log.Error().Err(err).Msg("cannot decode conflict ratings")
+		log.Error().Err(err).Msg("cannot decode conflict acceptances")
 		return nil, err
 	}
-	out := make([]*model.ExamConflictRating, 0, len(docs))
+	out := make([]*model.StudentConflictAcceptance, 0, len(docs))
 	for _, d := range docs {
-		r := &model.ExamConflictRating{Ancode1: d.Ancode1, Ancode2: d.Ancode2, Rating: model.ConflictRating(d.Rating)}
-		if d.Mtknr != "" {
-			m := d.Mtknr
-			r.Mtknr = &m
+		if d.Mtknr == "" {
+			continue // legacy pair-level rating, no longer used
 		}
-		out = append(out, r)
+		out = append(out, &model.StudentConflictAcceptance{Ancode1: d.Ancode1, Ancode2: d.Ancode2, Mtknr: d.Mtknr})
 	}
 	return out, nil
 }
 
-// UpsertConflictRating stores (or replaces) a conflict rating by (ancode1, ancode2,
-// mtknr). Pass mtknr "" for a pair-level rating.
-func (db *DB) UpsertConflictRating(ctx context.Context, ancode1, ancode2 int, rating, mtknr string) error {
+// UpsertAcceptance stores (or replaces) a per-student acceptance by (ancode1, ancode2,
+// mtknr).
+func (db *DB) UpsertAcceptance(ctx context.Context, ancode1, ancode2 int, mtknr string) error {
 	collection := db.getCollectionSemester(collectionExamConflictRatings)
 	filter := bson.M{"ancode1": ancode1, "ancode2": ancode2, "mtknr": mtknr}
-	doc := conflictRatingDoc{Ancode1: ancode1, Ancode2: ancode2, Rating: rating, Mtknr: mtknr}
+	doc := acceptanceDoc{Ancode1: ancode1, Ancode2: ancode2, Mtknr: mtknr}
 	if _, err := collection.ReplaceOne(ctx, filter, doc, options.Replace().SetUpsert(true)); err != nil {
-		log.Error().Err(err).Msg("cannot upsert conflict rating")
+		log.Error().Err(err).Msg("cannot upsert conflict acceptance")
 		return err
 	}
 	return nil
 }
 
-// DeleteConflictRating removes a conflict rating by (ancode1, ancode2, mtknr).
-func (db *DB) DeleteConflictRating(ctx context.Context, ancode1, ancode2 int, mtknr string) (bool, error) {
+// DeleteAcceptance removes a per-student acceptance by (ancode1, ancode2, mtknr).
+func (db *DB) DeleteAcceptance(ctx context.Context, ancode1, ancode2 int, mtknr string) (bool, error) {
 	collection := db.getCollectionSemester(collectionExamConflictRatings)
 	res, err := collection.DeleteOne(ctx, bson.M{"ancode1": ancode1, "ancode2": ancode2, "mtknr": mtknr})
 	if err != nil {
-		log.Error().Err(err).Msg("cannot delete conflict rating")
+		log.Error().Err(err).Msg("cannot delete conflict acceptance")
 		return false, err
 	}
 	return res.DeletedCount > 0, nil

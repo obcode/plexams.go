@@ -18,45 +18,31 @@ func normPair(a, b int) (int, int) {
 	return a, b
 }
 
-// ConflictRatings returns all stored conflict ratings.
-func (p *Plexams) ConflictRatings(ctx context.Context) ([]*model.ExamConflictRating, error) {
-	return p.dbClient.ConflictRatings(ctx)
+// StudentConflictAcceptances returns all stored per-student conflict acceptances.
+func (p *Plexams) StudentConflictAcceptances(ctx context.Context) ([]*model.StudentConflictAcceptance, error) {
+	return p.dbClient.StudentConflictAcceptances(ctx)
 }
 
-// SetConflictRating stores a conflict rating. ACCEPTED requires an mtknr (per-student);
-// UNDESIRED/FORBIDDEN must not have one (pair-level).
-func (p *Plexams) SetConflictRating(ctx context.Context, ancode1, ancode2 int, rating model.ConflictRating, mtknr *string) (bool, error) {
-	if !rating.IsValid() {
-		return false, fmt.Errorf("invalid rating %q", rating)
-	}
+// AcceptStudentConflict accepts a specific student's conflict between two exams: that
+// student's proximity penalty is dropped (the hard same-slot ban stays).
+func (p *Plexams) AcceptStudentConflict(ctx context.Context, ancode1, ancode2 int, mtknr string) (bool, error) {
 	if ancode1 == ancode2 {
-		return false, fmt.Errorf("cannot rate an exam against itself")
+		return false, fmt.Errorf("cannot accept an exam against itself")
 	}
-	if rating == model.ConflictRatingAccepted && (mtknr == nil || *mtknr == "") {
-		return false, fmt.Errorf("ACCEPTED requires an mtknr (per-student)")
-	}
-	if rating != model.ConflictRatingAccepted && mtknr != nil && *mtknr != "" {
-		return false, fmt.Errorf("%s is pair-level and must not have an mtknr", rating)
+	if mtknr == "" {
+		return false, fmt.Errorf("mtknr required")
 	}
 	a, b := normPair(ancode1, ancode2)
-	m := ""
-	if mtknr != nil {
-		m = *mtknr
-	}
-	if err := p.dbClient.UpsertConflictRating(ctx, a, b, string(rating), m); err != nil {
+	if err := p.dbClient.UpsertAcceptance(ctx, a, b, mtknr); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-// RemoveConflictRating deletes a conflict rating (pass mtknr for a per-student one).
-func (p *Plexams) RemoveConflictRating(ctx context.Context, ancode1, ancode2 int, mtknr *string) (bool, error) {
+// RemoveStudentConflictAcceptance removes a per-student acceptance.
+func (p *Plexams) RemoveStudentConflictAcceptance(ctx context.Context, ancode1, ancode2 int, mtknr string) (bool, error) {
 	a, b := normPair(ancode1, ancode2)
-	m := ""
-	if mtknr != nil {
-		m = *mtknr
-	}
-	return p.dbClient.DeleteConflictRating(ctx, a, b, m)
+	return p.dbClient.DeleteAcceptance(ctx, a, b, mtknr)
 }
 
 // ExamsCanShareSlot returns the declared can-share-slot pairs with display info.
@@ -299,19 +285,14 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		}
 	}
 
-	ratingByPair := make(map[[2]int]model.ConflictRating)
-	acceptedByPair := make(map[[2]int]map[string]bool) // pair -> mtknr set (ACCEPTED)
-	if ratings, err := p.dbClient.ConflictRatings(ctx); err == nil {
-		for _, r := range ratings {
-			key := [2]int{r.Ancode1, r.Ancode2}
-			if r.Mtknr == nil {
-				ratingByPair[key] = r.Rating // pair-level
-			} else if r.Rating == model.ConflictRatingAccepted {
-				if acceptedByPair[key] == nil {
-					acceptedByPair[key] = make(map[string]bool)
-				}
-				acceptedByPair[key][*r.Mtknr] = true
+	acceptedByPair := make(map[[2]int]map[string]bool) // pair -> mtknr set
+	if accs, err := p.dbClient.StudentConflictAcceptances(ctx); err == nil {
+		for _, a := range accs {
+			key := [2]int{a.Ancode1, a.Ancode2}
+			if acceptedByPair[key] == nil {
+				acceptedByPair[key] = make(map[string]bool)
 			}
+			acceptedByPair[key][a.Mtknr] = true
 		}
 	}
 	canShare := make(map[[2]int]bool)
@@ -345,9 +326,6 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 			StudentCount: len(a.students), Proximity: a.label, CanShareSlot: canShare[key],
 			InfoOnly:         foreign(key[0]) && foreign(key[1]),
 			AffectedStudents: affected,
-		}
-		if r, ok := ratingByPair[key]; ok {
-			c.Rating = &r
 		}
 		out = append(out, c)
 	}

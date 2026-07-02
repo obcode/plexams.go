@@ -16,9 +16,6 @@ import (
 // the same examer, preferably scheduled into the same slot.
 const smallExamThreshold = 5
 
-// undesiredBoost multiplies the spread penalty of a pair rated UNDESIRED.
-const undesiredBoost = 8.0
-
 // ExamScheduleResult summarizes a Terminplan generation run.
 type ExamScheduleResult struct {
 	Units            int
@@ -232,8 +229,6 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 
 	// --- conflict ratings & canShareSlot (keyed by unit pair) ---
 	canShare := make(map[[2]int]bool)
-	undesired := make(map[[2]int]bool)
-	forbidden := make(map[[2]int]bool)
 	accepted := make(map[string]map[[2]int]bool)
 	unitPair := func(a, b int) ([2]int, bool) {
 		ua, ok1 := unitOf[a]
@@ -254,25 +249,16 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 				}
 			}
 		}
-		if ratings, err := p.dbClient.ConflictRatings(ctx); err == nil {
-			for _, r := range ratings {
-				up, ok := unitPair(r.Ancode1, r.Ancode2)
+		if accs, err := p.dbClient.StudentConflictAcceptances(ctx); err == nil {
+			for _, ac := range accs {
+				up, ok := unitPair(ac.Ancode1, ac.Ancode2)
 				if !ok {
 					continue
 				}
-				switch r.Rating {
-				case model.ConflictRatingUndesired:
-					undesired[up] = true
-				case model.ConflictRatingForbidden:
-					forbidden[up] = true
-				case model.ConflictRatingAccepted:
-					if r.Mtknr != nil {
-						if accepted[*r.Mtknr] == nil {
-							accepted[*r.Mtknr] = make(map[[2]int]bool)
-						}
-						accepted[*r.Mtknr][up] = true
-					}
+				if accepted[ac.Mtknr] == nil {
+					accepted[ac.Mtknr] = make(map[[2]int]bool)
 				}
+				accepted[ac.Mtknr][up] = true
 			}
 		}
 	}
@@ -316,9 +302,6 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 				}
 				if accepted[s.Mtknr][up] {
 					weight = 0 // per-student acceptance: no proximity penalty (same-slot still hard)
-				}
-				if undesired[up] {
-					weight *= undesiredBoost
 				}
 				pairs = append(pairs, examplan.Pair{A: a, B: b, Weight: weight})
 			}
@@ -380,21 +363,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		return attract[i].B < attract[j].B
 	})
 
-	prob := examplan.NewProblem(slots, units, students, attract, w)
-	if len(forbidden) > 0 {
-		sep := make([][2]int, 0, len(forbidden))
-		for up := range forbidden {
-			sep = append(sep, up)
-		}
-		sort.Slice(sep, func(i, j int) bool {
-			if sep[i][0] != sep[j][0] {
-				return sep[i][0] < sep[j][0]
-			}
-			return sep[i][1] < sep[j][1]
-		})
-		prob.SetSeparated(sep)
-	}
-	return prob, nil
+	return examplan.NewProblem(slots, units, students, attract, w), nil
 }
 
 // GenerateExamSchedule builds and solves the exam schedule, streaming progress to the

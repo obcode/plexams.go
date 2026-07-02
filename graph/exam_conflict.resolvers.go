@@ -10,14 +10,14 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// SetConflictRating is the resolver for the setConflictRating field.
-func (r *mutationResolver) SetConflictRating(ctx context.Context, ancode1 int, ancode2 int, rating model.ConflictRating, mtknr *string) (bool, error) {
-	return r.plexams.SetConflictRating(ctx, ancode1, ancode2, rating, mtknr)
+// AcceptStudentConflict is the resolver for the acceptStudentConflict field.
+func (r *mutationResolver) AcceptStudentConflict(ctx context.Context, ancode1 int, ancode2 int, mtknr string) (bool, error) {
+	return r.plexams.AcceptStudentConflict(ctx, ancode1, ancode2, mtknr)
 }
 
-// RemoveConflictRating is the resolver for the removeConflictRating field.
-func (r *mutationResolver) RemoveConflictRating(ctx context.Context, ancode1 int, ancode2 int, mtknr *string) (bool, error) {
-	return r.plexams.RemoveConflictRating(ctx, ancode1, ancode2, mtknr)
+// RemoveStudentConflictAcceptance is the resolver for the removeStudentConflictAcceptance field.
+func (r *mutationResolver) RemoveStudentConflictAcceptance(ctx context.Context, ancode1 int, ancode2 int, mtknr string) (bool, error) {
+	return r.plexams.RemoveStudentConflictAcceptance(ctx, ancode1, ancode2, mtknr)
 }
 
 // SetExamsCanShareSlot is the resolver for the setExamsCanShareSlot field.
@@ -35,9 +35,9 @@ func (r *queryResolver) ExamScheduleConflicts(ctx context.Context) ([]*model.Exa
 	return r.plexams.ExamScheduleConflicts(ctx)
 }
 
-// ExamConflictRatings is the resolver for the examConflictRatings field.
-func (r *queryResolver) ExamConflictRatings(ctx context.Context) ([]*model.ExamConflictRating, error) {
-	return r.plexams.ConflictRatings(ctx)
+// StudentConflictAcceptances is the resolver for the studentConflictAcceptances field.
+func (r *queryResolver) StudentConflictAcceptances(ctx context.Context) ([]*model.StudentConflictAcceptance, error) {
+	return r.plexams.StudentConflictAcceptances(ctx)
 }
 
 // ExamsCanShareSlot is the resolver for the examsCanShareSlot field.

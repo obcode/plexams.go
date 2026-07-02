@@ -205,14 +205,6 @@ func (st *State) feasible(u, s int) bool {
 			return false
 		}
 	}
-	if len(p.sepByUnit) > 0 {
-		day := p.Slots[s].Day
-		for _, v := range p.sepByUnit[u] {
-			if sv := st.SlotOf[v]; sv >= 0 && p.Slots[sv].Day == day {
-				return false
-			}
-		}
-	}
 	seats := p.Units[u].Seats
 	if cap := p.Slots[s].Seats; cap > 0 && st.slotSeats[s]+seats > cap {
 		return false
@@ -244,27 +236,6 @@ func (st *State) canSwap(u, v int) bool {
 	for w := range p.hardConf[v] {
 		if w != u && st.SlotOf[w] == su {
 			return false
-		}
-	}
-	if len(p.sepByUnit) > 0 {
-		dayU, dayV := p.Slots[sv].Day, p.Slots[su].Day
-		for _, w := range p.sepByUnit[u] {
-			ws := st.SlotOf[w]
-			if w == v {
-				ws = su
-			}
-			if ws >= 0 && p.Slots[ws].Day == dayU {
-				return false
-			}
-		}
-		for _, w := range p.sepByUnit[v] {
-			ws := st.SlotOf[w]
-			if w == u {
-				ws = sv
-			}
-			if ws >= 0 && p.Slots[ws].Day == dayV {
-				return false
-			}
 		}
 	}
 	su2 := st.slotSeats[sv] - p.Units[v].Seats + p.Units[u].Seats

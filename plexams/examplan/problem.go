@@ -127,24 +127,6 @@ type Problem struct {
 	hardConfSorted [][]int        // deterministic (sorted) view of hardConf for float sums
 	unitStudents   [][]int        // unit -> student indices that have a pair with it
 	unitAttract    [][]attractRef // unit -> its attract partners
-
-	sep       [][2]int // unit pairs that must be on different days ("unzulässig")
-	sepByUnit [][]int  // unit -> units it must be on a different day from
-}
-
-// SetSeparated declares unit pairs that must be scheduled on different days (the hard
-// effect of an "unzulässig" conflict rating). Call after NewProblem.
-func (p *Problem) SetSeparated(pairs [][2]int) {
-	p.sep = pairs
-	p.sepByUnit = make([][]int, len(p.Units))
-	for _, pr := range pairs {
-		a, b := pr[0], pr[1]
-		if a < 0 || b < 0 || a >= len(p.Units) || b >= len(p.Units) {
-			continue
-		}
-		p.sepByUnit[a] = append(p.sepByUnit[a], b)
-		p.sepByUnit[b] = append(p.sepByUnit[b], a)
-	}
 }
 
 type attractRef struct {

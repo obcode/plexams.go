@@ -1,24 +1,3 @@
-"""
-ConflictRating rates a conflict between two exams for the exam-schedule generator.
-ACCEPTED is per-student (mtknr set): that student's proximity penalty is dropped, but
-the two exams still must not be in the same slot for them. UNDESIRED and FORBIDDEN are
-pair-level (mtknr null): UNDESIRED strongly increases the spread penalty, FORBIDDEN
-forces the two exams onto different days (hard).
-"""
-enum ConflictRating {
-  ACCEPTED
-  UNDESIRED
-  FORBIDDEN
-}
-
-type ExamConflictRating {
-  ancode1: Int!
-  ancode2: Int!
-  rating: ConflictRating!
-  "set only for ACCEPTED (per-student); null for pair-level UNDESIRED/FORBIDDEN."
-  mtknr: String
-}
-
 "ExamPair is a pair of exams with display info (for canShareSlot lists/suggestions)."
 type ExamPair {
   ancode1: Int!
@@ -29,9 +8,18 @@ type ExamPair {
   mainExamer2: String!
 }
 
+"StudentConflictAcceptance records that a specific student's conflict between two exams is accepted (its proximity penalty is dropped for that student)."
+type StudentConflictAcceptance {
+  ancode1: Int!
+  ancode2: Int!
+  mtknr: String!
+}
+
 """
 ExamScheduleConflict is a conflict in the CURRENT plan: two exams a student is
-registered in that ended up close in time, aggregated over all affected students.
+registered in that ended up close in time, aggregated over all affected students. A
+conflict is only meaningful per student — the per-student acceptance lives on
+affectedStudents.
 """
 type ExamScheduleConflict {
   ancode1: Int!
@@ -45,15 +33,13 @@ type ExamScheduleConflict {
   groups2: [String!]!
   "number of students registered in both, in the plan."
   studentCount: Int!
-  "worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY | NEXT_DAY."
+  "worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY."
   proximity: String!
-  "the current pair-level rating, if any."
-  rating: ConflictRating
   "true if the pair is declared can-share-slot."
   canShareSlot: Boolean!
-  "true if BOTH exams are external (planned by another faculty): we cannot change it, so this is information only (rating it has no effect) — relevant later for handing it to the other planner."
+  "true if BOTH exams are external (planned by another faculty): information only."
   infoOnly: Boolean!
-  "the affected students (registered in both), for per-student ACCEPTED ratings."
+  "the affected students (registered in both); acceptance is set per student here."
   affectedStudents: [ConflictStudent!]!
 }
 
@@ -64,15 +50,15 @@ type ConflictStudent {
   program: String!
   "the student's cohort/group, e.g. \"IF4B\"."
   group: String!
-  "true if this student already has an ACCEPTED rating for this pair."
+  "true if this student's conflict for this pair is accepted."
   accepted: Boolean!
 }
 
 extend type Query {
-  "Conflicts of the current plan, to review and rate."
+  "Conflicts of the current plan, to review (accept per student)."
   examScheduleConflicts: [ExamScheduleConflict!]!
-  "All conflict ratings currently stored."
-  examConflictRatings: [ExamConflictRating!]!
+  "All per-student conflict acceptances currently stored."
+  studentConflictAcceptances: [StudentConflictAcceptance!]!
   "Exam pairs declared as allowed to share a slot (no student legitimately sits both)."
   examsCanShareSlot: [ExamPair!]!
   "Auto-detected canShareSlot candidates (same module+program, different examer) not yet declared."
@@ -80,9 +66,9 @@ extend type Query {
 }
 
 extend type Mutation {
-  "Set (upsert) a conflict rating. For ACCEPTED pass mtknr; for UNDESIRED/FORBIDDEN omit it."
-  setConflictRating(ancode1: Int!, ancode2: Int!, rating: ConflictRating!, mtknr: String): Boolean!
-  removeConflictRating(ancode1: Int!, ancode2: Int!, mtknr: String): Boolean!
+  "Accept a specific student's conflict between two exams (drops that student's proximity penalty; same-slot stays hard)."
+  acceptStudentConflict(ancode1: Int!, ancode2: Int!, mtknr: String!): Boolean!
+  removeStudentConflictAcceptance(ancode1: Int!, ancode2: Int!, mtknr: String!): Boolean!
   "Declare / undeclare that two exams may share a slot."
   setExamsCanShareSlot(ancode1: Int!, ancode2: Int!): Boolean!
   removeExamsCanShareSlot(ancode1: Int!, ancode2: Int!): Boolean!

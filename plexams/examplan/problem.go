@@ -238,7 +238,10 @@ func (p *Problem) allows(u, s int) bool {
 }
 
 // closeness is the spread penalty for a counted pair placed in slots a and b (both
-// placed, a != b for a counted pair). Decreasing with temporal distance.
+// placed, a != b for a counted pair). Decreasing with temporal distance. Same-day pairs
+// use the fixed Adjacent/SameDay tiers; across days it falls off with the REAL time gap
+// (in hours), so an exam at 16:30 followed by one the next morning at 08:30 (16 h) costs
+// more than 08:30 → next 16:30 (32 h), and a weekend gap (many hours) is naturally cheap.
 func (p *Problem) closeness(a, b int) float64 {
 	sa, sb := p.Slots[a].SlotRef, p.Slots[b].SlotRef
 	if sa.Day == sb.Day {
@@ -247,7 +250,11 @@ func (p *Problem) closeness(a, b int) float64 {
 		}
 		return p.W.SameDay
 	}
-	return p.W.DayFactor / float64(calDays(sa.Start, sb.Start))
+	hours := math.Abs(sa.Start.Sub(sb.Start).Hours())
+	if hours < 1 {
+		hours = 1
+	}
+	return p.W.DayFactor * 24.0 / hours
 }
 
 // farness is the attract penalty (we want the pair close): 0 in the same slot, then

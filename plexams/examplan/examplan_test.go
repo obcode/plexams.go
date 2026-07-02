@@ -200,3 +200,26 @@ func TestAcceptedWeightZeroStillHardSameSlot(t *testing.T) {
 		t.Errorf("weight-0 pair should contribute 0 spread, got %.4f", st.spreadTotal)
 	}
 }
+
+func TestClosenessUsesRealHoursAcrossDays(t *testing.T) {
+	base := time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC) // Mon
+	mk := func(day, slot, hour int) Slot {
+		d := base.AddDate(0, 0, day-1).Add(time.Duration(hour) * time.Hour)
+		return Slot{SlotRef: SlotRef{Day: day, Slot: slot, Start: d}, Seats: 100}
+	}
+	slots := []Slot{
+		mk(1, 1, 8),  // idx0 Mon 08:00
+		mk(1, 2, 16), // idx1 Mon 16:00
+		mk(2, 1, 8),  // idx2 Tue 08:00
+		mk(2, 2, 16), // idx3 Tue 16:00
+	}
+	p := NewProblem(slots, []Unit{{ID: 1}, {ID: 2}}, nil, nil, DefaultWeights())
+	overnightShort := p.closeness(1, 2) // Mon 16:00 -> Tue 08:00 = 16h
+	overnightLong := p.closeness(0, 3)  // Mon 08:00 -> Tue 16:00 = 32h
+	if !(overnightShort > overnightLong) {
+		t.Errorf("16h gap should cost more than 32h gap: %.1f vs %.1f", overnightShort, overnightLong)
+	}
+	if overnightShort >= p.W.SameDay {
+		t.Errorf("across-day should be cheaper than same-day: %.1f >= %.1f", overnightShort, p.W.SameDay)
+	}
+}

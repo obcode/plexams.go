@@ -277,8 +277,8 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		for i := 0; i < len(placed); i++ {
 			for j := i + 1; j < len(placed); j++ {
 				rank, label := slotProximity(slotByAncode[placed[i]], slotByAncode[placed[j]])
-				if rank == 0 {
-					continue
+				if rank <= 1 {
+					continue // drop NEXT_DAY (and farther): always acceptable, handled by the objective
 				}
 				key := [2]int{placed[i], placed[j]}
 				a := byPair[key]

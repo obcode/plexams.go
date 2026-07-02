@@ -9,7 +9,7 @@ metadata:
 
 Terminplan (exam schedule) generation — design settled 2026-07-02.
 
-STATUS (2026-07-02): IMPLEMENTED — generic `plexams/optimize` SA core; `plexams/examplan` solver (incremental cost ~1M iters/3s; calibrated DefaultWeights Adjacent 2500/SameDay 900/WorstCase 0.05); builder `buildExamPlanProblem` + `GenerateExamSchedule` (reporter/streaming, writes non-locked entries, gated); GraphQL subscription `generateExamSchedule` + queries `examScheduleConstraints`/`examScheduleConflicts` + conflict-rating CRUD (`setConflictRating`/`setExamsCanShareSlot`/`canShareSlotSuggestions`); planning-state `examScheduleGenerated` + EXAMS gate. STILL TODO: steps ③④ port pre-plan & invigilation onto the generic core; small follow-up: expose affected-student mtknrs per conflict for per-student ACCEPTED rating; GUI-side diff of successive conflict lists.
+STATUS (2026-07-02): IMPLEMENTED — generic `plexams/optimize` SA core; `plexams/examplan` solver (incremental cost ~1M iters/3s; calibrated DefaultWeights Adjacent 2500/SameDay 900/WorstCase 0.05); builder `buildExamPlanProblem` + `GenerateExamSchedule` (reporter/streaming, writes non-locked entries, gated); GraphQL subscription `generateExamSchedule` + queries `examScheduleConstraints`/`examScheduleConflicts` + conflict-rating CRUD (`setConflictRating`/`setExamsCanShareSlot`/`canShareSlotSuggestions`); planning-state `examScheduleGenerated` + EXAMS gate. STILL TODO: steps ③④ port pre-plan & invigilation onto the generic core; GUI-side diff of successive conflict lists. DONE follow-ups: examScheduleConflicts.affectedStudents (mtknr/name/accepted) for per-student ACCEPTED; generateExamSchedule.ignoreRatings flag.
 
 Original agreed design below.
 

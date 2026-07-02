@@ -222,8 +222,8 @@ func (attractC) Cost(st *State) (float64, []optimize.Violation) { return attract
 type slotLoadC struct{ w Weights }
 
 func (c slotLoadC) Info() optimize.Info {
-	return optimize.Info{Name: "slot-load", Title: "Slot-Auslastung", Kind: optimize.KindSoft, Weight: c.w.SlotLoad, Tier: 30,
-		Description: "Nicht zu viele Sitzplätze/Räume je Slot (zwei sehr große Prüfungen nicht zusammen)."}
+	return optimize.Info{Name: "slot-load", Title: "Gleichmäßige Slot-Auslastung", Kind: optimize.KindSoft, Weight: c.w.SlotLoad, Tier: 30,
+		Description: "Prüfungen möglichst gleichmäßig über die Slots verteilen: Abweichung von der idealen Auslastung (Anmeldungen / Slots) wird bestraft (leere und sehr volle Slots)."}
 }
 func (slotLoadC) Cost(st *State) (float64, []optimize.Violation) { return slotLoadCost(st) }
 

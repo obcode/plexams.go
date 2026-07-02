@@ -114,7 +114,7 @@ func DefaultWeights() Weights {
 		WorstCase:     0.05,
 		RepeatFactor:  0.3,
 		Attract:       50,
-		SlotLoad:      0.5,
+		SlotLoad:      2, // even distribution over slots (deviation from ideal load)²
 		LoadThreshold: 200,
 		Unplaced:      1_000_000,
 		CrossCampus:   3000,
@@ -135,6 +135,7 @@ type Problem struct {
 	hardConfSorted [][]int        // deterministic (sorted) view of hardConf for float sums
 	unitStudents   [][]int        // unit -> student indices that have a pair with it
 	unitAttract    [][]attractRef // unit -> its attract partners
+	targetLoad     float64        // ideal seats per slot = total seats / number of slots
 }
 
 type attractRef struct {
@@ -157,6 +158,14 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 		if !u.Fixed {
 			p.movable = append(p.movable, i)
 		}
+	}
+
+	if len(p.Slots) > 0 {
+		totalSeats := 0
+		for i := range p.Units {
+			totalSeats += p.Units[i].Seats
+		}
+		p.targetLoad = float64(totalSeats) / float64(len(p.Slots))
 	}
 
 	// units that must not share a slot: every counted student pair (canShareSlot pairs
@@ -205,13 +214,12 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 	return p
 }
 
-// loadPenalty is the convex slot-load penalty for a slot holding `seats` seats.
+// loadPenalty is the even-distribution penalty for a slot holding `seats` seats: the
+// squared deviation from the ideal load (total seats / number of slots), so both empty
+// and very full slots are penalized and the solver spreads exams evenly over the slots.
 func (p *Problem) loadPenalty(seats int) float64 {
-	over := seats - p.W.LoadThreshold
-	if over <= 0 {
-		return 0
-	}
-	return p.W.SlotLoad * float64(over) * float64(over)
+	d := float64(seats) - p.targetLoad
+	return p.W.SlotLoad * d * d
 }
 
 func addConf(m []map[int]bool, a, b int) {

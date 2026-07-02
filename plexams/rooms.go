@@ -50,10 +50,16 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry
 	if err != nil {
 		return nil, fmt.Errorf("cannot get anny rooms: %w", err)
 	}
+	// only OUR bookings count as available capacity — other faculties' bookings in the
+	// same rooms are in the DB for information only.
+	names := p.annyPersonalizationNames(ctx)
 
 	entries := make([]BookedEntry, 0, len(dbBookings))
 	for _, booking := range dbBookings {
 		if booking.Room == "" {
+			continue
+		}
+		if !matchesAnyPersonalization(booking.PersonalizationName, names) {
 			continue
 		}
 		normalizedRoom := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(booking.Room), " ", ""))

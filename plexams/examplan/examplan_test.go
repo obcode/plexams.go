@@ -84,7 +84,9 @@ func TestSolveKeepsFixedAndAttracts(t *testing.T) {
 		{ID: 2, Ancodes: []int{2}, Seats: 10},
 	}
 	attract := []AttractPair{{A: 0, B: 1, Weight: 1}}
-	p := NewProblem(testSlots(), units, nil, attract, DefaultWeights())
+	w := DefaultWeights()
+	w.SlotLoad = 0 // isolate the attract term from the even-distribution term
+	p := NewProblem(testSlots(), units, nil, attract, w)
 
 	st, _ := Solve(p, fastOpts())
 

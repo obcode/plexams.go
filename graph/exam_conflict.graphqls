@@ -40,6 +40,8 @@ type ExamScheduleConflict {
   groups1: [String!]!
   "true if exam 1 is a repeater exam."
   isRepeaterExam1: Boolean!
+  "exam 1's campus/location (empty = default campus Lothstraße)."
+  location1: String!
   "the planned slot of exam 1."
   slot1: Slot!
   ancode2: Int!
@@ -47,6 +49,7 @@ type ExamScheduleConflict {
   mainExamer2: String!
   groups2: [String!]!
   isRepeaterExam2: Boolean!
+  location2: String!
   slot2: Slot!
   "number of students registered in both, in the plan."
   studentCount: Int!

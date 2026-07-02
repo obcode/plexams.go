@@ -304,6 +304,8 @@ type ExamScheduleConflict struct {
 	Groups1 []string `json:"groups1"`
 	// true if exam 1 is a repeater exam.
 	IsRepeaterExam1 bool `json:"isRepeaterExam1"`
+	// exam 1's campus/location (empty = default campus Lothstraße).
+	Location1 string `json:"location1"`
 	// the planned slot of exam 1.
 	Slot1           *Slot    `json:"slot1"`
 	Ancode2         int      `json:"ancode2"`
@@ -311,6 +313,7 @@ type ExamScheduleConflict struct {
 	MainExamer2     string   `json:"mainExamer2"`
 	Groups2         []string `json:"groups2"`
 	IsRepeaterExam2 bool     `json:"isRepeaterExam2"`
+	Location2       string   `json:"location2"`
 	Slot2           *Slot    `json:"slot2"`
 	// number of students registered in both, in the plan.
 	StudentCount int `json:"studentCount"`

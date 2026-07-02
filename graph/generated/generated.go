@@ -305,6 +305,8 @@ type ComplexityRoot struct {
 		InfoOnly         func(childComplexity int) int
 		IsRepeaterExam1  func(childComplexity int) int
 		IsRepeaterExam2  func(childComplexity int) int
+		Location1        func(childComplexity int) int
+		Location2        func(childComplexity int) int
 		MainExamer1      func(childComplexity int) int
 		MainExamer2      func(childComplexity int) int
 		Module1          func(childComplexity int) int
@@ -2816,6 +2818,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleConflict.IsRepeaterExam2(childComplexity), true
+
+	case "ExamScheduleConflict.location1":
+		if e.complexity.ExamScheduleConflict.Location1 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Location1(childComplexity), true
+
+	case "ExamScheduleConflict.location2":
+		if e.complexity.ExamScheduleConflict.Location2 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Location2(childComplexity), true
 
 	case "ExamScheduleConflict.mainExamer1":
 		if e.complexity.ExamScheduleConflict.MainExamer1 == nil {
@@ -9675,6 +9691,8 @@ type ExamScheduleConflict {
   groups1: [String!]!
   "true if exam 1 is a repeater exam."
   isRepeaterExam1: Boolean!
+  "exam 1's campus/location (empty = default campus Lothstraße)."
+  location1: String!
   "the planned slot of exam 1."
   slot1: Slot!
   ancode2: Int!
@@ -9682,6 +9700,7 @@ type ExamScheduleConflict {
   mainExamer2: String!
   groups2: [String!]!
   isRepeaterExam2: Boolean!
+  location2: String!
   slot2: Slot!
   "number of students registered in both, in the plan."
   studentCount: Int!
@@ -25527,6 +25546,50 @@ func (ec *executionContext) fieldContext_ExamScheduleConflict_isRepeaterExam1(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _ExamScheduleConflict_location1(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_location1(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Location1, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_location1(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ExamScheduleConflict_slot1(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ExamScheduleConflict_slot1(ctx, field)
 	if err != nil {
@@ -25794,6 +25857,50 @@ func (ec *executionContext) fieldContext_ExamScheduleConflict_isRepeaterExam2(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_location2(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_location2(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Location2, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_location2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -27406,6 +27513,8 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_conflicts(_ context.
 				return ec.fieldContext_ExamScheduleConflict_groups1(ctx, field)
 			case "isRepeaterExam1":
 				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam1(ctx, field)
+			case "location1":
+				return ec.fieldContext_ExamScheduleConflict_location1(ctx, field)
 			case "slot1":
 				return ec.fieldContext_ExamScheduleConflict_slot1(ctx, field)
 			case "ancode2":
@@ -27418,6 +27527,8 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_conflicts(_ context.
 				return ec.fieldContext_ExamScheduleConflict_groups2(ctx, field)
 			case "isRepeaterExam2":
 				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam2(ctx, field)
+			case "location2":
+				return ec.fieldContext_ExamScheduleConflict_location2(ctx, field)
 			case "slot2":
 				return ec.fieldContext_ExamScheduleConflict_slot2(ctx, field)
 			case "studentCount":
@@ -48123,6 +48234,8 @@ func (ec *executionContext) fieldContext_Query_examScheduleConflicts(_ context.C
 				return ec.fieldContext_ExamScheduleConflict_groups1(ctx, field)
 			case "isRepeaterExam1":
 				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam1(ctx, field)
+			case "location1":
+				return ec.fieldContext_ExamScheduleConflict_location1(ctx, field)
 			case "slot1":
 				return ec.fieldContext_ExamScheduleConflict_slot1(ctx, field)
 			case "ancode2":
@@ -48135,6 +48248,8 @@ func (ec *executionContext) fieldContext_Query_examScheduleConflicts(_ context.C
 				return ec.fieldContext_ExamScheduleConflict_groups2(ctx, field)
 			case "isRepeaterExam2":
 				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam2(ctx, field)
+			case "location2":
+				return ec.fieldContext_ExamScheduleConflict_location2(ctx, field)
 			case "slot2":
 				return ec.fieldContext_ExamScheduleConflict_slot2(ctx, field)
 			case "studentCount":
@@ -72115,6 +72230,11 @@ func (ec *executionContext) _ExamScheduleConflict(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "location1":
+			out.Values[i] = ec._ExamScheduleConflict_location1(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "slot1":
 			out.Values[i] = ec._ExamScheduleConflict_slot1(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -72142,6 +72262,11 @@ func (ec *executionContext) _ExamScheduleConflict(ctx context.Context, sel ast.S
 			}
 		case "isRepeaterExam2":
 			out.Values[i] = ec._ExamScheduleConflict_isRepeaterExam2(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "location2":
+			out.Values[i] = ec._ExamScheduleConflict_location2(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -340,8 +340,8 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		}
 		sort.Slice(affected, func(i, j int) bool { return affected[i].Name < affected[j].Name })
 		c := &model.ExamScheduleConflict{
-			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1, Groups1: i0.groups, IsRepeaterExam1: i0.repeater, Slot1: slotByAncode[key[0]],
-			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2, Groups2: i1.groups, IsRepeaterExam2: i1.repeater, Slot2: slotByAncode[key[1]],
+			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1, Groups1: i0.groups, IsRepeaterExam1: i0.repeater, Location1: locationOf(constraints[key[0]]), Slot1: slotByAncode[key[0]],
+			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2, Groups2: i1.groups, IsRepeaterExam2: i1.repeater, Location2: locationOf(constraints[key[1]]), Slot2: slotByAncode[key[1]],
 			StudentCount: len(a.students), Proximity: a.label, CanShareSlot: canShare[key],
 			InfoOnly:         foreign(key[0]) && foreign(key[1]),
 			AffectedStudents: affected,

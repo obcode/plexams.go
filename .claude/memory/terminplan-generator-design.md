@@ -7,7 +7,11 @@ metadata:
   originSessionId: 6285039b-3933-4bb1-a8f3-24a7355c4a1d
 ---
 
-Terminplan (exam schedule) generation — agreed design, not yet implemented (design settled 2026-07-02).
+Terminplan (exam schedule) generation — design settled 2026-07-02.
+
+STATUS (2026-07-02): IMPLEMENTED — generic `plexams/optimize` SA core; `plexams/examplan` solver (incremental cost ~1M iters/3s; calibrated DefaultWeights Adjacent 2500/SameDay 900/WorstCase 0.05); builder `buildExamPlanProblem` + `GenerateExamSchedule` (reporter/streaming, writes non-locked entries, gated); GraphQL subscription `generateExamSchedule` + queries `examScheduleConstraints`/`examScheduleConflicts` + conflict-rating CRUD (`setConflictRating`/`setExamsCanShareSlot`/`canShareSlotSuggestions`); planning-state `examScheduleGenerated` + EXAMS gate. STILL TODO: steps ③④ port pre-plan & invigilation onto the generic core; small follow-up: expose affected-student mtknrs per conflict for per-student ACCEPTED rating; GUI-side diff of successive conflict lists.
+
+Original agreed design below.
 
 **Architecture:** extract a GENERIC optimization core `plexams/optimize` (simulated annealing: geometric cooling, Metropolis, hard=move-veto/soft=weighted Registry, incremental cost deltas) used by all three solvers. Build order: ① core → ② Terminplan in `plexams/examplan` (the feature) → ③ port the pre-plan solver onto it (its twin) → ④ port the invigilation optimizer (`plexams/invigplan`) → ⑤ GraphQL/GUI/planning-state. The pre-plan solver ([[preplanning-seb-exahm]]) is essentially "Terminplan for a subset" and is the closest analog.
 

@@ -14,6 +14,7 @@ package examplan
 
 import (
 	"math"
+	"sort"
 	"time"
 )
 
@@ -121,10 +122,11 @@ type Problem struct {
 	W        Weights
 
 	// derived
-	movable      []int
-	hardConf     []map[int]bool // unit -> units that must not share its slot
-	unitStudents [][]int        // unit -> student indices that have a pair with it
-	unitAttract  [][]attractRef // unit -> its attract partners
+	movable        []int
+	hardConf       []map[int]bool // unit -> units that must not share its slot
+	hardConfSorted [][]int        // deterministic (sorted) view of hardConf for float sums
+	unitStudents   [][]int        // unit -> student indices that have a pair with it
+	unitAttract    [][]attractRef // unit -> its attract partners
 
 	sep       [][2]int // unit pairs that must be on different days ("unzulässig")
 	sepByUnit [][]int  // unit -> units it must be on a different day from
@@ -194,6 +196,21 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 	for _, ap := range p.Attract {
 		p.unitAttract[ap.A] = append(p.unitAttract[ap.A], attractRef{ap.B, ap.Weight})
 		p.unitAttract[ap.B] = append(p.unitAttract[ap.B], attractRef{ap.A, ap.Weight})
+	}
+
+	// deterministic (sorted) view of hardConf: iterating a Go map has random order, so
+	// summing floats over it (constructive addedCost) would make runs non-reproducible.
+	p.hardConfSorted = make([][]int, len(p.Units))
+	for u := range p.hardConf {
+		if len(p.hardConf[u]) == 0 {
+			continue
+		}
+		lst := make([]int, 0, len(p.hardConf[u]))
+		for v := range p.hardConf[u] {
+			lst = append(lst, v)
+		}
+		sort.Ints(lst)
+		p.hardConfSorted[u] = lst
 	}
 	return p
 }

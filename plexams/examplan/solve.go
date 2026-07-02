@@ -93,7 +93,7 @@ func chooseSlot(st *State, u int, feas []int) int {
 func addedCost(st *State, u, s int) float64 {
 	p := st.P
 	var c float64
-	for v := range p.hardConf[u] { // conflict partners (same slot is infeasible anyway)
+	for _, v := range p.hardConfSorted[u] { // conflict partners (same slot is infeasible anyway)
 		if sv := st.SlotOf[v]; sv >= 0 && sv != s {
 			c += p.closeness(s, sv) // approx: unit-level, unweighted by student count
 		}

@@ -26,6 +26,7 @@ func examScheduleReport(r *plexams.ExamScheduleResult) *model.ExamScheduleReport
 		Cost:             r.Cost,
 		CostByConstraint: costs,
 		Iterations:       r.Iterations,
+		Seed:             r.Seed,
 		StoppedEarly:     r.StoppedEarly,
 		Written:          r.Written,
 		Diagnostics: &model.ExamScheduleDiagnostics{

@@ -60,6 +60,8 @@ type ExamScheduleReport {
   cost: Float!
   costByConstraint: [ConstraintCost!]!
   iterations: Int!
+  "the seed used — pass it back to reproduce this exact plan."
+  seed: Int!
   stoppedEarly: Boolean!
   written: Boolean!
   diagnostics: ExamScheduleDiagnostics!

@@ -332,18 +332,20 @@ type ExamScheduleDiagnostics struct {
 }
 
 type ExamScheduleReport struct {
-	Units            int                      `json:"units"`
-	Fixed            int                      `json:"fixed"`
-	Placed           int                      `json:"placed"`
-	Unplaced         int                      `json:"unplaced"`
-	UnplacedAncodes  []int                    `json:"unplacedAncodes"`
-	HardViolations   []string                 `json:"hardViolations"`
-	Cost             float64                  `json:"cost"`
-	CostByConstraint []*ConstraintCost        `json:"costByConstraint"`
-	Iterations       int                      `json:"iterations"`
-	StoppedEarly     bool                     `json:"stoppedEarly"`
-	Written          bool                     `json:"written"`
-	Diagnostics      *ExamScheduleDiagnostics `json:"diagnostics"`
+	Units            int               `json:"units"`
+	Fixed            int               `json:"fixed"`
+	Placed           int               `json:"placed"`
+	Unplaced         int               `json:"unplaced"`
+	UnplacedAncodes  []int             `json:"unplacedAncodes"`
+	HardViolations   []string          `json:"hardViolations"`
+	Cost             float64           `json:"cost"`
+	CostByConstraint []*ConstraintCost `json:"costByConstraint"`
+	Iterations       int               `json:"iterations"`
+	// the seed used — pass it back to reproduce this exact plan.
+	Seed         int                      `json:"seed"`
+	StoppedEarly bool                     `json:"stoppedEarly"`
+	Written      bool                     `json:"written"`
+	Diagnostics  *ExamScheduleDiagnostics `json:"diagnostics"`
 	// conflicts of the generated schedule (to review/rate, also on a dry run).
 	Conflicts []*ExamScheduleConflict `json:"conflicts"`
 }

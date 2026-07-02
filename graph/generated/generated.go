@@ -339,6 +339,7 @@ type ComplexityRoot struct {
 		HardViolations   func(childComplexity int) int
 		Iterations       func(childComplexity int) int
 		Placed           func(childComplexity int) int
+		Seed             func(childComplexity int) int
 		StoppedEarly     func(childComplexity int) int
 		Units            func(childComplexity int) int
 		Unplaced         func(childComplexity int) int
@@ -2980,6 +2981,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleReport.Placed(childComplexity), true
+
+	case "ExamScheduleReport.seed":
+		if e.complexity.ExamScheduleReport.Seed == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Seed(childComplexity), true
 
 	case "ExamScheduleReport.stoppedEarly":
 		if e.complexity.ExamScheduleReport.StoppedEarly == nil {
@@ -9707,6 +9715,8 @@ type ExamScheduleReport {
   cost: Float!
   costByConstraint: [ConstraintCost!]!
   iterations: Int!
+  "the seed used — pass it back to reproduce this exact plan."
+  seed: Int!
   stoppedEarly: Boolean!
   written: Boolean!
   diagnostics: ExamScheduleDiagnostics!
@@ -26749,6 +26759,50 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_iterations(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _ExamScheduleReport_seed(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_seed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_seed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ExamScheduleReport_stoppedEarly(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ExamScheduleReport_stoppedEarly(ctx, field)
 	if err != nil {
@@ -32274,6 +32328,8 @@ func (ec *executionContext) fieldContext_LogLine_examReport(_ context.Context, f
 				return ec.fieldContext_ExamScheduleReport_costByConstraint(ctx, field)
 			case "iterations":
 				return ec.fieldContext_ExamScheduleReport_iterations(ctx, field)
+			case "seed":
+				return ec.fieldContext_ExamScheduleReport_seed(ctx, field)
 			case "stoppedEarly":
 				return ec.fieldContext_ExamScheduleReport_stoppedEarly(ctx, field)
 			case "written":
@@ -71703,6 +71759,11 @@ func (ec *executionContext) _ExamScheduleReport(ctx context.Context, sel ast.Sel
 			}
 		case "iterations":
 			out.Values[i] = ec._ExamScheduleReport_iterations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seed":
+			out.Values[i] = ec._ExamScheduleReport_seed(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

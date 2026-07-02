@@ -32,6 +32,7 @@ type ExamScheduleResult struct {
 	Iterations       int
 	StoppedEarly     bool
 	Written          bool
+	Seed             int
 	Diagnostics      examplan.Diagnostics
 	Conflicts        []*model.ExamScheduleConflict
 }
@@ -326,6 +327,9 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 			students = append(students, examplan.Student{ID: s.Mtknr, Pairs: pairs})
 		}
 	}
+	// deterministic order (the DB/query order is not guaranteed) so a re-run with the
+	// same seed and data yields the exact same plan
+	sort.Slice(students, func(i, j int) bool { return students[i].ID < students[j].ID })
 
 	// --- attract pairs ---
 	attractSet := make(map[[2]int]bool)
@@ -369,6 +373,12 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 	for k := range attractSet {
 		attract = append(attract, examplan.AttractPair{A: k[0], B: k[1], Weight: 1})
 	}
+	sort.Slice(attract, func(i, j int) bool {
+		if attract[i].A != attract[j].A {
+			return attract[i].A < attract[j].A
+		}
+		return attract[i].B < attract[j].B
+	})
 
 	prob := examplan.NewProblem(slots, units, students, attract, w)
 	if len(forbidden) > 0 {
@@ -376,6 +386,12 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		for up := range forbidden {
 			sep = append(sep, up)
 		}
+		sort.Slice(sep, func(i, j int) bool {
+			if sep[i][0] != sep[j][0] {
+				return sep[i][0] < sep[j][0]
+			}
+			return sep[i][1] < sep[j][1]
+		})
 		prob.SetSeparated(sep)
 	}
 	return prob, nil
@@ -428,7 +444,7 @@ func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed in
 	result := &ExamScheduleResult{
 		Units: len(prob.Units), Unplaced: len(unplaced), UnplacedAncodes: unplaced,
 		HardViolations: hard, Cost: total, CostByConstraint: byC,
-		Iterations: res.Iterations, StoppedEarly: res.StoppedEarly, Diagnostics: st.Diagnostics(),
+		Iterations: res.Iterations, StoppedEarly: res.StoppedEarly, Seed: int(seed), Diagnostics: st.Diagnostics(),
 	}
 	for i := range prob.Units {
 		if prob.Units[i].Fixed {

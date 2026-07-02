@@ -90,12 +90,14 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		e         *model.AssembledExam
 		fixedSlot int // -1 if movable
 		allowed   []int
+		foreign   bool
 	}
 	rec := make(map[int]*exRec, len(assembled))
 	for _, e := range assembled {
 		c := constraints[e.Ancode]
 		pe := peByAncode[e.Ancode]
-		fixed := (c != nil && c.NotPlannedByMe) || (pe != nil && (pe.Locked || pe.ExternalTime != nil))
+		foreign := (c != nil && c.NotPlannedByMe) || (pe != nil && pe.ExternalTime != nil) || e.Ancode >= externalAncodeBase
+		fixed := foreign || (pe != nil && pe.Locked)
 		if fixed {
 			if pe == nil {
 				continue // fixed but no slot known → not schedulable, no obstacle
@@ -104,7 +106,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 			if !ok {
 				continue
 			}
-			rec[e.Ancode] = &exRec{e: e, fixedSlot: idx}
+			rec[e.Ancode] = &exRec{e: e, fixedSlot: idx, foreign: foreign}
 			continue
 		}
 		allowedSlots, err := p.AllowedSlots(ctx, e.Ancode)
@@ -219,7 +221,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		units = append(units, examplan.Unit{
 			ID: a, Ancodes: []int{a}, Seats: r.e.StudentRegsCount, Exahm: exahm,
 			Examer: r.e.ZpaExam.MainExamerID, Module: r.e.ZpaExam.Module, Program: firstProgram(r.e),
-			Fixed: true, FixedSlot: r.fixedSlot,
+			Fixed: true, FixedSlot: r.fixedSlot, Foreign: r.foreign,
 		})
 		unitOf[a] = idx
 		unitRepeater = append(unitRepeater, r.e.ZpaExam.IsRepeaterExam)
@@ -298,8 +300,8 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		for i := 0; i < len(list); i++ {
 			for j := i + 1; j < len(list); j++ {
 				a, b := list[i], list[j]
-				if units[a].Fixed && units[b].Fixed {
-					continue // both fixed: constant cost, no gradient
+				if units[a].Foreign && units[b].Foreign {
+					continue // both external: not ours to optimize, kept out of stats
 				}
 				up := [2]int{a, b}
 				if canShare[up] {

@@ -49,6 +49,11 @@ type Unit struct {
 	Allowed   []int // allowed slot indices; empty = all slots allowed
 	Fixed     bool
 	FixedSlot int
+	// Foreign: planned by another faculty (external / notPlannedByMe). A conflict
+	// between two Foreign exams is neither optimizable nor our problem, so it is left
+	// out of the objective and the diagnostics; our own fixed (pre-planned) exams are
+	// NOT Foreign.
+	Foreign bool
 
 	allowedSet map[int]bool
 }
@@ -169,8 +174,13 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 	for si := range p.Students {
 		units := make(map[int]bool)
 		for _, pr := range p.Students[si].Pairs {
-			addConf(p.hardConf, pr.A, pr.B)
-			addConf(p.hardConf, pr.B, pr.A)
+			// two fixed exams can never be separated, so they need no same-slot veto
+			// (this also keeps a pre-planned same-slot clash from blocking the write);
+			// they still count in the diagnostics.
+			if !p.Units[pr.A].Fixed || !p.Units[pr.B].Fixed {
+				addConf(p.hardConf, pr.A, pr.B)
+				addConf(p.hardConf, pr.B, pr.A)
+			}
 			units[pr.A] = true
 			units[pr.B] = true
 		}

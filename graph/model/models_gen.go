@@ -130,6 +130,11 @@ type ConnectedExamWarning struct {
 	Examer *string `json:"examer,omitempty"`
 }
 
+type ConstraintCost struct {
+	Name string  `json:"name"`
+	Cost float64 `json:"cost"`
+}
+
 type Constraints struct {
 	Ancode         int  `json:"ancode"`
 	NotPlannedByMe bool `json:"notPlannedByMe"`
@@ -257,6 +262,40 @@ type ExamPlanningMailRecipient struct {
 	Category string `json:"category"`
 	// The exams I plan for this examer (empty for fk07NoExams).
 	Exams []*ExamPlanningMailExam `json:"exams"`
+}
+
+// Quality report of a generated (or current) exam schedule.
+type ExamScheduleDiagnostics struct {
+	Students             int     `json:"students"`
+	Pairs                int     `json:"pairs"`
+	SameSlot             int     `json:"sameSlot"`
+	Adjacent             int     `json:"adjacent"`
+	SameDay              int     `json:"sameDay"`
+	NextDay              int     `json:"nextDay"`
+	Within3              int     `json:"within3"`
+	Further              int     `json:"further"`
+	StudentsWithAdjacent int     `json:"studentsWithAdjacent"`
+	StudentsWithSameDay  int     `json:"studentsWithSameDay"`
+	WorstStudentPenalty  float64 `json:"worstStudentPenalty"`
+	MaxSlotSeats         int     `json:"maxSlotSeats"`
+	SlotsUsed            int     `json:"slotsUsed"`
+	SlotsOverThreshold   int     `json:"slotsOverThreshold"`
+	MaxExamsPerSlot      int     `json:"maxExamsPerSlot"`
+}
+
+type ExamScheduleReport struct {
+	Units            int                      `json:"units"`
+	Fixed            int                      `json:"fixed"`
+	Placed           int                      `json:"placed"`
+	Unplaced         int                      `json:"unplaced"`
+	UnplacedAncodes  []int                    `json:"unplacedAncodes"`
+	HardViolations   []string                 `json:"hardViolations"`
+	Cost             float64                  `json:"cost"`
+	CostByConstraint []*ConstraintCost        `json:"costByConstraint"`
+	Iterations       int                      `json:"iterations"`
+	StoppedEarly     bool                     `json:"stoppedEarly"`
+	Written          bool                     `json:"written"`
+	Diagnostics      *ExamScheduleDiagnostics `json:"diagnostics"`
 }
 
 // ExamTime is the time span of one exam an invigilator is the main examer of:
@@ -491,6 +530,7 @@ type LogLine struct {
 	Progress   *OptimizerProgress  `json:"progress,omitempty"`
 	Report     *InvigilationReport `json:"report,omitempty"`
 	Validation *ValidationReport   `json:"validation,omitempty"`
+	ExamReport *ExamScheduleReport `json:"examReport,omitempty"`
 }
 
 // MinutesReport: distribution of assigned vs. target minutes around the tolerance band.
@@ -579,6 +619,19 @@ type NtaRoomAloneWaiver struct {
 	Mtknr  string `json:"mtknr"`
 	Ancode int    `json:"ancode"`
 	Reason string `json:"reason"`
+}
+
+// OptimizerConstraint describes one applied constraint (for the read-only view).
+type OptimizerConstraint struct {
+	Name        string `json:"name"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	// hard | soft
+	Kind string `json:"kind"`
+	// soft-constraint weight (0 for hard).
+	Weight float64 `json:"weight"`
+	// display priority (lower = more important).
+	Tier int `json:"tier"`
 }
 
 // OptimizerProgress is the structured payload of a PROGRESS LogLine, mirroring the
@@ -1112,18 +1165,20 @@ func (e LogLevel) MarshalJSON() ([]byte, error) {
 type PlanningGate string
 
 const (
+	PlanningGateExams         PlanningGate = "EXAMS"
 	PlanningGateRooms         PlanningGate = "ROOMS"
 	PlanningGateInvigilations PlanningGate = "INVIGILATIONS"
 )
 
 var AllPlanningGate = []PlanningGate{
+	PlanningGateExams,
 	PlanningGateRooms,
 	PlanningGateInvigilations,
 }
 
 func (e PlanningGate) IsValid() bool {
 	switch e {
-	case PlanningGateRooms, PlanningGateInvigilations:
+	case PlanningGateExams, PlanningGateRooms, PlanningGateInvigilations:
 		return true
 	}
 	return false

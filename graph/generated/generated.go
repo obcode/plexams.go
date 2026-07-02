@@ -186,6 +186,11 @@ type ComplexityRoot struct {
 		Program func(childComplexity int) int
 	}
 
+	ConstraintCost struct {
+		Cost func(childComplexity int) int
+		Name func(childComplexity int) int
+	}
+
 	Constraints struct {
 		Ancode          func(childComplexity int) int
 		DoNotPublish    func(childComplexity int) int
@@ -268,6 +273,39 @@ type ComplexityRoot struct {
 		Category func(childComplexity int) int
 		Exams    func(childComplexity int) int
 		Teacher  func(childComplexity int) int
+	}
+
+	ExamScheduleDiagnostics struct {
+		Adjacent             func(childComplexity int) int
+		Further              func(childComplexity int) int
+		MaxExamsPerSlot      func(childComplexity int) int
+		MaxSlotSeats         func(childComplexity int) int
+		NextDay              func(childComplexity int) int
+		Pairs                func(childComplexity int) int
+		SameDay              func(childComplexity int) int
+		SameSlot             func(childComplexity int) int
+		SlotsOverThreshold   func(childComplexity int) int
+		SlotsUsed            func(childComplexity int) int
+		Students             func(childComplexity int) int
+		StudentsWithAdjacent func(childComplexity int) int
+		StudentsWithSameDay  func(childComplexity int) int
+		Within3              func(childComplexity int) int
+		WorstStudentPenalty  func(childComplexity int) int
+	}
+
+	ExamScheduleReport struct {
+		Cost             func(childComplexity int) int
+		CostByConstraint func(childComplexity int) int
+		Diagnostics      func(childComplexity int) int
+		Fixed            func(childComplexity int) int
+		HardViolations   func(childComplexity int) int
+		Iterations       func(childComplexity int) int
+		Placed           func(childComplexity int) int
+		StoppedEarly     func(childComplexity int) int
+		Units            func(childComplexity int) int
+		Unplaced         func(childComplexity int) int
+		UnplacedAncodes  func(childComplexity int) int
+		Written          func(childComplexity int) int
 	}
 
 	ExamTime struct {
@@ -439,6 +477,7 @@ type ComplexityRoot struct {
 	}
 
 	LogLine struct {
+		ExamReport func(childComplexity int) int
 		Level      func(childComplexity int) int
 		Progress   func(childComplexity int) int
 		Report     func(childComplexity int) int
@@ -606,6 +645,15 @@ type ComplexityRoot struct {
 		Ancode func(childComplexity int) int
 		Mtknr  func(childComplexity int) int
 		Reason func(childComplexity int) int
+	}
+
+	OptimizerConstraint struct {
+		Description func(childComplexity int) int
+		Kind        func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Tier        func(childComplexity int) int
+		Title       func(childComplexity int) int
+		Weight      func(childComplexity int) int
 	}
 
 	OptimizerProgress struct {
@@ -826,6 +874,7 @@ type ComplexityRoot struct {
 		EmailAttachments              func(childComplexity int, kind string) int
 		ExamDurationOverrides         func(childComplexity int) int
 		ExamPlanningMailRecipients    func(childComplexity int) int
+		ExamScheduleConstraints       func(childComplexity int) int
 		ExamerInPlan                  func(childComplexity int) int
 		ExamersWithExamsPlannedByMe   func(childComplexity int) int
 		ExamsInSlot                   func(childComplexity int, day int, time int) int
@@ -1119,6 +1168,7 @@ type ComplexityRoot struct {
 	Subscription struct {
 		AssignInvigilations                  func(childComplexity int, dryRun bool, seed *int, iterations *int) int
 		AssignRoomsForExams                  func(childComplexity int) int
+		GenerateExamSchedule                 func(childComplexity int, dryRun bool, seed *int, iterations *int) int
 		ImportAnnyBookings                   func(childComplexity int) int
 		ImportExamsFromZpa                   func(childComplexity int) int
 		ImportInvigilatorRequirementsFromZpa func(childComplexity int) int
@@ -1430,6 +1480,7 @@ type QueryResolver interface {
 	MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error)
 	ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error)
 	ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurationOverride, error)
+	ExamScheduleConstraints(ctx context.Context) ([]*model.OptimizerConstraint, error)
 	GenerationConfig(ctx context.Context) (*model.GenerationConfig, error)
 	InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error)
 	InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error)
@@ -1530,6 +1581,7 @@ type SubscriptionResolver interface {
 	SendEmailNewNta(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error)
 	SendEmailNTARoomAlone(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error)
 	SendEmailNTAPlanned(ctx context.Context, run bool) (<-chan *model.LogLine, error)
+	GenerateExamSchedule(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error)
 	AssignRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error)
 	ImportAnnyBookings(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateInvigilatorRequirements(ctx context.Context) (<-chan *model.LogLine, error)
@@ -2168,6 +2220,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ConnectedExamWarning.Program(childComplexity), true
 
+	case "ConstraintCost.cost":
+		if e.complexity.ConstraintCost.Cost == nil {
+			break
+		}
+
+		return e.complexity.ConstraintCost.Cost(childComplexity), true
+
+	case "ConstraintCost.name":
+		if e.complexity.ConstraintCost.Name == nil {
+			break
+		}
+
+		return e.complexity.ConstraintCost.Name(childComplexity), true
+
 	case "Constraints.ancode":
 		if e.complexity.Constraints.Ancode == nil {
 			break
@@ -2524,6 +2590,195 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamPlanningMailRecipient.Teacher(childComplexity), true
+
+	case "ExamScheduleDiagnostics.adjacent":
+		if e.complexity.ExamScheduleDiagnostics.Adjacent == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.Adjacent(childComplexity), true
+
+	case "ExamScheduleDiagnostics.further":
+		if e.complexity.ExamScheduleDiagnostics.Further == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.Further(childComplexity), true
+
+	case "ExamScheduleDiagnostics.maxExamsPerSlot":
+		if e.complexity.ExamScheduleDiagnostics.MaxExamsPerSlot == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.MaxExamsPerSlot(childComplexity), true
+
+	case "ExamScheduleDiagnostics.maxSlotSeats":
+		if e.complexity.ExamScheduleDiagnostics.MaxSlotSeats == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.MaxSlotSeats(childComplexity), true
+
+	case "ExamScheduleDiagnostics.nextDay":
+		if e.complexity.ExamScheduleDiagnostics.NextDay == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.NextDay(childComplexity), true
+
+	case "ExamScheduleDiagnostics.pairs":
+		if e.complexity.ExamScheduleDiagnostics.Pairs == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.Pairs(childComplexity), true
+
+	case "ExamScheduleDiagnostics.sameDay":
+		if e.complexity.ExamScheduleDiagnostics.SameDay == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.SameDay(childComplexity), true
+
+	case "ExamScheduleDiagnostics.sameSlot":
+		if e.complexity.ExamScheduleDiagnostics.SameSlot == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.SameSlot(childComplexity), true
+
+	case "ExamScheduleDiagnostics.slotsOverThreshold":
+		if e.complexity.ExamScheduleDiagnostics.SlotsOverThreshold == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.SlotsOverThreshold(childComplexity), true
+
+	case "ExamScheduleDiagnostics.slotsUsed":
+		if e.complexity.ExamScheduleDiagnostics.SlotsUsed == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.SlotsUsed(childComplexity), true
+
+	case "ExamScheduleDiagnostics.students":
+		if e.complexity.ExamScheduleDiagnostics.Students == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.Students(childComplexity), true
+
+	case "ExamScheduleDiagnostics.studentsWithAdjacent":
+		if e.complexity.ExamScheduleDiagnostics.StudentsWithAdjacent == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.StudentsWithAdjacent(childComplexity), true
+
+	case "ExamScheduleDiagnostics.studentsWithSameDay":
+		if e.complexity.ExamScheduleDiagnostics.StudentsWithSameDay == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.StudentsWithSameDay(childComplexity), true
+
+	case "ExamScheduleDiagnostics.within3":
+		if e.complexity.ExamScheduleDiagnostics.Within3 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.Within3(childComplexity), true
+
+	case "ExamScheduleDiagnostics.worstStudentPenalty":
+		if e.complexity.ExamScheduleDiagnostics.WorstStudentPenalty == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.WorstStudentPenalty(childComplexity), true
+
+	case "ExamScheduleReport.cost":
+		if e.complexity.ExamScheduleReport.Cost == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Cost(childComplexity), true
+
+	case "ExamScheduleReport.costByConstraint":
+		if e.complexity.ExamScheduleReport.CostByConstraint == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.CostByConstraint(childComplexity), true
+
+	case "ExamScheduleReport.diagnostics":
+		if e.complexity.ExamScheduleReport.Diagnostics == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Diagnostics(childComplexity), true
+
+	case "ExamScheduleReport.fixed":
+		if e.complexity.ExamScheduleReport.Fixed == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Fixed(childComplexity), true
+
+	case "ExamScheduleReport.hardViolations":
+		if e.complexity.ExamScheduleReport.HardViolations == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.HardViolations(childComplexity), true
+
+	case "ExamScheduleReport.iterations":
+		if e.complexity.ExamScheduleReport.Iterations == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Iterations(childComplexity), true
+
+	case "ExamScheduleReport.placed":
+		if e.complexity.ExamScheduleReport.Placed == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Placed(childComplexity), true
+
+	case "ExamScheduleReport.stoppedEarly":
+		if e.complexity.ExamScheduleReport.StoppedEarly == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.StoppedEarly(childComplexity), true
+
+	case "ExamScheduleReport.units":
+		if e.complexity.ExamScheduleReport.Units == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Units(childComplexity), true
+
+	case "ExamScheduleReport.unplaced":
+		if e.complexity.ExamScheduleReport.Unplaced == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Unplaced(childComplexity), true
+
+	case "ExamScheduleReport.unplacedAncodes":
+		if e.complexity.ExamScheduleReport.UnplacedAncodes == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.UnplacedAncodes(childComplexity), true
+
+	case "ExamScheduleReport.written":
+		if e.complexity.ExamScheduleReport.Written == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.Written(childComplexity), true
 
 	case "ExamTime.from":
 		if e.complexity.ExamTime.From == nil {
@@ -3259,6 +3514,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.InvigilatorsForDay.Want(childComplexity), true
+
+	case "LogLine.examReport":
+		if e.complexity.LogLine.ExamReport == nil {
+			break
+		}
+
+		return e.complexity.LogLine.ExamReport(childComplexity), true
 
 	case "LogLine.level":
 		if e.complexity.LogLine.Level == nil {
@@ -4604,6 +4866,48 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.NtaRoomAloneWaiver.Reason(childComplexity), true
 
+	case "OptimizerConstraint.description":
+		if e.complexity.OptimizerConstraint.Description == nil {
+			break
+		}
+
+		return e.complexity.OptimizerConstraint.Description(childComplexity), true
+
+	case "OptimizerConstraint.kind":
+		if e.complexity.OptimizerConstraint.Kind == nil {
+			break
+		}
+
+		return e.complexity.OptimizerConstraint.Kind(childComplexity), true
+
+	case "OptimizerConstraint.name":
+		if e.complexity.OptimizerConstraint.Name == nil {
+			break
+		}
+
+		return e.complexity.OptimizerConstraint.Name(childComplexity), true
+
+	case "OptimizerConstraint.tier":
+		if e.complexity.OptimizerConstraint.Tier == nil {
+			break
+		}
+
+		return e.complexity.OptimizerConstraint.Tier(childComplexity), true
+
+	case "OptimizerConstraint.title":
+		if e.complexity.OptimizerConstraint.Title == nil {
+			break
+		}
+
+		return e.complexity.OptimizerConstraint.Title(childComplexity), true
+
+	case "OptimizerConstraint.weight":
+		if e.complexity.OptimizerConstraint.Weight == nil {
+			break
+		}
+
+		return e.complexity.OptimizerConstraint.Weight(childComplexity), true
+
 	case "OptimizerProgress.balance":
 		if e.complexity.OptimizerProgress.Balance == nil {
 			break
@@ -5658,6 +5962,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.ExamPlanningMailRecipients(childComplexity), true
+
+	case "Query.examScheduleConstraints":
+		if e.complexity.Query.ExamScheduleConstraints == nil {
+			break
+		}
+
+		return e.complexity.Query.ExamScheduleConstraints(childComplexity), true
 
 	case "Query.examerInPlan":
 		if e.complexity.Query.ExamerInPlan == nil {
@@ -7256,6 +7567,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Subscription.AssignRoomsForExams(childComplexity), true
+
+	case "Subscription.generateExamSchedule":
+		if e.complexity.Subscription.GenerateExamSchedule == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_generateExamSchedule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.GenerateExamSchedule(childComplexity, args["dryRun"].(bool), args["seed"].(*int), args["iterations"].(*int)), true
 
 	case "Subscription.importAnnyBookings":
 		if e.complexity.Subscription.ImportAnnyBookings == nil {
@@ -8927,6 +9250,73 @@ type ExamDurationOverride {
   duration: Int!
 }
 `, BuiltIn: false},
+	{Name: "../exam_schedule.graphqls", Input: `extend type Subscription {
+  """
+  generateExamSchedule runs the automatic exam-schedule (Terminplan) generation and
+  streams its terminal-style output line by line. With dryRun nothing is written; the
+  final RESULT line carries the structured examReport either way. A non-dry-run write
+  is refused while the plan is gated (draft sent / published).
+  """
+  generateExamSchedule(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
+}
+
+extend type Query {
+  "The read-only list of hard/soft constraints the exam-schedule generator applies."
+  examScheduleConstraints: [OptimizerConstraint!]!
+}
+
+"OptimizerConstraint describes one applied constraint (for the read-only view)."
+type OptimizerConstraint {
+  name: String!
+  title: String!
+  description: String!
+  "hard | soft"
+  kind: String!
+  "soft-constraint weight (0 for hard)."
+  weight: Float!
+  "display priority (lower = more important)."
+  tier: Int!
+}
+
+type ConstraintCost {
+  name: String!
+  cost: Float!
+}
+
+"Quality report of a generated (or current) exam schedule."
+type ExamScheduleDiagnostics {
+  students: Int!
+  pairs: Int!
+  sameSlot: Int!
+  adjacent: Int!
+  sameDay: Int!
+  nextDay: Int!
+  within3: Int!
+  further: Int!
+  studentsWithAdjacent: Int!
+  studentsWithSameDay: Int!
+  worstStudentPenalty: Float!
+  maxSlotSeats: Int!
+  slotsUsed: Int!
+  slotsOverThreshold: Int!
+  maxExamsPerSlot: Int!
+}
+
+type ExamScheduleReport {
+  units: Int!
+  fixed: Int!
+  placed: Int!
+  unplaced: Int!
+  unplacedAncodes: [Int!]!
+  hardViolations: [String!]!
+  cost: Float!
+  costByConstraint: [ConstraintCost!]!
+  iterations: Int!
+  stoppedEarly: Boolean!
+  written: Boolean!
+  diagnostics: ExamScheduleDiagnostics!
+}
+`, BuiltIn: false},
 	{Name: "../generation_config.graphqls", Input: `extend type Query {
   """
   Global generation tuning: the room time lag and the invigilation optimizer
@@ -9486,6 +9876,7 @@ type PlanningState {
 
 "Areas that can be locked by a published gate."
 enum PlanningGate {
+  EXAMS
   ROOMS
   INVIGILATIONS
 }
@@ -10239,6 +10630,7 @@ type LogLine {
   progress: OptimizerProgress
   report: InvigilationReport
   validation: ValidationReport
+  examReport: ExamScheduleReport
 }
 
 """
@@ -16037,6 +16429,80 @@ func (ec *executionContext) field_Subscription_assignInvigilations_argsIteration
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Subscription_generateExamSchedule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_generateExamSchedule_argsDryRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["dryRun"] = arg0
+	arg1, err := ec.field_Subscription_generateExamSchedule_argsSeed(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["seed"] = arg1
+	arg2, err := ec.field_Subscription_generateExamSchedule_argsIterations(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["iterations"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_generateExamSchedule_argsDryRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["dryRun"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
+	if tmp, ok := rawArgs["dryRun"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_generateExamSchedule_argsSeed(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["seed"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("seed"))
+	if tmp, ok := rawArgs["seed"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_generateExamSchedule_argsIterations(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["iterations"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("iterations"))
+	if tmp, ok := rawArgs["iterations"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Subscription_sendEmailCoverPage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -20964,6 +21430,94 @@ func (ec *executionContext) fieldContext_ConnectedExamWarning_examer(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _ConstraintCost_name(ctx context.Context, field graphql.CollectedField, obj *model.ConstraintCost) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConstraintCost_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConstraintCost_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConstraintCost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConstraintCost_cost(ctx context.Context, field graphql.CollectedField, obj *model.ConstraintCost) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConstraintCost_cost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConstraintCost_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConstraintCost",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Constraints_ancode(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Constraints_ancode(ctx, field)
 	if err != nil {
@@ -23333,6 +23887,1232 @@ func (ec *executionContext) fieldContext_ExamPlanningMailRecipient_exams(_ conte
 				return ec.fieldContext_ExamPlanningMailExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamPlanningMailExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_students(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_students(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Students, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_students(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_pairs(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_pairs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pairs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_pairs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_sameSlot(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_sameSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SameSlot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_sameSlot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_adjacent(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_adjacent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Adjacent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_adjacent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_sameDay(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_sameDay(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SameDay, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_sameDay(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_nextDay(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_nextDay(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NextDay, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_nextDay(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_within3(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_within3(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Within3, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_within3(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_further(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_further(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Further, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_further(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_studentsWithAdjacent(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_studentsWithAdjacent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentsWithAdjacent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_studentsWithAdjacent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_studentsWithSameDay(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_studentsWithSameDay(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentsWithSameDay, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_studentsWithSameDay(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_worstStudentPenalty(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_worstStudentPenalty(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorstStudentPenalty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_worstStudentPenalty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_maxSlotSeats(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_maxSlotSeats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxSlotSeats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_maxSlotSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_slotsUsed(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_slotsUsed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SlotsUsed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_slotsUsed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_slotsOverThreshold(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_slotsOverThreshold(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SlotsOverThreshold, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_slotsOverThreshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleDiagnostics_maxExamsPerSlot(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_maxExamsPerSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxExamsPerSlot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_maxExamsPerSlot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleDiagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_units(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_units(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Units, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_units(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_fixed(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_fixed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Fixed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_fixed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_placed(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_placed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Placed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_placed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_unplaced(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_unplaced(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Unplaced, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_unplaced(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_unplacedAncodes(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_unplacedAncodes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnplacedAncodes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_unplacedAncodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_hardViolations(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_hardViolations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HardViolations, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_hardViolations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_cost(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_cost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_costByConstraint(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_costByConstraint(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CostByConstraint, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ConstraintCost)
+	fc.Result = res
+	return ec.marshalNConstraintCost2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraintCostᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_costByConstraint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_ConstraintCost_name(ctx, field)
+			case "cost":
+				return ec.fieldContext_ConstraintCost_cost(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ConstraintCost", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_iterations(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_iterations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Iterations, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_iterations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_stoppedEarly(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_stoppedEarly(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StoppedEarly, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_stoppedEarly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_written(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_written(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Written, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_written(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_diagnostics(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_diagnostics(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Diagnostics, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ExamScheduleDiagnostics)
+	fc.Result = res
+	return ec.marshalNExamScheduleDiagnostics2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleDiagnostics(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_diagnostics(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "students":
+				return ec.fieldContext_ExamScheduleDiagnostics_students(ctx, field)
+			case "pairs":
+				return ec.fieldContext_ExamScheduleDiagnostics_pairs(ctx, field)
+			case "sameSlot":
+				return ec.fieldContext_ExamScheduleDiagnostics_sameSlot(ctx, field)
+			case "adjacent":
+				return ec.fieldContext_ExamScheduleDiagnostics_adjacent(ctx, field)
+			case "sameDay":
+				return ec.fieldContext_ExamScheduleDiagnostics_sameDay(ctx, field)
+			case "nextDay":
+				return ec.fieldContext_ExamScheduleDiagnostics_nextDay(ctx, field)
+			case "within3":
+				return ec.fieldContext_ExamScheduleDiagnostics_within3(ctx, field)
+			case "further":
+				return ec.fieldContext_ExamScheduleDiagnostics_further(ctx, field)
+			case "studentsWithAdjacent":
+				return ec.fieldContext_ExamScheduleDiagnostics_studentsWithAdjacent(ctx, field)
+			case "studentsWithSameDay":
+				return ec.fieldContext_ExamScheduleDiagnostics_studentsWithSameDay(ctx, field)
+			case "worstStudentPenalty":
+				return ec.fieldContext_ExamScheduleDiagnostics_worstStudentPenalty(ctx, field)
+			case "maxSlotSeats":
+				return ec.fieldContext_ExamScheduleDiagnostics_maxSlotSeats(ctx, field)
+			case "slotsUsed":
+				return ec.fieldContext_ExamScheduleDiagnostics_slotsUsed(ctx, field)
+			case "slotsOverThreshold":
+				return ec.fieldContext_ExamScheduleDiagnostics_slotsOverThreshold(ctx, field)
+			case "maxExamsPerSlot":
+				return ec.fieldContext_ExamScheduleDiagnostics_maxExamsPerSlot(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleDiagnostics", field.Name)
 		},
 	}
 	return fc, nil
@@ -28570,6 +30350,73 @@ func (ec *executionContext) fieldContext_LogLine_validation(_ context.Context, f
 				return ec.fieldContext_ValidationReport_findings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ValidationReport", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LogLine_examReport(ctx context.Context, field graphql.CollectedField, obj *model.LogLine) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogLine_examReport(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamReport, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.ExamScheduleReport)
+	fc.Result = res
+	return ec.marshalOExamScheduleReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleReport(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogLine_examReport(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogLine",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "units":
+				return ec.fieldContext_ExamScheduleReport_units(ctx, field)
+			case "fixed":
+				return ec.fieldContext_ExamScheduleReport_fixed(ctx, field)
+			case "placed":
+				return ec.fieldContext_ExamScheduleReport_placed(ctx, field)
+			case "unplaced":
+				return ec.fieldContext_ExamScheduleReport_unplaced(ctx, field)
+			case "unplacedAncodes":
+				return ec.fieldContext_ExamScheduleReport_unplacedAncodes(ctx, field)
+			case "hardViolations":
+				return ec.fieldContext_ExamScheduleReport_hardViolations(ctx, field)
+			case "cost":
+				return ec.fieldContext_ExamScheduleReport_cost(ctx, field)
+			case "costByConstraint":
+				return ec.fieldContext_ExamScheduleReport_costByConstraint(ctx, field)
+			case "iterations":
+				return ec.fieldContext_ExamScheduleReport_iterations(ctx, field)
+			case "stoppedEarly":
+				return ec.fieldContext_ExamScheduleReport_stoppedEarly(ctx, field)
+			case "written":
+				return ec.fieldContext_ExamScheduleReport_written(ctx, field)
+			case "diagnostics":
+				return ec.fieldContext_ExamScheduleReport_diagnostics(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleReport", field.Name)
 		},
 	}
 	return fc, nil
@@ -36201,6 +38048,270 @@ func (ec *executionContext) fieldContext_NtaRoomAloneWaiver_reason(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _OptimizerConstraint_name(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerConstraint) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerConstraint_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerConstraint_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerConstraint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerConstraint_title(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerConstraint) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerConstraint_title(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Title, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerConstraint_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerConstraint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerConstraint_description(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerConstraint) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerConstraint_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerConstraint_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerConstraint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerConstraint_kind(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerConstraint) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerConstraint_kind(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Kind, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerConstraint_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerConstraint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerConstraint_weight(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerConstraint) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerConstraint_weight(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Weight, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerConstraint_weight(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerConstraint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OptimizerConstraint_tier(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerConstraint) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_OptimizerConstraint_tier(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Tier, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_OptimizerConstraint_tier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OptimizerConstraint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OptimizerProgress_iteration(ctx context.Context, field graphql.CollectedField, obj *model.OptimizerProgress) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_OptimizerProgress_iteration(ctx, field)
 	if err != nil {
@@ -43455,6 +45566,64 @@ func (ec *executionContext) fieldContext_Query_examDurationOverrides(_ context.C
 				return ec.fieldContext_ExamDurationOverride_duration(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamDurationOverride", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_examScheduleConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_examScheduleConstraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExamScheduleConstraints(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.OptimizerConstraint)
+	fc.Result = res
+	return ec.marshalNOptimizerConstraint2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐOptimizerConstraintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_examScheduleConstraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_OptimizerConstraint_name(ctx, field)
+			case "title":
+				return ec.fieldContext_OptimizerConstraint_title(ctx, field)
+			case "description":
+				return ec.fieldContext_OptimizerConstraint_description(ctx, field)
+			case "kind":
+				return ec.fieldContext_OptimizerConstraint_kind(ctx, field)
+			case "weight":
+				return ec.fieldContext_OptimizerConstraint_weight(ctx, field)
+			case "tier":
+				return ec.fieldContext_OptimizerConstraint_tier(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OptimizerConstraint", field.Name)
 		},
 	}
 	return fc, nil
@@ -54221,6 +56390,8 @@ func (ec *executionContext) fieldContext_Subscription_assignInvigilations(ctx co
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -54302,6 +56473,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailExaHM(ctx context
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -54383,6 +56556,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailExamPlanningInfo(
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -54464,6 +56639,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailDraft(ctx context
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -54545,6 +56722,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPublishedExams(ct
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -54626,6 +56805,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPublishedRooms(ct
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -54707,6 +56888,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailInvigilations(ctx
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -54788,6 +56971,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailInvigilationsMiss
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -54869,6 +57054,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPublishedInvigila
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -54950,6 +57137,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailCoverPages(ctx co
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55031,6 +57220,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailCoverPage(ctx con
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55112,6 +57303,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailRoomRequests(ctx 
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55193,6 +57386,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailRoomsSecretariat(
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55274,6 +57469,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailKdpExahm(ctx cont
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55355,6 +57552,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailLbaRepeaters(ctx 
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55436,6 +57635,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailInvigilationsSecr
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55517,6 +57718,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPrimussDataAll(ct
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55598,6 +57801,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPrimussData(ctx c
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55679,6 +57884,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPrimussDataUnplan
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55760,6 +57967,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailNewNTA(ctx contex
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55841,6 +58050,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailNTARoomAlone(ctx 
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55922,6 +58133,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailNTAPlanned(ctx co
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -55934,6 +58147,89 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailNTAPlanned(ctx co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Subscription_sendEmailNTAPlanned_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_generateExamSchedule(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_generateExamSchedule(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().GenerateExamSchedule(rctx, fc.Args["dryRun"].(bool), fc.Args["seed"].(*int), fc.Args["iterations"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_generateExamSchedule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_generateExamSchedule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -56003,6 +58299,8 @@ func (ec *executionContext) fieldContext_Subscription_assignRoomsForExams(_ cont
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56073,6 +58371,8 @@ func (ec *executionContext) fieldContext_Subscription_importAnnyBookings(_ conte
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56143,6 +58443,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilatorRequire
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56213,6 +58515,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilationDuplic
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56283,6 +58587,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilatorSlots(_
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56353,6 +58659,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilationsTimeD
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56423,6 +58731,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilationConstr
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56493,6 +58803,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsPerSlot(_ con
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56563,6 +58875,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsNeedRequest(_
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56633,6 +58947,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsPerExam(_ con
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56703,6 +59019,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsTimeDistance(
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56773,6 +59091,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsBlocked(_ con
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56843,6 +59163,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsEnoughSeats(_
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56913,6 +59235,8 @@ func (ec *executionContext) fieldContext_Subscription_validateZPADateTimes(_ con
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -56983,6 +59307,8 @@ func (ec *executionContext) fieldContext_Subscription_validateZPARooms(_ context
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57053,6 +59379,8 @@ func (ec *executionContext) fieldContext_Subscription_validateZPAInvigilators(_ 
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57123,6 +59451,8 @@ func (ec *executionContext) fieldContext_Subscription_validateConflicts(ctx cont
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57204,6 +59534,8 @@ func (ec *executionContext) fieldContext_Subscription_validateConstraints(_ cont
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57274,6 +59606,8 @@ func (ec *executionContext) fieldContext_Subscription_validateStudentRegs(_ cont
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57344,6 +59678,8 @@ func (ec *executionContext) fieldContext_Subscription_validateDB(_ context.Conte
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57414,6 +59750,8 @@ func (ec *executionContext) fieldContext_Subscription_validatePrePlannedExahmRoo
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57484,6 +59822,8 @@ func (ec *executionContext) fieldContext_Subscription_uploadExamsToZPA(ctx conte
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57565,6 +59905,8 @@ func (ec *executionContext) fieldContext_Subscription_uploadExamsWithRoomsToZPA(
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57646,6 +59988,8 @@ func (ec *executionContext) fieldContext_Subscription_uploadExamsWithInvigilator
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57727,6 +60071,8 @@ func (ec *executionContext) fieldContext_Subscription_uploadStudentRegsToZPA(_ c
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57797,6 +60143,8 @@ func (ec *executionContext) fieldContext_Subscription_importTeachersFromZPA(_ co
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57867,6 +60215,8 @@ func (ec *executionContext) fieldContext_Subscription_importExamsFromZPA(_ conte
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -57937,6 +60287,8 @@ func (ec *executionContext) fieldContext_Subscription_importInvigilatorRequireme
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -58007,6 +60359,8 @@ func (ec *executionContext) fieldContext_Subscription_importStudentsFromZPA(_ co
 				return ec.fieldContext_LogLine_report(ctx, field)
 			case "validation":
 				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -65956,6 +68310,50 @@ func (ec *executionContext) _ConnectedExamWarning(ctx context.Context, sel ast.S
 	return out
 }
 
+var constraintCostImplementors = []string{"ConstraintCost"}
+
+func (ec *executionContext) _ConstraintCost(ctx context.Context, sel ast.SelectionSet, obj *model.ConstraintCost) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, constraintCostImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ConstraintCost")
+		case "name":
+			out.Values[i] = ec._ConstraintCost_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cost":
+			out.Values[i] = ec._ConstraintCost_cost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var constraintsImplementors = []string{"Constraints"}
 
 func (ec *executionContext) _Constraints(ctx context.Context, sel ast.SelectionSet, obj *model.Constraints) graphql.Marshaler {
@@ -66535,6 +68933,209 @@ func (ec *executionContext) _ExamPlanningMailRecipient(ctx context.Context, sel 
 			}
 		case "exams":
 			out.Values[i] = ec._ExamPlanningMailRecipient_exams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var examScheduleDiagnosticsImplementors = []string{"ExamScheduleDiagnostics"}
+
+func (ec *executionContext) _ExamScheduleDiagnostics(ctx context.Context, sel ast.SelectionSet, obj *model.ExamScheduleDiagnostics) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, examScheduleDiagnosticsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExamScheduleDiagnostics")
+		case "students":
+			out.Values[i] = ec._ExamScheduleDiagnostics_students(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pairs":
+			out.Values[i] = ec._ExamScheduleDiagnostics_pairs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sameSlot":
+			out.Values[i] = ec._ExamScheduleDiagnostics_sameSlot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adjacent":
+			out.Values[i] = ec._ExamScheduleDiagnostics_adjacent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sameDay":
+			out.Values[i] = ec._ExamScheduleDiagnostics_sameDay(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nextDay":
+			out.Values[i] = ec._ExamScheduleDiagnostics_nextDay(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "within3":
+			out.Values[i] = ec._ExamScheduleDiagnostics_within3(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "further":
+			out.Values[i] = ec._ExamScheduleDiagnostics_further(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentsWithAdjacent":
+			out.Values[i] = ec._ExamScheduleDiagnostics_studentsWithAdjacent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentsWithSameDay":
+			out.Values[i] = ec._ExamScheduleDiagnostics_studentsWithSameDay(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "worstStudentPenalty":
+			out.Values[i] = ec._ExamScheduleDiagnostics_worstStudentPenalty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxSlotSeats":
+			out.Values[i] = ec._ExamScheduleDiagnostics_maxSlotSeats(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slotsUsed":
+			out.Values[i] = ec._ExamScheduleDiagnostics_slotsUsed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slotsOverThreshold":
+			out.Values[i] = ec._ExamScheduleDiagnostics_slotsOverThreshold(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxExamsPerSlot":
+			out.Values[i] = ec._ExamScheduleDiagnostics_maxExamsPerSlot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var examScheduleReportImplementors = []string{"ExamScheduleReport"}
+
+func (ec *executionContext) _ExamScheduleReport(ctx context.Context, sel ast.SelectionSet, obj *model.ExamScheduleReport) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, examScheduleReportImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExamScheduleReport")
+		case "units":
+			out.Values[i] = ec._ExamScheduleReport_units(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fixed":
+			out.Values[i] = ec._ExamScheduleReport_fixed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "placed":
+			out.Values[i] = ec._ExamScheduleReport_placed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unplaced":
+			out.Values[i] = ec._ExamScheduleReport_unplaced(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unplacedAncodes":
+			out.Values[i] = ec._ExamScheduleReport_unplacedAncodes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hardViolations":
+			out.Values[i] = ec._ExamScheduleReport_hardViolations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cost":
+			out.Values[i] = ec._ExamScheduleReport_cost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "costByConstraint":
+			out.Values[i] = ec._ExamScheduleReport_costByConstraint(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "iterations":
+			out.Values[i] = ec._ExamScheduleReport_iterations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stoppedEarly":
+			out.Values[i] = ec._ExamScheduleReport_stoppedEarly(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "written":
+			out.Values[i] = ec._ExamScheduleReport_written(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "diagnostics":
+			out.Values[i] = ec._ExamScheduleReport_diagnostics(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -67803,6 +70404,8 @@ func (ec *executionContext) _LogLine(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._LogLine_report(ctx, field, obj)
 		case "validation":
 			out.Values[i] = ec._LogLine_validation(ctx, field, obj)
+		case "examReport":
+			out.Values[i] = ec._LogLine_examReport(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -68953,6 +71556,70 @@ func (ec *executionContext) _NtaRoomAloneWaiver(ctx context.Context, sel ast.Sel
 			}
 		case "reason":
 			out.Values[i] = ec._NtaRoomAloneWaiver_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var optimizerConstraintImplementors = []string{"OptimizerConstraint"}
+
+func (ec *executionContext) _OptimizerConstraint(ctx context.Context, sel ast.SelectionSet, obj *model.OptimizerConstraint) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, optimizerConstraintImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OptimizerConstraint")
+		case "name":
+			out.Values[i] = ec._OptimizerConstraint_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._OptimizerConstraint_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._OptimizerConstraint_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kind":
+			out.Values[i] = ec._OptimizerConstraint_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weight":
+			out.Values[i] = ec._OptimizerConstraint_weight(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tier":
+			out.Values[i] = ec._OptimizerConstraint_tier(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -70936,6 +73603,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_examDurationOverrides(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "examScheduleConstraints":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_examScheduleConstraints(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -74108,6 +76797,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_sendEmailNTARoomAlone(ctx, fields[0])
 	case "sendEmailNTAPlanned":
 		return ec._Subscription_sendEmailNTAPlanned(ctx, fields[0])
+	case "generateExamSchedule":
+		return ec._Subscription_generateExamSchedule(ctx, fields[0])
 	case "assignRoomsForExams":
 		return ec._Subscription_assignRoomsForExams(ctx, fields[0])
 	case "importAnnyBookings":
@@ -76031,6 +78722,60 @@ func (ec *executionContext) marshalNConnectedExamWarning2ᚖgithubᚗcomᚋobcod
 	return ec._ConnectedExamWarning(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNConstraintCost2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraintCostᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ConstraintCost) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNConstraintCost2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraintCost(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNConstraintCost2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraintCost(ctx context.Context, sel ast.SelectionSet, v *model.ConstraintCost) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ConstraintCost(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNConstraints2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraints(ctx context.Context, sel ast.SelectionSet, v model.Constraints) graphql.Marshaler {
 	return ec._Constraints(ctx, sel, &v)
 }
@@ -76509,6 +79254,16 @@ func (ec *executionContext) marshalNExamPlanningMailRecipient2ᚖgithubᚗcomᚋ
 		return graphql.Null
 	}
 	return ec._ExamPlanningMailRecipient(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExamScheduleDiagnostics2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleDiagnostics(ctx context.Context, sel ast.SelectionSet, v *model.ExamScheduleDiagnostics) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExamScheduleDiagnostics(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExamTime2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamTimeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamTime) graphql.Marshaler {
@@ -77414,6 +80169,60 @@ func (ec *executionContext) marshalNNtaRoomAloneWaiver2ᚖgithubᚗcomᚋobcode�
 		return graphql.Null
 	}
 	return ec._NtaRoomAloneWaiver(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNOptimizerConstraint2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐOptimizerConstraintᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.OptimizerConstraint) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNOptimizerConstraint2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐOptimizerConstraint(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNOptimizerConstraint2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐOptimizerConstraint(ctx context.Context, sel ast.SelectionSet, v *model.OptimizerConstraint) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._OptimizerConstraint(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPermanentNonInvigilator2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPermanentNonInvigilator(ctx context.Context, sel ast.SelectionSet, v model.PermanentNonInvigilator) graphql.Marshaler {
@@ -80690,6 +83499,13 @@ func (ec *executionContext) marshalOConstraints2ᚖgithubᚗcomᚋobcodeᚋplexa
 		return graphql.Null
 	}
 	return ec._Constraints(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOExamScheduleReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleReport(ctx context.Context, sel ast.SelectionSet, v *model.ExamScheduleReport) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ExamScheduleReport(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOExamerInPlan2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamerInPlanᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamerInPlan) graphql.Marshaler {

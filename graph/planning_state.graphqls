@@ -28,6 +28,7 @@ type PlanningState {
 
 "Areas that can be locked by a published gate."
 enum PlanningGate {
+  EXAMS
   ROOMS
   INVIGILATIONS
 }

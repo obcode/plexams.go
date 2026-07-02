@@ -29,6 +29,7 @@ type ExamScheduleResult struct {
 	Iterations       int
 	StoppedEarly     bool
 	Written          bool
+	Diagnostics      examplan.Diagnostics
 }
 
 // buildExamPlanProblem assembles the exam-schedule optimization problem from the
@@ -309,18 +310,35 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context) (*examplan.Problem, 
 	return examplan.NewProblem(slots, units, students, attract, w), nil
 }
 
-// GenerateExamSchedule builds and solves the exam schedule. With dryRun it only
-// reports (nothing written); otherwise it writes the non-fixed plan entries (locked /
-// external / not-planned-by-me stay untouched).
-func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed int64, iterations int) (*ExamScheduleResult, error) {
+// GenerateExamSchedule builds and solves the exam schedule, streaming progress to the
+// reporter. With dryRun it only reports (nothing written); otherwise it writes the
+// non-fixed plan entries (locked / external / not-planned-by-me stay untouched) and
+// removes stale entries of any exam that ended up unplaced. It refuses to write when
+// there are hard violations.
+func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed int64, iterations int, reporter Reporter) (*ExamScheduleResult, error) {
+	reporter.Step("Terminplan-Problem wird aufgebaut …")
 	prob, err := p.buildExamPlanProblem(ctx)
 	if err != nil {
+		reporter.StopProgressFail("Aufbau fehlgeschlagen: " + err.Error())
 		return nil, err
 	}
+	movable := 0
+	for i := range prob.Units {
+		if !prob.Units[i].Fixed {
+			movable++
+		}
+	}
+	reporter.Println(fmt.Sprintf("%d Prüfungen zu planen, %d fest, %d Slots, %d Studierende mit Konflikten",
+		movable, len(prob.Units)-movable, len(prob.Slots), len(prob.Students)))
+
 	opts := optimize.DefaultOptions()
 	opts.Seed = seed
 	if iterations > 0 {
 		opts.Iterations = iterations
+	}
+	opts.ProgressEvery = maxInt(1, opts.Iterations/200)
+	opts.OnProgress = func(pr optimize.Progress) {
+		reporter.Step(fmt.Sprintf("%d/%d, Kosten %.0f, %s", pr.Iteration, pr.Total, pr.BestCost, pr.Detail))
 	}
 	st, res := examplan.Solve(prob, opts)
 
@@ -334,9 +352,9 @@ func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed in
 	unplaced := st.UnplacedAncodes()
 
 	result := &ExamScheduleResult{
-		Units: len(prob.Units), Placed: 0, Unplaced: len(unplaced), UnplacedAncodes: unplaced,
+		Units: len(prob.Units), Unplaced: len(unplaced), UnplacedAncodes: unplaced,
 		HardViolations: hard, Cost: total, CostByConstraint: byC,
-		Iterations: res.Iterations, StoppedEarly: res.StoppedEarly,
+		Iterations: res.Iterations, StoppedEarly: res.StoppedEarly, Diagnostics: st.Diagnostics(),
 	}
 	for i := range prob.Units {
 		if prob.Units[i].Fixed {
@@ -345,26 +363,62 @@ func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed in
 			result.Placed++
 		}
 	}
+	d := result.Diagnostics
+	reporter.Println(fmt.Sprintf("geplant %d, ungeplant %d, harte Verletzungen %d", result.Placed, result.Unplaced, len(hard)))
+	reporter.Println(fmt.Sprintf("direkt nacheinander %d, selber Tag %d (%d Studierende), Folgetag %d",
+		d.Adjacent, d.SameDay, d.StudentsWithSameDay, d.NextDay))
 
-	if !dryRun {
-		if len(hard) > 0 {
-			return result, fmt.Errorf("refusing to write: %d hard violations", len(hard))
+	if dryRun {
+		reporter.StopProgress("Probelauf – nichts geschrieben")
+		return result, nil
+	}
+	if err := p.generationAllowed(ctx, model.PlanningGateExams); err != nil {
+		reporter.StopProgressFail(err.Error())
+		return result, err
+	}
+	if len(hard) > 0 {
+		reporter.StopProgressFail(fmt.Sprintf("%d harte Verletzungen – nichts geschrieben", len(hard)))
+		return result, fmt.Errorf("refusing to write: %d hard violations", len(hard))
+	}
+	for i := range prob.Units {
+		u := &prob.Units[i]
+		if u.Fixed {
+			continue
 		}
-		for i := range prob.Units {
-			u := &prob.Units[i]
-			if u.Fixed || st.SlotOf[i] < 0 {
-				continue
-			}
-			day, slot := prob.Slots[st.SlotOf[i]].Day, prob.Slots[st.SlotOf[i]].Slot
-			for _, a := range u.Ancodes {
-				if _, err := p.AddExamToSlot(ctx, a, day, slot, true); err != nil {
-					return result, fmt.Errorf("cannot write plan entry for %d: %w", a, err)
+		if st.SlotOf[i] < 0 {
+			for _, a := range u.Ancodes { // drop any stale entry of a now-unplaced exam
+				if err := p.dbClient.RemovePlanEntry(ctx, a); err != nil {
+					log.Error().Err(err).Int("ancode", a).Msg("cannot remove stale plan entry")
 				}
 			}
+			continue
 		}
-		result.Written = true
+		day, slot := prob.Slots[st.SlotOf[i]].Day, prob.Slots[st.SlotOf[i]].Slot
+		for _, a := range u.Ancodes {
+			if _, err := p.AddExamToSlot(ctx, a, day, slot, true); err != nil {
+				reporter.StopProgressFail("Schreiben fehlgeschlagen: " + err.Error())
+				return result, fmt.Errorf("cannot write plan entry for %d: %w", a, err)
+			}
+		}
 	}
+	result.Written = true
+	p.markCondition(ctx, condExamScheduleGenerated)
+	reporter.StopProgress(fmt.Sprintf("Terminplan geschrieben: %d Prüfungen", result.Placed))
 	return result, nil
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// ExamScheduleConstraints returns the read-only description of the hard/soft
+// constraints the exam-schedule generator applies.
+func (p *Plexams) ExamScheduleConstraints() []optimize.Info {
+	prob := &examplan.Problem{W: examplan.DefaultWeights()}
+	return prob.Registry().Describe()
 }
 
 // repeatForStudent reports whether an exam is (likely) a repeat for a student: the

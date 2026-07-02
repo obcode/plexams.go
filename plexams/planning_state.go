@@ -52,6 +52,7 @@ const (
 	condStudentRegsUploaded       = "studentRegsUploaded"
 	condPrimussDataAllSent        = "primussDataAllSent"
 	condNTARoomAloneSent          = "ntaRoomAloneSent"
+	condExamScheduleGenerated     = "examScheduleGenerated"
 	condDraftSent                 = "draftSent"
 	condExamPlanPublished         = "examPlanPublished"
 	condRoomRequestsSent          = "roomRequestsSent"
@@ -83,8 +84,9 @@ var planningConditionDefs = []planningConditionDef{
 	{condStudentRegsUploaded, "Anmeldungen ins ZPA hochgeladen", "phase0", ""},
 	{condPrimussDataAllSent, "Primuss-Daten an alle verschickt", "phase0", ""},
 	{condNTARoomAloneSent, "Info an NTAs mit eigenem Raum verschickt", "phase0", ""},
-	{condDraftSent, "Entwurf verschickt", "phase1", ""},
-	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", ""},
+	{condExamScheduleGenerated, "Terminplan generiert", "phase1", ""},
+	{condDraftSent, "Entwurf verschickt", "phase1", model.PlanningGateExams},
+	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", model.PlanningGateExams},
 	{condRoomRequestsSent, "Raum-Anfragen ans Gebäudemanagement verschickt", "phase2", ""},
 	{condRoomsAssigned, "Räume zugeordnet", "phase2", ""},
 	{condSecretariatRoomsSent, "Raumbelegung ans Sekretariat verschickt", "phase2", ""},

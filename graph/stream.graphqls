@@ -36,6 +36,7 @@ type LogLine {
   progress: OptimizerProgress
   report: InvigilationReport
   validation: ValidationReport
+  examReport: ExamScheduleReport
 }
 
 """

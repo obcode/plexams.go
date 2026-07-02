@@ -181,6 +181,7 @@ func (p *Plexams) sameSlotGroups(ctx context.Context) map[int]int {
 type examInfo struct {
 	module string
 	examer string
+	groups []string
 }
 
 func (p *Plexams) examInfoMap(ctx context.Context) map[int]examInfo {
@@ -190,7 +191,11 @@ func (p *Plexams) examInfoMap(ctx context.Context) map[int]examInfo {
 		return m
 	}
 	for _, e := range assembled {
-		m[e.Ancode] = examInfo{module: e.ZpaExam.Module, examer: e.ZpaExam.MainExamer}
+		groups := e.ZpaExam.Groups
+		if groups == nil {
+			groups = []string{}
+		}
+		m[e.Ancode] = examInfo{module: e.ZpaExam.Module, examer: e.ZpaExam.MainExamer, groups: groups}
 	}
 	return m
 }
@@ -259,7 +264,7 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		return nil, err
 	}
 
-	type studInfo struct{ mtknr, name string }
+	type studInfo struct{ mtknr, name, program, group string }
 	type agg struct {
 		rank     int
 		label    string
@@ -286,7 +291,7 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 					a = &agg{}
 					byPair[key] = a
 				}
-				a.students = append(a.students, studInfo{s.Mtknr, s.Name})
+				a.students = append(a.students, studInfo{s.Mtknr, s.Name, s.Program, s.Group})
 				if rank > a.rank {
 					a.rank, a.label = rank, label
 				}
@@ -331,12 +336,12 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		acc := acceptedByPair[key]
 		affected := make([]*model.ConflictStudent, 0, len(a.students))
 		for _, s := range a.students {
-			affected = append(affected, &model.ConflictStudent{Mtknr: s.mtknr, Name: s.name, Accepted: acc[s.mtknr]})
+			affected = append(affected, &model.ConflictStudent{Mtknr: s.mtknr, Name: s.name, Program: s.program, Group: s.group, Accepted: acc[s.mtknr]})
 		}
 		sort.Slice(affected, func(i, j int) bool { return affected[i].Name < affected[j].Name })
 		c := &model.ExamScheduleConflict{
-			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1,
-			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2,
+			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1, Groups1: info[key[0]].groups,
+			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2, Groups2: info[key[1]].groups,
 			StudentCount: len(a.students), Proximity: a.label, CanShareSlot: canShare[key],
 			InfoOnly:         foreign(key[0]) && foreign(key[1]),
 			AffectedStudents: affected,

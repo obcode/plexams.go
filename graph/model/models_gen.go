@@ -104,6 +104,10 @@ type ConflictPerProgram struct {
 type ConflictStudent struct {
 	Mtknr string `json:"mtknr"`
 	Name  string `json:"name"`
+	// the student's study program, e.g. "IF".
+	Program string `json:"program"`
+	// the student's cohort/group, e.g. "IF4B".
+	Group string `json:"group"`
 	// true if this student already has an ACCEPTED rating for this pair.
 	Accepted bool `json:"accepted"`
 }
@@ -295,9 +299,12 @@ type ExamScheduleConflict struct {
 	Ancode1     int    `json:"ancode1"`
 	Module1     string `json:"module1"`
 	MainExamer1 string `json:"mainExamer1"`
-	Ancode2     int    `json:"ancode2"`
-	Module2     string `json:"module2"`
-	MainExamer2 string `json:"mainExamer2"`
+	// the study groups exam 1 is offered for (e.g. ["IF2A"]).
+	Groups1     []string `json:"groups1"`
+	Ancode2     int      `json:"ancode2"`
+	Module2     string   `json:"module2"`
+	MainExamer2 string   `json:"mainExamer2"`
+	Groups2     []string `json:"groups2"`
 	// number of students registered in both, in the plan.
 	StudentCount int `json:"studentCount"`
 	// worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY | NEXT_DAY.

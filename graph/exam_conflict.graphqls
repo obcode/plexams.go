@@ -37,9 +37,12 @@ type ExamScheduleConflict {
   ancode1: Int!
   module1: String!
   mainExamer1: String!
+  "the study groups exam 1 is offered for (e.g. [\"IF2A\"])."
+  groups1: [String!]!
   ancode2: Int!
   module2: String!
   mainExamer2: String!
+  groups2: [String!]!
   "number of students registered in both, in the plan."
   studentCount: Int!
   "worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY | NEXT_DAY."
@@ -57,6 +60,10 @@ type ExamScheduleConflict {
 type ConflictStudent {
   mtknr: String!
   name: String!
+  "the student's study program, e.g. \"IF\"."
+  program: String!
+  "the student's cohort/group, e.g. \"IF4B\"."
+  group: String!
   "true if this student already has an ACCEPTED rating for this pair."
   accepted: Boolean!
 }

@@ -237,6 +237,14 @@ type EnhancedStudentReg struct {
 	ZpaStudent *ZPAStudent `json:"zpaStudent,omitempty"`
 }
 
+type ExamConflictRating struct {
+	Ancode1 int            `json:"ancode1"`
+	Ancode2 int            `json:"ancode2"`
+	Rating  ConflictRating `json:"rating"`
+	// set only for ACCEPTED (per-student); null for pair-level UNDESIRED/FORBIDDEN.
+	Mtknr *string `json:"mtknr,omitempty"`
+}
+
 type ExamDay struct {
 	Number int       `json:"number"`
 	Date   time.Time `json:"date"`
@@ -245,6 +253,16 @@ type ExamDay struct {
 type ExamDurationOverride struct {
 	Ancode   int `json:"ancode"`
 	Duration int `json:"duration"`
+}
+
+// ExamPair is a pair of exams with display info (for canShareSlot lists/suggestions).
+type ExamPair struct {
+	Ancode1     int    `json:"ancode1"`
+	Module1     string `json:"module1"`
+	MainExamer1 string `json:"mainExamer1"`
+	Ancode2     int    `json:"ancode2"`
+	Module2     string `json:"module2"`
+	MainExamer2 string `json:"mainExamer2"`
 }
 
 // One exam I plan for an examer, for the planning info email (no slot/date).
@@ -1093,6 +1111,68 @@ type ZPAExamsForType struct {
 type ZPAInvigilator struct {
 	Teacher                  *Teacher `json:"teacher"`
 	HasSubmittedRequirements bool     `json:"hasSubmittedRequirements"`
+}
+
+// ConflictRating rates a conflict between two exams for the exam-schedule generator.
+// ACCEPTED is per-student (mtknr set): that student's proximity penalty is dropped, but
+// the two exams still must not be in the same slot for them. UNDESIRED and FORBIDDEN are
+// pair-level (mtknr null): UNDESIRED strongly increases the spread penalty, FORBIDDEN
+// forces the two exams onto different days (hard).
+type ConflictRating string
+
+const (
+	ConflictRatingAccepted  ConflictRating = "ACCEPTED"
+	ConflictRatingUndesired ConflictRating = "UNDESIRED"
+	ConflictRatingForbidden ConflictRating = "FORBIDDEN"
+)
+
+var AllConflictRating = []ConflictRating{
+	ConflictRatingAccepted,
+	ConflictRatingUndesired,
+	ConflictRatingForbidden,
+}
+
+func (e ConflictRating) IsValid() bool {
+	switch e {
+	case ConflictRatingAccepted, ConflictRatingUndesired, ConflictRatingForbidden:
+		return true
+	}
+	return false
+}
+
+func (e ConflictRating) String() string {
+	return string(e)
+}
+
+func (e *ConflictRating) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ConflictRating(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ConflictRating", str)
+	}
+	return nil
+}
+
+func (e ConflictRating) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ConflictRating) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ConflictRating) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 // LogLevel classifies a streamed LogLine. PROGRESS lines are throttled optimizer

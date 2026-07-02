@@ -1,0 +1,48 @@
+"""
+ConflictRating rates a conflict between two exams for the exam-schedule generator.
+ACCEPTED is per-student (mtknr set): that student's proximity penalty is dropped, but
+the two exams still must not be in the same slot for them. UNDESIRED and FORBIDDEN are
+pair-level (mtknr null): UNDESIRED strongly increases the spread penalty, FORBIDDEN
+forces the two exams onto different days (hard).
+"""
+enum ConflictRating {
+  ACCEPTED
+  UNDESIRED
+  FORBIDDEN
+}
+
+type ExamConflictRating {
+  ancode1: Int!
+  ancode2: Int!
+  rating: ConflictRating!
+  "set only for ACCEPTED (per-student); null for pair-level UNDESIRED/FORBIDDEN."
+  mtknr: String
+}
+
+"ExamPair is a pair of exams with display info (for canShareSlot lists/suggestions)."
+type ExamPair {
+  ancode1: Int!
+  module1: String!
+  mainExamer1: String!
+  ancode2: Int!
+  module2: String!
+  mainExamer2: String!
+}
+
+extend type Query {
+  "All conflict ratings currently stored."
+  examConflictRatings: [ExamConflictRating!]!
+  "Exam pairs declared as allowed to share a slot (no student legitimately sits both)."
+  examsCanShareSlot: [ExamPair!]!
+  "Auto-detected canShareSlot candidates (same module+program, different examer) not yet declared."
+  canShareSlotSuggestions: [ExamPair!]!
+}
+
+extend type Mutation {
+  "Set (upsert) a conflict rating. For ACCEPTED pass mtknr; for UNDESIRED/FORBIDDEN omit it."
+  setConflictRating(ancode1: Int!, ancode2: Int!, rating: ConflictRating!, mtknr: String): Boolean!
+  removeConflictRating(ancode1: Int!, ancode2: Int!, mtknr: String): Boolean!
+  "Declare / undeclare that two exams may share a slot."
+  setExamsCanShareSlot(ancode1: Int!, ancode2: Int!): Boolean!
+  removeExamsCanShareSlot(ancode1: Int!, ancode2: Int!): Boolean!
+}

@@ -168,3 +168,35 @@ func TestIncrementalMatchesFull(t *testing.T) {
 		t.Errorf("incremental cost %.4f != full recompute %.4f (diff %.6f)", inc, full, diff)
 	}
 }
+
+func TestSeparatedForcesDifferentDays(t *testing.T) {
+	units := []Unit{{ID: 1, Ancodes: []int{1}, Seats: 10}, {ID: 2, Ancodes: []int{2}, Seats: 10}}
+	// no student conflict, but declared "forbidden" -> must be different days
+	p := NewProblem(testSlots(), units, nil, nil, DefaultWeights())
+	p.SetSeparated([][2]int{{0, 1}})
+	st, _ := Solve(p, fastOpts())
+	if st.SlotOf[0] < 0 || st.SlotOf[1] < 0 {
+		t.Fatalf("not placed: %v", st.SlotOf)
+	}
+	if p.Slots[st.SlotOf[0]].Day == p.Slots[st.SlotOf[1]].Day {
+		t.Errorf("separated pair on same day: %v", st.SlotOf)
+	}
+	if vs := p.Registry().HardViolations(st); len(vs) != 0 {
+		t.Errorf("hard violations: %+v", vs)
+	}
+}
+
+func TestAcceptedWeightZeroStillHardSameSlot(t *testing.T) {
+	units := []Unit{{ID: 1, Ancodes: []int{1}, Seats: 10}, {ID: 2, Ancodes: []int{2}, Seats: 10}}
+	// per-student acceptance is modelled as weight 0: no proximity penalty, but the
+	// pair still forbids the same slot (it stays in hardConf).
+	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 0}}}}
+	p := NewProblem(testSlots(), units, students, nil, DefaultWeights())
+	st, _ := Solve(p, fastOpts())
+	if st.SlotOf[0] == st.SlotOf[1] {
+		t.Errorf("weight-0 pair must still not share a slot: %v", st.SlotOf)
+	}
+	if st.spreadTotal != 0 {
+		t.Errorf("weight-0 pair should contribute 0 spread, got %.4f", st.spreadTotal)
+	}
+}

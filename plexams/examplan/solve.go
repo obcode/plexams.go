@@ -125,7 +125,7 @@ func addedCost(st *State, u, s int) float64 {
 func (p *Problem) Registry() optimize.Registry[*State] {
 	return optimize.Registry[*State]{
 		Hard: []optimize.HardConstraint[*State]{
-			fixedC{}, allowedC{}, sameStudentC{}, capacityC{},
+			fixedC{}, allowedC{}, sameStudentC{}, separatedC{}, capacityC{},
 		},
 		Soft: []optimize.SoftConstraint[*State]{
 			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, placementC{p.W},
@@ -179,6 +179,23 @@ func (sameStudentC) Check(st *State) []optimize.Violation {
 			if a >= 0 && a == b {
 				vs = append(vs, optimize.Violation{Constraint: "student-clash", Message: "zwei Prüfungen gleichzeitig", Refs: []int{st.P.Units[pr.A].ID, st.P.Units[pr.B].ID}})
 			}
+		}
+	}
+	return vs
+}
+
+type separatedC struct{}
+
+func (separatedC) Info() optimize.Info {
+	return optimize.Info{Name: "separated", Title: "Als unzulässig getrennt", Kind: optimize.KindHard, Tier: 5,
+		Description: "Als \"unzulässig\" bewertete Prüfungspaare müssen an verschiedenen Tagen stattfinden."}
+}
+func (separatedC) Check(st *State) []optimize.Violation {
+	var vs []optimize.Violation
+	for _, pr := range st.P.sep {
+		a, b := st.SlotOf[pr[0]], st.SlotOf[pr[1]]
+		if a >= 0 && b >= 0 && st.P.Slots[a].Day == st.P.Slots[b].Day {
+			vs = append(vs, optimize.Violation{Constraint: "separated", Message: "unzulässiges Paar am selben Tag", Refs: []int{st.P.Units[pr[0]].ID, st.P.Units[pr[1]].ID}})
 		}
 	}
 	return vs

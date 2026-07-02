@@ -16,6 +16,9 @@ import (
 // the same examer, preferably scheduled into the same slot.
 const smallExamThreshold = 5
 
+// undesiredBoost multiplies the spread penalty of a pair rated UNDESIRED.
+const undesiredBoost = 8.0
+
 // ExamScheduleResult summarizes a Terminplan generation run.
 type ExamScheduleResult struct {
 	Units            int
@@ -223,6 +226,51 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context) (*examplan.Problem, 
 		unitSemester = append(unitSemester, minGroupSemester(r.e.ZpaExam.Groups))
 	}
 
+	// --- conflict ratings & canShareSlot (keyed by unit pair) ---
+	canShare := make(map[[2]int]bool)
+	undesired := make(map[[2]int]bool)
+	forbidden := make(map[[2]int]bool)
+	accepted := make(map[string]map[[2]int]bool)
+	unitPair := func(a, b int) ([2]int, bool) {
+		ua, ok1 := unitOf[a]
+		ub, ok2 := unitOf[b]
+		if !ok1 || !ok2 || ua == ub {
+			return [2]int{}, false
+		}
+		if ua > ub {
+			ua, ub = ub, ua
+		}
+		return [2]int{ua, ub}, true
+	}
+	if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err == nil {
+		for _, pr := range pairs {
+			if up, ok := unitPair(pr[0], pr[1]); ok {
+				canShare[up] = true
+			}
+		}
+	}
+	if ratings, err := p.dbClient.ConflictRatings(ctx); err == nil {
+		for _, r := range ratings {
+			up, ok := unitPair(r.Ancode1, r.Ancode2)
+			if !ok {
+				continue
+			}
+			switch r.Rating {
+			case model.ConflictRatingUndesired:
+				undesired[up] = true
+			case model.ConflictRatingForbidden:
+				forbidden[up] = true
+			case model.ConflictRatingAccepted:
+				if r.Mtknr != nil {
+					if accepted[*r.Mtknr] == nil {
+						accepted[*r.Mtknr] = make(map[[2]int]bool)
+					}
+					accepted[*r.Mtknr][up] = true
+				}
+			}
+		}
+	}
+
 	// --- students / conflict pairs ---
 	studentsRaw, err := p.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
@@ -251,10 +299,20 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context) (*examplan.Problem, 
 				if units[a].Fixed && units[b].Fixed {
 					continue // both fixed: constant cost, no gradient
 				}
+				up := [2]int{a, b}
+				if canShare[up] {
+					continue // declared shareable: drop hard + soft entirely
+				}
 				weight := 1.0
 				if repeatForStudent(studSem, unitRepeater[a], unitSemester[a]) ||
 					repeatForStudent(studSem, unitRepeater[b], unitSemester[b]) {
 					weight *= w.RepeatFactor
+				}
+				if accepted[s.Mtknr][up] {
+					weight = 0 // per-student acceptance: no proximity penalty (same-slot still hard)
+				}
+				if undesired[up] {
+					weight *= undesiredBoost
 				}
 				pairs = append(pairs, examplan.Pair{A: a, B: b, Weight: weight})
 			}
@@ -307,7 +365,15 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context) (*examplan.Problem, 
 		attract = append(attract, examplan.AttractPair{A: k[0], B: k[1], Weight: 1})
 	}
 
-	return examplan.NewProblem(slots, units, students, attract, w), nil
+	prob := examplan.NewProblem(slots, units, students, attract, w)
+	if len(forbidden) > 0 {
+		sep := make([][2]int, 0, len(forbidden))
+		for up := range forbidden {
+			sep = append(sep, up)
+		}
+		prob.SetSeparated(sep)
+	}
+	return prob, nil
 }
 
 // GenerateExamSchedule builds and solves the exam schedule, streaming progress to the

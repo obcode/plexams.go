@@ -31,6 +31,8 @@ const (
 
 	collectionAssembledExams       = "assembled_exams"
 	collectionAssembledExamsState  = "assembled_exams_state"
+	collectionExamConflictRatings  = "exam_conflict_ratings"
+	collectionExamCanShareSlot     = "exam_can_share_slot"
 	collectionStudentRegsState     = "student_regs_state"
 	collectionSemesterMeta         = "semester_meta"
 	collectionActiveSemester       = "active_semester"

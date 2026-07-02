@@ -116,8 +116,15 @@ type Problem struct {
 	W        Weights
 
 	// derived
-	movable  []int
-	hardConf []map[int]bool // unit -> units that must not share its slot
+	movable      []int
+	hardConf     []map[int]bool // unit -> units that must not share its slot
+	unitStudents [][]int        // unit -> student indices that have a pair with it
+	unitAttract  [][]attractRef // unit -> its attract partners
+}
+
+type attractRef struct {
+	other  int
+	weight float64
 }
 
 // NewProblem validates the input and precomputes derived structures.
@@ -140,13 +147,36 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 	// units that must not share a slot: every counted student pair (canShareSlot pairs
 	// are already omitted from Student.Pairs at build time).
 	p.hardConf = make([]map[int]bool, len(p.Units))
+	p.unitStudents = make([][]int, len(p.Units))
 	for si := range p.Students {
+		units := make(map[int]bool)
 		for _, pr := range p.Students[si].Pairs {
 			addConf(p.hardConf, pr.A, pr.B)
 			addConf(p.hardConf, pr.B, pr.A)
+			units[pr.A] = true
+			units[pr.B] = true
+		}
+		// each unit appears once in this student's set, so no duplicate student ids.
+		for u := range units {
+			p.unitStudents[u] = append(p.unitStudents[u], si)
 		}
 	}
+
+	p.unitAttract = make([][]attractRef, len(p.Units))
+	for _, ap := range p.Attract {
+		p.unitAttract[ap.A] = append(p.unitAttract[ap.A], attractRef{ap.B, ap.Weight})
+		p.unitAttract[ap.B] = append(p.unitAttract[ap.B], attractRef{ap.A, ap.Weight})
+	}
 	return p
+}
+
+// loadPenalty is the convex slot-load penalty for a slot holding `seats` seats.
+func (p *Problem) loadPenalty(seats int) float64 {
+	over := seats - p.W.LoadThreshold
+	if over <= 0 {
+		return 0
+	}
+	return p.W.SlotLoad * float64(over) * float64(over)
 }
 
 func addConf(m []map[int]bool, a, b int) {

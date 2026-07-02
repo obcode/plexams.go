@@ -139,3 +139,32 @@ func TestRegistryDescribes(t *testing.T) {
 		t.Errorf("expected both hard and soft constraints, got hard=%d soft=%d", hard, soft)
 	}
 }
+
+func fullCost(st *State) float64 {
+	s, _ := spreadCost(st)
+	a, _ := attractCost(st)
+	l, _ := slotLoadCost(st)
+	u, _ := unplacedCost(st)
+	return s + a + l + u
+}
+
+func TestIncrementalMatchesFull(t *testing.T) {
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 10},
+		{ID: 2, Ancodes: []int{2}, Seats: 10},
+		{ID: 3, Ancodes: []int{3}, Seats: 10},
+		{ID: 4, Ancodes: []int{4}, Seats: 10},
+	}
+	students := []Student{
+		{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1}, {A: 1, B: 2, Weight: 1}, {A: 0, B: 2, Weight: 1}}},
+		{ID: "b", Pairs: []Pair{{A: 2, B: 3, Weight: 1}, {A: 1, B: 3, Weight: 1}}},
+	}
+	attract := []AttractPair{{A: 0, B: 3, Weight: 1}}
+	p := NewProblem(testSlots(), units, students, attract, DefaultWeights())
+	st, _ := Solve(p, fastOpts())
+	inc := st.Cost()
+	full := fullCost(st)
+	if diff := inc - full; diff > 1e-6 || diff < -1e-6 {
+		t.Errorf("incremental cost %.4f != full recompute %.4f (diff %.6f)", inc, full, diff)
+	}
+}

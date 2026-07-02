@@ -41,8 +41,9 @@ func construct(p *Problem) *State {
 		if len(bestFeas) == 0 {
 			continue // leave for the SA repair
 		}
-		st.place(best, chooseSlot(st, best, bestFeas))
+		st.setPhysical(best, chooseSlot(st, best, bestFeas))
 	}
+	st.initCost()
 	return st
 }
 

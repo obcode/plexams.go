@@ -302,6 +302,7 @@ type ComplexityRoot struct {
 		Ancode1          func(childComplexity int) int
 		Ancode2          func(childComplexity int) int
 		CanShareSlot     func(childComplexity int) int
+		InfoOnly         func(childComplexity int) int
 		MainExamer1      func(childComplexity int) int
 		MainExamer2      func(childComplexity int) int
 		Module1          func(childComplexity int) int
@@ -2761,6 +2762,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleConflict.CanShareSlot(childComplexity), true
+
+	case "ExamScheduleConflict.infoOnly":
+		if e.complexity.ExamScheduleConflict.InfoOnly == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.InfoOnly(childComplexity), true
 
 	case "ExamScheduleConflict.mainExamer1":
 		if e.complexity.ExamScheduleConflict.MainExamer1 == nil {
@@ -9576,6 +9584,8 @@ type ExamScheduleConflict {
   rating: ConflictRating
   "true if the pair is declared can-share-slot."
   canShareSlot: Boolean!
+  "true if BOTH exams are external (planned by another faculty): we cannot change it, so this is information only (rating it has no effect) — relevant later for handing it to the other planner."
+  infoOnly: Boolean!
   "the affected students (registered in both), for per-student ACCEPTED ratings."
   affectedStudents: [ConflictStudent!]!
 }
@@ -25559,6 +25569,50 @@ func (ec *executionContext) _ExamScheduleConflict_canShareSlot(ctx context.Conte
 }
 
 func (ec *executionContext) fieldContext_ExamScheduleConflict_canShareSlot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_infoOnly(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_infoOnly(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InfoOnly, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_infoOnly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExamScheduleConflict",
 		Field:      field,
@@ -47531,6 +47585,8 @@ func (ec *executionContext) fieldContext_Query_examScheduleConflicts(_ context.C
 				return ec.fieldContext_ExamScheduleConflict_rating(ctx, field)
 			case "canShareSlot":
 				return ec.fieldContext_ExamScheduleConflict_canShareSlot(ctx, field)
+			case "infoOnly":
+				return ec.fieldContext_ExamScheduleConflict_infoOnly(ctx, field)
 			case "affectedStudents":
 				return ec.fieldContext_ExamScheduleConflict_affectedStudents(ctx, field)
 			}
@@ -71367,6 +71423,11 @@ func (ec *executionContext) _ExamScheduleConflict(ctx context.Context, sel ast.S
 			out.Values[i] = ec._ExamScheduleConflict_rating(ctx, field, obj)
 		case "canShareSlot":
 			out.Values[i] = ec._ExamScheduleConflict_canShareSlot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "infoOnly":
+			out.Values[i] = ec._ExamScheduleConflict_infoOnly(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

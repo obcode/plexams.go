@@ -306,6 +306,8 @@ type ExamScheduleConflict struct {
 	Rating *ConflictRating `json:"rating,omitempty"`
 	// true if the pair is declared can-share-slot.
 	CanShareSlot bool `json:"canShareSlot"`
+	// true if BOTH exams are external (planned by another faculty): we cannot change it, so this is information only (rating it has no effect) — relevant later for handing it to the other planner.
+	InfoOnly bool `json:"infoOnly"`
 	// the affected students (registered in both), for per-student ACCEPTED ratings.
 	AffectedStudents []*ConflictStudent `json:"affectedStudents"`
 }

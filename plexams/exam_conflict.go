@@ -266,6 +266,14 @@ func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamSched
 		}
 	}
 	info := p.examInfoMap(ctx)
+	constraints, _ := p.ConstraintsMap(ctx)
+	foreign := func(ancode int) bool {
+		if ancode >= externalAncodeBase {
+			return true
+		}
+		c := constraints[ancode]
+		return c != nil && c.NotPlannedByMe
+	}
 
 	out := make([]*model.ExamScheduleConflict, 0, len(byPair))
 	for key, a := range byPair {
@@ -280,6 +288,7 @@ func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamSched
 			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1,
 			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2,
 			StudentCount: len(a.students), Proximity: a.label, CanShareSlot: canShare[key],
+			InfoOnly:         foreign(key[0]) && foreign(key[1]),
 			AffectedStudents: affected,
 		}
 		if r, ok := ratingByPair[key]; ok {

@@ -104,6 +104,10 @@ func (p *Plexams) CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPai
 			existing[[2]int{pr[0], pr[1]}] = true
 		}
 	}
+	// pairs already forced into the same slot by a sameSlot constraint need no
+	// "may share a slot" suggestion — they must be together anyway.
+	sameSlotRoot := p.sameSlotGroups(ctx)
+
 	byKey := make(map[string][]*model.AssembledExam)
 	for _, e := range assembled {
 		key := e.ZpaExam.Module + "|" + firstProgram(e)
@@ -121,6 +125,9 @@ func (p *Plexams) CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPai
 				if existing[[2]int{a, b}] {
 					continue
 				}
+				if r, ok := sameSlotRoot[a]; ok && r == sameSlotRoot[b] {
+					continue // already forced same slot via sameSlot constraint
+				}
 				out = append(out, examPair(a, b, info))
 			}
 		}
@@ -132,6 +139,43 @@ func (p *Plexams) CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPai
 		return out[i].Ancode2 < out[j].Ancode2
 	})
 	return out, nil
+}
+
+// sameSlotGroups returns, per ancode that is in a sameSlot constraint, a group root
+// ancode, so two ancodes with the same root must share a slot.
+func (p *Plexams) sameSlotGroups(ctx context.Context) map[int]int {
+	root := make(map[int]int)
+	var find func(int) int
+	find = func(x int) int {
+		if r, ok := root[x]; ok && r != x {
+			root[x] = find(r)
+			return root[x]
+		}
+		return x
+	}
+	constraints, err := p.ConstraintsMap(ctx)
+	if err != nil {
+		return root
+	}
+	for ancode, c := range constraints {
+		if c == nil {
+			continue
+		}
+		for _, other := range c.SameSlot {
+			if _, ok := root[ancode]; !ok {
+				root[ancode] = ancode
+			}
+			if _, ok := root[other]; !ok {
+				root[other] = other
+			}
+			root[find(ancode)] = find(other)
+		}
+	}
+	// path-compress everything to a stable root
+	for k := range root {
+		root[k] = find(k)
+	}
+	return root
 }
 
 type examInfo struct {

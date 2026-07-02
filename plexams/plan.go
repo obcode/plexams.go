@@ -424,6 +424,11 @@ func (p *Plexams) SlotForAncode(ctx context.Context, ancode int) (*model.Slot, e
 	if planEntry == nil {
 		return nil, nil
 	}
+	// day/slot 0 means "no in-period slot" (e.g. an external exam whose time lies
+	// outside our exam period). That is not an error — the exam simply has no slot.
+	if planEntry.DayNumber == 0 && planEntry.SlotNumber == 0 {
+		return nil, nil
+	}
 
 	for _, slot := range p.semesterConfig.Slots {
 		if planEntry.DayNumber == slot.DayNumber && planEntry.SlotNumber == slot.SlotNumber {

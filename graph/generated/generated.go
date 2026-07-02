@@ -291,6 +291,19 @@ type ComplexityRoot struct {
 		Teacher  func(childComplexity int) int
 	}
 
+	ExamScheduleConflict struct {
+		Ancode1      func(childComplexity int) int
+		Ancode2      func(childComplexity int) int
+		CanShareSlot func(childComplexity int) int
+		MainExamer1  func(childComplexity int) int
+		MainExamer2  func(childComplexity int) int
+		Module1      func(childComplexity int) int
+		Module2      func(childComplexity int) int
+		Proximity    func(childComplexity int) int
+		Rating       func(childComplexity int) int
+		StudentCount func(childComplexity int) int
+	}
+
 	ExamScheduleDiagnostics struct {
 		Adjacent             func(childComplexity int) int
 		Further              func(childComplexity int) int
@@ -896,6 +909,7 @@ type ComplexityRoot struct {
 		ExamConflictRatings           func(childComplexity int) int
 		ExamDurationOverrides         func(childComplexity int) int
 		ExamPlanningMailRecipients    func(childComplexity int) int
+		ExamScheduleConflicts         func(childComplexity int) int
 		ExamScheduleConstraints       func(childComplexity int) int
 		ExamerInPlan                  func(childComplexity int) int
 		ExamersWithExamsPlannedByMe   func(childComplexity int) int
@@ -1506,6 +1520,7 @@ type QueryResolver interface {
 	PlannedExam(ctx context.Context, ancode int) (*model.PlannedExam, error)
 	MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error)
 	ConflictingAncodes(ctx context.Context, ancode int) ([]*model.Conflict, error)
+	ExamScheduleConflicts(ctx context.Context) ([]*model.ExamScheduleConflict, error)
 	ExamConflictRatings(ctx context.Context) ([]*model.ExamConflictRating, error)
 	ExamsCanShareSlot(ctx context.Context) ([]*model.ExamPair, error)
 	CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPair, error)
@@ -2690,6 +2705,76 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamPlanningMailRecipient.Teacher(childComplexity), true
+
+	case "ExamScheduleConflict.ancode1":
+		if e.complexity.ExamScheduleConflict.Ancode1 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Ancode1(childComplexity), true
+
+	case "ExamScheduleConflict.ancode2":
+		if e.complexity.ExamScheduleConflict.Ancode2 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Ancode2(childComplexity), true
+
+	case "ExamScheduleConflict.canShareSlot":
+		if e.complexity.ExamScheduleConflict.CanShareSlot == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.CanShareSlot(childComplexity), true
+
+	case "ExamScheduleConflict.mainExamer1":
+		if e.complexity.ExamScheduleConflict.MainExamer1 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.MainExamer1(childComplexity), true
+
+	case "ExamScheduleConflict.mainExamer2":
+		if e.complexity.ExamScheduleConflict.MainExamer2 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.MainExamer2(childComplexity), true
+
+	case "ExamScheduleConflict.module1":
+		if e.complexity.ExamScheduleConflict.Module1 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Module1(childComplexity), true
+
+	case "ExamScheduleConflict.module2":
+		if e.complexity.ExamScheduleConflict.Module2 == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Module2(childComplexity), true
+
+	case "ExamScheduleConflict.proximity":
+		if e.complexity.ExamScheduleConflict.Proximity == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Proximity(childComplexity), true
+
+	case "ExamScheduleConflict.rating":
+		if e.complexity.ExamScheduleConflict.Rating == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.Rating(childComplexity), true
+
+	case "ExamScheduleConflict.studentCount":
+		if e.complexity.ExamScheduleConflict.StudentCount == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.StudentCount(childComplexity), true
 
 	case "ExamScheduleDiagnostics.adjacent":
 		if e.complexity.ExamScheduleDiagnostics.Adjacent == nil {
@@ -6125,6 +6210,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.ExamPlanningMailRecipients(childComplexity), true
 
+	case "Query.examScheduleConflicts":
+		if e.complexity.Query.ExamScheduleConflicts == nil {
+			break
+		}
+
+		return e.complexity.Query.ExamScheduleConflicts(childComplexity), true
+
 	case "Query.examScheduleConstraints":
 		if e.complexity.Query.ExamScheduleConstraints == nil {
 			break
@@ -9430,7 +9522,30 @@ type ExamPair {
   mainExamer2: String!
 }
 
+"""
+ExamScheduleConflict is a conflict in the CURRENT plan: two exams a student is
+registered in that ended up close in time, aggregated over all affected students.
+"""
+type ExamScheduleConflict {
+  ancode1: Int!
+  module1: String!
+  mainExamer1: String!
+  ancode2: Int!
+  module2: String!
+  mainExamer2: String!
+  "number of students registered in both, in the plan."
+  studentCount: Int!
+  "worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY | NEXT_DAY."
+  proximity: String!
+  "the current pair-level rating, if any."
+  rating: ConflictRating
+  "true if the pair is declared can-share-slot."
+  canShareSlot: Boolean!
+}
+
 extend type Query {
+  "Conflicts of the current plan, to review and rate."
+  examScheduleConflicts: [ExamScheduleConflict!]!
   "All conflict ratings currently stored."
   examConflictRatings: [ExamConflictRating!]!
   "Exam pairs declared as allowed to share a slot (no student legitimately sits both)."
@@ -24815,6 +24930,443 @@ func (ec *executionContext) fieldContext_ExamPlanningMailRecipient_exams(_ conte
 				return ec.fieldContext_ExamPlanningMailExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamPlanningMailExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_ancode1(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_ancode1(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode1, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_ancode1(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_module1(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_module1(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module1, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_module1(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_mainExamer1(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_mainExamer1(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MainExamer1, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_mainExamer1(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_ancode2(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_ancode2(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode2, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_ancode2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_module2(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_module2(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module2, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_module2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_mainExamer2(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_mainExamer2(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MainExamer2, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_mainExamer2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_studentCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_studentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_studentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_proximity(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_proximity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Proximity, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_proximity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_rating(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_rating(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rating, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.ConflictRating)
+	fc.Result = res
+	return ec.marshalOConflictRating2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictRating(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_rating(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ConflictRating does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleConflict_canShareSlot(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_canShareSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CanShareSlot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_canShareSlot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -46665,6 +47217,72 @@ func (ec *executionContext) fieldContext_Query_conflictingAncodes(ctx context.Co
 	if fc.Args, err = ec.field_Query_conflictingAncodes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_examScheduleConflicts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_examScheduleConflicts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExamScheduleConflicts(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ExamScheduleConflict)
+	fc.Result = res
+	return ec.marshalNExamScheduleConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleConflictᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_examScheduleConflicts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode1":
+				return ec.fieldContext_ExamScheduleConflict_ancode1(ctx, field)
+			case "module1":
+				return ec.fieldContext_ExamScheduleConflict_module1(ctx, field)
+			case "mainExamer1":
+				return ec.fieldContext_ExamScheduleConflict_mainExamer1(ctx, field)
+			case "ancode2":
+				return ec.fieldContext_ExamScheduleConflict_ancode2(ctx, field)
+			case "module2":
+				return ec.fieldContext_ExamScheduleConflict_module2(ctx, field)
+			case "mainExamer2":
+				return ec.fieldContext_ExamScheduleConflict_mainExamer2(ctx, field)
+			case "studentCount":
+				return ec.fieldContext_ExamScheduleConflict_studentCount(ctx, field)
+			case "proximity":
+				return ec.fieldContext_ExamScheduleConflict_proximity(ctx, field)
+			case "rating":
+				return ec.fieldContext_ExamScheduleConflict_rating(ctx, field)
+			case "canShareSlot":
+				return ec.fieldContext_ExamScheduleConflict_canShareSlot(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleConflict", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -70392,6 +71010,87 @@ func (ec *executionContext) _ExamPlanningMailRecipient(ctx context.Context, sel 
 	return out
 }
 
+var examScheduleConflictImplementors = []string{"ExamScheduleConflict"}
+
+func (ec *executionContext) _ExamScheduleConflict(ctx context.Context, sel ast.SelectionSet, obj *model.ExamScheduleConflict) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, examScheduleConflictImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExamScheduleConflict")
+		case "ancode1":
+			out.Values[i] = ec._ExamScheduleConflict_ancode1(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module1":
+			out.Values[i] = ec._ExamScheduleConflict_module1(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mainExamer1":
+			out.Values[i] = ec._ExamScheduleConflict_mainExamer1(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ancode2":
+			out.Values[i] = ec._ExamScheduleConflict_ancode2(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module2":
+			out.Values[i] = ec._ExamScheduleConflict_module2(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mainExamer2":
+			out.Values[i] = ec._ExamScheduleConflict_mainExamer2(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentCount":
+			out.Values[i] = ec._ExamScheduleConflict_studentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "proximity":
+			out.Values[i] = ec._ExamScheduleConflict_proximity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rating":
+			out.Values[i] = ec._ExamScheduleConflict_rating(ctx, field, obj)
+		case "canShareSlot":
+			out.Values[i] = ec._ExamScheduleConflict_canShareSlot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var examScheduleDiagnosticsImplementors = []string{"ExamScheduleDiagnostics"}
 
 func (ec *executionContext) _ExamScheduleDiagnostics(ctx context.Context, sel ast.SelectionSet, obj *model.ExamScheduleDiagnostics) graphql.Marshaler {
@@ -75045,6 +75744,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_conflictingAncodes(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "examScheduleConflicts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_examScheduleConflicts(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -80901,6 +81622,60 @@ func (ec *executionContext) marshalNExamPlanningMailRecipient2ᚖgithubᚗcomᚋ
 	return ec._ExamPlanningMailRecipient(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNExamScheduleConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleConflictᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamScheduleConflict) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNExamScheduleConflict2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleConflict(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNExamScheduleConflict2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleConflict(ctx context.Context, sel ast.SelectionSet, v *model.ExamScheduleConflict) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExamScheduleConflict(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNExamScheduleDiagnostics2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleDiagnostics(ctx context.Context, sel ast.SelectionSet, v *model.ExamScheduleDiagnostics) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -85123,6 +85898,22 @@ func (ec *executionContext) marshalOConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexa
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOConflictRating2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictRating(ctx context.Context, v any) (*model.ConflictRating, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.ConflictRating)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOConflictRating2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflictRating(ctx context.Context, sel ast.SelectionSet, v *model.ConflictRating) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOConflicts2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConflicts(ctx context.Context, sel ast.SelectionSet, v *model.Conflicts) graphql.Marshaler {

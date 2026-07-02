@@ -29,7 +29,30 @@ type ExamPair {
   mainExamer2: String!
 }
 
+"""
+ExamScheduleConflict is a conflict in the CURRENT plan: two exams a student is
+registered in that ended up close in time, aggregated over all affected students.
+"""
+type ExamScheduleConflict {
+  ancode1: Int!
+  module1: String!
+  mainExamer1: String!
+  ancode2: Int!
+  module2: String!
+  mainExamer2: String!
+  "number of students registered in both, in the plan."
+  studentCount: Int!
+  "worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY | NEXT_DAY."
+  proximity: String!
+  "the current pair-level rating, if any."
+  rating: ConflictRating
+  "true if the pair is declared can-share-slot."
+  canShareSlot: Boolean!
+}
+
 extend type Query {
+  "Conflicts of the current plan, to review and rate."
+  examScheduleConflicts: [ExamScheduleConflict!]!
   "All conflict ratings currently stored."
   examConflictRatings: [ExamConflictRating!]!
   "Exam pairs declared as allowed to share a slot (no student legitimately sits both)."

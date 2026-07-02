@@ -30,6 +30,11 @@ func (r *mutationResolver) RemoveExamsCanShareSlot(ctx context.Context, ancode1 
 	return r.plexams.RemoveExamsCanShareSlot(ctx, ancode1, ancode2)
 }
 
+// ExamScheduleConflicts is the resolver for the examScheduleConflicts field.
+func (r *queryResolver) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamScheduleConflict, error) {
+	return r.plexams.ExamScheduleConflicts(ctx)
+}
+
 // ExamConflictRatings is the resolver for the examConflictRatings field.
 func (r *queryResolver) ExamConflictRatings(ctx context.Context) ([]*model.ExamConflictRating, error) {
 	return r.plexams.ConflictRatings(ctx)

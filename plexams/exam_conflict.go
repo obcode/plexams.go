@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -155,4 +156,145 @@ func examPair(a, b int, info map[int]examInfo) *model.ExamPair {
 		Ancode1: a, Module1: info[a].module, MainExamer1: info[a].examer,
 		Ancode2: b, Module2: info[b].module, MainExamer2: info[b].examer,
 	}
+}
+
+// proximity rank/labels of two placed slots (higher = closer/worse); 0 = far enough
+// to not count as a conflict.
+func slotProximity(a, b *model.Slot) (int, string) {
+	if a.DayNumber == b.DayNumber {
+		switch absInt(a.SlotNumber - b.SlotNumber) {
+		case 0:
+			return 4, "SAME_SLOT"
+		case 1:
+			return 3, "ADJACENT"
+		default:
+			return 2, "SAME_DAY"
+		}
+	}
+	diff := a.Starttime.Sub(b.Starttime)
+	if diff < 0 {
+		diff = -diff
+	}
+	if int(math.Round(diff.Hours()/24)) == 1 {
+		return 1, "NEXT_DAY"
+	}
+	return 0, ""
+}
+
+// ExamScheduleConflicts computes the conflicts of the CURRENT plan (from the plan
+// entries): per student, pairs of their exams that ended up close in time. It
+// aggregates by exam pair (worst proximity, number of affected students) and annotates
+// each with any stored rating and whether the pair is declared can-share-slot. This is
+// the list the user rates to steer the next generation.
+func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamScheduleConflict, error) {
+	planEntries, err := p.PlanEntries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	slotByAncode := make(map[int]*model.Slot)
+	for _, pe := range planEntries {
+		if pe.DayNumber == 0 && pe.SlotNumber == 0 {
+			continue // external, outside the period → no slot
+		}
+		for _, s := range p.semesterConfig.Slots {
+			if s.DayNumber == pe.DayNumber && s.SlotNumber == pe.SlotNumber {
+				slotByAncode[pe.Ancode] = s
+				break
+			}
+		}
+	}
+
+	students, err := p.StudentRegsPerStudentPlanned(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	type agg struct {
+		count int
+		rank  int
+		label string
+	}
+	byPair := make(map[[2]int]*agg)
+	for _, s := range students {
+		placed := make([]int, 0, len(s.Regs))
+		for _, ancode := range s.Regs {
+			if _, ok := slotByAncode[ancode]; ok {
+				placed = append(placed, ancode)
+			}
+		}
+		sort.Ints(placed)
+		for i := 0; i < len(placed); i++ {
+			for j := i + 1; j < len(placed); j++ {
+				rank, label := slotProximity(slotByAncode[placed[i]], slotByAncode[placed[j]])
+				if rank == 0 {
+					continue
+				}
+				key := [2]int{placed[i], placed[j]}
+				a := byPair[key]
+				if a == nil {
+					a = &agg{}
+					byPair[key] = a
+				}
+				a.count++
+				if rank > a.rank {
+					a.rank, a.label = rank, label
+				}
+			}
+		}
+	}
+
+	ratingByPair := make(map[[2]int]model.ConflictRating)
+	if ratings, err := p.dbClient.ConflictRatings(ctx); err == nil {
+		for _, r := range ratings {
+			if r.Mtknr == nil { // pair-level
+				ratingByPair[[2]int{r.Ancode1, r.Ancode2}] = r.Rating
+			}
+		}
+	}
+	canShare := make(map[[2]int]bool)
+	if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err == nil {
+		for _, pr := range pairs {
+			canShare[[2]int{pr[0], pr[1]}] = true
+		}
+	}
+	info := p.examInfoMap(ctx)
+
+	out := make([]*model.ExamScheduleConflict, 0, len(byPair))
+	for key, a := range byPair {
+		ep := examPair(key[0], key[1], info)
+		c := &model.ExamScheduleConflict{
+			Ancode1: ep.Ancode1, Module1: ep.Module1, MainExamer1: ep.MainExamer1,
+			Ancode2: ep.Ancode2, Module2: ep.Module2, MainExamer2: ep.MainExamer2,
+			StudentCount: a.count, Proximity: a.label, CanShareSlot: canShare[key],
+		}
+		if r, ok := ratingByPair[key]; ok {
+			c.Rating = &r
+		}
+		out = append(out, c)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		ri, rj := proxRank(out[i].Proximity), proxRank(out[j].Proximity)
+		if ri != rj {
+			return ri > rj
+		}
+		if out[i].StudentCount != out[j].StudentCount {
+			return out[i].StudentCount > out[j].StudentCount
+		}
+		return out[i].Ancode1 < out[j].Ancode1
+	})
+	return out, nil
+}
+
+func proxRank(label string) int {
+	switch label {
+	case "SAME_SLOT":
+		return 4
+	case "ADJACENT":
+		return 3
+	case "SAME_DAY":
+		return 2
+	case "NEXT_DAY":
+		return 1
+	}
+	return 0
 }

@@ -282,6 +282,25 @@ type ExamPlanningMailRecipient struct {
 	Exams []*ExamPlanningMailExam `json:"exams"`
 }
 
+// ExamScheduleConflict is a conflict in the CURRENT plan: two exams a student is
+// registered in that ended up close in time, aggregated over all affected students.
+type ExamScheduleConflict struct {
+	Ancode1     int    `json:"ancode1"`
+	Module1     string `json:"module1"`
+	MainExamer1 string `json:"mainExamer1"`
+	Ancode2     int    `json:"ancode2"`
+	Module2     string `json:"module2"`
+	MainExamer2 string `json:"mainExamer2"`
+	// number of students registered in both, in the plan.
+	StudentCount int `json:"studentCount"`
+	// worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY | NEXT_DAY.
+	Proximity string `json:"proximity"`
+	// the current pair-level rating, if any.
+	Rating *ConflictRating `json:"rating,omitempty"`
+	// true if the pair is declared can-share-slot.
+	CanShareSlot bool `json:"canShareSlot"`
+}
+
 // Quality report of a generated (or current) exam schedule.
 type ExamScheduleDiagnostics struct {
 	Students             int     `json:"students"`

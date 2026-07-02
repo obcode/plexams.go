@@ -207,6 +207,7 @@ type ComplexityRoot struct {
 		ExcludeDays     func(childComplexity int) int
 		FixedDay        func(childComplexity int) int
 		FixedTime       func(childComplexity int) int
+		Location        func(childComplexity int) int
 		NotPlannedByMe  func(childComplexity int) int
 		Online          func(childComplexity int) int
 		PossibleDays    func(childComplexity int) int
@@ -2381,6 +2382,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Constraints.FixedTime(childComplexity), true
+
+	case "Constraints.location":
+		if e.complexity.Constraints.Location == nil {
+			break
+		}
+
+		return e.complexity.Constraints.Location(childComplexity), true
 
 	case "Constraints.notPlannedByMe":
 		if e.complexity.Constraints.NotPlannedByMe == nil {
@@ -9357,6 +9365,8 @@ type Constraints {
   fixedTime: Time
   sameSlot: [Int!]
   online: Boolean!
+  "fixed exam location/campus, e.g. \"Campus Pasing\"; empty = default campus (Lothstraße). Used for a minimum travel gap between exams at different campuses."
+  location: String
   roomConstraints: RoomConstraints
 }
 
@@ -9383,6 +9393,7 @@ input ConstraintsInput {
   fixedTime: Time
   sameSlot: [Int!]
   online: Boolean
+  location: String
   placesWithSocket: Boolean
   lab: Boolean
   exahm: Boolean
@@ -20175,6 +20186,8 @@ func (ec *executionContext) fieldContext_AssembledExam_constraints(_ context.Con
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
 			case "online":
 				return ec.fieldContext_Constraints_online(ctx, field)
+			case "location":
+				return ec.fieldContext_Constraints_location(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -22994,6 +23007,47 @@ func (ec *executionContext) fieldContext_Constraints_online(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Constraints_location(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Constraints_location(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Location, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Constraints_location(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Constraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Constraints_roomConstraints(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Constraints_roomConstraints(ctx, field)
 	if err != nil {
@@ -25076,6 +25130,8 @@ func (ec *executionContext) fieldContext_ExamPlanningMailExam_constraints(_ cont
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
 			case "online":
 				return ec.fieldContext_Constraints_online(ctx, field)
+			case "location":
+				return ec.fieldContext_Constraints_location(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -34179,6 +34235,8 @@ func (ec *executionContext) fieldContext_Mutation_addConstraints(ctx context.Con
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
 			case "online":
 				return ec.fieldContext_Constraints_online(ctx, field)
+			case "location":
+				return ec.fieldContext_Constraints_location(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -41790,6 +41848,8 @@ func (ec *executionContext) fieldContext_PlannedExam_constraints(_ context.Conte
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
 			case "online":
 				return ec.fieldContext_Constraints_online(ctx, field)
+			case "location":
+				return ec.fieldContext_Constraints_location(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -43219,6 +43279,8 @@ func (ec *executionContext) fieldContext_PreExam_constraints(_ context.Context, 
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
 			case "online":
 				return ec.fieldContext_Constraints_online(ctx, field)
+			case "location":
+				return ec.fieldContext_Constraints_location(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -44407,6 +44469,8 @@ func (ec *executionContext) fieldContext_PreplanExam_constraints(_ context.Conte
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
 			case "online":
 				return ec.fieldContext_Constraints_online(ctx, field)
+			case "location":
+				return ec.fieldContext_Constraints_location(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -47291,6 +47355,8 @@ func (ec *executionContext) fieldContext_Query_constraintForAncode(ctx context.C
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
 			case "online":
 				return ec.fieldContext_Constraints_online(ctx, field)
+			case "location":
+				return ec.fieldContext_Constraints_location(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -66197,6 +66263,8 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_constraints(_ co
 				return ec.fieldContext_Constraints_sameSlot(ctx, field)
 			case "online":
 				return ec.fieldContext_Constraints_online(ctx, field)
+			case "location":
+				return ec.fieldContext_Constraints_location(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -69337,7 +69405,7 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"allowedRooms", "notPlannedByMe", "doNotPublish", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "placesWithSocket", "lab", "exahm", "seb", "kdpJiraURL", "maxStudents", "additionalSeats", "comments"}
+	fieldsInOrder := [...]string{"allowedRooms", "notPlannedByMe", "doNotPublish", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "location", "placesWithSocket", "lab", "exahm", "seb", "kdpJiraURL", "maxStudents", "additionalSeats", "comments"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69407,6 +69475,13 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 				return it, err
 			}
 			it.Online = data
+		case "location":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("location"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Location = data
 		case "placesWithSocket":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("placesWithSocket"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -71374,6 +71449,8 @@ func (ec *executionContext) _Constraints(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "location":
+			out.Values[i] = ec._Constraints_location(ctx, field, obj)
 		case "roomConstraints":
 			out.Values[i] = ec._Constraints_roomConstraints(ctx, field, obj)
 		default:

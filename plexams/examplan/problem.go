@@ -50,6 +50,9 @@ type Unit struct {
 	Allowed   []int // allowed slot indices; empty = all slots allowed
 	Fixed     bool
 	FixedSlot int
+	// Location is the exam's campus (empty = default). Exams at different campuses need
+	// travel time, so a same-day pair across campuses is penalized extra.
+	Location string
 	// Foreign: planned by another faculty (external / notPlannedByMe). A conflict
 	// between two Foreign exams is neither optimizable nor our problem, so it is left
 	// out of the objective and the diagnostics; our own fixed (pre-planned) exams are
@@ -65,6 +68,9 @@ type Unit struct {
 type Pair struct {
 	A, B   int
 	Weight float64
+	// CrossLoc: the two exams are at different campuses (extra travel-gap penalty when
+	// they end up on the same day).
+	CrossLoc bool
 }
 
 // Student is one student's conflicting unit pairs, used for the spread objective.
@@ -92,6 +98,7 @@ type Weights struct {
 	SlotLoad      float64 // convex penalty per seat over LoadThreshold in a slot
 	LoadThreshold int     // soft seat threshold per slot
 	Unplaced      float64 // penalty per unplaced unit (dominant)
+	CrossCampus   float64 // extra penalty for a same-day student pair across campuses (travel gap)
 }
 
 // DefaultWeights returns the calibrated weights (tuned against real data, Test26SS,
@@ -110,6 +117,7 @@ func DefaultWeights() Weights {
 		SlotLoad:      0.5,
 		LoadThreshold: 200,
 		Unplaced:      1_000_000,
+		CrossCampus:   3000,
 	}
 }
 

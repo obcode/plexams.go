@@ -147,6 +147,11 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 	if constraintsInput.DoNotPublish != nil {
 		constraints.DoNotPublish = *constraintsInput.DoNotPublish
 	}
+	// location is independent of notPlannedByMe: FK10 exams are notPlannedByMe and carry
+	// a fixed location ("Campus Pasing") for the cross-campus travel gap.
+	if constraintsInput.Location != nil && *constraintsInput.Location != "" {
+		constraints.Location = constraintsInput.Location
+	}
 	if constraintsInput.NotPlannedByMe != nil && *constraintsInput.NotPlannedByMe {
 		constraints.NotPlannedByMe = *constraintsInput.NotPlannedByMe
 	} else { // ignore everything else if exam is not planned by me

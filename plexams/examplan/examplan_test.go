@@ -206,3 +206,25 @@ func TestClosenessUsesRealHoursAcrossDays(t *testing.T) {
 		t.Errorf("across-day should be cheaper than same-day: %.1f >= %.1f", overnightShort, p.W.SameDay)
 	}
 }
+
+func TestCrossCampusSameDayPenalty(t *testing.T) {
+	build := func(cross bool) float64 {
+		units := []Unit{{ID: 1, Seats: 10}, {ID: 2, Seats: 10}}
+		if cross {
+			units[0].Location = "Campus Pasing"
+		}
+		students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1, CrossLoc: cross}}}}
+		p := NewProblem(testSlots(), units, students, nil, DefaultWeights())
+		st := newState(p)
+		st.setPhysical(0, 0) // day1 slot1
+		st.setPhysical(1, 1) // day1 slot2 (same day)
+		st.initCost()
+		return st.spreadTotal
+	}
+	cross := build(true)
+	same := build(false)
+	if cross-same < DefaultWeights().CrossCampus {
+		t.Errorf("cross-campus same-day should add at least CrossCampus (%.0f): cross=%.0f same=%.0f",
+			DefaultWeights().CrossCampus, cross, same)
+	}
+}

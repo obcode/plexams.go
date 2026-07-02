@@ -154,13 +154,15 @@ type Constraints struct {
 	Ancode         int  `json:"ancode"`
 	NotPlannedByMe bool `json:"notPlannedByMe"`
 	// do not upload this exam to the ZPA when publishing the plan.
-	DoNotPublish    bool             `json:"doNotPublish"`
-	ExcludeDays     []*time.Time     `json:"excludeDays,omitempty"`
-	PossibleDays    []*time.Time     `json:"possibleDays,omitempty"`
-	FixedDay        *time.Time       `json:"fixedDay,omitempty"`
-	FixedTime       *time.Time       `json:"fixedTime,omitempty"`
-	SameSlot        []int            `json:"sameSlot,omitempty"`
-	Online          bool             `json:"online"`
+	DoNotPublish bool         `json:"doNotPublish"`
+	ExcludeDays  []*time.Time `json:"excludeDays,omitempty"`
+	PossibleDays []*time.Time `json:"possibleDays,omitempty"`
+	FixedDay     *time.Time   `json:"fixedDay,omitempty"`
+	FixedTime    *time.Time   `json:"fixedTime,omitempty"`
+	SameSlot     []int        `json:"sameSlot,omitempty"`
+	Online       bool         `json:"online"`
+	// fixed exam location/campus, e.g. "Campus Pasing"; empty = default campus (Lothstraße). Used for a minimum travel gap between exams at different campuses.
+	Location        *string          `json:"location,omitempty"`
 	RoomConstraints *RoomConstraints `json:"roomConstraints,omitempty"`
 }
 
@@ -174,6 +176,7 @@ type ConstraintsInput struct {
 	FixedTime        *time.Time   `json:"fixedTime,omitempty"`
 	SameSlot         []int        `json:"sameSlot,omitempty"`
 	Online           *bool        `json:"online,omitempty"`
+	Location         *string      `json:"location,omitempty"`
 	PlacesWithSocket *bool        `json:"placesWithSocket,omitempty"`
 	Lab              *bool        `json:"lab,omitempty"`
 	Exahm            *bool        `json:"exahm,omitempty"`

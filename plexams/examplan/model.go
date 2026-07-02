@@ -105,7 +105,11 @@ func (st *State) studentPenalty(si int) float64 {
 		if a < 0 || b < 0 || a == b {
 			continue
 		}
-		ps += pr.Weight * p.closeness(a, b)
+		c := p.closeness(a, b)
+		if pr.CrossLoc && p.Slots[a].Day == p.Slots[b].Day {
+			c += p.W.CrossCampus // different campuses on the same day: no travel time
+		}
+		ps += pr.Weight * c
 	}
 	return ps
 }

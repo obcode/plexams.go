@@ -200,6 +200,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		u.Examer = e0.ZpaExam.MainExamerID
 		u.Module = e0.ZpaExam.Module
 		u.Program = firstProgram(e0)
+		u.Location = locationOf(constraints[members[0]])
 		u.Allowed = intersectAllowed(allowedSets)
 		units = append(units, u)
 		unitRepeater = append(unitRepeater, repeater)
@@ -220,7 +221,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		units = append(units, examplan.Unit{
 			ID: a, Ancodes: []int{a}, Seats: r.e.StudentRegsCount, Exahm: exahm,
 			Examer: r.e.ZpaExam.MainExamerID, Module: r.e.ZpaExam.Module, Program: firstProgram(r.e),
-			Fixed: true, FixedSlot: r.fixedSlot, Foreign: r.foreign,
+			Fixed: true, FixedSlot: r.fixedSlot, Foreign: r.foreign, Location: locationOf(constraints[a]),
 		})
 		unitOf[a] = idx
 		unitRepeater = append(unitRepeater, r.e.ZpaExam.IsRepeaterExam)
@@ -306,7 +307,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 				case isRepeat:
 					weight = w.RepeatFactor // auto down-weight for (likely) repeats
 				}
-				pairs = append(pairs, examplan.Pair{A: a, B: b, Weight: weight})
+				pairs = append(pairs, examplan.Pair{A: a, B: b, Weight: weight, CrossLoc: units[a].Location != units[b].Location})
 			}
 		}
 		if len(pairs) > 0 {
@@ -544,6 +545,13 @@ func semesterOf(group string) int {
 		n = n*10 + int(c-'0')
 	}
 	return n
+}
+
+func locationOf(c *model.Constraints) string {
+	if c != nil && c.Location != nil {
+		return *c.Location
+	}
+	return ""
 }
 
 func firstProgram(e *model.AssembledExam) string {

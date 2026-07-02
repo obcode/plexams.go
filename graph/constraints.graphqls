@@ -31,6 +31,8 @@ type Constraints {
   fixedTime: Time
   sameSlot: [Int!]
   online: Boolean!
+  "fixed exam location/campus, e.g. \"Campus Pasing\"; empty = default campus (Lothstraße). Used for a minimum travel gap between exams at different campuses."
+  location: String
   roomConstraints: RoomConstraints
 }
 
@@ -57,6 +59,7 @@ input ConstraintsInput {
   fixedTime: Time
   sameSlot: [Int!]
   online: Boolean
+  location: String
   placesWithSocket: Boolean
   lab: Boolean
   exahm: Boolean

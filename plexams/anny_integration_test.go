@@ -7,6 +7,7 @@ import (
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/internal/mongotest"
+	"github.com/obcode/plexams.go/plexams/anny"
 )
 
 // Characterization tests for the DB-backed Anny booking logic that feeds the Terminplan
@@ -31,6 +32,7 @@ func annyTestPlexams(t *testing.T) (*Plexams, context.Context, time.Time) {
 		},
 		allSlots: []*model.Slot{{DayNumber: 1, SlotNumber: 1, Starttime: slotStart}},
 	}
+	p.anny = anny.New(dbClient, anny.Config{})
 	return p, ctx, slotStart
 }
 
@@ -169,9 +171,9 @@ func TestAnnyConfigRoundTrip(t *testing.T) {
 		t.Fatalf("stored names = %v, want [Braun Meier]", set.PersonalizationNames)
 	}
 
-	names := p.annyPersonalizationNames(ctx)
+	names := p.anny.PersonalizationNames(ctx)
 	if len(names) != 2 {
-		t.Errorf("annyPersonalizationNames = %v, want 2 names", names)
+		t.Errorf("PersonalizationNames = %v, want 2 names", names)
 	}
 }
 

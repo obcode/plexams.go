@@ -8,6 +8,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/obcode/plexams.go/plexams/email"
 	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
@@ -21,6 +22,7 @@ type Plexams struct {
 	planer         *Planer
 	email          *Email
 	sender         *email.Sender
+	anny           *anny.Service
 	semesterConfig *model.SemesterConfig
 	// allDays/allSlots hold the list of days/slots from `from` (day 1) through
 	// `until`. They currently equal semesterConfig.Days/.Slots (there is no
@@ -130,6 +132,16 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		NoreplyMail: plexams.email.noreplyMail,
 		PlanerName:  plexams.planer.Name,
 		PlanerEmail: plexams.planer.Email,
+	})
+
+	var annyDB anny.DB
+	if plexams.dbClient != nil {
+		annyDB = plexams.dbClient
+	}
+	plexams.anny = anny.New(annyDB, anny.Config{
+		Token:                    viper.GetString("anny.token"),
+		URL:                      viper.GetString("anny.url"),
+		SeedPersonalizationNames: personalizationNamesFromConfig(),
 	})
 
 	if plexams.dbClient != nil {

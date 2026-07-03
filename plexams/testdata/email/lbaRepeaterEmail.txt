@@ -1,0 +1,21 @@
+Hallo,
+
+nachfolgend die von mir geplanten Wiederholungsprüfungen von Lehrbeauftragten im Semester 2026 SS, mit Terminen und Aufsichten – damit Du weißt, wen Du ggf. noch einmal erinnern musst.
+
+Die betroffenen Aufsichten sind in Cc.
+
+**Programmieren**
+
+- **Prüfender:** LBA X <x@hm.edu>
+- **Termin:** Mo, 06.07.2026, 08:30 Uhr
+- **Anmeldungen:** IF: 3, IB: 1
+- **Aufsicht:** Prof. C <c@hm.edu>
+
+Bei Rückfragen kannst Du direkt auf diese E-Mail antworten.
+
+Mit freundlichen Grüßen
+Test Planer
+Prüfungsplanung der FK07
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

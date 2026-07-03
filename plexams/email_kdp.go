@@ -1,13 +1,10 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"sort"
 	"strings"
-	txttmpl "text/template"
 	"time"
 
 	"github.com/jszwec/csvutil"
@@ -301,21 +298,8 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 		return err
 	}
 
-	textTmpl, err := txttmpl.New("kdpExahmEmail.tmpl").Funcs(txttmpl.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/kdpExahmEmail.tmpl")
+	text, html, err := p.renderMarkdownEmail("kdpExahmEmail.md.tmpl", false, data)
 	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	if err := textTmpl.Execute(bufText, data); err != nil {
-		return err
-	}
-
-	htmlTmpl, err := template.New("emailBaseHTML.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/kdpExahmEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	if err := htmlTmpl.Execute(bufHTML, data); err != nil {
 		return err
 	}
 
@@ -327,7 +311,7 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] EXaHM/SEB – Raumübersicht für das KDP", p.semester)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Kdp}, ccEmails, subject, bufText.Bytes(), bufHTML.Bytes(), attachments, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Kdp}, ccEmails, subject, text, html, attachments, false); err != nil {
 		return err
 	}
 	if run {

@@ -1,0 +1,20 @@
+Sehr geehrte Damen und Herren,
+
+für die Prüfungsplanung der Fakultät 07 im Semester 2026 SS benötigen wir die folgenden Räume zu den angegebenen Zeiten.
+
+Die Zeiten enthalten jeweils ca. 15 Minuten Vor- und Nachlauf.
+
+**Raum R1.234**
+
+- Mo, 06.07.2026
+    - 08:15 – 10:15 Uhr
+    - 10:15 – 12:15 Uhr
+
+Vielen Dank im Voraus.
+
+Mit freundlichen Grüßen
+Test Planer
+Prüfungsplanung der FK07
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

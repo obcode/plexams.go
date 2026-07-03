@@ -162,3 +162,46 @@ func TestBatch3EmailsGolden(t *testing.T) {
 	assertGolden(t, "unplannedExamEmail.txt", textU)
 	assertGolden(t, "unplannedExamEmail.html", htmlU)
 }
+
+// TestBatch3bEmailsGolden locks the four nested-list emails (rooms, KDP, LBA repeaters).
+func TestBatch3bEmailsGolden(t *testing.T) {
+	rooms := []*roomRequestEmailRoom{{
+		Room: "R1.234",
+		Days: []*roomRequestEmailDay{{
+			Date:  "Mo, 06.07.2026",
+			Times: []*roomRequestEmailTime{{From: "08:15", Until: "10:15"}, {From: "10:15", Until: "12:15"}},
+		}},
+	}}
+	kdp := &KdpEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Slots: []*kdpSlot{{
+		Date: "Mo, 06.07.2026", Time: "08:30",
+		Rooms: []*kdpRoom{{RoomName: "T3.023", Exams: []*kdpExamInRoom{
+			{Ancode: 111, Module: "Mathe", Examer: "Prof. A", Type: "EXaHM", Seats: 30, Detail: "30 Plätze, 90 Min."},
+			{Ancode: 222, Module: "Physik", Examer: "Prof. B", Type: "SEB", Seats: 5, Detail: "5 Plätze, 90 Min."},
+		}}},
+	}}}
+	lba := &LbaRepeaterEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Exams: []*lbaRepeaterExam{{
+		Module: "Programmieren", Examer: lbaPerson{Name: "LBA X", Email: "x@hm.edu"},
+		Date: "Mo, 06.07.2026", Time: "08:30",
+		Programs:     []lbaProgram{{Name: "IF", Count: 3}, {Name: "IB", Count: 1}},
+		Invigilators: []lbaPerson{{Name: "Prof. C", Email: "c@hm.edu"}},
+	}}}
+
+	cases := []struct {
+		name string
+		tmpl string
+		data any
+	}{
+		{"roomRequestEmail", "roomRequestEmail.md.tmpl", &RoomRequestEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Rooms: rooms}},
+		{"roomsSecretariatEmail", "roomsSecretariatEmail.md.tmpl", &SecretariatRoomsEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Rooms: rooms}},
+		{"kdpExahmEmail", "kdpExahmEmail.md.tmpl", kdp},
+		{"lbaRepeaterEmail", "lbaRepeaterEmail.md.tmpl", lba},
+	}
+	for _, c := range cases {
+		text, html, err := (&Plexams{}).renderMarkdownEmail(c.tmpl, false, c.data)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		assertGolden(t, c.name+".txt", text)
+		assertGolden(t, c.name+".html", html)
+	}
+}

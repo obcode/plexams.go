@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+
+	"github.com/obcode/plexams.go/plexams/optimize"
 )
 
 // Options controls the simulated-annealing optimizer.
@@ -77,71 +79,82 @@ func Optimize(p *Problem, reg *Registry, opts Options) (*Plan, Result) {
 	rng := rand.New(rand.NewSource(opts.Seed)) //nolint:gosec // not security relevant
 	plan := Greedy(p, reg, rng)
 
-	cost, _, _ := reg.Cost(p, plan)
-	best := plan.Clone()
-	bestCost := cost
-
 	movable := movablePositions(p)
 	result := Result{Iterations: opts.Iterations}
 
-	progressEnabled := opts.OnProgress != nil && opts.ProgressEvery > 0
-
 	if len(movable) > 0 && len(p.Invigilators) > 0 {
-		bestIter := 0
-		for it := 0; it < opts.Iterations; it++ {
-			if progressEnabled && it%opts.ProgressEvery == 0 {
+		model := &invigModel{p: p, reg: reg, plan: plan, movable: movable}
+		// The greedy start already drew from rng; share the same stream with the anneal
+		// (opts.Rng) so the result is identical to the old inline loop.
+		oopts := optimize.Options{
+			Iterations:        opts.Iterations,
+			StartTemp:         opts.StartTemp,
+			EndTemp:           opts.EndTemp,
+			Rng:               rng,
+			StopWhenConverged: opts.StopOnBalance,
+			StagnationLimit:   opts.StagnationLimit,
+			ProgressEvery:     opts.ProgressEvery,
+		}
+		if opts.OnProgress != nil && opts.ProgressEvery > 0 {
+			oopts.OnProgress = func(pr optimize.Progress) {
+				// model.bestBalance/bestUnfilled are refreshed in Converged(), which the
+				// engine calls exactly when the best plan is (re)snapshotted.
 				opts.OnProgress(Progress{
-					Iteration: it,
-					Total:     opts.Iterations,
-					BestCost:  bestCost,
-					Balance:   p.BalanceSatisfied(best),
-					Unfilled:  len(best.Unfilled()),
+					Iteration: pr.Iteration, Total: pr.Total, BestCost: pr.BestCost,
+					Balance: model.bestBalance, Unfilled: model.bestUnfilled,
 				})
 			}
-			// Stop early only when the search has actually converged: the
-			// temperature is near its floor (so "no improvement" is meaningful,
-			// not just high-temperature wandering), the best plan has not improved
-			// for a while, and it is balanced and fully covered.
-			if opts.StopOnBalance && it-bestIter > opts.StagnationLimit &&
-				temperature(opts, it) <= opts.EndTemp*4 &&
-				p.BalanceSatisfied(best) && len(best.Unfilled()) == 0 {
-				result.Iterations = it
-				result.StoppedEarly = true
-				break
-			}
-
-			changes := proposeMove(p, plan, rng, movable)
-			if changes == nil {
-				continue
-			}
-			plan.apply(changes)
-			if !feasible(p, reg, plan, changes) {
-				plan.undo(changes)
-				continue
-			}
-
-			newCost, _, _ := reg.Cost(p, plan)
-			delta := newCost - cost
-			if delta <= 0 || rng.Float64() < math.Exp(-delta/temperature(opts, it)) {
-				cost = newCost
-				if cost < bestCost {
-					bestCost = cost
-					best = plan.Clone()
-					bestIter = it
-				}
-			} else {
-				plan.undo(changes)
-			}
 		}
+		res := optimize.Anneal(model, oopts)
+		plan = model.plan // Anneal restores the model to the best plan found
+		result.Iterations = res.Iterations
+		result.StoppedEarly = res.StoppedEarly
 	}
 
-	total, byConstraint, violations := reg.Cost(p, best)
+	total, byConstraint, violations := reg.Cost(p, plan)
 	result.Cost = total
 	result.CostByConstraint = byConstraint
 	result.Violations = violations
-	result.BalanceSatisfied = p.BalanceSatisfied(best)
-	result.Unfilled = len(best.Unfilled())
-	return best, result
+	result.BalanceSatisfied = p.BalanceSatisfied(plan)
+	result.Unfilled = len(plan.Unfilled())
+	return plan, result
+}
+
+// invigModel adapts the invigilation plan to the generic optimize.Model: the state is
+// the *Plan, Cost is the registry cost, a Propose is one proposeMove kept hard-feasible
+// (apply → registry veto → undo). Converged() reports the balance/coverage target and
+// caches it for the progress bridge (the engine calls it when best is snapshotted).
+type invigModel struct {
+	p            *Problem
+	reg          *Registry
+	plan         *Plan
+	movable      []int
+	bestBalance  bool
+	bestUnfilled int
+}
+
+func (m *invigModel) Cost() float64 {
+	c, _, _ := m.reg.Cost(m.p, m.plan)
+	return c
+}
+func (m *invigModel) Snapshot() any { return m.plan.Clone() }
+func (m *invigModel) Restore(s any) { m.plan = s.(*Plan) }
+func (m *invigModel) Propose(rng *rand.Rand) func() {
+	changes := proposeMove(m.p, m.plan, rng, m.movable)
+	if changes == nil {
+		return nil
+	}
+	m.plan.apply(changes)
+	if !feasible(m.p, m.reg, m.plan, changes) {
+		m.plan.undo(changes)
+		return nil
+	}
+	return func() { m.plan.undo(changes) }
+}
+func (m *invigModel) Converged() bool {
+	m.bestBalance = m.p.BalanceSatisfied(m.plan)
+	m.bestUnfilled = len(m.plan.Unfilled())
+	return m.bestBalance && m.bestUnfilled == 0
 }
 
 // Greedy fills the open positions, most-constrained first, always choosing the
@@ -276,13 +289,4 @@ func staticEligibleCount(p *Problem, posIdx int) int {
 		}
 	}
 	return n
-}
-
-// temperature is a geometric cooling schedule from StartTemp to EndTemp.
-func temperature(opts Options, it int) float64 {
-	if opts.Iterations <= 1 {
-		return opts.EndTemp
-	}
-	frac := float64(it) / float64(opts.Iterations-1)
-	return opts.StartTemp * math.Pow(opts.EndTemp/opts.StartTemp, frac)
 }

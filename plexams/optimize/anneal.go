@@ -38,6 +38,12 @@ type Options struct {
 	// is then irrelevant, and early stop triggers on stagnation alone.
 	StrictImprove bool
 
+	// Rng, if set, is used as the random source instead of seeding a fresh one from Seed.
+	// This lets a caller share one RNG stream across a constructive pass and the anneal
+	// (so the result is identical to an inline loop that used the same rng) — used by the
+	// invigilation solver, whose greedy start draws from the same stream.
+	Rng *rand.Rand
+
 	// OnProgress, if set, is called every ProgressEvery iterations with a snapshot
 	// of the current best. It is throttled on purpose: per-iteration calls would
 	// dominate the runtime with I/O.
@@ -105,7 +111,10 @@ type Detailer interface {
 // Model restored to the best state found. The Model is responsible for starting from
 // (and only ever moving through) hard-feasible states.
 func Anneal(m Model, opts Options) Result {
-	rng := rand.New(rand.NewSource(opts.Seed)) //nolint:gosec // deterministic, not security relevant
+	rng := opts.Rng
+	if rng == nil {
+		rng = rand.New(rand.NewSource(opts.Seed)) //nolint:gosec // deterministic, not security relevant
+	}
 	conv, hasConv := m.(Converger)
 	det, hasDet := m.(Detailer)
 

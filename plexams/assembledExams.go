@@ -62,12 +62,6 @@ func (p *Plexams) PrepareAssembledExams() error {
 		return err
 	}
 
-	// externalExams, err := p.ExternalExams(ctx)
-	// if err != nil {
-	// 	log.Error().Err(err).Msg("cannot get external exams")
-	// 	return err
-	// }
-
 	// Batch-load student regs and conflicts once per program (indexed by ancode),
 	// instead of one DB lookup per primuss exam.
 	programsSet := make(map[string]bool)
@@ -379,7 +373,6 @@ type PrimussAncode struct {
 	Ancode  int
 }
 
-// func primussAncodesToZpaAncodes(exams []*model.ConnectedExam, externalExams []*model.ExternalExam) map[PrimussAncode]int {
 func primussAncodesToZpaAncodes(exams []*model.ConnectedExam) map[PrimussAncode]int {
 	ancodesMap := make(map[PrimussAncode]int)
 	for _, exam := range exams {

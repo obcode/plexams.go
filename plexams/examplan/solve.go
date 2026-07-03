@@ -128,7 +128,7 @@ func (p *Problem) Registry() optimize.Registry[*State] {
 			fixedC{}, allowedC{}, sameStudentC{}, capacityC{},
 		},
 		Soft: []optimize.SoftConstraint[*State]{
-			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, placementC{p.W},
+			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, tbauFillC{p.W}, placementC{p.W},
 		},
 	}
 }
@@ -226,6 +226,14 @@ func (c slotLoadC) Info() optimize.Info {
 		Description: "Prüfungen möglichst gleichmäßig über die Slots verteilen: Abweichung von der idealen Auslastung (Anmeldungen / Slots) wird bestraft (leere und sehr volle Slots)."}
 }
 func (slotLoadC) Cost(st *State) (float64, []optimize.Violation) { return slotLoadCost(st) }
+
+type tbauFillC struct{ w Weights }
+
+func (c tbauFillC) Info() optimize.Info {
+	return optimize.Info{Name: "tbau-fill", Title: "T-Bau-Räume ausnutzen (EXaHM/SEB)", Kind: optimize.KindSoft, Weight: c.w.TbauFill, Tier: 15,
+		Description: "Phase EXaHM/SEB: die gebuchten T-Bau-Räume möglichst voll mit EXaHM/SEB-Prüfungen belegen (ungenutzte gebuchte Sitze werden bestraft)."}
+}
+func (tbauFillC) Cost(st *State) (float64, []optimize.Violation) { return tbauFillCost(st) }
 
 type placementC struct{ w Weights }
 

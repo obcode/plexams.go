@@ -32,7 +32,8 @@ type SlotRef struct {
 type Slot struct {
 	SlotRef
 	Seats      int // total room seats available this slot (global capacity)
-	ExahmSeats int // booked EXaHM seats this slot
+	ExahmSeats int // booked (T-building) EXaHM seats this slot
+	SebSeats   int // booked (T-building) SEB seats this slot
 }
 
 // Unit is one schedulable item. A "same slot" group is pre-merged into a single Unit
@@ -43,6 +44,7 @@ type Unit struct {
 	Ancodes []int // all ancodes in this (same-slot) unit
 	Seats   int   // students to seat this slot (sum over members)
 	Exahm   bool
+	Seb     bool
 	Examer  int    // main examer id, for same-examer clustering (0 = unknown)
 	Module  string // for section clustering
 	Program string
@@ -99,6 +101,7 @@ type Weights struct {
 	LoadThreshold int     // soft seat threshold per slot
 	Unplaced      float64 // penalty per unplaced unit (dominant)
 	CrossCampus   float64 // extra penalty for a same-day student pair across campuses (travel gap)
+	TbauFill      float64 // per unused booked T-building seat (EXaHM/SEB phase A: fill the rooms)
 }
 
 // DefaultWeights returns the calibrated weights (tuned against real data, Test26SS,
@@ -118,7 +121,25 @@ func DefaultWeights() Weights {
 		LoadThreshold: 200,
 		Unplaced:      1_000_000,
 		CrossCampus:   3000,
+		TbauFill:      0, // off by default (Phase B); the EXaHM/SEB phase A sets it high
 	}
+}
+
+// tbauPenalty is the T-building fill penalty for a slot given the EXaHM/SEB seats
+// currently placed there: unused booked seats (EXaHM + SEB) times TbauFill. Minimizing
+// it fills the booked rooms; SEB overflow (used > booked) is allowed (goes to R-rooms).
+func (p *Problem) tbauPenalty(slotIdx, exahmUsed, sebUsed int) float64 {
+	if p.W.TbauFill == 0 {
+		return 0
+	}
+	unused := 0
+	if d := p.Slots[slotIdx].ExahmSeats - exahmUsed; d > 0 {
+		unused += d
+	}
+	if d := p.Slots[slotIdx].SebSeats - sebUsed; d > 0 {
+		unused += d
+	}
+	return p.W.TbauFill * float64(unused)
 }
 
 // Problem is the immutable input to the solver.

@@ -146,8 +146,9 @@ func fullCost(st *State) float64 {
 	s, _ := spreadCost(st)
 	a, _ := attractCost(st)
 	l, _ := slotLoadCost(st)
+	f, _ := tbauFillCost(st)
 	u, _ := unplacedCost(st)
-	return s + a + l + u
+	return s + a + l + f + u
 }
 
 func TestIncrementalMatchesFull(t *testing.T) {

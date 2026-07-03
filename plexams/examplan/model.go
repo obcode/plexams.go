@@ -19,11 +19,13 @@ type State struct {
 	SlotOf    []int
 	slotSeats []int
 	slotExahm []int
+	slotSeb   []int
 
 	pS            []float64
 	spreadTotal   float64
 	attractTotal  float64
 	slotLoadTotal float64
+	tbauFillTotal float64
 	nUnplaced     int
 }
 
@@ -33,6 +35,7 @@ func newState(p *Problem) *State {
 		SlotOf:    make([]int, len(p.Units)),
 		slotSeats: make([]int, len(p.Slots)),
 		slotExahm: make([]int, len(p.Slots)),
+		slotSeb:   make([]int, len(p.Slots)),
 		pS:        make([]float64, len(p.Students)),
 	}
 	for i := range st.SlotOf {
@@ -52,10 +55,14 @@ func newState(p *Problem) *State {
 func (st *State) setPhysical(u, s int) {
 	seats := st.P.Units[u].Seats
 	exahm := st.P.Units[u].Exahm
+	seb := st.P.Units[u].Seb
 	if old := st.SlotOf[u]; old >= 0 {
 		st.slotSeats[old] -= seats
 		if exahm {
 			st.slotExahm[old] -= seats
+		}
+		if seb {
+			st.slotSeb[old] -= seats
 		}
 	}
 	st.SlotOf[u] = s
@@ -63,6 +70,9 @@ func (st *State) setPhysical(u, s int) {
 		st.slotSeats[s] += seats
 		if exahm {
 			st.slotExahm[s] += seats
+		}
+		if seb {
+			st.slotSeb[s] += seats
 		}
 	}
 }
@@ -85,8 +95,10 @@ func (st *State) initCost() {
 		}
 	}
 	st.slotLoadTotal = 0
+	st.tbauFillTotal = 0
 	for s := range p.Slots {
 		st.slotLoadTotal += p.loadPenalty(st.slotSeats[s])
+		st.tbauFillTotal += p.tbauPenalty(s, st.slotExahm[s], st.slotSeb[s])
 	}
 	st.nUnplaced = 0
 	for _, u := range p.movable {
@@ -143,28 +155,34 @@ func (st *State) moveUnit(u, newSlot int) func() {
 	savedSpread := st.spreadTotal
 	savedAttract := st.attractTotal
 	savedLoad := st.slotLoadTotal
+	savedFill := st.tbauFillTotal
 	savedUnplaced := st.nUnplaced
 
-	// slot-load delta over the (at most two) touched slots
-	loadBefore := 0.0
+	// slot-load + T-building-fill deltas over the (at most two) touched slots
+	loadBefore, fillBefore := 0.0, 0.0
 	if old >= 0 {
 		loadBefore += p.loadPenalty(st.slotSeats[old])
+		fillBefore += p.tbauPenalty(old, st.slotExahm[old], st.slotSeb[old])
 	}
 	if newSlot >= 0 {
 		loadBefore += p.loadPenalty(st.slotSeats[newSlot])
+		fillBefore += p.tbauPenalty(newSlot, st.slotExahm[newSlot], st.slotSeb[newSlot])
 	}
 	oldAttractU := st.attractOfUnit(u)
 
 	st.setPhysical(u, newSlot)
 
-	loadAfter := 0.0
+	loadAfter, fillAfter := 0.0, 0.0
 	if old >= 0 {
 		loadAfter += p.loadPenalty(st.slotSeats[old])
+		fillAfter += p.tbauPenalty(old, st.slotExahm[old], st.slotSeb[old])
 	}
 	if newSlot >= 0 {
 		loadAfter += p.loadPenalty(st.slotSeats[newSlot])
+		fillAfter += p.tbauPenalty(newSlot, st.slotExahm[newSlot], st.slotSeb[newSlot])
 	}
 	st.slotLoadTotal += loadAfter - loadBefore
+	st.tbauFillTotal += fillAfter - fillBefore
 	st.attractTotal += st.attractOfUnit(u) - oldAttractU
 	if old < 0 && newSlot >= 0 {
 		st.nUnplaced--
@@ -183,6 +201,7 @@ func (st *State) moveUnit(u, newSlot int) func() {
 		st.spreadTotal = savedSpread
 		st.attractTotal = savedAttract
 		st.slotLoadTotal = savedLoad
+		st.tbauFillTotal = savedFill
 		st.nUnplaced = savedUnplaced
 	}
 }
@@ -298,13 +317,13 @@ func (st *State) Propose(rng *rand.Rand) func() {
 
 // Cost is the maintained total soft objective (O(1)).
 func (st *State) Cost() float64 {
-	return st.spreadTotal + st.attractTotal + st.slotLoadTotal + st.P.W.Unplaced*float64(st.nUnplaced)
+	return st.spreadTotal + st.attractTotal + st.slotLoadTotal + st.tbauFillTotal + st.P.W.Unplaced*float64(st.nUnplaced)
 }
 
 func (st *State) Snapshot() any {
 	return snapshot{
-		slotOf: cp(st.SlotOf), slotSeats: cp(st.slotSeats), slotExahm: cp(st.slotExahm),
-		pS: cpF(st.pS), spread: st.spreadTotal, attract: st.attractTotal, load: st.slotLoadTotal, nUnplaced: st.nUnplaced,
+		slotOf: cp(st.SlotOf), slotSeats: cp(st.slotSeats), slotExahm: cp(st.slotExahm), slotSeb: cp(st.slotSeb),
+		pS: cpF(st.pS), spread: st.spreadTotal, attract: st.attractTotal, load: st.slotLoadTotal, fill: st.tbauFillTotal, nUnplaced: st.nUnplaced,
 	}
 }
 
@@ -313,18 +332,20 @@ func (st *State) Restore(a any) {
 	copy(st.SlotOf, sn.slotOf)
 	copy(st.slotSeats, sn.slotSeats)
 	copy(st.slotExahm, sn.slotExahm)
+	copy(st.slotSeb, sn.slotSeb)
 	copy(st.pS, sn.pS)
 	st.spreadTotal = sn.spread
 	st.attractTotal = sn.attract
 	st.slotLoadTotal = sn.load
+	st.tbauFillTotal = sn.fill
 	st.nUnplaced = sn.nUnplaced
 }
 
 type snapshot struct {
-	slotOf, slotSeats, slotExahm []int
-	pS                           []float64
-	spread, attract, load        float64
-	nUnplaced                    int
+	slotOf, slotSeats, slotExahm, slotSeb []int
+	pS                                    []float64
+	spread, attract, load, fill           float64
+	nUnplaced                             int
 }
 
 func cp(s []int) []int {
@@ -392,6 +413,15 @@ func slotLoadCost(st *State) (float64, []optimize.Violation) {
 	var total float64
 	for s := range p.Slots {
 		total += p.loadPenalty(st.slotSeats[s])
+	}
+	return total, nil
+}
+
+func tbauFillCost(st *State) (float64, []optimize.Violation) {
+	p := st.P
+	var total float64
+	for s := range p.Slots {
+		total += p.tbauPenalty(s, st.slotExahm[s], st.slotSeb[s])
 	}
 	return total, nil
 }

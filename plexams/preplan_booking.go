@@ -2,11 +2,11 @@ package plexams
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/anny"
+	"github.com/obcode/plexams.go/plexams/preplancalc"
 )
 
 // slotBooking is the EXaHM/SEB capacity WE have already booked in Anny (T-building)
@@ -16,10 +16,6 @@ type slotBooking struct {
 	sebSeats   int
 	seats      int             // total physical seats of the booked rooms (each room once)
 	rooms      map[string]bool // normalized names of rooms already booked for the slot
-}
-
-func normRoomName(s string) string {
-	return strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(s), " ", ""))
 }
 
 // annyBookedBySlot returns, for each given slot, the EXaHM/SEB seats we have already
@@ -65,7 +61,7 @@ func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[
 	annyRoom := make(map[string]*model.Room, len(rooms))
 	for _, r := range rooms {
 		if !r.Deactivated && r.RequestWith == model.RoomRequestTypeAnny {
-			annyRoom[normRoomName(r.Name)] = r
+			annyRoom[preplancalc.NormRoomName(r.Name)] = r
 		}
 	}
 
@@ -87,7 +83,7 @@ func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[
 			if start.Before(b.StartDate) || start.Add(block).After(b.EndDate) {
 				continue
 			}
-			n := normRoomName(b.Room)
+			n := preplancalc.NormRoomName(b.Room)
 			if sb.rooms[n] {
 				continue
 			}
@@ -110,22 +106,4 @@ func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[
 		}
 	}
 	return result, nil
-}
-
-// roomsToBook greedily picks rooms (largest first) that are NOT yet booked for the
-// slot, enough to cover the still-missing seats (gap). Empty when nothing is missing.
-func roomsToBook(rooms []roomCapacity, gap int, booked map[string]bool) []string {
-	names := make([]string, 0)
-	remaining := gap
-	for _, r := range rooms {
-		if remaining <= 0 {
-			break
-		}
-		if booked != nil && booked[normRoomName(r.name)] {
-			continue
-		}
-		names = append(names, r.name)
-		remaining -= r.seats
-	}
-	return names
 }

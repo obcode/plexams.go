@@ -34,23 +34,6 @@ func TestSlotBlockDuration(t *testing.T) {
 	}
 }
 
-func TestNormRoomName(t *testing.T) {
-	// normRoomName (preplan_booking.go) normalizes room names for the preplan room views.
-	// It must stay identical to anny.normalizeRoomName (tested in the anny package).
-	tests := []struct{ in, want string }{
-		{"R1.006", "R1.006"},
-		{" r1.006 ", "R1.006"},
-		{"T 3.014", "T3.014"},
-		{"  a b  c ", "ABC"},
-		{"", ""},
-	}
-	for _, tt := range tests {
-		if got := normRoomName(tt.in); got != tt.want {
-			t.Errorf("normRoomName(%q) = %q, want %q", tt.in, got, tt.want)
-		}
-	}
-}
-
 func TestMergeBookedEntriesByRoom(t *testing.T) {
 	at := func(h, m int) time.Time { return time.Date(2026, 1, 20, h, m, 0, 0, time.Local) }
 

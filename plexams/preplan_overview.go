@@ -5,13 +5,8 @@ import (
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/preplancalc"
 )
-
-// roomCapacity is one room usable for a given kind, with its seat count.
-type roomCapacity struct {
-	name  string
-	seats int
-}
 
 // PreplanOverview computes, per slot (plus one bucket for unslotted pre-exams),
 // the EXaHM/SEB seat demand with a suggested set of rooms, and the program
@@ -74,9 +69,9 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 		exams := groups[key]
 
 		need := &model.PreplanSlotNeed{
-			Exahm:     kindNeed(exams, "EXaHM", exahmRooms),
-			Seb:       kindNeed(exams, "SEB", sebRooms),
-			Conflicts: programConflicts(exams),
+			Exahm:     preplancalc.KindNeed(exams, "EXaHM", exahmRooms),
+			Seb:       preplancalc.KindNeed(exams, "SEB", sebRooms),
+			Conflicts: preplancalc.ProgramConflicts(exams),
 		}
 		if key.slotted {
 			day, slot := key.day, key.slot
@@ -86,8 +81,8 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 				need.Starttime = start
 			}
 			if sb := booked[[2]int{day, slot}]; sb != nil {
-				applyBooking(need.Exahm, sb.exahmSeats, roomsForKind(exams, "EXaHM", exahmRooms), sb.rooms)
-				applyBooking(need.Seb, sb.sebSeats, roomsForKind(exams, "SEB", sebRooms), sb.rooms)
+				preplancalc.ApplyBooking(need.Exahm, sb.exahmSeats, preplancalc.RoomsForKind(exams, "EXaHM", exahmRooms), sb.rooms)
+				preplancalc.ApplyBooking(need.Seb, sb.sebSeats, preplancalc.RoomsForKind(exams, "SEB", sebRooms), sb.rooms)
 			}
 		}
 		slots = append(slots, need)
@@ -96,19 +91,9 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 	return &model.PreplanOverview{Slots: slots}, nil
 }
 
-// applyBooking fills the booked seats and the still-to-book rooms for one kind.
-func applyBooking(need *model.PreplanKindNeed, bookedSeats int, rooms []roomCapacity, bookedRooms map[string]bool) {
-	need.SeatsBooked = bookedSeats
-	gap := need.SeatsNeeded - bookedSeats
-	if gap < 0 {
-		gap = 0
-	}
-	need.RoomsToBook = roomsToBook(rooms, gap, bookedRooms)
-}
-
 // preplanRoomCapacities returns the usable EXaHM and SEB rooms (sorted by seats
 // descending). EXaHM rooms use Seats; SEB rooms use SebSeats when set, else Seats.
-func (p *Plexams) preplanRoomCapacities(ctx context.Context) (exahm, seb []roomCapacity, err error) {
+func (p *Plexams) preplanRoomCapacities(ctx context.Context) (exahm, seb []preplancalc.RoomCapacity, err error) {
 	rooms, err := p.dbClient.Rooms(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -124,18 +109,18 @@ func (p *Plexams) preplanRoomCapacities(ctx context.Context) (exahm, seb []roomC
 			continue
 		}
 		if room.Exahm {
-			exahm = append(exahm, roomCapacity{name: room.Name, seats: room.Seats})
+			exahm = append(exahm, preplancalc.RoomCapacity{Name: room.Name, Seats: room.Seats})
 		}
 		if room.Seb {
 			seats := room.Seats
 			if room.SebSeats != nil {
 				seats = *room.SebSeats
 			}
-			seb = append(seb, roomCapacity{name: room.Name, seats: seats})
+			seb = append(seb, preplancalc.RoomCapacity{Name: room.Name, Seats: seats})
 		}
 	}
-	sort.Slice(exahm, func(i, j int) bool { return exahm[i].seats > exahm[j].seats })
-	sort.Slice(seb, func(i, j int) bool { return seb[i].seats > seb[j].seats })
+	sort.Slice(exahm, func(i, j int) bool { return exahm[i].Seats > exahm[j].Seats })
+	sort.Slice(seb, func(i, j int) bool { return seb[i].Seats > seb[j].Seats })
 	return exahm, seb, nil
 }
 
@@ -162,120 +147,4 @@ func (p *Plexams) maxNonAnnySebRoom(ctx context.Context) (int, error) {
 		}
 	}
 	return maxSeats, nil
-}
-
-func totalSeats(rooms []roomCapacity) int {
-	total := 0
-	for _, r := range rooms {
-		total += r.seats
-	}
-	return total
-}
-
-// kindNeed sums the seat demand of the pre-exams of one kind in a slot and greedily
-// picks rooms (largest first) to cover it, honouring per-exam room restrictions.
-func kindNeed(exams []*model.PreplanExam, kind string, rooms []roomCapacity) *model.PreplanKindNeed {
-	count, seats := 0, 0
-	for _, pe := range exams {
-		if pe.ExamKind == kind {
-			count++
-			seats += pe.ExpectedStudents
-		}
-	}
-
-	pool := roomsForKind(exams, kind, rooms)
-	available := totalSeats(pool)
-
-	roomNames := make([]string, 0)
-	remaining := seats
-	for _, r := range pool {
-		if remaining <= 0 {
-			break
-		}
-		roomNames = append(roomNames, r.name)
-		remaining -= r.seats
-	}
-
-	return &model.PreplanKindNeed{
-		ExamCount:      count,
-		SeatsNeeded:    seats,
-		RoomsSuggested: len(roomNames),
-		Rooms:          roomNames,
-		SeatsAvailable: available,
-		SeatsBooked:    0,
-		RoomsToBook:    []string{},
-	}
-}
-
-// roomsForKind restricts the candidate rooms by the per-exam allowedRooms of the
-// slot's exams of that kind: only when every such exam restricts its rooms is the
-// pool narrowed to the union of their allowedRooms (an exam without a restriction
-// may use any room, so the full set is kept).
-func roomsForKind(exams []*model.PreplanExam, kind string, rooms []roomCapacity) []roomCapacity {
-	allowed := make(map[string]bool)
-	hasRestriction, hasUnrestricted := false, false
-	for _, pe := range exams {
-		if pe.ExamKind != kind {
-			continue
-		}
-		var ar []string
-		if pe.Constraints != nil && pe.Constraints.RoomConstraints != nil {
-			ar = pe.Constraints.RoomConstraints.AllowedRooms
-		}
-		if len(ar) == 0 {
-			hasUnrestricted = true
-			continue
-		}
-		hasRestriction = true
-		for _, r := range ar {
-			allowed[normRoomName(r)] = true
-		}
-	}
-	if !hasRestriction || hasUnrestricted {
-		return rooms
-	}
-	filtered := make([]roomCapacity, 0, len(rooms))
-	for _, r := range rooms {
-		if allowed[normRoomName(r.name)] {
-			filtered = append(filtered, r)
-		}
-	}
-	return filtered
-}
-
-// programConflicts finds study programs that appear in more than one pre-exam of
-// the same slot (a possible student clash, since Primuss conflicts aren't known yet).
-func programConflicts(exams []*model.PreplanExam) []*model.PreplanProgramConflict {
-	type acc struct {
-		ids     []int
-		modules []string
-	}
-	byProgram := make(map[string]*acc)
-	order := make([]string, 0)
-	for _, pe := range exams {
-		for _, prog := range pe.Programs {
-			a, ok := byProgram[prog]
-			if !ok {
-				a = &acc{}
-				byProgram[prog] = a
-				order = append(order, prog)
-			}
-			a.ids = append(a.ids, pe.ID)
-			a.modules = append(a.modules, pe.Module)
-		}
-	}
-
-	conflicts := make([]*model.PreplanProgramConflict, 0)
-	sort.Strings(order)
-	for _, prog := range order {
-		a := byProgram[prog]
-		if len(a.ids) > 1 {
-			conflicts = append(conflicts, &model.PreplanProgramConflict{
-				Program:        prog,
-				PreplanExamIDs: a.ids,
-				Modules:        a.modules,
-			})
-		}
-	}
-	return conflicts
 }

@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/preplancalc"
 )
 
 // preplanCapacityFactor is the usable fraction of a slot's booked Anny seats. 1.0 =
@@ -48,7 +49,7 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 // reported so the planner can book step by step. SEB exams that fit a single R-building
 // lab (seats <= rBauSebThreshold) are reported as "plan in the R-building" instead of
 // being counted as genuinely unplaced.
-func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomCapacity, booked map[[2]int]*slotBooking, rBauSebThreshold int) *model.PreplanValidation {
+func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []preplancalc.RoomCapacity, booked map[[2]int]*slotBooking, rBauSebThreshold int) *model.PreplanValidation {
 	messages := make([]string, 0)
 
 	unassigned := make([]int, 0)
@@ -104,10 +105,10 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomC
 			sb = booked[key]
 		}
 		// honour per-exam room restrictions for the suggestion/capacity
-		exahmPool := roomsForKind(exams, "EXaHM", exahmRooms)
-		sebPool := roomsForKind(exams, "SEB", sebRooms)
-		messages = append(messages, kindBookingMessages(key, "EXaHM", exahm, totalSeats(exahmPool), exahmPool, sb)...)
-		messages = append(messages, kindBookingMessages(key, "SEB", seb, totalSeats(sebPool), sebPool, sb)...)
+		exahmPool := preplancalc.RoomsForKind(exams, "EXaHM", exahmRooms)
+		sebPool := preplancalc.RoomsForKind(exams, "SEB", sebRooms)
+		messages = append(messages, kindBookingMessages(key, "EXaHM", exahm, preplancalc.TotalSeats(exahmPool), exahmPool, sb)...)
+		messages = append(messages, kindBookingMessages(key, "SEB", seb, preplancalc.TotalSeats(sebPool), sebPool, sb)...)
 		// note: same study program in one slot is allowed (soft spreading only), so it
 		// is no longer reported as a finding here.
 	}
@@ -124,7 +125,7 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []roomC
 // kindBookingMessages reports, for one slot and kind, a physical-capacity overflow
 // (can't fit even fully booked) or — when within capacity — the Anny bookings still
 // missing to cover the demand.
-func kindBookingMessages(key [2]int, kind string, needed, available int, rooms []roomCapacity, sb *slotBooking) []string {
+func kindBookingMessages(key [2]int, kind string, needed, available int, rooms []preplancalc.RoomCapacity, sb *slotBooking) []string {
 	if needed == 0 {
 		return nil
 	}
@@ -147,7 +148,7 @@ func kindBookingMessages(key [2]int, kind string, needed, available int, rooms [
 		return nil
 	}
 
-	toBook := roomsToBook(rooms, needed-bookedSeats, bookedRooms)
+	toBook := preplancalc.RoomsToBook(rooms, needed-bookedSeats, bookedRooms)
 	msg := fmt.Sprintf("Slot %d/%d: %s noch %d Plätze zu buchen (gebucht %d von %d nötig)",
 		key[0], key[1], kind, needed-bookedSeats, bookedSeats, needed)
 	if len(toBook) > 0 {

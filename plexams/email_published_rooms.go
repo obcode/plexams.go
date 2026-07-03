@@ -1,12 +1,9 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"sort"
-	txttmpl "text/template"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -205,15 +202,6 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 		return s
 	}
 
-	textTmpl, err := txttmpl.New("publishedRoomsPersonalEmail.tmpl").Funcs(txttmpl.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/publishedRoomsPersonalEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	htmlTmpl, err := template.New("emailBaseHTML.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/jiraOnHTML.tmpl", "tmpl/publishedRoomsPersonalEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Ihre Prüfungsräume", p.semester)
 
 	sent := 0
@@ -250,18 +238,13 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 			Exams:      exams,
 		}
 
-		bufText := new(bytes.Buffer)
-		if err := textTmpl.Execute(bufText, data); err != nil {
-			reporter.Warnf("%s: cannot render text: %v", examer.Fullname, err)
-			continue
-		}
-		bufHTML := new(bytes.Buffer)
-		if err := htmlTmpl.Execute(bufHTML, data); err != nil {
-			reporter.Warnf("%s: cannot render html: %v", examer.Fullname, err)
+		text, html, err := p.renderMarkdownEmail("publishedRoomsPersonalEmail.md.tmpl", true, data)
+		if err != nil {
+			reporter.Warnf("%s: cannot render: %v", examer.Fullname, err)
 			continue
 		}
 
-		if err := p.sendMail(run, []string{examer.Email}, nil, subject, bufText.Bytes(), bufHTML.Bytes(), nil, true); err != nil {
+		if err := p.sendMail(run, []string{examer.Email}, nil, subject, text, html, nil, true); err != nil {
 			reporter.Warnf("error while sending email to %s: %v", examer.Fullname, err)
 			continue
 		}

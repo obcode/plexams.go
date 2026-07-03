@@ -265,3 +265,39 @@ func TestNTAEmailsGolden(t *testing.T) {
 		assertGolden(t, c.name+".html", html)
 	}
 }
+
+// TestPublishedEmailsGolden locks the four "published" emails (batch 4b).
+func TestPublishedEmailsGolden(t *testing.T) {
+	stats := &InvigilationsEmail{
+		NoOfInvigilators: 10, InvigilationInRooms: 1200, ReserveInvigilation: 600,
+		OtherContributions: 120, TodoPerInvigilator: 900, MaxDeviation: 30, MinDeviation: 20,
+		PlanerName: "Test Planer", Teacher: &model.Teacher{Fullname: "Prof. Test"},
+	}
+	rooms := &PublishedRoomsEmail{
+		Teacher: &model.Teacher{Shortname: "tst"}, PlanerName: "Test Planer",
+		Exams: []*publishedRoomsExam{{
+			Ancode: 111, Module: "Mathe", Date: "Mo, 06.07.2026", Time: "08:30",
+			Rooms: []*publishedRoomsRoom{{
+				RoomName: "R1.100", Allocations: []string{"20 Stud., 90 min"},
+				SharedWith: []*publishedRoomsShared{{ExamHeader: "222. Physik (Prof. B)", Allocations: []string{"5 Stud., 90 min", "1 Stud., 120 min, NTA: 25%"}}},
+			}},
+		}},
+	}
+	cases := []struct {
+		name string
+		tmpl string
+		data any
+	}{
+		{"publishedEmailExams", "publishedEmailExams.md.tmpl", &ConstraintsEmail{PlanerName: "Test Planer"}},
+		{"publishedInvigilationPersonalEmail", "publishedInvigilationPersonalEmail.md.tmpl", stats},
+		{"publishedRoomsPersonalEmail", "publishedRoomsPersonalEmail.md.tmpl", rooms},
+	}
+	for _, c := range cases {
+		text, html, err := (&Plexams{}).renderMarkdownEmail(c.tmpl, true, c.data)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		assertGolden(t, c.name+".txt", text)
+		assertGolden(t, c.name+".html", html)
+	}
+}

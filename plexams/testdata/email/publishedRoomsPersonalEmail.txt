@@ -1,0 +1,26 @@
+[Antworten bitte nicht via E-Mail, sondern via https://jira.cc.hm.edu/servicedesk/customer/portal/13]
+
+Hallo tst,
+
+die Räume für Ihre Prüfungen sind geplant und veröffentlicht. Nachfolgend Ihre Prüfungen mit den eingeplanten Räumen, jeweils mit Anzahl der Studierenden, ggf. Reserve, den eingeplanten NTAs und einer evtl. Mitnutzung des Raums durch andere Prüfungen im selben Slot.
+
+**111. Mathe — Mo, 06.07.2026, 08:30 Uhr**
+
+- R1.100: 20 Stud., 90 min
+    - gemeinsam genutzt mit 222. Physik (Prof. B):
+        - 5 Stud., 90 min
+        - 1 Stud., 120 min, NTA: 25%
+
+**Hinweise:**
+
+- Die Räume stehen in der Regel von 15 Minuten vor Prüfungsbeginn bis 10 Minuten nach Prüfungsende zur Verfügung.
+- Bitte setzen Sie Studierende mit Nachteilsausgleich (NTA) nur in die hier geplanten Räume. Möchten Sie eine/n NTA-Studierende/n ausnahmsweise in einen anderen Raum setzen, klären Sie bitte selbst ab, ob die Raumbuchung/-reservierung dafür zeitlich ausreicht (NTAs haben i.d.R. eine verlängerte Bearbeitungszeit).
+
+Bitte prüfen Sie Ihre Räume. Bei Unstimmigkeiten öffnen Sie bitte ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13.
+
+Mit freundlichen Grüßen
+Test Planer
+Prüfungsplanung der FK07
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

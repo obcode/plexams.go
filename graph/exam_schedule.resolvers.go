@@ -47,7 +47,7 @@ func (r *queryResolver) ExamScheduleConstraints(ctx context.Context) ([]*model.O
 // line. The operation runs on a background context so a started (non-dry-run) run
 // finishes and writes even if the client disconnects; the subscription context only
 // governs the streaming.
-func (r *subscriptionResolver) GenerateExamSchedule(ctx context.Context, dryRun bool, seed *int, iterations *int, ignoreRatings *bool) (<-chan *model.LogLine, error) {
+func (r *subscriptionResolver) GenerateExamSchedule(ctx context.Context, dryRun bool, seed *int, iterations *int, ignoreRatings *bool, keepAssigned *bool) (<-chan *model.LogLine, error) {
 	ch := make(chan *model.LogLine, 256)
 
 	var seedVal int64
@@ -59,11 +59,12 @@ func (r *subscriptionResolver) GenerateExamSchedule(ctx context.Context, dryRun 
 		iterVal = *iterations
 	}
 	ignore := ignoreRatings != nil && *ignoreRatings
+	keep := keepAssigned != nil && *keepAssigned
 	reporter := newStreamReporter(ctx, ch)
 
 	go func() {
 		defer close(ch)
-		result, err := r.plexams.GenerateExamSchedule(context.Background(), dryRun, seedVal, iterVal, ignore, reporter)
+		result, err := r.plexams.GenerateExamSchedule(context.Background(), dryRun, seedVal, iterVal, ignore, keep, reporter)
 		if err != nil {
 			log.Error().Err(err).Msg("generate exam schedule failed")
 			reporter.emit(model.LogLevelError, "error: "+err.Error())

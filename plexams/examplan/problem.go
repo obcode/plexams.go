@@ -52,6 +52,9 @@ type Unit struct {
 	Allowed   []int // allowed slot indices; empty = all slots allowed
 	Fixed     bool
 	FixedSlot int
+	// StartSlot is the warm-start slot (this exam's current plan entry), -1 if none.
+	// Used only when solving with warmStart to begin from the existing plan.
+	StartSlot int
 	// Location is the exam's campus (empty = default). Exams at different campuses need
 	// travel time, so a same-day pair across campuses is penalized extra.
 	Location string

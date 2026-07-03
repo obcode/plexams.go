@@ -31,6 +31,13 @@ type Options struct {
 	StopWhenConverged bool
 	StagnationLimit   int
 
+	// StrictImprove turns the search into a greedy local search: only strictly cost-
+	// reducing moves are accepted (no uphill, no equal-cost lateral moves). Used for a
+	// warm start ("improve the current assignment") so the result stays as close to the
+	// starting point as possible — nothing moves without lowering the cost. Temperature
+	// is then irrelevant, and early stop triggers on stagnation alone.
+	StrictImprove bool
+
 	// OnProgress, if set, is called every ProgressEvery iterations with a snapshot
 	// of the current best. It is throttled on purpose: per-iteration calls would
 	// dominate the runtime with I/O.
@@ -123,7 +130,7 @@ func Anneal(m Model, opts Options) Result {
 			opts.OnProgress(Progress{Iteration: it, Total: opts.Iterations, BestCost: bestCost, Detail: bestDetail})
 		}
 		if opts.StopWhenConverged && hasConv && it-bestIter > opts.StagnationLimit &&
-			temperature(opts, it) <= opts.EndTemp*4 && bestConverged {
+			(opts.StrictImprove || temperature(opts, it) <= opts.EndTemp*4) && bestConverged {
 			result.Iterations = it
 			result.StoppedEarly = true
 			break
@@ -135,7 +142,11 @@ func Anneal(m Model, opts Options) Result {
 		}
 		newCost := m.Cost()
 		delta := newCost - cost
-		if delta <= 0 || rng.Float64() < math.Exp(-delta/temperature(opts, it)) {
+		accept := delta < 0 // strict improvement is always accepted
+		if !opts.StrictImprove {
+			accept = delta <= 0 || rng.Float64() < math.Exp(-delta/temperature(opts, it))
+		}
+		if accept {
 			cost = newCost
 			if cost < bestCost {
 				bestCost = cost

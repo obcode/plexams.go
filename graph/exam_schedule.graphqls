@@ -3,9 +3,11 @@ extend type Subscription {
   generateExamSchedule runs the automatic exam-schedule (Terminplan) generation and
   streams its terminal-style output line by line. With dryRun nothing is written; the
   final RESULT line carries the structured examReport either way. A non-dry-run write
-  is refused while the plan is gated (draft sent / published).
+  is refused while the plan is gated (draft sent / published). With keepAssigned the
+  current plan is used as the warm start (only improve, minimal churn) instead of
+  building a fresh assignment from scratch.
   """
-  generateExamSchedule(dryRun: Boolean!, seed: Int, iterations: Int, ignoreRatings: Boolean): LogLine!
+  generateExamSchedule(dryRun: Boolean!, seed: Int, iterations: Int, ignoreRatings: Boolean, keepAssigned: Boolean): LogLine!
 
   """
   generateExamRoomsPhase runs phase A: it schedules ONLY the EXaHM/SEB exams into the

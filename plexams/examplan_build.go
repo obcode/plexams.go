@@ -241,6 +241,13 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		} else {
 			u.Allowed = intersectAllowed(allowedSets)
 		}
+		// warm-start slot = this exam's current plan entry (if any)
+		u.StartSlot = -1
+		if pe := peByAncode[members[0]]; pe != nil {
+			if idx, ok := slotIdx[[2]int{pe.DayNumber, pe.SlotNumber}]; ok {
+				u.StartSlot = idx
+			}
+		}
 		units = append(units, u)
 		unitRepeater = append(unitRepeater, repeater)
 		unitSemester = append(unitSemester, minSem)
@@ -257,6 +264,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			ID: a, Ancodes: []int{a}, Seats: r.e.StudentRegsCount, Exahm: r.exahm, Seb: r.seb,
 			Examer: r.e.ZpaExam.MainExamerID, Module: r.e.ZpaExam.Module, Program: firstProgram(r.e),
 			Fixed: true, FixedSlot: r.fixedSlot, Foreign: r.foreign, Location: locationOf(constraints[a]),
+			StartSlot: -1,
 		})
 		unitOf[a] = idx
 		unitRepeater = append(unitRepeater, r.e.ZpaExam.IsRepeaterExam)
@@ -538,19 +546,22 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 // non-fixed plan entries (locked / external / not-planned-by-me stay untouched) and
 // removes stale entries of any exam that ended up unplaced. It refuses to write when
 // there are hard violations.
-func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed int64, iterations int, ignoreRatings bool, reporter Reporter) (*ExamScheduleResult, error) {
-	return p.runExamGeneration(ctx, false, dryRun, seed, iterations, ignoreRatings, reporter, condExamScheduleGenerated)
+func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed int64, iterations int, ignoreRatings, keepAssigned bool, reporter Reporter) (*ExamScheduleResult, error) {
+	return p.runExamGeneration(ctx, false, dryRun, seed, iterations, ignoreRatings, keepAssigned, reporter, condExamScheduleGenerated)
 }
 
 // GenerateExamRoomsPhase runs phase A: it schedules only the EXaHM/SEB exams into the
 // booked T-building slots (maximizing room usage), leaving everything else for phase B.
 func (p *Plexams) GenerateExamRoomsPhase(ctx context.Context, dryRun bool, seed int64, iterations int, reporter Reporter) (*ExamScheduleResult, error) {
-	return p.runExamGeneration(ctx, true, dryRun, seed, iterations, false, reporter, condExahmSebPlanned)
+	return p.runExamGeneration(ctx, true, dryRun, seed, iterations, false, false, reporter, condExahmSebPlanned)
 }
 
-func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool, seed int64, iterations int, ignoreRatings bool, reporter Reporter, doneCond string) (*ExamScheduleResult, error) {
+func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool, seed int64, iterations int, ignoreRatings, keepAssigned bool, reporter Reporter, doneCond string) (*ExamScheduleResult, error) {
 	if ignoreRatings {
 		reporter.Println("Konflikt-Bewertungen werden für diesen Lauf ignoriert")
+	}
+	if keepAssigned {
+		reporter.Println("Warm-Start: bestehender Plan wird als Ausgangspunkt behalten")
 	}
 	if roomPhase {
 		reporter.Step("EXaHM/SEB-Raumphase wird aufgebaut …")
@@ -580,6 +591,7 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 
 	opts := optimize.DefaultOptions()
 	opts.Seed = seed
+	opts.StrictImprove = keepAssigned // warm start: only strictly-improving moves (low churn)
 	if iterations > 0 {
 		opts.Iterations = iterations
 	}
@@ -587,7 +599,7 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	opts.OnProgress = func(pr optimize.Progress) {
 		reporter.Step(fmt.Sprintf("%d/%d, Kosten %.0f, %s", pr.Iteration, pr.Total, pr.BestCost, pr.Detail))
 	}
-	st, res := examplan.Solve(prob, opts)
+	st, res := examplan.Solve(prob, opts, keepAssigned)
 
 	reg := prob.Registry()
 	total, byC, _ := reg.Cost(st)

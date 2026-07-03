@@ -6,12 +6,43 @@ import (
 	"github.com/obcode/plexams.go/plexams/optimize"
 )
 
-// Solve builds a constructive (most-constrained-first) start and improves it with
-// simulated annealing. The returned State is left at the best assignment found.
-func Solve(p *Problem, opts optimize.Options) (*State, optimize.Result) {
-	st := construct(p)
+// Solve builds a start assignment and improves it with simulated annealing. With
+// warmStart the start is the exams' current plan (Unit.StartSlot) so a re-run only
+// improves and keeps churn low; otherwise it is a fresh most-constrained-first
+// construction. The returned State is left at the best assignment found.
+func Solve(p *Problem, opts optimize.Options, warmStart bool) (*State, optimize.Result) {
+	var st *State
+	if warmStart {
+		st = constructWarm(p)
+	} else {
+		st = construct(p)
+	}
 	res := optimize.Anneal(st, opts)
 	return st, res
+}
+
+// constructWarm starts from the exams' current plan: each movable unit is placed into
+// its StartSlot if that is still hard-feasible (in a deterministic order, so a later
+// unit yields to an already-placed one when a new constraint now forbids the pair). The
+// remaining units (no start slot, or no longer feasible there) are filled in greedily,
+// exactly like a cold construct. This keeps a re-run close to the previous plan.
+func constructWarm(p *Problem) *State {
+	st := newState(p)
+	done := make([]bool, len(p.Units))
+	for u := range p.Units {
+		if p.Units[u].Fixed {
+			done[u] = true
+		}
+	}
+	for _, u := range p.movable { // deterministic order (unit index)
+		if s := p.Units[u].StartSlot; s >= 0 && st.feasible(u, s) {
+			st.setPhysical(u, s)
+			done[u] = true
+		}
+	}
+	fillRemaining(st, done)
+	st.initCost()
+	return st
 }
 
 // construct greedily places the movable units, most-constrained first (fewest
@@ -25,8 +56,19 @@ func construct(p *Problem) *State {
 			done[u] = true
 		}
 	}
+	fillRemaining(st, done)
+	st.initCost()
+	return st
+}
 
-	for remaining := len(p.movable); remaining > 0; remaining-- {
+// fillRemaining greedily places every movable unit not yet marked done, most-
+// constrained first (fewest feasible slots, then largest), each into the feasible slot
+// that adds the least cost. Units with no feasible slot are left unplaced for the SA.
+// done must already cover the fixed units (and, for a warm start, the ones kept at their
+// current slot). It does not call initCost — the caller does.
+func fillRemaining(st *State, done []bool) {
+	p := st.P
+	for {
 		best, bestFeas := -1, []int(nil)
 		for _, u := range p.movable {
 			if done[u] {
@@ -37,14 +79,15 @@ func construct(p *Problem) *State {
 				best, bestFeas = u, feas
 			}
 		}
+		if best == -1 {
+			return // all movable units handled
+		}
 		done[best] = true
 		if len(bestFeas) == 0 {
 			continue // leave for the SA repair
 		}
 		st.setPhysical(best, chooseSlot(st, best, bestFeas))
 	}
-	st.initCost()
-	return st
 }
 
 func feasibleSlots(st *State, u int) []int {

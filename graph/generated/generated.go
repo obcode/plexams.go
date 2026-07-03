@@ -1234,7 +1234,7 @@ type ComplexityRoot struct {
 		AssignInvigilations                  func(childComplexity int, dryRun bool, seed *int, iterations *int) int
 		AssignRoomsForExams                  func(childComplexity int) int
 		GenerateExamRoomsPhase               func(childComplexity int, dryRun bool, seed *int, iterations *int) int
-		GenerateExamSchedule                 func(childComplexity int, dryRun bool, seed *int, iterations *int, ignoreRatings *bool) int
+		GenerateExamSchedule                 func(childComplexity int, dryRun bool, seed *int, iterations *int, ignoreRatings *bool, keepAssigned *bool) int
 		ImportAnnyBookings                   func(childComplexity int) int
 		ImportExamsFromZpa                   func(childComplexity int) int
 		ImportInvigilatorRequirementsFromZpa func(childComplexity int) int
@@ -1659,7 +1659,7 @@ type SubscriptionResolver interface {
 	SendEmailNewNta(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error)
 	SendEmailNTARoomAlone(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error)
 	SendEmailNTAPlanned(ctx context.Context, run bool) (<-chan *model.LogLine, error)
-	GenerateExamSchedule(ctx context.Context, dryRun bool, seed *int, iterations *int, ignoreRatings *bool) (<-chan *model.LogLine, error)
+	GenerateExamSchedule(ctx context.Context, dryRun bool, seed *int, iterations *int, ignoreRatings *bool, keepAssigned *bool) (<-chan *model.LogLine, error)
 	GenerateExamRoomsPhase(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error)
 	AssignRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error)
 	ImportAnnyBookings(ctx context.Context) (<-chan *model.LogLine, error)
@@ -8060,7 +8060,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Subscription.GenerateExamSchedule(childComplexity, args["dryRun"].(bool), args["seed"].(*int), args["iterations"].(*int), args["ignoreRatings"].(*bool)), true
+		return e.complexity.Subscription.GenerateExamSchedule(childComplexity, args["dryRun"].(bool), args["seed"].(*int), args["iterations"].(*int), args["ignoreRatings"].(*bool), args["keepAssigned"].(*bool)), true
 
 	case "Subscription.importAnnyBookings":
 		if e.complexity.Subscription.ImportAnnyBookings == nil {
@@ -9848,9 +9848,11 @@ type ExamDurationOverride {
   generateExamSchedule runs the automatic exam-schedule (Terminplan) generation and
   streams its terminal-style output line by line. With dryRun nothing is written; the
   final RESULT line carries the structured examReport either way. A non-dry-run write
-  is refused while the plan is gated (draft sent / published).
+  is refused while the plan is gated (draft sent / published). With keepAssigned the
+  current plan is used as the warm start (only improve, minimal churn) instead of
+  building a fresh assignment from scratch.
   """
-  generateExamSchedule(dryRun: Boolean!, seed: Int, iterations: Int, ignoreRatings: Boolean): LogLine!
+  generateExamSchedule(dryRun: Boolean!, seed: Int, iterations: Int, ignoreRatings: Boolean, keepAssigned: Boolean): LogLine!
 
   """
   generateExamRoomsPhase runs phase A: it schedules ONLY the EXaHM/SEB exams into the
@@ -17436,6 +17438,11 @@ func (ec *executionContext) field_Subscription_generateExamSchedule_args(ctx con
 		return nil, err
 	}
 	args["ignoreRatings"] = arg3
+	arg4, err := ec.field_Subscription_generateExamSchedule_argsKeepAssigned(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["keepAssigned"] = arg4
 	return args, nil
 }
 func (ec *executionContext) field_Subscription_generateExamSchedule_argsDryRun(
@@ -17503,6 +17510,24 @@ func (ec *executionContext) field_Subscription_generateExamSchedule_argsIgnoreRa
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ignoreRatings"))
 	if tmp, ok := rawArgs["ignoreRatings"]; ok {
+		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+	}
+
+	var zeroVal *bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_generateExamSchedule_argsKeepAssigned(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*bool, error) {
+	if _, ok := rawArgs["keepAssigned"]; !ok {
+		var zeroVal *bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("keepAssigned"))
+	if tmp, ok := rawArgs["keepAssigned"]; ok {
 		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
 	}
 
@@ -61749,7 +61774,7 @@ func (ec *executionContext) _Subscription_generateExamSchedule(ctx context.Conte
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Subscription().GenerateExamSchedule(rctx, fc.Args["dryRun"].(bool), fc.Args["seed"].(*int), fc.Args["iterations"].(*int), fc.Args["ignoreRatings"].(*bool))
+		return ec.resolvers.Subscription().GenerateExamSchedule(rctx, fc.Args["dryRun"].(bool), fc.Args["seed"].(*int), fc.Args["iterations"].(*int), fc.Args["ignoreRatings"].(*bool), fc.Args["keepAssigned"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

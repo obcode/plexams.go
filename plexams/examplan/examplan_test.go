@@ -40,7 +40,7 @@ func TestSolveSpreadsConflictingExams(t *testing.T) {
 	}
 	p := NewProblem(testSlots(), units, students, nil, DefaultWeights())
 
-	st, _ := Solve(p, fastOpts())
+	st, _ := Solve(p, fastOpts(), false)
 
 	if st.SlotOf[0] < 0 || st.SlotOf[1] < 0 {
 		t.Fatalf("exams not placed: %v", st.SlotOf)
@@ -94,7 +94,7 @@ func TestSolveRespectsNTAOverrun(t *testing.T) {
 	p := NewProblem(slots, units, nil, nil, DefaultWeights())
 	p.SetNTAOverruns([][2]int{{0, 1}})
 
-	st, _ := Solve(p, fastOpts())
+	st, _ := Solve(p, fastOpts(), false)
 	if st.SlotOf[0] != 0 {
 		t.Fatalf("A expected in slot idx0, got %d", st.SlotOf[0])
 	}
@@ -116,7 +116,7 @@ func TestSolveRespectsExahmCapacity(t *testing.T) {
 	}
 	p := NewProblem(slots, units, nil, nil, DefaultWeights())
 
-	st, _ := Solve(p, fastOpts())
+	st, _ := Solve(p, fastOpts(), false)
 
 	if st.SlotOf[0] != 2 {
 		t.Errorf("EXaHM exam must land in the only EXaHM slot (idx2), got %d", st.SlotOf[0])
@@ -137,7 +137,7 @@ func TestSolveKeepsFixedAndAttracts(t *testing.T) {
 	w.SlotLoad = 0 // isolate the attract term from the even-distribution term
 	p := NewProblem(testSlots(), units, nil, attract, w)
 
-	st, _ := Solve(p, fastOpts())
+	st, _ := Solve(p, fastOpts(), false)
 
 	if st.SlotOf[0] != 0 {
 		t.Errorf("fixed exam moved: %v", st.SlotOf)
@@ -159,12 +159,53 @@ func TestSolveDeterministic(t *testing.T) {
 		}
 		return NewProblem(testSlots(), units, students, nil, DefaultWeights())
 	}
-	sa, _ := Solve(build(), fastOpts())
-	sb, _ := Solve(build(), fastOpts())
+	sa, _ := Solve(build(), fastOpts(), false)
+	sb, _ := Solve(build(), fastOpts(), false)
 	for i := range sa.SlotOf {
 		if sa.SlotOf[i] != sb.SlotOf[i] {
 			t.Fatalf("not deterministic at unit %d: %v vs %v", i, sa.SlotOf, sb.SlotOf)
 		}
+	}
+}
+
+func TestWarmStartUsesCurrentAssignment(t *testing.T) {
+	// the warm-start construction begins from the exams' current slots (StartSlot),
+	// rather than reconstructing greedily from scratch.
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 10, StartSlot: 2}, // Tue 08:30
+		{ID: 2, Ancodes: []int{2}, Seats: 10, StartSlot: 0}, // Mon 08:30
+	}
+	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1}}}}
+	p := NewProblem(testSlots(), units, students, nil, DefaultWeights())
+
+	st := constructWarm(p)
+	if st.SlotOf[0] != 2 || st.SlotOf[1] != 0 {
+		t.Errorf("warm start did not begin from the current assignment: got %v, want [2 0]", st.SlotOf)
+	}
+	if vs := p.Registry().HardViolations(st); len(vs) != 0 {
+		t.Errorf("unexpected hard violations in warm start: %+v", vs)
+	}
+}
+
+func TestWarmStartRepairsInfeasibleStart(t *testing.T) {
+	// the current plan puts two conflicting exams in the SAME slot (a hard violation,
+	// e.g. after a data change): warm start keeps one, moves the other to a feasible slot.
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 10, StartSlot: 0},
+		{ID: 2, Ancodes: []int{2}, Seats: 10, StartSlot: 0}, // same slot as unit 0
+	}
+	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1}}}}
+	p := NewProblem(testSlots(), units, students, nil, DefaultWeights())
+
+	st, _ := Solve(p, fastOpts(), true)
+	if st.SlotOf[0] < 0 || st.SlotOf[1] < 0 {
+		t.Fatalf("exams not placed: %v", st.SlotOf)
+	}
+	if st.SlotOf[0] == st.SlotOf[1] {
+		t.Errorf("warm start left a hard same-slot violation: %v", st.SlotOf)
+	}
+	if vs := p.Registry().HardViolations(st); len(vs) != 0 {
+		t.Errorf("unexpected hard violations: %+v", vs)
 	}
 }
 
@@ -213,7 +254,7 @@ func TestIncrementalMatchesFull(t *testing.T) {
 	}
 	attract := []AttractPair{{A: 0, B: 3, Weight: 1}}
 	p := NewProblem(testSlots(), units, students, attract, DefaultWeights())
-	st, _ := Solve(p, fastOpts())
+	st, _ := Solve(p, fastOpts(), false)
 	inc := st.Cost()
 	full := fullCost(st)
 	if diff := inc - full; diff > 1e-6 || diff < -1e-6 {
@@ -227,7 +268,7 @@ func TestAcceptedWeightZeroStillHardSameSlot(t *testing.T) {
 	// pair still forbids the same slot (it stays in hardConf).
 	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 0}}}}
 	p := NewProblem(testSlots(), units, students, nil, DefaultWeights())
-	st, _ := Solve(p, fastOpts())
+	st, _ := Solve(p, fastOpts(), false)
 	if st.SlotOf[0] == st.SlotOf[1] {
 		t.Errorf("weight-0 pair must still not share a slot: %v", st.SlotOf)
 	}

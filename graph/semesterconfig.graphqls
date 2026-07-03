@@ -67,6 +67,8 @@ type SemesterConfigInput {
   "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
   mucDaiSlots: [[Int!]!]
   emails: Emails!
+  "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
+  examGapMinutes: Int
 }
 
 input SemesterConfigInputData {
@@ -77,6 +79,8 @@ input SemesterConfigInputData {
   "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
   mucDaiSlots: [[Int!]!]
   emails: EmailsInput!
+  "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
+  examGapMinutes: Int
 }
 
 input EmailsInput {
@@ -124,4 +128,6 @@ type SemesterConfig {
   from: Time!
   until: Time!
   emails: Emails!
+  "Effective travel/break buffer (minutes) between a student's consecutive exams."
+  examGapMinutes: Int!
 }

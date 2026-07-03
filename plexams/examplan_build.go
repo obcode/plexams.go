@@ -10,7 +10,6 @@ import (
 	"github.com/obcode/plexams.go/plexams/examplan"
 	"github.com/obcode/plexams.go/plexams/optimize"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 // smallExamThreshold: exams with at most this many registrations are "small" and, for
@@ -460,7 +459,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	// of their exams; an NTA time extension eats into it. If a student's occupied time
 	// for exam A (its duration, extended for that student's NTA) plus the buffer reaches
 	// into the next slot, they may not take another of their exams in the following slot.
-	gapMin := viper.GetInt("planer.examGapMinutes")
+	gapMin := sc.ExamGapMinutes
 	if gapMin <= 0 {
 		gapMin = defaultExamGapMinutes
 	}

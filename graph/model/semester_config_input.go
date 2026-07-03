@@ -22,4 +22,7 @@ type SemesterConfigInput struct {
 	// [dayNumber, slotNumber] pairs (day 1 = from).
 	MucDaiSlots [][]int `json:"mucDaiSlots,omitempty" bson:"mucDaiSlots,omitempty"`
 	Emails      *Emails `json:"emails" bson:"emails"`
+	// ExamGapMinutes is the travel/break buffer a student needs between two of their
+	// consecutive exams (nil = use the built-in default). See defaultExamGapMinutes.
+	ExamGapMinutes *int `json:"examGapMinutes,omitempty" bson:"examGapMinutes,omitempty"`
 }

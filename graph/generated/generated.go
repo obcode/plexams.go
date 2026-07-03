@@ -1124,6 +1124,7 @@ type ComplexityRoot struct {
 	SemesterConfig struct {
 		Days           func(childComplexity int) int
 		Emails         func(childComplexity int) int
+		ExamGapMinutes func(childComplexity int) int
 		ForbiddenSlots func(childComplexity int) int
 		From           func(childComplexity int) int
 		MucDaiSlots    func(childComplexity int) int
@@ -1134,12 +1135,13 @@ type ComplexityRoot struct {
 	}
 
 	SemesterConfigInput struct {
-		Emails        func(childComplexity int) int
-		ForbiddenDays func(childComplexity int) int
-		From          func(childComplexity int) int
-		MucDaiSlots   func(childComplexity int) int
-		Slots         func(childComplexity int) int
-		Until         func(childComplexity int) int
+		Emails         func(childComplexity int) int
+		ExamGapMinutes func(childComplexity int) int
+		ForbiddenDays  func(childComplexity int) int
+		From           func(childComplexity int) int
+		MucDaiSlots    func(childComplexity int) int
+		Slots          func(childComplexity int) int
+		Until          func(childComplexity int) int
 	}
 
 	Slot struct {
@@ -7583,6 +7585,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SemesterConfig.Emails(childComplexity), true
 
+	case "SemesterConfig.examGapMinutes":
+		if e.complexity.SemesterConfig.ExamGapMinutes == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.ExamGapMinutes(childComplexity), true
+
 	case "SemesterConfig.forbiddenSlots":
 		if e.complexity.SemesterConfig.ForbiddenSlots == nil {
 			break
@@ -7638,6 +7647,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SemesterConfigInput.Emails(childComplexity), true
+
+	case "SemesterConfigInput.examGapMinutes":
+		if e.complexity.SemesterConfigInput.ExamGapMinutes == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.ExamGapMinutes(childComplexity), true
 
 	case "SemesterConfigInput.forbiddenDays":
 		if e.complexity.SemesterConfigInput.ForbiddenDays == nil {
@@ -11118,6 +11134,8 @@ type SemesterConfigInput {
   "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
   mucDaiSlots: [[Int!]!]
   emails: Emails!
+  "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
+  examGapMinutes: Int
 }
 
 input SemesterConfigInputData {
@@ -11128,6 +11146,8 @@ input SemesterConfigInputData {
   "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
   mucDaiSlots: [[Int!]!]
   emails: EmailsInput!
+  "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
+  examGapMinutes: Int
 }
 
 input EmailsInput {
@@ -11175,6 +11195,8 @@ type SemesterConfig {
   from: Time!
   until: Time!
   emails: Emails!
+  "Effective travel/break buffer (minutes) between a student's consecutive exams."
+  examGapMinutes: Int!
 }
 `, BuiltIn: false},
 	{Name: "../special_interest.graphqls", Input: `extend type Query {
@@ -47302,6 +47324,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_until(ctx, field)
 			case "emails":
 				return ec.fieldContext_SemesterConfig_emails(ctx, field)
+			case "examGapMinutes":
+				return ec.fieldContext_SemesterConfig_examGapMinutes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
 		},
@@ -47357,6 +47381,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfigInput(_ context.Con
 				return ec.fieldContext_SemesterConfigInput_mucDaiSlots(ctx, field)
 			case "emails":
 				return ec.fieldContext_SemesterConfigInput_emails(ctx, field)
+			case "examGapMinutes":
+				return ec.fieldContext_SemesterConfigInput_examGapMinutes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfigInput", field.Name)
 		},
@@ -47415,6 +47441,8 @@ func (ec *executionContext) fieldContext_Query_newSemesterConfigDefaults(_ conte
 				return ec.fieldContext_SemesterConfigInput_mucDaiSlots(ctx, field)
 			case "emails":
 				return ec.fieldContext_SemesterConfigInput_emails(ctx, field)
+			case "examGapMinutes":
+				return ec.fieldContext_SemesterConfigInput_examGapMinutes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfigInput", field.Name)
 		},
@@ -57374,6 +57402,50 @@ func (ec *executionContext) fieldContext_SemesterConfig_emails(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _SemesterConfig_examGapMinutes(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_examGapMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamGapMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_examGapMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SemesterConfigInput_from(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SemesterConfigInput_from(ctx, field)
 	if err != nil {
@@ -57647,6 +57719,47 @@ func (ec *executionContext) fieldContext_SemesterConfigInput_emails(_ context.Co
 				return ec.fieldContext_Emails_lbaba(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Emails", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_examGapMinutes(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_examGapMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamGapMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_examGapMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -70758,7 +70871,7 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"from", "until", "slots", "forbiddenDays", "mucDaiSlots", "emails"}
+	fieldsInOrder := [...]string{"from", "until", "slots", "forbiddenDays", "mucDaiSlots", "emails", "examGapMinutes"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70807,6 +70920,13 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 				return it, err
 			}
 			it.Emails = data
+		case "examGapMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examGapMinutes"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamGapMinutes = data
 		}
 	}
 
@@ -80078,6 +80198,11 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "examGapMinutes":
+			out.Values[i] = ec._SemesterConfig_examGapMinutes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -80136,6 +80261,8 @@ func (ec *executionContext) _SemesterConfigInput(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "examGapMinutes":
+			out.Values[i] = ec._SemesterConfigInput_examGapMinutes(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

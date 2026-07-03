@@ -64,7 +64,7 @@ func semesterConfigInputFromViper() *model.SemesterConfigInput {
 		}
 	}
 
-	return &model.SemesterConfigInput{
+	input := &model.SemesterConfigInput{
 		From:          from,
 		Until:         viper.GetTime("semesterConfig.until").Local(),
 		Slots:         viper.GetStringSlice("semesterConfig.slots"),
@@ -72,6 +72,10 @@ func semesterConfigInputFromViper() *model.SemesterConfigInput {
 		MucDaiSlots:   mucDaiSlots,
 		Emails:        emails,
 	}
+	if gap := viper.GetInt("planer.examGapMinutes"); gap > 0 {
+		input.ExamGapMinutes = &gap
+	}
+	return input
 }
 
 // intPairsFromViper reads a [][]int block from the YAML.
@@ -198,17 +202,27 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 	}
 
 	input := &model.SemesterConfigInput{
-		From:          data.From.Local(),
-		Until:         data.Until.Local(),
-		Slots:         data.Slots,
-		ForbiddenDays: forbiddenDays,
-		MucDaiSlots:   data.MucDaiSlots,
-		Emails:        emails,
+		From:           data.From.Local(),
+		Until:          data.Until.Local(),
+		Slots:          data.Slots,
+		ForbiddenDays:  forbiddenDays,
+		MucDaiSlots:    data.MucDaiSlots,
+		Emails:         emails,
+		ExamGapMinutes: data.ExamGapMinutes,
 	}
 	if err := validateSemesterConfigInput(input); err != nil {
 		return nil, err
 	}
 	return input, nil
+}
+
+// examGapMinutesOf returns the effective travel/break buffer between a student's
+// consecutive exams: the configured value, or the built-in default when unset/invalid.
+func examGapMinutesOf(input *model.SemesterConfigInput) int {
+	if input != nil && input.ExamGapMinutes != nil && *input.ExamGapMinutes > 0 {
+		return *input.ExamGapMinutes
+	}
+	return defaultExamGapMinutes
 }
 
 // validateSemesterConfigInput checks date ordering and slot start-time format.
@@ -433,6 +447,7 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 		From:           from,
 		Until:          until,
 		ForbiddenSlots: forbiddenSlots,
+		ExamGapMinutes: examGapMinutesOf(input),
 	}
 
 	p.deriveMucDaiSlots(input.MucDaiSlots)

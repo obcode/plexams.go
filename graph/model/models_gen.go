@@ -1012,6 +1012,8 @@ type SemesterConfig struct {
 	From           time.Time    `json:"from"`
 	Until          time.Time    `json:"until"`
 	Emails         *Emails      `json:"emails"`
+	// Effective travel/break buffer (minutes) between a student's consecutive exams.
+	ExamGapMinutes int `json:"examGapMinutes"`
 }
 
 type SemesterConfigInputData struct {
@@ -1022,6 +1024,8 @@ type SemesterConfigInputData struct {
 	// MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from).
 	MucDaiSlots [][]int      `json:"mucDaiSlots,omitempty"`
 	Emails      *EmailsInput `json:"emails"`
+	// Travel/break buffer (minutes) a student needs between two consecutive exams (null = default).
+	ExamGapMinutes *int `json:"examGapMinutes,omitempty"`
 }
 
 type Slot struct {

@@ -18,6 +18,55 @@ func normPair(a, b int) (int, int) {
 	return a, b
 }
 
+// proximityRank orders a conflict's proximity from worst (SAME_SLOT) to mildest, so two
+// plans' conflicts can be compared for "got worse / better".
+func proximityRank(proximity string) int {
+	switch proximity {
+	case "SAME_SLOT":
+		return 4
+	case "ADJACENT":
+		return 3
+	case "SAME_DAY":
+		return 2
+	}
+	return 0
+}
+
+// diffConflictsAgainstSaved tags each generated conflict with its status relative to the
+// saved-plan conflicts — "new", "worse", "better" or "unchanged" — and returns the
+// resolved ones (in the saved plan, gone in the generated one), tagged "resolved". Both
+// lists are keyed on the ancode pair (Ancode1 < Ancode2, as built by conflictsFromSlots).
+func diffConflictsAgainstSaved(generated, saved []*model.ExamScheduleConflict) []*model.ExamScheduleConflict {
+	savedByPair := make(map[[2]int]*model.ExamScheduleConflict, len(saved))
+	for _, c := range saved {
+		savedByPair[[2]int{c.Ancode1, c.Ancode2}] = c
+	}
+	seen := make(map[[2]int]bool, len(generated))
+	for _, c := range generated {
+		key := [2]int{c.Ancode1, c.Ancode2}
+		seen[key] = true
+		old, ok := savedByPair[key]
+		switch {
+		case !ok:
+			c.DiffStatus = "new"
+		case proximityRank(c.Proximity) > proximityRank(old.Proximity):
+			c.DiffStatus = "worse"
+		case proximityRank(c.Proximity) < proximityRank(old.Proximity):
+			c.DiffStatus = "better"
+		default:
+			c.DiffStatus = "unchanged"
+		}
+	}
+	resolved := make([]*model.ExamScheduleConflict, 0)
+	for _, c := range saved {
+		if !seen[[2]int{c.Ancode1, c.Ancode2}] {
+			c.DiffStatus = "resolved"
+			resolved = append(resolved, c)
+		}
+	}
+	return resolved
+}
+
 // StudentConflictDecisions returns all stored explicit per-student decisions.
 func (p *Plexams) StudentConflictDecisions(ctx context.Context) ([]*model.StudentConflictDecision, error) {
 	return p.dbClient.StudentConflictDecisions(ctx)

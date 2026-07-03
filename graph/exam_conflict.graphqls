@@ -61,6 +61,12 @@ type ExamScheduleConflict {
   infoOnly: Boolean!
   "the affected students (registered in both); acceptance is set per student here."
   affectedStudents: [ConflictStudent!]!
+  """
+  status relative to the currently saved plan, only set in a generation report: "new"
+  (not in the saved plan), "worse"/"better" (proximity changed), "unchanged", or
+  "resolved" (was in the saved plan, gone now). Empty outside a diff context.
+  """
+  diffStatus: String!
 }
 
 type ConflictStudent {

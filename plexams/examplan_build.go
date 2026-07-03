@@ -24,20 +24,21 @@ const defaultExamGapMinutes = 30
 
 // ExamScheduleResult summarizes a Terminplan generation run.
 type ExamScheduleResult struct {
-	Units            int
-	Fixed            int
-	Placed           int
-	Unplaced         int
-	UnplacedAncodes  []int
-	HardViolations   []string
-	Cost             float64
-	CostByConstraint map[string]float64
-	Iterations       int
-	StoppedEarly     bool
-	Written          bool
-	Seed             int
-	Diagnostics      examplan.Diagnostics
-	Conflicts        []*model.ExamScheduleConflict
+	Units             int
+	Fixed             int
+	Placed            int
+	Unplaced          int
+	UnplacedAncodes   []int
+	HardViolations    []string
+	Cost              float64
+	CostByConstraint  map[string]float64
+	Iterations        int
+	StoppedEarly      bool
+	Written           bool
+	Seed              int
+	Diagnostics       examplan.Diagnostics
+	Conflicts         []*model.ExamScheduleConflict
+	ResolvedConflicts []*model.ExamScheduleConflict
 }
 
 // buildExamPlanProblem assembles the exam-schedule optimization problem from the
@@ -654,6 +655,13 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	}
 	if conflicts, err := p.conflictsFromSlots(ctx, slotByAncode); err == nil {
 		result.Conflicts = conflicts
+		// diff against the currently saved plan (computed before any write below), so the
+		// GUI can show which conflicts are new / gone / worse / better after this run.
+		if saved, err := p.ExamScheduleConflicts(ctx); err == nil {
+			result.ResolvedConflicts = diffConflictsAgainstSaved(result.Conflicts, saved)
+		} else {
+			log.Error().Err(err).Msg("cannot compute saved-plan conflicts for diff")
+		}
 	} else {
 		log.Error().Err(err).Msg("cannot compute conflicts of generated schedule")
 	}

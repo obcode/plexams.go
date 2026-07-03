@@ -329,6 +329,10 @@ type ExamScheduleConflict struct {
 	InfoOnly bool `json:"infoOnly"`
 	// the affected students (registered in both); acceptance is set per student here.
 	AffectedStudents []*ConflictStudent `json:"affectedStudents"`
+	// status relative to the currently saved plan, only set in a generation report: "new"
+	// (not in the saved plan), "worse"/"better" (proximity changed), "unchanged", or
+	// "resolved" (was in the saved plan, gone now). Empty outside a diff context.
+	DiffStatus string `json:"diffStatus"`
 }
 
 // Quality report of a generated (or current) exam schedule.
@@ -365,8 +369,10 @@ type ExamScheduleReport struct {
 	StoppedEarly bool                     `json:"stoppedEarly"`
 	Written      bool                     `json:"written"`
 	Diagnostics  *ExamScheduleDiagnostics `json:"diagnostics"`
-	// conflicts of the generated schedule (to review/rate, also on a dry run).
+	// conflicts of the generated schedule (to review/rate, also on a dry run). Each carries a diffStatus relative to the saved plan (new/worse/better/unchanged).
 	Conflicts []*ExamScheduleConflict `json:"conflicts"`
+	// conflicts that were in the saved plan but are gone in the generated one (diffStatus "resolved").
+	ResolvedConflicts []*ExamScheduleConflict `json:"resolvedConflicts"`
 }
 
 // ExamTime is the time span of one exam an invigilator is the main examer of:

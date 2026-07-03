@@ -301,6 +301,7 @@ type ComplexityRoot struct {
 		Ancode1          func(childComplexity int) int
 		Ancode2          func(childComplexity int) int
 		CanShareSlot     func(childComplexity int) int
+		DiffStatus       func(childComplexity int) int
 		Groups1          func(childComplexity int) int
 		Groups2          func(childComplexity int) int
 		InfoOnly         func(childComplexity int) int
@@ -337,20 +338,21 @@ type ComplexityRoot struct {
 	}
 
 	ExamScheduleReport struct {
-		Conflicts        func(childComplexity int) int
-		Cost             func(childComplexity int) int
-		CostByConstraint func(childComplexity int) int
-		Diagnostics      func(childComplexity int) int
-		Fixed            func(childComplexity int) int
-		HardViolations   func(childComplexity int) int
-		Iterations       func(childComplexity int) int
-		Placed           func(childComplexity int) int
-		Seed             func(childComplexity int) int
-		StoppedEarly     func(childComplexity int) int
-		Units            func(childComplexity int) int
-		Unplaced         func(childComplexity int) int
-		UnplacedAncodes  func(childComplexity int) int
-		Written          func(childComplexity int) int
+		Conflicts         func(childComplexity int) int
+		Cost              func(childComplexity int) int
+		CostByConstraint  func(childComplexity int) int
+		Diagnostics       func(childComplexity int) int
+		Fixed             func(childComplexity int) int
+		HardViolations    func(childComplexity int) int
+		Iterations        func(childComplexity int) int
+		Placed            func(childComplexity int) int
+		ResolvedConflicts func(childComplexity int) int
+		Seed              func(childComplexity int) int
+		StoppedEarly      func(childComplexity int) int
+		Units             func(childComplexity int) int
+		Unplaced          func(childComplexity int) int
+		UnplacedAncodes   func(childComplexity int) int
+		Written           func(childComplexity int) int
 	}
 
 	ExamTime struct {
@@ -2804,6 +2806,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamScheduleConflict.CanShareSlot(childComplexity), true
 
+	case "ExamScheduleConflict.diffStatus":
+		if e.complexity.ExamScheduleConflict.DiffStatus == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleConflict.DiffStatus(childComplexity), true
+
 	case "ExamScheduleConflict.groups1":
 		if e.complexity.ExamScheduleConflict.Groups1 == nil {
 			break
@@ -3069,6 +3078,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleReport.Placed(childComplexity), true
+
+	case "ExamScheduleReport.resolvedConflicts":
+		if e.complexity.ExamScheduleReport.ResolvedConflicts == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.ResolvedConflicts(childComplexity), true
 
 	case "ExamScheduleReport.seed":
 		if e.complexity.ExamScheduleReport.Seed == nil {
@@ -9798,6 +9814,12 @@ type ExamScheduleConflict {
   infoOnly: Boolean!
   "the affected students (registered in both); acceptance is set per student here."
   affectedStudents: [ConflictStudent!]!
+  """
+  status relative to the currently saved plan, only set in a generation report: "new"
+  (not in the saved plan), "worse"/"better" (proximity changed), "unchanged", or
+  "resolved" (was in the saved plan, gone now). Empty outside a diff context.
+  """
+  diffStatus: String!
 }
 
 type ConflictStudent {
@@ -9952,8 +9974,10 @@ type ExamScheduleReport {
   stoppedEarly: Boolean!
   written: Boolean!
   diagnostics: ExamScheduleDiagnostics!
-  "conflicts of the generated schedule (to review/rate, also on a dry run)."
+  "conflicts of the generated schedule (to review/rate, also on a dry run). Each carries a diffStatus relative to the saved plan (new/worse/better/unchanged)."
   conflicts: [ExamScheduleConflict!]!
+  "conflicts that were in the saved plan but are gone in the generated one (diffStatus \"resolved\")."
+  resolvedConflicts: [ExamScheduleConflict!]!
 }
 `, BuiltIn: false},
 	{Name: "../generation_config.graphqls", Input: `extend type Query {
@@ -26491,6 +26515,50 @@ func (ec *executionContext) fieldContext_ExamScheduleConflict_affectedStudents(_
 	return fc, nil
 }
 
+func (ec *executionContext) _ExamScheduleConflict_diffStatus(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleConflict) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleConflict_diffStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DiffStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleConflict_diffStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleConflict",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ExamScheduleDiagnostics_students(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ExamScheduleDiagnostics_students(ctx, field)
 	if err != nil {
@@ -27838,6 +27906,94 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_conflicts(_ context.
 				return ec.fieldContext_ExamScheduleConflict_infoOnly(ctx, field)
 			case "affectedStudents":
 				return ec.fieldContext_ExamScheduleConflict_affectedStudents(ctx, field)
+			case "diffStatus":
+				return ec.fieldContext_ExamScheduleConflict_diffStatus(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleConflict", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamScheduleReport_resolvedConflicts(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_resolvedConflicts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResolvedConflicts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ExamScheduleConflict)
+	fc.Result = res
+	return ec.marshalNExamScheduleConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleConflictᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_resolvedConflicts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode1":
+				return ec.fieldContext_ExamScheduleConflict_ancode1(ctx, field)
+			case "module1":
+				return ec.fieldContext_ExamScheduleConflict_module1(ctx, field)
+			case "mainExamer1":
+				return ec.fieldContext_ExamScheduleConflict_mainExamer1(ctx, field)
+			case "groups1":
+				return ec.fieldContext_ExamScheduleConflict_groups1(ctx, field)
+			case "isRepeaterExam1":
+				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam1(ctx, field)
+			case "location1":
+				return ec.fieldContext_ExamScheduleConflict_location1(ctx, field)
+			case "slot1":
+				return ec.fieldContext_ExamScheduleConflict_slot1(ctx, field)
+			case "ancode2":
+				return ec.fieldContext_ExamScheduleConflict_ancode2(ctx, field)
+			case "module2":
+				return ec.fieldContext_ExamScheduleConflict_module2(ctx, field)
+			case "mainExamer2":
+				return ec.fieldContext_ExamScheduleConflict_mainExamer2(ctx, field)
+			case "groups2":
+				return ec.fieldContext_ExamScheduleConflict_groups2(ctx, field)
+			case "isRepeaterExam2":
+				return ec.fieldContext_ExamScheduleConflict_isRepeaterExam2(ctx, field)
+			case "location2":
+				return ec.fieldContext_ExamScheduleConflict_location2(ctx, field)
+			case "slot2":
+				return ec.fieldContext_ExamScheduleConflict_slot2(ctx, field)
+			case "studentCount":
+				return ec.fieldContext_ExamScheduleConflict_studentCount(ctx, field)
+			case "proximity":
+				return ec.fieldContext_ExamScheduleConflict_proximity(ctx, field)
+			case "canShareSlot":
+				return ec.fieldContext_ExamScheduleConflict_canShareSlot(ctx, field)
+			case "infoOnly":
+				return ec.fieldContext_ExamScheduleConflict_infoOnly(ctx, field)
+			case "affectedStudents":
+				return ec.fieldContext_ExamScheduleConflict_affectedStudents(ctx, field)
+			case "diffStatus":
+				return ec.fieldContext_ExamScheduleConflict_diffStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleConflict", field.Name)
 		},
@@ -33146,6 +33302,8 @@ func (ec *executionContext) fieldContext_LogLine_examReport(_ context.Context, f
 				return ec.fieldContext_ExamScheduleReport_diagnostics(ctx, field)
 			case "conflicts":
 				return ec.fieldContext_ExamScheduleReport_conflicts(ctx, field)
+			case "resolvedConflicts":
+				return ec.fieldContext_ExamScheduleReport_resolvedConflicts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleReport", field.Name)
 		},
@@ -48765,6 +48923,8 @@ func (ec *executionContext) fieldContext_Query_examScheduleConflicts(_ context.C
 				return ec.fieldContext_ExamScheduleConflict_infoOnly(ctx, field)
 			case "affectedStudents":
 				return ec.fieldContext_ExamScheduleConflict_affectedStudents(ctx, field)
+			case "diffStatus":
+				return ec.fieldContext_ExamScheduleConflict_diffStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleConflict", field.Name)
 		},
@@ -73055,6 +73215,11 @@ func (ec *executionContext) _ExamScheduleConflict(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "diffStatus":
+			out.Values[i] = ec._ExamScheduleConflict_diffStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -73265,6 +73430,11 @@ func (ec *executionContext) _ExamScheduleReport(ctx context.Context, sel ast.Sel
 			}
 		case "conflicts":
 			out.Values[i] = ec._ExamScheduleReport_conflicts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resolvedConflicts":
+			out.Values[i] = ec._ExamScheduleReport_resolvedConflicts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

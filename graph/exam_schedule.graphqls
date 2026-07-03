@@ -94,6 +94,8 @@ type ExamScheduleReport {
   stoppedEarly: Boolean!
   written: Boolean!
   diagnostics: ExamScheduleDiagnostics!
-  "conflicts of the generated schedule (to review/rate, also on a dry run)."
+  "conflicts of the generated schedule (to review/rate, also on a dry run). Each carries a diffStatus relative to the saved plan (new/worse/better/unchanged)."
   conflicts: [ExamScheduleConflict!]!
+  "conflicts that were in the saved plan but are gone in the generated one (diffStatus \"resolved\")."
+  resolvedConflicts: [ExamScheduleConflict!]!
 }

@@ -6,7 +6,7 @@ import (
 )
 
 func TestMergeBookedEntriesByRoomMergesAdjacentEntries(t *testing.T) {
-	entries := []BookedEntry{
+	entries := []AnnyRoomBooking{
 		{
 			From:     time.Date(2026, 7, 22, 10, 30, 0, 0, time.Local),
 			Until:    time.Date(2026, 7, 22, 14, 0, 0, 0, time.Local),
@@ -21,7 +21,7 @@ func TestMergeBookedEntriesByRoomMergesAdjacentEntries(t *testing.T) {
 		},
 	}
 
-	merged := mergeBookedEntriesByRoom(entries)
+	merged := mergeAnnyRoomBookings(entries)
 
 	if len(merged) != 1 {
 		t.Fatalf("expected 1 merged booking, got %d", len(merged))
@@ -36,7 +36,7 @@ func TestMergeBookedEntriesByRoomMergesAdjacentEntries(t *testing.T) {
 }
 
 func TestMergeBookedEntriesByRoomKeepsDifferentApprovalSeparate(t *testing.T) {
-	entries := []BookedEntry{
+	entries := []AnnyRoomBooking{
 		{
 			From:     time.Date(2026, 7, 22, 10, 30, 0, 0, time.Local),
 			Until:    time.Date(2026, 7, 22, 14, 0, 0, 0, time.Local),
@@ -51,7 +51,7 @@ func TestMergeBookedEntriesByRoomKeepsDifferentApprovalSeparate(t *testing.T) {
 		},
 	}
 
-	merged := mergeBookedEntriesByRoom(entries)
+	merged := mergeAnnyRoomBookings(entries)
 
 	if len(merged) != 2 {
 		t.Fatalf("expected 2 bookings when approval differs, got %d", len(merged))

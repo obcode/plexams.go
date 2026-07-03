@@ -382,7 +382,7 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 	}
 
 	v.step("get booked entries")
-	bookedEntries, err := p.ExahmRoomsFromAnnyBookings(ctx)
+	annyRoomBookings, err := p.ExahmRoomsFromAnnyBookings(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get entries from anny_bookings")
 		return nil, err
@@ -467,7 +467,7 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 		}
 
 		if constraint.RoomConstraints != nil && (constraint.RoomConstraints.Exahm || constraint.RoomConstraints.Seb) {
-			if !p.roomBookedDuringExamTime(bookedEntries, slot) {
+			if !p.roomBookedDuringExamTime(annyRoomBookings, slot) {
 				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
 					"Exam %d planned at %s, but no room booked", constraint.Ancode, slot.Starttime.Format("02.01.06 15:04"))
 			}
@@ -498,7 +498,7 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 	return v.finish(), nil
 }
 
-func (p *Plexams) roomBookedDuringExamTime(bookedEntries []BookedEntry, slot *model.Slot) bool {
+func (p *Plexams) roomBookedDuringExamTime(annyRoomBookings []AnnyRoomBooking, slot *model.Slot) bool {
 	if slot == nil {
 		return false
 	}
@@ -506,9 +506,9 @@ func (p *Plexams) roomBookedDuringExamTime(bookedEntries []BookedEntry, slot *mo
 	examStart := slot.Starttime
 	examEnd := slot.Starttime.Add(90 * time.Minute)
 
-	for _, bookedEntry := range bookedEntries {
+	for _, annyRoomBooking := range annyRoomBookings {
 		// Inclusive overlap: bookings starting/ending exactly at exam boundaries are valid.
-		if !bookedEntry.From.After(examStart) && !bookedEntry.Until.Before(examEnd) {
+		if !annyRoomBooking.From.After(examStart) && !annyRoomBooking.Until.Before(examEnd) {
 			return true
 		}
 	}

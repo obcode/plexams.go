@@ -141,22 +141,22 @@ func (p *Plexams) ValidateRoomsNeedRequest(reporter Reporter) (*model.Validation
 		return nil, err
 	}
 
-	bookedEntries, err := p.ExahmRoomsFromAnnyBookings(ctx)
+	annyRoomBookings, err := p.ExahmRoomsFromAnnyBookings(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get entries from anny_bookings")
 		return nil, err
 	}
 
-	for _, bookedEntry := range bookedEntries {
-		for _, roomName := range bookedEntry.Rooms {
+	for _, annyRoomBooking := range annyRoomBookings {
+		for _, roomName := range annyRoomBooking.Rooms {
 			timeRanges, ok := roomTimetables[roomName]
 			if !ok {
 				timeRanges = make([]TimeRange, 0, 1)
 			}
 			roomTimetables[roomName] = append(timeRanges, TimeRange{
-				From:     bookedEntry.From,
-				Until:    bookedEntry.Until,
-				Approved: bookedEntry.Approved,
+				From:     annyRoomBooking.From,
+				Until:    annyRoomBooking.Until,
+				Approved: annyRoomBooking.Approved,
 			})
 		}
 	}

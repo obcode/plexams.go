@@ -147,14 +147,14 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]se
 	// EXaHM rooms come from the Anny bookings in the DB (import via `rooms anny`
 	// / importAnnyBookings).
 	ctx := context.Background()
-	bookedEntries, err := p.ExahmRoomsFromAnnyBookings(ctx)
+	annyRoomBookings, err := p.ExahmRoomsFromAnnyBookings(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get exahm rooms from anny bookings")
 		return nil, err
 	}
-	log.Debug().Int("count", len(bookedEntries)).Msg("using anny bookings for EXaHM room slots")
+	log.Debug().Int("count", len(annyRoomBookings)).Msg("using anny bookings for EXaHM room slots")
 
-	for _, entry := range bookedEntries {
+	for _, entry := range annyRoomBookings {
 		reporter.Step(aurora.Sprintf(aurora.Cyan("found booked entry for %s from %s until %s"),
 			aurora.Magenta(fmt.Sprintf("%s", entry.Rooms)),
 			aurora.Magenta(entry.From.Format("02.01.06 15:04")),

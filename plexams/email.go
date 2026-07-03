@@ -12,54 +12,7 @@ import (
 	"github.com/wneessen/go-mail"
 )
 
-//go:embed tmpl/exahmEmail.tmpl
-//go:embed tmpl/exahmEmailHTML.tmpl
-//go:embed tmpl/coverPageEmail.tmpl
-//go:embed tmpl/coverPageEmailHTML.tmpl
-//go:embed tmpl/draftEmailFS.tmpl
-//go:embed tmpl/draftEmailFSHTML.tmpl
-//go:embed tmpl/draftEmailZPA.tmpl
-//go:embed tmpl/draftEmailZPAHTML.tmpl
-//go:embed tmpl/assembledExamEmail.tmpl
-//go:embed tmpl/assembledExamEmailHTML.tmpl
-//go:embed tmpl/assembledExamMarkdown.tmpl
-//go:embed tmpl/handicapEmail.tmpl
-//go:embed tmpl/handicapEmailHTML.tmpl
-//go:embed tmpl/handicapEmailPlanned.tmpl
-//go:embed tmpl/handicapEmailPlannedHTML.tmpl
-//go:embed tmpl/handicapEmailRoomAlone.tmpl
-//go:embed tmpl/handicapEmailRoomAloneHTML.tmpl
-//go:embed tmpl/newNTAEmail.tmpl
-//go:embed tmpl/newNTAEmailHTML.tmpl
-//go:embed tmpl/examPlanningInfoEmail.tmpl
-//go:embed tmpl/examPlanningInfoEmailHTML.tmpl
-//go:embed tmpl/publishedEmailExams.tmpl
-//go:embed tmpl/publishedEmailExamsHTML.tmpl
-//go:embed tmpl/emailBaseHTML.tmpl
-//go:embed tmpl/publishedRoomsPersonalEmail.tmpl
-//go:embed tmpl/publishedRoomsPersonalEmailHTML.tmpl
-//go:embed tmpl/publishedEmailInvigilations.tmpl
-//go:embed tmpl/publishedEmailInvigilationsHTML.tmpl
-//go:embed tmpl/publishedInvigilationPersonalEmail.tmpl
-//go:embed tmpl/publishedInvigilationPersonalEmailHTML.tmpl
-//go:embed tmpl/invigilationEmail.tmpl
-//go:embed tmpl/invigilationEmailHTML.tmpl
-//go:embed tmpl/invigilationMissingEmail.tmpl
-//go:embed tmpl/invigilationMissingEmailHTML.tmpl
-//go:embed tmpl/unplannedExamEmail.tmpl
-//go:embed tmpl/unplannedExamEmailHTML.tmpl
-//go:embed tmpl/roomRequestEmail.tmpl
-//go:embed tmpl/roomRequestEmailHTML.tmpl
-//go:embed tmpl/roomsSecretariatEmail.tmpl
-//go:embed tmpl/roomsSecretariatEmailHTML.tmpl
-//go:embed tmpl/kdpExahmEmail.tmpl
-//go:embed tmpl/kdpExahmEmailHTML.tmpl
-//go:embed tmpl/lbaRepeaterEmail.tmpl
-//go:embed tmpl/lbaRepeaterEmailHTML.tmpl
-//go:embed tmpl/invigilationsSecretariatEmail.tmpl
-//go:embed tmpl/invigilationsSecretariatEmailHTML.tmpl
-//go:embed tmpl/jiraOnHTML.tmpl
-
+//go:embed tmpl/*.tmpl
 var emailTemplates embed.FS
 
 // pluralN formats a count with the correct German singular/plural noun, e.g.

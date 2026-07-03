@@ -82,31 +82,16 @@ func assertGolden(t *testing.T, name string, got []byte) {
 	}
 }
 
-// renderTextTemplate renders one text email template with data (test helper).
-func renderTextTemplate(t *testing.T, name string, data any) []byte {
-	t.Helper()
-	tmpl, err := txttmpl.New(name).Funcs(txttmpl.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/"+name)
-	if err != nil {
-		t.Fatalf("parse %s: %v", name, err)
-	}
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		t.Fatalf("execute %s: %v", name, err)
-	}
-	return buf.Bytes()
-}
-
-// TestExahmEmailGolden locks the EXaHM/SEB request email (text + HTML) against a golden.
-// It is the first render-golden; more are added as each email is migrated to Markdown.
+// TestExahmEmailGolden locks the EXaHM/SEB request email (text + HTML) against a golden,
+// rendered through the production Markdown single-source path. First migrated email; the
+// rest follow the same pattern.
 func TestExahmEmailGolden(t *testing.T) {
 	data := &ExahmEmail{PlanerName: "Test Planer"}
 
-	text := renderTextTemplate(t, "exahmEmail.tmpl", data)
-	assertGolden(t, "exahmEmail.txt", text)
-
-	html, err := (&Plexams{}).renderMailHTML("tmpl/exahmEmailHTML.tmpl", true, data)
+	text, html, err := (&Plexams{}).renderMarkdownEmail("exahmEmail.md.tmpl", true, data)
 	if err != nil {
-		t.Fatalf("render html: %v", err)
+		t.Fatalf("render markdown email: %v", err)
 	}
+	assertGolden(t, "exahmEmail.txt", text)
 	assertGolden(t, "exahmEmail.html", html)
 }

@@ -25,6 +25,14 @@ extend type Mutation {
   fixExamRoomsPhase: Int!
   "unfixExamRoomsPhase clears the phase-A freeze on all exams (manual Locked stays)."
   unfixExamRoomsPhase: Boolean!
+
+  """
+  resetExamSchedule removes the generated exam schedule (phase B): all placements that
+  are not manually locked, not external / not-planned-by-me and not frozen by the
+  EXaHM/SEB room phase (phaseFixed). Returns the number of entries removed. A full reset
+  (incl. phase A) = unfixExamRoomsPhase then resetExamSchedule. Blocked while published.
+  """
+  resetExamSchedule: Int!
 }
 
 extend type Query {

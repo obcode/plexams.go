@@ -24,6 +24,11 @@ func (r *mutationResolver) UnfixExamRoomsPhase(ctx context.Context) (bool, error
 	return true, nil
 }
 
+// ResetExamSchedule is the resolver for the resetExamSchedule field.
+func (r *mutationResolver) ResetExamSchedule(ctx context.Context) (int, error) {
+	return r.plexams.ResetExamSchedule(ctx)
+}
+
 // ExamScheduleConstraints is the resolver for the examScheduleConstraints field.
 func (r *queryResolver) ExamScheduleConstraints(ctx context.Context) ([]*model.OptimizerConstraint, error) {
 	infos := r.plexams.ExamScheduleConstraints()

@@ -603,6 +603,7 @@ type ComplexityRoot struct {
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
 		RemovePrimussAncode           func(childComplexity int, zpaAncode int, program string) int
 		RemoveStudentConflictDecision func(childComplexity int, ancode1 int, ancode2 int, mtknr string) int
+		ResetExamSchedule             func(childComplexity int) int
 		ResetInvigilations            func(childComplexity int) int
 		ResetRoomsForExams            func(childComplexity int) int
 		RmConstraints                 func(childComplexity int, ancode int) int
@@ -1450,6 +1451,7 @@ type MutationResolver interface {
 	RemoveExamDuration(ctx context.Context, ancode int) (bool, error)
 	FixExamRoomsPhase(ctx context.Context) (int, error)
 	UnfixExamRoomsPhase(ctx context.Context) (bool, error)
+	ResetExamSchedule(ctx context.Context) (int, error)
 	SetGenerationConfig(ctx context.Context, input model.GenerationConfigInput) (*model.GenerationConfig, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
@@ -4564,6 +4566,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemoveStudentConflictDecision(childComplexity, args["ancode1"].(int), args["ancode2"].(int), args["mtknr"].(string)), true
+
+	case "Mutation.resetExamSchedule":
+		if e.complexity.Mutation.ResetExamSchedule == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ResetExamSchedule(childComplexity), true
 
 	case "Mutation.resetInvigilations":
 		if e.complexity.Mutation.ResetInvigilations == nil {
@@ -9837,6 +9846,14 @@ extend type Mutation {
   fixExamRoomsPhase: Int!
   "unfixExamRoomsPhase clears the phase-A freeze on all exams (manual Locked stays)."
   unfixExamRoomsPhase: Boolean!
+
+  """
+  resetExamSchedule removes the generated exam schedule (phase B): all placements that
+  are not manually locked, not external / not-planned-by-me and not frozen by the
+  EXaHM/SEB room phase (phaseFixed). Returns the number of entries removed. A full reset
+  (incl. phase A) = unfixExamRoomsPhase then resetExamSchedule. Blocked while published.
+  """
+  resetExamSchedule: Int!
 }
 
 extend type Query {
@@ -35229,6 +35246,50 @@ func (ec *executionContext) fieldContext_Mutation_unfixExamRoomsPhase(_ context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetExamSchedule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetExamSchedule(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetExamSchedule(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetExamSchedule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -74504,6 +74565,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "unfixExamRoomsPhase":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_unfixExamRoomsPhase(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetExamSchedule":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetExamSchedule(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

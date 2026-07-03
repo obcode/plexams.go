@@ -306,6 +306,25 @@ func (db *DB) ClearAllPhaseFixed(ctx context.Context) error {
 	return err
 }
 
+// ResetGeneratedPlanEntries removes the generated plan entries: everything that is
+// neither manually locked, nor an external / not-planned-by-me entry (ExternalTime
+// set), nor frozen by the EXaHM/SEB room phase (phaseFixed). Returns the number of
+// entries removed.
+func (db *DB) ResetGeneratedPlanEntries(ctx context.Context) (int, error) {
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
+	filter := bson.M{
+		"externaltime": nil,                 // matches missing or null: keep external / not-planned-by-me
+		"locked":       bson.M{"$ne": true}, // keep manual locks
+		"phasefixed":   bson.M{"$ne": true}, // keep frozen EXaHM/SEB (phase A)
+	}
+	res, err := collection.DeleteMany(ctx, filter)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot reset generated plan entries")
+		return 0, err
+	}
+	return int(res.DeletedCount), nil
+}
+
 func (db *DB) ExamIsLocked(ctx context.Context, ancode int) bool {
 	p, err := db.PlanEntry(ctx, ancode)
 	return err == nil && p != nil && p.Locked

@@ -631,6 +631,24 @@ func (p *Plexams) FixExamRoomsPhase(ctx context.Context) (int, error) {
 	return n, nil
 }
 
+// ResetExamSchedule removes the generated exam schedule (phase B): every plan entry
+// that was placed by the generator and is not manually locked, not external / not
+// planned by me, and not frozen by the EXaHM/SEB room phase (phaseFixed). The frozen
+// EXaHM/SEB placement from phase A is kept — to reset that too, call
+// UnfixExamRoomsPhase first (then those entries become resettable). Blocked while the
+// exam plan is published. Returns the number of entries removed.
+func (p *Plexams) ResetExamSchedule(ctx context.Context) (int, error) {
+	if err := p.generationAllowed(ctx, model.PlanningGateExams); err != nil {
+		return 0, err
+	}
+	n, err := p.dbClient.ResetGeneratedPlanEntries(ctx)
+	if err != nil {
+		return 0, err
+	}
+	p.unmarkCondition(ctx, condExamScheduleGenerated)
+	return n, nil
+}
+
 // UnfixExamRoomsPhase clears the phase-A fix on all plan entries (the manual Locked
 // stays untouched).
 func (p *Plexams) UnfixExamRoomsPhase(ctx context.Context) error {

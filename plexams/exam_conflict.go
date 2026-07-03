@@ -241,7 +241,7 @@ func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamSched
 	}
 	slotByAncode := make(map[int]*model.Slot)
 	for _, pe := range planEntries {
-		if pe.DayNumber == 0 && pe.SlotNumber == 0 {
+		if !pe.InSlot() {
 			continue // external, outside the period → no slot
 		}
 		if s := slotModel[[2]int{pe.DayNumber, pe.SlotNumber}]; s != nil {

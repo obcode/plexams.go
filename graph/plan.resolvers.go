@@ -18,9 +18,20 @@ func (r *mutationResolver) AddExamToSlot(ctx context.Context, day int, time int,
 	panic(fmt.Errorf("not implemented: AddExamToSlot - addExamToSlot"))
 }
 
-// Starttime is the resolver for the starttime field.
+// Starttime is the resolver for the starttime field. An exam mapped to one of our
+// slots gets that slot's start time. An external exam whose time lies outside our exam
+// period has no matching slot; its real time is the external time. We decide by whether
+// a slot matches — not by the "no slot" sentinel value — so it stays robust regardless
+// of how that is stored.
 func (r *planEntryResolver) Starttime(ctx context.Context, obj *model.PlanEntry) (*time.Time, error) {
-	return r.plexams.GetStarttime(obj.DayNumber, obj.SlotNumber)
+	if st, err := r.plexams.GetStarttime(obj.DayNumber, obj.SlotNumber); err == nil {
+		return st, nil
+	}
+	if obj.ExternalTime != nil {
+		return obj.ExternalTime, nil
+	}
+	return nil, fmt.Errorf("plan entry for ancode %d has neither a slot (%d/%d) nor an external time",
+		obj.Ancode, obj.DayNumber, obj.SlotNumber)
 }
 
 // AllProgramsInPlan is the resolver for the allProgramsInPlan field.

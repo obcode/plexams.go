@@ -449,7 +449,52 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		return attract[i].B < attract[j].B
 	})
 
-	return examplan.NewProblem(slots, units, students, attract, w), nil
+	// --- NTA time-overrun (hard): a student with a time extension whose exam runs past
+	// the slot block cannot take another exam in the immediately following slot ---
+	blockMin := int(slotBlockDuration(sc.Starttimes).Minutes())
+	studentUnits := make(map[string]map[int]bool) // mtknr -> unit indices
+	for _, s := range studentsRaw {
+		for _, ancode := range s.Regs {
+			if ui, ok := unitOf[ancode]; ok {
+				if studentUnits[s.Mtknr] == nil {
+					studentUnits[s.Mtknr] = make(map[int]bool)
+				}
+				studentUnits[s.Mtknr][ui] = true
+			}
+		}
+	}
+	ntaForbiddenSet := make(map[[2]int]bool)
+	for _, e := range assembled {
+		ui, ok := unitOf[e.Ancode]
+		if !ok || len(e.Ntas) == 0 || e.ZpaExam == nil || e.ZpaExam.Duration <= 0 {
+			continue
+		}
+		for _, nta := range e.Ntas {
+			extended := e.ZpaExam.Duration * (100 + nta.DeltaDurationPercent) / 100
+			if blockMin > 0 && extended <= blockMin {
+				continue // fits within the slot block: no overrun into the next slot
+			}
+			for other := range studentUnits[nta.Mtknr] { // this student's other exams
+				if other != ui {
+					ntaForbiddenSet[[2]int{ui, other}] = true
+				}
+			}
+		}
+	}
+	ntaForbidden := make([][2]int, 0, len(ntaForbiddenSet))
+	for k := range ntaForbiddenSet {
+		ntaForbidden = append(ntaForbidden, k)
+	}
+	sort.Slice(ntaForbidden, func(i, j int) bool {
+		if ntaForbidden[i][0] != ntaForbidden[j][0] {
+			return ntaForbidden[i][0] < ntaForbidden[j][0]
+		}
+		return ntaForbidden[i][1] < ntaForbidden[j][1]
+	})
+
+	prob := examplan.NewProblem(slots, units, students, attract, w)
+	prob.SetNTAOverruns(ntaForbidden)
+	return prob, nil
 }
 
 // GenerateExamSchedule builds and solves the exam schedule, streaming progress to the
@@ -493,6 +538,9 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	}
 	reporter.Println(fmt.Sprintf("%d %s, %d fest, %d Slots, %d Studierende mit Konflikten",
 		movable, what, len(prob.Units)-movable, len(prob.Slots), len(prob.Students)))
+	if n := prob.NumNTAOverruns(); n > 0 {
+		reporter.Println(fmt.Sprintf("%d NTA-Überzieh-Paare berücksichtigt (Folgeslot gesperrt)", n))
+	}
 
 	opts := optimize.DefaultOptions()
 	opts.Seed = seed

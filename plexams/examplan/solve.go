@@ -125,7 +125,7 @@ func addedCost(st *State, u, s int) float64 {
 func (p *Problem) Registry() optimize.Registry[*State] {
 	return optimize.Registry[*State]{
 		Hard: []optimize.HardConstraint[*State]{
-			fixedC{}, allowedC{}, sameStudentC{}, capacityC{},
+			fixedC{}, allowedC{}, sameStudentC{}, capacityC{}, ntaOverrunC{},
 		},
 		Soft: []optimize.SoftConstraint[*State]{
 			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, tbauFillC{p.W}, placementC{p.W},
@@ -198,6 +198,35 @@ func (capacityC) Check(st *State) []optimize.Violation {
 		}
 		if st.slotExahm[s] > st.P.Slots[s].ExahmSeats {
 			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über EXaHM-Kapazität", Refs: []int{st.P.Slots[s].Day, st.P.Slots[s].Slot}})
+		}
+	}
+	return vs
+}
+
+type ntaOverrunC struct{}
+
+func (ntaOverrunC) Info() optimize.Info {
+	return optimize.Info{Name: "nta-overrun", Title: "NTA-Zeitverlängerung: kein Folgeslot", Kind: optimize.KindHard, Tier: 5,
+		Description: "Zieht die verlängerte Zeit einer NTA-Prüfung in den nächsten Slot, darf der/die betroffene Studierende im direkt folgenden Slot keine weitere Prüfung schreiben."}
+}
+func (ntaOverrunC) Check(st *State) []optimize.Violation {
+	var vs []optimize.Violation
+	p := st.P
+	for a := range p.overrunNext {
+		sa := st.SlotOf[a]
+		if sa < 0 {
+			continue
+		}
+		ns := p.nextSlot[sa]
+		if ns < 0 {
+			continue
+		}
+		for _, b := range p.overrunNext[a] {
+			if st.SlotOf[b] == ns {
+				vs = append(vs, optimize.Violation{Constraint: "nta-overrun",
+					Message: "NTA-Prüfung zieht in den Folgeslot mit weiterer Prüfung des/der Studierenden",
+					Refs:    []int{p.Units[a].ID, p.Units[b].ID}})
+			}
 		}
 	}
 	return vs

@@ -157,6 +157,14 @@ type Problem struct {
 	unitStudents   [][]int        // unit -> student indices that have a pair with it
 	unitAttract    [][]attractRef // unit -> its attract partners
 	targetLoad     float64        // ideal seats per slot = total seats / number of slots
+	// NTA time-overrun (hard): nextSlot/prevSlot map a slot to its same-day neighbour
+	// (-1 if none); overrunNext[a] = units that must not sit in the slot right after a,
+	// overrunPrev[b] = units a such that b must not sit right after a. Always allocated
+	// (len == #units); empty unless SetNTAOverruns installed pairs.
+	nextSlot    []int
+	prevSlot    []int
+	overrunNext [][]int
+	overrunPrev [][]int
 }
 
 type attractRef struct {
@@ -218,6 +226,27 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 		p.unitAttract[ap.B] = append(p.unitAttract[ap.B], attractRef{ap.A, ap.Weight})
 	}
 
+	// same-day slot neighbours (for the NTA time-overrun constraint)
+	byDaySlot := make(map[[2]int]int, len(p.Slots))
+	for i := range p.Slots {
+		byDaySlot[[2]int{p.Slots[i].Day, p.Slots[i].Slot}] = i
+	}
+	p.nextSlot = make([]int, len(p.Slots))
+	p.prevSlot = make([]int, len(p.Slots))
+	for i := range p.Slots {
+		d, s := p.Slots[i].Day, p.Slots[i].Slot
+		p.nextSlot[i], p.prevSlot[i] = -1, -1
+		if j, ok := byDaySlot[[2]int{d, s + 1}]; ok {
+			p.nextSlot[i] = j
+		}
+		if j, ok := byDaySlot[[2]int{d, s - 1}]; ok {
+			p.prevSlot[i] = j
+		}
+	}
+	// allocated but empty until SetNTAOverruns is called (feasible() ranges over them)
+	p.overrunNext = make([][]int, len(p.Units))
+	p.overrunPrev = make([][]int, len(p.Units))
+
 	// deterministic (sorted) view of hardConf: iterating a Go map has random order, so
 	// summing floats over it (constructive addedCost) would make runs non-reproducible.
 	p.hardConfSorted = make([][]int, len(p.Units))
@@ -233,6 +262,61 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 		p.hardConfSorted[u] = lst
 	}
 	return p
+}
+
+// SetNTAOverruns installs the NTA time-overrun adjacency constraints: for each ordered
+// pair (a, b), unit b must not be placed in the slot immediately following a on the same
+// day, because an NTA student of a is still writing (extended time) when that next slot
+// starts. Both-fixed pairs are ignored (neither can be moved to satisfy it). Idempotent;
+// replaces any previously installed pairs.
+func (p *Problem) SetNTAOverruns(pairs [][2]int) {
+	nextSet := make([]map[int]bool, len(p.Units))
+	prevSet := make([]map[int]bool, len(p.Units))
+	for _, pr := range pairs {
+		a, b := pr[0], pr[1]
+		if a < 0 || b < 0 || a >= len(p.Units) || b >= len(p.Units) || a == b {
+			continue
+		}
+		if p.Units[a].Fixed && p.Units[b].Fixed {
+			continue
+		}
+		if nextSet[a] == nil {
+			nextSet[a] = make(map[int]bool)
+		}
+		nextSet[a][b] = true
+		if prevSet[b] == nil {
+			prevSet[b] = make(map[int]bool)
+		}
+		prevSet[b][a] = true
+	}
+	p.overrunNext = sortedSets(nextSet)
+	p.overrunPrev = sortedSets(prevSet)
+}
+
+// NumNTAOverruns returns the number of installed NTA time-overrun adjacency pairs.
+func (p *Problem) NumNTAOverruns() int {
+	n := 0
+	for _, l := range p.overrunNext {
+		n += len(l)
+	}
+	return n
+}
+
+// sortedSets converts a per-unit set of unit indices into a deterministic sorted slice.
+func sortedSets(sets []map[int]bool) [][]int {
+	out := make([][]int, len(sets))
+	for i, m := range sets {
+		if len(m) == 0 {
+			continue
+		}
+		lst := make([]int, 0, len(m))
+		for v := range m {
+			lst = append(lst, v)
+		}
+		sort.Ints(lst)
+		out[i] = lst
+	}
+	return out
 }
 
 // loadPenalty is the even-distribution penalty for a slot holding `seats` seats: the

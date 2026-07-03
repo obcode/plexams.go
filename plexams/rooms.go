@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -46,20 +47,20 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry
 	}
 
 	// Only consider rooms marked as Anny rooms in the rooms master data (RequestWith==ANNY)
-	allowedRooms, err := p.annyRoomNames(ctx)
+	allowedRooms, err := p.anny.RoomNames(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get anny rooms: %w", err)
 	}
 	// only OUR bookings count as available capacity — other faculties' bookings in the
 	// same rooms are in the DB for information only.
-	names := p.annyPersonalizationNames(ctx)
+	names := p.anny.PersonalizationNames(ctx)
 
 	entries := make([]BookedEntry, 0, len(dbBookings))
 	for _, booking := range dbBookings {
 		if booking.Room == "" {
 			continue
 		}
-		if !matchesAnyPersonalization(booking.PersonalizationName, names) {
+		if !anny.MatchesAnyPersonalization(booking.PersonalizationName, names) {
 			continue
 		}
 		normalizedRoom := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(booking.Room), " ", ""))
@@ -70,7 +71,7 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry
 			From:     booking.StartDate,
 			Until:    booking.EndDate,
 			Rooms:    []string{booking.Room},
-			Approved: isApprovedAnnyStatus(booking.Status),
+			Approved: anny.IsApprovedStatus(booking.Status),
 		})
 	}
 
@@ -143,15 +144,6 @@ func mergeBookedEntriesByRoom(entries []BookedEntry) []BookedEntry {
 	}
 
 	return merged
-}
-
-func isApprovedAnnyStatus(status string) bool {
-	switch strings.ToLower(strings.TrimSpace(status)) {
-	case "accepted", "acceptet":
-		return true
-	default:
-		return false
-	}
 }
 
 func (p *Plexams) SlotsWithRoomsFromBookedEntries(bookedEntries []BookedEntry) (map[SlotNumber][]*model.Room, error) {

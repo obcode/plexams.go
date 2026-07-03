@@ -17,3 +17,5 @@
 - [Terminplan generator design](terminplan-generator-design.md) — next big feature: generic SA core for all 3 solvers; spread objective; canShareSlot vs per-student conflict rating loop.
 - [two-phase EXaHM/SEB](two-phase-exahm-seb.md) — Terminplan gen splits: phase A EXaHM/SEB into booked T-Bau slots (maximize util), freeze via PhaseFixed, then phase B for the rest.
 - [email markdown templates](email-markdown-templates.md) — all email bodies single-source Markdown via renderMarkdownEmail; text+HTML no longer duplicated; golden tests; next: DB-editable + email package.
+- [plexams decomposition](plexams-decomposition.md) — marathon to split the god-package; net-first then peel concerns; no clean leaf; slice 0 (anny char. tests) done.
+- [mongotest without docker](mongotest-without-docker.md) — run integration tests via a downloaded standalone mongod + PLEXAMS_TEST_MONGO_URI when Docker is absent.

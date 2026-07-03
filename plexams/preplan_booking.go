@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/anny"
 )
 
 // slotBooking is the EXaHM/SEB capacity WE have already booked in Anny (T-building)
@@ -49,7 +50,7 @@ func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[
 	if err != nil {
 		return nil, err
 	}
-	names := p.annyPersonalizationNames(ctx)
+	names := p.anny.PersonalizationNames(ctx)
 
 	// a booking must cover the whole slot block (e.g. a 12:30 exam in a 2h slot runs until
 	// 14:30), not just the slot start — otherwise a room booked only until 13:30 would be
@@ -79,7 +80,7 @@ func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[
 			if b.Room == "" {
 				continue
 			}
-			if !matchesAnyPersonalization(b.PersonalizationName, names) {
+			if !anny.MatchesAnyPersonalization(b.PersonalizationName, names) {
 				continue // only our bookings
 			}
 			// the booking must fully cover the slot block [start, start+block]

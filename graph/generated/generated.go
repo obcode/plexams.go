@@ -576,6 +576,7 @@ type ComplexityRoot struct {
 		DisconnectPreplanExam         func(childComplexity int, id int) int
 		Exahm                         func(childComplexity int, ancode int) int
 		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
+		FixExamRoomsPhase             func(childComplexity int) int
 		FixPrimussAncode              func(childComplexity int, zpaAncode int, program string, fromAncode int, toAncode int) int
 		GenerateAssembledExams        func(childComplexity int) int
 		GeneratePreparation           func(childComplexity int) int
@@ -634,6 +635,7 @@ type ComplexityRoot struct {
 		SetStudentConflictDecision    func(childComplexity int, ancode1 int, ancode2 int, mtknr string, decision model.ConflictDecision) int
 		UnblockRoomForSlot            func(childComplexity int, room string, day int, slot int) int
 		UnblockRoomForSlots           func(childComplexity int, room string, slots []*model.SlotInput) int
+		UnfixExamRoomsPhase           func(childComplexity int) int
 		UpdateNta                     func(childComplexity int, input model.NTAInput) int
 		UpdatePreplanExam             func(childComplexity int, id int, input model.PreplanExamInput) int
 		UpdateRoom                    func(childComplexity int, input model.RoomInput) int
@@ -1227,6 +1229,7 @@ type ComplexityRoot struct {
 	Subscription struct {
 		AssignInvigilations                  func(childComplexity int, dryRun bool, seed *int, iterations *int) int
 		AssignRoomsForExams                  func(childComplexity int) int
+		GenerateExamRoomsPhase               func(childComplexity int, dryRun bool, seed *int, iterations *int) int
 		GenerateExamSchedule                 func(childComplexity int, dryRun bool, seed *int, iterations *int, ignoreRatings *bool) int
 		ImportAnnyBookings                   func(childComplexity int) int
 		ImportExamsFromZpa                   func(childComplexity int) int
@@ -1444,6 +1447,8 @@ type MutationResolver interface {
 	RemoveExamsCanShareSlot(ctx context.Context, ancode1 int, ancode2 int) (bool, error)
 	SetExamDuration(ctx context.Context, ancode int, duration int) (*model.ExamDurationOverride, error)
 	RemoveExamDuration(ctx context.Context, ancode int) (bool, error)
+	FixExamRoomsPhase(ctx context.Context) (int, error)
+	UnfixExamRoomsPhase(ctx context.Context) (bool, error)
 	SetGenerationConfig(ctx context.Context, input model.GenerationConfigInput) (*model.GenerationConfig, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, day int, slot int, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, day int, slot int, roomName *string) (bool, error)
@@ -1649,6 +1654,7 @@ type SubscriptionResolver interface {
 	SendEmailNTARoomAlone(ctx context.Context, mtknr string, run bool) (<-chan *model.LogLine, error)
 	SendEmailNTAPlanned(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	GenerateExamSchedule(ctx context.Context, dryRun bool, seed *int, iterations *int, ignoreRatings *bool) (<-chan *model.LogLine, error)
+	GenerateExamRoomsPhase(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error)
 	AssignRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error)
 	ImportAnnyBookings(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateInvigilatorRequirements(ctx context.Context) (<-chan *model.LogLine, error)
@@ -4269,6 +4275,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ExcludeDays(childComplexity, args["ancode"].(int), args["days"].([]string)), true
 
+	case "Mutation.fixExamRoomsPhase":
+		if e.complexity.Mutation.FixExamRoomsPhase == nil {
+			break
+		}
+
+		return e.complexity.Mutation.FixExamRoomsPhase(childComplexity), true
+
 	case "Mutation.fixPrimussAncode":
 		if e.complexity.Mutation.FixPrimussAncode == nil {
 			break
@@ -4919,6 +4932,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UnblockRoomForSlots(childComplexity, args["room"].(string), args["slots"].([]*model.SlotInput)), true
+
+	case "Mutation.unfixExamRoomsPhase":
+		if e.complexity.Mutation.UnfixExamRoomsPhase == nil {
+			break
+		}
+
+		return e.complexity.Mutation.UnfixExamRoomsPhase(childComplexity), true
 
 	case "Mutation.updateNTA":
 		if e.complexity.Mutation.UpdateNta == nil {
@@ -7984,6 +8004,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.AssignRoomsForExams(childComplexity), true
 
+	case "Subscription.generateExamRoomsPhase":
+		if e.complexity.Subscription.GenerateExamRoomsPhase == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_generateExamRoomsPhase_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.GenerateExamRoomsPhase(childComplexity, args["dryRun"].(bool), args["seed"].(*int), args["iterations"].(*int)), true
+
 	case "Subscription.generateExamSchedule":
 		if e.complexity.Subscription.GenerateExamSchedule == nil {
 			break
@@ -9778,6 +9810,25 @@ type ExamDurationOverride {
   is refused while the plan is gated (draft sent / published).
   """
   generateExamSchedule(dryRun: Boolean!, seed: Int, iterations: Int, ignoreRatings: Boolean): LogLine!
+
+  """
+  generateExamRoomsPhase runs phase A: it schedules ONLY the EXaHM/SEB exams into the
+  booked T-building slots, maximizing room usage, and streams its output line by line.
+  With dryRun nothing is written. After a satisfactory run, fixExamRoomsPhase freezes
+  the result so the regular generateExamSchedule (phase B) leaves those exams untouched.
+  """
+  generateExamRoomsPhase(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
+}
+
+extend type Mutation {
+  """
+  fixExamRoomsPhase freezes the phase-A EXaHM/SEB placement (sets PhaseFixed, distinct
+  from the manual Locked). Returns the number of exams fixed. Phase B then treats them
+  as immovable obstacles.
+  """
+  fixExamRoomsPhase: Int!
+  "unfixExamRoomsPhase clears the phase-A freeze on all exams (manual Locked stays)."
+  unfixExamRoomsPhase: Boolean!
 }
 
 extend type Query {
@@ -17209,6 +17260,80 @@ func (ec *executionContext) field_Subscription_assignInvigilations_argsSeed(
 }
 
 func (ec *executionContext) field_Subscription_assignInvigilations_argsIterations(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["iterations"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("iterations"))
+	if tmp, ok := rawArgs["iterations"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_generateExamRoomsPhase_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_generateExamRoomsPhase_argsDryRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["dryRun"] = arg0
+	arg1, err := ec.field_Subscription_generateExamRoomsPhase_argsSeed(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["seed"] = arg1
+	arg2, err := ec.field_Subscription_generateExamRoomsPhase_argsIterations(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["iterations"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_generateExamRoomsPhase_argsDryRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["dryRun"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
+	if tmp, ok := rawArgs["dryRun"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_generateExamRoomsPhase_argsSeed(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["seed"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("seed"))
+	if tmp, ok := rawArgs["seed"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_generateExamRoomsPhase_argsIterations(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (*int, error) {
@@ -35005,6 +35130,94 @@ func (ec *executionContext) fieldContext_Mutation_removeExamDuration(ctx context
 	if fc.Args, err = ec.field_Mutation_removeExamDuration_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_fixExamRoomsPhase(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_fixExamRoomsPhase(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().FixExamRoomsPhase(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_fixExamRoomsPhase(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unfixExamRoomsPhase(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unfixExamRoomsPhase(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnfixExamRoomsPhase(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unfixExamRoomsPhase(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -61330,6 +61543,89 @@ func (ec *executionContext) fieldContext_Subscription_generateExamSchedule(ctx c
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_generateExamRoomsPhase(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_generateExamRoomsPhase(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().GenerateExamRoomsPhase(rctx, fc.Args["dryRun"].(bool), fc.Args["seed"].(*int), fc.Args["iterations"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_generateExamRoomsPhase(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_generateExamRoomsPhase_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Subscription_assignRoomsForExams(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	fc, err := ec.fieldContext_Subscription_assignRoomsForExams(ctx, field)
 	if err != nil {
@@ -74136,6 +74432,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "fixExamRoomsPhase":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_fixExamRoomsPhase(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unfixExamRoomsPhase":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unfixExamRoomsPhase(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setGenerationConfig":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setGenerationConfig(ctx, field)
@@ -80343,6 +80653,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_sendEmailNTAPlanned(ctx, fields[0])
 	case "generateExamSchedule":
 		return ec._Subscription_generateExamSchedule(ctx, fields[0])
+	case "generateExamRoomsPhase":
+		return ec._Subscription_generateExamRoomsPhase(ctx, fields[0])
 	case "assignRoomsForExams":
 		return ec._Subscription_assignRoomsForExams(ctx, fields[0])
 	case "importAnnyBookings":

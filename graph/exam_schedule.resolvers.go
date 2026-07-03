@@ -11,6 +11,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// FixExamRoomsPhase is the resolver for the fixExamRoomsPhase field.
+func (r *mutationResolver) FixExamRoomsPhase(ctx context.Context) (int, error) {
+	return r.plexams.FixExamRoomsPhase(ctx)
+}
+
+// UnfixExamRoomsPhase is the resolver for the unfixExamRoomsPhase field.
+func (r *mutationResolver) UnfixExamRoomsPhase(ctx context.Context) (bool, error) {
+	if err := r.plexams.UnfixExamRoomsPhase(ctx); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // ExamScheduleConstraints is the resolver for the examScheduleConstraints field.
 func (r *queryResolver) ExamScheduleConstraints(ctx context.Context) ([]*model.OptimizerConstraint, error) {
 	infos := r.plexams.ExamScheduleConstraints()
@@ -48,6 +61,39 @@ func (r *subscriptionResolver) GenerateExamSchedule(ctx context.Context, dryRun 
 		result, err := r.plexams.GenerateExamSchedule(context.Background(), dryRun, seedVal, iterVal, ignore, reporter)
 		if err != nil {
 			log.Error().Err(err).Msg("generate exam schedule failed")
+			reporter.emit(model.LogLevelError, "error: "+err.Error())
+		}
+		if result != nil {
+			reporter.send(&model.LogLine{Level: model.LogLevelResult, Text: "report", ExamReport: examScheduleReport(result)})
+		}
+		reporter.emit(model.LogLevelDone, "done")
+	}()
+
+	return ch, nil
+}
+
+// GenerateExamRoomsPhase is the resolver for the generateExamRoomsPhase field. It runs
+// phase A (EXaHM/SEB into the booked T-building slots) and streams its output line by
+// line. Like GenerateExamSchedule it runs on a background context so a started non-dry
+// run finishes even if the client disconnects.
+func (r *subscriptionResolver) GenerateExamRoomsPhase(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error) {
+	ch := make(chan *model.LogLine, 256)
+
+	var seedVal int64
+	if seed != nil {
+		seedVal = int64(*seed)
+	}
+	var iterVal int
+	if iterations != nil {
+		iterVal = *iterations
+	}
+	reporter := newStreamReporter(ctx, ch)
+
+	go func() {
+		defer close(ch)
+		result, err := r.plexams.GenerateExamRoomsPhase(context.Background(), dryRun, seedVal, iterVal, reporter)
+		if err != nil {
+			log.Error().Err(err).Msg("generate exam rooms phase failed")
 			reporter.emit(model.LogLevelError, "error: "+err.Error())
 		}
 		if result != nil {

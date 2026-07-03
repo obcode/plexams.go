@@ -6,6 +6,25 @@ extend type Subscription {
   is refused while the plan is gated (draft sent / published).
   """
   generateExamSchedule(dryRun: Boolean!, seed: Int, iterations: Int, ignoreRatings: Boolean): LogLine!
+
+  """
+  generateExamRoomsPhase runs phase A: it schedules ONLY the EXaHM/SEB exams into the
+  booked T-building slots, maximizing room usage, and streams its output line by line.
+  With dryRun nothing is written. After a satisfactory run, fixExamRoomsPhase freezes
+  the result so the regular generateExamSchedule (phase B) leaves those exams untouched.
+  """
+  generateExamRoomsPhase(dryRun: Boolean!, seed: Int, iterations: Int): LogLine!
+}
+
+extend type Mutation {
+  """
+  fixExamRoomsPhase freezes the phase-A EXaHM/SEB placement (sets PhaseFixed, distinct
+  from the manual Locked). Returns the number of exams fixed. Phase B then treats them
+  as immovable obstacles.
+  """
+  fixExamRoomsPhase: Int!
+  "unfixExamRoomsPhase clears the phase-A freeze on all exams (manual Locked stays)."
+  unfixExamRoomsPhase: Boolean!
 }
 
 extend type Query {

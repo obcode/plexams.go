@@ -135,7 +135,21 @@ func (p *Plexams) buildInvigilator(ctx context.Context, teacher *model.Teacher, 
 				log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get plan entry for ancode")
 			}
 			if planEntry != nil {
-				starttime := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
+				// Slot (0,0) is the marker for exams outside the exam period
+				// (außerhalb des Prüfungszeitraums); they have no real slot time,
+				// so they contribute no exam time for the invigilator.
+				if planEntry.DayNumber == 0 && planEntry.SlotNumber == 0 {
+					continue
+				}
+				starttimePtr, err := p.GetStarttime(planEntry.DayNumber, planEntry.SlotNumber)
+				if err != nil {
+					log.Error().Err(err).Str("name", teacher.Shortname).
+						Int("ancode", exam.Ancode).
+						Int("dayNumber", planEntry.DayNumber).Int("slotNumber", planEntry.SlotNumber).
+						Msg("plan entry does not map to a valid slot, skipping exam time for invigilator")
+					continue
+				}
+				starttime := *starttimePtr
 				endtime := starttime.Add(time.Duration(exam.MaxDuration) * time.Minute)
 				examTimes = append(examTimes, &model.ExamTime{
 					From:  starttime,

@@ -95,3 +95,22 @@ func TestExahmEmailGolden(t *testing.T) {
 	assertGolden(t, "exahmEmail.txt", text)
 	assertGolden(t, "exahmEmail.html", html)
 }
+
+// TestDraftEmailsGolden locks the draft-plan emails (ZPA, with JIRA; FS, without).
+func TestDraftEmailsGolden(t *testing.T) {
+	data := &ConstraintsEmail{FromDate: "06.07.26", UntilDate: "17.07.26", FeedbackDate: "13.07.26", PlanerName: "Test Planer"}
+
+	textZ, htmlZ, err := (&Plexams{}).renderMarkdownEmail("draftEmailZPA.md.tmpl", true, data)
+	if err != nil {
+		t.Fatalf("render ZPA: %v", err)
+	}
+	assertGolden(t, "draftEmailZPA.txt", textZ)
+	assertGolden(t, "draftEmailZPA.html", htmlZ)
+
+	textF, htmlF, err := (&Plexams{}).renderMarkdownEmail("draftEmailFS.md.tmpl", false, data)
+	if err != nil {
+		t.Fatalf("render FS: %v", err)
+	}
+	assertGolden(t, "draftEmailFS.txt", textF)
+	assertGolden(t, "draftEmailFS.html", htmlF)
+}

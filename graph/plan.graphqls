@@ -70,4 +70,6 @@ type PlanEntry {
   externalTime: Time # only for exams from other faculties
   ancode: Int!
   locked: Boolean!
+  "fixed by the EXaHM/SEB room phase (phase A), distinct from the manual lock."
+  phaseFixed: Boolean!
 }

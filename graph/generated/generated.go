@@ -725,6 +725,7 @@ type ComplexityRoot struct {
 		DayNumber    func(childComplexity int) int
 		ExternalTime func(childComplexity int) int
 		Locked       func(childComplexity int) int
+		PhaseFixed   func(childComplexity int) int
 		SlotNumber   func(childComplexity int) int
 		Starttime    func(childComplexity int) int
 	}
@@ -5371,6 +5372,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PlanEntry.Locked(childComplexity), true
+
+	case "PlanEntry.phaseFixed":
+		if e.complexity.PlanEntry.PhaseFixed == nil {
+			break
+		}
+
+		return e.complexity.PlanEntry.PhaseFixed(childComplexity), true
 
 	case "PlanEntry.slotNumber":
 		if e.complexity.PlanEntry.SlotNumber == nil {
@@ -10404,6 +10412,8 @@ type PlanEntry {
   externalTime: Time # only for exams from other faculties
   ancode: Int!
   locked: Boolean!
+  "fixed by the EXaHM/SEB room phase (phase A), distinct from the manual lock."
+  phaseFixed: Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../planer.graphqls", Input: `extend type Query {
@@ -33683,6 +33693,8 @@ func (ec *executionContext) fieldContext_MucDaiExam_planEntry(_ context.Context,
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
 				return ec.fieldContext_PlanEntry_locked(ctx, field)
+			case "phaseFixed":
+				return ec.fieldContext_PlanEntry_phaseFixed(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
 		},
@@ -41794,6 +41806,50 @@ func (ec *executionContext) fieldContext_PlanEntry_locked(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _PlanEntry_phaseFixed(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanEntry_phaseFixed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PhaseFixed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanEntry_phaseFixed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Planer_name(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Planer_name(ctx, field)
 	if err != nil {
@@ -42441,6 +42497,8 @@ func (ec *executionContext) fieldContext_PlannedExam_planEntry(_ context.Context
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
 				return ec.fieldContext_PlanEntry_locked(ctx, field)
+			case "phaseFixed":
+				return ec.fieldContext_PlanEntry_phaseFixed(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
 		},
@@ -43662,6 +43720,8 @@ func (ec *executionContext) fieldContext_PreExam_planEntry(_ context.Context, fi
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
 				return ec.fieldContext_PlanEntry_locked(ctx, field)
+			case "phaseFixed":
+				return ec.fieldContext_PlanEntry_phaseFixed(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
 		},
@@ -66733,6 +66793,8 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_planEntry(_ cont
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
 				return ec.fieldContext_PlanEntry_locked(ctx, field)
+			case "phaseFixed":
+				return ec.fieldContext_PlanEntry_phaseFixed(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
 		},
@@ -75532,6 +75594,11 @@ func (ec *executionContext) _PlanEntry(ctx context.Context, sel ast.SelectionSet
 			}
 		case "locked":
 			out.Values[i] = ec._PlanEntry_locked(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "phaseFixed":
+			out.Values[i] = ec._PlanEntry_phaseFixed(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

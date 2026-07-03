@@ -206,8 +206,8 @@ func (capacityC) Check(st *State) []optimize.Violation {
 type ntaOverrunC struct{}
 
 func (ntaOverrunC) Info() optimize.Info {
-	return optimize.Info{Name: "nta-overrun", Title: "NTA-Zeitverlängerung: kein Folgeslot", Kind: optimize.KindHard, Tier: 5,
-		Description: "Zieht die verlängerte Zeit einer NTA-Prüfung in den nächsten Slot, darf der/die betroffene Studierende im direkt folgenden Slot keine weitere Prüfung schreiben."}
+	return optimize.Info{Name: "exam-gap", Title: "Zwischenzeit zwischen Prüfungen", Kind: optimize.KindHard, Tier: 5,
+		Description: "Zwischen zwei Prüfungen eines/einer Studierenden muss genug Zeit für Wechsel/Weg bleiben. Reicht die (ggf. per NTA verlängerte) Prüfungsdauer plus Puffer in den nächsten Slot, ist dieser für den/die Studierende/n gesperrt."}
 }
 func (ntaOverrunC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
@@ -223,8 +223,8 @@ func (ntaOverrunC) Check(st *State) []optimize.Violation {
 		}
 		for _, b := range p.overrunNext[a] {
 			if st.SlotOf[b] == ns {
-				vs = append(vs, optimize.Violation{Constraint: "nta-overrun",
-					Message: "NTA-Prüfung zieht in den Folgeslot mit weiterer Prüfung des/der Studierenden",
+				vs = append(vs, optimize.Violation{Constraint: "exam-gap",
+					Message: "zu wenig Zwischenzeit: Prüfung reicht in den Folgeslot mit weiterer Prüfung des/der Studierenden",
 					Refs:    []int{p.Units[a].ID, p.Units[b].ID}})
 			}
 		}

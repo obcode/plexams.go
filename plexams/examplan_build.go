@@ -10,11 +10,18 @@ import (
 	"github.com/obcode/plexams.go/plexams/examplan"
 	"github.com/obcode/plexams.go/plexams/optimize"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 // smallExamThreshold: exams with at most this many registrations are "small" and, for
 // the same examer, preferably scheduled into the same slot.
 const smallExamThreshold = 5
+
+// defaultExamGapMinutes is the travel/break buffer a student needs between two
+// consecutive exams. If an exam's duration (NTA-extended for the affected student) plus
+// this buffer reaches into the next slot, that student may not sit in the next slot.
+// Overridable via planer.examGapMinutes.
+const defaultExamGapMinutes = 30
 
 // ExamScheduleResult summarizes a Terminplan generation run.
 type ExamScheduleResult struct {
@@ -449,51 +456,81 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		return attract[i].B < attract[j].B
 	})
 
-	// --- NTA time-overrun (hard): a student with a time extension whose exam runs past
-	// the slot block cannot take another exam in the immediately following slot ---
-	blockMin := int(slotBlockDuration(sc.Starttimes).Minutes())
-	studentUnits := make(map[string]map[int]bool) // mtknr -> unit indices
-	for _, s := range studentsRaw {
-		for _, ancode := range s.Regs {
-			if ui, ok := unitOf[ancode]; ok {
-				if studentUnits[s.Mtknr] == nil {
-					studentUnits[s.Mtknr] = make(map[int]bool)
-				}
-				studentUnits[s.Mtknr][ui] = true
-			}
-		}
+	// --- consecutive-exam gap (hard): a student needs a travel/break buffer between two
+	// of their exams; an NTA time extension eats into it. If a student's occupied time
+	// for exam A (its duration, extended for that student's NTA) plus the buffer reaches
+	// into the next slot, they may not take another of their exams in the following slot.
+	gapMin := viper.GetInt("planer.examGapMinutes")
+	if gapMin <= 0 {
+		gapMin = defaultExamGapMinutes
 	}
-	ntaForbiddenSet := make(map[[2]int]bool)
+	blockMin := int(slotBlockDuration(sc.Starttimes).Minutes())
+	unitBaseDur := make(map[int]int)       // unit -> exam duration
+	ntaExt := make(map[int]map[string]int) // unit -> mtknr -> NTA-extended duration
 	for _, e := range assembled {
 		ui, ok := unitOf[e.Ancode]
-		if !ok || len(e.Ntas) == 0 || e.ZpaExam == nil || e.ZpaExam.Duration <= 0 {
+		if !ok || e.ZpaExam == nil {
 			continue
 		}
+		if e.ZpaExam.Duration > unitBaseDur[ui] {
+			unitBaseDur[ui] = e.ZpaExam.Duration
+		}
 		for _, nta := range e.Ntas {
-			extended := e.ZpaExam.Duration * (100 + nta.DeltaDurationPercent) / 100
-			if blockMin > 0 && extended <= blockMin {
-				continue // fits within the slot block: no overrun into the next slot
+			ext := e.ZpaExam.Duration * (100 + nta.DeltaDurationPercent) / 100
+			if ntaExt[ui] == nil {
+				ntaExt[ui] = make(map[string]int)
 			}
-			for other := range studentUnits[nta.Mtknr] { // this student's other exams
-				if other != ui {
-					ntaForbiddenSet[[2]int{ui, other}] = true
+			if ext > ntaExt[ui][nta.Mtknr] {
+				ntaExt[ui][nta.Mtknr] = ext
+			}
+		}
+	}
+	// overrunsFor: does exam `unit` leave the student too little time before the next
+	// slot (duration + buffer reaches into it)?
+	overrunsFor := func(unit int, mtknr string) bool {
+		dur := unitBaseDur[unit]
+		if m := ntaExt[unit]; m != nil {
+			if ext, ok := m[mtknr]; ok && ext > dur {
+				dur = ext
+			}
+		}
+		return blockMin > 0 && dur+gapMin > blockMin
+	}
+	gapForbiddenSet := make(map[[2]int]bool)
+	for _, s := range studentsRaw {
+		uset := make(map[int]bool)
+		for _, ancode := range s.Regs {
+			if ui, ok := unitOf[ancode]; ok {
+				uset[ui] = true
+			}
+		}
+		if len(uset) < 2 {
+			continue
+		}
+		for a := range uset {
+			if !overrunsFor(a, s.Mtknr) {
+				continue
+			}
+			for b := range uset { // a overruns → b must not sit in the slot right after a
+				if a != b {
+					gapForbiddenSet[[2]int{a, b}] = true
 				}
 			}
 		}
 	}
-	ntaForbidden := make([][2]int, 0, len(ntaForbiddenSet))
-	for k := range ntaForbiddenSet {
-		ntaForbidden = append(ntaForbidden, k)
+	gapForbidden := make([][2]int, 0, len(gapForbiddenSet))
+	for k := range gapForbiddenSet {
+		gapForbidden = append(gapForbidden, k)
 	}
-	sort.Slice(ntaForbidden, func(i, j int) bool {
-		if ntaForbidden[i][0] != ntaForbidden[j][0] {
-			return ntaForbidden[i][0] < ntaForbidden[j][0]
+	sort.Slice(gapForbidden, func(i, j int) bool {
+		if gapForbidden[i][0] != gapForbidden[j][0] {
+			return gapForbidden[i][0] < gapForbidden[j][0]
 		}
-		return ntaForbidden[i][1] < ntaForbidden[j][1]
+		return gapForbidden[i][1] < gapForbidden[j][1]
 	})
 
 	prob := examplan.NewProblem(slots, units, students, attract, w)
-	prob.SetNTAOverruns(ntaForbidden)
+	prob.SetNTAOverruns(gapForbidden)
 	return prob, nil
 }
 
@@ -539,7 +576,7 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	reporter.Println(fmt.Sprintf("%d %s, %d fest, %d Slots, %d Studierende mit Konflikten",
 		movable, what, len(prob.Units)-movable, len(prob.Slots), len(prob.Students)))
 	if n := prob.NumNTAOverruns(); n > 0 {
-		reporter.Println(fmt.Sprintf("%d NTA-Überzieh-Paare berücksichtigt (Folgeslot gesperrt)", n))
+		reporter.Println(fmt.Sprintf("%d Zwischenzeit-Sperren berücksichtigt (Folgeslot, inkl. NTA)", n))
 	}
 
 	opts := optimize.DefaultOptions()

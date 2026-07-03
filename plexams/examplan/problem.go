@@ -264,11 +264,12 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 	return p
 }
 
-// SetNTAOverruns installs the NTA time-overrun adjacency constraints: for each ordered
-// pair (a, b), unit b must not be placed in the slot immediately following a on the same
-// day, because an NTA student of a is still writing (extended time) when that next slot
-// starts. Both-fixed pairs are ignored (neither can be moved to satisfy it). Idempotent;
-// replaces any previously installed pairs.
+// SetNTAOverruns installs the consecutive-exam-gap constraints: for each ordered pair
+// (a, b), unit b must not be placed in the slot immediately following a on the same day,
+// because a student sharing both is still occupied with a (its duration — extended for
+// that student's NTA — plus the travel buffer) when that next slot starts. Both-fixed
+// pairs are ignored (neither can be moved to satisfy it). Idempotent; replaces any
+// previously installed pairs.
 func (p *Problem) SetNTAOverruns(pairs [][2]int) {
 	nextSet := make([]map[int]bool, len(p.Units))
 	prevSet := make([]map[int]bool, len(p.Units))

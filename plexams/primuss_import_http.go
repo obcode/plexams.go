@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/obcode/plexams.go/plexams/primuss"
 	"github.com/rs/zerolog/log"
 )
 
@@ -68,7 +69,7 @@ func (p *Plexams) HTTPUploadPrimussZip(w http.ResponseWriter, r *http.Request) {
 
 // affectedZpaAncodes maps the changed Primuss (program, ancode) of an import to the ZPA
 // ancodes that carry them, so the GUI can send a Primuss-data update email per ZPA exam.
-func (p *Plexams) affectedZpaAncodes(ctx context.Context, result *PrimussImportResult) []int {
+func (p *Plexams) affectedZpaAncodes(ctx context.Context, result *primuss.ImportResult) []int {
 	zpaByPrimuss, err := p.zpaExamsByPrimussAncode(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot map changed primuss ancodes to zpa exams")

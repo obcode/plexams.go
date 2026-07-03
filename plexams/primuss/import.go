@@ -1,4 +1,4 @@
-package plexams
+package primuss
 
 import (
 	"archive/zip"
@@ -17,14 +17,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// PrimussImportResult summarizes a Primuss XLSX ZIP import.
-type PrimussImportResult struct {
-	Programs []*PrimussImportProgram
+// ImportResult summarizes a Primuss XLSX ZIP import.
+type ImportResult struct {
+	Programs []*ImportProgram
 	Skipped  []string // files in the zip that were ignored
 }
 
-// PrimussImportProgram is the per-program outcome.
-type PrimussImportProgram struct {
+// ImportProgram is the per-program outcome.
+type ImportProgram struct {
 	Program        string
 	ExamsImported  int
 	StudentRegs    int
@@ -39,9 +39,8 @@ type PrimussImportProgram struct {
 // "Prüfungsanmeldungen-IF-B-126.xlsx" -> "IF".
 var primussGroupRE = regexp.MustCompile(`-([A-Z]{2,4})-[BM]-`)
 
-// primussStudentregHeader is the fixed, typed column set of the Prüfungsanmeldungen
-// file (the xlsx header already uses these names). Only AnCode is numeric; everything
-// else (incl. MTKNR) stays a string.
+// primussStudentregNumeric marks the numeric columns of the Prüfungsanmeldungen file.
+// Only AnCode is numeric; everything else (incl. MTKNR) stays a string.
 var primussStudentregNumeric = map[string]bool{"AnCode": true}
 
 // detectPrimussFile returns the program and the collection kind (studentregs | exams |
@@ -69,12 +68,12 @@ func detectPrimussFile(base string) (program, kind string) {
 	return program, kind
 }
 
-// ImportPrimussZip imports the Primuss XLSX files from an uploaded ZIP. The program is
-// derived from each filename; only the four known file types are imported (drop+insert
-// per program). Only the programs/collections actually present in the ZIP are touched
+// ImportZip imports the Primuss XLSX files from an uploaded ZIP. The program is derived
+// from each filename; only the four known file types are imported (drop+insert per
+// program). Only the programs/collections actually present in the ZIP are touched
 // (incremental). For each replaced studentregs collection it reports the ancodes whose
 // registrations changed, so update emails can be sent to those examers.
-func (p *Plexams) ImportPrimussZip(ctx context.Context, zipData []byte) (*PrimussImportResult, error) {
+func (s *Service) ImportZip(ctx context.Context, zipData []byte) (*ImportResult, error) {
 	zr, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
 		return nil, fmt.Errorf("not a valid zip: %w", err)
@@ -82,7 +81,7 @@ func (p *Plexams) ImportPrimussZip(ctx context.Context, zipData []byte) (*Primus
 
 	// program -> kind -> xlsx bytes (last one wins)
 	files := make(map[string]map[string][]byte)
-	result := &PrimussImportResult{Skipped: []string{}}
+	result := &ImportResult{Skipped: []string{}}
 	for _, f := range zr.File {
 		if f.FileInfo().IsDir() {
 			continue
@@ -120,7 +119,7 @@ func (p *Plexams) ImportPrimussZip(ctx context.Context, zipData []byte) (*Primus
 	sort.Strings(programs)
 
 	for _, program := range programs {
-		prog, err := p.importPrimussProgram(ctx, program, files[program])
+		prog, err := s.importProgram(ctx, program, files[program])
 		if err != nil {
 			return nil, fmt.Errorf("program %s: %w", program, err)
 		}
@@ -129,9 +128,9 @@ func (p *Plexams) ImportPrimussZip(ctx context.Context, zipData []byte) (*Primus
 	return result, nil
 }
 
-// ImportPrimussDir zips all .xlsx under dir (recursively) in memory and imports them
-// like an uploaded ZIP. Convenience for the CLI / a server-side directory.
-func (p *Plexams) ImportPrimussDir(ctx context.Context, dir string) (*PrimussImportResult, error) {
+// ImportDir zips all .xlsx under dir (recursively) in memory and imports them like an
+// uploaded ZIP. Convenience for the CLI / a server-side directory.
+func (s *Service) ImportDir(ctx context.Context, dir string) (*ImportResult, error) {
 	buf := new(bytes.Buffer)
 	zw := zip.NewWriter(buf)
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -159,15 +158,15 @@ func (p *Plexams) ImportPrimussDir(ctx context.Context, dir string) (*PrimussImp
 	if err := zw.Close(); err != nil {
 		return nil, err
 	}
-	return p.ImportPrimussZip(ctx, buf.Bytes())
+	return s.ImportZip(ctx, buf.Bytes())
 }
 
-func (p *Plexams) importPrimussProgram(ctx context.Context, program string, byKind map[string][]byte) (*PrimussImportProgram, error) {
-	res := &PrimussImportProgram{Program: program, ChangedAncodes: []int{}, Missing: []string{}}
+func (s *Service) importProgram(ctx context.Context, program string, byKind map[string][]byte) (*ImportProgram, error) {
+	res := &ImportProgram{Program: program, ChangedAncodes: []int{}, Missing: []string{}}
 
 	// studentregs first (with change detection against the existing collection)
 	if data, ok := byKind["studentregs"]; ok {
-		old, err := p.dbClient.RawCollection(ctx, "studentregs_"+program)
+		old, err := s.db.RawCollection(ctx, "studentregs_"+program)
 		if err != nil {
 			return nil, err
 		}
@@ -182,7 +181,7 @@ func (p *Plexams) importPrimussProgram(ctx context.Context, program string, byKi
 		} else {
 			res.ChangedAncodes = changedAncodes(old, docs)
 		}
-		n, err := p.dbClient.ReplaceRawCollection(ctx, "studentregs_"+program, docs)
+		n, err := s.db.ReplaceRawCollection(ctx, "studentregs_"+program, docs)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +209,7 @@ func (p *Plexams) importPrimussProgram(ctx context.Context, program string, byKi
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", imp.kind, err)
 		}
-		n, err := p.dbClient.ReplaceRawCollection(ctx, imp.collection, docs)
+		n, err := s.db.ReplaceRawCollection(ctx, imp.collection, docs)
 		if err != nil {
 			return nil, err
 		}
@@ -248,8 +247,8 @@ func xlsxRows(data []byte) ([][]string, error) {
 	return rows, nil
 }
 
-// parsePrimussStudentregs maps the Prüfungsanmeldungen rows to docs with the fixed
-// typing (AnCode int, everything else — incl. MTKNR — string).
+// parsePrimussStudentregs maps the Prüfungsanmeldungen rows to docs with the fixed typing
+// (AnCode int, everything else — incl. MTKNR — string).
 func parsePrimussStudentregs(data []byte) ([]bson.M, error) {
 	rows, err := xlsxRows(data)
 	if err != nil {
@@ -277,8 +276,8 @@ func parsePrimussStudentregs(data []byte) ([]bson.M, error) {
 	return docs, nil
 }
 
-// parsePrimussAutoTyped maps rows to docs with mongoimport-like auto typing: integer
-// cells become ints, others strings. With sumFix the header "Sum." becomes "Sum"; with
+// parsePrimussAutoTyped maps rows to docs with mongoimport-like auto typing: integer cells
+// become ints, others strings. With sumFix the header "Sum." becomes "Sum"; with
 // ignoreBlanks empty cells are omitted (else kept as "").
 func parsePrimussAutoTyped(data []byte, sumFix, ignoreBlanks bool) ([]bson.M, error) {
 	rows, err := xlsxRows(data)

@@ -4,8 +4,20 @@ import (
 	"context"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/primuss"
 	"github.com/rs/zerolog/log"
 )
+
+// ImportPrimussZip imports the Primuss Sammellisten XLSX from an uploaded ZIP; the
+// import logic lives in the plexams/primuss package.
+func (p *Plexams) ImportPrimussZip(ctx context.Context, zipData []byte) (*primuss.ImportResult, error) {
+	return p.primuss.ImportZip(ctx, zipData)
+}
+
+// ImportPrimussDir zips all .xlsx under dir and imports them like an uploaded ZIP.
+func (p *Plexams) ImportPrimussDir(ctx context.Context, dir string) (*primuss.ImportResult, error) {
+	return p.primuss.ImportDir(ctx, dir)
+}
 
 func (p *Plexams) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	byProgram, err := p.dbClient.GetPrimussExams(ctx)

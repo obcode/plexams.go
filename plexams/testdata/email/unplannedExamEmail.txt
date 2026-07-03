@@ -1,0 +1,9 @@
+Hallo Prof. Test, [der Name steht so in den Primuss-Daten]
+
+anbei die Anmeldedaten für die Prüfung 123. Mathe im Studiengang IF.
+
+Mit freundlichen Grüßen
+Test Planer
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

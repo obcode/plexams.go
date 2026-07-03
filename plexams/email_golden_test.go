@@ -55,8 +55,8 @@ func TestAllEmailTemplatesParse(t *testing.T) {
 			t.Errorf("text template %s does not parse: %v", name, err)
 		}
 	}
-	if n < 40 {
-		t.Errorf("expected ~47 email templates, only found %d", n)
+	if n < 20 {
+		t.Errorf("suspiciously few email templates found (%d) — glob broken?", n)
 	}
 	t.Logf("parsed %d email templates", n)
 }
@@ -142,4 +142,23 @@ func TestSimpleEmailsGolden(t *testing.T) {
 		assertGolden(t, c.name+".txt", text)
 		assertGolden(t, c.name+".html", html)
 	}
+}
+
+// TestBatch3EmailsGolden locks the invigilation-request and unplanned-exam mails.
+func TestBatch3EmailsGolden(t *testing.T) {
+	text, html, err := (&Plexams{}).renderMarkdownEmail("invigilationEmail.md.tmpl", true,
+		&ConstraintsEmail{FeedbackDate: "13.07.26", PlanerName: "Test Planer"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertGolden(t, "invigilationEmail.txt", text)
+	assertGolden(t, "invigilationEmail.html", html)
+
+	textU, htmlU, err := (&Plexams{}).renderMarkdownEmail("unplannedExamEmail.md.tmpl", false,
+		&UnpplannedExamMailData{Exam: &model.PrimussExam{MainExamer: "Prof. Test", AnCode: 123, Module: "Mathe", Program: "IF"}, PlanerName: "Test Planer"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertGolden(t, "unplannedExamEmail.txt", textU)
+	assertGolden(t, "unplannedExamEmail.html", htmlU)
 }

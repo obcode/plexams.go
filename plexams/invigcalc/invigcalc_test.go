@@ -1,4 +1,4 @@
-package plexams
+package invigcalc
 
 import (
 	"testing"
@@ -85,7 +85,7 @@ func TestFairInvigilationTargets(t *testing.T) {
 				in.Teacher = &model.Teacher{ID: i + 1}
 			}
 
-			gotTodo, gotContrib, targets, enough := fairInvigilationTargets(tt.workMinutes, tt.reqs)
+			gotTodo, gotContrib, targets, enough := FairTargets(tt.workMinutes, tt.reqs)
 			if gotTodo != tt.wantTodo {
 				t.Errorf("todoPerInvigilator = %d, want %d", gotTodo, tt.wantTodo)
 			}

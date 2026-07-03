@@ -17,4 +17,6 @@ Safety net: `plexams/email_golden_test.go` — `TestAllEmailTemplatesParse` (par
 
 Dead code removed during the sweep: `handicapEmail`(+HTML) + HandicapsEmail/HandicapExam/HandicapStudent structs; `publishedEmailInvigilations`(+HTML) broadcast (superseded by the per-teacher personal mail).
 
-NEXT (planned): Phase 2 = DB-backed, GUI-editable templates as an override layer over the embedded Markdown defaults (validate on save, reset-to-default); Phase 3 = extract a `plexams/email` package (needs MailSender/TemplateStore/config interfaces to break the *Plexams coupling). See [[emails-over-graphql]].
+PHASE 2 DONE (2026-07, branch feat/db-email-templates): DB-backed, GUI-editable templates as an override layer. Global collection `email_templates` in the "plexams" DB (name→markdown override); db.EmailTemplateOverride(s)/Set/Delete. renderMarkdownEmail resolves override→embedded default via markdownTemplateSource (nil dbClient → default, so goldens unaffected). plexams.EmailTemplates/SetEmailTemplate(validated: must parse)/ResetEmailTemplate. GraphQL: query emailTemplates ([{name, markdown (effective), isDefault, defaultMarkdown}]), mutations setEmailTemplate(name,markdown)/resetEmailTemplate(name). Only *.md.tmpl bodies are editable (not the emailBaseHTML/jiraOnHTML layout). Integration-tested against real MongoDB.
+
+NEXT (planned): GUI editor (Markdown textarea + variable hints + preview + reset). Phase 3 = extract a `plexams/email` package (needs MailSender/TemplateStore/config interfaces to break the *Plexams coupling). See [[emails-over-graphql]].

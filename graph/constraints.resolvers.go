@@ -11,8 +11,8 @@ import (
 )
 
 // NotPlannedByMe is the resolver for the notPlannedByMe field.
-func (r *mutationResolver) NotPlannedByMe(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.NotPlannedByMe(ctx, ancode)
+func (r *mutationResolver) NotPlannedByMe(ctx context.Context, ancode int, inFk *string) (bool, error) {
+	return r.plexams.NotPlannedByMe(ctx, ancode, inFk)
 }
 
 // ExcludeDays is the resolver for the excludeDays field.

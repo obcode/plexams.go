@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (db *DB) NotPlannedByMe(ctx context.Context, ancode int) (bool, error) {
+func (db *DB) NotPlannedByMe(ctx context.Context, ancode int, inFK *string) (bool, error) {
 	constraint, err := db.GetConstraintsForAncode(ctx, ancode)
 	if err != nil {
 		return false, err
@@ -25,6 +25,9 @@ func (db *DB) NotPlannedByMe(ctx context.Context, ancode int) (bool, error) {
 	}
 
 	constraint.NotPlannedByMe = true
+	if inFK != nil && *inFK != "" {
+		constraint.NotPlannedByMeInFk = inFK
+	}
 
 	collection := db.Client.Database(db.databaseName).Collection(collectionConstraints)
 	if update {

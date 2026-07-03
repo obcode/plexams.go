@@ -202,17 +202,18 @@ type ComplexityRoot struct {
 	}
 
 	Constraints struct {
-		Ancode          func(childComplexity int) int
-		DoNotPublish    func(childComplexity int) int
-		ExcludeDays     func(childComplexity int) int
-		FixedDay        func(childComplexity int) int
-		FixedTime       func(childComplexity int) int
-		Location        func(childComplexity int) int
-		NotPlannedByMe  func(childComplexity int) int
-		Online          func(childComplexity int) int
-		PossibleDays    func(childComplexity int) int
-		RoomConstraints func(childComplexity int) int
-		SameSlot        func(childComplexity int) int
+		Ancode             func(childComplexity int) int
+		DoNotPublish       func(childComplexity int) int
+		ExcludeDays        func(childComplexity int) int
+		FixedDay           func(childComplexity int) int
+		FixedTime          func(childComplexity int) int
+		Location           func(childComplexity int) int
+		NotPlannedByMe     func(childComplexity int) int
+		NotPlannedByMeInFk func(childComplexity int) int
+		Online             func(childComplexity int) int
+		PossibleDays       func(childComplexity int) int
+		RoomConstraints    func(childComplexity int) int
+		SameSlot           func(childComplexity int) int
 	}
 
 	CoverageReport struct {
@@ -587,7 +588,7 @@ type ComplexityRoot struct {
 		MigrateInvigilatorConstraints func(childComplexity int) int
 		MigrateRoomRequestsFromConfig func(childComplexity int) int
 		MigrateRoomsRequestWith       func(childComplexity int) int
-		NotPlannedByMe                func(childComplexity int, ancode int) int
+		NotPlannedByMe                func(childComplexity int, ancode int, inFk *string) int
 		Online                        func(childComplexity int, ancode int) int
 		PlacesWithSockets             func(childComplexity int, ancode int) int
 		PossibleDays                  func(childComplexity int, ancode int, days []string) int
@@ -1431,7 +1432,7 @@ type MutationResolver interface {
 	DeleteAdditionalExam(ctx context.Context, ancode int) (bool, error)
 	SetAnnyPersonalizationNames(ctx context.Context, names []string) (*model.AnnyConfig, error)
 	GenerateAssembledExams(ctx context.Context) (*model.GenerateAssembledExamsResult, error)
-	NotPlannedByMe(ctx context.Context, ancode int) (bool, error)
+	NotPlannedByMe(ctx context.Context, ancode int, inFk *string) (bool, error)
 	ExcludeDays(ctx context.Context, ancode int, days []string) (bool, error)
 	PossibleDays(ctx context.Context, ancode int, days []string) (bool, error)
 	SameSlot(ctx context.Context, ancode int, ancodes []int) (bool, error)
@@ -2410,6 +2411,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Constraints.NotPlannedByMe(childComplexity), true
+
+	case "Constraints.notPlannedByMeInFK":
+		if e.complexity.Constraints.NotPlannedByMeInFk == nil {
+			break
+		}
+
+		return e.complexity.Constraints.NotPlannedByMeInFk(childComplexity), true
 
 	case "Constraints.online":
 		if e.complexity.Constraints.Online == nil {
@@ -4388,7 +4396,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.NotPlannedByMe(childComplexity, args["ancode"].(int)), true
+		return e.complexity.Mutation.NotPlannedByMe(childComplexity, args["ancode"].(int), args["inFK"].(*string)), true
 
 	case "Mutation.online":
 		if e.complexity.Mutation.Online == nil {
@@ -9429,7 +9437,8 @@ extend type Query {
 }
 
 extend type Mutation {
-  notPlannedByMe(ancode: Int!): Boolean!
+  "Mark an exam as planned by another faculty; inFK is that faculty (e.g. \"FK10\")."
+  notPlannedByMe(ancode: Int!, inFK: String): Boolean!
   excludeDays(ancode: Int!, days: [String!]!): Boolean!
   possibleDays(ancode: Int!, days: [String!]!): Boolean!
   sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
@@ -9456,6 +9465,8 @@ type Constraints {
   online: Boolean!
   "fixed exam location/campus, e.g. \"Campus Pasing\"; empty = default campus (Lothstraße). Used for a minimum travel gap between exams at different campuses."
   location: String
+  "the faculty that plans this exam when notPlannedByMe (e.g. \"FK10\" for Pasing ZPA exams)."
+  notPlannedByMeInFK: String
   roomConstraints: RoomConstraints
 }
 
@@ -9483,6 +9494,8 @@ input ConstraintsInput {
   sameSlot: [Int!]
   online: Boolean
   location: String
+  "the faculty that plans this exam when notPlannedByMe (e.g. \"FK10\")."
+  notPlannedByMeInFK: String
   placesWithSocket: Boolean
   lab: Boolean
   exahm: Boolean
@@ -13040,6 +13053,11 @@ func (ec *executionContext) field_Mutation_notPlannedByMe_args(ctx context.Conte
 		return nil, err
 	}
 	args["ancode"] = arg0
+	arg1, err := ec.field_Mutation_notPlannedByMe_argsInFk(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["inFK"] = arg1
 	return args, nil
 }
 func (ec *executionContext) field_Mutation_notPlannedByMe_argsAncode(
@@ -13057,6 +13075,24 @@ func (ec *executionContext) field_Mutation_notPlannedByMe_argsAncode(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_notPlannedByMe_argsInFk(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["inFK"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("inFK"))
+	if tmp, ok := rawArgs["inFK"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -20421,6 +20457,8 @@ func (ec *executionContext) fieldContext_AssembledExam_constraints(_ context.Con
 				return ec.fieldContext_Constraints_online(ctx, field)
 			case "location":
 				return ec.fieldContext_Constraints_location(ctx, field)
+			case "notPlannedByMeInFK":
+				return ec.fieldContext_Constraints_notPlannedByMeInFK(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -23283,6 +23321,47 @@ func (ec *executionContext) fieldContext_Constraints_location(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Constraints_notPlannedByMeInFK(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Constraints_notPlannedByMeInFK(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NotPlannedByMeInFk, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Constraints_notPlannedByMeInFK(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Constraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Constraints_roomConstraints(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Constraints_roomConstraints(ctx, field)
 	if err != nil {
@@ -25367,6 +25446,8 @@ func (ec *executionContext) fieldContext_ExamPlanningMailExam_constraints(_ cont
 				return ec.fieldContext_Constraints_online(ctx, field)
 			case "location":
 				return ec.fieldContext_Constraints_location(ctx, field)
+			case "notPlannedByMeInFK":
+				return ec.fieldContext_Constraints_notPlannedByMeInFK(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -34026,7 +34107,7 @@ func (ec *executionContext) _Mutation_notPlannedByMe(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().NotPlannedByMe(rctx, fc.Args["ancode"].(int))
+		return ec.resolvers.Mutation().NotPlannedByMe(rctx, fc.Args["ancode"].(int), fc.Args["inFK"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -34566,6 +34647,8 @@ func (ec *executionContext) fieldContext_Mutation_addConstraints(ctx context.Con
 				return ec.fieldContext_Constraints_online(ctx, field)
 			case "location":
 				return ec.fieldContext_Constraints_location(ctx, field)
+			case "notPlannedByMeInFK":
+				return ec.fieldContext_Constraints_notPlannedByMeInFK(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -42361,6 +42444,8 @@ func (ec *executionContext) fieldContext_PlannedExam_constraints(_ context.Conte
 				return ec.fieldContext_Constraints_online(ctx, field)
 			case "location":
 				return ec.fieldContext_Constraints_location(ctx, field)
+			case "notPlannedByMeInFK":
+				return ec.fieldContext_Constraints_notPlannedByMeInFK(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -43796,6 +43881,8 @@ func (ec *executionContext) fieldContext_PreExam_constraints(_ context.Context, 
 				return ec.fieldContext_Constraints_online(ctx, field)
 			case "location":
 				return ec.fieldContext_Constraints_location(ctx, field)
+			case "notPlannedByMeInFK":
+				return ec.fieldContext_Constraints_notPlannedByMeInFK(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -44988,6 +45075,8 @@ func (ec *executionContext) fieldContext_PreplanExam_constraints(_ context.Conte
 				return ec.fieldContext_Constraints_online(ctx, field)
 			case "location":
 				return ec.fieldContext_Constraints_location(ctx, field)
+			case "notPlannedByMeInFK":
+				return ec.fieldContext_Constraints_notPlannedByMeInFK(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -47880,6 +47969,8 @@ func (ec *executionContext) fieldContext_Query_constraintForAncode(ctx context.C
 				return ec.fieldContext_Constraints_online(ctx, field)
 			case "location":
 				return ec.fieldContext_Constraints_location(ctx, field)
+			case "notPlannedByMeInFK":
+				return ec.fieldContext_Constraints_notPlannedByMeInFK(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -67022,6 +67113,8 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_constraints(_ co
 				return ec.fieldContext_Constraints_online(ctx, field)
 			case "location":
 				return ec.fieldContext_Constraints_location(ctx, field)
+			case "notPlannedByMeInFK":
+				return ec.fieldContext_Constraints_notPlannedByMeInFK(ctx, field)
 			case "roomConstraints":
 				return ec.fieldContext_Constraints_roomConstraints(ctx, field)
 			}
@@ -70166,7 +70259,7 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"allowedRooms", "notPlannedByMe", "doNotPublish", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "location", "placesWithSocket", "lab", "exahm", "seb", "kdpJiraURL", "maxStudents", "additionalSeats", "comments"}
+	fieldsInOrder := [...]string{"allowedRooms", "notPlannedByMe", "doNotPublish", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "location", "notPlannedByMeInFK", "placesWithSocket", "lab", "exahm", "seb", "kdpJiraURL", "maxStudents", "additionalSeats", "comments"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70243,6 +70336,13 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 				return it, err
 			}
 			it.Location = data
+		case "notPlannedByMeInFK":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notPlannedByMeInFK"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NotPlannedByMeInFk = data
 		case "placesWithSocket":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("placesWithSocket"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -72219,6 +72319,8 @@ func (ec *executionContext) _Constraints(ctx context.Context, sel ast.SelectionS
 			}
 		case "location":
 			out.Values[i] = ec._Constraints_location(ctx, field, obj)
+		case "notPlannedByMeInFK":
+			out.Values[i] = ec._Constraints_notPlannedByMeInFK(ctx, field, obj)
 		case "roomConstraints":
 			out.Values[i] = ec._Constraints_roomConstraints(ctx, field, obj)
 		default:

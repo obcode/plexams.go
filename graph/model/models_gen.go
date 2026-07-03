@@ -162,29 +162,33 @@ type Constraints struct {
 	SameSlot     []int        `json:"sameSlot,omitempty"`
 	Online       bool         `json:"online"`
 	// fixed exam location/campus, e.g. "Campus Pasing"; empty = default campus (Lothstraße). Used for a minimum travel gap between exams at different campuses.
-	Location        *string          `json:"location,omitempty"`
-	RoomConstraints *RoomConstraints `json:"roomConstraints,omitempty"`
+	Location *string `json:"location,omitempty"`
+	// the faculty that plans this exam when notPlannedByMe (e.g. "FK10" for Pasing ZPA exams).
+	NotPlannedByMeInFk *string          `json:"notPlannedByMeInFK,omitempty"`
+	RoomConstraints    *RoomConstraints `json:"roomConstraints,omitempty"`
 }
 
 type ConstraintsInput struct {
-	AllowedRooms     []string     `json:"allowedRooms,omitempty"`
-	NotPlannedByMe   *bool        `json:"notPlannedByMe,omitempty"`
-	DoNotPublish     *bool        `json:"doNotPublish,omitempty"`
-	ExcludeDays      []*time.Time `json:"excludeDays,omitempty"`
-	PossibleDays     []*time.Time `json:"possibleDays,omitempty"`
-	FixedDay         *time.Time   `json:"fixedDay,omitempty"`
-	FixedTime        *time.Time   `json:"fixedTime,omitempty"`
-	SameSlot         []int        `json:"sameSlot,omitempty"`
-	Online           *bool        `json:"online,omitempty"`
-	Location         *string      `json:"location,omitempty"`
-	PlacesWithSocket *bool        `json:"placesWithSocket,omitempty"`
-	Lab              *bool        `json:"lab,omitempty"`
-	Exahm            *bool        `json:"exahm,omitempty"`
-	Seb              *bool        `json:"seb,omitempty"`
-	KdpJiraURL       *string      `json:"kdpJiraURL,omitempty"`
-	MaxStudents      *int         `json:"maxStudents,omitempty"`
-	AdditionalSeats  *int         `json:"additionalSeats,omitempty"`
-	Comments         *string      `json:"comments,omitempty"`
+	AllowedRooms   []string     `json:"allowedRooms,omitempty"`
+	NotPlannedByMe *bool        `json:"notPlannedByMe,omitempty"`
+	DoNotPublish   *bool        `json:"doNotPublish,omitempty"`
+	ExcludeDays    []*time.Time `json:"excludeDays,omitempty"`
+	PossibleDays   []*time.Time `json:"possibleDays,omitempty"`
+	FixedDay       *time.Time   `json:"fixedDay,omitempty"`
+	FixedTime      *time.Time   `json:"fixedTime,omitempty"`
+	SameSlot       []int        `json:"sameSlot,omitempty"`
+	Online         *bool        `json:"online,omitempty"`
+	Location       *string      `json:"location,omitempty"`
+	// the faculty that plans this exam when notPlannedByMe (e.g. "FK10").
+	NotPlannedByMeInFk *string `json:"notPlannedByMeInFK,omitempty"`
+	PlacesWithSocket   *bool   `json:"placesWithSocket,omitempty"`
+	Lab                *bool   `json:"lab,omitempty"`
+	Exahm              *bool   `json:"exahm,omitempty"`
+	Seb                *bool   `json:"seb,omitempty"`
+	KdpJiraURL         *string `json:"kdpJiraURL,omitempty"`
+	MaxStudents        *int    `json:"maxStudents,omitempty"`
+	AdditionalSeats    *int    `json:"additionalSeats,omitempty"`
+	Comments           *string `json:"comments,omitempty"`
 }
 
 // CoverageReport: how many positions are filled.

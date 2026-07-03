@@ -6,7 +6,8 @@ extend type Query {
 }
 
 extend type Mutation {
-  notPlannedByMe(ancode: Int!): Boolean!
+  "Mark an exam as planned by another faculty; inFK is that faculty (e.g. \"FK10\")."
+  notPlannedByMe(ancode: Int!, inFK: String): Boolean!
   excludeDays(ancode: Int!, days: [String!]!): Boolean!
   possibleDays(ancode: Int!, days: [String!]!): Boolean!
   sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
@@ -33,6 +34,8 @@ type Constraints {
   online: Boolean!
   "fixed exam location/campus, e.g. \"Campus Pasing\"; empty = default campus (Lothstraße). Used for a minimum travel gap between exams at different campuses."
   location: String
+  "the faculty that plans this exam when notPlannedByMe (e.g. \"FK10\" for Pasing ZPA exams)."
+  notPlannedByMeInFK: String
   roomConstraints: RoomConstraints
 }
 
@@ -60,6 +63,8 @@ input ConstraintsInput {
   sameSlot: [Int!]
   online: Boolean
   location: String
+  "the faculty that plans this exam when notPlannedByMe (e.g. \"FK10\")."
+  notPlannedByMeInFK: String
   placesWithSocket: Boolean
   lab: Boolean
   exahm: Boolean

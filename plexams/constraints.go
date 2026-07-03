@@ -9,8 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) NotPlannedByMe(ctx context.Context, ancode int) (bool, error) {
-	return p.dbClient.NotPlannedByMe(ctx, ancode)
+func (p *Plexams) NotPlannedByMe(ctx context.Context, ancode int, inFK *string) (bool, error) {
+	return p.dbClient.NotPlannedByMe(ctx, ancode, inFK)
 }
 
 func (p *Plexams) Online(ctx context.Context, ancode int) (bool, error) {
@@ -151,6 +151,11 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 	// a fixed location ("Campus Pasing") for the cross-campus travel gap.
 	if constraintsInput.Location != nil && *constraintsInput.Location != "" {
 		constraints.Location = constraintsInput.Location
+	}
+	// the planning faculty is only meaningful when notPlannedByMe, but store it
+	// independently so it survives the else-branch below.
+	if constraintsInput.NotPlannedByMeInFk != nil && *constraintsInput.NotPlannedByMeInFk != "" {
+		constraints.NotPlannedByMeInFk = constraintsInput.NotPlannedByMeInFk
 	}
 	if constraintsInput.NotPlannedByMe != nil && *constraintsInput.NotPlannedByMe {
 		constraints.NotPlannedByMe = *constraintsInput.NotPlannedByMe

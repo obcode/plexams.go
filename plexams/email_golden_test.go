@@ -205,3 +205,29 @@ func TestBatch3bEmailsGolden(t *testing.T) {
 		assertGolden(t, c.name+".html", html)
 	}
 }
+
+// TestExamPlanningInfoGolden locks both categories of the consolidated planning-info mail.
+func TestExamPlanningInfoGolden(t *testing.T) {
+	withExams := &examPlanningInfoMailData{
+		Teacher: &model.Teacher{Fullname: "Prof. Test"}, Category: "withExams",
+		FromDate: "06.07.26", UntilDate: "17.07.26", PlanerName: "Test Planer",
+		Exams: []*model.ExamPlanningMailExam{{Ancode: 111, Module: "Mathe"}},
+	}
+	text, html, err := (&Plexams{}).renderMarkdownEmail("examPlanningInfoEmail.md.tmpl", true, withExams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertGolden(t, "examPlanningInfoEmail_withExams.txt", text)
+	assertGolden(t, "examPlanningInfoEmail_withExams.html", html)
+
+	none := &examPlanningInfoMailData{
+		Teacher: &model.Teacher{Fullname: "Prof. Test"}, Category: "fk07NoExams",
+		FromDate: "06.07.26", UntilDate: "17.07.26", PlanerName: "Test Planer",
+	}
+	textN, htmlN, err := (&Plexams{}).renderMarkdownEmail("examPlanningInfoEmail.md.tmpl", true, none)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertGolden(t, "examPlanningInfoEmail_none.txt", textN)
+	assertGolden(t, "examPlanningInfoEmail_none.html", htmlN)
+}

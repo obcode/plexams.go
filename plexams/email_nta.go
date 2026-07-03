@@ -13,24 +13,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type HandicapsEmail struct {
-	MainExamer string
-	Exams      []*HandicapExam
-	PlanerName string
-}
-
-type HandicapExam struct {
-	AnCode           int
-	Module           string
-	TypeExamFull     string
-	HandicapStudents []*HandicapStudent
-}
-
-type HandicapStudent struct {
-	Name         string
-	Compensation string
-}
-
 type NTAEmail struct {
 	NTA        *model.Student
 	Exams      []*model.PlannedExam

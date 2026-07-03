@@ -1,10 +1,8 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"sort"
 	"strconv"
 	"strings"
@@ -144,11 +142,6 @@ func (p *Plexams) SendExamPlanningInfoMails(ctx context.Context, teacherIDs []in
 		recipients = filtered
 	}
 
-	tmpl, err := template.New("examPlanningInfoEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/examPlanningInfoEmail.tmpl")
-	if err != nil {
-		return err
-	}
-
 	sent, skipped := 0, 0
 	for _, r := range recipients {
 		reporter.Step(fmt.Sprintf("%s (%s)", r.Teacher.Fullname, r.Category))
@@ -167,11 +160,7 @@ func (p *Plexams) SendExamPlanningInfoMails(ctx context.Context, teacherIDs []in
 			Exams:      r.Exams,
 		}
 
-		bufText := new(bytes.Buffer)
-		if err := tmpl.Execute(bufText, data); err != nil {
-			return err
-		}
-		bufHTML, err := p.renderMailHTML("tmpl/examPlanningInfoEmailHTML.tmpl", true, data)
+		text, html, err := p.renderMarkdownEmail("examPlanningInfoEmail.md.tmpl", true, data)
 		if err != nil {
 			return err
 		}
@@ -180,7 +169,7 @@ func (p *Plexams) SendExamPlanningInfoMails(ctx context.Context, teacherIDs []in
 			subjectExams = "Keine Prüfungen in der Prüfungsplanung der FK07"
 		}
 		subject := fmt.Sprintf("[Prüfungsplanung %s] %s", p.semester, subjectExams)
-		if err := p.sendMail(run, []string{r.Teacher.Email}, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
+		if err := p.sendMail(run, []string{r.Teacher.Email}, nil, subject, text, html, nil, true); err != nil {
 			reporter.StopProgressFail(fmt.Sprintf("%s: %v", r.Teacher.Fullname, err))
 			log.Error().Err(err).Int("teacherID", r.Teacher.ID).Msg("cannot send exam-planning info mail")
 			continue

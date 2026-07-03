@@ -1,0 +1,18 @@
+[Antworten bitte nicht via E-Mail, sondern via https://jira.cc.hm.edu/servicedesk/customer/portal/13]
+
+Hallo Prof. Test,
+
+als Prüfungsplanung der FK07 planen wir im Prüfungszeitraum vom 06.07.26 bis 17.07.26 aktuell **keine** Ihrer Prüfungen.
+
+Wir planen alle schriftlichen und praktischen Prüfungen der FK07 im Prüfungszeitraum. Sollten wir eine Ihrer Prüfungen planen sollen, melden Sie uns das bitte.
+
+Öffnen Sie für Rückmeldungen bitte ein JIRA-Ticket unter https://jira.cc.hm.edu/servicedesk/customer/portal/13. Verwenden Sie als Ticket-Art "Anforderungen an die Raumplanung" oder "allgemeine Anforderungen an Prüfungen".
+
+Besonderheiten zu Prüfungen mit EXaHM oder SEB werden separat über die KDP-Tickets abgefragt. Mündliche Prüfungen, Modularbeiten u. ä. planen Sie bitte selbst.
+
+Mit freundlichen Grüßen
+Test Planer
+Prüfungsplanung der FK07
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

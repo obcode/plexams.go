@@ -33,6 +33,16 @@ func (db *DB) RemovePlanEntry(ctx context.Context, ancode int) error {
 	return err
 }
 
+// SetExternalExamFaculty sets the faculty (Prüfungsplanung) on an external exam.
+func (db *DB) SetExternalExamFaculty(ctx context.Context, ancode int, faculty string) error {
+	_, err := db.Client.Database(db.databaseName).Collection(collectionExternalExams).
+		UpdateOne(ctx, bson.M{"ancode": ancode}, bson.M{"$set": bson.M{"faculty": faculty}})
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot set external exam faculty")
+	}
+	return err
+}
+
 func (db *DB) ExternalExam(ctx context.Context, ancode int) (*model.ZPAExam, error) {
 	var exam model.ZPAExam
 	err := db.Client.Database(db.databaseName).Collection(collectionExternalExams).FindOne(ctx, bson.M{"ancode": ancode}).Decode(&exam)

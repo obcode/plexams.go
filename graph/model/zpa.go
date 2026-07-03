@@ -29,6 +29,10 @@ type ZPAExam struct {
 	IsRepeaterExam bool                `json:"is_repeater_exam"`
 	Groups         []string            `json:"groups"`
 	PrimussAncodes []ZPAPrimussAncodes `json:"primuss_ancodes"`
+	// Faculty is the responsible faculty (Prüfungsplanung), e.g. FK03/FK08/FK12 for
+	// external MUC.DAI exams. Empty for our own FK07 exams (ZPA does not send it); it
+	// is stamped onto generated external exams from the StudyProgram master data.
+	Faculty string `json:"faculty,omitempty"`
 }
 
 type ZPAPrimussAncodes struct {

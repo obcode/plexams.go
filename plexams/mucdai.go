@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
@@ -148,6 +149,11 @@ func (p *Plexams) AddMucDaiExam(ctx context.Context, zpaAncode int, mucdaiExam *
 			Ancode:  mucdaiExam.PrimussAncode,
 		}},
 	}
+	// The faculty is a per-exam fact from the MUC.DAI CSV (Prüfungsplanung), not a
+	// property of the program: within one program the exams split across faculties
+	// (e.g. in DE some are FK07's, others FK03's). FK07-planned exams never reach here
+	// (they go through the normal ZPA flow), so PlannedBy is the other faculty.
+	zpaExam.Faculty = strings.TrimSpace(mucdaiExam.PlannedBy)
 
 	err := p.dbClient.AddExternalExam(ctx, zpaExam)
 

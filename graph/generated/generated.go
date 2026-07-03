@@ -1364,6 +1364,7 @@ type ComplexityRoot struct {
 		Duration       func(childComplexity int) int
 		ExamType       func(childComplexity int) int
 		ExamTypeFull   func(childComplexity int) int
+		Faculty        func(childComplexity int) int
 		Groups         func(childComplexity int) int
 		IsRepeaterExam func(childComplexity int) int
 		MainExamer     func(childComplexity int) int
@@ -8898,6 +8899,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ZPAExam.ExamTypeFull(childComplexity), true
 
+	case "ZPAExam.faculty":
+		if e.complexity.ZPAExam.Faculty == nil {
+			break
+		}
+
+		return e.complexity.ZPAExam.Faculty(childComplexity), true
+
 	case "ZPAExam.groups":
 		if e.complexity.ZPAExam.Groups == nil {
 			break
@@ -11586,6 +11594,11 @@ type ZPAExam {
   isRepeaterExam: Boolean!
   groups: [String!]!
   primussAncodes: [ZPAPrimussAncodes!]!
+  """
+  Responsible faculty (Prüfungsplanung), e.g. FK03/FK08/FK12 for external MUC.DAI
+  exams. Empty for our own FK07 exams — the GUI can treat empty as FK07.
+  """
+  faculty: String!
 }
 
 type ZPAPrimussAncodes {
@@ -20174,6 +20187,8 @@ func (ec *executionContext) fieldContext_AssembledExam_zpaExam(_ context.Context
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -22276,6 +22291,8 @@ func (ec *executionContext) fieldContext_ConnectedExam_zpaExam(_ context.Context
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -39460,6 +39477,8 @@ func (ec *executionContext) fieldContext_Mutation_zpaExamsToPlan(ctx context.Con
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -40689,6 +40708,8 @@ func (ec *executionContext) fieldContext_NTAWithRegsByExam_exam(_ context.Contex
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -42106,6 +42127,8 @@ func (ec *executionContext) fieldContext_PlannedExam_zpaExam(_ context.Context, 
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -43661,6 +43684,8 @@ func (ec *executionContext) fieldContext_PreExam_zpaExam(_ context.Context, fiel
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -49605,6 +49630,8 @@ func (ec *executionContext) fieldContext_Query_mucDaiZpaCandidates(ctx context.C
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -50947,6 +50974,8 @@ func (ec *executionContext) fieldContext_Query_preplanExamAncodeSuggestions(ctx 
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -52858,6 +52887,8 @@ func (ec *executionContext) fieldContext_Query_zpaExams(ctx context.Context, fie
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -52989,6 +53020,8 @@ func (ec *executionContext) fieldContext_Query_zpaExamsToPlan(_ context.Context,
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -53059,6 +53092,8 @@ func (ec *executionContext) fieldContext_Query_zpaExamsNotToPlan(_ context.Conte
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -53129,6 +53164,8 @@ func (ec *executionContext) fieldContext_Query_zpaExamsPlaningStatusUnknown(_ co
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -53196,6 +53233,8 @@ func (ec *executionContext) fieldContext_Query_zpaExam(ctx context.Context, fiel
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -54412,6 +54451,8 @@ func (ec *executionContext) fieldContext_RoomAndExam_exam(_ context.Context, fie
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -66671,6 +66712,50 @@ func (ec *executionContext) fieldContext_ZPAExam_primussAncodes(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _ZPAExam_faculty(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ZPAExam_faculty(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Faculty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ZPAExam_faculty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ZPAExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ZPAExamWithConstraints_zpaExam(ctx context.Context, field graphql.CollectedField, obj *model.ZPAExamWithConstraints) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ZPAExamWithConstraints_zpaExam(ctx, field)
 	if err != nil {
@@ -66734,6 +66819,8 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_zpaExam(_ contex
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -66970,6 +67057,8 @@ func (ec *executionContext) fieldContext_ZPAExamsForType_exams(_ context.Context
 				return ec.fieldContext_ZPAExam_groups(ctx, field)
 			case "primussAncodes":
 				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
+			case "faculty":
+				return ec.fieldContext_ZPAExam_faculty(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
@@ -81418,6 +81507,11 @@ func (ec *executionContext) _ZPAExam(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "primussAncodes":
 			out.Values[i] = ec._ZPAExam_primussAncodes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "faculty":
+			out.Values[i] = ec._ZPAExam_faculty(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

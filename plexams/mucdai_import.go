@@ -123,6 +123,13 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 		result.ExamsRemoved++
 	}
 
+	// stamp the origin faculty (FK03/FK08/FK12 …) onto every external exam from the
+	// StudyProgram master data, so existing exams are backfilled on a re-import too.
+	// This never touches the ancode or the plan entry (the set time stays).
+	if err := p.backfillExternalExamFaculties(ctx); err != nil {
+		return nil, err
+	}
+
 	// (re)build the explicit MUC.DAI ↔ external/ZPA links
 	if err := p.relinkMucDaiExams(ctx); err != nil {
 		return nil, err
@@ -130,6 +137,43 @@ func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model
 
 	p.markCondition(ctx, condMucDaiImported)
 	return result, nil
+}
+
+// backfillExternalExamFaculties sets the per-exam faculty (Prüfungsplanung) on all
+// external exams from the stored MUC.DAI exams (keyed by program + primussAncode).
+// The faculty is a property of the individual exam, not of the program: within one
+// program the exams split across faculties. Idempotent; only writes on a change.
+func (p *Plexams) backfillExternalExamFaculties(ctx context.Context) error {
+	// (program, primussAncode) -> faculty, from all stored MUC.DAI programs
+	facultyByKey := make(map[primussKey]string)
+	for _, program := range p.mucdaiProgramNames(ctx) {
+		exams, err := p.MucDaiExamsForProgram(ctx, program)
+		if err != nil {
+			return err
+		}
+		for _, e := range exams {
+			facultyByKey[primussKey{program, e.PrimussAncode}] = strings.TrimSpace(e.PlannedBy)
+		}
+	}
+
+	external, err := p.dbClient.ExternalExams(ctx)
+	if err != nil {
+		return err
+	}
+	for _, exam := range external {
+		if len(exam.PrimussAncodes) == 0 {
+			continue
+		}
+		pa := exam.PrimussAncodes[0]
+		fk, ok := facultyByKey[primussKey{pa.Program, pa.Ancode}]
+		if !ok || fk == "" || fk == exam.Faculty {
+			continue
+		}
+		if err := p.dbClient.SetExternalExamFaculty(ctx, exam.AnCode, fk); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type primussKey struct {

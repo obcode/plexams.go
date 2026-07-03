@@ -74,6 +74,11 @@ type ZPAExam {
   isRepeaterExam: Boolean!
   groups: [String!]!
   primussAncodes: [ZPAPrimussAncodes!]!
+  """
+  Responsible faculty (Prüfungsplanung), e.g. FK03/FK08/FK12 for external MUC.DAI
+  exams. Empty for our own FK07 exams — the GUI can treat empty as FK07.
+  """
+  faculty: String!
 }
 
 type ZPAPrimussAncodes {

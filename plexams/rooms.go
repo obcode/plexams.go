@@ -210,29 +210,6 @@ func (p *Plexams) reservationsFromConfig() (map[string][]TimeRange, error) {
 	return reservations, nil
 }
 
-// func splitRooms(rooms []*model.Room) ([]*model.Room, []*model.Room, []*model.Room, []*model.Room) {
-// 	normalRooms := make([]*model.Room, 0)
-// 	exahmRooms := make([]*model.Room, 0)
-// 	labRooms := make([]*model.Room, 0)
-// 	ntaRooms := make([]*model.Room, 0)
-// 	for _, room := range rooms {
-// 		if room.Handicap {
-// 			ntaRooms = append(ntaRooms, room)
-// 		} else if room.Exahm {
-// 			exahmRooms = append(exahmRooms, room)
-// 		} else if room.Lab {
-// 			labRooms = append(labRooms, room)
-// 		} else {
-// 			normalRooms = append(normalRooms, room)
-// 		}
-// 	}
-// 	sort.Slice(normalRooms, func(i, j int) bool { return normalRooms[i].Seats > normalRooms[j].Seats })
-// 	sort.Slice(exahmRooms, func(i, j int) bool { return exahmRooms[i].Seats > exahmRooms[j].Seats })
-// 	sort.Slice(labRooms, func(i, j int) bool { return labRooms[i].Seats > labRooms[j].Seats })
-// 	sort.Slice(ntaRooms, func(i, j int) bool { return ntaRooms[i].Seats < ntaRooms[j].Seats })
-// 	return normalRooms, exahmRooms, labRooms, ntaRooms
-// }
-
 func (p *Plexams) Rooms(ctx context.Context) ([]*model.Room, error) {
 	rooms, err := p.dbClient.Rooms(ctx)
 	if err != nil {
@@ -440,69 +417,6 @@ func (p *Plexams) PrePlannedRoomsForExam(ctx context.Context, ancode int) ([]*mo
 	return p.dbClient.PrePlannedRoomsForExam(ctx, ancode)
 }
 
-func (p *Plexams) ChangeRoom(ctx context.Context, ancode int, oldRoomName, newRoomName string) (bool, error) {
-	return false, fmt.Errorf("ChangeRoom is not implemented yet")
-	// 	roomsForAncode, err := p.dbClient.RoomsForAncode(ctx, ancode)
-	// 	if err != nil {
-	// 		log.Error().Err(err).Int("ancode", ancode).Msg("error while getting rooms for ancode")
-	// 		return false, err
-	// 	}
-
-	// 	var oldRoom *model.Room
-	// 	for _, room := range roomsForAncode {
-	// 		if room.RoomName == oldRoomName {
-	// 			log.Debug().Msg("old room found")
-	// 			oldRoom = p.GetRoomInfo(room.RoomName)
-	// 		}
-	// 	}
-	// 	if oldRoom == nil {
-	// 		log.Error().Msg("old room not found")
-	// 		return false, fmt.Errorf("old room %s for ancode %d not found", oldRoomName, ancode)
-	// 	}
-
-	// 	slot, err := p.SlotForAncode(ctx, ancode)
-	// 	if err != nil || slot == nil {
-	// 		log.Error().Err(err).Int("ancode", ancode).Msg("error while getting slot for ancode")
-	// 		return false, err
-	// 	}
-
-	// 	roomsForSlot, err := p.RoomsForSlot(ctx, slot.DayNumber, slot.SlotNumber)
-	// 	if err != nil || roomsForSlot == nil {
-	// 		log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
-	// 			Msg("error while getting rooms for slot")
-	// 		return false, err
-	// 	}
-
-	// 	var newRoom *model.Room
-
-	// 	if oldRoom.Exahm {
-	// 		for _, roomForSlot := range roomsForSlot.ExahmRooms {
-	// 			if roomForSlot.Name == newRoomName {
-	// 				newRoom = roomForSlot
-	// 			}
-	// 		}
-	// 	} else if oldRoom.Lab {
-	// 		for _, roomForSlot := range roomsForSlot.LabRooms {
-	// 			if roomForSlot.Name == newRoomName {
-	// 				newRoom = roomForSlot
-	// 			}
-	// 		}
-	// 	} else {
-	// 		for _, roomForSlot := range roomsForSlot.NormalRooms {
-	// 			if roomForSlot.Name == newRoomName {
-	// 				newRoom = roomForSlot
-	// 			}
-	// 		}
-	// 	}
-
-	// 	if newRoom == nil {
-	// 		log.Error().Msg("old room not found")
-	// 		return false, fmt.Errorf("new room %s for ancode %d not found", newRoomName, ancode)
-	// 	}
-
-	// return p.dbClient.ChangeRoom(ctx, ancode, oldRoom, newRoom)
-}
-
 func (p *Plexams) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	return p.dbClient.PlannedRoomNames(ctx)
 }
@@ -530,29 +444,8 @@ func (p *Plexams) PlannedRoomForStudent(ctx context.Context, ancode int, mtknr s
 		}
 	}
 
-	// err = fmt.Errorf("student %s not found in planned rooms for ancode %d", mtknr, ancode)
-	// log.Error().Err(err).Int("ancode", ancode).Str("mtknr", mtknr).Msg("student not found in planned rooms")
 	return nil, nil
 }
-
-// func enhancePlannedRooms(plannedRooms []*model.PlannedRoom) []*model.EnhancedPlannedRoom {
-// 	enhancedPlannedRooms := make([]*model.EnhancedPlannedRoom, 0, len(plannedRooms))
-// 	for _, room := range plannedRooms {
-// 		enhancedPlannedRooms = append(enhancedPlannedRooms, &model.EnhancedPlannedRoom{
-// 			Day:               room.Day,
-// 			Slot:              room.Ancode,
-// 			RoomName:          room.RoomName,
-// 			Ancode:            room.Ancode,
-// 			Duration:          room.Duration,
-// 			Handicap:          room.Handicap,
-// 			HandicapRoomAlone: room.HandicapRoomAlone,
-// 			Reserve:           room.Reserve,
-// 			StudentsInRoom:    room.StudentsInRoom,
-// 			NtaMtknr:          room.NtaMtknr,
-// 		})
-// 	}
-// 	return enhancedPlannedRooms
-// }
 
 func (p *Plexams) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
 	return p.dbClient.PlannedRoomNamesInSlot(ctx, day, time)

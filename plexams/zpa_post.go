@@ -166,15 +166,6 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 			reporter.Printf("do not publish: %d", exam.Ancode)
 			continue
 		}
-		// slot, err := p.SlotForAncode(ctx, exam.Exam.Ancode)
-		// if err != nil {
-		// 	log.Error().Err(err).Int("ancode", exam.Exam.Ancode).Msg("cannot get slot for ancode")
-		// }
-		// timeForAncode := p.getSlotTime(slot.DayNumber, slot.SlotNumber)
-		// studentCount := 0
-		// for _, studentRegs := range exam.Exam.StudentRegs {
-		// 	studentCount += len(studentRegs.StudentRegs)
-		// }
 
 		// FIXME: with rooms -> zpa
 		var rooms []*model.ZPAExamPlanRoom

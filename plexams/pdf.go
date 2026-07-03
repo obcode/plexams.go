@@ -431,15 +431,6 @@ func (p *Plexams) constraintsMaroto(ctx context.Context) (pdf.Maroto, error) {
 				}
 			}
 
-			// for _, exam := range exams[1:] {
-			// 	ancode := strconv.Itoa(exam.AnCode)
-			// 	examiner := exam.MainExamer
-			// 	group := fmt.Sprintf("%v", exam.Groups)
-			// 	examType := exam.ExamTypeFull
-
-			// 	contents = append(contents, []string{"", ancode, examiner, group, examType, ""})
-			// }
-
 			contents = append(contents, []string{"", "", "", ""})
 		}
 	}

@@ -1,0 +1,21 @@
+Liebes KDP-Team,
+
+anbei die Übersicht der Räume mit EXaHM- und SEB-Prüfungen im Semester 2026 SS, geordnet nach Tag/Zeit und Raum. Bei mehreren Prüfungen in einem Raum ist angegeben, wie viele Plätze auf welche Prüfung entfallen. Dieselben Daten finden Sie raumweise auch als CSV im Anhang.
+
+Die betroffenen Prüfenden sind in Cc.
+
+### Mo, 06.07.2026, 08:30 Uhr
+
+**Raum T3.023**
+
+- 111. Mathe (Prof. A) [EXaHM]: 30 Plätze — 30 Plätze, 90 Min.
+- 222. Physik (Prof. B) [SEB]: 5 Plätze — 5 Plätze, 90 Min.
+
+Bei Rückfragen können Sie direkt auf diese E-Mail antworten.
+
+Mit freundlichen Grüßen
+Test Planer
+Prüfungsplanung der FK07
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

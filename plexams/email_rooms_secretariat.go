@@ -1,10 +1,8 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"sort"
 	"time"
 
@@ -123,23 +121,14 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 		Rooms:        rooms,
 	}
 
-	textTmpl, err := template.ParseFS(emailTemplates, "tmpl/roomsSecretariatEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	if err := textTmpl.Execute(bufText, emailData); err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/roomsSecretariatEmailHTML.tmpl", false, emailData)
+	text, html, err := p.renderMarkdownEmail("roomsSecretariatEmail.md.tmpl", false, emailData)
 	if err != nil {
 		return err
 	}
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Raumbelegung der Prüfungen – Bitte um Abgleich mit dem ZPA", p.semester)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Sekr}, nil, subject, bufText.Bytes(), bufHTML, nil, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Sekr}, nil, subject, text, html, nil, false); err != nil {
 		return err
 	}
 	if run {

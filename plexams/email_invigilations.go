@@ -1,10 +1,8 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"time"
 )
 
@@ -23,17 +21,7 @@ func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool, reporter
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.New("invigilationEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/invigilationEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, contraintsEmailData)
-	if err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/invigilationEmailHTML.tmpl", true, contraintsEmailData)
+	text, html, err := p.renderMarkdownEmail("invigilationEmail.md.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -41,7 +29,7 @@ func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool, reporter
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Anforderungen an die Planung der Prüfungsaufsichten - Rückmeldung bis spätestens %s",
 		p.semester, feedbackDate)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Profs}, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Profs}, nil, subject, text, html, nil, true); err != nil {
 		return err
 	}
 	if run {

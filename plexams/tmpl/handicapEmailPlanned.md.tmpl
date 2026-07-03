@@ -1,0 +1,14 @@
+Hallo {{ .NTA.Name }},
+
+Sie haben gemäß den uns vorliegenden Informationen Anspruch auf Nachteilsausgleich bei Ihren Prüfungen.
+
+Für folgende Prüfungen, für die Sie sich angemeldet haben, haben wir Sie im jeweils angegebenen Raum eingeplant:
+{{ range .ExamsWithRoom }}
+- {{ .Date }}, {{ .Time }} Uhr, Raum {{ .Room.RoomName }} --- {{ .Exam.ZpaExam.MainExamer }}: {{ .Exam.ZpaExam.Module }}
+{{- if .Waiver }}
+    - Sie verzichten für diese Prüfung auf Ihren Anspruch auf einen eigenen Raum: {{ .Waiver }}
+{{- end }}
+{{- end }}
+
+Mit freundlichen Grüßen
+{{ .PlanerName }}

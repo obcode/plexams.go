@@ -1,10 +1,8 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"os"
 	"sort"
 	"strconv"
@@ -32,17 +30,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.New("publishedEmailExams.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/publishedEmailExams.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, contraintsEmailData)
-	if err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/publishedEmailExamsHTML.tmpl", true, contraintsEmailData)
+	text, html, err := p.renderMarkdownEmail("publishedEmailExams.md.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -53,7 +41,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 	realRecipients := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester, p.semesterConfig.Emails.Fs}
 	realRecipients = append(realRecipients, p.semesterConfig.Emails.AdditionalExamer...)
 
-	if err := p.sendMail(run, realRecipients, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
+	if err := p.sendMail(run, realRecipients, nil, subject, text, html, nil, true); err != nil {
 		return err
 	}
 	if run {
@@ -176,15 +164,6 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		MinDeviation:        -minDeviation,
 	}
 
-	textTmpl, err := template.New("publishedInvigilationPersonalEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/publishedInvigilationPersonalEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	htmlTmpl, err := template.New("emailBaseHTML.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/jiraOnHTML.tmpl", "tmpl/publishedInvigilationPersonalEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-
 	// recipients: everyone with a personal plan PNG (upload store or dir).
 	ids, err := p.invigilationImageKeys(ctx)
 	if err != nil {
@@ -237,14 +216,9 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		data := stats
 		data.Teacher = teacher
 
-		bufText := new(bytes.Buffer)
-		if err := textTmpl.Execute(bufText, data); err != nil {
-			reporter.Warnf("%s: cannot render text: %v", teacher.Fullname, err)
-			continue
-		}
-		bufHTML := new(bytes.Buffer)
-		if err := htmlTmpl.Execute(bufHTML, data); err != nil {
-			reporter.Warnf("%s: cannot render html: %v", teacher.Fullname, err)
+		text, html, err := p.renderMarkdownEmail("publishedInvigilationPersonalEmail.md.tmpl", true, data)
+		if err != nil {
+			reporter.Warnf("%s: cannot render: %v", teacher.Fullname, err)
 			continue
 		}
 
@@ -271,8 +245,8 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 			[]string{teacher.Email},
 			nil,
 			subject,
-			bufText.Bytes(),
-			bufHTML.Bytes(),
+			text,
+			html,
 			attachments,
 			true,
 		)

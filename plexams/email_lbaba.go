@@ -1,12 +1,9 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"sort"
-	txttmpl "text/template"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -161,27 +158,14 @@ func (p *Plexams) SendEmailLbaRepeaters(ctx context.Context, run bool, reporter 
 	}
 	sort.Strings(cc)
 
-	textTmpl, err := txttmpl.ParseFS(emailTemplates, "tmpl/lbaRepeaterEmail.tmpl")
+	text, html, err := p.renderMarkdownEmail("lbaRepeaterEmail.md.tmpl", false, data)
 	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	if err := textTmpl.Execute(bufText, data); err != nil {
-		return err
-	}
-
-	htmlTmpl, err := template.New("emailBaseHTML.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/emailBaseHTML.tmpl", "tmpl/lbaRepeaterEmailHTML.tmpl")
-	if err != nil {
-		return err
-	}
-	bufHTML := new(bytes.Buffer)
-	if err := htmlTmpl.Execute(bufHTML, data); err != nil {
 		return err
 	}
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Wiederholungsprüfungen von Lehrbeauftragten", p.semester)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Lbaba}, cc, subject, bufText.Bytes(), bufHTML.Bytes(), nil, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Lbaba}, cc, subject, text, html, nil, false); err != nil {
 		return err
 	}
 	if run {

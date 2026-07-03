@@ -1,10 +1,8 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	txttmpl "text/template"
 )
 
 // secretariatInvigEmail is the (minimal) data for the "invigilations published"
@@ -29,23 +27,14 @@ func (p *Plexams) SendEmailInvigilationsSecretariat(ctx context.Context, run boo
 		PlanerName:   p.planer.Name,
 	}
 
-	textTmpl, err := txttmpl.ParseFS(emailTemplates, "tmpl/invigilationsSecretariatEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	if err := textTmpl.Execute(bufText, data); err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/invigilationsSecretariatEmailHTML.tmpl", false, data)
+	text, html, err := p.renderMarkdownEmail("invigilationsSecretariatEmail.md.tmpl", false, data)
 	if err != nil {
 		return err
 	}
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Prüfungsplan veröffentlicht – kann ausgehängt werden", p.semester)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Sekr}, nil, subject, bufText.Bytes(), bufHTML, nil, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Sekr}, nil, subject, text, html, nil, false); err != nil {
 		return err
 	}
 	if run {

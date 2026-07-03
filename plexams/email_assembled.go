@@ -129,17 +129,7 @@ type AssembledExamMailData struct {
 func (p *Plexams) sendAssembledExamMailToTeacher(run bool, to string, assembledExamMailData *AssembledExamMailData, updated bool) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	tmpl, err := template.New("assembledExamEmail.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/assembledExamEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, assembledExamMailData)
-	if err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/assembledExamEmailHTML.tmpl", true, assembledExamMailData)
+	text, html, err := p.renderMarkdownEmail("assembledExamEmail.md.tmpl", true, assembledExamMailData)
 	if err != nil {
 		return err
 	}
@@ -222,8 +212,8 @@ func (p *Plexams) sendAssembledExamMailToTeacher(run bool, to string, assembledE
 		[]string{to},
 		nil,
 		subject,
-		bufText.Bytes(),
-		bufHTML,
+		text,
+		html,
 		attachments,
 		true,
 	)
@@ -286,17 +276,7 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 			PlanerName: p.planer.Name,
 		}
 
-		tmpl, err := template.ParseFS(emailTemplates, "tmpl/unplannedExamEmail.tmpl")
-		if err != nil {
-			return err
-		}
-		bufText := new(bytes.Buffer)
-		err = tmpl.Execute(bufText, unplannedExamData)
-		if err != nil {
-			return err
-		}
-
-		bufHTML, err := p.renderMailHTML("tmpl/unplannedExamEmailHTML.tmpl", false, unplannedExamData)
+		text, html, err := p.renderMarkdownEmail("unplannedExamEmail.md.tmpl", false, unplannedExamData)
 		if err != nil {
 			return err
 		}
@@ -305,8 +285,8 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 			[]string{emailAddress},
 			nil,
 			subject,
-			bufText.Bytes(),
-			bufHTML,
+			text,
+			html,
 			attachments,
 			false,
 		); err != nil {

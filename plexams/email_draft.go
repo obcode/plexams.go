@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -43,17 +42,7 @@ func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.New("draftEmailZPA.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/draftEmailZPA.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, contraintsEmailData)
-	if err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/draftEmailZPAHTML.tmpl", true, contraintsEmailData)
+	text, html, err := p.renderMarkdownEmail("draftEmailZPA.md.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -64,7 +53,7 @@ func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
 	realTo := []string{p.semesterConfig.Emails.Profs, p.semesterConfig.Emails.Lbas, p.semesterConfig.Emails.LbasLastSemester}
 	realTo = append(realTo, p.semesterConfig.Emails.AdditionalExamer...)
 
-	if err := p.sendMail(run, realTo, nil, subject, bufText.Bytes(), bufHTML, nil, true); err != nil {
+	if err := p.sendMail(run, realTo, nil, subject, text, html, nil, true); err != nil {
 		return err
 	}
 	reporter.StopProgress(fmt.Sprintf("draft (ZPA) email sent to %s", p.recipientInfo(run, realTo...)))
@@ -83,17 +72,7 @@ func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/draftEmailFS.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, contraintsEmailData)
-	if err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/draftEmailFSHTML.tmpl", false, contraintsEmailData)
+	text, html, err := p.renderMarkdownEmail("draftEmailFS.md.tmpl", false, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -118,7 +97,7 @@ func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
 		},
 	}
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Fs}, nil, subject, bufText.Bytes(), bufHTML, attachments, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Fs}, nil, subject, text, html, attachments, false); err != nil {
 		return err
 	}
 	reporter.StopProgress(fmt.Sprintf("draft (FS) email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.Fs)))

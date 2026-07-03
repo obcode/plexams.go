@@ -1,10 +1,8 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"os"
 	"strconv"
 	"strings"
@@ -89,17 +87,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		GeneratorName: "Prof. Dr. Edda Eich-Söllner",
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/coverPageEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, coverMailData)
-	if err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/coverPageEmailHTML.tmpl", false, coverMailData)
+	text, html, err := p.renderMarkdownEmail("coverPageEmail.md.tmpl", false, coverMailData)
 	if err != nil {
 		return err
 	}
@@ -111,8 +99,8 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		[]string{teacher.Email},
 		nil,
 		subject,
-		bufText.Bytes(),
-		bufHTML,
+		text,
+		html,
 		[]*mailAttachment{{
 			Filename:    strings.ReplaceAll(fmt.Sprintf("%s_Deckblaetter_Pruefungen_%s.pdf", p.semester, teacher.Fullname), " ", "_"),
 			ContentType: "application/pdf",

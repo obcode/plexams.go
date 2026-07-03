@@ -1,10 +1,8 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -101,23 +99,14 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 		Rooms:        rooms,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/roomRequestEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	if err := tmpl.Execute(bufText, emailData); err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/roomRequestEmailHTML.tmpl", false, emailData)
+	text, html, err := p.renderMarkdownEmail("roomRequestEmail.md.tmpl", false, emailData)
 	if err != nil {
 		return err
 	}
 
 	subject := fmt.Sprintf("[Prüfungsplanung %s] Raumanfrage für die Prüfungsplanung", p.semester)
 
-	if err := p.sendMail(run, []string{p.semesterConfig.Emails.RoomManagement}, nil, subject, bufText.Bytes(), bufHTML, nil, false); err != nil {
+	if err := p.sendMail(run, []string{p.semesterConfig.Emails.RoomManagement}, nil, subject, text, html, nil, false); err != nil {
 		return err
 	}
 	if run {

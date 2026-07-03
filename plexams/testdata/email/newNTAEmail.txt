@@ -1,0 +1,21 @@
+Liebe Prüfende,
+
+anbei übersenden wir Ihnen Informationen bzgl. eines Studierenden mit einem neuen Anspruch auf Nachteilsausgleich.
+
+**Stud Test**
+(w) <s@hm.edu>
+
+Der Nachteilsausgleich vom 01.06.2026 lautet sinngemäß "25% mehr Zeit" und beinhaltet für unsere Planung:
+
+- 25% Verlängerung
+- Prüfung in eigenem Raum
+
+Der Studierende hat sich für folgende, von uns geplanten, Prüfungen angemeldet:
+
+- 123. Mathe (Prof. A)
+
+Mit freundlichen Grüßen
+Test Planer
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

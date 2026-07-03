@@ -16,7 +16,7 @@ func TestEmailTemplateOverrideRoundTrip(t *testing.T) {
 	const name = "exahmEmail.md.tmpl"
 
 	// default: no override, render uses the embedded template.
-	text, _, err := p.renderMarkdownEmail(name, true, &ExahmEmail{PlanerName: "X"})
+	text, _, err := p.mailRenderer().Render(name, true, &ExahmEmail{PlanerName: "X"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestEmailTemplateOverrideRoundTrip(t *testing.T) {
 	if _, err := p.SetEmailTemplate(ctx, name, "Hallo Welt {{ .PlanerName }}"); err != nil {
 		t.Fatalf("set override: %v", err)
 	}
-	text, _, err = p.renderMarkdownEmail(name, true, &ExahmEmail{PlanerName: "Käthe"})
+	text, _, err = p.mailRenderer().Render(name, true, &ExahmEmail{PlanerName: "Käthe"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestEmailTemplateOverrideRoundTrip(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("reset: ok=%v err=%v", ok, err)
 	}
-	text, _, err = p.renderMarkdownEmail(name, true, &ExahmEmail{PlanerName: "X"})
+	text, _, err = p.mailRenderer().Render(name, true, &ExahmEmail{PlanerName: "X"})
 	if err != nil {
 		t.Fatal(err)
 	}

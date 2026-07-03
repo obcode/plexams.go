@@ -12,6 +12,7 @@ import (
 	txttmpl "text/template"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/email"
 )
 
 var updateGolden = flag.Bool("update", false, "update the email golden files")
@@ -32,7 +33,7 @@ func parseFuncs() map[string]any {
 // needing per-template fixture data. HTML templates are parsed with html/template, the
 // rest with text/template, matching how they are used.
 func TestAllEmailTemplatesParse(t *testing.T) {
-	entries, err := fs.ReadDir(emailTemplates, "tmpl")
+	entries, err := fs.ReadDir(email.Templates(), "tmpl")
 	if err != nil {
 		t.Fatalf("read embedded templates: %v", err)
 	}
@@ -46,12 +47,12 @@ func TestAllEmailTemplatesParse(t *testing.T) {
 		n++
 		path := "tmpl/" + name
 		if strings.HasSuffix(name, "HTML.tmpl") {
-			if _, err := htmltmpl.New(name).Funcs(htmltmpl.FuncMap(funcs)).ParseFS(emailTemplates, path); err != nil {
+			if _, err := htmltmpl.New(name).Funcs(htmltmpl.FuncMap(funcs)).ParseFS(email.Templates(), path); err != nil {
 				t.Errorf("html template %s does not parse: %v", name, err)
 			}
 			continue
 		}
-		if _, err := txttmpl.New(name).Funcs(txttmpl.FuncMap(funcs)).ParseFS(emailTemplates, path); err != nil {
+		if _, err := txttmpl.New(name).Funcs(txttmpl.FuncMap(funcs)).ParseFS(email.Templates(), path); err != nil {
 			t.Errorf("text template %s does not parse: %v", name, err)
 		}
 	}
@@ -90,7 +91,7 @@ func assertGolden(t *testing.T, name string, got []byte) {
 func TestExahmEmailGolden(t *testing.T) {
 	data := &ExahmEmail{PlanerName: "Test Planer"}
 
-	text, html, err := (&Plexams{}).renderMarkdownEmail("exahmEmail.md.tmpl", true, data)
+	text, html, err := email.New(nil, renderFuncs(), jiraURL).Render("exahmEmail.md.tmpl", true, data)
 	if err != nil {
 		t.Fatalf("render markdown email: %v", err)
 	}
@@ -102,14 +103,14 @@ func TestExahmEmailGolden(t *testing.T) {
 func TestDraftEmailsGolden(t *testing.T) {
 	data := &ConstraintsEmail{FromDate: "06.07.26", UntilDate: "17.07.26", FeedbackDate: "13.07.26", PlanerName: "Test Planer"}
 
-	textZ, htmlZ, err := (&Plexams{}).renderMarkdownEmail("draftEmailZPA.md.tmpl", true, data)
+	textZ, htmlZ, err := email.New(nil, renderFuncs(), jiraURL).Render("draftEmailZPA.md.tmpl", true, data)
 	if err != nil {
 		t.Fatalf("render ZPA: %v", err)
 	}
 	assertGolden(t, "draftEmailZPA.txt", textZ)
 	assertGolden(t, "draftEmailZPA.html", htmlZ)
 
-	textF, htmlF, err := (&Plexams{}).renderMarkdownEmail("draftEmailFS.md.tmpl", false, data)
+	textF, htmlF, err := email.New(nil, renderFuncs(), jiraURL).Render("draftEmailFS.md.tmpl", false, data)
 	if err != nil {
 		t.Fatalf("render FS: %v", err)
 	}
@@ -135,7 +136,7 @@ func TestSimpleEmailsGolden(t *testing.T) {
 			&InvigilationMissingMailData{Teacher: teacher, Semester: "2026 SS", PlanerName: "Test Planer", Minutes: 180}},
 	}
 	for _, c := range cases {
-		text, html, err := (&Plexams{}).renderMarkdownEmail(c.tmpl, c.jira, c.data)
+		text, html, err := email.New(nil, renderFuncs(), jiraURL).Render(c.tmpl, c.jira, c.data)
 		if err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
@@ -146,7 +147,7 @@ func TestSimpleEmailsGolden(t *testing.T) {
 
 // TestBatch3EmailsGolden locks the invigilation-request and unplanned-exam mails.
 func TestBatch3EmailsGolden(t *testing.T) {
-	text, html, err := (&Plexams{}).renderMarkdownEmail("invigilationEmail.md.tmpl", true,
+	text, html, err := email.New(nil, renderFuncs(), jiraURL).Render("invigilationEmail.md.tmpl", true,
 		&ConstraintsEmail{FeedbackDate: "13.07.26", PlanerName: "Test Planer"})
 	if err != nil {
 		t.Fatal(err)
@@ -154,7 +155,7 @@ func TestBatch3EmailsGolden(t *testing.T) {
 	assertGolden(t, "invigilationEmail.txt", text)
 	assertGolden(t, "invigilationEmail.html", html)
 
-	textU, htmlU, err := (&Plexams{}).renderMarkdownEmail("unplannedExamEmail.md.tmpl", false,
+	textU, htmlU, err := email.New(nil, renderFuncs(), jiraURL).Render("unplannedExamEmail.md.tmpl", false,
 		&UnpplannedExamMailData{Exam: &model.PrimussExam{MainExamer: "Prof. Test", AnCode: 123, Module: "Mathe", Program: "IF"}, PlanerName: "Test Planer"})
 	if err != nil {
 		t.Fatal(err)
@@ -197,7 +198,7 @@ func TestBatch3bEmailsGolden(t *testing.T) {
 		{"lbaRepeaterEmail", "lbaRepeaterEmail.md.tmpl", lba},
 	}
 	for _, c := range cases {
-		text, html, err := (&Plexams{}).renderMarkdownEmail(c.tmpl, false, c.data)
+		text, html, err := email.New(nil, renderFuncs(), jiraURL).Render(c.tmpl, false, c.data)
 		if err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
@@ -213,7 +214,7 @@ func TestExamPlanningInfoGolden(t *testing.T) {
 		FromDate: "06.07.26", UntilDate: "17.07.26", PlanerName: "Test Planer",
 		Exams: []*model.ExamPlanningMailExam{{Ancode: 111, Module: "Mathe"}},
 	}
-	text, html, err := (&Plexams{}).renderMarkdownEmail("examPlanningInfoEmail.md.tmpl", true, withExams)
+	text, html, err := email.New(nil, renderFuncs(), jiraURL).Render("examPlanningInfoEmail.md.tmpl", true, withExams)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +225,7 @@ func TestExamPlanningInfoGolden(t *testing.T) {
 		Teacher: &model.Teacher{Fullname: "Prof. Test"}, Category: "fk07NoExams",
 		FromDate: "06.07.26", UntilDate: "17.07.26", PlanerName: "Test Planer",
 	}
-	textN, htmlN, err := (&Plexams{}).renderMarkdownEmail("examPlanningInfoEmail.md.tmpl", true, none)
+	textN, htmlN, err := email.New(nil, renderFuncs(), jiraURL).Render("examPlanningInfoEmail.md.tmpl", true, none)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +258,7 @@ func TestNTAEmailsGolden(t *testing.T) {
 		{"newNTAEmail", "newNTAEmail.md.tmpl", newNTA},
 	}
 	for _, c := range cases {
-		text, html, err := (&Plexams{}).renderMarkdownEmail(c.tmpl, false, c.data)
+		text, html, err := email.New(nil, renderFuncs(), jiraURL).Render(c.tmpl, false, c.data)
 		if err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
@@ -293,7 +294,7 @@ func TestPublishedEmailsGolden(t *testing.T) {
 		{"publishedRoomsPersonalEmail", "publishedRoomsPersonalEmail.md.tmpl", rooms},
 	}
 	for _, c := range cases {
-		text, html, err := (&Plexams{}).renderMarkdownEmail(c.tmpl, true, c.data)
+		text, html, err := email.New(nil, renderFuncs(), jiraURL).Render(c.tmpl, true, c.data)
 		if err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
@@ -317,7 +318,7 @@ func TestAssembledExamGolden(t *testing.T) {
 		FromDate: "06.07.26", ToDate: "17.07.26", Exam: exam,
 		Teacher: &model.Teacher{Fullname: "Prof. Test"}, PlanerName: "Test Planer", HasStudentRegs: true,
 	}
-	text, html, err := (&Plexams{}).renderMarkdownEmail("assembledExamEmail.md.tmpl", true, withRegs)
+	text, html, err := email.New(nil, renderFuncs(), jiraURL).Render("assembledExamEmail.md.tmpl", true, withRegs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +329,7 @@ func TestAssembledExamGolden(t *testing.T) {
 		Exam:    &model.AssembledExam{ZpaExam: &model.ZPAExam{AnCode: 123, Module: "Mathe"}},
 		Teacher: &model.Teacher{Fullname: "Prof. Test"}, PlanerName: "Test Planer", HasStudentRegs: false,
 	}
-	textN, htmlN, err := (&Plexams{}).renderMarkdownEmail("assembledExamEmail.md.tmpl", true, none)
+	textN, htmlN, err := email.New(nil, renderFuncs(), jiraURL).Render("assembledExamEmail.md.tmpl", true, none)
 	if err != nil {
 		t.Fatal(err)
 	}

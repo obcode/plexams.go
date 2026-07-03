@@ -88,7 +88,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, run bool, to []string, cc []string, handicapsEmail *NTAEmail) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	text, html, err := p.renderMarkdownEmail("handicapEmailRoomAlone.md.tmpl", false, handicapsEmail)
+	text, html, err := p.mailRenderer().Render("handicapEmailRoomAlone.md.tmpl", false, handicapsEmail)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, run bool, to []string, cc []string, handicapsEmail *NTAEmailWithRooms) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	text, html, err := p.renderMarkdownEmail("handicapEmailPlanned.md.tmpl", false, handicapsEmail)
+	text, html, err := p.mailRenderer().Render("handicapEmailPlanned.md.tmpl", false, handicapsEmail)
 	if err != nil {
 		return err
 	}
@@ -291,7 +291,7 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 		PlanerName: p.planer.Name,
 	}
 
-	text, html, err := p.renderMarkdownEmail("newNTAEmail.md.tmpl", false, newNTA)
+	text, html, err := p.mailRenderer().Render("newNTAEmail.md.tmpl", false, newNTA)
 	if err != nil {
 		return err
 	}

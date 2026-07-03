@@ -121,7 +121,7 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 		Rooms:        rooms,
 	}
 
-	text, html, err := p.renderMarkdownEmail("roomsSecretariatEmail.md.tmpl", false, emailData)
+	text, html, err := p.mailRenderer().Render("roomsSecretariatEmail.md.tmpl", false, emailData)
 	if err != nil {
 		return err
 	}

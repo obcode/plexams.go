@@ -19,7 +19,7 @@ func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool, reporter Reporte
 		PlanerName: p.planer.Name,
 	}
 
-	text, html, err := p.renderMarkdownEmail("exahmEmail.md.tmpl", true, contraintsEmailData)
+	text, html, err := p.mailRenderer().Render("exahmEmail.md.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}

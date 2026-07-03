@@ -87,7 +87,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		GeneratorName: "Prof. Dr. Edda Eich-Söllner",
 	}
 
-	text, html, err := p.renderMarkdownEmail("coverPageEmail.md.tmpl", false, coverMailData)
+	text, html, err := p.mailRenderer().Render("coverPageEmail.md.tmpl", false, coverMailData)
 	if err != nil {
 		return err
 	}

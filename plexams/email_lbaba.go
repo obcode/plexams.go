@@ -158,7 +158,7 @@ func (p *Plexams) SendEmailLbaRepeaters(ctx context.Context, run bool, reporter 
 	}
 	sort.Strings(cc)
 
-	text, html, err := p.renderMarkdownEmail("lbaRepeaterEmail.md.tmpl", false, data)
+	text, html, err := p.mailRenderer().Render("lbaRepeaterEmail.md.tmpl", false, data)
 	if err != nil {
 		return err
 	}

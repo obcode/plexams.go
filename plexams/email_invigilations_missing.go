@@ -74,7 +74,7 @@ func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilat
 		Minutes:    minutes,
 	}
 
-	text, html, err := p.renderMarkdownEmail("invigilationMissingEmail.md.tmpl", true, mailData)
+	text, html, err := p.mailRenderer().Render("invigilationMissingEmail.md.tmpl", true, mailData)
 	if err != nil {
 		return err
 	}

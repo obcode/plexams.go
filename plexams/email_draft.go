@@ -42,7 +42,7 @@ func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	text, html, err := p.renderMarkdownEmail("draftEmailZPA.md.tmpl", true, contraintsEmailData)
+	text, html, err := p.mailRenderer().Render("draftEmailZPA.md.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
 		FeedbackDate: feedbackDate,
 	}
 
-	text, html, err := p.renderMarkdownEmail("draftEmailFS.md.tmpl", false, contraintsEmailData)
+	text, html, err := p.mailRenderer().Render("draftEmailFS.md.tmpl", false, contraintsEmailData)
 	if err != nil {
 		return err
 	}

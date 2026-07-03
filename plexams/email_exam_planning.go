@@ -160,7 +160,7 @@ func (p *Plexams) SendExamPlanningInfoMails(ctx context.Context, teacherIDs []in
 			Exams:      r.Exams,
 		}
 
-		text, html, err := p.renderMarkdownEmail("examPlanningInfoEmail.md.tmpl", true, data)
+		text, html, err := p.mailRenderer().Render("examPlanningInfoEmail.md.tmpl", true, data)
 		if err != nil {
 			return err
 		}

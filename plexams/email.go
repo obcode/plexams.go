@@ -3,16 +3,12 @@ package plexams
 import (
 	"bytes"
 	"crypto/tls"
-	"embed"
 	"fmt"
 	"strings"
 
 	"github.com/spf13/viper"
 	"github.com/wneessen/go-mail"
 )
-
-//go:embed tmpl/*.tmpl
-var emailTemplates embed.FS
 
 // pluralN formats a count with the correct German singular/plural noun, e.g.
 // plural 1 "Platz" "Plätze" -> "1 Platz", plural 3 ... -> "3 Plätze".

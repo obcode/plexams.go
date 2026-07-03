@@ -301,3 +301,37 @@ func TestPublishedEmailsGolden(t *testing.T) {
 		assertGolden(t, c.name+".html", html)
 	}
 }
+
+// TestAssembledExamGolden locks the assembled-exam mail body (with regs incl. NTA, and
+// the no-registrations case). The CSV and Markdown attachments are separate and unchanged.
+func TestAssembledExamGolden(t *testing.T) {
+	exam := &model.AssembledExam{
+		ZpaExam: &model.ZPAExam{AnCode: 123, Module: "Mathe"},
+		PrimussExams: []*model.EnhancedPrimussExam{{
+			Exam:        &model.PrimussExam{Program: "IF"},
+			StudentRegs: []*model.EnhancedStudentReg{{Name: "Stud A", ZpaStudent: &model.ZPAStudent{Gender: "m", Email: "a@hm.edu"}}},
+			Ntas:        []*model.NTA{{Name: "Stud A", Compensation: "25% mehr Zeit"}},
+		}},
+	}
+	withRegs := &AssembledExamMailData{
+		FromDate: "06.07.26", ToDate: "17.07.26", Exam: exam,
+		Teacher: &model.Teacher{Fullname: "Prof. Test"}, PlanerName: "Test Planer", HasStudentRegs: true,
+	}
+	text, html, err := (&Plexams{}).renderMarkdownEmail("assembledExamEmail.md.tmpl", true, withRegs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertGolden(t, "assembledExamEmail_withRegs.txt", text)
+	assertGolden(t, "assembledExamEmail_withRegs.html", html)
+
+	none := &AssembledExamMailData{
+		Exam:    &model.AssembledExam{ZpaExam: &model.ZPAExam{AnCode: 123, Module: "Mathe"}},
+		Teacher: &model.Teacher{Fullname: "Prof. Test"}, PlanerName: "Test Planer", HasStudentRegs: false,
+	}
+	textN, htmlN, err := (&Plexams{}).renderMarkdownEmail("assembledExamEmail.md.tmpl", true, none)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertGolden(t, "assembledExamEmail_none.txt", textN)
+	assertGolden(t, "assembledExamEmail_none.html", htmlN)
+}

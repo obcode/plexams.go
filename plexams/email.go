@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"embed"
 	"fmt"
-	"html/template"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -334,25 +333,4 @@ func sanitizeFilename(s string) string {
 			return '_'
 		}
 	}, s)
-}
-
-// renderMailHTML renders the shared HTML layout with the given content template
-// and data. When jira is true the JIRA callout is included (driven from code, so
-// the individual templates no longer opt in).
-func (p *Plexams) renderMailHTML(contentFile string, jira bool, data any) ([]byte, error) {
-	files := []string{"tmpl/emailBaseHTML.tmpl"}
-	if jira {
-		files = append(files, "tmpl/jiraOnHTML.tmpl")
-	}
-	files = append(files, contentFile)
-
-	tmpl, err := template.New("emailBaseHTML.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, files...)
-	if err != nil {
-		return nil, err
-	}
-	buf := new(bytes.Buffer)
-	if err := tmpl.Execute(buf, data); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }

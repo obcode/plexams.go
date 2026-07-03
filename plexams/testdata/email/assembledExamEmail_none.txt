@@ -1,0 +1,14 @@
+[Antworten bitte nicht via E-Mail, sondern via https://jira.cc.hm.edu/servicedesk/customer/portal/13]
+
+Hallo Prof. Test,
+
+Für Ihre Prüfung "123. Mathe" liegen überhaupt keine Anmeldungen vor, daher werden wir sie nicht planen.
+
+Falls die Prüfung dennoch eingeplant werden soll, teilen Sie uns das bitte unmittelbar mit.
+
+
+Mit freundlichen Grüßen
+Test Planer
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

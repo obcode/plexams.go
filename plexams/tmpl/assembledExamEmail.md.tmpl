@@ -1,0 +1,37 @@
+Hallo {{ .Teacher.Fullname }},
+{{ if not .HasStudentRegs }}
+Für Ihre Prüfung "{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}" liegen überhaupt keine Anmeldungen vor, daher werden wir sie nicht planen.
+
+Falls die Prüfung dennoch eingeplant werden soll, teilen Sie uns das bitte unmittelbar mit.
+{{ else }}
+Ihre Prüfung "{{ .Exam.ZpaExam.AnCode }}. {{ .Exam.ZpaExam.Module }}" planen wir auf Grundlage folgender Daten (im Anhang als CSV und Markdown).
+
+Die Prüfung findet im Prüfungszeitraum vom {{ .FromDate }} bis {{ .ToDate }} am Campus Lothstrasse statt.
+
+Sollten die Daten aus Ihrer Sicht fehlerhaft sein, nehmen Sie bitte umgehend mit uns Kontakt auf; insbesondere dann, wenn die Anzahl der Anmeldungen stark von der tatsächlichen Anzahl zu Prüfenden abweicht (z.B. auf Grund des Nichtbestehens einer Zulassungsvoraussetzung). Öffnen Sie dazu ein JIRA-Ticket unter {{ jiraURL }}.
+
+Sofern uns bekannt, sind Studierende mit Nachteilsausgleich unten angegeben. Sollten Ihnen weitere Studierende mit Nachteilsausgleich bekannt sein oder bekannt werden, geben Sie uns bitte sofort Bescheid, damit wir sie in der Planung berücksichtigen können.
+
+Anmerkung: E-Mail-Adressen von Studierenden gibt es nur wenn der jeweilige Studierende im ZPA vorhanden ist.
+{{ range .Exam.PrimussExams }}
+{{ if ne (len .StudentRegs) 0 }}
+**Studiengang {{ .Exam.Program }}** — Anmeldungen:
+{{ range .StudentRegs }}
+- {{ .Name }}{{ if ne .ZpaStudent nil }} ({{ .ZpaStudent.Gender }}) <{{ .ZpaStudent.Email }}>{{ end }}
+{{- end }}
+{{ if ne (len .Ntas) 0 }}
+Studierende mit Nachteilsausgleich im Studiengang {{ .Exam.Program }} (auch in der Liste aller Anmeldungen enthalten):
+{{ range .Ntas }}
+- {{ .Name }}: {{ .Compensation }}
+{{- end }}
+{{- else }}
+Im Studiengang {{ .Exam.Program }} sind uns keine Nachteilsausgleiche für diese Prüfung bekannt.
+{{- end }}
+{{- else }}
+**Studiengang {{ .Exam.Program }}**: Keine Anmeldungen
+{{- end }}
+{{ end }}
+{{- end }}
+
+Mit freundlichen Grüßen
+{{ .PlanerName }}

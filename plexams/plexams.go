@@ -248,7 +248,9 @@ func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
 			return slot.Starttime
 		}
 	}
-	return time.Date(0, 0, 0, 0, 0, 0, 0, nil)
+	log.Error().Int("dayNumber", dayNumber).Int("slotNumber", slotNumber).
+		Msg("no slot found for (day/slot), returning zero time")
+	return time.Time{}
 }
 
 func (p *Plexams) getSlotForTime(starttime time.Time, duration int) (*model.Slot, error) {

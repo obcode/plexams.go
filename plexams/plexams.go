@@ -10,6 +10,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/obcode/plexams.go/plexams/email"
+	"github.com/obcode/plexams.go/plexams/planstate"
 	"github.com/obcode/plexams.go/plexams/primuss"
 	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
@@ -25,6 +26,7 @@ type Plexams struct {
 	sender         *email.Sender
 	anny           *anny.Service
 	primuss        *primuss.Service
+	planState      *planstate.Machine
 	semesterConfig *model.SemesterConfig
 	// allDays/allSlots hold the list of days/slots from `from` (day 1) through
 	// `until`. They currently equal semesterConfig.Days/.Slots (there is no
@@ -148,6 +150,11 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 	if plexams.dbClient != nil {
 		plexams.primuss = primuss.New(plexams.dbClient)
 	}
+	var planStateDB planstate.DB
+	if plexams.dbClient != nil {
+		planStateDB = plexams.dbClient
+	}
+	plexams.planState = planstate.New(planStateDB, planningPhaseDefs, planningConditionDefs)
 
 	if plexams.dbClient != nil {
 		ctx := context.Background()

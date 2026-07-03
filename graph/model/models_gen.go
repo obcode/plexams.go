@@ -215,6 +215,20 @@ type EmailAttachmentInfo struct {
 	UploadedAt  time.Time `json:"uploadedAt"`
 }
 
+// EmailTemplate is one editable email body template (a Markdown *.md.tmpl). The built-in
+// embedded template is the default; a stored override replaces it. The layout templates
+// (emailBaseHTML/jiraOnHTML) are not editable here.
+type EmailTemplate struct {
+	// the template's file name, e.g. "exahmEmail.md.tmpl".
+	Name string `json:"name"`
+	// the effective Markdown: the stored override if any, otherwise the built-in default.
+	Markdown string `json:"markdown"`
+	// true when no override is stored (the built-in default is in use).
+	IsDefault bool `json:"isDefault"`
+	// the built-in default Markdown (for preview and reset-to-default).
+	DefaultMarkdown string `json:"defaultMarkdown"`
+}
+
 type Emails struct {
 	Profs            string   `json:"profs"`
 	Lbas             string   `json:"lbas"`

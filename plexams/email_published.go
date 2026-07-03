@@ -30,7 +30,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 		FeedbackDate: feedbackDate,
 	}
 
-	text, html, err := p.renderMarkdownEmail("publishedEmailExams.md.tmpl", true, contraintsEmailData)
+	text, html, err := p.mailRenderer().Render("publishedEmailExams.md.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		data := stats
 		data.Teacher = teacher
 
-		text, html, err := p.renderMarkdownEmail("publishedInvigilationPersonalEmail.md.tmpl", true, data)
+		text, html, err := p.mailRenderer().Render("publishedInvigilationPersonalEmail.md.tmpl", true, data)
 		if err != nil {
 			reporter.Warnf("%s: cannot render: %v", teacher.Fullname, err)
 			continue

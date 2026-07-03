@@ -27,7 +27,7 @@ func (p *Plexams) SendEmailInvigilationsSecretariat(ctx context.Context, run boo
 		PlanerName:   p.planer.Name,
 	}
 
-	text, html, err := p.renderMarkdownEmail("invigilationsSecretariatEmail.md.tmpl", false, data)
+	text, html, err := p.mailRenderer().Render("invigilationsSecretariatEmail.md.tmpl", false, data)
 	if err != nil {
 		return err
 	}

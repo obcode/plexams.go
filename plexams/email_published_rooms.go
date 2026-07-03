@@ -238,7 +238,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 			Exams:      exams,
 		}
 
-		text, html, err := p.renderMarkdownEmail("publishedRoomsPersonalEmail.md.tmpl", true, data)
+		text, html, err := p.mailRenderer().Render("publishedRoomsPersonalEmail.md.tmpl", true, data)
 		if err != nil {
 			reporter.Warnf("%s: cannot render: %v", examer.Fullname, err)
 			continue

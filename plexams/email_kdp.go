@@ -298,7 +298,7 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 		return err
 	}
 
-	text, html, err := p.renderMarkdownEmail("kdpExahmEmail.md.tmpl", false, data)
+	text, html, err := p.mailRenderer().Render("kdpExahmEmail.md.tmpl", false, data)
 	if err != nil {
 		return err
 	}

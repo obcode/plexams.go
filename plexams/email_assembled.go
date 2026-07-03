@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	txttmpl "text/template"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/email"
 	"github.com/rs/zerolog/log"
 )
 
@@ -129,7 +129,7 @@ type AssembledExamMailData struct {
 func (p *Plexams) sendAssembledExamMailToTeacher(run bool, to string, assembledExamMailData *AssembledExamMailData, updated bool) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	text, html, err := p.renderMarkdownEmail("assembledExamEmail.md.tmpl", true, assembledExamMailData)
+	text, html, err := p.mailRenderer().Render("assembledExamEmail.md.tmpl", true, assembledExamMailData)
 	if err != nil {
 		return err
 	}
@@ -186,17 +186,17 @@ func (p *Plexams) sendAssembledExamMailToTeacher(run bool, to string, assembledE
 		}
 		attachments = append(attachments, attachment)
 
-		txttmpl, err := txttmpl.New("assembledExamMarkdown.tmpl").Funcs(template.FuncMap{
-			"add": func(a, b int) int {
-				return a + b
-			},
-		}).ParseFS(emailTemplates, "tmpl/assembledExamMarkdown.tmpl")
+		mdSource, err := email.EmbeddedSource("assembledExamMarkdown.tmpl")
+		if err != nil {
+			return err
+		}
+		mdTmpl, err := txttmpl.New("assembledExamMarkdown.tmpl").
+			Funcs(txttmpl.FuncMap{"add": func(a, b int) int { return a + b }}).Parse(mdSource)
 		if err != nil {
 			return err
 		}
 		bufMD := new(bytes.Buffer)
-		err = txttmpl.Execute(bufMD, assembledExamMailData)
-		if err != nil {
+		if err := mdTmpl.Execute(bufMD, assembledExamMailData); err != nil {
 			return err
 		}
 
@@ -276,7 +276,7 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 			PlanerName: p.planer.Name,
 		}
 
-		text, html, err := p.renderMarkdownEmail("unplannedExamEmail.md.tmpl", false, unplannedExamData)
+		text, html, err := p.mailRenderer().Render("unplannedExamEmail.md.tmpl", false, unplannedExamData)
 		if err != nil {
 			return err
 		}

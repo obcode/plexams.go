@@ -99,7 +99,7 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 		Rooms:        rooms,
 	}
 
-	text, html, err := p.renderMarkdownEmail("roomRequestEmail.md.tmpl", false, emailData)
+	text, html, err := p.mailRenderer().Render("roomRequestEmail.md.tmpl", false, emailData)
 	if err != nil {
 		return err
 	}

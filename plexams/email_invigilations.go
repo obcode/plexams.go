@@ -21,7 +21,7 @@ func (p *Plexams) SendEmailInvigilations(ctx context.Context, run bool, reporter
 		FeedbackDate: feedbackDate,
 	}
 
-	text, html, err := p.renderMarkdownEmail("invigilationEmail.md.tmpl", true, contraintsEmailData)
+	text, html, err := p.mailRenderer().Render("invigilationEmail.md.tmpl", true, contraintsEmailData)
 	if err != nil {
 		return err
 	}

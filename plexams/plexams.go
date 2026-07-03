@@ -8,6 +8,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/email"
 	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -19,6 +20,7 @@ type Plexams struct {
 	zpa            *ZPA
 	planer         *Planer
 	email          *Email
+	sender         *email.Sender
 	semesterConfig *model.SemesterConfig
 	// allDays/allSlots hold the list of days/slots from `from` (day 1) through
 	// `until`. They currently equal semesterConfig.Days/.Slots (there is no
@@ -32,10 +34,6 @@ type Plexams struct {
 	// loaded per database from the semester meta on boot/switch.
 	readOnly bool
 	guard    *opGuard
-	// mailCollector, when non-nil, captures dry-run mails so a whole batch can be
-	// flushed as a single mail of .eml attachments (see email.go). opGuard ensures
-	// only one email operation runs at a time, so this needs no locking.
-	mailCollector *mailCollector
 }
 
 type ZPA struct {
@@ -121,6 +119,18 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		},
 		guard: &opGuard{},
 	}
+	plexams.sender = email.NewSender(email.SMTPConfig{
+		Server:      plexams.email.server,
+		Port:        plexams.email.port,
+		Username:    plexams.email.username,
+		Password:    plexams.email.password,
+		TestMail:    plexams.email.testMail,
+		CC:          plexams.email.cc,
+		ReplyMail:   plexams.email.replyMail,
+		NoreplyMail: plexams.email.noreplyMail,
+		PlanerName:  plexams.planer.Name,
+		PlanerEmail: plexams.planer.Email,
+	})
 
 	if plexams.dbClient != nil {
 		ctx := context.Background()

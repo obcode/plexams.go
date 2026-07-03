@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+
+	"github.com/obcode/plexams.go/plexams/optimize"
 )
 
 // The pre-plan assignment distributes pre-exams (or same-slot groups) over the booked
@@ -189,27 +191,42 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 		return total
 	}
 
-	rng := rand.New(rand.NewSource(1)) //nolint:gosec // deterministic, not security relevant
-	cur := append([]int(nil), assign...)
-	curCost := cost(cur)
-	best := append([]int(nil), cur...)
-	bestCost := curCost
+	// simulated-annealing repair on the shared optimizer core: the constructive result
+	// is refined by ejecting/relocating units to free capacity and spread conflicting
+	// exams. Cost, moves and construction stay pre-plan specific; only the annealing
+	// loop is the generic one.
+	model := &preplanModel{units: units, slots: slots, assign: assign, cost: cost, occupancy: occupancy}
+	opts := optimize.DefaultOptions()
+	opts.Iterations = preplanSAIterations
+	opts.StartTemp = preplanSAStartTemp
+	opts.EndTemp = preplanSAEndTemp
+	opts.Seed = 1
+	opts.StopWhenConverged = false
+	optimize.Anneal(model, opts)
+	return model.assign
+}
 
-	for it := 0; it < preplanSAIterations; it++ {
-		cand := append([]int(nil), cur...)
-		if !proposeMove(cand, rng, units, slots, occupancy) {
-			continue
-		}
-		c := cost(cand)
-		t := preplanSAStartTemp * math.Pow(preplanSAEndTemp/preplanSAStartTemp, float64(it)/float64(preplanSAIterations))
-		if c <= curCost || rng.Float64() < math.Exp(-(c-curCost)/t) {
-			cur, curCost = cand, c
-			if curCost < bestCost {
-				best, bestCost = append([]int(nil), cur...), curCost
-			}
-		}
+// preplanModel adapts the pre-plan assignment to the generic optimize.Model interface:
+// the state is the per-unit slot assignment, Cost is the pre-plan soft/drop cost, and a
+// Propose is one proposeMove (relocate-with-ejection or swap), undone by restoring the
+// previous assignment.
+type preplanModel struct {
+	units     []*preplanUnit
+	slots     []*preplanSlot
+	assign    []int
+	cost      func([]int) float64
+	occupancy func([]int) ([]int, [][]int)
+}
+
+func (m *preplanModel) Cost() float64 { return m.cost(m.assign) }
+func (m *preplanModel) Snapshot() any { return append([]int(nil), m.assign...) }
+func (m *preplanModel) Restore(s any) { copy(m.assign, s.([]int)) }
+func (m *preplanModel) Propose(rng *rand.Rand) func() {
+	before := append([]int(nil), m.assign...)
+	if !proposeMove(m.assign, rng, m.units, m.slots, m.occupancy) {
+		return nil
 	}
-	return best
+	return func() { copy(m.assign, before) }
 }
 
 // dsaturBefore reports whether unit u (with fu feasible slots) should be placed before

@@ -231,3 +231,37 @@ func TestExamPlanningInfoGolden(t *testing.T) {
 	assertGolden(t, "examPlanningInfoEmail_none.txt", textN)
 	assertGolden(t, "examPlanningInfoEmail_none.html", htmlN)
 }
+
+// TestNTAEmailsGolden locks the three NTA/handicap student emails.
+func TestNTAEmailsGolden(t *testing.T) {
+	student := &model.Student{
+		Name:       "Stud Test",
+		ZpaStudent: &model.ZPAStudent{Gender: "w", Email: "s@hm.edu"},
+		Nta:        &model.NTA{From: "01.06.2026", Compensation: "25% mehr Zeit", DeltaDurationPercent: 25, NeedsRoomAlone: true},
+	}
+	exam := &model.PlannedExam{Ancode: 123, ZpaExam: &model.ZPAExam{Module: "Mathe", MainExamer: "Prof. A"}}
+
+	roomAlone := &NTAEmail{NTA: student, Exams: []*model.PlannedExam{exam}, PlanerName: "Test Planer"}
+	planned := &NTAEmailWithRooms{NTA: student, PlanerName: "Test Planer", ExamsWithRoom: []NTAEmailExamAndRoom{{
+		Exam: exam, Room: &model.PlannedRoom{RoomName: "R1.234"}, Date: "Mo, 06.07.2026", Time: "08:30",
+	}}}
+	newNTA := &NewNTA{Student: student, Exams: []*model.PlannedExam{exam}, PlanerName: "Test Planer"}
+
+	cases := []struct {
+		name string
+		tmpl string
+		data any
+	}{
+		{"handicapEmailRoomAlone", "handicapEmailRoomAlone.md.tmpl", roomAlone},
+		{"handicapEmailPlanned", "handicapEmailPlanned.md.tmpl", planned},
+		{"newNTAEmail", "newNTAEmail.md.tmpl", newNTA},
+	}
+	for _, c := range cases {
+		text, html, err := (&Plexams{}).renderMarkdownEmail(c.tmpl, false, c.data)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		assertGolden(t, c.name+".txt", text)
+		assertGolden(t, c.name+".html", html)
+	}
+}

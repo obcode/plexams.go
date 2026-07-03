@@ -1,10 +1,8 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 
 	// TODO: Ersetzen durch github.com/wneessen/go-mail
 
@@ -90,17 +88,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, run bool, to []string, cc []string, handicapsEmail *NTAEmail) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	tmpl, err := template.New("handicapEmailRoomAlone.tmpl").Funcs(template.FuncMap(emailFuncs)).ParseFS(emailTemplates, "tmpl/handicapEmailRoomAlone.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, handicapsEmail)
-	if err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/handicapEmailRoomAloneHTML.tmpl", false, handicapsEmail)
+	text, html, err := p.renderMarkdownEmail("handicapEmailRoomAlone.md.tmpl", false, handicapsEmail)
 	if err != nil {
 		return err
 	}
@@ -109,8 +97,8 @@ func (p *Plexams) SendHandicapsMailToStudentRoomAlone(ctx context.Context, run b
 		to,
 		cc,
 		fmt.Sprintf("[Prüfungsplanung %s] Eigener Raum für Ihre Prüfung(en)", p.semester),
-		bufText.Bytes(),
-		bufHTML,
+		text,
+		html,
 		nil,
 		false,
 	)
@@ -239,17 +227,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, run bool, to []string, cc []string, handicapsEmail *NTAEmailWithRooms) error {
 	log.Debug().Interface("to", to).Msg("sending email")
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/handicapEmailPlanned.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, handicapsEmail)
-	if err != nil {
-		return err
-	}
-
-	bufHTML, err := p.renderMailHTML("tmpl/handicapEmailPlannedHTML.tmpl", false, handicapsEmail)
+	text, html, err := p.renderMarkdownEmail("handicapEmailPlanned.md.tmpl", false, handicapsEmail)
 	if err != nil {
 		return err
 	}
@@ -258,8 +236,8 @@ func (p *Plexams) SendHandicapsMailToStudentPlanned(ctx context.Context, run boo
 		to,
 		cc,
 		fmt.Sprintf("[Prüfungsplanung %s] Räume für Ihre Prüfung(en)", p.semester),
-		bufText.Bytes(),
-		bufHTML,
+		text,
+		html,
 		nil,
 		false,
 	)
@@ -313,16 +291,7 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 		PlanerName: p.planer.Name,
 	}
 
-	tmpl, err := template.ParseFS(emailTemplates, "tmpl/newNTAEmail.tmpl")
-	if err != nil {
-		return err
-	}
-	bufText := new(bytes.Buffer)
-	err = tmpl.Execute(bufText, newNTA)
-	if err != nil {
-		return err
-	}
-	bufHTML, err := p.renderMailHTML("tmpl/newNTAEmailHTML.tmpl", false, newNTA)
+	text, html, err := p.renderMarkdownEmail("newNTAEmail.md.tmpl", false, newNTA)
 	if err != nil {
 		return err
 	}
@@ -331,8 +300,8 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 		to,
 		nil,
 		fmt.Sprintf("[Prüfungsplanung %s] Neuer NTA", p.semester),
-		bufText.Bytes(),
-		bufHTML,
+		text,
+		html,
 		nil,
 		false,
 	); err != nil {

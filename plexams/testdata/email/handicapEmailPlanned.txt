@@ -1,0 +1,13 @@
+Hallo Stud Test,
+
+Sie haben gemäß den uns vorliegenden Informationen Anspruch auf Nachteilsausgleich bei Ihren Prüfungen.
+
+Für folgende Prüfungen, für die Sie sich angemeldet haben, haben wir Sie im jeweils angegebenen Raum eingeplant:
+
+- Mo, 06.07.2026, 08:30 Uhr, Raum R1.234 --- Prof. A: Mathe
+
+Mit freundlichen Grüßen
+Test Planer
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

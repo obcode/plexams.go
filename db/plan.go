@@ -282,6 +282,30 @@ func (db *DB) UnlockExam(ctx context.Context, ancode int) (*model.PlanEntry, err
 	return db.PlanEntry(ctx, ancode)
 }
 
+// SetPhaseFixed sets/clears the phaseFixed flag on a plan entry (the EXaHM/SEB room
+// phase fix, distinct from the manual Locked).
+func (db *DB) SetPhaseFixed(ctx context.Context, ancode int, fixed bool) error {
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
+	_, err := collection.UpdateOne(ctx,
+		bson.D{{Key: "ancode", Value: ancode}},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "phasefixed", Value: fixed}}}})
+	if err != nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("cannot set phaseFixed")
+	}
+	return err
+}
+
+// ClearAllPhaseFixed clears the phaseFixed flag on all plan entries.
+func (db *DB) ClearAllPhaseFixed(ctx context.Context) error {
+	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
+	_, err := collection.UpdateMany(ctx, bson.D{},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "phasefixed", Value: false}}}})
+	if err != nil {
+		log.Error().Err(err).Msg("cannot clear phaseFixed")
+	}
+	return err
+}
+
 func (db *DB) ExamIsLocked(ctx context.Context, ancode int) bool {
 	p, err := db.PlanEntry(ctx, ancode)
 	return err == nil && p != nil && p.Locked

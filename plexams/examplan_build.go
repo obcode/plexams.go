@@ -38,7 +38,7 @@ type ExamScheduleResult struct {
 // current data: assembled exams to plan (movable), fixed obstacles (locked / external
 // / not-planned-by-me), per-student conflict pairs, EXaHM slot capacities and the
 // attract pairs (parallel sections / small same-examer exams).
-func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (*examplan.Problem, error) {
+func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPhase bool) (*examplan.Problem, error) {
 	sc := p.semesterConfig
 	if sc == nil {
 		return nil, fmt.Errorf("no semester config loaded")
@@ -61,10 +61,11 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 		for key, sb := range booked {
 			if idx, ok := slotIdx[key]; ok && sb != nil {
 				slots[idx].ExahmSeats = sb.exahmSeats
+				slots[idx].SebSeats = sb.sebSeats
 			}
 		}
 	} else {
-		log.Warn().Err(err).Msg("cannot read anny bookings; EXaHM slots treated as none")
+		log.Warn().Err(err).Msg("cannot read anny bookings; EXaHM/SEB slots treated as none")
 	}
 
 	// --- assembled exams, plan entries, constraints ---
@@ -86,17 +87,25 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 	}
 
 	type exRec struct {
-		e         *model.AssembledExam
-		fixedSlot int // -1 if movable
-		allowed   []int
-		foreign   bool
+		e          *model.AssembledExam
+		fixedSlot  int // -1 if movable
+		allowed    []int
+		foreign    bool
+		exahm, seb bool
 	}
 	rec := make(map[int]*exRec, len(assembled))
 	for _, e := range assembled {
 		c := constraints[e.Ancode]
 		pe := peByAncode[e.Ancode]
+		exahm := c != nil && c.RoomConstraints != nil && c.RoomConstraints.Exahm
+		seb := c != nil && c.RoomConstraints != nil && c.RoomConstraints.Seb
 		foreign := (c != nil && c.NotPlannedByMe) || (pe != nil && pe.ExternalTime != nil) || e.Ancode >= externalAncodeBase
+		// Phase A (roomPhase): only EXaHM/SEB are movable; phaseFixed is ignored (we
+		// re-place them). Phase B: phaseFixed entries are fixed obstacles.
 		fixed := foreign || (pe != nil && pe.Locked)
+		if !roomPhase && pe != nil && pe.PhaseFixed {
+			fixed = true
+		}
 		if fixed {
 			if pe == nil {
 				continue // fixed but no slot known → not schedulable, no obstacle
@@ -105,8 +114,12 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 			if !ok {
 				continue
 			}
-			rec[e.Ancode] = &exRec{e: e, fixedSlot: idx, foreign: foreign}
+			rec[e.Ancode] = &exRec{e: e, fixedSlot: idx, foreign: foreign, exahm: exahm, seb: seb}
 			continue
+		}
+		// movable
+		if roomPhase && !exahm && !seb {
+			continue // phase A schedules only EXaHM/SEB exams
 		}
 		allowedSlots, err := p.AllowedSlots(ctx, e.Ancode)
 		if err != nil {
@@ -118,7 +131,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 				idxs = append(idxs, idx)
 			}
 		}
-		rec[e.Ancode] = &exRec{e: e, fixedSlot: -1, allowed: idxs}
+		rec[e.Ancode] = &exRec{e: e, fixedSlot: -1, allowed: idxs, exahm: exahm, seb: seb}
 	}
 
 	ancodes := make([]int, 0, len(rec))
@@ -185,10 +198,13 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 			e := rec[a].e
 			u.Ancodes = append(u.Ancodes, a)
 			u.Seats += e.StudentRegsCount
+			if rec[a].exahm {
+				u.Exahm = true
+			}
+			if rec[a].seb {
+				u.Seb = true
+			}
 			if c := constraints[a]; c != nil {
-				if c.RoomConstraints != nil && c.RoomConstraints.Exahm {
-					u.Exahm = true
-				}
 				// sameSlot with a FIXED exam pins this group to that exam's slot (the
 				// movable-only union-find above cannot merge across fixed exams).
 				for _, other := range c.SameSlot {
@@ -231,12 +247,8 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 			continue
 		}
 		idx := len(units)
-		exahm := false
-		if c := constraints[a]; c != nil && c.RoomConstraints != nil && c.RoomConstraints.Exahm {
-			exahm = true
-		}
 		units = append(units, examplan.Unit{
-			ID: a, Ancodes: []int{a}, Seats: r.e.StudentRegsCount, Exahm: exahm,
+			ID: a, Ancodes: []int{a}, Seats: r.e.StudentRegsCount, Exahm: r.exahm, Seb: r.seb,
 			Examer: r.e.ZpaExam.MainExamerID, Module: r.e.ZpaExam.Module, Program: firstProgram(r.e),
 			Fixed: true, FixedSlot: r.fixedSlot, Foreign: r.foreign, Location: locationOf(constraints[a]),
 		})
@@ -334,6 +346,12 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 	}
 
 	w := examplan.DefaultWeights()
+	if roomPhase {
+		// Phase A: main goal is to fill the booked T-building rooms with EXaHM/SEB;
+		// even distribution over all slots is off (we want concentration in T-Bau).
+		w.TbauFill = 10000
+		w.SlotLoad = 0
+	}
 	students := make([]examplan.Student, 0, len(studentsRaw))
 	for _, s := range studentsRaw {
 		seen := make(map[int]bool)
@@ -440,11 +458,25 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings bool) (
 // removes stale entries of any exam that ended up unplaced. It refuses to write when
 // there are hard violations.
 func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed int64, iterations int, ignoreRatings bool, reporter Reporter) (*ExamScheduleResult, error) {
+	return p.runExamGeneration(ctx, false, dryRun, seed, iterations, ignoreRatings, reporter, condExamScheduleGenerated)
+}
+
+// GenerateExamRoomsPhase runs phase A: it schedules only the EXaHM/SEB exams into the
+// booked T-building slots (maximizing room usage), leaving everything else for phase B.
+func (p *Plexams) GenerateExamRoomsPhase(ctx context.Context, dryRun bool, seed int64, iterations int, reporter Reporter) (*ExamScheduleResult, error) {
+	return p.runExamGeneration(ctx, true, dryRun, seed, iterations, false, reporter, condExahmSebPlanned)
+}
+
+func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool, seed int64, iterations int, ignoreRatings bool, reporter Reporter, doneCond string) (*ExamScheduleResult, error) {
 	if ignoreRatings {
 		reporter.Println("Konflikt-Bewertungen werden für diesen Lauf ignoriert")
 	}
-	reporter.Step("Terminplan-Problem wird aufgebaut …")
-	prob, err := p.buildExamPlanProblem(ctx, !ignoreRatings)
+	if roomPhase {
+		reporter.Step("EXaHM/SEB-Raumphase wird aufgebaut …")
+	} else {
+		reporter.Step("Terminplan-Problem wird aufgebaut …")
+	}
+	prob, err := p.buildExamPlanProblem(ctx, !ignoreRatings, roomPhase)
 	if err != nil {
 		reporter.StopProgressFail("Aufbau fehlgeschlagen: " + err.Error())
 		return nil, err
@@ -455,8 +487,12 @@ func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed in
 			movable++
 		}
 	}
-	reporter.Println(fmt.Sprintf("%d Prüfungen zu planen, %d fest, %d Slots, %d Studierende mit Konflikten",
-		movable, len(prob.Units)-movable, len(prob.Slots), len(prob.Students)))
+	what := "Prüfungen zu planen"
+	if roomPhase {
+		what = "EXaHM/SEB-Prüfungen zu platzieren"
+	}
+	reporter.Println(fmt.Sprintf("%d %s, %d fest, %d Slots, %d Studierende mit Konflikten",
+		movable, what, len(prob.Units)-movable, len(prob.Slots), len(prob.Students)))
 
 	opts := optimize.DefaultOptions()
 	opts.Seed = seed
@@ -515,8 +551,13 @@ func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed in
 
 	d := result.Diagnostics
 	reporter.Println(fmt.Sprintf("geplant %d, ungeplant %d, harte Verletzungen %d", result.Placed, result.Unplaced, len(hard)))
-	reporter.Println(fmt.Sprintf("direkt nacheinander %d, selber Tag %d (%d Studierende), Folgetag %d",
-		d.Adjacent, d.SameDay, d.StudentsWithSameDay, d.NextDay))
+	if roomPhase {
+		be, ue, bs, us := st.TbauUsage()
+		reporter.Println(fmt.Sprintf("T-Bau EXaHM: %d/%d Sitze genutzt, SEB: %d/%d Sitze genutzt", ue, be, us, bs))
+	} else {
+		reporter.Println(fmt.Sprintf("direkt nacheinander %d, selber Tag %d (%d Studierende), Folgetag %d",
+			d.Adjacent, d.SameDay, d.StudentsWithSameDay, d.NextDay))
+	}
 
 	if dryRun {
 		reporter.StopProgress("Probelauf – nichts geschrieben")
@@ -552,9 +593,52 @@ func (p *Plexams) GenerateExamSchedule(ctx context.Context, dryRun bool, seed in
 		}
 	}
 	result.Written = true
-	p.markCondition(ctx, condExamScheduleGenerated)
-	reporter.StopProgress(fmt.Sprintf("Terminplan geschrieben: %d Prüfungen", result.Placed))
+	p.markCondition(ctx, doneCond)
+	reporter.StopProgress(fmt.Sprintf("geschrieben: %d Prüfungen", result.Placed))
 	return result, nil
+}
+
+// FixExamRoomsPhase freezes the EXaHM/SEB room-phase result: every EXaHM/SEB exam that
+// has a plan entry is marked PhaseFixed so phase B leaves it untouched (distinct from
+// the user's manual Locked). Returns the number of exams fixed.
+func (p *Plexams) FixExamRoomsPhase(ctx context.Context) (int, error) {
+	constraints, err := p.ConstraintsMap(ctx)
+	if err != nil {
+		return 0, err
+	}
+	planEntries, err := p.PlanEntries(ctx)
+	if err != nil {
+		return 0, err
+	}
+	planned := make(map[int]bool, len(planEntries))
+	for _, pe := range planEntries {
+		planned[pe.Ancode] = true
+	}
+	n := 0
+	for ancode, c := range constraints {
+		if c == nil || c.RoomConstraints == nil || (!c.RoomConstraints.Exahm && !c.RoomConstraints.Seb) {
+			continue
+		}
+		if !planned[ancode] {
+			continue
+		}
+		if err := p.dbClient.SetPhaseFixed(ctx, ancode, true); err != nil {
+			return n, err
+		}
+		n++
+	}
+	p.markCondition(ctx, condExahmSebFixed)
+	return n, nil
+}
+
+// UnfixExamRoomsPhase clears the phase-A fix on all plan entries (the manual Locked
+// stays untouched).
+func (p *Plexams) UnfixExamRoomsPhase(ctx context.Context) error {
+	if err := p.dbClient.ClearAllPhaseFixed(ctx); err != nil {
+		return err
+	}
+	p.unmarkCondition(ctx, condExahmSebFixed)
+	return nil
 }
 
 func maxInt(a, b int) int {

@@ -417,6 +417,26 @@ func slotLoadCost(st *State) (float64, []optimize.Violation) {
 	return total, nil
 }
 
+// TbauUsage reports how many of the booked T-building EXaHM/SEB seats are used (capped
+// at the booking; SEB overflow to R-rooms does not count).
+func (st *State) TbauUsage() (bookedExahm, usedExahm, bookedSeb, usedSeb int) {
+	for s := range st.P.Slots {
+		be, bs := st.P.Slots[s].ExahmSeats, st.P.Slots[s].SebSeats
+		bookedExahm += be
+		bookedSeb += bs
+		usedExahm += minInt(st.slotExahm[s], be)
+		usedSeb += minInt(st.slotSeb[s], bs)
+	}
+	return
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func tbauFillCost(st *State) (float64, []optimize.Violation) {
 	p := st.P
 	var total float64

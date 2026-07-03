@@ -52,6 +52,8 @@ const (
 	condStudentRegsUploaded       = "studentRegsUploaded"
 	condPrimussDataAllSent        = "primussDataAllSent"
 	condNTARoomAloneSent          = "ntaRoomAloneSent"
+	condExahmSebPlanned           = "exahmSebPlanned"
+	condExahmSebFixed             = "exahmSebFixed"
 	condExamScheduleGenerated     = "examScheduleGenerated"
 	condDraftSent                 = "draftSent"
 	condExamPlanPublished         = "examPlanPublished"
@@ -84,6 +86,8 @@ var planningConditionDefs = []planningConditionDef{
 	{condStudentRegsUploaded, "Anmeldungen ins ZPA hochgeladen", "phase0", ""},
 	{condPrimussDataAllSent, "Primuss-Daten an alle verschickt", "phase0", ""},
 	{condNTARoomAloneSent, "Info an NTAs mit eigenem Raum verschickt", "phase0", ""},
+	{condExahmSebPlanned, "EXaHM/SEB in T-Bau-Räume geplant", "phase1", ""},
+	{condExahmSebFixed, "EXaHM/SEB fixiert (für Phase 2)", "phase1", ""},
 	{condExamScheduleGenerated, "Terminplan generiert", "phase1", ""},
 	{condDraftSent, "Entwurf verschickt", "phase1", model.PlanningGateExams},
 	{condExamPlanPublished, "Terminplan veröffentlicht (E-Mail)", "phase1", model.PlanningGateExams},

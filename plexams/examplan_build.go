@@ -100,12 +100,20 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		exahm, seb bool
 	}
 	rec := make(map[int]*exRec, len(assembled))
+	noRegsSkipped := make([]int, 0)
 	for _, e := range assembled {
 		c := constraints[e.Ancode]
 		pe := peByAncode[e.Ancode]
 		exahm := c != nil && c.RoomConstraints != nil && c.RoomConstraints.Exahm
 		seb := c != nil && c.RoomConstraints != nil && c.RoomConstraints.Seb
 		foreign := (c != nil && c.NotPlannedByMe) || (pe != nil && pe.ExternalTime != nil) || e.Ancode >= externalAncodeBase
+		// no registrations → no exam: our own 0-registration exams are not planned
+		// (dynamic — reincluded automatically once registrations appear). Foreign exams
+		// keep 0 of our regs on purpose and stay as time obstacles.
+		if e.StudentRegsCount == 0 && !foreign {
+			noRegsSkipped = append(noRegsSkipped, e.Ancode)
+			continue
+		}
 		// Phase A (roomPhase): only EXaHM/SEB are movable; phaseFixed is ignored (we
 		// re-place them). Phase B: phaseFixed entries are fixed obstacles.
 		fixed := foreign || (pe != nil && pe.Locked)
@@ -138,6 +146,11 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			}
 		}
 		rec[e.Ancode] = &exRec{e: e, fixedSlot: -1, allowed: idxs, exahm: exahm, seb: seb}
+	}
+	if len(noRegsSkipped) > 0 {
+		sort.Ints(noRegsSkipped)
+		log.Info().Ints("ancodes", noRegsSkipped).Int("count", len(noRegsSkipped)).
+			Msg("exams without registrations are not planned")
 	}
 
 	ancodes := make([]int, 0, len(rec))

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	txttmpl "text/template"
+
+	"github.com/obcode/plexams.go/graph/model"
 )
 
 var updateGolden = flag.Bool("update", false, "update the email golden files")
@@ -113,4 +115,31 @@ func TestDraftEmailsGolden(t *testing.T) {
 	}
 	assertGolden(t, "draftEmailFS.txt", textF)
 	assertGolden(t, "draftEmailFS.html", htmlF)
+}
+
+// TestSimpleEmailsGolden locks the simple single-recipient emails migrated in batch 2.
+func TestSimpleEmailsGolden(t *testing.T) {
+	teacher := &model.Teacher{Fullname: "Prof. Test"}
+
+	cases := []struct {
+		name string
+		tmpl string
+		jira bool
+		data any
+	}{
+		{"coverPageEmail", "coverPageEmail.md.tmpl", false,
+			&CoverMailData{Teacher: teacher, PlanerName: "Test Planer", GeneratorName: "Prof. Dr. Edda Eich-Söllner"}},
+		{"invigilationsSecretariatEmail", "invigilationsSecretariatEmail.md.tmpl", false,
+			&secretariatInvigEmail{SemesterName: "2026 SS", PlanerName: "Test Planer"}},
+		{"invigilationMissingEmail", "invigilationMissingEmail.md.tmpl", true,
+			&InvigilationMissingMailData{Teacher: teacher, Semester: "2026 SS", PlanerName: "Test Planer", Minutes: 180}},
+	}
+	for _, c := range cases {
+		text, html, err := (&Plexams{}).renderMarkdownEmail(c.tmpl, c.jira, c.data)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		assertGolden(t, c.name+".txt", text)
+		assertGolden(t, c.name+".html", html)
+	}
 }

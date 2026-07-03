@@ -1,0 +1,10 @@
+Hallo Prof. Test,
+
+im Anhang finden Sie die von Prof. Dr. Edda Eich-Söllner generierten Deckblätter für Ihre Prüfungen.
+
+Mit freundlichen Grüßen
+Test Planer
+Prüfungsplanung der FK07
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

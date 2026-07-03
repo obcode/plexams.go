@@ -1,0 +1,18 @@
+[Antworten bitte nicht via E-Mail, sondern via https://jira.cc.hm.edu/servicedesk/customer/portal/13]
+
+Hallo Prof. Test,
+
+für die Planung der Prüfungsaufsichten im 2026 SS fehlen uns von Ihnen noch die „Anforderungen an die Planung der Prüfungsaufsichten" im ZPA.
+
+Bitte tragen Sie diese **schnellstmöglich** in Ihrem Profil auf dem ZPA unter https://zpa.cs.hm.edu/teacher/profile/ ein und klicken Sie dort ganz unten auf „Speichern". Das gilt auch dann, wenn Sie keine speziellen Anforderungen haben: Bitte einmal speichern, damit wir sehen, dass Sie explizit keine Anforderungen haben und es nicht nur vergessen wurde.
+
+**Achtung**: Solange uns keine Anforderungen vorliegen, müssen wir Sie mit dem vollen Aufsichtsdeputat von derzeit ca. **180 Minuten** einplanen (100%). Dabei können wir Ihre individuelle Situation (z.B. Teilzeit, Freisemester, Beisitz bei mündlichen Prüfungen, Live-Coding, gesperrte Tage) nicht berücksichtigen.
+
+Wenn Sie also möchten, dass wir Ihre individuelle Situation berücksichtigen, tragen Sie Ihre Anforderungen bitte ASAP nach, bevor wir die Aufsichten einplanen.
+
+Mit freundlichen Grüßen
+Test Planer
+Prüfungsplanung der FK07
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

@@ -1,0 +1,30 @@
+"""
+EmailTemplate is one editable email body template (a Markdown *.md.tmpl). The built-in
+embedded template is the default; a stored override replaces it. The layout templates
+(emailBaseHTML/jiraOnHTML) are not editable here.
+"""
+type EmailTemplate {
+  "the template's file name, e.g. \"exahmEmail.md.tmpl\"."
+  name: String!
+  "the effective Markdown: the stored override if any, otherwise the built-in default."
+  markdown: String!
+  "true when no override is stored (the built-in default is in use)."
+  isDefault: Boolean!
+  "the built-in default Markdown (for preview and reset-to-default)."
+  defaultMarkdown: String!
+}
+
+extend type Query {
+  "All editable email templates with their effective Markdown and built-in default."
+  emailTemplates: [EmailTemplate!]!
+}
+
+extend type Mutation {
+  """
+  Store a Markdown override for an email template. The Markdown is validated (must parse
+  with the template functions) before it is saved. Returns the updated template.
+  """
+  setEmailTemplate(name: String!, markdown: String!): EmailTemplate!
+  "Remove a template's override, reverting to the built-in default. False if there was none."
+  resetEmailTemplate(name: String!): Boolean!
+}

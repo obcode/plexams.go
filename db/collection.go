@@ -54,6 +54,7 @@ const (
 	// global (plexams DB), carries over between semesters:
 	collectionPermanentNonInvigilators = "permanent_non_invigilators"
 	collectionStudyPrograms            = "study_programs"
+	collectionEmailTemplates           = "email_templates"
 	collectionPlaner                   = "planer"
 	collectionInvigilatorTodos         = "invigilator_todos"
 	collectionOtherInvigilations       = "invigilations_other"

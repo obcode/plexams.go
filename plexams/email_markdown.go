@@ -2,9 +2,11 @@ package plexams
 
 import (
 	"bytes"
+	"context"
 	htmltmpl "html/template"
 	txttmpl "text/template"
 
+	"github.com/rs/zerolog/log"
 	blackfriday "github.com/russross/blackfriday/v2"
 )
 
@@ -18,7 +20,11 @@ import (
 // only greeting, content and signature, in Markdown (Go template directives + funcs still
 // work, e.g. {{ .PlanerName }} or {{ jiraURL }}).
 func (p *Plexams) renderMarkdownEmail(name string, jira bool, data any) (text []byte, html []byte, err error) {
-	tmpl, err := txttmpl.New(name).Funcs(txttmpl.FuncMap(markdownEmailFuncs())).ParseFS(emailTemplates, "tmpl/"+name)
+	source, err := p.markdownTemplateSource(name)
+	if err != nil {
+		return nil, nil, err
+	}
+	tmpl, err := txttmpl.New(name).Funcs(txttmpl.FuncMap(markdownEmailFuncs())).Parse(source)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -34,6 +40,29 @@ func (p *Plexams) renderMarkdownEmail(name string, jira bool, data any) (text []
 	htmlBody := blackfriday.Run(md.Bytes(), blackfriday.WithExtensions(blackfriday.CommonExtensions|blackfriday.HardLineBreak))
 	html, err = p.wrapContentHTML(htmlBody, jira)
 	return text, html, err
+}
+
+// markdownTemplateSource returns the Markdown source for a template: the DB override if
+// one is stored, otherwise the embedded default. A nil dbClient (unit tests) always uses
+// the embedded default, so the golden tests exercise the built-in templates.
+func (p *Plexams) markdownTemplateSource(name string) (string, error) {
+	if p.dbClient != nil {
+		if md, ok, err := p.dbClient.EmailTemplateOverride(context.Background(), name); err != nil {
+			log.Warn().Err(err).Str("name", name).Msg("cannot read email template override; using embedded default")
+		} else if ok {
+			return md, nil
+		}
+	}
+	return embeddedMarkdownTemplate(name)
+}
+
+// embeddedMarkdownTemplate reads a built-in Markdown email template from the embedded FS.
+func embeddedMarkdownTemplate(name string) (string, error) {
+	b, err := emailTemplates.ReadFile("tmpl/" + name)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
 // markdownEmailFuncs is the func set available to Markdown email templates: the shared

@@ -17,27 +17,17 @@ type SlotNumber struct {
 	day, slot int
 }
 
-/*
-roomConstraints:
-  booked:
-    - date: 2024-01-22
-      from: "14:00"
-      until: "17:00"
-      rooms:
-        - T3.015
-        - T3.016
-        - T3.017
-        - T3.023
-*/
-
-type BookedEntry struct {
+// AnnyRoomBooking is one or more rooms booked in Anny for a time window, with the
+// booking's approval status. It is derived from the stored Anny bookings by
+// ExahmRoomsFromAnnyBookings (adjacent/overlapping bookings of the same room merged).
+type AnnyRoomBooking struct {
 	From     time.Time
 	Until    time.Time
 	Rooms    []string
 	Approved bool
 }
 
-func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry, error) {
+func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]AnnyRoomBooking, error) {
 	dbBookings, err := p.dbClient.AllAnnyBookings(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get anny bookings from db: %w", err)
@@ -55,7 +45,7 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry
 	// same rooms are in the DB for information only.
 	names := p.anny.PersonalizationNames(ctx)
 
-	entries := make([]BookedEntry, 0, len(dbBookings))
+	entries := make([]AnnyRoomBooking, 0, len(dbBookings))
 	for _, booking := range dbBookings {
 		if booking.Room == "" {
 			continue
@@ -67,7 +57,7 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry
 		if _, ok := allowedRooms[normalizedRoom]; !ok {
 			continue
 		}
-		entries = append(entries, BookedEntry{
+		entries = append(entries, AnnyRoomBooking{
 			From:     booking.StartDate,
 			Until:    booking.EndDate,
 			Rooms:    []string{booking.Room},
@@ -75,15 +65,15 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]BookedEntry
 		})
 	}
 
-	return mergeBookedEntriesByRoom(entries), nil
+	return mergeAnnyRoomBookings(entries), nil
 }
 
-func mergeBookedEntriesByRoom(entries []BookedEntry) []BookedEntry {
+func mergeAnnyRoomBookings(entries []AnnyRoomBooking) []AnnyRoomBooking {
 	if len(entries) < 2 {
 		return entries
 	}
 
-	sortedEntries := make([]BookedEntry, 0, len(entries))
+	sortedEntries := make([]AnnyRoomBooking, 0, len(entries))
 	for _, entry := range entries {
 		if len(entry.Rooms) != 1 {
 			sortedEntries = append(sortedEntries, entry)
@@ -114,7 +104,7 @@ func mergeBookedEntriesByRoom(entries []BookedEntry) []BookedEntry {
 		return sortedEntries[i].Until.Before(sortedEntries[j].Until)
 	})
 
-	merged := make([]BookedEntry, 0, len(sortedEntries))
+	merged := make([]AnnyRoomBooking, 0, len(sortedEntries))
 	for _, current := range sortedEntries {
 		if len(merged) == 0 {
 			merged = append(merged, current)
@@ -145,144 +135,6 @@ func mergeBookedEntriesByRoom(entries []BookedEntry) []BookedEntry {
 
 	return merged
 }
-
-func (p *Plexams) SlotsWithRoomsFromBookedEntries(bookedEntries []BookedEntry) (map[SlotNumber][]*model.Room, error) {
-	globalRooms, err := p.dbClient.Rooms(context.Background())
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get global rooms")
-		return nil, err
-	}
-
-	globalRoomsMap := make(map[string]*model.Room)
-	for _, room := range globalRooms {
-		globalRoomsMap[room.Name] = room
-	}
-
-	slotsWithRooms := make(map[SlotNumber][]*model.Room)
-
-	for _, slot := range p.semesterConfig.Slots {
-		for _, entry := range bookedEntries {
-			if entry.From.Before(slot.Starttime) && entry.Until.After(slot.Starttime.Add(89*time.Minute)) {
-				rooms := make([]*model.Room, 0, len(entry.Rooms))
-				for _, roomName := range entry.Rooms {
-					room, ok := globalRoomsMap[roomName]
-					if !ok {
-						log.Error().Str("room name", roomName).Msg("room not found")
-						return nil, fmt.Errorf("room %s not found", roomName)
-					}
-					rooms = append(rooms, room)
-				}
-				slotsWithRooms[SlotNumber{slot.DayNumber, slot.SlotNumber}] = rooms
-			}
-		}
-	}
-
-	return slotsWithRooms, nil
-}
-
-// func (p *Plexams) PrepareRoomsForSemester(approvedOnly bool) error {
-// 	globalRooms, err := p.dbClient.Rooms(context.Background())
-// 	if err != nil {
-// 		log.Error().Err(err).Msg("cannot get global rooms")
-// 		return err
-// 	}
-
-// 	roomsForSlots := make(map[SlotNumber][]*model.Room)
-// 	for _, room := range globalRooms {
-// 		if room.Name == "No Room" || room.Exahm {
-// 			continue
-// 		}
-// 		roomConstraints := viper.Get(fmt.Sprintf("roomConstraints.%s", room.Name))
-// 		if roomConstraints == nil {
-
-// 			if room.NeedsRequest {
-// 				fmt.Println(aurora.Sprintf(aurora.Red("%s: no constraints found, but room needs request, ignoring room"),
-// 					aurora.Cyan(room.Name)))
-// 				continue
-// 			}
-
-// 			fmt.Println(aurora.Sprintf(aurora.Green("%s: no constraints found"), aurora.Cyan(room.Name)))
-
-// 			for _, slot := range p.semesterConfig.Slots {
-// 				slotNumber := SlotNumber{slot.DayNumber, slot.SlotNumber}
-// 				slotEntry, ok := roomsForSlots[slotNumber]
-// 				if !ok {
-// 					slotEntry = []*model.Room{room}
-// 				} else {
-// 					slotEntry = append(slotEntry, room)
-// 				}
-// 				roomsForSlots[slotNumber] = slotEntry
-// 			}
-// 		} else {
-// 			//   R1.046:
-// 			//     reservations:
-// 			//       - slot: [1,3]
-// 			//         date: 2024-01-24
-// 			//         from: 10:15
-// 			//         until: 12:15
-// 			//       - slot: [1, 5]
-// 			//         date: 2024-01-24
-// 			//         from: 14:15
-// 			//         until: 16:15
-// 			reservations := viper.Get(fmt.Sprintf("roomConstraints.%s.reservations", room.Name))
-// 			if reservations != nil {
-// 				fmt.Println(aurora.Sprintf(aurora.Green("%s: reservations found"), aurora.Cyan(room.Name)))
-
-// 				reservationsSlice, ok := reservations.([]interface{})
-// 				if !ok {
-// 					log.Error().Interface("reservations", reservations).Msg("cannot convert reservations to slice")
-// 					return fmt.Errorf("cannot convert reservations to slice")
-// 				}
-// 				reservedSlots, err := p.reservations2Slots(reservationsSlice, room.Name, approvedOnly)
-// 				if err != nil {
-// 					log.Error().Err(err).Msg("cannot convert reservations to slots")
-// 					return err
-// 				}
-// 				for _, slot := range reservedSlots.ToSlice() {
-// 					slotNumber := SlotNumber{slot.day, slot.slot}
-// 					slotEntry, ok := roomsForSlots[slotNumber]
-// 					if !ok {
-// 						slotEntry = []*model.Room{room}
-// 					} else {
-// 						slotEntry = append(slotEntry, room)
-// 					}
-// 					roomsForSlots[slotNumber] = slotEntry
-// 				}
-// 			}
-// 			// notAllowedDays := viper.Get(fmt.Sprintf("roomConstraints.%s.notAllowedDays", room.Name))
-// 			// if notAllowedDays != nil {
-
-// 			// }
-// 		}
-// 	}
-
-// 	bookedEntries, err := p.ExahmRoomsFromBooked()
-// 	if err != nil {
-// 		log.Error().Err(err).Msg("cannot get exahm rooms from booked")
-// 		return err
-// 	}
-// 	bookedRoomsMap, err := p.SlotsWithRoomsFromBookedEntries(bookedEntries)
-// 	if err != nil {
-// 		log.Error().Err(err).Msg("cannot get booked rooms map from booked entries")
-// 		return err
-// 	}
-
-// 	slotsWithRooms := make([]*model.SlotWithRooms, 0, len(roomsForSlots))
-// 	for slot, rooms := range roomsForSlots {
-// 		normalRooms, _, labRooms, ntaRooms := splitRooms(rooms)
-// 		exahmRooms := bookedRoomsMap[slot]
-// 		slotsWithRooms = append(slotsWithRooms, &model.SlotWithRooms{
-// 			DayNumber:   slot.day,
-// 			SlotNumber:  slot.slot,
-// 			NormalRooms: normalRooms,
-// 			ExahmRooms:  exahmRooms,
-// 			LabRooms:    labRooms,
-// 			NtaRooms:    ntaRooms,
-// 		})
-// 	}
-
-// 	return p.dbClient.SaveRooms(context.Background(), slotsWithRooms)
-// }
 
 type TimeRange struct {
 	From       time.Time

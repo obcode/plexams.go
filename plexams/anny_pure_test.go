@@ -55,19 +55,19 @@ func TestMergeBookedEntriesByRoom(t *testing.T) {
 	at := func(h, m int) time.Time { return time.Date(2026, 1, 20, h, m, 0, 0, time.Local) }
 
 	t.Run("fewer than two entries returned unchanged", func(t *testing.T) {
-		in := []BookedEntry{{From: at(8, 0), Until: at(10, 0), Rooms: []string{"R1.006"}, Approved: true}}
-		got := mergeBookedEntriesByRoom(in)
+		in := []AnnyRoomBooking{{From: at(8, 0), Until: at(10, 0), Rooms: []string{"R1.006"}, Approved: true}}
+		got := mergeAnnyRoomBookings(in)
 		if len(got) != 1 {
 			t.Fatalf("got %d entries, want 1", len(got))
 		}
 	})
 
 	t.Run("adjacent same-room same-approval bookings merge", func(t *testing.T) {
-		in := []BookedEntry{
+		in := []AnnyRoomBooking{
 			{From: at(8, 0), Until: at(10, 0), Rooms: []string{"R1.006"}, Approved: true},
 			{From: at(10, 0), Until: at(12, 0), Rooms: []string{"R1.006"}, Approved: true},
 		}
-		got := mergeBookedEntriesByRoom(in)
+		got := mergeAnnyRoomBookings(in)
 		if len(got) != 1 {
 			t.Fatalf("got %d entries, want 1 merged", len(got))
 		}
@@ -77,44 +77,44 @@ func TestMergeBookedEntriesByRoom(t *testing.T) {
 	})
 
 	t.Run("overlapping same-room bookings merge to the later end", func(t *testing.T) {
-		in := []BookedEntry{
+		in := []AnnyRoomBooking{
 			{From: at(8, 0), Until: at(11, 0), Rooms: []string{"R1.006"}, Approved: true},
 			{From: at(10, 0), Until: at(12, 0), Rooms: []string{"R1.006"}, Approved: true},
 		}
-		got := mergeBookedEntriesByRoom(in)
+		got := mergeAnnyRoomBookings(in)
 		if len(got) != 1 || !got[0].Until.Equal(at(12, 0)) {
 			t.Fatalf("got %+v, want single entry until 12:00", got)
 		}
 	})
 
 	t.Run("different approval status does not merge", func(t *testing.T) {
-		in := []BookedEntry{
+		in := []AnnyRoomBooking{
 			{From: at(8, 0), Until: at(10, 0), Rooms: []string{"R1.006"}, Approved: true},
 			{From: at(10, 0), Until: at(12, 0), Rooms: []string{"R1.006"}, Approved: false},
 		}
-		got := mergeBookedEntriesByRoom(in)
+		got := mergeAnnyRoomBookings(in)
 		if len(got) != 2 {
 			t.Errorf("got %d entries, want 2 (different approval)", len(got))
 		}
 	})
 
 	t.Run("different rooms do not merge", func(t *testing.T) {
-		in := []BookedEntry{
+		in := []AnnyRoomBooking{
 			{From: at(8, 0), Until: at(10, 0), Rooms: []string{"R1.006"}, Approved: true},
 			{From: at(8, 0), Until: at(10, 0), Rooms: []string{"R1.049"}, Approved: true},
 		}
-		got := mergeBookedEntriesByRoom(in)
+		got := mergeAnnyRoomBookings(in)
 		if len(got) != 2 {
 			t.Errorf("got %d entries, want 2 (different rooms)", len(got))
 		}
 	})
 
 	t.Run("non-adjacent same-room bookings stay separate", func(t *testing.T) {
-		in := []BookedEntry{
+		in := []AnnyRoomBooking{
 			{From: at(8, 0), Until: at(10, 0), Rooms: []string{"R1.006"}, Approved: true},
 			{From: at(13, 0), Until: at(15, 0), Rooms: []string{"R1.006"}, Approved: true},
 		}
-		got := mergeBookedEntriesByRoom(in)
+		got := mergeAnnyRoomBookings(in)
 		if len(got) != 2 {
 			t.Errorf("got %d entries, want 2 (gap between them)", len(got))
 		}

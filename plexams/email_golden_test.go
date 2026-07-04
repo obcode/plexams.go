@@ -173,9 +173,9 @@ func TestBatch3bEmailsGolden(t *testing.T) {
 			Times: []*roomRequestEmailTime{{From: "08:15", Until: "10:15"}, {From: "10:15", Until: "12:15"}},
 		}},
 	}}
-	kdp := &KdpEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Slots: []*kdpSlot{{
+	kdp := &email.KdpEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Slots: []*email.KdpSlot{{
 		Date: "Mo, 06.07.2026", Time: "08:30",
-		Rooms: []*kdpRoom{{RoomName: "T3.023", Exams: []*kdpExamInRoom{
+		Rooms: []*email.KdpRoom{{RoomName: "T3.023", Exams: []*email.KdpExamInRoom{
 			{Ancode: 111, Module: "Mathe", Examer: "Prof. A", Type: "EXaHM", Seats: 30, Detail: "30 Plätze, 90 Min."},
 			{Ancode: 222, Module: "Physik", Examer: "Prof. B", Type: "SEB", Seats: 5, Detail: "5 Plätze, 90 Min."},
 		}}},

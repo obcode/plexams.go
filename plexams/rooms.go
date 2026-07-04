@@ -3,7 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -16,17 +15,7 @@ type SlotNumber struct {
 	day, slot int
 }
 
-// AnnyRoomBooking is one or more rooms booked in Anny for a time window, with the
-// booking's approval status. It is derived from the stored Anny bookings by
-// ExahmRoomsFromAnnyBookings (adjacent/overlapping bookings of the same room merged).
-type AnnyRoomBooking struct {
-	From     time.Time
-	Until    time.Time
-	Rooms    []string
-	Approved bool
-}
-
-func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]AnnyRoomBooking, error) {
+func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]anny.RoomBooking, error) {
 	dbBookings, err := p.dbClient.AllAnnyBookings(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get anny bookings from db: %w", err)
@@ -44,7 +33,7 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]AnnyRoomBoo
 	// same rooms are in the DB for information only.
 	names := p.anny.PersonalizationNames(ctx)
 
-	entries := make([]AnnyRoomBooking, 0, len(dbBookings))
+	entries := make([]anny.RoomBooking, 0, len(dbBookings))
 	for _, booking := range dbBookings {
 		if booking.Room == "" {
 			continue
@@ -56,7 +45,7 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]AnnyRoomBoo
 		if _, ok := allowedRooms[normalizedRoom]; !ok {
 			continue
 		}
-		entries = append(entries, AnnyRoomBooking{
+		entries = append(entries, anny.RoomBooking{
 			From:     booking.StartDate,
 			Until:    booking.EndDate,
 			Rooms:    []string{booking.Room},
@@ -64,75 +53,7 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]AnnyRoomBoo
 		})
 	}
 
-	return mergeAnnyRoomBookings(entries), nil
-}
-
-func mergeAnnyRoomBookings(entries []AnnyRoomBooking) []AnnyRoomBooking {
-	if len(entries) < 2 {
-		return entries
-	}
-
-	sortedEntries := make([]AnnyRoomBooking, 0, len(entries))
-	for _, entry := range entries {
-		if len(entry.Rooms) != 1 {
-			sortedEntries = append(sortedEntries, entry)
-			continue
-		}
-		sortedEntries = append(sortedEntries, entry)
-	}
-
-	sort.Slice(sortedEntries, func(i, j int) bool {
-		roomI := ""
-		if len(sortedEntries[i].Rooms) > 0 {
-			roomI = strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(sortedEntries[i].Rooms[0]), " ", ""))
-		}
-		roomJ := ""
-		if len(sortedEntries[j].Rooms) > 0 {
-			roomJ = strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(sortedEntries[j].Rooms[0]), " ", ""))
-		}
-
-		if roomI != roomJ {
-			return roomI < roomJ
-		}
-		if sortedEntries[i].Approved != sortedEntries[j].Approved {
-			return sortedEntries[i].Approved && !sortedEntries[j].Approved
-		}
-		if !sortedEntries[i].From.Equal(sortedEntries[j].From) {
-			return sortedEntries[i].From.Before(sortedEntries[j].From)
-		}
-		return sortedEntries[i].Until.Before(sortedEntries[j].Until)
-	})
-
-	merged := make([]AnnyRoomBooking, 0, len(sortedEntries))
-	for _, current := range sortedEntries {
-		if len(merged) == 0 {
-			merged = append(merged, current)
-			continue
-		}
-
-		last := &merged[len(merged)-1]
-		if len(last.Rooms) != 1 || len(current.Rooms) != 1 {
-			merged = append(merged, current)
-			continue
-		}
-
-		lastRoom := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(last.Rooms[0]), " ", ""))
-		currentRoom := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(current.Rooms[0]), " ", ""))
-
-		// Merge adjacent or overlapping bookings for the same room and approval status.
-		if lastRoom == currentRoom &&
-			last.Approved == current.Approved &&
-			(current.From.Before(last.Until) || current.From.Equal(last.Until)) {
-			if current.Until.After(last.Until) {
-				last.Until = current.Until
-			}
-			continue
-		}
-
-		merged = append(merged, current)
-	}
-
-	return merged
+	return anny.MergeRoomBookings(entries), nil
 }
 
 type TimeRange struct {

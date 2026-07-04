@@ -9,6 +9,7 @@ import (
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -467,7 +468,7 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 		}
 
 		if constraint.RoomConstraints != nil && (constraint.RoomConstraints.Exahm || constraint.RoomConstraints.Seb) {
-			if !p.roomBookedDuringExamTime(annyRoomBookings, slot) {
+			if !anny.RoomBookedDuringExamTime(annyRoomBookings, slot) {
 				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
 					"Exam %d planned at %s, but no room booked", constraint.Ancode, slot.Starttime.Format("02.01.06 15:04"))
 			}
@@ -496,22 +497,4 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 	}
 
 	return v.finish(), nil
-}
-
-func (p *Plexams) roomBookedDuringExamTime(annyRoomBookings []AnnyRoomBooking, slot *model.Slot) bool {
-	if slot == nil {
-		return false
-	}
-
-	examStart := slot.Starttime
-	examEnd := slot.Starttime.Add(90 * time.Minute)
-
-	for _, annyRoomBooking := range annyRoomBookings {
-		// Inclusive overlap: bookings starting/ending exactly at exam boundaries are valid.
-		if !annyRoomBooking.From.After(examStart) && !annyRoomBooking.Until.Before(examEnd) {
-			return true
-		}
-	}
-
-	return false
 }

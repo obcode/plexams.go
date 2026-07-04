@@ -3,15 +3,9 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"sort"
-	"strconv"
-	"time"
 
-	"github.com/johnfercher/maroto/pkg/color"
-	"github.com/johnfercher/maroto/pkg/consts"
-	"github.com/johnfercher/maroto/pkg/pdf"
-	"github.com/johnfercher/maroto/pkg/props"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/pdfgen"
 	"github.com/rs/zerolog/log"
 )
 
@@ -68,58 +62,11 @@ func (p *Plexams) DraftLbaRep(ctx context.Context) error {
 }
 
 func (p *Plexams) draftSI(name string, outfile string, exams []*model.PlannedExam) error {
-	m := pdf.NewMaroto(consts.Portrait, consts.A4)
-	m.SetPageMargins(10, 15, 10)
+	m := pdfgen.DraftDoc(false,
+		fmt.Sprintf("Vorläufiger Planungsstand der Prüfungen der FK07 im %s", p.semesterFull()),
+		p.planer.Name, p.planer.Email, "--- ENTWURF ---")
 
-	m.RegisterFooter(func() {
-		m.Row(20, func() {
-			m.Col(12, func() {
-				m.Text(fmt.Sprintf("Stand: %s Uhr, generiert mit https://github.com/obcode/plexams.go",
-					time.Now().Format("02.01.06, 15:04")), props.Text{
-					Top:   13,
-					Style: consts.BoldItalic,
-					Size:  8,
-					Align: consts.Left,
-				})
-			})
-		})
-	})
-
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("Vorläufiger Planungsstand der Prüfungen der FK07 im %s", p.semesterFull()), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Bold,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(15, func() {
-		m.Col(12, func() {
-			m.Text(
-				"--- ENTWURF ---", props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
-
-	p.tableForExams(name, exams, m)
+	pdfgen.ExamTable(m, name, pdfgen.ExamRows(exams, p.getSlotTime))
 
 	err := m.OutputFileAndClose(outfile)
 	if err != nil {
@@ -129,66 +76,4 @@ func (p *Plexams) draftSI(name string, outfile string, exams []*model.PlannedExa
 		fmt.Printf("generated %s for %s\n", outfile, name)
 	}
 	return nil
-}
-
-func (p *Plexams) tableForExams(name string, exams []*model.PlannedExam, m pdf.Maroto) {
-	header := []string{"AnCode", "Modul", "Prüfender", "Termin"}
-
-	m.Row(18, func() {
-		m.Col(12, func() {
-			m.Text(
-				name, props.Text{
-					Top:   10,
-					Size:  12,
-					Style: consts.Bold,
-				})
-		})
-	})
-
-	contents := make([][]string, 0)
-
-	examsMap := make(map[int]*model.PlannedExam)
-	ancodes := make([]int, 0, len(exams))
-
-	for _, exam := range exams {
-		examsMap[exam.Ancode] = exam
-		ancodes = append(ancodes, exam.Ancode)
-	}
-
-	sort.Ints(ancodes)
-
-	for _, ancode := range ancodes {
-		exam := examsMap[ancode]
-
-		if exam.PlanEntry == nil {
-			contents = append(contents, []string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-				"fehlt noch"})
-		} else {
-			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			contents = append(contents, []string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-				r.Replace(starttime.Format("Mon. 02.01.06, 15:04 Uhr"))})
-		}
-	}
-
-	grayColor := color.Color{
-		Red:   211,
-		Green: 211,
-		Blue:  211,
-	}
-
-	m.TableList(header, contents, props.TableList{
-		HeaderProp: props.TableListContent{
-			Size:      11,
-			GridSizes: []uint{1, 5, 2, 4},
-		},
-		ContentProp: props.TableListContent{
-			Size:      11,
-			GridSizes: []uint{1, 5, 2, 4},
-		},
-		Align:                consts.Left,
-		AlternatedBackground: &grayColor,
-		HeaderContentSpace:   1,
-		Line:                 false,
-	})
-
 }

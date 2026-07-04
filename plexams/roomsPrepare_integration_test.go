@@ -82,6 +82,64 @@ func slotCfg(roomInfo map[string]*model.Room, roomNames []string) *prepareRoomsC
 	}
 }
 
+// TestPrepareRoomsExahmConstraint pins the room-constraint filtering: an EXaHM exam is
+// placed only in an EXaHM room, never in a plain room, even if a bigger plain room is free.
+func TestPrepareRoomsExahmConstraint(t *testing.T) {
+	// R1 is the biggest but plain; E1 is the only EXaHM room.
+	p, ctx, roomInfo, roomNames := roomsTestPlexams(t, []*model.Room{{Name: "R1", Seats: 30}, {Name: "E1", Seats: 25, Exahm: true}})
+	exam := simpleExam(400, 15, 90)
+	exam.Constraints = &model.Constraints{RoomConstraints: &model.RoomConstraints{Exahm: true}}
+	seedSlot(t, p, ctx, exam)
+
+	plannedRooms, unplaced, err := p.prepareRoomsForExamsInSlot(ctx, slotCfg(roomInfo, roomNames), newDiscardReporter())
+	if err != nil {
+		t.Fatalf("prepareRoomsForExamsInSlot: %v", err)
+	}
+	if len(unplaced) != 0 {
+		t.Errorf("unplaced = %+v, want none", unplaced)
+	}
+	placed := 0
+	for _, r := range plannedRooms {
+		if r.Reserve {
+			continue
+		}
+		placed += len(r.StudentsInRoom)
+		if r.RoomName != "E1" {
+			t.Errorf("EXaHM exam placed in %s, want the EXaHM room E1 only", r.RoomName)
+		}
+	}
+	if placed != 15 {
+		t.Errorf("placed = %d, want 15", placed)
+	}
+}
+
+// TestPrepareRoomsPrePlanned pins the pre-planned-room path: a room pre-planned for an exam
+// is filled first (marked PrePlanned), and the students it holds are not re-placed elsewhere.
+func TestPrepareRoomsPrePlanned(t *testing.T) {
+	p, ctx, roomInfo, roomNames := roomsTestPlexams(t, []*model.Room{{Name: "R1", Seats: 30}, {Name: "R2", Seats: 25}})
+	seedSlot(t, p, ctx, simpleExam(300, 20, 90)) // 20 students, pre-planned into R2
+
+	cfg := slotCfg(roomInfo, roomNames)
+	cfg.prePlannedRooms = map[int][]*model.PrePlannedRoom{
+		300: {{Ancode: 300, RoomName: "R2"}},
+	}
+
+	plannedRooms, unplaced, err := p.prepareRoomsForExamsInSlot(ctx, cfg, newDiscardReporter())
+	if err != nil {
+		t.Fatalf("prepareRoomsForExamsInSlot: %v", err)
+	}
+	if len(unplaced) != 0 {
+		t.Errorf("unplaced = %+v, want none", unplaced)
+	}
+	if len(plannedRooms) != 1 {
+		t.Fatalf("planned rooms = %d, want 1 (all 20 fit the pre-planned R2)", len(plannedRooms))
+	}
+	r := plannedRooms[0]
+	if r.RoomName != "R2" || !r.PrePlanned || len(r.StudentsInRoom) != 20 {
+		t.Errorf("pre-planned room = %+v, want R2 PrePlanned with 20 students", r)
+	}
+}
+
 // TestPrepareRoomsUnplacedWhenRoomsExhausted pins the overflow path: when the available
 // rooms cannot seat all normal students, the remainder is reported as unplaced (not lost).
 func TestPrepareRoomsUnplacedWhenRoomsExhausted(t *testing.T) {

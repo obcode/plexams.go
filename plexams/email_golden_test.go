@@ -274,13 +274,13 @@ func TestPublishedEmailsGolden(t *testing.T) {
 		OtherContributions: 120, TodoPerInvigilator: 900, MaxDeviation: 30, MinDeviation: 20,
 		PlanerName: "Test Planer", Teacher: &model.Teacher{Fullname: "Prof. Test"},
 	}
-	rooms := &PublishedRoomsEmail{
+	rooms := &email.PublishedRoomsEmail{
 		Teacher: &model.Teacher{Shortname: "tst"}, PlanerName: "Test Planer",
-		Exams: []*publishedRoomsExam{{
+		Exams: []*email.PublishedRoomsExam{{
 			Ancode: 111, Module: "Mathe", Date: "Mo, 06.07.2026", Time: "08:30",
-			Rooms: []*publishedRoomsRoom{{
+			Rooms: []*email.PublishedRoomsRoom{{
 				RoomName: "R1.100", Allocations: []string{"20 Stud., 90 min"},
-				SharedWith: []*publishedRoomsShared{{ExamHeader: "222. Physik (Prof. B)", Allocations: []string{"5 Stud., 90 min", "1 Stud., 120 min, NTA: 25%"}}},
+				SharedWith: []*email.PublishedRoomsShared{{ExamHeader: "222. Physik (Prof. B)", Allocations: []string{"5 Stud., 90 min", "1 Stud., 120 min, NTA: 25%"}}},
 			}},
 		}},
 	}

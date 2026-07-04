@@ -26,18 +26,13 @@ func studentRegs(prefix string, n int) []*model.EnhancedStudentReg {
 
 func mtknr(prefix string, i int) string { return prefix + string(rune('a'+i)) }
 
-func TestPrepareRoomsForExamsInSlot(t *testing.T) {
+// roomsTestPlexams returns a *Plexams on a throwaway DB with the given rooms added, plus a
+// roomInfo map and the room-name list (large-to-small order preserved).
+func roomsTestPlexams(t *testing.T, rooms []*model.Room) (*Plexams, context.Context, map[string]*model.Room, []string) {
+	t.Helper()
 	dbClient := mongotest.NewDB(t)
 	ctx := context.Background()
 	p := &Plexams{dbClient: dbClient, semesterConfig: &model.SemesterConfig{}}
-
-	// Rooms master data (plain rooms, no EXaHM/SEB/Lab), sorted large-to-small.
-	rooms := []*model.Room{
-		{Name: "R1", Seats: 30},
-		{Name: "R2", Seats: 20},
-		{Name: "R3", Seats: 10},
-		{Name: "R4", Seats: 5},
-	}
 	roomInfo := make(map[string]*model.Room, len(rooms))
 	roomNames := make([]string, 0, len(rooms))
 	for _, r := range rooms {
@@ -47,6 +42,115 @@ func TestPrepareRoomsForExamsInSlot(t *testing.T) {
 		roomInfo[r.Name] = r
 		roomNames = append(roomNames, r.Name)
 	}
+	return p, ctx, roomInfo, roomNames
+}
+
+// simpleExam is one assembled exam with n normal students (no NTA) at the given duration.
+func simpleExam(ancode, students, duration int) *model.AssembledExam {
+	return &model.AssembledExam{
+		Ancode:           ancode,
+		ZpaExam:          &model.ZPAExam{AnCode: ancode, Module: "M", MainExamer: "Prof", Duration: duration},
+		PrimussExams:     []*model.EnhancedPrimussExam{{StudentRegs: studentRegs("s", students)}},
+		StudentRegsCount: students,
+	}
+}
+
+// seedSlot caches the assembled exams and adds a plan entry for each in slot (1,1).
+func seedSlot(t *testing.T, p *Plexams, ctx context.Context, exams ...*model.AssembledExam) {
+	t.Helper()
+	if err := p.dbClient.CacheAssembledExams(ctx, exams); err != nil {
+		t.Fatalf("CacheAssembledExams: %v", err)
+	}
+	for _, e := range exams {
+		if _, err := p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{DayNumber: 1, SlotNumber: 1, Ancode: e.Ancode}); err != nil {
+			t.Fatalf("AddExamToSlot(%d): %v", e.Ancode, err)
+		}
+	}
+}
+
+// slotCfg builds a prepareRoomsCfg for slot (1,1) with the given rooms available.
+func slotCfg(roomInfo map[string]*model.Room, roomNames []string) *prepareRoomsCfg {
+	return &prepareRoomsCfg{
+		roomInfo:             roomInfo,
+		prePlannedRooms:      map[int][]*model.PrePlannedRoom{},
+		additionalSeats:      map[int]int{},
+		slot:                 &model.Slot{DayNumber: 1, SlotNumber: 1},
+		roomsNotUsableInSlot: set.NewSet[string](),
+		blockedRooms:         map[SlotNumber]set.Set[string]{},
+		exactSeatRooms:       map[int]map[string]bool{},
+		roomsForSlots:        map[SlotNumber][]string{{day: 1, slot: 1}: roomNames},
+	}
+}
+
+// TestPrepareRoomsUnplacedWhenRoomsExhausted pins the overflow path: when the available
+// rooms cannot seat all normal students, the remainder is reported as unplaced (not lost).
+func TestPrepareRoomsUnplacedWhenRoomsExhausted(t *testing.T) {
+	p, ctx, roomInfo, roomNames := roomsTestPlexams(t, []*model.Room{{Name: "R1", Seats: 30}})
+	seedSlot(t, p, ctx, simpleExam(100, 40, 90)) // 40 students, only 30 seats available
+
+	plannedRooms, unplaced, err := p.prepareRoomsForExamsInSlot(ctx, slotCfg(roomInfo, roomNames), newDiscardReporter())
+	if err != nil {
+		t.Fatalf("prepareRoomsForExamsInSlot: %v", err)
+	}
+
+	placed := 0
+	for _, r := range plannedRooms {
+		if !r.Reserve {
+			placed += len(r.StudentsInRoom)
+		}
+	}
+	unplacedCount := 0
+	for _, u := range unplaced {
+		unplacedCount += len(u.Mtknrs)
+	}
+	if placed != 30 {
+		t.Errorf("placed = %d, want 30 (the single room)", placed)
+	}
+	if unplacedCount != 10 {
+		t.Errorf("unplaced = %d, want 10 (40 - 30)", unplacedCount)
+	}
+}
+
+// TestPrepareRoomsReserveBuffer pins the addReserveBuffer path: an exam packed to fewer
+// than its free-seat buffer gets an extra reserve room (if one is still available).
+func TestPrepareRoomsReserveBuffer(t *testing.T) {
+	// R1 has exactly 29 seats: 29 students -> 0 free, below the buffer of max(2, 5%) -> a
+	// reserve room is taken from the remaining rooms.
+	p, ctx, roomInfo, roomNames := roomsTestPlexams(t, []*model.Room{{Name: "R1", Seats: 29}, {Name: "R2", Seats: 20}})
+	seedSlot(t, p, ctx, simpleExam(100, 29, 90))
+
+	plannedRooms, unplaced, err := p.prepareRoomsForExamsInSlot(ctx, slotCfg(roomInfo, roomNames), newDiscardReporter())
+	if err != nil {
+		t.Fatalf("prepareRoomsForExamsInSlot: %v", err)
+	}
+	if len(unplaced) != 0 {
+		t.Errorf("unplaced = %+v, want none", unplaced)
+	}
+
+	reserve, normal := 0, 0
+	for _, r := range plannedRooms {
+		if r.Reserve {
+			reserve++
+		} else {
+			normal += len(r.StudentsInRoom)
+		}
+	}
+	if normal != 29 {
+		t.Errorf("normal seats placed = %d, want 29", normal)
+	}
+	if reserve != 1 {
+		t.Errorf("reserve rooms = %d, want 1 (buffer not met -> one reserve added)", reserve)
+	}
+}
+
+func TestPrepareRoomsForExamsInSlot(t *testing.T) {
+	// Rooms master data (plain rooms, no EXaHM/SEB/Lab), sorted large-to-small.
+	p, ctx, roomInfo, roomNames := roomsTestPlexams(t, []*model.Room{
+		{Name: "R1", Seats: 30},
+		{Name: "R2", Seats: 20},
+		{Name: "R3", Seats: 10},
+		{Name: "R4", Seats: 5},
+	})
 
 	// Exam 100: 25 normal students, no NTA.
 	exam100 := &model.AssembledExam{
@@ -68,27 +172,9 @@ func TestPrepareRoomsForExamsInSlot(t *testing.T) {
 		},
 		StudentRegsCount: 7,
 	}
-	if err := p.dbClient.CacheAssembledExams(ctx, []*model.AssembledExam{exam100, exam200}); err != nil {
-		t.Fatalf("CacheAssembledExams: %v", err)
-	}
-	for _, e := range []*model.AssembledExam{exam100, exam200} {
-		if _, err := p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{DayNumber: 1, SlotNumber: 1, Ancode: e.Ancode}); err != nil {
-			t.Fatalf("AddExamToSlot(%d): %v", e.Ancode, err)
-		}
-	}
+	seedSlot(t, p, ctx, exam100, exam200)
 
-	cfg := &prepareRoomsCfg{
-		roomInfo:             roomInfo,
-		prePlannedRooms:      map[int][]*model.PrePlannedRoom{},
-		additionalSeats:      map[int]int{},
-		slot:                 &model.Slot{DayNumber: 1, SlotNumber: 1},
-		roomsNotUsableInSlot: set.NewSet[string](),
-		blockedRooms:         map[SlotNumber]set.Set[string]{},
-		exactSeatRooms:       map[int]map[string]bool{},
-		roomsForSlots:        map[SlotNumber][]string{{day: 1, slot: 1}: roomNames},
-	}
-
-	plannedRooms, unplaced, err := p.prepareRoomsForExamsInSlot(ctx, cfg, newDiscardReporter())
+	plannedRooms, unplaced, err := p.prepareRoomsForExamsInSlot(ctx, slotCfg(roomInfo, roomNames), newDiscardReporter())
 	if err != nil {
 		t.Fatalf("prepareRoomsForExamsInSlot: %v", err)
 	}

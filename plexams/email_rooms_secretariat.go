@@ -3,8 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"sort"
-	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/email"
@@ -13,42 +11,6 @@ import (
 // SecretariatRoomsEmail is the data for the rooms-occupancy email to the
 // secretariat: per (non-request) room, on which day at which times it is used by
 // an exam.
-type SecretariatRoomsEmail struct {
-	SemesterName string
-	PlanerName   string
-	Rooms        []*roomRequestEmailRoom // reused: room -> days -> time ranges
-}
-
-// roomInterval is one occupancy of a room (start..end).
-type roomInterval struct {
-	start time.Time
-	end   time.Time
-}
-
-// mergeRoomIntervals sorts the intervals by start and merges overlapping or
-// touching ones into a single range (so the different durations of an exam and
-// its NTAs in the same room collapse to one time range).
-func mergeRoomIntervals(intervals []roomInterval) []roomInterval {
-	if len(intervals) == 0 {
-		return nil
-	}
-	sort.Slice(intervals, func(i, j int) bool {
-		return intervals[i].start.Before(intervals[j].start)
-	})
-	merged := []roomInterval{intervals[0]}
-	for _, iv := range intervals[1:] {
-		last := &merged[len(merged)-1]
-		// overlap or touch: iv.start <= last.end
-		if !iv.start.After(last.end) {
-			if iv.end.After(last.end) {
-				last.end = iv.end
-			}
-			continue
-		}
-		merged = append(merged, iv)
-	}
-	return merged
-}
 
 // SendEmailRoomsSecretariat sends the secretariat one email listing, per room
 // that does not have to be requested separately, when the room is occupied by an
@@ -75,47 +37,13 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 		roomInfo[room.Name] = room
 	}
 
-	// the online "rooms" are not real bookable rooms for the secretariat.
-	skipRoom := map[string]bool{"ONLINE": true, "ONLINE_1": true, "ONLINE_2": true}
-
-	// collect occupancy intervals per (non-request) room
-	intervalsByRoom := make(map[string][]roomInterval)
-	for _, pr := range plannedRooms {
-		room, ok := roomInfo[pr.RoomName]
-		if !ok || room.NeedsRequest || room.Deactivated || skipRoom[pr.RoomName] {
-			continue // only real, active rooms that do not have to be requested
-		}
-		start := p.getSlotTime(pr.Day, pr.Slot)
-		end := start.Add(time.Duration(pr.Duration) * time.Minute)
-		intervalsByRoom[pr.RoomName] = append(intervalsByRoom[pr.RoomName], roomInterval{start: start, end: end})
-	}
-
-	if len(intervalsByRoom) == 0 {
+	rooms := email.BuildSecretariatRooms(plannedRooms, roomInfo, p.getSlotTime)
+	if len(rooms) == 0 {
 		reporter.StopProgress("no (non-request) rooms planned, nothing to send")
 		return nil
 	}
 
-	roomNames := make([]string, 0, len(intervalsByRoom))
-	for name := range intervalsByRoom {
-		roomNames = append(roomNames, name)
-	}
-	sort.Strings(roomNames)
-
-	rooms := make([]*roomRequestEmailRoom, 0, len(roomNames))
-	for _, name := range roomNames {
-		merged := mergeRoomIntervals(intervalsByRoom[name])
-		emailRoom := &roomRequestEmailRoom{Room: name}
-		for _, iv := range merged {
-			day := lastDay(emailRoom, email.DateDE(iv.start))
-			day.Times = append(day.Times, &roomRequestEmailTime{
-				From:  email.TimeDE(iv.start),
-				Until: email.TimeDE(iv.end),
-			})
-		}
-		rooms = append(rooms, emailRoom)
-	}
-
-	emailData := &SecretariatRoomsEmail{
+	emailData := &email.SecretariatRoomsEmail{
 		SemesterName: p.semester,
 		PlanerName:   p.planer.Name,
 		Rooms:        rooms,

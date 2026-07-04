@@ -166,11 +166,11 @@ func TestBatch3EmailsGolden(t *testing.T) {
 
 // TestBatch3bEmailsGolden locks the four nested-list emails (rooms, KDP, LBA repeaters).
 func TestBatch3bEmailsGolden(t *testing.T) {
-	rooms := []*roomRequestEmailRoom{{
+	rooms := []*email.RoomRequestEmailRoom{{
 		Room: "R1.234",
-		Days: []*roomRequestEmailDay{{
+		Days: []*email.RoomRequestEmailDay{{
 			Date:  "Mo, 06.07.2026",
-			Times: []*roomRequestEmailTime{{From: "08:15", Until: "10:15"}, {From: "10:15", Until: "12:15"}},
+			Times: []*email.RoomRequestEmailTime{{From: "08:15", Until: "10:15"}, {From: "10:15", Until: "12:15"}},
 		}},
 	}}
 	kdp := &email.KdpEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Slots: []*email.KdpSlot{{
@@ -192,8 +192,8 @@ func TestBatch3bEmailsGolden(t *testing.T) {
 		tmpl string
 		data any
 	}{
-		{"roomRequestEmail", "roomRequestEmail.md.tmpl", &RoomRequestEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Rooms: rooms}},
-		{"roomsSecretariatEmail", "roomsSecretariatEmail.md.tmpl", &SecretariatRoomsEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Rooms: rooms}},
+		{"roomRequestEmail", "roomRequestEmail.md.tmpl", &email.RoomRequestEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Rooms: rooms}},
+		{"roomsSecretariatEmail", "roomsSecretariatEmail.md.tmpl", &email.SecretariatRoomsEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Rooms: rooms}},
 		{"kdpExahmEmail", "kdpExahmEmail.md.tmpl", kdp},
 		{"lbaRepeaterEmail", "lbaRepeaterEmail.md.tmpl", lba},
 	}

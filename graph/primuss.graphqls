@@ -1,5 +1,8 @@
 extend type Query {
   primussExams: [PrimussExamByProgram]
+  primussExam(program: String!, ancode: Int!): PrimussExam!
+  primussExamsForAnCode(ancode: Int!): [PrimussExam!]
+  studentRegsForProgram(program: String!): [StudentReg!]
 }
 
 type PrimussExam {

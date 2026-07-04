@@ -1,6 +1,7 @@
 extend type Query {
   "SEB/EXaHM pre-planning pseudo-exams of this semester."
   preplanExams: [PreplanExam!]!
+  preplanExam(id: Int!): PreplanExam
   """
   Candidate ZPA exams for linking the given pre-exam, ranked by examer (same
   teacher) and module-name similarity. Empty before the ZPA exams are imported.

@@ -84,6 +84,17 @@ type ConflictStudent {
   accepted: Boolean!
 }
 
+extend type Query {
+  "Conflicts of the current plan, to review (accept per student)."
+  examScheduleConflicts: [ExamScheduleConflict!]!
+  "All explicit per-student conflict decisions currently stored."
+  studentConflictDecisions: [StudentConflictDecision!]!
+  "Exam pairs declared as allowed to share a slot (no student legitimately sits both)."
+  examsCanShareSlot: [ExamPair!]!
+  "Auto-detected canShareSlot candidates (same module+program, different examer) not yet declared."
+  canShareSlotSuggestions: [ExamPair!]!
+}
+
 extend type Mutation {
   "Set an explicit decision for a student's conflict (ACCEPT drops the penalty; VETO forces it to count despite an automatic repeat down-weighting)."
   setStudentConflictDecision(ancode1: Int!, ancode2: Int!, mtknr: String!, decision: ConflictDecision!): Boolean!

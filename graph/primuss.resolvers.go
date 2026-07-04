@@ -14,3 +14,18 @@ import (
 func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	return r.plexams.PrimussExams(ctx)
 }
+
+// PrimussExam is the resolver for the primussExam field.
+func (r *queryResolver) PrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error) {
+	return r.plexams.GetPrimussExam(ctx, program, ancode)
+}
+
+// PrimussExamsForAnCode is the resolver for the primussExamsForAnCode field.
+func (r *queryResolver) PrimussExamsForAnCode(ctx context.Context, ancode int) ([]*model.PrimussExam, error) {
+	return r.plexams.GetPrimussExamsForAncode(ctx, ancode)
+}
+
+// StudentRegsForProgram is the resolver for the studentRegsForProgram field.
+func (r *queryResolver) StudentRegsForProgram(ctx context.Context, program string) ([]*model.StudentReg, error) {
+	return r.plexams.StudentRegsForProgram(ctx, program)
+}

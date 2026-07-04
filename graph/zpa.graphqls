@@ -2,7 +2,14 @@ extend type Query {
   teacher(id: Int!): Teacher
   teachers(fromZPA: Boolean): [Teacher!]!
   invigilators: [ZPAInvigilator!]!
+  fk07programs: [FK07Program!]!
   zpaExams(fromZPA: Boolean): [ZPAExam!]!
+  zpaExamsByType: [ZPAExamsForType!]!
+  zpaExamsNotToPlan: [ZPAExam!]!
+  zpaExamsPlaningStatusUnknown: [ZPAExam!]!
+  zpaExam(ancode: Int!): ZPAExam
+  zpaAnCodes: [AnCode]
+  studentRegsImportErrors: [RegWithError!]!
   """
   Transfer history (imports from / uploads to ZPA, Anny, …), newest first.
   The whole history since the start of the semester is kept; pass limit to cap it.

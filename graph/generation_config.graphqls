@@ -1,3 +1,12 @@
+extend type Query {
+  """
+  Global generation tuning: the room time lag and the invigilation optimizer
+  (simulated annealing) parameters. Stored in the global plexams database; the
+  config file is only a seed/fallback. Steers room and invigilation generation.
+  """
+  generationConfig: GenerationConfig!
+}
+
 extend type Mutation {
   "Store the generation config (global). Returns the saved config."
   setGenerationConfig(input: GenerationConfigInput!): GenerationConfig!

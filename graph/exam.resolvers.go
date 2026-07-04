@@ -37,9 +37,34 @@ func (r *plannedExamResolver) MainExamer(ctx context.Context, obj *model.Planned
 	return r.plexams.GetTeacher(ctx, obj.ZpaExam.MainExamerID)
 }
 
+// ConnectedExam is the resolver for the connectedExam field.
+func (r *queryResolver) ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error) {
+	return r.plexams.GetConnectedExam(ctx, ancode)
+}
+
+// ConnectedExams is the resolver for the connectedExams field.
+func (r *queryResolver) ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error) {
+	return r.plexams.GetConnectedExams(ctx)
+}
+
+// AssembledExams is the resolver for the assembledExams field.
+func (r *queryResolver) AssembledExams(ctx context.Context) ([]*model.AssembledExam, error) {
+	return r.plexams.AssembledExams(ctx)
+}
+
+// AssembledExam is the resolver for the assembledExam field.
+func (r *queryResolver) AssembledExam(ctx context.Context, ancode int) (*model.AssembledExam, error) {
+	return r.plexams.AssembledExam(ctx, ancode)
+}
+
 // PlannedExams is the resolver for the plannedExams field.
 func (r *queryResolver) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error) {
 	return r.plexams.PlannedExams(ctx)
+}
+
+// PlannedExam is the resolver for the plannedExam field.
+func (r *queryResolver) PlannedExam(ctx context.Context, ancode int) (*model.PlannedExam, error) {
+	return r.plexams.PlannedExam(ctx, ancode)
 }
 
 // MucdaiExams is the resolver for the mucdaiExams field.

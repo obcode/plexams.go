@@ -17,6 +17,11 @@ func (p *Plexams) RemoveExamDuration(ctx context.Context, ancode int) (bool, err
 	return p.dbClient.RemoveExamDurationOverride(ctx, ancode)
 }
 
+// ExamDurationOverrides returns all per-ancode duration overrides.
+func (p *Plexams) ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurationOverride, error) {
+	return p.dbClient.ExamDurationOverrides(ctx)
+}
+
 // examDurationOverridesMap returns the duration overrides as an ancode->minutes map.
 func (p *Plexams) examDurationOverridesMap(ctx context.Context) (map[int]int, error) {
 	overrides, err := p.dbClient.ExamDurationOverrides(ctx)

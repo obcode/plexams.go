@@ -40,6 +40,11 @@ func (r *mutationResolver) AddConstraints(ctx context.Context, ancode int, const
 	return r.plexams.AddConstraints(ctx, ancode, constraints)
 }
 
+// ConstraintForAncode is the resolver for the constraintForAncode field.
+func (r *queryResolver) ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error) {
+	return r.plexams.ConstraintForAncode(ctx, ancode)
+}
+
 // ZpaExamsToPlanWithConstraints is the resolver for the zpaExamsToPlanWithConstraints field.
 func (r *queryResolver) ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error) {
 	return r.plexams.ZpaExamsToPlanWithConstraints(ctx)

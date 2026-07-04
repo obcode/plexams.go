@@ -5,7 +5,6 @@ extend type Query {
   fk07programs: [FK07Program!]!
   zpaExams(fromZPA: Boolean): [ZPAExam!]!
   zpaExamsByType: [ZPAExamsForType!]!
-  zpaExamsToPlan: [ZPAExam!]!
   zpaExamsNotToPlan: [ZPAExam!]!
   zpaExamsPlaningStatusUnknown: [ZPAExam!]!
   zpaExam(ancode: Int!): ZPAExam
@@ -56,7 +55,6 @@ type SyncFieldChange {
 }
 
 extend type Mutation {
-  zpaExamsToPlan(input: [Int!]!): [ZPAExam!]!
   addZpaExamToPlan(ancode: Int!): Boolean!
   rmZpaExamFromPlan(ancode: Int!): Boolean!
 }

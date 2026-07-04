@@ -17,10 +17,6 @@ extend type Query {
   awkwardSlots(ancode: Int!): [Slot!]! # slots before or after a conflict
 }
 
-extend type Mutation {
-  addExamToSlot(day: Int!, time: Int!, ancode: Int!): Boolean!
-}
-
 type Emails {
   profs: String!
   lbas: String!

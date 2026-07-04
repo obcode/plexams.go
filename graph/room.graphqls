@@ -41,8 +41,6 @@ extend type Mutation {
   addRoom(input: RoomInput!): Room!
   "Update an existing room (key: name). Errors if it does not exist; keeps the active state."
   updateRoom(input: RoomInput!): Room!
-  "One-time backfill: derive requestWith for all rooms (ANNY for request-rooms with a T name, MANAGEMENT for other request-rooms, NONE otherwise). Returns the number of rooms updated."
-  migrateRoomsRequestWith: Int!
   "Reset the assigned room plan (planned_rooms) so only the pre-planning remains; re-assignment re-applies it. Blocked while the room plan is published."
   resetRoomsForExams: Boolean!
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 type SlotNumber struct {
@@ -172,44 +171,6 @@ func (p *Plexams) GetReservations() (map[string][]TimeRange, error) {
 	return reservations, nil
 }
 
-// reservationsFromConfig reads the room reservations from the semester config
-// (roomConstraints.<room>.reservations). Used only for the one-time migration
-// into the DB.
-func (p *Plexams) reservationsFromConfig() (map[string][]TimeRange, error) {
-	ctx := context.Background()
-	rooms, err := p.Rooms(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get rooms")
-	}
-
-	reservations := make(map[string][]TimeRange)
-
-	for _, room := range rooms {
-		if viper.IsSet(fmt.Sprintf("roomConstraints.%s.reservations", room.Name)) {
-			log.Debug().Str("room", room.Name).Msg("found reservations for room")
-			reservationsForRoom := viper.Get(fmt.Sprintf("roomConstraints.%s.reservations", room.Name))
-			reservationsSlice, ok := reservationsForRoom.([]interface{})
-			if !ok {
-				log.Error().Interface("reservations", reservations).Msg("cannot convert reservations to slice")
-				return nil, fmt.Errorf("cannot convert reservations to slice")
-			}
-
-			reservations[room.Name] = make([]TimeRange, 0, len(reservationsSlice))
-
-			for _, reservationEntry := range reservationsSlice {
-				fromUntil, err := fromUntil(reservationEntry)
-				if err != nil {
-					log.Error().Err(err).Interface("reservation", reservationsSlice).Msg("cannot convert reservation to time")
-					return nil, err
-				}
-				reservations[room.Name] = append(reservations[room.Name], *fromUntil)
-			}
-		}
-	}
-
-	return reservations, nil
-}
-
 func (p *Plexams) Rooms(ctx context.Context) ([]*model.Room, error) {
 	rooms, err := p.dbClient.Rooms(ctx)
 	if err != nil {
@@ -267,28 +228,6 @@ func roomInputToRoom(input model.RoomInput) *model.Room {
 		SebSeats:         input.SebSeats,
 		HmebSeats:        input.HmebSeats,
 	}
-}
-
-// MigrateRoomsRequestWith is a one-time backfill: it derives requestWith (and the
-// matching needsRequest) for every room and persists it. Returns the number of
-// rooms updated. Idempotent.
-func (p *Plexams) MigrateRoomsRequestWith(ctx context.Context) (int, error) {
-	rooms, err := p.dbClient.Rooms(ctx)
-	if err != nil {
-		return 0, err
-	}
-	updated := 0
-	for _, room := range rooms {
-		want := requestWithForRoom(room)
-		if room.RequestWith == want {
-			continue
-		}
-		if err := p.dbClient.SetRoomRequestWith(ctx, room.Name, string(want), want != model.RoomRequestTypeNone); err != nil {
-			return updated, err
-		}
-		updated++
-	}
-	return updated, nil
 }
 
 // AddRoom creates a new room (key: name). Errors if a room with that name

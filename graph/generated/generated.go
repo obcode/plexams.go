@@ -563,7 +563,6 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AddConstraints                func(childComplexity int, ancode int, constraints model.ConstraintsInput) int
-		AddExamToSlot                 func(childComplexity int, day int, time int, ancode int) int
 		AddNta                        func(childComplexity int, input model.NTAInput) int
 		AddNtaRoomAloneWaiver         func(childComplexity int, mtknr string, ancode int, reason string) int
 		AddPreplanExam                func(childComplexity int, input model.PreplanExamInput) int
@@ -585,7 +584,6 @@ type ComplexityRoot struct {
 		DeleteStudyProgram            func(childComplexity int, shortname string) int
 		DisconnectPreplanExam         func(childComplexity int, id int) int
 		Exahm                         func(childComplexity int, ancode int) int
-		ExcludeDays                   func(childComplexity int, ancode int, days []string) int
 		FixExamRoomsPhase             func(childComplexity int) int
 		FixPrimussAncode              func(childComplexity int, zpaAncode int, program string, fromAncode int, toAncode int) int
 		GenerateAssembledExams        func(childComplexity int) int
@@ -594,13 +592,8 @@ type ComplexityRoot struct {
 		GenerateStudentRegs           func(childComplexity int) int
 		ImportMucDaiExams             func(childComplexity int, csv string) int
 		Lab                           func(childComplexity int, ancode int) int
-		MigrateInvigilatorConstraints func(childComplexity int) int
-		MigrateRoomRequestsFromConfig func(childComplexity int) int
-		MigrateRoomsRequestWith       func(childComplexity int) int
 		NotPlannedByMe                func(childComplexity int, ancode int, inFk *string) int
 		Online                        func(childComplexity int, ancode int) int
-		PlacesWithSockets             func(childComplexity int, ancode int) int
-		PossibleDays                  func(childComplexity int, ancode int, days []string) int
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, day int, slot int, roomName *string) int
 		PrePlanInvigilationInSlot     func(childComplexity int, day int, slot int, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
@@ -617,9 +610,7 @@ type ComplexityRoot struct {
 		ResetExamSchedule             func(childComplexity int) int
 		ResetInvigilations            func(childComplexity int) int
 		ResetRoomsForExams            func(childComplexity int) int
-		RmConstraints                 func(childComplexity int, ancode int) int
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
-		SameSlot                      func(childComplexity int, ancode int, ancodes []int) int
 		Seb                           func(childComplexity int, ancode int) int
 		SeedStudyProgramsFromConfig   func(childComplexity int) int
 		SetAnnyPersonalizationNames   func(childComplexity int, names []string) int
@@ -656,7 +647,6 @@ type ComplexityRoot struct {
 		UpsertAdditionalExam          func(childComplexity int, input model.AdditionalExamInput) int
 		UpsertSpecialInterest         func(childComplexity int, input model.SpecialInterestInput) int
 		UpsertStudyProgram            func(childComplexity int, input model.StudyProgramInput) int
-		ZpaExamsToPlan                func(childComplexity int, input []int) int
 	}
 
 	MutationLogArg struct {
@@ -1018,7 +1008,6 @@ type ComplexityRoot struct {
 		ZpaExamsByType                func(childComplexity int) int
 		ZpaExamsNotToPlan             func(childComplexity int) int
 		ZpaExamsPlaningStatusUnknown  func(childComplexity int) int
-		ZpaExamsToPlan                func(childComplexity int) int
 		ZpaExamsToPlanWithConstraints func(childComplexity int) int
 	}
 
@@ -1445,16 +1434,11 @@ type MutationResolver interface {
 	SetAnnyPersonalizationNames(ctx context.Context, names []string) (*model.AnnyConfig, error)
 	GenerateAssembledExams(ctx context.Context) (*model.GenerateAssembledExamsResult, error)
 	NotPlannedByMe(ctx context.Context, ancode int, inFk *string) (bool, error)
-	ExcludeDays(ctx context.Context, ancode int, days []string) (bool, error)
-	PossibleDays(ctx context.Context, ancode int, days []string) (bool, error)
-	SameSlot(ctx context.Context, ancode int, ancodes []int) (bool, error)
-	PlacesWithSockets(ctx context.Context, ancode int) (bool, error)
 	Lab(ctx context.Context, ancode int) (bool, error)
 	Exahm(ctx context.Context, ancode int) (bool, error)
 	Seb(ctx context.Context, ancode int) (bool, error)
 	Online(ctx context.Context, ancode int) (bool, error)
 	AddConstraints(ctx context.Context, ancode int, constraints model.ConstraintsInput) (*model.Constraints, error)
-	RmConstraints(ctx context.Context, ancode int) (bool, error)
 	ClearEmailAttachments(ctx context.Context, kind string) (int, error)
 	SetEmailTemplate(ctx context.Context, name string, markdown string) (*model.EmailTemplate, error)
 	ResetEmailTemplate(ctx context.Context, name string) (bool, error)
@@ -1477,7 +1461,6 @@ type MutationResolver interface {
 	ResetInvigilations(ctx context.Context) (bool, error)
 	SetInvigilatorConstraints(ctx context.Context, input model.InvigilatorConstraintsInput) (*model.InvigilatorConstraints, error)
 	DeleteInvigilatorConstraints(ctx context.Context, teacherID int) (bool, error)
-	MigrateInvigilatorConstraints(ctx context.Context) (int, error)
 	SetPermanentNonInvigilator(ctx context.Context, teacherID int, name string, reason string) (*model.PermanentNonInvigilator, error)
 	RemovePermanentNonInvigilator(ctx context.Context, teacherID int) (bool, error)
 	ImportMucDaiExams(ctx context.Context, csv string) (*model.ImportMucDaiResult, error)
@@ -1489,7 +1472,6 @@ type MutationResolver interface {
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
 	AddNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int, reason string) (*model.NtaRoomAloneWaiver, error)
 	RemoveNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int) (bool, error)
-	AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error)
 	SetPlaner(ctx context.Context, name string, email string) (*model.Planer, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
 	GeneratePreparation(ctx context.Context) (*model.GeneratePreparationResult, error)
@@ -1513,11 +1495,9 @@ type MutationResolver interface {
 	SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error)
 	AddRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
 	UpdateRoom(ctx context.Context, input model.RoomInput) (*model.Room, error)
-	MigrateRoomsRequestWith(ctx context.Context) (int, error)
 	ResetRoomsForExams(ctx context.Context) (bool, error)
 	SetRoomRequestApproved(ctx context.Context, room string, day int, slot int, approved bool) (*model.RoomRequest, error)
 	SetRoomRequestActive(ctx context.Context, room string, day int, slot int, active bool) (*model.RoomRequest, error)
-	MigrateRoomRequestsFromConfig(ctx context.Context) (int, error)
 	ApplyRoomRequestsPreview(ctx context.Context, force bool) (int, error)
 	AddRoomRequest(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
 	UpdateRoomRequestTime(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error)
@@ -1532,7 +1512,6 @@ type MutationResolver interface {
 	UpsertStudyProgram(ctx context.Context, input model.StudyProgramInput) (*model.StudyProgram, error)
 	DeleteStudyProgram(ctx context.Context, shortname string) (bool, error)
 	SeedStudyProgramsFromConfig(ctx context.Context) (int, error)
-	ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
 }
@@ -1641,7 +1620,6 @@ type QueryResolver interface {
 	Fk07programs(ctx context.Context) ([]*model.FK07Program, error)
 	ZpaExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAExam, error)
 	ZpaExamsByType(ctx context.Context) ([]*model.ZPAExamsForType, error)
-	ZpaExamsToPlan(ctx context.Context) ([]*model.ZPAExam, error)
 	ZpaExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, error)
 	ZpaExamsPlaningStatusUnknown(ctx context.Context) ([]*model.ZPAExam, error)
 	ZpaExam(ctx context.Context, ancode int) (*model.ZPAExam, error)
@@ -4070,18 +4048,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.AddConstraints(childComplexity, args["ancode"].(int), args["constraints"].(model.ConstraintsInput)), true
 
-	case "Mutation.addExamToSlot":
-		if e.complexity.Mutation.AddExamToSlot == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_addExamToSlot_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.AddExamToSlot(childComplexity, args["day"].(int), args["time"].(int), args["ancode"].(int)), true
-
 	case "Mutation.addNTA":
 		if e.complexity.Mutation.AddNta == nil {
 			break
@@ -4334,18 +4300,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Exahm(childComplexity, args["ancode"].(int)), true
 
-	case "Mutation.excludeDays":
-		if e.complexity.Mutation.ExcludeDays == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_excludeDays_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.ExcludeDays(childComplexity, args["ancode"].(int), args["days"].([]string)), true
-
 	case "Mutation.fixExamRoomsPhase":
 		if e.complexity.Mutation.FixExamRoomsPhase == nil {
 			break
@@ -4422,27 +4376,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Lab(childComplexity, args["ancode"].(int)), true
 
-	case "Mutation.migrateInvigilatorConstraints":
-		if e.complexity.Mutation.MigrateInvigilatorConstraints == nil {
-			break
-		}
-
-		return e.complexity.Mutation.MigrateInvigilatorConstraints(childComplexity), true
-
-	case "Mutation.migrateRoomRequestsFromConfig":
-		if e.complexity.Mutation.MigrateRoomRequestsFromConfig == nil {
-			break
-		}
-
-		return e.complexity.Mutation.MigrateRoomRequestsFromConfig(childComplexity), true
-
-	case "Mutation.migrateRoomsRequestWith":
-		if e.complexity.Mutation.MigrateRoomsRequestWith == nil {
-			break
-		}
-
-		return e.complexity.Mutation.MigrateRoomsRequestWith(childComplexity), true
-
 	case "Mutation.notPlannedByMe":
 		if e.complexity.Mutation.NotPlannedByMe == nil {
 			break
@@ -4466,30 +4399,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Online(childComplexity, args["ancode"].(int)), true
-
-	case "Mutation.placesWithSockets":
-		if e.complexity.Mutation.PlacesWithSockets == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_placesWithSockets_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.PlacesWithSockets(childComplexity, args["ancode"].(int)), true
-
-	case "Mutation.possibleDays":
-		if e.complexity.Mutation.PossibleDays == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_possibleDays_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.PossibleDays(childComplexity, args["ancode"].(int), args["days"].([]string)), true
 
 	case "Mutation.prePlanInvigilation":
 		if e.complexity.Mutation.PrePlanInvigilation == nil {
@@ -4668,18 +4577,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ResetRoomsForExams(childComplexity), true
 
-	case "Mutation.rmConstraints":
-		if e.complexity.Mutation.RmConstraints == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_rmConstraints_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.RmConstraints(childComplexity, args["ancode"].(int)), true
-
 	case "Mutation.rmZpaExamFromPlan":
 		if e.complexity.Mutation.RmZpaExamFromPlan == nil {
 			break
@@ -4691,18 +4588,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RmZpaExamFromPlan(childComplexity, args["ancode"].(int)), true
-
-	case "Mutation.sameSlot":
-		if e.complexity.Mutation.SameSlot == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_sameSlot_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.SameSlot(childComplexity, args["ancode"].(int), args["ancodes"].([]int)), true
 
 	case "Mutation.seb":
 		if e.complexity.Mutation.Seb == nil {
@@ -5125,18 +5010,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpsertStudyProgram(childComplexity, args["input"].(model.StudyProgramInput)), true
-
-	case "Mutation.zpaExamsToPlan":
-		if e.complexity.Mutation.ZpaExamsToPlan == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_zpaExamsToPlan_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.ZpaExamsToPlan(childComplexity, args["input"].([]int)), true
 
 	case "MutationLogArg.key":
 		if e.complexity.MutationLogArg.Key == nil {
@@ -7141,13 +7014,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.ZpaExamsPlaningStatusUnknown(childComplexity), true
-
-	case "Query.zpaExamsToPlan":
-		if e.complexity.Query.ZpaExamsToPlan == nil {
-			break
-		}
-
-		return e.complexity.Query.ZpaExamsToPlan(childComplexity), true
 
 	case "Query.zpaExamsToPlanWithConstraints":
 		if e.complexity.Query.ZpaExamsToPlanWithConstraints == nil {
@@ -9527,17 +9393,12 @@ extend type Query {
 extend type Mutation {
   "Mark an exam as planned by another faculty; inFK is that faculty (e.g. \"FK10\")."
   notPlannedByMe(ancode: Int!, inFK: String): Boolean!
-  excludeDays(ancode: Int!, days: [String!]!): Boolean!
-  possibleDays(ancode: Int!, days: [String!]!): Boolean!
-  sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
-  placesWithSockets(ancode: Int!): Boolean!
   lab(ancode: Int!): Boolean!
   exahm(ancode: Int!): Boolean!
   seb(ancode: Int!): Boolean!
   online(ancode: Int!): Boolean!
 
   addConstraints(ancode: Int!, constraints: ConstraintsInput!): Constraints!
-  rmConstraints(ancode: Int!): Boolean!
 }
 
 type Constraints {
@@ -10177,8 +10038,6 @@ extend type Mutation {
   setInvigilatorConstraints(input: InvigilatorConstraintsInput!): InvigilatorConstraints!
   "Remove the constraints record of one invigilator (key: teacherID). Returns false if there was none."
   deleteInvigilatorConstraints(teacherID: Int!): Boolean!
-  "One-time migration: copy the invigilatorConstraints from the semester config (viper) into the DB. Returns the number of records written."
-  migrateInvigilatorConstraints: Int!
   "Add or update a permanent (cross-semester) non-invigilator (key: teacherID), e.g. someone retired. name is the display name (pass the candidate's name; if empty the backend tries to resolve it)."
   setPermanentNonInvigilator(teacherID: Int!, name: String!, reason: String!): PermanentNonInvigilator!
   "Remove a permanent non-invigilator (key: teacherID). Returns false if there was none."
@@ -10540,10 +10399,6 @@ extend type Mutation {
 
   allowedSlots(ancode: Int!): [Slot!]
   awkwardSlots(ancode: Int!): [Slot!]! # slots before or after a conflict
-}
-
-extend type Mutation {
-  addExamToSlot(day: Int!, time: Int!, ancode: Int!): Boolean!
 }
 
 type Emails {
@@ -11010,8 +10865,6 @@ extend type Mutation {
   addRoom(input: RoomInput!): Room!
   "Update an existing room (key: name). Errors if it does not exist; keeps the active state."
   updateRoom(input: RoomInput!): Room!
-  "One-time backfill: derive requestWith for all rooms (ANNY for request-rooms with a T name, MANAGEMENT for other request-rooms, NONE otherwise). Returns the number of rooms updated."
-  migrateRoomsRequestWith: Int!
   "Reset the assigned room plan (planned_rooms) so only the pre-planning remains; re-assignment re-applies it. Blocked while the room plan is published."
   resetRoomsForExams: Boolean!
 }
@@ -11197,8 +11050,6 @@ extend type Mutation {
   setRoomRequestApproved(room: String!, day: Int!, slot: Int!, approved: Boolean!): RoomRequest!
   "Activate/deactivate a room request; inactive requests are not used for room planning."
   setRoomRequestActive(room: String!, day: Int!, slot: Int!, active: Boolean!): RoomRequest!
-  "One-time import of roomConstraints.<room>.reservations from the semester config into the DB. Returns the number imported."
-  migrateRoomRequestsFromConfig: Int!
   "Generate room requests from the current plan and REPLACE all existing ones (one-shot, no merge). Generated requests start active and not approved. Errors if requests already exist unless force is true (force discards them, including approved flags). Returns the number written."
   applyRoomRequestsPreview(force: Boolean!): Int!
   "Manually add a single room request (key: room/day/slot). Errors if one already exists. Starts active and not approved."
@@ -11689,7 +11540,6 @@ extend type Subscription {
   fk07programs: [FK07Program!]!
   zpaExams(fromZPA: Boolean): [ZPAExam!]!
   zpaExamsByType: [ZPAExamsForType!]!
-  zpaExamsToPlan: [ZPAExam!]!
   zpaExamsNotToPlan: [ZPAExam!]!
   zpaExamsPlaningStatusUnknown: [ZPAExam!]!
   zpaExam(ancode: Int!): ZPAExam
@@ -11740,7 +11590,6 @@ type SyncFieldChange {
 }
 
 extend type Mutation {
-  zpaExamsToPlan(input: [Int!]!): [ZPAExam!]!
   addZpaExamToPlan(ancode: Int!): Boolean!
   rmZpaExamFromPlan(ancode: Int!): Boolean!
 }
@@ -11907,80 +11756,6 @@ func (ec *executionContext) field_Mutation_addConstraints_argsConstraints(
 	}
 
 	var zeroVal model.ConstraintsInput
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_addExamToSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_addExamToSlot_argsDay(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["day"] = arg0
-	arg1, err := ec.field_Mutation_addExamToSlot_argsTime(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["time"] = arg1
-	arg2, err := ec.field_Mutation_addExamToSlot_argsAncode(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode"] = arg2
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_addExamToSlot_argsDay(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["day"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
-	if tmp, ok := rawArgs["day"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_addExamToSlot_argsTime(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["time"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("time"))
-	if tmp, ok := rawArgs["time"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_addExamToSlot_argsAncode(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
-	if tmp, ok := rawArgs["ancode"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
 	return zeroVal, nil
 }
 
@@ -12940,57 +12715,6 @@ func (ec *executionContext) field_Mutation_exahm_argsAncode(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Mutation_excludeDays_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_excludeDays_argsAncode(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode"] = arg0
-	arg1, err := ec.field_Mutation_excludeDays_argsDays(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["days"] = arg1
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_excludeDays_argsAncode(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
-	if tmp, ok := rawArgs["ancode"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_excludeDays_argsDays(
-	ctx context.Context,
-	rawArgs map[string]any,
-) ([]string, error) {
-	if _, ok := rawArgs["days"]; !ok {
-		var zeroVal []string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("days"))
-	if tmp, ok := rawArgs["days"]; ok {
-		return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
-	}
-
-	var zeroVal []string
-	return zeroVal, nil
-}
-
 func (ec *executionContext) field_Mutation_fixPrimussAncode_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -13248,85 +12972,6 @@ func (ec *executionContext) field_Mutation_online_argsAncode(
 	}
 
 	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_placesWithSockets_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_placesWithSockets_argsAncode(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_placesWithSockets_argsAncode(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
-	if tmp, ok := rawArgs["ancode"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_possibleDays_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_possibleDays_argsAncode(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode"] = arg0
-	arg1, err := ec.field_Mutation_possibleDays_argsDays(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["days"] = arg1
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_possibleDays_argsAncode(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
-	if tmp, ok := rawArgs["ancode"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_possibleDays_argsDays(
-	ctx context.Context,
-	rawArgs map[string]any,
-) ([]string, error) {
-	if _, ok := rawArgs["days"]; !ok {
-		var zeroVal []string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("days"))
-	if tmp, ok := rawArgs["days"]; ok {
-		return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
-	}
-
-	var zeroVal []string
 	return zeroVal, nil
 }
 
@@ -14131,34 +13776,6 @@ func (ec *executionContext) field_Mutation_resetEmailTemplate_argsName(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Mutation_rmConstraints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_rmConstraints_argsAncode(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_rmConstraints_argsAncode(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
-	if tmp, ok := rawArgs["ancode"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
 func (ec *executionContext) field_Mutation_rmZpaExamFromPlan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14184,57 +13801,6 @@ func (ec *executionContext) field_Mutation_rmZpaExamFromPlan_argsAncode(
 	}
 
 	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_sameSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_sameSlot_argsAncode(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancode"] = arg0
-	arg1, err := ec.field_Mutation_sameSlot_argsAncodes(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["ancodes"] = arg1
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_sameSlot_argsAncode(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (int, error) {
-	if _, ok := rawArgs["ancode"]; !ok {
-		var zeroVal int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
-	if tmp, ok := rawArgs["ancode"]; ok {
-		return ec.unmarshalNInt2int(ctx, tmp)
-	}
-
-	var zeroVal int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_sameSlot_argsAncodes(
-	ctx context.Context,
-	rawArgs map[string]any,
-) ([]int, error) {
-	if _, ok := rawArgs["ancodes"]; !ok {
-		var zeroVal []int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancodes"))
-	if tmp, ok := rawArgs["ancodes"]; ok {
-		return ec.unmarshalNInt2ᚕintᚄ(ctx, tmp)
-	}
-
-	var zeroVal []int
 	return zeroVal, nil
 }
 
@@ -16084,34 +15650,6 @@ func (ec *executionContext) field_Mutation_upsertStudyProgram_argsInput(
 	}
 
 	var zeroVal model.StudyProgramInput
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_zpaExamsToPlan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_zpaExamsToPlan_argsInput(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_zpaExamsToPlan_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) ([]int, error) {
-	if _, ok := rawArgs["input"]; !ok {
-		var zeroVal []int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNInt2ᚕintᚄ(ctx, tmp)
-	}
-
-	var zeroVal []int
 	return zeroVal, nil
 }
 
@@ -34664,226 +34202,6 @@ func (ec *executionContext) fieldContext_Mutation_notPlannedByMe(ctx context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_excludeDays(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_excludeDays(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ExcludeDays(rctx, fc.Args["ancode"].(int), fc.Args["days"].([]string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_excludeDays(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_excludeDays_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_possibleDays(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_possibleDays(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().PossibleDays(rctx, fc.Args["ancode"].(int), fc.Args["days"].([]string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_possibleDays(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_possibleDays_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_sameSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_sameSlot(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SameSlot(rctx, fc.Args["ancode"].(int), fc.Args["ancodes"].([]int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_sameSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_sameSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_placesWithSockets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_placesWithSockets(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().PlacesWithSockets(rctx, fc.Args["ancode"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_placesWithSockets(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_placesWithSockets_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_lab(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_lab(ctx, field)
 	if err != nil {
@@ -35179,61 +34497,6 @@ func (ec *executionContext) fieldContext_Mutation_addConstraints(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addConstraints_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_rmConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_rmConstraints(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RmConstraints(rctx, fc.Args["ancode"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_rmConstraints(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_rmConstraints_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -36492,50 +35755,6 @@ func (ec *executionContext) fieldContext_Mutation_deleteInvigilatorConstraints(c
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_migrateInvigilatorConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_migrateInvigilatorConstraints(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().MigrateInvigilatorConstraints(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_migrateInvigilatorConstraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_setPermanentNonInvigilator(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_setPermanentNonInvigilator(ctx, field)
 	if err != nil {
@@ -37295,61 +36514,6 @@ func (ec *executionContext) fieldContext_Mutation_removeNtaRoomAloneWaiver(ctx c
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeNtaRoomAloneWaiver_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_addExamToSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_addExamToSlot(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().AddExamToSlot(rctx, fc.Args["day"].(int), fc.Args["time"].(int), fc.Args["ancode"].(int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_addExamToSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_addExamToSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -39048,50 +38212,6 @@ func (ec *executionContext) fieldContext_Mutation_updateRoom(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_migrateRoomsRequestWith(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_migrateRoomsRequestWith(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().MigrateRoomsRequestWith(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_migrateRoomsRequestWith(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_resetRoomsForExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_resetRoomsForExams(ctx, field)
 	if err != nil {
@@ -39274,50 +38394,6 @@ func (ec *executionContext) fieldContext_Mutation_setRoomRequestActive(ctx conte
 	if fc.Args, err = ec.field_Mutation_setRoomRequestActive_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_migrateRoomRequestsFromConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_migrateRoomRequestsFromConfig(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().MigrateRoomRequestsFromConfig(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_migrateRoomRequestsFromConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
 	}
 	return fc, nil
 }
@@ -40176,89 +39252,6 @@ func (ec *executionContext) fieldContext_Mutation_seedStudyProgramsFromConfig(_ 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_zpaExamsToPlan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_zpaExamsToPlan(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ZpaExamsToPlan(rctx, fc.Args["input"].([]int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.ZPAExam)
-	fc.Result = res
-	return ec.marshalNZPAExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExamᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_zpaExamsToPlan(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "zpaID":
-				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
-			case "semester":
-				return ec.fieldContext_ZPAExam_semester(ctx, field)
-			case "ancode":
-				return ec.fieldContext_ZPAExam_ancode(ctx, field)
-			case "module":
-				return ec.fieldContext_ZPAExam_module(ctx, field)
-			case "mainExamer":
-				return ec.fieldContext_ZPAExam_mainExamer(ctx, field)
-			case "mainExamerID":
-				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
-			case "examType":
-				return ec.fieldContext_ZPAExam_examType(ctx, field)
-			case "examTypeFull":
-				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
-			case "duration":
-				return ec.fieldContext_ZPAExam_duration(ctx, field)
-			case "isRepeaterExam":
-				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
-			case "groups":
-				return ec.fieldContext_ZPAExam_groups(ctx, field)
-			case "primussAncodes":
-				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
-			case "faculty":
-				return ec.fieldContext_ZPAExam_faculty(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_zpaExamsToPlan_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -53788,78 +52781,6 @@ func (ec *executionContext) fieldContext_Query_zpaExamsByType(_ context.Context,
 				return ec.fieldContext_ZPAExamsForType_exams(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAExamsForType", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_zpaExamsToPlan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_zpaExamsToPlan(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ZpaExamsToPlan(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.ZPAExam)
-	fc.Result = res
-	return ec.marshalNZPAExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAExamᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_zpaExamsToPlan(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "zpaID":
-				return ec.fieldContext_ZPAExam_zpaID(ctx, field)
-			case "semester":
-				return ec.fieldContext_ZPAExam_semester(ctx, field)
-			case "ancode":
-				return ec.fieldContext_ZPAExam_ancode(ctx, field)
-			case "module":
-				return ec.fieldContext_ZPAExam_module(ctx, field)
-			case "mainExamer":
-				return ec.fieldContext_ZPAExam_mainExamer(ctx, field)
-			case "mainExamerID":
-				return ec.fieldContext_ZPAExam_mainExamerID(ctx, field)
-			case "examType":
-				return ec.fieldContext_ZPAExam_examType(ctx, field)
-			case "examTypeFull":
-				return ec.fieldContext_ZPAExam_examTypeFull(ctx, field)
-			case "duration":
-				return ec.fieldContext_ZPAExam_duration(ctx, field)
-			case "isRepeaterExam":
-				return ec.fieldContext_ZPAExam_isRepeaterExam(ctx, field)
-			case "groups":
-				return ec.fieldContext_ZPAExam_groups(ctx, field)
-			case "primussAncodes":
-				return ec.fieldContext_ZPAExam_primussAncodes(ctx, field)
-			case "faculty":
-				return ec.fieldContext_ZPAExam_faculty(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ZPAExam", field.Name)
 		},
 	}
 	return fc, nil
@@ -75507,34 +74428,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "excludeDays":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_excludeDays(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "possibleDays":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_possibleDays(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "sameSlot":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_sameSlot(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "placesWithSockets":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_placesWithSockets(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "lab":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_lab(ctx, field)
@@ -75566,13 +74459,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "addConstraints":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addConstraints(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "rmConstraints":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_rmConstraints(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -75731,13 +74617,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "migrateInvigilatorConstraints":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_migrateInvigilatorConstraints(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "setPermanentNonInvigilator":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPermanentNonInvigilator(ctx, field)
@@ -75811,13 +74690,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "removeNtaRoomAloneWaiver":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeNtaRoomAloneWaiver(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "addExamToSlot":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_addExamToSlot(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -75983,13 +74855,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "migrateRoomsRequestWith":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_migrateRoomsRequestWith(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "resetRoomsForExams":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_resetRoomsForExams(ctx, field)
@@ -76007,13 +74872,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setRoomRequestActive":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setRoomRequestActive(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "migrateRoomRequestsFromConfig":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_migrateRoomRequestsFromConfig(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -76112,13 +74970,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "seedStudyProgramsFromConfig":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_seedStudyProgramsFromConfig(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "zpaExamsToPlan":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_zpaExamsToPlan(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -80068,28 +78919,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_zpaExamsByType(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "zpaExamsToPlan":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_zpaExamsToPlan(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

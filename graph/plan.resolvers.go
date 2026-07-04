@@ -13,11 +13,6 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// AddExamToSlot is the resolver for the addExamToSlot field.
-func (r *mutationResolver) AddExamToSlot(ctx context.Context, day int, time int, ancode int) (bool, error) {
-	panic(fmt.Errorf("not implemented: AddExamToSlot - addExamToSlot"))
-}
-
 // Starttime is the resolver for the starttime field. An exam mapped to one of our
 // slots gets that slot's start time. An external exam whose time lies outside our exam
 // period has no matching slot; its real time is the external time. We decide by whether

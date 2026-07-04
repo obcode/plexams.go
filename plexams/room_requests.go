@@ -13,36 +13,6 @@ func (p *Plexams) RoomRequests(ctx context.Context) ([]*model.RoomRequest, error
 	return p.dbClient.RoomRequests(ctx)
 }
 
-// MigrateRoomRequestsFromConfig is the one-time import of
-// roomConstraints.<room>.reservations from the semester config into the DB. All
-// imported requests start active. Returns the number imported.
-func (p *Plexams) MigrateRoomRequestsFromConfig(ctx context.Context) (int, error) {
-	perRoom, err := p.reservationsFromConfig()
-	if err != nil {
-		return 0, err
-	}
-
-	requests := make([]*model.RoomRequest, 0)
-	for room, timeRanges := range perRoom {
-		for _, tr := range timeRanges {
-			requests = append(requests, &model.RoomRequest{
-				Room:     room,
-				Day:      tr.DayNumber,
-				Slot:     tr.SlotNumber,
-				From:     tr.From,
-				Until:    tr.Until,
-				Approved: tr.Approved,
-				Active:   true,
-			})
-		}
-	}
-
-	if err := p.dbClient.ReplaceAllRoomRequests(ctx, requests); err != nil {
-		return 0, err
-	}
-	return len(requests), nil
-}
-
 // SetRoomRequestApproved sets the approved flag of a room request (key:
 // room/day/slot). Errors if no such request exists.
 func (p *Plexams) SetRoomRequestApproved(ctx context.Context, room string, day, slot int, approved bool) (*model.RoomRequest, error) {

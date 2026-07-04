@@ -42,8 +42,6 @@ extend type Mutation {
   setInvigilatorConstraints(input: InvigilatorConstraintsInput!): InvigilatorConstraints!
   "Remove the constraints record of one invigilator (key: teacherID). Returns false if there was none."
   deleteInvigilatorConstraints(teacherID: Int!): Boolean!
-  "One-time migration: copy the invigilatorConstraints from the semester config (viper) into the DB. Returns the number of records written."
-  migrateInvigilatorConstraints: Int!
   "Add or update a permanent (cross-semester) non-invigilator (key: teacherID), e.g. someone retired. name is the display name (pass the candidate's name; if empty the backend tries to resolve it)."
   setPermanentNonInvigilator(teacherID: Int!, name: String!, reason: String!): PermanentNonInvigilator!
   "Remove a permanent non-invigilator (key: teacherID). Returns false if there was none."

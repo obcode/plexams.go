@@ -10,11 +10,6 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// ZpaExamsToPlan is the resolver for the zpaExamsToPlan field.
-func (r *mutationResolver) ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error) {
-	return r.plexams.ZpaExamsToPlan(ctx, input)
-}
-
 // AddZPAExamToPlan is the resolver for the addZPAExamToPlan field.
 func (r *mutationResolver) AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error) {
 	return r.plexams.AddZpaExamToPlan(ctx, ancode)
@@ -53,11 +48,6 @@ func (r *queryResolver) ZpaExams(ctx context.Context, fromZpa *bool) ([]*model.Z
 // ZpaExamsByType is the resolver for the zpaExamsByType field.
 func (r *queryResolver) ZpaExamsByType(ctx context.Context) ([]*model.ZPAExamsForType, error) {
 	return r.plexams.GetZPAExamsGroupedByType(ctx)
-}
-
-// ZpaExamsToPlan is the resolver for the zpaExamsToPlan field.
-func (r *queryResolver) ZpaExamsToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
-	return r.plexams.GetZpaExamsToPlan(ctx)
 }
 
 // ZpaExamsNotToPlan is the resolver for the zpaExamsNotToPlan field.

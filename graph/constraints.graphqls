@@ -8,17 +8,12 @@ extend type Query {
 extend type Mutation {
   "Mark an exam as planned by another faculty; inFK is that faculty (e.g. \"FK10\")."
   notPlannedByMe(ancode: Int!, inFK: String): Boolean!
-  excludeDays(ancode: Int!, days: [String!]!): Boolean!
-  possibleDays(ancode: Int!, days: [String!]!): Boolean!
-  sameSlot(ancode: Int!, ancodes: [Int!]!): Boolean!
-  placesWithSockets(ancode: Int!): Boolean!
   lab(ancode: Int!): Boolean!
   exahm(ancode: Int!): Boolean!
   seb(ancode: Int!): Boolean!
   online(ancode: Int!): Boolean!
 
   addConstraints(ancode: Int!, constraints: ConstraintsInput!): Constraints!
-  rmConstraints(ancode: Int!): Boolean!
 }
 
 type Constraints {

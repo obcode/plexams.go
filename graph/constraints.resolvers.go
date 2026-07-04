@@ -15,26 +15,6 @@ func (r *mutationResolver) NotPlannedByMe(ctx context.Context, ancode int, inFk 
 	return r.plexams.NotPlannedByMe(ctx, ancode, inFk)
 }
 
-// ExcludeDays is the resolver for the excludeDays field.
-func (r *mutationResolver) ExcludeDays(ctx context.Context, ancode int, days []string) (bool, error) {
-	return r.plexams.ExcludeDays(ctx, ancode, days)
-}
-
-// PossibleDays is the resolver for the possibleDays field.
-func (r *mutationResolver) PossibleDays(ctx context.Context, ancode int, days []string) (bool, error) {
-	return r.plexams.PossibleDays(ctx, ancode, days)
-}
-
-// SameSlot is the resolver for the sameSlot field.
-func (r *mutationResolver) SameSlot(ctx context.Context, ancode int, ancodes []int) (bool, error) {
-	return r.plexams.SameSlot(ctx, ancode, ancodes)
-}
-
-// RoomWithSockets is the resolver for the roomWithSockets field.
-func (r *mutationResolver) PlacesWithSockets(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.PlacesWithSockets(ctx, ancode)
-}
-
 // Lab is the resolver for the lab field.
 func (r *mutationResolver) Lab(ctx context.Context, ancode int) (bool, error) {
 	return r.plexams.Lab(ctx, ancode)
@@ -58,11 +38,6 @@ func (r *mutationResolver) Online(ctx context.Context, ancode int) (bool, error)
 // AddConstraints is the resolver for the addConstraints field.
 func (r *mutationResolver) AddConstraints(ctx context.Context, ancode int, constraints model.ConstraintsInput) (*model.Constraints, error) {
 	return r.plexams.AddConstraints(ctx, ancode, constraints)
-}
-
-// RmConstraints is the resolver for the rmConstraints field.
-func (r *mutationResolver) RmConstraints(ctx context.Context, ancode int) (bool, error) {
-	return r.plexams.RmConstraints(ctx, ancode)
 }
 
 // ConstraintForAncode is the resolver for the constraintForAncode field.

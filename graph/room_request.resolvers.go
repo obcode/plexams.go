@@ -21,11 +21,6 @@ func (r *mutationResolver) SetRoomRequestActive(ctx context.Context, room string
 	return r.plexams.SetRoomRequestActive(ctx, room, day, slot, active)
 }
 
-// MigrateRoomRequestsFromConfig is the resolver for the migrateRoomRequestsFromConfig field.
-func (r *mutationResolver) MigrateRoomRequestsFromConfig(ctx context.Context) (int, error) {
-	return r.plexams.MigrateRoomRequestsFromConfig(ctx)
-}
-
 // ApplyRoomRequestsPreview is the resolver for the applyRoomRequestsPreview field.
 func (r *mutationResolver) ApplyRoomRequestsPreview(ctx context.Context, force bool) (int, error) {
 	return r.plexams.ApplyRoomRequestsPreview(ctx, force)

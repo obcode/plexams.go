@@ -57,11 +57,6 @@ func (r *mutationResolver) UpdateRoom(ctx context.Context, input model.RoomInput
 	return r.plexams.UpdateRoom(ctx, input)
 }
 
-// MigrateRoomsRequestWith is the resolver for the migrateRoomsRequestWith field.
-func (r *mutationResolver) MigrateRoomsRequestWith(ctx context.Context) (int, error) {
-	return r.plexams.MigrateRoomsRequestWith(ctx)
-}
-
 // ResetRoomsForExams is the resolver for the resetRoomsForExams field.
 func (r *mutationResolver) ResetRoomsForExams(ctx context.Context) (bool, error) {
 	if err := r.plexams.ResetRoomsForExams(ctx); err != nil {

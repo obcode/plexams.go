@@ -3,7 +3,6 @@ package plexams
 import (
 	"context"
 	"sort"
-	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -17,70 +16,12 @@ func (p *Plexams) Online(ctx context.Context, ancode int) (bool, error) {
 	return p.dbClient.Online(ctx, ancode)
 }
 
-func (p *Plexams) ExcludeDays(ctx context.Context, ancode int, dayStrings []string) (bool, error) {
-	days := make([]*time.Time, 0, len(dayStrings))
-	for _, dayStr := range dayStrings {
-		dayUTC, err := time.Parse("2006-01-02", dayStr)
-		if err != nil {
-			log.Error().Err(err).Str("date", dayStr).Msg("cannot parse date")
-		}
-		day := time.Date(dayUTC.Year(), dayUTC.Month(), dayUTC.Day(), 0, 0, 0, 0, time.Local)
-		days = append(days, &day)
-	}
-
-	return p.dbClient.ExcludeDays(ctx, ancode, days)
-}
-
-func (p *Plexams) PossibleDays(ctx context.Context, ancode int, dayStrings []string) (bool, error) {
-	days := make([]*time.Time, 0, len(dayStrings))
-	for _, dayStr := range dayStrings {
-		dayUTC, err := time.Parse("2006-01-02", dayStr)
-		if err != nil {
-			log.Error().Err(err).Str("date", dayStr).Msg("cannot parse date")
-		}
-		day := time.Date(dayUTC.Year(), dayUTC.Month(), dayUTC.Day(), 0, 0, 0, 0, time.Local)
-		days = append(days, &day)
-	}
-
-	return p.dbClient.PossibleDays(ctx, ancode, days)
-}
-
-func (p *Plexams) SameSlot(ctx context.Context, ancodeInput int, ancodesInput []int) (bool, error) {
-	// FIXME: Does not work on updates.
-	allAncodes := append(ancodesInput, ancodeInput)
-
-	allOK := true
-
-	for _, ancode := range allAncodes {
-		ancodes := make([]int, 0, len(ancodesInput))
-		for _, ac := range allAncodes {
-			if ac != ancode {
-				ancodes = append(ancodes, ac)
-			}
-		}
-		log.Debug().Int("ancode", ancode).Interface("ancodes", ancodes).
-			Msg("inerting")
-		ok, err := p.dbClient.SameSlot(ctx, ancode, ancodes)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", ancode).Interface("ancodes", ancodes).
-				Msg("cannot set same ancode")
-			allOK = allOK && ok
-		}
-	}
-
-	return allOK, nil
-}
-
 func (p *Plexams) Exahm(ctx context.Context, ancode int) (bool, error) {
 	return p.dbClient.Exahm(ctx, ancode)
 }
 
 func (p *Plexams) SafeExamBrowser(ctx context.Context, ancode int) (bool, error) {
 	return p.dbClient.SafeExamBrowser(ctx, ancode)
-}
-
-func (p *Plexams) PlacesWithSockets(ctx context.Context, ancode int) (bool, error) {
-	return p.dbClient.PlacesWithSockets(ctx, ancode)
 }
 
 func (p *Plexams) Lab(ctx context.Context, ancode int) (bool, error) {

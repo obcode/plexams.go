@@ -7,7 +7,6 @@ import (
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 // InvigilatorConstraints returns all per-invigilator constraints stored in the DB.
@@ -152,54 +151,4 @@ func (p *Plexams) DeleteInvigilatorConstraints(ctx context.Context, teacherID in
 		p.rebuildInvigilationTodosBestEffort(ctx)
 	}
 	return removed, err
-}
-
-// MigrateInvigilatorConstraintsFromConfig is a one-time migration that copies the
-// invigilatorConstraints from the semester config (viper) into the DB collection.
-// Returns the number of records written.
-func (p *Plexams) MigrateInvigilatorConstraintsFromConfig(ctx context.Context) (int, error) {
-	loc, _ := time.LoadLocation("Europe/Berlin")
-	raw := viper.GetStringMap("invigilatorConstraints")
-	count := 0
-	for key := range raw {
-		var teacherID int
-		if _, err := fmt.Sscanf(key, "%d", &teacherID); err != nil {
-			log.Warn().Str("key", key).Msg("invigilatorConstraints: cannot parse teacher id, skipped")
-			continue
-		}
-
-		base := fmt.Sprintf("invigilatorConstraints.%s", key)
-		isNot := viper.GetBool(base + ".isNotInvigilator")
-
-		excludedDates := make([]time.Time, 0)
-		for _, day := range viper.GetStringSlice(base + ".excludedDates") {
-			t, err := time.ParseInLocation("02.01.06", day, loc)
-			if err != nil {
-				log.Error().Err(err).Str("day", day).Int("teacherID", teacherID).Msg("migrate: cannot parse excluded date")
-				continue
-			}
-			excludedDates = append(excludedDates, t)
-		}
-
-		var timeWindows []*model.InvigilationTimeWindow
-		if twCfg := viper.Get(base + ".timeWindows"); twCfg != nil {
-			tw, err := timeWindowsFromConfig(twCfg)
-			if err != nil {
-				return count, fmt.Errorf("migrate invigilatorConstraints for %d: %w", teacherID, err)
-			}
-			timeWindows = tw
-		}
-
-		constraints := &model.InvigilatorConstraints{
-			TeacherID:        teacherID,
-			IsNotInvigilator: isNot,
-			ExcludedDates:    excludedDates,
-			TimeWindows:      timeWindows,
-		}
-		if err := p.dbClient.UpsertInvigilatorConstraints(ctx, constraints); err != nil {
-			return count, err
-		}
-		count++
-	}
-	return count, nil
 }

@@ -183,43 +183,6 @@ func (p *Plexams) GetZPAExamsGroupedByType(ctx context.Context) ([]*model.ZPAExa
 	return examsGroupedByType, nil
 }
 
-func (p *Plexams) ZpaExamsToPlan(ctx context.Context, input []int) ([]*model.ZPAExam, error) {
-	f := false
-	allExams, err := p.GetZPAExams(ctx, &f)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get all zpa exams")
-		return nil, err
-	}
-
-	examsToPlan := make([]*model.ZPAExam, 0)
-	examsNotToPlan := make([]*model.ZPAExam, 0)
-
-	for _, exam := range allExams {
-		if contained(exam.AnCode, input) {
-			examsToPlan = append(examsToPlan, exam)
-		} else {
-			examsNotToPlan = append(examsNotToPlan, exam)
-		}
-	}
-
-	err = p.dbClient.SetZPAExamsToPlan(ctx, examsToPlan, examsNotToPlan)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot set zpa exams to plan")
-		return nil, err
-	}
-
-	return examsToPlan, nil
-}
-
-func contained(ancode int, ancodes []int) bool {
-	for _, ac := range ancodes {
-		if ancode == ac {
-			return true
-		}
-	}
-	return false
-}
-
 func (p *Plexams) GetZpaExamsToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
 	return p.dbClient.GetZPAExamsToPlan(ctx)
 }

@@ -8,79 +8,20 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/zpaimport"
 	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
 )
 
-// reportImportChanges streams what a ZPA (re-)import changed compared to the
-// previous DB state (new / dropped entries and per-field changes, keyed by id)
-// and returns a partial SyncLogEntry (Added/Changed/Removed/Entries) that the
-// caller completes (operation/label/…) and logs.
+// reportImportChanges diffs a ZPA (re-)import against the previous DB state via
+// zpaimport.DiffChanges, streams the resulting report lines through the reporter and
+// returns the partial SyncLogEntry (Added/Changed/Removed/Entries) that the caller
+// completes (operation/label/…) and logs.
 func reportImportChanges[T any](reporter Reporter, old, neu []T,
 	id func(T) int, name func(T) string, fields func(T) map[string]string) *model.SyncLogEntry {
-	oldByID := make(map[int]T, len(old))
-	for _, o := range old {
-		oldByID[id(o)] = o
-	}
-	newByID := make(map[int]T, len(neu))
-	for _, n := range neu {
-		newByID[id(n)] = n
-	}
-
-	rec := &model.SyncLogEntry{Entries: make([]*model.SyncChangeEntry, 0)}
-
-	newIDs := make([]int, 0, len(newByID))
-	for k := range newByID {
-		newIDs = append(newIDs, k)
-	}
-	sort.Ints(newIDs)
-	for _, k := range newIDs {
-		n := newByID[k]
-		o, ok := oldByID[k]
-		if !ok {
-			reporter.Printf("  + neu: %s", name(n))
-			rec.Entries = append(rec.Entries, &model.SyncChangeEntry{Type: "added", Name: name(n)})
-			rec.Added++
-			continue
-		}
-		of, nf := fields(o), fields(n)
-		fnames := make([]string, 0, len(nf))
-		for f := range nf {
-			fnames = append(fnames, f)
-		}
-		sort.Strings(fnames)
-		diffs := make([]string, 0)
-		fieldChanges := make([]*model.SyncFieldChange, 0)
-		for _, f := range fnames {
-			if of[f] != nf[f] {
-				diffs = append(diffs, fmt.Sprintf("%s: %q → %q", f, of[f], nf[f]))
-				fieldChanges = append(fieldChanges, &model.SyncFieldChange{Field: f, Old: of[f], New: nf[f]})
-			}
-		}
-		if len(diffs) > 0 {
-			reporter.Printf("  ~ %s: %s", name(n), strings.Join(diffs, ", "))
-			rec.Entries = append(rec.Entries, &model.SyncChangeEntry{Type: "changed", Name: name(n), Fields: fieldChanges})
-			rec.Changed++
-		}
-	}
-
-	oldIDs := make([]int, 0, len(oldByID))
-	for k := range oldByID {
-		oldIDs = append(oldIDs, k)
-	}
-	sort.Ints(oldIDs)
-	for _, k := range oldIDs {
-		if _, ok := newByID[k]; !ok {
-			reporter.Printf("  - entfällt: %s", name(oldByID[k]))
-			rec.Entries = append(rec.Entries, &model.SyncChangeEntry{Type: "removed", Name: name(oldByID[k])})
-			rec.Removed++
-		}
-	}
-
-	if rec.Added == 0 && rec.Removed == 0 && rec.Changed == 0 {
-		reporter.Printf("keine Änderungen gegenüber dem vorherigen Stand")
-	} else {
-		reporter.Printf("Änderungen: %d neu, %d geändert, %d entfallen", rec.Added, rec.Changed, rec.Removed)
+	rec, msgs := zpaimport.DiffChanges(old, neu, id, name, fields)
+	for _, m := range msgs {
+		reporter.Printf("%s", m)
 	}
 	return rec
 }
@@ -194,14 +135,6 @@ func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (in
 	return len(exams), nil
 }
 
-// examShouldBePlanned classifies a ZPA exam for the automatic pre-selection: written
-// and practical exams ("schriftliche/praktische Prüfung") are planned centrally, all
-// other types (Modularbeit, Präsentation, mündliche Prüfung, Schein, extern, …) are not.
-func examShouldBePlanned(e *model.ZPAExam) bool {
-	t := strings.ToLower(e.ExamTypeFull)
-	return strings.Contains(t, "schriftliche prüfung") || strings.Contains(t, "praktische prüfung")
-}
-
 // autoPreselectExamsToPlan sets the planning status of all exams that have none yet
 // (written/practical → to plan, rest → not to plan) while keeping every existing
 // manual decision. Returns how many were newly set to-plan / not-to-plan.
@@ -220,29 +153,7 @@ func (p *Plexams) autoPreselectExamsToPlan(ctx context.Context) (toPlanAdded, no
 		return 0, 0, err
 	}
 
-	decided := make(map[int]bool, len(toPlan)+len(notToPlan))
-	for _, e := range toPlan {
-		decided[e.AnCode] = true
-	}
-	for _, e := range notToPlan {
-		decided[e.AnCode] = true
-	}
-
-	newToPlan := append([]*model.ZPAExam{}, toPlan...)
-	newNotToPlan := append([]*model.ZPAExam{}, notToPlan...)
-	for _, e := range all {
-		if decided[e.AnCode] {
-			continue
-		}
-		if examShouldBePlanned(e) {
-			newToPlan = append(newToPlan, e)
-			toPlanAdded++
-		} else {
-			newNotToPlan = append(newNotToPlan, e)
-			notToPlanAdded++
-		}
-	}
-
+	newToPlan, newNotToPlan, toPlanAdded, notToPlanAdded := zpaimport.Preselect(all, toPlan, notToPlan)
 	if toPlanAdded+notToPlanAdded == 0 {
 		return 0, 0, nil // nothing undecided
 	}

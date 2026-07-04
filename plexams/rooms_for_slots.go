@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/rs/zerolog/log"
 )
 
@@ -162,8 +162,7 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]se
 		))
 		var sb strings.Builder
 		for _, slot := range p.semesterConfig.Slots {
-			if entry.From.Before(slot.Starttime) &&
-				entry.Until.After(slot.Starttime.Add(89*time.Minute)) {
+			if anny.CoversSlot(entry.From, entry.Until, slot.Starttime) {
 				fmt.Fprintf(&sb, "(%d, %d), rooms: ", slot.DayNumber, slot.SlotNumber)
 				for _, roomName := range entry.Rooms {
 					fmt.Fprintf(&sb, "%s, ", roomName)

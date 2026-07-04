@@ -512,36 +512,7 @@ func (p *Plexams) prePlannedRooms(ctx context.Context, roomInfo map[string]*mode
 	}
 
 	for _, rooms := range prePlannedRoomsMap {
-		// Sort rooms within each exam's preplanned rooms
-		// First: rooms with Mtknr != nil
-		// Last: rooms with reserve == true
-		// Middle: sort by seats (descending)
-		sort.Slice(rooms, func(i, j int) bool {
-			// First priority: rooms with Mtknr != nil come first
-			if (rooms[i].Mtknr != nil) != (rooms[j].Mtknr != nil) {
-				return rooms[i].Mtknr != nil
-			}
-
-			// If both have Mtknr != nil, keep original order
-			if rooms[i].Mtknr != nil && rooms[j].Mtknr != nil {
-				return false
-			}
-
-			// Last priority: rooms with reserve == true come last
-			if rooms[i].Reserve != rooms[j].Reserve {
-				return !rooms[i].Reserve
-			}
-
-			// If both are non-reserve rooms, sort by seats (descending)
-			if !rooms[i].Reserve && !rooms[j].Reserve {
-				seatsI := roomInfo[rooms[i].RoomName].Seats
-				seatsJ := roomInfo[rooms[j].RoomName].Seats
-				return seatsI > seatsJ
-			}
-
-			// Keep original order for reserve rooms
-			return false
-		})
+		roomcalc.SortPrePlannedRooms(rooms, roomInfo)
 	}
 
 	return prePlannedRoomsMap
@@ -556,27 +527,7 @@ func (p *Plexams) mkExamsMap(prepareRoomsCfg *prepareRoomsCfg, examsInPlan []*mo
 			continue
 		}
 
-		ntas := examInPlan.Ntas
-		ntaMtknrs := set.NewSet[string]()
-		ntasInNormalRooms := make([]*model.NTA, 0)
-		ntasInAloneRooms := make([]*model.NTA, 0)
-		for _, nta := range ntas {
-			ntaMtknrs.Add(nta.Mtknr)
-			if nta.NeedsRoomAlone {
-				ntasInAloneRooms = append(ntasInAloneRooms, nta)
-			} else {
-				ntasInNormalRooms = append(ntasInNormalRooms, nta) // nolint
-			}
-		}
-
-		normalRegs := make([]string, 0)
-		for _, primussExam := range examInPlan.PrimussExams {
-			for _, studentRegs := range primussExam.StudentRegs {
-				if !ntaMtknrs.Contains(studentRegs.Mtknr) {
-					normalRegs = append(normalRegs, studentRegs.Mtknr)
-				}
-			}
-		}
+		normalRegs, ntasInNormalRooms, ntasInAloneRooms := roomcalc.ExamRegsAndNTAs(examInPlan)
 
 		addSeats, ok := prepareRoomsCfg.additionalSeats[examInPlan.Ancode]
 		if ok {

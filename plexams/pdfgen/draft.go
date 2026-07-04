@@ -25,9 +25,10 @@ func FormatTermin(t time.Time) string {
 }
 
 // DraftDoc builds the shared "vorläufiger Planungsstand" draft document shell: the
-// footer, a bold title, the planner line and the "zur Abstimmung" note. landscape
-// selects the page orientation (the EXaHM draft is landscape, the rest portrait).
-func DraftDoc(landscape bool, title, planerName, planerEmail string) pdf.Maroto {
+// footer, a bold title, the planner line and a centered note (e.g. "--- zur Abstimmung
+// ---" or "--- ENTWURF ---"). landscape selects the page orientation (the EXaHM draft is
+// landscape, the rest portrait).
+func DraftDoc(landscape bool, title, planerName, planerEmail, note string) pdf.Maroto {
 	orientation := consts.Portrait
 	if landscape {
 		orientation = consts.Landscape
@@ -38,7 +39,7 @@ func DraftDoc(landscape bool, title, planerName, planerEmail string) pdf.Maroto 
 
 	draftRow(m, 6, consts.Bold, title)
 	draftRow(m, 6, consts.Normal, planerName+" <"+planerEmail+">")
-	draftRow(m, 15, consts.Normal, "--- zur Abstimmung ---")
+	draftRow(m, 15, consts.Normal, note)
 	return m
 }
 
@@ -99,6 +100,134 @@ func ProgramTable(m pdf.Maroto, programLong string, rows [][]string) {
 	m.TableList([]string{"AnCode", "Modul", "Prüfender", "Termin"}, rows, props.TableList{
 		HeaderProp:           props.TableListContent{Size: 11, GridSizes: []uint{1, 5, 2, 4}},
 		ContentProp:          props.TableListContent{Size: 11, GridSizes: []uint{1, 5, 2, 4}},
+		Align:                consts.Left,
+		AlternatedBackground: &grayColor,
+		HeaderContentSpace:   1,
+		Line:                 false,
+	})
+}
+
+// ExamRows builds the simple (AnCode, Modul, Prüfender, Termin) draft table rows sorted
+// by ancode. An exam without a plan entry shows "fehlt noch"; slotTime resolves a plan
+// entry's (day, slot) to its start. Used by the special-interest / LBA-repeater drafts.
+func ExamRows(exams []*model.PlannedExam, slotTime func(day, slot int) time.Time) [][]string {
+	examsMap := make(map[int]*model.PlannedExam)
+	ancodes := make([]int, 0, len(exams))
+	for _, exam := range exams {
+		examsMap[exam.Ancode] = exam
+		ancodes = append(ancodes, exam.Ancode)
+	}
+	sort.Ints(ancodes)
+
+	contents := make([][]string, 0, len(ancodes))
+	for _, ancode := range ancodes {
+		exam := examsMap[ancode]
+		termin := "fehlt noch"
+		if exam.PlanEntry != nil {
+			termin = FormatTermin(slotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber))
+		}
+		contents = append(contents, []string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer, termin})
+	}
+	return contents
+}
+
+// ExamTable renders the named (AnCode, Modul, Prüfender, Termin) draft table into m.
+func ExamTable(m pdf.Maroto, name string, rows [][]string) {
+	m.Row(18, func() {
+		m.Col(12, func() {
+			m.Text(name, props.Text{Top: 10, Size: 12, Style: consts.Bold})
+		})
+	})
+
+	grayColor := color.Color{Red: 211, Green: 211, Blue: 211}
+	m.TableList([]string{"AnCode", "Modul", "Prüfender", "Termin"}, rows, props.TableList{
+		HeaderProp:           props.TableListContent{Size: 11, GridSizes: []uint{1, 5, 2, 4}},
+		ContentProp:          props.TableListContent{Size: 11, GridSizes: []uint{1, 5, 2, 4}},
+		Align:                consts.Left,
+		AlternatedBackground: &grayColor,
+		HeaderContentSpace:   1,
+		Line:                 false,
+	})
+}
+
+// ExahmHeading returns the EXaHM/SEB table heading, which names the sort order.
+func ExahmHeading(sortByDate bool) string {
+	if sortByDate {
+		return "Prüfungen mit EXaHM/SEB, sortiert nach Datum"
+	}
+	return "Prüfungen mit EXaHM/SEB, sortiert nach AnCode"
+}
+
+// ExahmRows builds the EXaHM/SEB draft table rows (AnCode, Modul, Prüfender, Termin,
+// Form, Plätze, Räume). When sortByDate the exams are ordered by (day, slot, ancode),
+// otherwise the input order is kept. slotTime resolves a plan entry to its start;
+// prePlannedRooms maps an ancode to its pre-planned room names, used only when the exam
+// has no planned rooms yet. Every exam must already carry non-nil Constraints.RoomConstraints
+// (the caller filters to EXaHM/SEB exams).
+func ExahmRows(exams []*model.PlannedExam, sortByDate bool, slotTime func(day, slot int) time.Time,
+	prePlannedRooms map[int][]string) [][]string {
+	sorted := make([]*model.PlannedExam, len(exams))
+	copy(sorted, exams)
+	if sortByDate {
+		sort.Slice(sorted, func(i, j int) bool {
+			if sorted[i].PlanEntry == nil {
+				return false
+			}
+			if sorted[j].PlanEntry == nil {
+				return true
+			}
+			if sorted[i].PlanEntry.DayNumber != sorted[j].PlanEntry.DayNumber {
+				return sorted[i].PlanEntry.DayNumber < sorted[j].PlanEntry.DayNumber
+			}
+			if sorted[i].PlanEntry.SlotNumber != sorted[j].PlanEntry.SlotNumber {
+				return sorted[i].PlanEntry.SlotNumber < sorted[j].PlanEntry.SlotNumber
+			}
+			return sorted[i].Ancode < sorted[j].Ancode
+		})
+	}
+
+	contents := make([][]string, 0, len(sorted))
+	for _, exam := range sorted {
+		termin := "fehlt noch"
+		if exam.PlanEntry != nil {
+			termin = FormatTermin(slotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber))
+		}
+
+		rooms := "fehlen noch"
+		if len(exam.PlannedRooms) > 0 {
+			names := make([]string, 0, len(exam.PlannedRooms))
+			for _, room := range exam.PlannedRooms {
+				names = append(names, room.RoomName)
+			}
+			rooms = strings.Join(names, ", ")
+		} else if prePlanned := prePlannedRooms[exam.Ancode]; len(prePlanned) > 0 {
+			rooms = strings.Join(prePlanned, ", ")
+		}
+
+		variant := "SEB"
+		if exam.Constraints.RoomConstraints.Exahm {
+			variant = "EXaHM"
+		}
+
+		contents = append(contents, []string{
+			strconv.Itoa(exam.Ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
+			termin, variant, strconv.Itoa(exam.StudentRegsCount), rooms})
+	}
+	return contents
+}
+
+// ExahmTable renders the EXaHM/SEB heading and table into m.
+func ExahmTable(m pdf.Maroto, sortByDate bool, rows [][]string) {
+	m.Row(18, func() {
+		m.Col(12, func() {
+			m.Text(ExahmHeading(sortByDate), props.Text{Top: 10, Size: 12, Style: consts.Bold})
+		})
+	})
+
+	grayColor := color.Color{Red: 211, Green: 211, Blue: 211}
+	m.TableList([]string{"AnCode", "Modul", "Prüfender", "Termin", "Form", "Plätze", "Räume"}, rows, props.TableList{
+		HeaderProp:           props.TableListContent{Size: 11, GridSizes: []uint{1, 3, 2, 3, 1, 1, 1}},
+		ContentProp:          props.TableListContent{Size: 11, GridSizes: []uint{1, 3, 2, 3, 1, 1, 1}},
 		Align:                consts.Left,
 		AlternatedBackground: &grayColor,
 		HeaderContentSpace:   1,

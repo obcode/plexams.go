@@ -10,6 +10,26 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func (db *DB) GetPrimussExamsForAncode(ctx context.Context, ancode int) ([]*model.PrimussExam, error) {
+	programs, err := db.GetPrograms(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	exams := make([]*model.PrimussExam, 0)
+	for _, program := range programs {
+		exam, err := db.GetPrimussExam(ctx, program, ancode)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).Str("program", program).
+				Int("ancode", ancode).Msg("cannot find primuss exam")
+		} else {
+			exams = append(exams, exam)
+		}
+	}
+
+	return exams, nil
+}
+
 func (db *DB) GetPrimussExam(ctx context.Context, program string, ancode int) (*model.PrimussExam, error) {
 	collection := db.getCollection(program, Exams)
 

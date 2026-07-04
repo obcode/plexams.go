@@ -65,6 +65,11 @@ func (r *queryResolver) PreplanExams(ctx context.Context) ([]*model.PreplanExam,
 	return r.plexams.PreplanExams(ctx)
 }
 
+// PreplanExam is the resolver for the preplanExam field.
+func (r *queryResolver) PreplanExam(ctx context.Context, id int) (*model.PreplanExam, error) {
+	return r.plexams.PreplanExam(ctx, id)
+}
+
 // PreplanExamAncodeSuggestions is the resolver for the preplanExamAncodeSuggestions field.
 func (r *queryResolver) PreplanExamAncodeSuggestions(ctx context.Context, id int) ([]*model.ZPAExam, error) {
 	return r.plexams.PreplanExamAncodeSuggestions(ctx, id)

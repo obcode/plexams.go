@@ -268,6 +268,39 @@ func (db *DB) SetRegsWithErrors(ctx context.Context, regsWithErrors []*model.Reg
 	return nil
 }
 
+func (db *DB) GetRegsWithErrors(ctx context.Context) ([]*model.RegWithError, error) {
+	collectionName := "errors-zpa-studentregs"
+	collection := db.Client.Database(db.databaseName).Collection(collectionName)
+
+	regWithErrors := make([]*model.RegWithError, 0)
+
+	cur, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Msg("MongoDB Find (reg with errors)")
+		return regWithErrors, err
+	}
+	defer cur.Close(ctx) //nolint:errcheck
+
+	for cur.Next(ctx) {
+		var regWithError model.RegWithError
+
+		err := cur.Decode(&regWithError)
+		if err != nil {
+			log.Error().Err(err).Str("semester", db.semester).Interface("cur", cur).Msg("Cannot decode to regWithError")
+			return regWithErrors, err
+		}
+
+		regWithErrors = append(regWithErrors, &regWithError)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Error().Err(err).Str("semester", db.semester).Msg("Cursor returned error")
+		return regWithErrors, err
+	}
+
+	return regWithErrors, nil
+}
+
 func (db *DB) RemoveStudentReg(ctx context.Context, program string, ancode int, mtknr string) (int, error) {
 	collection := db.getCollection(program, StudentRegs)
 

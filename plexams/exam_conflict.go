@@ -125,6 +125,75 @@ func examPair(a, b int, info map[int]examInfo) *model.ExamPair {
 	}
 }
 
+// StudentConflictDecisions returns all explicit per-student conflict decisions.
+func (p *Plexams) StudentConflictDecisions(ctx context.Context) ([]*model.StudentConflictDecision, error) {
+	return p.dbClient.StudentConflictDecisions(ctx)
+}
+
+// ExamsCanShareSlot returns the exam pairs declared as allowed to share a slot.
+func (p *Plexams) ExamsCanShareSlot(ctx context.Context) ([]*model.ExamPair, error) {
+	pairs, err := p.dbClient.CanShareSlotPairs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	info := p.examInfoMap(ctx)
+	out := make([]*model.ExamPair, 0, len(pairs))
+	for _, pr := range pairs {
+		out = append(out, examPair(pr[0], pr[1], info))
+	}
+	return out, nil
+}
+
+// CanShareSlotSuggestions returns auto-detected canShareSlot candidates (same
+// module+program, different examer) that are not yet declared.
+func (p *Plexams) CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPair, error) {
+	assembled, err := p.dbClient.GetAssembledExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+	existing := make(map[[2]int]bool)
+	if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err == nil {
+		for _, pr := range pairs {
+			existing[[2]int{pr[0], pr[1]}] = true
+		}
+	}
+	// pairs already forced into the same slot by a sameSlot constraint need no
+	// "may share a slot" suggestion — they must be together anyway.
+	sameSlotRoot := p.sameSlotGroups(ctx)
+
+	byKey := make(map[string][]*model.AssembledExam)
+	for _, e := range assembled {
+		key := e.ZpaExam.Module + "|" + firstProgram(e)
+		byKey[key] = append(byKey[key], e)
+	}
+	info := p.examInfoMap(ctx)
+	out := make([]*model.ExamPair, 0)
+	for _, list := range byKey {
+		for i := 0; i < len(list); i++ {
+			for j := i + 1; j < len(list); j++ {
+				if list[i].ZpaExam.MainExamerID == list[j].ZpaExam.MainExamerID {
+					continue
+				}
+				a, b := conflictcalc.NormPair(list[i].Ancode, list[j].Ancode)
+				if existing[[2]int{a, b}] {
+					continue
+				}
+				if r, ok := sameSlotRoot[a]; ok && r == sameSlotRoot[b] {
+					continue // already forced same slot via sameSlot constraint
+				}
+				out = append(out, examPair(a, b, info))
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Ancode1 != out[j].Ancode1 {
+			return out[i].Ancode1 < out[j].Ancode1
+		}
+		return out[i].Ancode2 < out[j].Ancode2
+	})
+	return out, nil
+}
+
 // ExamScheduleConflicts computes the conflicts of the CURRENT plan (from the plan
 // entries): per student, pairs of their exams that ended up close in time. It
 // aggregates by exam pair (worst proximity, number of affected students) and annotates

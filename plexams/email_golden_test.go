@@ -180,11 +180,11 @@ func TestBatch3bEmailsGolden(t *testing.T) {
 			{Ancode: 222, Module: "Physik", Examer: "Prof. B", Type: "SEB", Seats: 5, Detail: "5 Plätze, 90 Min."},
 		}}},
 	}}}
-	lba := &LbaRepeaterEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Exams: []*lbaRepeaterExam{{
-		Module: "Programmieren", Examer: lbaPerson{Name: "LBA X", Email: "x@hm.edu"},
+	lba := &email.LbaRepeaterEmail{SemesterName: "2026 SS", PlanerName: "Test Planer", Exams: []*email.LbaRepeaterExam{{
+		Module: "Programmieren", Examer: email.LbaPerson{Name: "LBA X", Email: "x@hm.edu"},
 		Date: "Mo, 06.07.2026", Time: "08:30",
-		Programs:     []lbaProgram{{Name: "IF", Count: 3}, {Name: "IB", Count: 1}},
-		Invigilators: []lbaPerson{{Name: "Prof. C", Email: "c@hm.edu"}},
+		Programs:     []email.LbaProgram{{Name: "IF", Count: 3}, {Name: "IB", Count: 1}},
+		Invigilators: []email.LbaPerson{{Name: "Prof. C", Email: "c@hm.edu"}},
 	}}}
 
 	cases := []struct {

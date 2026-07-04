@@ -4,119 +4,33 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"time"
 
-	set "github.com/deckarep/golang-set/v2"
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/email"
 )
 
-// lbaPerson is a person shown in the LBA-BA email, with their email so the
-// LBA-BA can contact them directly.
-type lbaPerson struct {
-	Name  string
-	Email string
-}
-
-// lbaProgram is a study program with its number of registrations.
-type lbaProgram struct {
-	Name  string
-	Count int
-}
-
-// lbaRepeaterExam is one repeat exam of a non-prof (LBA / Prof HC / external)
-// that I planned, reduced to what the Lehrbeauftragten-Beauftragte:r needs: the
-// module, the examer and the invigilators (each with email), when it is, and the
-// programs with registrations.
-type lbaRepeaterExam struct {
-	Module       string
-	Examer       lbaPerson
-	Date         string
-	Time         string
-	start        time.Time
-	Invigilators []lbaPerson  // unique, in room order
-	Programs     []lbaProgram // programs with registrations (count > 0)
-}
-
-// LbaRepeaterEmail is the data for the LBA-BA overview email.
-type LbaRepeaterEmail struct {
-	SemesterName string
-	PlanerName   string
-	Exams        []*lbaRepeaterExam
-}
-
-// buildLbaRepeaterExams collects the repeat exams of LBAs that I planned, with
-// their time and invigilators, ordered chronologically.
-func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*lbaRepeaterExam, error) {
+// buildLbaRepeaterExams fetches the planned exams and shapes them into the LBA-BA overview
+// via email.BuildLbaRepeaterExams, resolving examers and per-room invigilators on demand.
+func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*email.LbaRepeaterExam, error) {
 	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	result := make([]*lbaRepeaterExam, 0)
-	for _, exam := range plannedExams {
-		if exam.ZpaExam == nil || !exam.ZpaExam.IsRepeaterExam {
-			continue
+	examer := func(id int) *model.Teacher {
+		t, err := p.GetTeacher(ctx, id)
+		if err != nil {
+			return nil
 		}
-		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
-			continue
-		}
-		// LBAs, Prof HC and externals (anyone who is not a regular prof) are the
-		// people the LBA-BA reminds. The teachers' IsLBA flag is unreliable here, so
-		// "not a regular prof" is the robust criterion.
-		mainExamer, err := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID)
-		if err != nil || mainExamer == nil || mainExamer.IsProf {
-			continue
-		}
-
-		date, timeStr := "noch nicht geplant", ""
-		var start time.Time
-		if exam.PlanEntry != nil {
-			start = p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			date = email.DateDE(start)
-			timeStr = email.TimeDE(start)
-		}
-
-		invigilators := make([]lbaPerson, 0)
-		if exam.PlanEntry != nil {
-			seen := set.NewSet[int]()
-			for _, room := range exam.PlannedRooms {
-				if room.RoomName == "ONLINE" {
-					continue
-				}
-				invigilator, err := p.GetInvigilatorForRoom(ctx, room.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-				if err != nil || invigilator == nil || seen.Contains(invigilator.ID) {
-					continue
-				}
-				seen.Add(invigilator.ID)
-				invigilators = append(invigilators, lbaPerson{Name: invigilator.Shortname, Email: invigilator.Email})
-			}
-		}
-
-		programs := make([]lbaProgram, 0)
-		for _, pe := range exam.PrimussExams {
-			if pe == nil || pe.Exam == nil || len(pe.StudentRegs) == 0 {
-				continue
-			}
-			programs = append(programs, lbaProgram{Name: pe.Exam.Program, Count: len(pe.StudentRegs)})
-		}
-		sort.Slice(programs, func(i, j int) bool { return programs[i].Name < programs[j].Name })
-
-		result = append(result, &lbaRepeaterExam{
-			Module:       exam.ZpaExam.Module,
-			Examer:       lbaPerson{Name: exam.ZpaExam.MainExamer, Email: mainExamer.Email},
-			Date:         date,
-			Time:         timeStr,
-			start:        start,
-			Invigilators: invigilators,
-			Programs:     programs,
-		})
+		return t
 	}
-
-	sort.SliceStable(result, func(i, j int) bool {
-		return result[i].start.Before(result[j].start)
-	})
-
-	return result, nil
+	invigilatorForRoom := func(room string, day, slot int) *model.Teacher {
+		inv, err := p.GetInvigilatorForRoom(ctx, room, day, slot)
+		if err != nil {
+			return nil
+		}
+		return inv
+	}
+	return email.BuildLbaRepeaterExams(plannedExams, p.getSlotTime, examer, invigilatorForRoom), nil
 }
 
 // SendEmailLbaRepeaters sends the Lehrbeauftragten-Beauftragte:r (emails.lbaba)
@@ -138,7 +52,7 @@ func (p *Plexams) SendEmailLbaRepeaters(ctx context.Context, run bool, reporter 
 		return nil
 	}
 
-	data := &LbaRepeaterEmail{
+	data := &email.LbaRepeaterEmail{
 		SemesterName: p.semester,
 		PlanerName:   p.planer.Name,
 		Exams:        exams,

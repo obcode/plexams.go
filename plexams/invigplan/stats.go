@@ -1,5 +1,68 @@
 package invigplan
 
+import "sort"
+
+// Outlier is one invigilator whose assigned minutes deviate from the target: Open is
+// the remaining minutes (target − done; negative = did too much) and Percent that as a
+// share of the target.
+type Outlier struct {
+	InvigilatorID int
+	Doing         int
+	Target        int
+	Open          int
+	Percent       float64
+}
+
+// DeviationOutliers returns the invigilators whose assigned minutes deviate most from
+// their target, ranked by relative deviation (|dev| / max(target, ToleranceMin), the
+// floor avoids over-ranking tiny targets). Invigilators exactly on target are excluded;
+// topN <= 0 returns all deviating ones.
+func (p *Problem) DeviationOutliers(plan *Plan, topN int) []Outlier {
+	type devInfo struct {
+		id, doing, target, dev int
+		rel                    float64
+	}
+	devs := make([]devInfo, 0, len(p.Invigilators))
+	for i := range p.Invigilators {
+		in := &p.Invigilators[i]
+		doing := plan.DoingMinutes(in.ID)
+		dev := doing - in.TargetMinutes
+		if dev == 0 {
+			continue
+		}
+		scale := in.TargetMinutes
+		if scale < p.ToleranceMin {
+			scale = p.ToleranceMin
+		}
+		d := dev
+		if d < 0 {
+			d = -d
+		}
+		devs = append(devs, devInfo{in.ID, doing, in.TargetMinutes, dev, float64(d) / float64(scale)})
+	}
+	sort.Slice(devs, func(i, j int) bool { return devs[i].rel > devs[j].rel })
+
+	outliers := make([]Outlier, 0, len(devs))
+	for i, d := range devs {
+		if topN > 0 && i >= topN {
+			break
+		}
+		open := -d.dev // "noch offen" = target − done
+		pct := 0.0
+		if d.target > 0 {
+			pct = float64(open) / float64(d.target) * 100
+		}
+		outliers = append(outliers, Outlier{
+			InvigilatorID: d.id,
+			Doing:         d.doing,
+			Target:        d.target,
+			Open:          open,
+			Percent:       pct,
+		})
+	}
+	return outliers
+}
+
 // Stats summarizes a Problem for inspection before the optimizer runs.
 type Stats struct {
 	Positions          int

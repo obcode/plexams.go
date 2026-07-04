@@ -8,6 +8,7 @@ import (
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/roomcalc"
 	"github.com/rs/zerolog/log"
 )
 
@@ -304,7 +305,7 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 			continue
 		}
 		v.step("checking free seats for exam %d", exam.Ancode)
-		buffer := roomFreeSeatsBuffer(normal)
+		buffer := roomcalc.FreeSeatsBuffer(normal)
 		bufferByAncode[exam.Ancode] = buffer
 		free := capacity - normal + reserveSeats
 		if free < buffer {

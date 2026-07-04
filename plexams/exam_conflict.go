@@ -10,11 +10,6 @@ import (
 	"github.com/obcode/plexams.go/plexams/repeatcalc"
 )
 
-// StudentConflictDecisions returns all stored explicit per-student decisions.
-func (p *Plexams) StudentConflictDecisions(ctx context.Context) ([]*model.StudentConflictDecision, error) {
-	return p.dbClient.StudentConflictDecisions(ctx)
-}
-
 // SetStudentConflictDecision sets an explicit per-student decision: ACCEPT drops that
 // student's proximity penalty (same-slot stays hard); VETO forces the conflict to count
 // at full weight, overriding an automatic repeat down-weighting.
@@ -41,20 +36,6 @@ func (p *Plexams) RemoveStudentConflictDecision(ctx context.Context, ancode1, an
 	return p.dbClient.DeleteDecision(ctx, a, b, mtknr)
 }
 
-// ExamsCanShareSlot returns the declared can-share-slot pairs with display info.
-func (p *Plexams) ExamsCanShareSlot(ctx context.Context) ([]*model.ExamPair, error) {
-	pairs, err := p.dbClient.CanShareSlotPairs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	info := p.examInfoMap(ctx)
-	out := make([]*model.ExamPair, 0, len(pairs))
-	for _, pr := range pairs {
-		out = append(out, examPair(pr[0], pr[1], info))
-	}
-	return out, nil
-}
-
 // SetExamsCanShareSlot declares that two exams may share a slot.
 func (p *Plexams) SetExamsCanShareSlot(ctx context.Context, ancode1, ancode2 int) (bool, error) {
 	if ancode1 == ancode2 {
@@ -71,56 +52,6 @@ func (p *Plexams) SetExamsCanShareSlot(ctx context.Context, ancode1, ancode2 int
 func (p *Plexams) RemoveExamsCanShareSlot(ctx context.Context, ancode1, ancode2 int) (bool, error) {
 	a, b := conflictcalc.NormPair(ancode1, ancode2)
 	return p.dbClient.DeleteCanShareSlot(ctx, a, b)
-}
-
-// CanShareSlotSuggestions returns parallel-section candidates (same module+program,
-// different examer) not yet declared as can-share-slot.
-func (p *Plexams) CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPair, error) {
-	assembled, err := p.dbClient.GetAssembledExams(ctx)
-	if err != nil {
-		return nil, err
-	}
-	existing := make(map[[2]int]bool)
-	if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err == nil {
-		for _, pr := range pairs {
-			existing[[2]int{pr[0], pr[1]}] = true
-		}
-	}
-	// pairs already forced into the same slot by a sameSlot constraint need no
-	// "may share a slot" suggestion — they must be together anyway.
-	sameSlotRoot := p.sameSlotGroups(ctx)
-
-	byKey := make(map[string][]*model.AssembledExam)
-	for _, e := range assembled {
-		key := e.ZpaExam.Module + "|" + firstProgram(e)
-		byKey[key] = append(byKey[key], e)
-	}
-	info := p.examInfoMap(ctx)
-	out := make([]*model.ExamPair, 0)
-	for _, list := range byKey {
-		for i := 0; i < len(list); i++ {
-			for j := i + 1; j < len(list); j++ {
-				if list[i].ZpaExam.MainExamerID == list[j].ZpaExam.MainExamerID {
-					continue
-				}
-				a, b := conflictcalc.NormPair(list[i].Ancode, list[j].Ancode)
-				if existing[[2]int{a, b}] {
-					continue
-				}
-				if r, ok := sameSlotRoot[a]; ok && r == sameSlotRoot[b] {
-					continue // already forced same slot via sameSlot constraint
-				}
-				out = append(out, examPair(a, b, info))
-			}
-		}
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Ancode1 != out[j].Ancode1 {
-			return out[i].Ancode1 < out[j].Ancode1
-		}
-		return out[i].Ancode2 < out[j].Ancode2
-	})
-	return out, nil
 }
 
 // sameSlotGroups returns, per ancode that is in a sameSlot constraint, a group root

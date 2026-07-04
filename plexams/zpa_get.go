@@ -3,7 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
@@ -89,16 +88,6 @@ func (p *Plexams) GetStudents(ctx context.Context, mtknr string) ([]*model.ZPASt
 	return p.zpa.client.GetStudents(mtknr)
 }
 
-func (p *Plexams) GetFk07programs(ctx context.Context) ([]*model.FK07Program, error) {
-	programs := make([]*model.FK07Program, 0, len(p.zpa.fk07programs))
-
-	for _, p := range p.zpa.fk07programs {
-		programs = append(programs, &model.FK07Program{Name: p})
-	}
-
-	return programs, nil
-}
-
 func (p *Plexams) GetZPAExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAExam, error) {
 	if fromZpa != nil && *fromZpa {
 		if err := p.SetZPA(); err != nil {
@@ -115,21 +104,6 @@ func (p *Plexams) GetZPAExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAE
 	} else {
 		return p.dbClient.GetZPAExams(ctx)
 	}
-}
-
-func (p *Plexams) GetZpaAnCodes(ctx context.Context) ([]*model.AnCode, error) {
-	f := false
-	exams, err := p.GetZPAExams(ctx, &f)
-	if err != nil {
-		return nil, err
-	}
-
-	ancodes := make([]*model.AnCode, 0)
-	for _, exam := range exams {
-		ancodes = append(ancodes, &model.AnCode{Ancode: exam.AnCode})
-	}
-
-	return ancodes, nil
 }
 
 func (p *Plexams) GetZpaAnCodesToPlan(ctx context.Context) ([]*model.AnCode, error) {
@@ -150,86 +124,8 @@ func (p *Plexams) GetZpaExamByAncode(ctx context.Context, ancode int) (*model.ZP
 	return p.dbClient.GetZpaExamByAncode(ctx, ancode)
 }
 
-func (p *Plexams) GetZPAExamsGroupedByType(ctx context.Context) ([]*model.ZPAExamsForType, error) {
-	exams, err := p.dbClient.GetZPAExams(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	examsByType := make(map[string][]*model.ZPAExam)
-
-	for _, exam := range exams {
-		v, ok := examsByType[exam.ExamTypeFull]
-		if !ok {
-			v = make([]*model.ZPAExam, 0)
-		}
-		examsByType[exam.ExamTypeFull] = append(v, exam)
-	}
-
-	keys := make([]string, 0, len(examsByType))
-	for k := range examsByType {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	examsGroupedByType := make([]*model.ZPAExamsForType, 0)
-	for _, k := range keys {
-		examsGroupedByType = append(examsGroupedByType, &model.ZPAExamsForType{
-			Type:  k,
-			Exams: examsByType[k],
-		})
-	}
-
-	return examsGroupedByType, nil
-}
-
 func (p *Plexams) GetZpaExamsToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
 	return p.dbClient.GetZPAExamsToPlan(ctx)
-}
-
-func (p *Plexams) GetZpaExamsNotToPlan(ctx context.Context) ([]*model.ZPAExam, error) {
-	return p.dbClient.GetZPAExamsNotToPlan(ctx)
-}
-
-func (p *Plexams) ZpaExamsPlaningStatusUnknown(ctx context.Context) ([]*model.ZPAExam, error) {
-	all, err := p.dbClient.GetZPAExams(ctx)
-	if err != nil {
-		return nil, err
-	}
-	toPlan, err := p.dbClient.GetZPAExamsToPlan(ctx)
-	if err != nil {
-		return nil, err
-	}
-	notToPlan, err := p.dbClient.GetZPAExamsNotToPlan(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	statusUnknown := make([]*model.ZPAExam, 0)
-
-	for _, exam := range all {
-		planned := false
-		for _, examP := range toPlan {
-			if exam.AnCode == examP.AnCode {
-				planned = true
-				break
-			}
-		}
-		if planned {
-			continue
-		}
-		for _, examP := range notToPlan {
-			if exam.AnCode == examP.AnCode {
-				planned = true
-				break
-			}
-		}
-		if !planned {
-			statusUnknown = append(statusUnknown, exam)
-		}
-	}
-
-	return statusUnknown, nil
 }
 
 func (p *Plexams) AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error) {

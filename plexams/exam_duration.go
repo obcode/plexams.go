@@ -6,11 +6,6 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// ExamDurationOverrides returns all per-ancode duration overrides.
-func (p *Plexams) ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurationOverride, error) {
-	return p.dbClient.ExamDurationOverrides(ctx)
-}
-
 // SetExamDuration sets the duration override (minutes) for an ancode. It is only
 // applied to assembled exams whose ZPA duration is 0.
 func (p *Plexams) SetExamDuration(ctx context.Context, ancode, duration int) (*model.ExamDurationOverride, error) {

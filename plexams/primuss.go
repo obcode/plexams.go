@@ -74,10 +74,6 @@ func (p *Plexams) PrimussExamExists(ctx context.Context, program string, ancode 
 	return p.dbClient.PrimussExamExists(ctx, program, ancode)
 }
 
-func (p *Plexams) GetPrimussExamsForAncode(ctx context.Context, ancode int) ([]*model.PrimussExam, error) {
-	return p.dbClient.GetPrimussExamsForAncode(ctx, ancode)
-}
-
 func (p *Plexams) GetStudentRegs(ctx context.Context, exam *model.PrimussExam) ([]*model.StudentReg, error) {
 	return p.dbClient.GetPrimussStudentRegsForProgrammAncode(ctx, exam.Program, exam.AnCode)
 }
@@ -107,16 +103,8 @@ func (p *Plexams) GetEnhancedStudentRegs(ctx context.Context, program string, an
 	return enhancedStudentRegs, nil
 }
 
-func (p *Plexams) StudentRegsForProgram(ctx context.Context, program string) ([]*model.StudentReg, error) {
-	return p.dbClient.StudentRegsForProgram(ctx, program)
-}
-
 func (p *Plexams) StudentRegsPerStudentPlanned(ctx context.Context) ([]*model.Student, error) {
 	return p.dbClient.StudentRegsPerStudentPlanned(ctx)
-}
-
-func (p *Plexams) StudentRegsImportErrors(ctx context.Context) ([]*model.RegWithError, error) {
-	return p.dbClient.GetRegsWithErrors(ctx)
 }
 
 func (p *Plexams) GetConflicts(ctx context.Context, exam *model.PrimussExam) (*model.Conflicts, error) {

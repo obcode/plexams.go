@@ -17,11 +17,6 @@ func (p *Plexams) PreplanExams(ctx context.Context) ([]*model.PreplanExam, error
 	return p.dbClient.PreplanExams(ctx)
 }
 
-// PreplanExam returns one pre-exam by id.
-func (p *Plexams) PreplanExam(ctx context.Context, id int) (*model.PreplanExam, error) {
-	return p.dbClient.PreplanExam(ctx, id)
-}
-
 // AddPreplanExam validates and creates a new pre-exam (the examer's name is snapshotted
 // from the linked teacher).
 func (p *Plexams) AddPreplanExam(ctx context.Context, input *model.PreplanExamInput) (*model.PreplanExam, error) {

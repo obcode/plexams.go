@@ -7,6 +7,7 @@ import (
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/obcode/plexams.go/plexams/email"
 )
 
 // lbaPerson is a person shown in the LBA-BA email, with their email so the
@@ -71,8 +72,8 @@ func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*lbaRepeaterExam
 		var start time.Time
 		if exam.PlanEntry != nil {
 			start = p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			date = fmt.Sprintf("%s, %s", weekdayShortDE[int(start.Weekday())], start.Format("02.01.2006"))
-			timeStr = start.Format("15:04")
+			date = email.DateDE(start)
+			timeStr = email.TimeDE(start)
 		}
 
 		invigilators := make([]lbaPerson, 0)

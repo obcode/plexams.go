@@ -6,12 +6,8 @@ import (
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/email"
 )
-
-// German weekday abbreviations for the request email.
-var weekdayShortDE = map[int]string{
-	0: "So", 1: "Mo", 2: "Di", 3: "Mi", 4: "Do", 5: "Fr", 6: "Sa",
-}
 
 // lastDay returns the day block for date within room, reusing the last one if it
 // already matches (the requests are sorted by time) or appending a new one.
@@ -85,11 +81,10 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 			rooms = append(rooms, &roomRequestEmailRoom{Room: req.Room})
 		}
 		room := rooms[len(rooms)-1]
-		date := fmt.Sprintf("%s, %s", weekdayShortDE[int(req.From.Weekday())], req.From.Format("02.01.2006"))
-		day := lastDay(room, date)
+		day := lastDay(room, email.DateDE(req.From))
 		day.Times = append(day.Times, &roomRequestEmailTime{
-			From:  req.From.Format("15:04"),
-			Until: req.Until.Format("15:04"),
+			From:  email.TimeDE(req.From),
+			Until: email.TimeDE(req.Until),
 		})
 	}
 

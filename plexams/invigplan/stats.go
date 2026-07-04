@@ -1,6 +1,10 @@
 package invigplan
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 // Outlier is one invigilator whose assigned minutes deviate from the target: Open is
 // the remaining minutes (target − done; negative = did too much) and Percent that as a
@@ -126,6 +130,46 @@ func (p *Problem) DistributionOf(plan *Plan, kind Kind) Distribution {
 		}
 	}
 	return d
+}
+
+// SortedCounts returns the distinct position counts (ByCount keys) in ascending
+// order, for a stable histogram display.
+func (d Distribution) SortedCounts() []int {
+	counts := make([]int, 0, len(d.ByCount))
+	for n := range d.ByCount {
+		counts = append(counts, n)
+	}
+	sort.Ints(counts)
+	return counts
+}
+
+// String renders the distribution as a "0:4  1:48  2:17" histogram (read
+// "1:48" = 48 invigilators do 1), counts ascending.
+func (d Distribution) String() string {
+	parts := make([]string, 0, len(d.ByCount))
+	for _, n := range d.SortedCounts() {
+		parts = append(parts, fmt.Sprintf("%d:%d", n, d.ByCount[n]))
+	}
+	return strings.Join(parts, "  ")
+}
+
+// CostItem is one soft-constraint's contribution to the total cost.
+type CostItem struct {
+	Name string
+	Cost float64
+}
+
+// SortedCosts returns the soft-constraint cost breakdown with a positive cost,
+// ordered by descending cost (the biggest contributors first).
+func (r Result) SortedCosts() []CostItem {
+	items := make([]CostItem, 0, len(r.CostByConstraint))
+	for name, cost := range r.CostByConstraint {
+		if cost > 0 {
+			items = append(items, CostItem{Name: name, Cost: cost})
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].Cost > items[j].Cost })
+	return items
 }
 
 // MinuteSummary reports how the assigned minutes sit relative to the targets.

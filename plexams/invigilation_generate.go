@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/logrusorgru/aurora"
@@ -179,7 +178,7 @@ func printInvigilationReport(reporter Reporter, problem *invigplan.Problem, plan
 	fairness := make([]*model.FairnessDistribution, 0, 2)
 	for _, kind := range []invigplan.Kind{invigplan.KindReserve, invigplan.KindNTA} {
 		d := problem.DistributionOf(plan, kind)
-		reporter.Printf("    %-9s %s  %s\n", kind.String()+":", distributionString(d),
+		reporter.Printf("    %-9s %s  %s\n", kind.String()+":", d.String(),
 			aurora.Gray(12, fmt.Sprintf("(%d total, max %d/person)", d.Total, d.Max)))
 		fairness = append(fairness, fairnessModel(d))
 	}
@@ -187,21 +186,11 @@ func printInvigilationReport(reporter Reporter, problem *invigplan.Problem, plan
 	// soft-constraint cost breakdown (internal score, lower is better).
 	reporter.Printf("  %s %s\n", reportLabel("soft cost"),
 		aurora.Sprintf(aurora.Gray(12, "total %.0f  (weighted penalty score, not minutes; lower is better)"), result.Cost))
-	type kv struct {
-		name string
-		cost float64
-	}
-	breakdown := make([]kv, 0, len(result.CostByConstraint))
-	for name, cost := range result.CostByConstraint {
-		if cost > 0 {
-			breakdown = append(breakdown, kv{name, cost})
-		}
-	}
-	sort.Slice(breakdown, func(i, j int) bool { return breakdown[i].cost > breakdown[j].cost })
+	breakdown := result.SortedCosts()
 	costItems := make([]*model.SoftCostItem, 0, len(breakdown))
 	for _, b := range breakdown {
-		reporter.Printf("    %-22s %8.0f\n", b.name, b.cost)
-		costItems = append(costItems, &model.SoftCostItem{Name: b.name, Cost: b.cost})
+		reporter.Printf("    %-22s %8.0f\n", b.Name, b.Cost)
+		costItems = append(costItems, &model.SoftCostItem{Name: b.Name, Cost: b.Cost})
 	}
 
 	return &model.InvigilationReport{
@@ -241,11 +230,7 @@ func printInvigilationReport(reporter Reporter, problem *invigplan.Problem, plan
 // fairnessModel converts an invigplan distribution into the GraphQL model,
 // keeping the buckets sorted by count for a stable display.
 func fairnessModel(d invigplan.Distribution) *model.FairnessDistribution {
-	counts := make([]int, 0, len(d.ByCount))
-	for n := range d.ByCount {
-		counts = append(counts, n)
-	}
-	sort.Ints(counts)
+	counts := d.SortedCounts()
 	buckets := make([]*model.DistributionBucket, 0, len(counts))
 	for _, n := range counts {
 		buckets = append(buckets, &model.DistributionBucket{Count: n, Invigilators: d.ByCount[n]})
@@ -299,20 +284,6 @@ func colorCount(n int) aurora.Value {
 		return aurora.Green(fmt.Sprintf("%d", n))
 	}
 	return aurora.Yellow(fmt.Sprintf("%d", n))
-}
-
-// distributionString renders a count histogram as "0:4  1:48  2:17".
-func distributionString(d invigplan.Distribution) string {
-	counts := make([]int, 0, len(d.ByCount))
-	for n := range d.ByCount {
-		counts = append(counts, n)
-	}
-	sort.Ints(counts)
-	parts := make([]string, 0, len(counts))
-	for _, n := range counts {
-		parts = append(parts, fmt.Sprintf("%d:%d", n, d.ByCount[n]))
-	}
-	return strings.Join(parts, "  ")
 }
 
 // OptimizerOptionsFromConfig builds the optimizer options from viper, applying

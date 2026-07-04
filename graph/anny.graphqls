@@ -1,8 +1,5 @@
 extend type Query {
-  annyBookings(room: String): [AnnyBooking!]!
   allAnnyBookings: [AnnyBooking!]!
-  "The Anny settings stored in the DB (the token stays in the config file)."
-  annyConfig: AnnyConfig!
 }
 
 extend type Mutation {

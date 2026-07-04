@@ -1,12 +1,5 @@
 extend type Query {
-  connectedExam(ancode: Int!): ConnectedExam
-  connectedExams: [ConnectedExam!]!
-
-  assembledExams: [AssembledExam!]!
-  assembledExam(ancode: Int!): AssembledExam
-
   plannedExams: [PlannedExam!]!
-  plannedExam(ancode: Int!): PlannedExam
 
   mucdaiExams: [MucDaiExam!]!
 

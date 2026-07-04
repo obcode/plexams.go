@@ -1,11 +1,3 @@
-extend type Query {
-  """
-  Per-ancode exam duration overrides. They are only applied to exams whose ZPA
-  duration is 0 (i.e. not set in the ZPA); they feed the assembled exams.
-  """
-  examDurationOverrides: [ExamDurationOverride!]!
-}
-
 extend type Mutation {
   "Set the duration override (minutes) for an ancode. Applied only when the ZPA duration is 0."
   setExamDuration(ancode: Int!, duration: Int!): ExamDurationOverride!

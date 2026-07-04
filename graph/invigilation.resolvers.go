@@ -58,11 +58,6 @@ func (r *queryResolver) InvigilatorTodos(ctx context.Context) (*model.Invigilati
 	return r.plexams.GetInvigilationTodos(ctx)
 }
 
-// InvigilatorsWithReq is the resolver for the invigilatorsWithReq field.
-func (r *queryResolver) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error) {
-	return r.plexams.InvigilatorsWithReq(ctx)
-}
-
 // InvigilatorsExcludedByConfig is the resolver for the invigilatorsExcludedByConfig field.
 func (r *queryResolver) InvigilatorsExcludedByConfig(ctx context.Context) ([]*model.Invigilator, error) {
 	return r.plexams.InvigilatorsExcludedByConfig(ctx)
@@ -76,16 +71,6 @@ func (r *queryResolver) RoomsWithInvigilationsForSlot(ctx context.Context, day i
 // InvigilatorsForDay is the resolver for the invigilatorsForDay field.
 func (r *queryResolver) InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error) {
 	return r.plexams.InvigilatorsForDay(ctx, day)
-}
-
-// Invigilator is the resolver for the invigilator field.
-func (r *queryResolver) Invigilator(ctx context.Context, room string, day int, time int) (*model.Teacher, error) {
-	return r.plexams.Invigilator(ctx, room, day, time)
-}
-
-// PrePlannedInvigilations is the resolver for the prePlannedInvigilations field.
-func (r *queryResolver) PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedInvigilation, error) {
-	return r.plexams.PrePlannedInvigilations(ctx)
 }
 
 // InvigilatorConstraints is the resolver for the invigilatorConstraints field.

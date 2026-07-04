@@ -1,6 +1,5 @@
 extend type Query {
   invigilatorTodos: InvigilationTodos
-  invigilatorsWithReq: [Invigilator!]!
   """
   invigilatorsExcludedByConfig returns the invigilators who would do invigilation
   duty (factor > 0) but are excluded only because isNotInvigilator is set in their
@@ -10,8 +9,6 @@ extend type Query {
   invigilatorsExcludedByConfig: [Invigilator!]!
   roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
   invigilatorsForDay(day: Int!): InvigilatorsForDay
-  invigilator(room: String!, day: Int!, time: Int!): Teacher
-  prePlannedInvigilations: [PrePlannedInvigilation!]!
   "Per-invigilator constraints stored in the DB (managed via the GUI): whether they do no invigilation at all, additional excluded whole days and time windows when they cannot invigilate. These are merged on top of the ZPA requirements."
   invigilatorConstraints: [InvigilatorConstraints!]!
   "Teachers who never do invigilation duty again (e.g. retired). Global (plexams DB), carries over between semesters; always implies isNotInvigilator."

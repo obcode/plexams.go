@@ -29,23 +29,3 @@ func (r *mutationResolver) SetExamsCanShareSlot(ctx context.Context, ancode1 int
 func (r *mutationResolver) RemoveExamsCanShareSlot(ctx context.Context, ancode1 int, ancode2 int) (bool, error) {
 	return r.plexams.RemoveExamsCanShareSlot(ctx, ancode1, ancode2)
 }
-
-// ExamScheduleConflicts is the resolver for the examScheduleConflicts field.
-func (r *queryResolver) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamScheduleConflict, error) {
-	return r.plexams.ExamScheduleConflicts(ctx)
-}
-
-// StudentConflictDecisions is the resolver for the studentConflictDecisions field.
-func (r *queryResolver) StudentConflictDecisions(ctx context.Context) ([]*model.StudentConflictDecision, error) {
-	return r.plexams.StudentConflictDecisions(ctx)
-}
-
-// ExamsCanShareSlot is the resolver for the examsCanShareSlot field.
-func (r *queryResolver) ExamsCanShareSlot(ctx context.Context) ([]*model.ExamPair, error) {
-	return r.plexams.ExamsCanShareSlot(ctx)
-}
-
-// CanShareSlotSuggestions is the resolver for the canShareSlotSuggestions field.
-func (r *queryResolver) CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPair, error) {
-	return r.plexams.CanShareSlotSuggestions(ctx)
-}

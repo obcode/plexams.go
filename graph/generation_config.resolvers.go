@@ -29,8 +29,3 @@ func (r *mutationResolver) SetGenerationConfig(ctx context.Context, input model.
 		WeightDaySpan:          input.WeightDaySpan,
 	})
 }
-
-// GenerationConfig is the resolver for the generationConfig field.
-func (r *queryResolver) GenerationConfig(ctx context.Context) (*model.GenerationConfig, error) {
-	return r.plexams.GenerationConfig(ctx)
-}

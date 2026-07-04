@@ -19,8 +19,3 @@ func (r *mutationResolver) SetExamDuration(ctx context.Context, ancode int, dura
 func (r *mutationResolver) RemoveExamDuration(ctx context.Context, ancode int) (bool, error) {
 	return r.plexams.RemoveExamDuration(ctx, ancode)
 }
-
-// ExamDurationOverrides is the resolver for the examDurationOverrides field.
-func (r *queryResolver) ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurationOverride, error) {
-	return r.plexams.ExamDurationOverrides(ctx)
-}

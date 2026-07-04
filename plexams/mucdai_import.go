@@ -2,16 +2,12 @@ package plexams
 
 import (
 	"context"
-	"encoding/csv"
 	"fmt"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
-	"unicode/utf8"
 
-	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/mucdai"
 	"github.com/rs/zerolog/log"
 )
 
@@ -28,7 +24,7 @@ const mucDaiPlannerFK07 = "FK07"
 // and generates the non-ZPA exams for all exams not planned by FK07 (assigning a
 // stable ancode to new ones). FK07 exams are left to the normal ZPA flow.
 func (p *Plexams) ImportMucDaiExams(ctx context.Context, csvText string) (*model.ImportMucDaiResult, error) {
-	byProgram, err := parseMucDaiCSV(csvText)
+	byProgram, err := mucdai.ParseCSV(csvText)
 	if err != nil {
 		return nil, err
 	}
@@ -199,137 +195,4 @@ func (p *Plexams) existingExternalByPrimuss(ctx context.Context) (map[primussKey
 		}
 	}
 	return m, maxAncode, nil
-}
-
-// mucDaiColumns maps the (normalized) CSV header names to the db.MucDaiExam fields.
-var mucDaiColumns = map[string]string{
-	"nr":               "ancode",
-	"modulname":        "module",
-	"prüfungsform":     "examType",
-	"pruefungsform":    "examType",
-	"bewertung":        "grading",
-	"dauer":            "duration",
-	"erstpruefender":   "mainExamer",
-	"erstprüfender":    "mainExamer",
-	"zweitpruefender":  "secondExamer",
-	"zweitprüfender":   "secondExamer",
-	"istwiederholung":  "isRepeater",
-	"studiengruppe":    "program",
-	"prüfungsplanung":  "planer",
-	"pruefungsplanung": "planer",
-}
-
-// parseMucDaiCSV parses the CSV text (comma/semicolon/tab auto-detected) into
-// db.MucDaiExam grouped by program (Studiengruppe).
-func parseMucDaiCSV(csvText string) (map[string][]*db.MucDaiExam, error) {
-	// MUC.DAI files are often ISO-8859-1; decode to UTF-8 if not already valid.
-	if !utf8.ValidString(csvText) {
-		csvText = latin1ToUTF8(csvText)
-	}
-	csvText = strings.TrimPrefix(csvText, "\ufeff") // strip BOM
-	firstLine := csvText
-	if i := strings.IndexAny(csvText, "\r\n"); i >= 0 {
-		firstLine = csvText[:i]
-	}
-	delim := detectDelimiter(firstLine)
-
-	reader := csv.NewReader(strings.NewReader(csvText))
-	reader.Comma = delim
-	reader.FieldsPerRecord = -1
-	// NB: do NOT set TrimLeadingSpace — with a whitespace delimiter (tab) it collapses
-	// empty fields between two tabs, shifting all later columns. Field values are
-	// trimmed in get() anyway.
-
-	rows, err := reader.ReadAll()
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse CSV: %w", err)
-	}
-	if len(rows) < 2 {
-		return nil, fmt.Errorf("CSV has no data rows")
-	}
-
-	// header -> column index (tolerating mongoimport type suffixes like ".int32()")
-	field2col := make(map[string]int)
-	for i, h := range rows[0] {
-		key := normalizeMucDaiHeader(h)
-		if field, ok := mucDaiColumns[key]; ok {
-			field2col[field] = i
-		}
-	}
-	if _, ok := field2col["ancode"]; !ok {
-		return nil, fmt.Errorf("CSV is missing the 'Nr' column")
-	}
-	if _, ok := field2col["program"]; !ok {
-		return nil, fmt.Errorf("CSV is missing the 'Studiengruppe' column")
-	}
-
-	get := func(row []string, field string) string {
-		if col, ok := field2col[field]; ok && col < len(row) {
-			return strings.TrimSpace(row[col])
-		}
-		return ""
-	}
-
-	byProgram := make(map[string][]*db.MucDaiExam)
-	for _, row := range rows[1:] {
-		ancodeStr := get(row, "ancode")
-		program := get(row, "program")
-		if ancodeStr == "" || program == "" {
-			continue
-		}
-		ancode, err := strconv.Atoi(ancodeStr)
-		if err != nil {
-			log.Debug().Str("nr", ancodeStr).Msg("skipping MUC.DAI row with non-numeric Nr")
-			continue
-		}
-		duration, _ := strconv.Atoi(get(row, "duration"))
-		byProgram[program] = append(byProgram[program], &db.MucDaiExam{
-			PrimussAncode:  ancode,
-			Module:         get(row, "module"),
-			ExamType:       get(row, "examType"),
-			Grading:        get(row, "grading"),
-			Duration:       duration,
-			MainExamer:     get(row, "mainExamer"),
-			SecondExamer:   get(row, "secondExamer"),
-			IsRepeaterExam: get(row, "isRepeater"),
-			Program:        program,
-			Planer:         get(row, "planer"),
-		})
-	}
-	return byProgram, nil
-}
-
-// mucDaiHeaderTypeSuffix matches a mongoimport type suffix, e.g. ".int32()" in
-// "Nr.int32()" or ".string()" in "Modulname.string()".
-var mucDaiHeaderTypeSuffix = regexp.MustCompile(`\.\w+\(\)\s*$`)
-
-// normalizeMucDaiHeader lowercases a header and strips a mongoimport type suffix, so
-// both "Nr" and "Nr.int32()" map to "nr".
-func normalizeMucDaiHeader(h string) string {
-	h = mucDaiHeaderTypeSuffix.ReplaceAllString(strings.TrimSpace(h), "")
-	return strings.ToLower(strings.TrimSpace(h))
-}
-
-// latin1ToUTF8 decodes ISO-8859-1 bytes to a UTF-8 string (each byte is a code point).
-func latin1ToUTF8(s string) string {
-	runes := make([]rune, 0, len(s))
-	for _, b := range []byte(s) {
-		runes = append(runes, rune(b))
-	}
-	return string(runes)
-}
-
-// detectDelimiter picks the most frequent of ';' '\t' ',' in the header line.
-func detectDelimiter(headerLine string) rune {
-	semicolons := strings.Count(headerLine, ";")
-	tabs := strings.Count(headerLine, "\t")
-	commas := strings.Count(headerLine, ",")
-	switch {
-	case semicolons >= commas && semicolons >= tabs && semicolons > 0:
-		return ';'
-	case tabs >= commas && tabs > 0:
-		return '\t'
-	default:
-		return ','
-	}
 }

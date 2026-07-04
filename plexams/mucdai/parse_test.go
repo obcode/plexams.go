@@ -1,4 +1,4 @@
-package plexams
+package mucdai
 
 import "testing"
 
@@ -8,7 +8,7 @@ func TestParseMucDaiCSVSemicolonAndUmlauts(t *testing.T) {
 		"34;Physik;schriftlich;120;Prof B;x;DE;FK03\n" +
 		"56;Info;mündlich;30;Prof C;;ID;FK12\n"
 
-	byProgram, err := parseMucDaiCSV(csv)
+	byProgram, err := ParseCSV(csv)
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestParseMucDaiCSVRealTabTypedHeader(t *testing.T) {
 		"112\tElektrotechnik\tschrP\tbenotet\t60\tPalme, Frank\tKüpper, Tilman\tx\tDE\tFK03\n" +
 		"301\tStatistik und Stochastik\tschrP\tbenotet\t60\tShao, Shuai\tBrockhaus, Sarah\tx\tID\tFK07\n"
 
-	byProgram, err := parseMucDaiCSV(csv)
+	byProgram, err := ParseCSV(csv)
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestParseMucDaiCSVLatin1(t *testing.T) {
 	// "Prüfungsform" / "mündlich" as ISO-8859-1 (ü = 0xFC)
 	latin1 := "Nr;Modulname;Pr\xfcfungsform;Studiengruppe;Pr\xfcfungsplanung\n" +
 		"5;M\xfcndliche;m\xfcndlich;DE;FK07\n"
-	byProgram, err := parseMucDaiCSV(latin1)
+	byProgram, err := ParseCSV(latin1)
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestParseMucDaiCSVCommaAndMissingNr(t *testing.T) {
 		",NoNr,GS,FK08\n" + // skipped (no Nr)
 		"abc,BadNr,GS,FK08\n" // skipped (non-numeric)
 
-	byProgram, err := parseMucDaiCSV(csv)
+	byProgram, err := ParseCSV(csv)
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestParseMucDaiCSVCommaAndMissingNr(t *testing.T) {
 }
 
 func TestParseMucDaiCSVMissingRequiredColumn(t *testing.T) {
-	if _, err := parseMucDaiCSV("Modulname,Studiengruppe\nMathe,DE\n"); err == nil {
+	if _, err := ParseCSV("Modulname,Studiengruppe\nMathe,DE\n"); err == nil {
 		t.Error("expected error for missing Nr column")
 	}
 }
@@ -103,7 +103,7 @@ func TestParseMucDaiCSVEmptyFieldTabSeparated(t *testing.T) {
 		"221\tMathematische Methoden\tschrP\tbenotet\t90\tBrockhaus, Sarah\tHögele, Wolfgang\t\tID\tFK07\n" +
 		"301\tStatistik und Stochastik\tschrP\tbenotet\t60\tShao, Shuai\tBrockhaus, Sarah\tx\tID\tFK07\n"
 
-	byProgram, err := parseMucDaiCSV(csv)
+	byProgram, err := ParseCSV(csv)
 	if err != nil {
 		t.Fatal(err)
 	}

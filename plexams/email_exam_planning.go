@@ -3,110 +3,35 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/email"
 	"github.com/rs/zerolog/log"
 )
-
-// fk07 is the faculty marker (Teacher.FK) of FK07 examers.
-const fk07 = "FK07"
 
 // ExamPlanningMailRecipients computes the recipients of the consolidated exam-planning
 // info email: one entry per examer with at least one exam I plan (toPlan and not
 // notPlannedByMe, any faculty) listing those exams, plus the active FK07 examers I plan
 // nothing for. Examers of other faculties without a planned exam are excluded. No
-// slot/date is included. Used as the pre-step so the planner can select/deselect.
+// slot/date is included. Used as the pre-step so the planner can select/deselect. Fetches
+// the inputs; the pure grouping/sorting lives in email.BuildExamPlanningRecipients.
 func (p *Plexams) ExamPlanningMailRecipients(ctx context.Context) ([]*model.ExamPlanningMailRecipient, error) {
 	withConstraints, err := p.ZpaExamsToPlanWithConstraints(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	// planned-by-me exams grouped by main examer
-	type group struct {
-		name  string
-		exams []*model.ExamPlanningMailExam
-	}
-	byExamer := make(map[int]*group)
-	for _, ewc := range withConstraints {
-		if ewc.Constraints != nil && ewc.Constraints.NotPlannedByMe {
-			continue
-		}
-		ze := ewc.ZpaExam
-		g := byExamer[ze.MainExamerID]
-		if g == nil {
-			g = &group{name: ze.MainExamer}
-			byExamer[ze.MainExamerID] = g
-		}
-		g.exams = append(g.exams, &model.ExamPlanningMailExam{
-			Ancode:      ze.AnCode,
-			Module:      ze.Module,
-			ExamType:    ze.ExamTypeFull,
-			Constraints: ewc.Constraints,
-		})
-	}
-
 	fromZPA := false
 	teachers, err := p.GetTeachers(ctx, &fromZPA)
 	if err != nil {
 		return nil, err
 	}
-	teacherByID := make(map[int]*model.Teacher, len(teachers))
-	for _, t := range teachers {
-		teacherByID[t.ID] = t
-	}
-
-	// which examers have at least one exam in the current ZPA data at all
 	allExams, err := p.GetZPAExams(ctx, &fromZPA)
 	if err != nil {
 		return nil, err
 	}
-	hasExam := make(map[int]bool)
-	for _, e := range allExams {
-		hasExam[e.MainExamerID] = true
-	}
-
-	recipients := make([]*model.ExamPlanningMailRecipient, 0)
-
-	// examers with exams I plan (any faculty)
-	for id, g := range byExamer {
-		teacher := teacherByID[id]
-		if teacher == nil {
-			// examer not in the teachers master data (e.g. external) — minimal stub so
-			// the recipient still shows; the GUI flags the missing email.
-			teacher = &model.Teacher{ID: id, Fullname: g.name}
-		}
-		sort.Slice(g.exams, func(i, j int) bool { return g.exams[i].Ancode < g.exams[j].Ancode })
-		recipients = append(recipients, &model.ExamPlanningMailRecipient{
-			Teacher:  teacher,
-			Category: "withExams",
-			Exams:    g.exams,
-		})
-	}
-
-	// FK07 examers who have ZPA exam(s) this semester but none that I plan
-	for _, t := range teachers {
-		if t.FK == fk07 && hasExam[t.ID] && byExamer[t.ID] == nil {
-			recipients = append(recipients, &model.ExamPlanningMailRecipient{
-				Teacher:  t,
-				Category: "fk07NoExams",
-				Exams:    []*model.ExamPlanningMailExam{},
-			})
-		}
-	}
-
-	// withExams first, then fk07NoExams; each alphabetically by name
-	sort.SliceStable(recipients, func(i, j int) bool {
-		if recipients[i].Category != recipients[j].Category {
-			return recipients[i].Category == "withExams"
-		}
-		return recipients[i].Teacher.Fullname < recipients[j].Teacher.Fullname
-	})
-
-	return recipients, nil
+	return email.BuildExamPlanningRecipients(withConstraints, teachers, allExams), nil
 }
 
 // examPlanningInfoMailData is the template data for one recipient.

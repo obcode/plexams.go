@@ -1,6 +1,41 @@
 package invigplan
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
+
+func TestDistributionSortedCountsAndString(t *testing.T) {
+	d := Distribution{Kind: KindReserve, ByCount: map[int]int{2: 17, 0: 4, 1: 48}, Total: 82, Max: 2}
+	if got := d.SortedCounts(); !reflect.DeepEqual(got, []int{0, 1, 2}) {
+		t.Errorf("SortedCounts = %v, want [0 1 2]", got)
+	}
+	if got := d.String(); got != "0:4  1:48  2:17" {
+		t.Errorf("String = %q, want %q", got, "0:4  1:48  2:17")
+	}
+	// empty distribution
+	if got := (Distribution{ByCount: map[int]int{}}).String(); got != "" {
+		t.Errorf("empty String = %q, want empty", got)
+	}
+}
+
+func TestResultSortedCosts(t *testing.T) {
+	r := Result{CostByConstraint: map[string]float64{
+		"minuteBalance": 1200,
+		"coverage":      0, // filtered out (not > 0)
+		"timeGap":       300,
+		"maxDays":       800,
+	}}
+	got := r.SortedCosts()
+	want := []CostItem{
+		{Name: "minuteBalance", Cost: 1200},
+		{Name: "maxDays", Cost: 800},
+		{Name: "timeGap", Cost: 300},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("SortedCosts = %+v, want %+v", got, want)
+	}
+}
 
 // deviationProblem builds a problem with six 90-minute positions and four invigilators
 // whose targets let us drive precise deviations from a plan.

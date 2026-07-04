@@ -19,3 +19,4 @@
 - [email markdown templates](email-markdown-templates.md) — all email bodies single-source Markdown via renderMarkdownEmail; text+HTML no longer duplicated; golden tests; next: DB-editable + email package.
 - [plexams decomposition](plexams-decomposition.md) — marathon to split the god-package; net-first then peel concerns; no clean leaf; slice 0 (anny char. tests) done.
 - [mongotest without docker](mongotest-without-docker.md) — run integration tests via a downloaded standalone mongod + PLEXAMS_TEST_MONGO_URI when Docker is absent.
+- [GraphQL interface cleanup](graphql-interface-cleanup.md) — schema audited vs GUI usage & fully trimmed (all unused queries+mutations gone, 3 validators wired into GUI); done, on main.

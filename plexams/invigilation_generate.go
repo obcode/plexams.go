@@ -262,57 +262,27 @@ func fairnessModel(d invigplan.Distribution) *model.FairnessDistribution {
 // furthest from their target *relative to their workload*, so low-workload
 // people that are still far off (especially under target) are easy to spot.
 func printDeviationOutliers(reporter Reporter, problem *invigplan.Problem, plan *invigplan.Plan) []*model.InvigilatorOutlier {
-	type devInfo struct {
-		id, doing, target, dev int
-		rel                    float64
-	}
-	devs := make([]devInfo, 0, len(problem.Invigilators))
-	for i := range problem.Invigilators {
-		in := &problem.Invigilators[i]
-		doing := plan.DoingMinutes(in.ID)
-		dev := doing - in.TargetMinutes
-		if dev == 0 {
-			continue
-		}
-		scale := in.TargetMinutes
-		if scale < problem.ToleranceMin {
-			scale = problem.ToleranceMin
-		}
-		d := dev
-		if d < 0 {
-			d = -d
-		}
-		devs = append(devs, devInfo{in.ID, doing, in.TargetMinutes, dev, float64(d) / float64(scale)})
-	}
+	devs := problem.DeviationOutliers(plan, 5)
 	if len(devs) == 0 {
 		return nil
 	}
-	sort.Slice(devs, func(i, j int) bool { return devs[i].rel > devs[j].rel })
 
 	reporter.Printf("  %s %s\n", reportLabel("outliers"),
 		aurora.Gray(12, "(noch offen = target − done, relative to workload; negative = did too much)"))
-	outliers := make([]*model.InvigilatorOutlier, 0, 5)
-	for i, d := range devs {
-		if i >= 5 {
-			break
-		}
-		open := -d.dev // "noch offen" = target − done
-		pct := 0.0
-		if d.target > 0 {
-			pct = float64(open) / float64(d.target) * 100
-		}
-		line := fmt.Sprintf("invig %d: %d/%d min, noch offen %+d (%+.0f%%)", d.id, d.doing, d.target, open, pct)
-		if open < 0 { // did too much – the side we now penalize harder
+	outliers := make([]*model.InvigilatorOutlier, 0, len(devs))
+	for _, d := range devs {
+		line := fmt.Sprintf("invig %d: %d/%d min, noch offen %+d (%+.0f%%)", d.InvigilatorID, d.Doing, d.Target, d.Open, d.Percent)
+		if d.Open < 0 { // did too much – the side we now penalize harder
 			reporter.Printf("    %s\n", aurora.Yellow(line))
 		} else {
 			reporter.Printf("    %s\n", aurora.Gray(16, line))
 		}
 		outliers = append(outliers, &model.InvigilatorOutlier{
-			InvigilatorID: d.id,
-			Doing:         d.doing,
-			Target:        d.target,
-			Open:          open,
-			Percent:       pct,
+			InvigilatorID: d.InvigilatorID,
+			Doing:         d.Doing,
+			Target:        d.Target,
+			Open:          d.Open,
+			Percent:       d.Percent,
 		})
 	}
 	return outliers

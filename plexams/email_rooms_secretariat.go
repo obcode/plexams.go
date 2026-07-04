@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/email"
 )
 
 // SecretariatRoomsEmail is the data for the rooms-occupancy email to the
@@ -105,11 +106,10 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 		merged := mergeRoomIntervals(intervalsByRoom[name])
 		emailRoom := &roomRequestEmailRoom{Room: name}
 		for _, iv := range merged {
-			date := fmt.Sprintf("%s, %s", weekdayShortDE[int(iv.start.Weekday())], iv.start.Format("02.01.2006"))
-			day := lastDay(emailRoom, date)
+			day := lastDay(emailRoom, email.DateDE(iv.start))
 			day.Times = append(day.Times, &roomRequestEmailTime{
-				From:  iv.start.Format("15:04"),
-				Until: iv.end.Format("15:04"),
+				From:  email.TimeDE(iv.start),
+				Until: email.TimeDE(iv.end),
 			})
 		}
 		rooms = append(rooms, emailRoom)

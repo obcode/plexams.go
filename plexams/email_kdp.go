@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jszwec/csvutil"
+	"github.com/obcode/plexams.go/plexams/email"
 )
 
 // kdpExamInRoom is one EXaHM/SEB exam's allocation in one room in one slot.
@@ -166,8 +167,8 @@ func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, []
 		sort.Strings(roomNames)
 
 		es := &kdpSlot{
-			Date:  fmt.Sprintf("%s, %s", weekdayShortDE[int(start.Weekday())], start.Format("02.01.2006")),
-			Time:  start.Format("15:04"),
+			Date:  email.DateDE(start),
+			Time:  email.TimeDE(start),
 			start: start,
 			Rooms: make([]*kdpRoom, 0, len(roomNames)),
 		}
@@ -219,9 +220,9 @@ func (p *Plexams) buildKdpData(ctx context.Context) (*KdpEmail, []CsvKdpRoom, []
 				})
 
 				csvRows = append(csvRows, CsvKdpRoom{
-					Tag:         weekdayShortDE[int(start.Weekday())],
+					Tag:         email.WeekdayDE(start),
 					Datum:       start.Format("02.01.2006"),
-					Beginn:      start.Format("15:04"),
+					Beginn:      email.TimeDE(start),
 					Raum:        roomName,
 					Ancode:      ancode,
 					Modul:       m.module,

@@ -8,6 +8,7 @@ import (
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/email"
 	"github.com/rs/zerolog/log"
 )
 
@@ -200,8 +201,8 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 				Exam:        exam,
 				Room:        room,
 				Invigilator: invigilator,
-				Date:        fmt.Sprintf("%s, %s", weekdayShortDE[int(start.Weekday())], start.Format("02.01.2006")),
-				Time:        start.Format("15:04"),
+				Date:        email.DateDE(start),
+				Time:        email.TimeDE(start),
 				Waiver:      waiverReasons[ntaExamKey{nta.Mtknr, exam.Ancode}],
 			})
 		}

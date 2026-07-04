@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/email"
 	"github.com/rs/zerolog/log"
 )
 
@@ -149,8 +150,8 @@ func (p *Plexams) buildPublishedRoomsExam(ctx context.Context, exam *model.Plann
 	return &publishedRoomsExam{
 		Ancode: exam.Ancode,
 		Module: module,
-		Date:   fmt.Sprintf("%s, %s", weekdayShortDE[int(start.Weekday())], start.Format("02.01.2006")),
-		Time:   start.Format("15:04"),
+		Date:   email.DateDE(start),
+		Time:   email.TimeDE(start),
 		start:  start,
 		Rooms:  rooms,
 	}

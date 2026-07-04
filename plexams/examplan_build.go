@@ -254,7 +254,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		if pinnedSlot >= 0 {
 			u.Allowed = []int{pinnedSlot} // pinned to the fixed sameSlot partner's slot
 		} else {
-			u.Allowed = intersectAllowed(allowedSets)
+			u.Allowed = examplan.IntersectAllowed(allowedSets)
 		}
 		// warm-start slot = this exam's current plan entry (if any)
 		u.StartSlot = -1
@@ -366,7 +366,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			}
 		}
 		for u := range mucDaiUnit {
-			inter := intersectSlots(units[u].Allowed, mucDaiSlotIdx)
+			inter := examplan.IntersectSlots(units[u].Allowed, mucDaiSlotIdx)
 			if len(inter) == 0 {
 				inter = []int{-1} // no MUC.DAI slot fits its other constraints → unplaceable (reported)
 			}
@@ -430,53 +430,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	sort.Slice(students, func(i, j int) bool { return students[i].ID < students[j].ID })
 
 	// --- attract pairs ---
-	attractSet := make(map[[2]int]bool)
-	addAttract := func(a, b int) {
-		if a == b {
-			return
-		}
-		if a > b {
-			a, b = b, a
-		}
-		attractSet[[2]int{a, b}] = true
-	}
-	byModProg := make(map[string][]int)
-	byExamer := make(map[int][]int)
-	for i := range units {
-		if units[i].Fixed {
-			continue
-		}
-		byModProg[units[i].Module+"|"+units[i].Program] = append(byModProg[units[i].Module+"|"+units[i].Program], i)
-		if units[i].Seats <= smallExamThreshold && units[i].Examer != 0 {
-			byExamer[units[i].Examer] = append(byExamer[units[i].Examer], i)
-		}
-	}
-	for _, list := range byModProg { // parallel sections: same module+program, different examer
-		for i := 0; i < len(list); i++ {
-			for j := i + 1; j < len(list); j++ {
-				if units[list[i]].Examer != units[list[j]].Examer {
-					addAttract(list[i], list[j])
-				}
-			}
-		}
-	}
-	for _, list := range byExamer { // small exams of the same examer
-		for i := 0; i < len(list); i++ {
-			for j := i + 1; j < len(list); j++ {
-				addAttract(list[i], list[j])
-			}
-		}
-	}
-	attract := make([]examplan.AttractPair, 0, len(attractSet))
-	for k := range attractSet {
-		attract = append(attract, examplan.AttractPair{A: k[0], B: k[1], Weight: 1})
-	}
-	sort.Slice(attract, func(i, j int) bool {
-		if attract[i].A != attract[j].A {
-			return attract[i].A < attract[j].A
-		}
-		return attract[i].B < attract[j].B
-	})
+	attract := examplan.AttractPairs(units, smallExamThreshold)
 
 	// --- consecutive-exam gap (hard): a student needs a travel/break buffer between two
 	// of their exams; an NTA time extension eats into it. If a student's occupied time
@@ -791,27 +745,6 @@ func (p *Plexams) ExamScheduleConstraints() []optimize.Info {
 	return prob.Registry().Describe()
 }
 
-// intersectSlots returns the slot indices in both a and b. An empty a means "all slots
-// allowed", so the result is b. The result may be empty (no overlap).
-func intersectSlots(a, b []int) []int {
-	if len(a) == 0 {
-		out := make([]int, len(b))
-		copy(out, b)
-		return out
-	}
-	set := make(map[int]bool, len(b))
-	for _, x := range b {
-		set[x] = true
-	}
-	out := make([]int, 0)
-	for _, x := range a {
-		if set[x] {
-			out = append(out, x)
-		}
-	}
-	return out
-}
-
 func locationOf(c *model.Constraints) string {
 	if c != nil && c.Location != nil {
 		return *c.Location
@@ -826,38 +759,4 @@ func firstProgram(e *model.AssembledExam) string {
 		}
 	}
 	return ""
-}
-
-// intersectAllowed intersects the allowed-slot index sets of a same-slot group's
-// members. An empty set means "all slots"; the result is nil ("all") when no member
-// restricts.
-func intersectAllowed(sets [][]int) []int {
-	var acc map[int]bool
-	for _, s := range sets {
-		if len(s) == 0 {
-			continue
-		}
-		m := make(map[int]bool, len(s))
-		for _, x := range s {
-			m[x] = true
-		}
-		if acc == nil {
-			acc = m
-			continue
-		}
-		for k := range acc {
-			if !m[k] {
-				delete(acc, k)
-			}
-		}
-	}
-	if acc == nil {
-		return nil
-	}
-	out := make([]int, 0, len(acc))
-	for k := range acc {
-		out = append(out, k)
-	}
-	sort.Ints(out)
-	return out
 }

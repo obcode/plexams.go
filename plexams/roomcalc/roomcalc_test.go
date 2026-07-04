@@ -99,3 +99,58 @@ func TestSatisfiesConstraints(t *testing.T) {
 		})
 	}
 }
+
+func strptr(s string) *string { return &s }
+
+func TestSortPrePlannedRooms(t *testing.T) {
+	roomInfo := map[string]*model.Room{
+		"A": {Name: "A", Seats: 10},
+		"B": {Name: "B", Seats: 30},
+		"C": {Name: "C", Seats: 20},
+		"N": {Name: "N", Seats: 5},
+		"R": {Name: "R", Seats: 40},
+	}
+	rooms := []*model.PrePlannedRoom{
+		{RoomName: "A"},                      // normal, 10 seats
+		{RoomName: "R", Reserve: true},       // reserve -> last
+		{RoomName: "N", Mtknr: strptr("m1")}, // NTA -> first
+		{RoomName: "B"},                      // normal, 30 seats
+		{RoomName: "C"},                      // normal, 20 seats
+	}
+	SortPrePlannedRooms(rooms, roomInfo)
+	got := make([]string, len(rooms))
+	for i, r := range rooms {
+		got[i] = r.RoomName
+	}
+	want := []string{"N", "B", "C", "A", "R"} // NTA first, then non-reserve by seats desc, reserve last
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("SortPrePlannedRooms order = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestExamRegsAndNTAs(t *testing.T) {
+	exam := &model.PlannedExam{
+		Ntas: []*model.NTA{
+			{Mtknr: "m1", NeedsRoomAlone: true},
+			{Mtknr: "m2", NeedsRoomAlone: false},
+		},
+		PrimussExams: []*model.EnhancedPrimussExam{
+			{StudentRegs: []*model.EnhancedStudentReg{{Mtknr: "m1"}, {Mtknr: "m3"}}},
+			{StudentRegs: []*model.EnhancedStudentReg{{Mtknr: "m2"}, {Mtknr: "m4"}}},
+		},
+	}
+	normalRegs, ntasNormal, ntasAlone := ExamRegsAndNTAs(exam)
+
+	wantNormal := []string{"m3", "m4"} // m1, m2 excluded (NTAs); section then reg order preserved
+	if len(normalRegs) != 2 || normalRegs[0] != wantNormal[0] || normalRegs[1] != wantNormal[1] {
+		t.Errorf("normalRegs = %v, want %v", normalRegs, wantNormal)
+	}
+	if len(ntasAlone) != 1 || ntasAlone[0].Mtknr != "m1" {
+		t.Errorf("ntasAlone = %v, want [m1]", ntasAlone)
+	}
+	if len(ntasNormal) != 1 || ntasNormal[0].Mtknr != "m2" {
+		t.Errorf("ntasNormal = %v, want [m2]", ntasNormal)
+	}
+}

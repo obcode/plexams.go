@@ -6,6 +6,8 @@
 package roomcalc
 
 import (
+	"sort"
+
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 )
@@ -94,4 +96,59 @@ func SatisfiesConstraints(room *model.Room, constraints *model.Constraints) bool
 	}
 
 	return true
+}
+
+// SortPrePlannedRooms orders an exam's pre-planned rooms into fill order, in place: NTA
+// rooms (Mtknr != nil) first (keeping their relative input order), then the non-reserve
+// rooms by descending seat count, then the reserve rooms last (keeping their relative input
+// order). roomInfo provides the seat counts for the non-reserve ordering.
+func SortPrePlannedRooms(rooms []*model.PrePlannedRoom, roomInfo map[string]*model.Room) {
+	sort.Slice(rooms, func(i, j int) bool {
+		// First priority: rooms with Mtknr != nil come first.
+		if (rooms[i].Mtknr != nil) != (rooms[j].Mtknr != nil) {
+			return rooms[i].Mtknr != nil
+		}
+		// If both have Mtknr != nil, keep original order.
+		if rooms[i].Mtknr != nil && rooms[j].Mtknr != nil {
+			return false
+		}
+		// Last priority: reserve rooms come last.
+		if rooms[i].Reserve != rooms[j].Reserve {
+			return !rooms[i].Reserve
+		}
+		// Both non-reserve: sort by seats (descending).
+		if !rooms[i].Reserve && !rooms[j].Reserve {
+			return roomInfo[rooms[i].RoomName].Seats > roomInfo[rooms[j].RoomName].Seats
+		}
+		// Keep original order for reserve rooms.
+		return false
+	})
+}
+
+// ExamRegsAndNTAs partitions an exam's registrations for the room allocation: the NTAs are
+// split into those needing a room alone and those going into normal rooms; normalRegs holds
+// the Mtknrs of all non-NTA student registrations across the exam's Primuss sections, in
+// section then registration order.
+func ExamRegsAndNTAs(exam *model.PlannedExam) (normalRegs []string, ntasInNormalRooms, ntasInAloneRooms []*model.NTA) {
+	ntaMtknrs := set.NewSet[string]()
+	ntasInNormalRooms = make([]*model.NTA, 0)
+	ntasInAloneRooms = make([]*model.NTA, 0)
+	for _, nta := range exam.Ntas {
+		ntaMtknrs.Add(nta.Mtknr)
+		if nta.NeedsRoomAlone {
+			ntasInAloneRooms = append(ntasInAloneRooms, nta)
+		} else {
+			ntasInNormalRooms = append(ntasInNormalRooms, nta)
+		}
+	}
+
+	normalRegs = make([]string, 0)
+	for _, primussExam := range exam.PrimussExams {
+		for _, studentReg := range primussExam.StudentRegs {
+			if !ntaMtknrs.Contains(studentReg.Mtknr) {
+				normalRegs = append(normalRegs, studentReg.Mtknr)
+			}
+		}
+	}
+	return normalRegs, ntasInNormalRooms, ntasInAloneRooms
 }

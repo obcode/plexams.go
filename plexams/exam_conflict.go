@@ -7,6 +7,7 @@ import (
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/conflictcalc"
+	"github.com/obcode/plexams.go/plexams/repeatcalc"
 )
 
 // StudentConflictDecisions returns all stored explicit per-student decisions.
@@ -180,7 +181,7 @@ func (p *Plexams) examInfoMap(ctx context.Context) map[int]examInfo {
 		}
 		m[e.Ancode] = examInfo{
 			module: e.ZpaExam.Module, examer: e.ZpaExam.MainExamer, groups: groups,
-			repeater: e.ZpaExam.IsRepeaterExam, minSem: minGroupSemester(e.ZpaExam.Groups),
+			repeater: e.ZpaExam.IsRepeaterExam, minSem: repeatcalc.MinGroupSemester(e.ZpaExam.Groups),
 		}
 	}
 	return m
@@ -304,8 +305,8 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		}
 		affected := make([]*model.ConflictStudent, 0, len(a.students))
 		for _, s := range a.students {
-			studSem := semesterOf(s.group)
-			autoAccepted := shareable || repeatForStudent(studSem, i0.repeater, i0.minSem) || repeatForStudent(studSem, i1.repeater, i1.minSem)
+			studSem := repeatcalc.SemesterOf(s.group)
+			autoAccepted := shareable || repeatcalc.RepeatForStudent(studSem, i0.repeater, i0.minSem) || repeatcalc.RepeatForStudent(studSem, i1.repeater, i1.minSem)
 			cs := &model.ConflictStudent{Mtknr: s.mtknr, Name: s.name, Program: s.program, Group: s.group, AutoAccepted: autoAccepted}
 			if d, ok := decs[s.mtknr]; ok {
 				dd := d

@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/conflictcalc"
 	"github.com/obcode/plexams.go/plexams/examplan"
 	"github.com/obcode/plexams.go/plexams/optimize"
+	"github.com/obcode/plexams.go/plexams/repeatcalc"
 	"github.com/rs/zerolog/log"
 )
 
@@ -240,7 +240,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			if e.ZpaExam.IsRepeaterExam {
 				repeater = true
 			}
-			if s := minGroupSemester(e.ZpaExam.Groups); s > 0 && (minSem == 0 || s < minSem) {
+			if s := repeatcalc.MinGroupSemester(e.ZpaExam.Groups); s > 0 && (minSem == 0 || s < minSem) {
 				minSem = s
 			}
 			allowedSets = append(allowedSets, rec[a].allowed)
@@ -283,7 +283,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		})
 		unitOf[a] = idx
 		unitRepeater = append(unitRepeater, r.e.ZpaExam.IsRepeaterExam)
-		unitSemester = append(unitSemester, minGroupSemester(r.e.ZpaExam.Groups))
+		unitSemester = append(unitSemester, repeatcalc.MinGroupSemester(r.e.ZpaExam.Groups))
 	}
 
 	// --- conflict ratings & canShareSlot (keyed by unit pair) ---
@@ -395,7 +395,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			continue
 		}
 		sort.Ints(list)
-		studSem := semesterOf(s.Group)
+		studSem := repeatcalc.SemesterOf(s.Group)
 		var pairs []examplan.Pair
 		for i := 0; i < len(list); i++ {
 			for j := i + 1; j < len(list); j++ {
@@ -407,8 +407,8 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 				if canShare[up] {
 					continue // declared shareable: drop hard + soft entirely
 				}
-				isRepeat := repeatForStudent(studSem, unitRepeater[a], unitSemester[a]) ||
-					repeatForStudent(studSem, unitRepeater[b], unitSemester[b])
+				isRepeat := repeatcalc.RepeatForStudent(studSem, unitRepeater[a], unitSemester[a]) ||
+					repeatcalc.RepeatForStudent(studSem, unitRepeater[b], unitSemester[b])
 				weight := 1.0
 				switch dec := decisions[s.Mtknr][up]; {
 				case dec == model.ConflictDecisionAccept:
@@ -789,46 +789,6 @@ func maxInt(a, b int) int {
 func (p *Plexams) ExamScheduleConstraints() []optimize.Info {
 	prob := &examplan.Problem{W: examplan.DefaultWeights()}
 	return prob.Registry().Describe()
-}
-
-// repeatForStudent reports whether an exam is (likely) a repeat for a student: the
-// exam is flagged a repeater, or the student's semester is higher than the exam's
-// (a heuristic via study-group numbers; not fully reliable).
-func repeatForStudent(studentSemester int, examRepeater bool, examSemester int) bool {
-	if examRepeater {
-		return true
-	}
-	return studentSemester > 0 && examSemester > 0 && studentSemester > examSemester
-}
-
-// minGroupSemester returns the smallest semester number found in the exam's groups
-// (e.g. "IF2A" -> 2), or 0 if none.
-func minGroupSemester(groups []string) int {
-	min := 0
-	for _, g := range groups {
-		if s := semesterOf(g); s > 0 && (min == 0 || s < min) {
-			min = s
-		}
-	}
-	return min
-}
-
-// semesterOf extracts the first run of digits from a study-group code (e.g. "IF4B"
-// -> 4), or 0 if none.
-func semesterOf(group string) int {
-	start := strings.IndexFunc(group, func(r rune) bool { return r >= '0' && r <= '9' })
-	if start < 0 {
-		return 0
-	}
-	end := start
-	for end < len(group) && group[end] >= '0' && group[end] <= '9' {
-		end++
-	}
-	n := 0
-	for _, c := range group[start:end] {
-		n = n*10 + int(c-'0')
-	}
-	return n
 }
 
 // intersectSlots returns the slot indices in both a and b. An empty a means "all slots

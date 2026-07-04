@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/conflictcalc"
 	"github.com/obcode/plexams.go/plexams/examplan"
 	"github.com/obcode/plexams.go/plexams/optimize"
 	"github.com/rs/zerolog/log"
@@ -658,7 +659,7 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 		// diff against the currently saved plan (computed before any write below), so the
 		// GUI can show which conflicts are new / gone / worse / better after this run.
 		if saved, err := p.ExamScheduleConflicts(ctx); err == nil {
-			result.ResolvedConflicts = diffConflictsAgainstSaved(result.Conflicts, saved)
+			result.ResolvedConflicts = conflictcalc.DiffAgainstSaved(result.Conflicts, saved)
 		} else {
 			log.Error().Err(err).Msg("cannot compute saved-plan conflicts for diff")
 		}

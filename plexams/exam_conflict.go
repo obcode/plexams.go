@@ -3,69 +3,11 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"math"
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/conflictcalc"
 )
-
-// normPair returns the two ancodes in ascending order (ratings/canShareSlot are stored
-// order-independently).
-func normPair(a, b int) (int, int) {
-	if a > b {
-		return b, a
-	}
-	return a, b
-}
-
-// proximityRank orders a conflict's proximity from worst (SAME_SLOT) to mildest, so two
-// plans' conflicts can be compared for "got worse / better".
-func proximityRank(proximity string) int {
-	switch proximity {
-	case "SAME_SLOT":
-		return 4
-	case "ADJACENT":
-		return 3
-	case "SAME_DAY":
-		return 2
-	}
-	return 0
-}
-
-// diffConflictsAgainstSaved tags each generated conflict with its status relative to the
-// saved-plan conflicts — "new", "worse", "better" or "unchanged" — and returns the
-// resolved ones (in the saved plan, gone in the generated one), tagged "resolved". Both
-// lists are keyed on the ancode pair (Ancode1 < Ancode2, as built by conflictsFromSlots).
-func diffConflictsAgainstSaved(generated, saved []*model.ExamScheduleConflict) []*model.ExamScheduleConflict {
-	savedByPair := make(map[[2]int]*model.ExamScheduleConflict, len(saved))
-	for _, c := range saved {
-		savedByPair[[2]int{c.Ancode1, c.Ancode2}] = c
-	}
-	seen := make(map[[2]int]bool, len(generated))
-	for _, c := range generated {
-		key := [2]int{c.Ancode1, c.Ancode2}
-		seen[key] = true
-		old, ok := savedByPair[key]
-		switch {
-		case !ok:
-			c.DiffStatus = "new"
-		case proximityRank(c.Proximity) > proximityRank(old.Proximity):
-			c.DiffStatus = "worse"
-		case proximityRank(c.Proximity) < proximityRank(old.Proximity):
-			c.DiffStatus = "better"
-		default:
-			c.DiffStatus = "unchanged"
-		}
-	}
-	resolved := make([]*model.ExamScheduleConflict, 0)
-	for _, c := range saved {
-		if !seen[[2]int{c.Ancode1, c.Ancode2}] {
-			c.DiffStatus = "resolved"
-			resolved = append(resolved, c)
-		}
-	}
-	return resolved
-}
 
 // StudentConflictDecisions returns all stored explicit per-student decisions.
 func (p *Plexams) StudentConflictDecisions(ctx context.Context) ([]*model.StudentConflictDecision, error) {
@@ -85,7 +27,7 @@ func (p *Plexams) SetStudentConflictDecision(ctx context.Context, ancode1, ancod
 	if !decision.IsValid() {
 		return false, fmt.Errorf("invalid decision %q", decision)
 	}
-	a, b := normPair(ancode1, ancode2)
+	a, b := conflictcalc.NormPair(ancode1, ancode2)
 	if err := p.dbClient.UpsertDecision(ctx, a, b, mtknr, string(decision)); err != nil {
 		return false, err
 	}
@@ -94,7 +36,7 @@ func (p *Plexams) SetStudentConflictDecision(ctx context.Context, ancode1, ancod
 
 // RemoveStudentConflictDecision clears an explicit decision (back to automatic handling).
 func (p *Plexams) RemoveStudentConflictDecision(ctx context.Context, ancode1, ancode2 int, mtknr string) (bool, error) {
-	a, b := normPair(ancode1, ancode2)
+	a, b := conflictcalc.NormPair(ancode1, ancode2)
 	return p.dbClient.DeleteDecision(ctx, a, b, mtknr)
 }
 
@@ -117,7 +59,7 @@ func (p *Plexams) SetExamsCanShareSlot(ctx context.Context, ancode1, ancode2 int
 	if ancode1 == ancode2 {
 		return false, fmt.Errorf("an exam always shares its own slot")
 	}
-	a, b := normPair(ancode1, ancode2)
+	a, b := conflictcalc.NormPair(ancode1, ancode2)
 	if err := p.dbClient.UpsertCanShareSlot(ctx, a, b); err != nil {
 		return false, err
 	}
@@ -126,7 +68,7 @@ func (p *Plexams) SetExamsCanShareSlot(ctx context.Context, ancode1, ancode2 int
 
 // RemoveExamsCanShareSlot undeclares a can-share-slot pair.
 func (p *Plexams) RemoveExamsCanShareSlot(ctx context.Context, ancode1, ancode2 int) (bool, error) {
-	a, b := normPair(ancode1, ancode2)
+	a, b := conflictcalc.NormPair(ancode1, ancode2)
 	return p.dbClient.DeleteCanShareSlot(ctx, a, b)
 }
 
@@ -160,7 +102,7 @@ func (p *Plexams) CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPai
 				if list[i].ZpaExam.MainExamerID == list[j].ZpaExam.MainExamerID {
 					continue
 				}
-				a, b := normPair(list[i].Ancode, list[j].Ancode)
+				a, b := conflictcalc.NormPair(list[i].Ancode, list[j].Ancode)
 				if existing[[2]int{a, b}] {
 					continue
 				}
@@ -251,29 +193,6 @@ func examPair(a, b int, info map[int]examInfo) *model.ExamPair {
 	}
 }
 
-// proximity rank/labels of two placed slots (higher = closer/worse); 0 = far enough
-// to not count as a conflict.
-func slotProximity(a, b *model.Slot) (int, string) {
-	if a.DayNumber == b.DayNumber {
-		switch absInt(a.SlotNumber - b.SlotNumber) {
-		case 0:
-			return 4, "SAME_SLOT"
-		case 1:
-			return 3, "ADJACENT"
-		default:
-			return 2, "SAME_DAY"
-		}
-	}
-	diff := a.Starttime.Sub(b.Starttime)
-	if diff < 0 {
-		diff = -diff
-	}
-	if int(math.Round(diff.Hours()/24)) == 1 {
-		return 1, "NEXT_DAY"
-	}
-	return 0, ""
-}
-
 // ExamScheduleConflicts computes the conflicts of the CURRENT plan (from the plan
 // entries): per student, pairs of their exams that ended up close in time. It
 // aggregates by exam pair (worst proximity, number of affected students) and annotates
@@ -325,7 +244,7 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		sort.Ints(placed)
 		for i := 0; i < len(placed); i++ {
 			for j := i + 1; j < len(placed); j++ {
-				rank, label := slotProximity(slotByAncode[placed[i]], slotByAncode[placed[j]])
+				rank, label := conflictcalc.SlotProximity(slotByAncode[placed[i]], slotByAncode[placed[j]])
 				if rank <= 1 {
 					continue // drop NEXT_DAY (and farther): always acceptable, handled by the objective
 				}
@@ -407,7 +326,7 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		out = append(out, c)
 	}
 	sort.Slice(out, func(i, j int) bool {
-		ri, rj := proxRank(out[i].Proximity), proxRank(out[j].Proximity)
+		ri, rj := conflictcalc.ProximityRank(out[i].Proximity), conflictcalc.ProximityRank(out[j].Proximity)
 		if ri != rj {
 			return ri > rj
 		}
@@ -417,18 +336,4 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		return out[i].Ancode1 < out[j].Ancode1
 	})
 	return out, nil
-}
-
-func proxRank(label string) int {
-	switch label {
-	case "SAME_SLOT":
-		return 4
-	case "ADJACENT":
-		return 3
-	case "SAME_DAY":
-		return 2
-	case "NEXT_DAY":
-		return 1
-	}
-	return 0
 }

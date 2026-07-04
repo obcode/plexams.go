@@ -1,10 +1,8 @@
 package plexams
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	txttmpl "text/template"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
@@ -149,63 +147,25 @@ func (p *Plexams) sendAssembledExamMailToTeacher(run bool, to string, assembledE
 	var attachments []*mailAttachment
 
 	if assembledExamMailData.HasStudentRegs {
-		attachments = make([]*mailAttachment, 0, 1)
-		var attachment *mailAttachment
+		csv := email.StudentRegsCSV(email.StudentRegsOfPrimussExams(assembledExamMailData.Exam.PrimussExams))
 
-		if assembledExamMailData.HasStudentRegs {
-			attachment = &mailAttachment{
+		md, err := email.RenderAssembledMarkdown(assembledExamMailData)
+		if err != nil {
+			return err
+		}
+
+		attachments = []*mailAttachment{
+			{
 				Filename:    fmt.Sprintf("Anmeldungen-%d.csv", assembledExamMailData.Exam.Ancode),
 				ContentType: "text/csv; charset=\"utf-8\"",
-				Content:     []byte("Mtknr;Name;Gender;E-Mail;Studiengang;Gruppe\n"),
-			}
-
-			for _, primussExam := range assembledExamMailData.Exam.PrimussExams {
-				for _, studentReg := range primussExam.StudentRegs {
-					// force Excel/Numbers to treat the field as text with leading zeros:
-					// write the Mtknr as an Excel formula: ="000123"
-					gender := ""
-					email := ""
-
-					if studentReg.ZpaStudent != nil {
-						gender = studentReg.ZpaStudent.Gender
-						email = studentReg.ZpaStudent.Email
-					}
-
-					attachment.Content = append(attachment.Content,
-						[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s;%s;%s\n",
-							studentReg.Mtknr,
-							studentReg.Name,
-							gender,
-							email,
-							studentReg.Program,
-							studentReg.Group,
-						))...)
-				}
-			}
-
+				Content:     csv,
+			},
+			{
+				Filename:    fmt.Sprintf("Anmeldungen-%d.md", assembledExamMailData.Exam.Ancode),
+				ContentType: "text/plain; charset=\"utf-8\"",
+				Content:     md,
+			},
 		}
-		attachments = append(attachments, attachment)
-
-		mdSource, err := email.EmbeddedSource("assembledExamMarkdown.tmpl")
-		if err != nil {
-			return err
-		}
-		mdTmpl, err := txttmpl.New("assembledExamMarkdown.tmpl").
-			Funcs(txttmpl.FuncMap{"add": func(a, b int) int { return a + b }}).Parse(mdSource)
-		if err != nil {
-			return err
-		}
-		bufMD := new(bytes.Buffer)
-		if err := mdTmpl.Execute(bufMD, assembledExamMailData); err != nil {
-			return err
-		}
-
-		attachment = &mailAttachment{
-			Filename:    fmt.Sprintf("Anmeldungen-%d.md", assembledExamMailData.Exam.Ancode),
-			ContentType: "text/plain; charset=\"utf-8\"",
-			Content:     bufMD.Bytes(),
-		}
-		attachments = append(attachments, attachment)
 	}
 
 	return p.sendMail(run,
@@ -239,37 +199,11 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 		p.semester, exam.Module, program)
 
 	if len(studentRegs) > 0 {
-		attachments := make([]*mailAttachment, 0, 1)
-
-		attachment := &mailAttachment{
+		attachments := []*mailAttachment{{
 			Filename:    fmt.Sprintf("Anmeldungen-%s-%d.csv", program, ancode),
 			ContentType: "text/csv; charset=\"utf-8\"",
-			Content:     []byte("Mtknr;Name;Gender;E-Mail;Studiengang;Gruppe\n"),
-		}
-
-		for _, studentReg := range studentRegs {
-			// force Excel/Numbers to treat the field as text with leading zeros:
-			// write the Mtknr as an Excel formula: ="000123"
-			gender := ""
-			email := ""
-
-			if studentReg.ZpaStudent != nil {
-				gender = studentReg.ZpaStudent.Gender
-				email = studentReg.ZpaStudent.Email
-			}
-
-			attachment.Content = append(attachment.Content,
-				[]byte(fmt.Sprintf("=\"%s\";%s;%s;%s;%s;%s\n",
-					studentReg.Mtknr,
-					studentReg.Name,
-					gender,
-					email,
-					studentReg.Program,
-					studentReg.Group,
-				))...)
-		}
-
-		attachments = append(attachments, attachment)
+			Content:     email.StudentRegsCSV(studentRegs),
+		}}
 
 		unplannedExamData := &UnpplannedExamMailData{
 			Exam:       exam,

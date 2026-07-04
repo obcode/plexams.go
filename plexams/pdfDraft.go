@@ -6,13 +6,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/johnfercher/maroto/pkg/color"
 	"github.com/johnfercher/maroto/pkg/consts"
 	"github.com/johnfercher/maroto/pkg/pdf"
 	"github.com/johnfercher/maroto/pkg/props"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/pdfgen"
 	"github.com/rs/zerolog/log"
 )
 
@@ -27,56 +27,9 @@ var r = strings.NewReplacer(
 )
 
 func (p *Plexams) DraftMucDaiPDF(ctx context.Context, outfile string) error {
-	m := pdf.NewMaroto(consts.Portrait, consts.A4)
-	m.SetPageMargins(10, 15, 10)
-
-	m.RegisterFooter(func() {
-		m.Row(20, func() {
-			m.Col(12, func() {
-				m.Text(fmt.Sprintf("Stand: %s Uhr, generiert mit https://github.com/obcode/plexams.go",
-					time.Now().Format("02.01.06, 15:04")), props.Text{
-					Top:   13,
-					Style: consts.BoldItalic,
-					Size:  8,
-					Align: consts.Left,
-				})
-			})
-		})
-	})
-
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("Vorläufiger Planungsstand MUC.DAI-Prüfungen der FK07 im %s", p.semesterFull()), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Bold,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(15, func() {
-		m.Col(12, func() {
-			m.Text(
-				"--- zur Abstimmung ---", props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
+	m := pdfgen.DraftDoc(false,
+		fmt.Sprintf("Vorläufiger Planungsstand MUC.DAI-Prüfungen der FK07 im %s", p.semesterFull()),
+		p.planer.Name, p.planer.Email)
 
 	p.tableForProgram(ctx, "DE", "Digital Engineering (DE)", m)
 	p.tableForProgram(ctx, "ID", "Informatik und Design (ID)", m)
@@ -91,56 +44,9 @@ func (p *Plexams) DraftMucDaiPDF(ctx context.Context, outfile string) error {
 }
 
 func (p *Plexams) DraftFk08PDF(ctx context.Context, outfile string) error {
-	m := pdf.NewMaroto(consts.Portrait, consts.A4)
-	m.SetPageMargins(10, 15, 10)
-
-	m.RegisterFooter(func() {
-		m.Row(20, func() {
-			m.Col(12, func() {
-				m.Text(fmt.Sprintf("Stand: %s Uhr, generiert mit https://github.com/obcode/plexams.go",
-					time.Now().Format("02.01.06, 15:04")), props.Text{
-					Top:   13,
-					Style: consts.BoldItalic,
-					Size:  8,
-					Align: consts.Left,
-				})
-			})
-		})
-	})
-
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Bold,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(15, func() {
-		m.Col(12, func() {
-			m.Text(
-				"--- zur Abstimmung ---", props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
+	m := pdfgen.DraftDoc(false,
+		fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()),
+		p.planer.Name, p.planer.Email)
 
 	p.tableForProgram(ctx, "GN", "Geoinformatik und Navigation (GN)", m)
 	p.tableForProgram(ctx, "GS", "Geodata Science (GS)", m)
@@ -155,56 +61,9 @@ func (p *Plexams) DraftFk08PDF(ctx context.Context, outfile string) error {
 }
 
 func (p *Plexams) DraftFk10PDF(ctx context.Context, outfile string) error {
-	m := pdf.NewMaroto(consts.Portrait, consts.A4)
-	m.SetPageMargins(10, 15, 10)
-
-	m.RegisterFooter(func() {
-		m.Row(20, func() {
-			m.Col(12, func() {
-				m.Text(fmt.Sprintf("Stand: %s Uhr, generiert mit https://github.com/obcode/plexams.go",
-					time.Now().Format("02.01.06, 15:04")), props.Text{
-					Top:   13,
-					Style: consts.BoldItalic,
-					Size:  8,
-					Align: consts.Left,
-				})
-			})
-		})
-	})
-
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Bold,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(15, func() {
-		m.Col(12, func() {
-			m.Text(
-				"--- zur Abstimmung ---", props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
+	m := pdfgen.DraftDoc(false,
+		fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()),
+		p.planer.Name, p.planer.Email)
 
 	p.tableForProgram(ctx, "IB", "BA - Wirtschaftsinformatik (IB)", m)
 	p.tableForProgram(ctx, "IN", "MA - Wirtschaftsinformatik (IN)", m)
@@ -220,135 +79,17 @@ func (p *Plexams) DraftFk10PDF(ctx context.Context, outfile string) error {
 }
 
 func (p *Plexams) tableForProgram(ctx context.Context, program, programLong string, m pdf.Maroto) {
-	header := []string{"AnCode", "Modul", "Prüfender", "Termin"}
-
-	m.Row(18, func() {
-		m.Col(12, func() {
-			m.Text(
-				programLong, props.Text{
-					Top:   10,
-					Size:  12,
-					Style: consts.Bold,
-				})
-		})
-	})
-
-	contentsMap := make(map[int][]string)
-
 	exams, err := p.PlannedExamsForProgram(ctx, program, true)
 	if err != nil {
 		log.Error().Err(err).Msg("error while getting exams")
 	}
-	ancodes := make([]int, 0, len(exams))
-
-OUTER:
-	for _, exam := range exams {
-		ancode := exam.Ancode
-
-		for _, primussExam := range exam.PrimussExams {
-			if primussExam.Exam.Program == program {
-				if len(primussExam.StudentRegs) == 0 {
-					break OUTER
-				}
-				ancode = primussExam.Exam.AnCode
-			}
-		}
-
-		ancodes = append(ancodes, ancode)
-
-		if exam.PlanEntry == nil {
-			contentsMap[ancode] =
-				[]string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-					"fehlt noch"}
-		} else {
-			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			contentsMap[ancode] =
-				[]string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-					r.Replace(starttime.Format("Mon. 02.01.06, 15:04 Uhr"))}
-		}
-	}
-
-	sort.Ints(ancodes)
-
-	contents := make([][]string, 0, len(contentsMap))
-	for _, ancode := range ancodes {
-		contents = append(contents, contentsMap[ancode])
-	}
-
-	grayColor := color.Color{
-		Red:   211,
-		Green: 211,
-		Blue:  211,
-	}
-
-	m.TableList(header, contents, props.TableList{
-		HeaderProp: props.TableListContent{
-			Size:      11,
-			GridSizes: []uint{1, 5, 2, 4},
-		},
-		ContentProp: props.TableListContent{
-			Size:      11,
-			GridSizes: []uint{1, 5, 2, 4},
-		},
-		Align:                consts.Left,
-		AlternatedBackground: &grayColor,
-		HeaderContentSpace:   1,
-		Line:                 false,
-	})
-
+	pdfgen.ProgramTable(m, programLong, pdfgen.ProgramRows(exams, program, p.getSlotTime))
 }
 
 func (p *Plexams) DraftExahmPDF(ctx context.Context, outfile string) error {
-	m := pdf.NewMaroto(consts.Landscape, consts.A4)
-	m.SetPageMargins(10, 15, 10)
-
-	m.RegisterFooter(func() {
-		m.Row(20, func() {
-			m.Col(12, func() {
-				m.Text(fmt.Sprintf("Stand: %s Uhr, generiert mit https://github.com/obcode/plexams.go",
-					time.Now().Format("02.01.06, 15:04")), props.Text{
-					Top:   13,
-					Style: consts.BoldItalic,
-					Size:  8,
-					Align: consts.Left,
-				})
-			})
-		})
-	})
-
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Bold,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(6, func() {
-		m.Col(12, func() {
-			m.Text(
-				fmt.Sprintf("%s <%s>", p.planer.Name, p.planer.Email), props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
-	m.Row(15, func() {
-		m.Col(12, func() {
-			m.Text(
-				"--- zur Abstimmung ---", props.Text{
-					Top:   3,
-					Size:  12,
-					Style: consts.Normal,
-					Align: consts.Center,
-				})
-		})
-	})
+	m := pdfgen.DraftDoc(true,
+		fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()),
+		p.planer.Name, p.planer.Email)
 
 	// p.tableForExahm(ctx, m, false)
 	p.tableForExahm(ctx, m, true)

@@ -102,7 +102,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 	ctx := context.Background()
 	v := newValidation(reporter, "conflicts", "validating conflicts")
 
-	if ok, err := p.hasPlanEntries(ctx); err != nil {
+	if ok, err := p.planGenerated(ctx); err != nil {
 		return nil, err
 	} else if !ok {
 		return v.skip(skipNoPlan), nil
@@ -570,7 +570,7 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 	ctx := context.Background()
 	v := newValidation(reporter, "constraints", "validating constraints")
 
-	if ok, err := p.hasPlanEntries(ctx); err != nil {
+	if ok, err := p.planGenerated(ctx); err != nil {
 		return nil, err
 	} else if !ok {
 		return v.skip(skipNoPlan), nil

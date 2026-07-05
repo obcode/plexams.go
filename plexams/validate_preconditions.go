@@ -15,19 +15,28 @@ import (
 
 // Skip reasons (shown to the user on a skipped validation).
 const (
-	skipNoPlan          = "noch kein Terminplan (keine Prüfung eingeplant)"
+	skipNoPlan          = "noch kein Terminplan generiert"
 	skipNoRooms         = "noch keine Räume geplant"
 	skipNoInvigilations = "noch keine Aufsichten eingeteilt"
 )
 
-// hasPlanEntries reports whether an exam schedule exists (any plan entry).
-func (p *Plexams) hasPlanEntries(ctx context.Context) (bool, error) {
-	entries, err := p.dbClient.PlanEntries(ctx)
+// planGenerated reports whether the exam schedule has been generated (the
+// examScheduleGenerated milestone). Plan entries may already exist earlier — e.g. the
+// EXaHM/SEB pre-planning phase fixes a few exams into slots before the full schedule is
+// generated — so the conflict/constraint validators gate on this milestone rather than
+// on "any plan entry exists", which would let them run prematurely.
+func (p *Plexams) planGenerated(ctx context.Context) (bool, error) {
+	setKeys, err := p.dbClient.PlanningConditionsSet(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get plan entries")
+		log.Error().Err(err).Msg("cannot get planning conditions")
 		return false, err
 	}
-	return len(entries) > 0, nil
+	for _, key := range setKeys {
+		if key == condExamScheduleGenerated {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // hasPlannedRooms reports whether any room has been assigned.

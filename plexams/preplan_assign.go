@@ -50,20 +50,28 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 // lab (seats <= rBauSebThreshold) are reported as "plan in the R-building" instead of
 // being counted as genuinely unplaced.
 func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []preplancalc.RoomCapacity, booked map[[2]int]*slotBooking, rBauSebThreshold int) *model.PreplanValidation {
-	messages := make([]string, 0)
+	findings := make([]*model.PreplanFinding, 0)
+	addFinding := func(level model.ValidationLevel, format string, a ...any) {
+		findings = append(findings, &model.PreplanFinding{Level: level, Message: fmt.Sprintf(format, a...)})
+	}
 
 	unassigned := make([]int, 0)
 	genuineUnassigned := 0
-	smallSebNotes := make([]string, 0)
+	// small SEB exams fit a single R-building lab, so they need no Anny booking at all:
+	// leaving them unassigned is by design, not a failure — grade them as warnings.
+	smallSebNotes := make([]*model.PreplanFinding, 0)
 	bySlot := make(map[[2]int][]*model.PreplanExam)
 	slotOrder := make([][2]int, 0)
 	for _, pe := range preExams {
 		if pe.PlannedDayNumber == nil || pe.PlannedSlotNumber == nil {
 			unassigned = append(unassigned, pe.ID)
 			if pe.ExamKind == "SEB" && pe.ExpectedStudents <= rBauSebThreshold {
-				smallSebNotes = append(smallSebNotes, fmt.Sprintf(
-					"SEB %d (%s, %d Plätze): klein genug für den R-Bau (≤ %d) — dort einplanen, nicht in Anny",
-					pe.ID, pe.Module, pe.ExpectedStudents, rBauSebThreshold))
+				smallSebNotes = append(smallSebNotes, &model.PreplanFinding{
+					Level: model.ValidationLevelWarning,
+					Message: fmt.Sprintf(
+						"SEB %d (%s, %d Plätze): klein genug für den R-Bau (≤ %d) — dort einplanen, nicht in Anny",
+						pe.ID, pe.Module, pe.ExpectedStudents, rBauSebThreshold),
+				})
 			} else {
 				genuineUnassigned++
 			}
@@ -83,10 +91,10 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 	})
 
 	if genuineUnassigned > 0 {
-		messages = append(messages, fmt.Sprintf("%s ohne Slot — gebuchte Anny-Plätze reichen nicht, bitte mehr Anny-Slots buchen",
-			pluralN(genuineUnassigned, "Prüfung", "Prüfungen")))
+		addFinding(model.ValidationLevelError, "%s ohne Slot — gebuchte Anny-Plätze reichen nicht, bitte mehr Anny-Slots buchen",
+			pluralN(genuineUnassigned, "Prüfung", "Prüfungen"))
 	}
-	messages = append(messages, smallSebNotes...)
+	findings = append(findings, smallSebNotes...)
 
 	for _, key := range slotOrder {
 		exams := bySlot[key]
@@ -107,31 +115,44 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 		// honour per-exam room restrictions for the suggestion/capacity
 		exahmPool := preplancalc.RoomsForKind(exams, "EXaHM", exahmRooms)
 		sebPool := preplancalc.RoomsForKind(exams, "SEB", sebRooms)
-		messages = append(messages, kindBookingMessages(key, "EXaHM", exahm, preplancalc.TotalSeats(exahmPool), exahmPool, sb)...)
-		messages = append(messages, kindBookingMessages(key, "SEB", seb, preplancalc.TotalSeats(sebPool), sebPool, sb)...)
+		findings = append(findings, kindBookingFindings(key, "EXaHM", exahm, preplancalc.TotalSeats(exahmPool), exahmPool, sb)...)
+		findings = append(findings, kindBookingFindings(key, "SEB", seb, preplancalc.TotalSeats(sebPool), sebPool, sb)...)
 		// note: same study program in one slot is allowed (soft spreading only), so it
 		// is no longer reported as a finding here.
 	}
 
 	assignedCount := len(preExams) - len(unassigned)
+	messages := make([]string, len(findings))
+	ok := true
+	for i, f := range findings {
+		messages[i] = f.Message
+		if f.Level == model.ValidationLevelError {
+			ok = false
+		}
+	}
 	return &model.PreplanValidation{
-		Ok:            len(messages) == 0,
+		Ok:            ok,
 		AssignedCount: assignedCount,
 		UnassignedIDs: unassigned,
 		Messages:      messages,
+		Findings:      findings,
 	}
 }
 
-// kindBookingMessages reports, for one slot and kind, a physical-capacity overflow
+// kindBookingFindings reports, for one slot and kind, a physical-capacity overflow
 // (can't fit even fully booked) or — when within capacity — the Anny bookings still
-// missing to cover the demand.
-func kindBookingMessages(key [2]int, kind string, needed, available int, rooms []preplancalc.RoomCapacity, sb *slotBooking) []string {
+// missing to cover the demand. Both are errors: the slot cannot host the exams as
+// booked.
+func kindBookingFindings(key [2]int, kind string, needed, available int, rooms []preplancalc.RoomCapacity, sb *slotBooking) []*model.PreplanFinding {
 	if needed == 0 {
 		return nil
 	}
 	if needed > available {
-		return []string{fmt.Sprintf("Slot %d/%d: %s %d Plätze nötig, nur %d verfügbar (Kapazität reicht nicht)",
-			key[0], key[1], kind, needed, available)}
+		return []*model.PreplanFinding{{
+			Level: model.ValidationLevelError,
+			Message: fmt.Sprintf("Slot %d/%d: %s %d Plätze nötig, nur %d verfügbar (Kapazität reicht nicht)",
+				key[0], key[1], kind, needed, available),
+		}}
 	}
 
 	bookedSeats := 0
@@ -154,7 +175,7 @@ func kindBookingMessages(key [2]int, kind string, needed, available int, rooms [
 	if len(toBook) > 0 {
 		msg += " — z. B. " + joinStrings(toBook)
 	}
-	return []string{msg}
+	return []*model.PreplanFinding{{Level: model.ValidationLevelError, Message: msg}}
 }
 
 // GeneratePreplanAssignment distributes the pre-exams over the MUC.DAI slots that
@@ -172,7 +193,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		return nil, err
 	}
 	if len(preExams) == 0 {
-		return &model.PreplanValidation{Ok: true, Messages: []string{}, UnassignedIDs: []int{}}, nil
+		return &model.PreplanValidation{Ok: true, Messages: []string{}, UnassignedIDs: []int{}, Findings: []*model.PreplanFinding{}}, nil
 	}
 	// candidate slots = ALL regular exam slots (not only the MUC.DAI slots): the
 	// pre-exams go wherever we have booked Anny rooms, and those bookings sit on the
@@ -458,7 +479,9 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	// must-place exams (threshold-aware), so no extra messages are added here.
 	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter, rBauSebThreshold)
 	if len(slots) == 0 {
-		result.Messages = append([]string{"keine Anny-Räume gebucht — nichts zugeordnet (zuerst Anny-Räume buchen und importieren)"}, result.Messages...)
+		msg := "keine Anny-Räume gebucht — nichts zugeordnet (zuerst Anny-Räume buchen und importieren)"
+		result.Findings = append([]*model.PreplanFinding{{Level: model.ValidationLevelError, Message: msg}}, result.Findings...)
+		result.Messages = append([]string{msg}, result.Messages...)
 		result.Ok = false
 	}
 	return result, nil

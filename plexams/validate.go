@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -18,8 +19,19 @@ import (
 
 var knownConflictsCount = 0
 
-type KnownConflict struct {
-	Mtknr, Ancode1, Ancode2 string
+// studentPair identifies one student's conflict between two exams, with the ancodes
+// normalized (ancode1 < ancode2) so lookups are order-independent. It keys the set of
+// conflicts the user has accepted (registration is wrong, student writes only one, …).
+type studentPair struct {
+	mtknr            string
+	ancode1, ancode2 int
+}
+
+func acceptedKey(mtknr string, a, b int) studentPair {
+	if a > b {
+		a, b = b, a
+	}
+	return studentPair{mtknr: mtknr, ancode1: a, ancode2: b}
 }
 
 type conflictingAncodes struct {
@@ -28,7 +40,8 @@ type conflictingAncodes struct {
 }
 type problemWithStudents struct {
 	problem  string
-	students []string
+	students []string // affected students that are a real problem
+	accepted []string // affected students whose conflict the user has accepted (→ info)
 }
 
 // Conflict severity by proximity of two of a student's exams. Same slot is a hard
@@ -40,6 +53,49 @@ const (
 	conflictAdjacent = "adjacent slot"
 	conflictSameDay  = "same day"
 )
+
+// conflictSeverityRank orders the conflict kinds by their inherent (original) severity,
+// most severe first: same slot (0) > adjacent (1) > same day (2).
+func conflictSeverityRank(problem string) int {
+	switch problem {
+	case conflictSameSlot:
+		return 0
+	case conflictAdjacent:
+		return 1
+	default: // conflictSameDay
+		return 2
+	}
+}
+
+// conflictLevel applies the severity rule: everything the user allows is only info — a
+// pair-level allowance (allowed: sameSlot constraint / canShareSlot) or all affected
+// students explicitly accepted (real == 0). Otherwise grade by proximity: same slot =
+// error, adjacent = warning, same day = info.
+func conflictLevel(problem string, real int, allowed bool) model.ValidationLevel {
+	if allowed || real == 0 {
+		return model.ValidationLevelInfo
+	}
+	switch problem {
+	case conflictSameSlot:
+		return model.ValidationLevelError
+	case conflictAdjacent:
+		return model.ValidationLevelWarning
+	default: // conflictSameDay
+		return model.ValidationLevelInfo
+	}
+}
+
+// levelRank orders finding levels most severe first: error (0) > warning (1) > info (2).
+func levelRank(level model.ValidationLevel) int {
+	switch level {
+	case model.ValidationLevelError:
+		return 0
+	case model.ValidationLevelWarning:
+		return 1
+	default: // info
+		return 2
+	}
+}
 
 func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter Reporter) (*model.ValidationReport, error) {
 	knownConflictsCount = 0
@@ -55,15 +111,19 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		return nil, err
 	}
 
-	planAncodeEntriesNotPlannedByMe := set.NewSet[int]()
+	// foreign = exams we do not plan ourselves: not-planned-by-me constraint, an external
+	// (fixed) time, or an auto-assigned external ancode (>= externalAncodeBase). Matches
+	// examplan's "foreign" definition. A conflict between two foreign exams is not ours to
+	// resolve and is dropped entirely.
+	foreignAncodes := set.NewSet[int]()
 	for _, entry := range planAncodeEntries {
 		constraints, err := p.dbClient.GetConstraintsForAncode(ctx, entry.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", entry.Ancode).Msg("cannot get constraints for ancode")
 			return nil, err
 		}
-		if constraints != nil && constraints.NotPlannedByMe {
-			planAncodeEntriesNotPlannedByMe.Add(entry.Ancode)
+		if (constraints != nil && constraints.NotPlannedByMe) || entry.ExternalTime != nil || entry.Ancode >= externalAncodeBase {
+			foreignAncodes.Add(entry.Ancode)
 		}
 	}
 
@@ -74,47 +134,141 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		return nil, err
 	}
 
-	knownConflicts := set.NewSet[KnownConflict]()
+	// Conflicts the user has accepted are not real problems: they are still shown, but
+	// downgraded to info. Sources: the GUI/DB per-student decisions (acceptStudentConflict)
+	// and, for backwards compatibility, the legacy knownConflicts in the semester YAML.
+	accepted := set.NewSet[studentPair]()
 
-	v.step("get known conflicts")
+	v.step("get accepted conflicts")
+	if decisions, err := p.dbClient.StudentConflictDecisions(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot get student conflict decisions")
+	} else {
+		for _, d := range decisions {
+			if d.Decision == model.ConflictDecisionAccept {
+				accepted.Add(acceptedKey(d.Mtknr, d.Ancode1, d.Ancode2))
+			}
+		}
+	}
 	knownConflictsConf := viper.Get("knownConflicts.studentRegs")
 	if knownConflictsConf != nil {
 		knownConflictsSlice := knownConflictsConf.([]interface{})
 		for _, knownConflict := range knownConflictsSlice {
 			knownConflictSlice := knownConflict.([]interface{})
-			knownConflicts.Add(KnownConflict{
-				Mtknr:   knownConflictSlice[0].(string),
-				Ancode1: knownConflictSlice[1].(string),
-				Ancode2: knownConflictSlice[2].(string),
-			})
+			mtknr, _ := knownConflictSlice[0].(string)
+			a, errA := strconv.Atoi(fmt.Sprint(knownConflictSlice[1]))
+			b, errB := strconv.Atoi(fmt.Sprint(knownConflictSlice[2]))
+			if errA != nil || errB != nil {
+				log.Debug().Interface("knownConflict", knownConflict).Msg("skipping unparseable YAML knownConflict")
+				continue
+			}
+			accepted.Add(acceptedKey(mtknr, a, b))
 		}
 	}
 
-	log.Debug().Int("count", knownConflicts.Cardinality()).Interface("conflicts", knownConflicts).Msg("found known conflicts")
+	log.Debug().Int("count", accepted.Cardinality()).Interface("accepted", accepted).Msg("found accepted conflicts")
 
 	v.step("validating students")
 	for _, student := range students {
-		p.validateStudentReg(student, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe,
-			knownConflicts, ancode, &validationMessages)
+		p.validateStudentReg(student, planAncodeEntries, foreignAncodes, onlyPlannedByMe,
+			accepted, ancode, &validationMessages)
 	}
 
 	conflictingAncodesSlice, normalizedValidationMessages := p.sortConflictingAncodes(validationMessages)
 
-	// One structured finding per conflicting exam pair, graded by severity: same slot is
-	// a hard clash (error), adjacent slots are undesirable (warning), same day is usually
-	// acceptable (info).
+	// Pair-level allowances: exam pairs the user permits to share a slot, so any same-slot
+	// (or closer) proximity between them is not a problem, only info. Two sources: the
+	// sameSlot constraint (exams that MUST run together) and the canShareSlot
+	// ("canBeSameSlot") declarations. Keyed by the normalized (ancode1 < ancode2) pair;
+	// conflictingAncodes are already built in that order.
+	sameSlotConstraintPairs := set.NewSet[[2]int]()
+	canSharePairs := set.NewSet[[2]int]()
+	normPair := func(a, b int) [2]int {
+		if a > b {
+			a, b = b, a
+		}
+		return [2]int{a, b}
+	}
+	if cmap, err := p.ConstraintsMap(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot get constraints for sameSlot pairs")
+	} else {
+		for a, c := range cmap {
+			if c == nil {
+				continue
+			}
+			for _, other := range c.SameSlot {
+				sameSlotConstraintPairs.Add(normPair(a, other))
+			}
+		}
+	}
+	if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot get canShareSlot pairs")
+	} else {
+		for _, pr := range pairs {
+			canSharePairs.Add(normPair(pr[0], pr[1]))
+		}
+	}
+	// allowedReason reports why a pair's shared slot is permitted (→ info), if at all.
+	// sortConflictingAncodes may order ca by exam time, so normalize the key here.
+	allowedReason := func(ca conflictingAncodes) (string, bool) {
+		key := normPair(ca.ancode1, ca.ancode2)
+		switch {
+		case sameSlotConstraintPairs.Contains(key):
+			return "sameSlot-Constraint", true
+		case canSharePairs.Contains(key):
+			return "canShareSlot", true
+		default:
+			return "", false
+		}
+	}
+
+	// Grade one finding per conflicting exam pair. Everything the user allows is only
+	// info: a pair-level allowance (sameSlot constraint / canShareSlot) or all affected
+	// students explicitly accepted. Otherwise grade by proximity: same slot = error,
+	// adjacent = warning, same day = info.
+	type gradedConflict struct {
+		ca       conflictingAncodes
+		level    model.ValidationLevel
+		proxRank int
+		message  string
+	}
+	graded := make([]gradedConflict, 0, len(conflictingAncodesSlice))
 	for _, ca := range conflictingAncodesSlice {
 		problem := normalizedValidationMessages[ca]
-		r := ref{Ancode: ptr(ca.ancode1), RelatedAncodes: []int{ca.ancode2}}
-		const format = "%s: %d student(s) affected between exam %d and %d"
-		switch problem.problem {
-		case conflictSameSlot:
-			v.errorf(r, format, problem.problem, len(problem.students), ca.ancode1, ca.ancode2)
-		case conflictAdjacent:
-			v.warnf(r, format, problem.problem, len(problem.students), ca.ancode1, ca.ancode2)
-		default: // conflictSameDay
-			v.infof(r, format, problem.problem, len(problem.students), ca.ancode1, ca.ancode2)
+		real, acc := len(problem.students), len(problem.accepted)
+		reason, isAllowed := allowedReason(ca)
+		g := gradedConflict{
+			ca:       ca,
+			proxRank: conflictSeverityRank(problem.problem),
+			level:    conflictLevel(problem.problem, real, isAllowed),
 		}
+		switch {
+		case isAllowed:
+			g.message = fmt.Sprintf("%s (%s): %d student(s) affected between exam %d and %d",
+				problem.problem, reason, real+acc, ca.ancode1, ca.ancode2)
+		case real == 0: // all affected students explicitly accepted
+			g.message = fmt.Sprintf("%s (akzeptiert): %d student(s) affected between exam %d and %d",
+				problem.problem, acc, ca.ancode1, ca.ancode2)
+		default:
+			suffix := ""
+			if acc > 0 {
+				suffix = fmt.Sprintf(" (+%d akzeptiert)", acc)
+			}
+			g.message = fmt.Sprintf("%s: %d student(s) affected between exam %d and %d%s",
+				problem.problem, real, ca.ancode1, ca.ancode2, suffix)
+		}
+		graded = append(graded, g)
+	}
+	// Most severe first: primary by original proximity (same slot, then adjacent, then
+	// same day), secondary by effective level so real problems lead within a proximity
+	// group. Stable, so the time order from sortConflictingAncodes is kept within ties.
+	sort.SliceStable(graded, func(i, j int) bool {
+		if graded[i].proxRank != graded[j].proxRank {
+			return graded[i].proxRank < graded[j].proxRank
+		}
+		return levelRank(graded[i].level) < levelRank(graded[j].level)
+	})
+	for _, g := range graded {
+		v.add(g.level, ref{Ancode: ptr(g.ca.ancode1), RelatedAncodes: []int{g.ca.ancode2}}, "%s", g.message)
 	}
 
 	if len(validationMessages) > 0 {
@@ -127,7 +281,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		}
 
 		errs, warns, infos := v.counts()
-		summary := aurora.Sprintf(aurora.Yellow("%d known conflicts; %d error(s), %d warning(s), %d info(s)"),
+		summary := aurora.Sprintf(aurora.Yellow("%d accepted conflicts; %d error(s), %d warning(s), %d info(s)"),
 			knownConflictsCount, errs, warns, infos)
 		if errs > 0 {
 			v.reporter.StopProgressFail(summary)
@@ -135,12 +289,19 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 			v.reporter.StopProgress(summary)
 		}
 
-		// Stream the copy-pasteable knownConflicts YAML snippet, like the CLI.
+		// Stream the copy-pasteable knownConflicts YAML snippet for the pairs that are NOT
+		// yet accepted, like the CLI (so they can be accepted).
 		v.reporter.Println("")
 		v.reporter.Println("knownConflicts:")
 		v.reporter.Println("  studentRegs:")
 		for _, conflictingAncodes := range conflictingAncodesSlice {
 			problemWithStudents := normalizedValidationMessages[conflictingAncodes]
+			if _, ok := allowedReason(conflictingAncodes); ok {
+				continue // pair may share a slot (sameSlot constraint / canShareSlot): nothing to accept
+			}
+			if len(problemWithStudents.students) == 0 {
+				continue // fully accepted: nothing left to accept
+			}
 			exam1, err := p.PlannedExam(ctx, conflictingAncodes.ancode1)
 			if err != nil {
 				log.Debug().Err(err).Msg("cannot get planned exam")
@@ -296,7 +457,7 @@ func (plexams *Plexams) sortConflictingAncodes(validationMessages map[conflictin
 }
 
 func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanEntry,
-	planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool, knownConflicts set.Set[KnownConflict], ancode int,
+	foreignAncodes set.Set[int], onlyPlannedByMe bool, accepted set.Set[studentPair], ancode int,
 	validationMessages *map[conflictingAncodes]*problemWithStudents) {
 	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("checking regs for student")
 
@@ -326,23 +487,25 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 				p[i].Ancode == p[j].Ancode {
 				continue
 			}
-			if knownConflicts.Contains(KnownConflict{
-				Mtknr:   student.Mtknr,
-				Ancode1: fmt.Sprint(p[i].Ancode),
-				Ancode2: fmt.Sprint(p[j].Ancode),
-			}) {
-				knownConflictsCount++
+			// A conflict between two exams we do not plan (external / not planned by me)
+			// is not ours to resolve — never report it. With onlyPlannedByMe, restrict to
+			// conflicts purely among our own exams (drop any pair with a foreign side).
+			iForeign := foreignAncodes.Contains(p[i].Ancode)
+			jForeign := foreignAncodes.Contains(p[j].Ancode)
+			if iForeign && jForeign {
+				log.Debug().Int("ancode1", p[i].Ancode).Int("ancode2", p[j].Ancode).
+					Msg("both ancodes not planned by me (foreign)")
 				continue
 			}
-			if onlyPlannedByMe &&
-				planAncodeEntriesNotPlannedByMe.Contains(p[i].Ancode) &&
-				planAncodeEntriesNotPlannedByMe.Contains(p[j].Ancode) {
-				log.Debug().Int("ancode1", p[i].Ancode).Int("ancode2", p[j].Ancode).
-					Msg("both ancodes not planned by me")
+			if onlyPlannedByMe && (iForeign || jForeign) {
 				continue
 			}
 			if ancode != 0 && p[i].Ancode != ancode && p[j].Ancode != ancode {
 				continue
+			}
+			isAccepted := accepted.Contains(acceptedKey(student.Mtknr, p[i].Ancode, p[j].Ancode))
+			if isAccepted {
+				knownConflictsCount++
 			}
 
 			problem := ""
@@ -382,11 +545,15 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 						students: make([]string, 0),
 					}
 				}
-				validationMessageForProblem.students = append(validationMessageForProblem.students,
-					aurora.Sprintf(aurora.Yellow("    - [\"%s\", \"%d\", \"%d\"] # %s (%s%s / %s)"),
-						aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode),
-						aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
-					))
+				studentLine := aurora.Sprintf(aurora.Yellow("    - [\"%s\", \"%d\", \"%d\"] # %s (%s%s / %s)"),
+					aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode),
+					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
+				)
+				if isAccepted {
+					validationMessageForProblem.accepted = append(validationMessageForProblem.accepted, studentLine)
+				} else {
+					validationMessageForProblem.students = append(validationMessageForProblem.students, studentLine)
+				}
 				(*validationMessages)[conflictingAncodes] = validationMessageForProblem
 			}
 		}

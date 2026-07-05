@@ -292,6 +292,17 @@ Mails gehen als `.eml`-Anhänge an die Planer:in selbst. Zwei Buttons pro Karte:
 Der Versand läuft live im Terminal mit; bereits gesendete Mails wandern nach
 unten, sodass oben immer der nächste Schritt steht.
 
+**E-Mail-Vorlagen direkt im GUI anpassen:** Sämtliche E-Mail-Texte sind
+**Markdown-Vorlagen**, die sich unmittelbar im GUI bearbeiten lassen — ohne Code,
+ohne Deployment. Zu jeder Vorlage zeigt der Editor die verfügbaren **Platzhalter**
+(z. B. `{{ .Teacher.Fullname }}`) mit Erklärung und Beispielwert, dazu die
+gemeinsamen Hilfsfunktionen (etwa `jiraURL` oder Singular/Plural). Eine
+**Live-Vorschau** rendert die fertige Mail mit Beispieldaten schon beim Tippen und
+meldet Fehler sofort; ein **Vergleich zum gespeicherten** bzw. zum
+ausgelieferten Standardtext macht jede Änderung sichtbar, und ein Klick stellt die
+eingebaute Standardvorlage jederzeit wieder her. So kann die Planer:in Formulierungen
+selbst pflegen, ohne die eigentliche Mechanik (Empfänger, Anhänge, Versand) anzufassen.
+
 **Rückmeldungen laufen gebündelt zurück:** Alle Antworten auf diese E-Mails
 kommen über den **„FK07 Prüfungsplanungs"-Helpdesk** in
 [Jira](https://jira.cc.hm.edu/servicedesk/customer/portal/13) — nicht als lose
@@ -412,7 +423,7 @@ flowchart LR
 | **Verbund-Studiengänge** | fest verdrahtetes **MUC.DAI** | zu einem **generischen Verbund-Studiengang-Konzept** verallgemeinern (mehrere Programme, beliebige beteiligte FKs) |
 | **Constraints / Regeln** | FK07-Policy (Slots, Sperrtage, Sonderfälle) | konfigurierbare Regelsätze pro FK — der Solver bleibt gleich, nur **Gewichte & Regeln** variieren |
 | **Aufsichten** | FK07-Gruppe & -Anforderungen | andere zuständige Gruppe, andere Fairness-/Soll-Regeln, ggf. ganz abschaltbar |
-| **E-Mail-Rollen & Texte** | Prüfende, Sekretariat, KDP, NTA, LBA-Büro | pro FK andere Rollen/Verteiler; Texte sind bereits Markdown-Vorlagen |
+| **E-Mail-Rollen & Texte** | Prüfende, Sekretariat, KDP, NTA, LBA-Büro | pro FK andere Rollen/Verteiler; Texte sind Markdown-Vorlagen, **im GUI editierbar** (mit Platzhalter-Hilfe & Live-Vorschau) |
 
 ### Was **nicht** angefasst werden muss — das wiederverwendbare Kapital
 

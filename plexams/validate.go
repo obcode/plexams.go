@@ -31,6 +31,16 @@ type problemWithStudents struct {
 	students []string
 }
 
+// Conflict severity by proximity of two of a student's exams. Same slot is a hard
+// clash (a student cannot sit both at once) → error. Adjacent slots (back-to-back, no
+// break) are undesirable → warning. Same day (not adjacent) is usually acceptable →
+// info. These strings are also the human labels streamed in the report.
+const (
+	conflictSameSlot = "same slot"
+	conflictAdjacent = "adjacent slot"
+	conflictSameDay  = "same day"
+)
+
 func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter Reporter) (*model.ValidationReport, error) {
 	knownConflictsCount = 0
 	ctx := context.Background()
@@ -90,11 +100,21 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 
 	conflictingAncodesSlice, normalizedValidationMessages := p.sortConflictingAncodes(validationMessages)
 
-	// One structured finding per conflicting exam pair.
+	// One structured finding per conflicting exam pair, graded by severity: same slot is
+	// a hard clash (error), adjacent slots are undesirable (warning), same day is usually
+	// acceptable (info).
 	for _, ca := range conflictingAncodesSlice {
 		problem := normalizedValidationMessages[ca]
-		v.errorf(ref{Ancode: ptr(ca.ancode1), RelatedAncodes: []int{ca.ancode2}},
-			"%s: %d student(s) affected between exam %d and %d", problem.problem, len(problem.students), ca.ancode1, ca.ancode2)
+		r := ref{Ancode: ptr(ca.ancode1), RelatedAncodes: []int{ca.ancode2}}
+		const format = "%s: %d student(s) affected between exam %d and %d"
+		switch problem.problem {
+		case conflictSameSlot:
+			v.errorf(r, format, problem.problem, len(problem.students), ca.ancode1, ca.ancode2)
+		case conflictAdjacent:
+			v.warnf(r, format, problem.problem, len(problem.students), ca.ancode1, ca.ancode2)
+		default: // conflictSameDay
+			v.infof(r, format, problem.problem, len(problem.students), ca.ancode1, ca.ancode2)
+		}
 	}
 
 	if len(validationMessages) > 0 {
@@ -106,8 +126,14 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 			}
 		}
 
-		v.reporter.StopProgressFail(aurora.Sprintf(aurora.Red("%d known conflicts, but %d problems found"),
-			knownConflictsCount, len(validationMessages)))
+		errs, warns, infos := v.counts()
+		summary := aurora.Sprintf(aurora.Yellow("%d known conflicts; %d error(s), %d warning(s), %d info(s)"),
+			knownConflictsCount, errs, warns, infos)
+		if errs > 0 {
+			v.reporter.StopProgressFail(summary)
+		} else {
+			v.reporter.StopProgress(summary)
+		}
 
 		// Stream the copy-pasteable knownConflicts YAML snippet, like the CLI.
 		v.reporter.Println("")
@@ -323,17 +349,17 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 			// same slot
 			if p[i].DayNumber == p[j].DayNumber &&
 				p[i].SlotNumber == p[j].SlotNumber {
-				problem = "same slot"
+				problem = conflictSameSlot
 			} else
 			// adjacent slots
 			if p[i].DayNumber == p[j].DayNumber &&
 				(p[i].SlotNumber+1 == p[j].SlotNumber ||
 					p[i].SlotNumber-1 == p[j].SlotNumber) {
-				problem = "adjacent slot"
+				problem = conflictAdjacent
 			} else
 			// same day
 			if p[i].DayNumber == p[j].DayNumber {
-				problem = "same day"
+				problem = conflictSameDay
 			}
 
 			if problem != "" {

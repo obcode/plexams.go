@@ -119,6 +119,21 @@ func (v *validation) finish() *model.ValidationReport {
 	}
 }
 
+// skip marks the validation as not applicable because the data it checks does not
+// exist yet (e.g. no exam plan, no planned rooms, no invigilations). It is not a
+// failure: the report is ok with no findings, flagged Skipped so the GUI can render a
+// neutral "übersprungen" state instead of a green pass.
+func (v *validation) skip(reason string) *model.ValidationReport {
+	v.reporter.StopProgress(aurora.Sprintf(aurora.Gray(14, "– übersprungen: %s"), reason))
+	return &model.ValidationReport{
+		Name:       v.name,
+		Ok:         true,
+		Skipped:    true,
+		SkipReason: &reason,
+		Findings:   []*model.ValidationFinding{},
+	}
+}
+
 // report returns the structured report from the accumulated findings without
 // streaming a summary or the findings. Use it when a validator does its own
 // custom terminal output instead of the flat list finish produces.

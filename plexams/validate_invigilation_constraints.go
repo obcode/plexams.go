@@ -17,6 +17,11 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 	v := newValidation(reporter, "invigilation-constraints", "validating invigilation constraints (shared rules)")
 
 	ctx := context.Background()
+	if ok, err := p.hasInvigilations(ctx); err != nil {
+		return nil, err
+	} else if !ok {
+		return v.skip(skipNoInvigilations), nil
+	}
 
 	// Include every assignable invigilator so lookups of an already persisted
 	// invigilator never miss.

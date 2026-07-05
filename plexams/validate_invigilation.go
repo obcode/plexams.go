@@ -15,6 +15,12 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 	v := newValidation(reporter, "invigilator-requirements", "validating invigilator requirements")
 
 	ctx := context.Background()
+	if ok, err := p.hasInvigilations(ctx); err != nil {
+		return nil, err
+	} else if !ok {
+		return v.skip(skipNoInvigilations), nil
+	}
+
 	v.step("recalculating todos")
 	invigilationTodos, err := p.GetInvigilationTodos(ctx)
 	if err != nil {
@@ -94,6 +100,12 @@ func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.Validation
 	v := newValidation(reporter, "invigilation-duplicates", "validating invigilator duplicates")
 
 	ctx := context.Background()
+	if ok, err := p.hasInvigilations(ctx); err != nil {
+		return nil, err
+	} else if !ok {
+		return v.skip(skipNoInvigilations), nil
+	}
+
 	v.step("getting all invigilations")
 	invigilations, err := p.dbClient.GetAllInvigilations(ctx)
 	if err != nil {
@@ -141,6 +153,11 @@ func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.Validation
 	v := newValidation(reporter, "invigilator-slots", "validating invigilator for all slots")
 
 	ctx := context.Background()
+	if ok, err := p.hasInvigilations(ctx); err != nil {
+		return nil, err
+	} else if !ok {
+		return v.skip(skipNoInvigilations), nil
+	}
 
 	// count rooms and reserves without and print number
 	roomWithoutInvigilatorDay := make(map[int]int)
@@ -225,6 +242,13 @@ func (p *Plexams) ValidateInvigilationsTimeDistance(reporter Reporter) (*model.V
 
 	v := newValidation(reporter, "invigilations-time-distance",
 		fmt.Sprintf("validating time lag of invigilations (%d minutes)", timelag))
+
+	if ok, err := p.hasInvigilations(ctx); err != nil {
+		return nil, err
+	} else if !ok {
+		return v.skip(skipNoInvigilations), nil
+	}
+
 	v.step("prepare invigilations")
 
 	allInvigilations, err := p.dbClient.GetAllInvigilations(ctx)

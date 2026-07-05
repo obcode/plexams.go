@@ -19,7 +19,6 @@ var (
 	all                		--- guess what :-)
 	conflicts          		--- check conflicts for each student
 	constraints       	 	--- check if constraints hold
-	preplanned-exahm-rooms 	--- validate exahm pre-planned rooms
 	studentregs				--- check for students with registrations in diffenrent programs
 	db                 		--- data base integrity (plan entries, constraints, planned rooms, ntas, cross references)
 	rooms              		--- check room constraints
@@ -28,7 +27,7 @@ var (
 	invigilator-slots  		--- check if invigilator slots are okay
 	invigilator-constraints	--- check the persisted plan against the shared invigplan constraints
 `,
-		ValidArgs: []string{"all", "conflicts", "constraints", "preplanned-exahm-rooms", "studentregs", "db", "rooms", "zpa", "invigilator-reqs", "invigilator-slots", "invigilator-constraints"},
+		ValidArgs: []string{"all", "conflicts", "constraints", "studentregs", "db", "rooms", "zpa", "invigilator-reqs", "invigilator-slots", "invigilator-constraints"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -78,10 +77,6 @@ var (
 
 				case "db":
 					validations = append(validations, dbValidations...)
-
-				case "preplanned-exahm-rooms":
-					validations = append(validations,
-						func() error { _, err := plexams.ValidatePrePlannedExahmRooms(plx.NewConsoleReporter()); return err })
 
 				case "rooms":
 					validations = append(validations,

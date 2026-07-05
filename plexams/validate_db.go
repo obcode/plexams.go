@@ -106,13 +106,9 @@ func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationRep
 		}
 
 		if planEntry.InSlot() {
-			// a real, slotted exam must not also carry an external time, and its slot
-			// must exist in the semester config.
-			if planEntry.ExternalTime != nil {
-				v.errorf(ref{Ancode: ptr(planEntry.Ancode), Day: ptr(planEntry.DayNumber), Slot: ptr(planEntry.SlotNumber)},
-					"ancode %d is placed in slot (%d/%d) but also has an external time %s",
-					planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber, planEntry.ExternalTime.Format("2006-01-02 15:04"))
-			}
+			// its slot must exist in the semester config. An external exam legitimately
+			// carries an ExternalTime *and* a slot when its time falls inside the exam
+			// period (see AddExamToSlottime) — that is not a conflict.
 			if !slots[[2]int{planEntry.DayNumber, planEntry.SlotNumber}] {
 				v.errorf(ref{Ancode: ptr(planEntry.Ancode), Day: ptr(planEntry.DayNumber), Slot: ptr(planEntry.SlotNumber)},
 					"ancode %d is placed in slot (%d/%d) which does not exist in the semester config",

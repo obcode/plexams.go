@@ -98,9 +98,29 @@ func (r *subscriptionResolver) ValidateStudentRegs(ctx context.Context) (<-chan 
 	return r.runValidation(ctx, "student-regs", r.plexams.ValidateStudentRegs), nil
 }
 
-// ValidateDb is the resolver for the validateDB field.
-func (r *subscriptionResolver) ValidateDb(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, "db", r.plexams.ValidateDB), nil
+// ValidateDBPlanEntries is the resolver for the validateDBPlanEntries field.
+func (r *subscriptionResolver) ValidateDBPlanEntries(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "db-plan-entries", r.plexams.ValidateDBPlanEntries), nil
+}
+
+// ValidateDBConstraints is the resolver for the validateDBConstraints field.
+func (r *subscriptionResolver) ValidateDBConstraints(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "db-constraints", r.plexams.ValidateDBConstraints), nil
+}
+
+// ValidateDBRooms is the resolver for the validateDBRooms field.
+func (r *subscriptionResolver) ValidateDBRooms(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "db-rooms", r.plexams.ValidateDBRooms), nil
+}
+
+// ValidateDBNtas is the resolver for the validateDBNtas field.
+func (r *subscriptionResolver) ValidateDBNtas(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "db-ntas", r.plexams.ValidateDBNtas), nil
+}
+
+// ValidateDBReferences is the resolver for the validateDBReferences field.
+func (r *subscriptionResolver) ValidateDBReferences(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "db-references", r.plexams.ValidateDBReferences), nil
 }
 
 // ValidatePrePlannedExahmRooms is the resolver for the validatePrePlannedExahmRooms field.

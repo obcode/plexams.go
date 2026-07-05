@@ -21,7 +21,7 @@ var (
 	constraints       	 	--- check if constraints hold
 	preplanned-exahm-rooms 	--- validate exahm pre-planned rooms
 	studentregs				--- check for students with registrations in diffenrent programs
-	db                 		--- data base entries
+	db                 		--- data base integrity (plan entries, constraints, planned rooms, ntas, cross references)
 	rooms              		--- check room constraints
 	zpa                		--- check if the plan on ZPA is the same here
 	invigilator-reqs.  		--- check if invigilator requirements are met (incl. shared constraints)
@@ -33,12 +33,20 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 
+			dbValidations := []func() error{
+				func() error { _, err := plexams.ValidateDBPlanEntries(plx.NewConsoleReporter()); return err },
+				func() error { _, err := plexams.ValidateDBConstraints(plx.NewConsoleReporter()); return err },
+				func() error { _, err := plexams.ValidateDBRooms(plx.NewConsoleReporter()); return err },
+				func() error { _, err := plexams.ValidateDBNtas(plx.NewConsoleReporter()); return err },
+				func() error { _, err := plexams.ValidateDBReferences(plx.NewConsoleReporter()); return err },
+			}
+
 			validations := make([]func() error, 0)
 			for _, arg := range args {
 				switch arg {
 				case "all":
+					validations = append(validations, dbValidations...)
 					validations = append(validations, []func() error{
-						func() error { _, err := plexams.ValidateDB(plx.NewConsoleReporter()); return err },
 						func() error {
 							_, err := plexams.ValidateConflicts(OnlyPlannedByMe, Ancode, plx.NewConsoleReporter())
 							return err
@@ -69,8 +77,7 @@ var (
 						func() error { _, err := plexams.ValidateStudentRegs(plx.NewConsoleReporter()); return err })
 
 				case "db":
-					validations = append(validations,
-						func() error { _, err := plexams.ValidateDB(plx.NewConsoleReporter()); return err })
+					validations = append(validations, dbValidations...)
 
 				case "preplanned-exahm-rooms":
 					validations = append(validations,

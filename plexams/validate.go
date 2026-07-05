@@ -111,15 +111,19 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		return nil, err
 	}
 
-	planAncodeEntriesNotPlannedByMe := set.NewSet[int]()
+	// foreign = exams we do not plan ourselves: not-planned-by-me constraint, an external
+	// (fixed) time, or an auto-assigned external ancode (>= externalAncodeBase). Matches
+	// examplan's "foreign" definition. A conflict between two foreign exams is not ours to
+	// resolve and is dropped entirely.
+	foreignAncodes := set.NewSet[int]()
 	for _, entry := range planAncodeEntries {
 		constraints, err := p.dbClient.GetConstraintsForAncode(ctx, entry.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", entry.Ancode).Msg("cannot get constraints for ancode")
 			return nil, err
 		}
-		if constraints != nil && constraints.NotPlannedByMe {
-			planAncodeEntriesNotPlannedByMe.Add(entry.Ancode)
+		if (constraints != nil && constraints.NotPlannedByMe) || entry.ExternalTime != nil || entry.Ancode >= externalAncodeBase {
+			foreignAncodes.Add(entry.Ancode)
 		}
 	}
 
@@ -165,7 +169,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 
 	v.step("validating students")
 	for _, student := range students {
-		p.validateStudentReg(student, planAncodeEntries, planAncodeEntriesNotPlannedByMe, onlyPlannedByMe,
+		p.validateStudentReg(student, planAncodeEntries, foreignAncodes, onlyPlannedByMe,
 			accepted, ancode, &validationMessages)
 	}
 
@@ -204,8 +208,9 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		}
 	}
 	// allowedReason reports why a pair's shared slot is permitted (→ info), if at all.
+	// sortConflictingAncodes may order ca by exam time, so normalize the key here.
 	allowedReason := func(ca conflictingAncodes) (string, bool) {
-		key := [2]int{ca.ancode1, ca.ancode2}
+		key := normPair(ca.ancode1, ca.ancode2)
 		switch {
 		case sameSlotConstraintPairs.Contains(key):
 			return "sameSlot-Constraint", true
@@ -452,7 +457,7 @@ func (plexams *Plexams) sortConflictingAncodes(validationMessages map[conflictin
 }
 
 func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanEntry,
-	planAncodeEntriesNotPlannedByMe set.Set[int], onlyPlannedByMe bool, accepted set.Set[studentPair], ancode int,
+	foreignAncodes set.Set[int], onlyPlannedByMe bool, accepted set.Set[studentPair], ancode int,
 	validationMessages *map[conflictingAncodes]*problemWithStudents) {
 	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("checking regs for student")
 
@@ -482,19 +487,25 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 				p[i].Ancode == p[j].Ancode {
 				continue
 			}
-			isAccepted := accepted.Contains(acceptedKey(student.Mtknr, p[i].Ancode, p[j].Ancode))
-			if isAccepted {
-				knownConflictsCount++
-			}
-			if onlyPlannedByMe &&
-				planAncodeEntriesNotPlannedByMe.Contains(p[i].Ancode) &&
-				planAncodeEntriesNotPlannedByMe.Contains(p[j].Ancode) {
+			// A conflict between two exams we do not plan (external / not planned by me)
+			// is not ours to resolve — never report it. With onlyPlannedByMe, restrict to
+			// conflicts purely among our own exams (drop any pair with a foreign side).
+			iForeign := foreignAncodes.Contains(p[i].Ancode)
+			jForeign := foreignAncodes.Contains(p[j].Ancode)
+			if iForeign && jForeign {
 				log.Debug().Int("ancode1", p[i].Ancode).Int("ancode2", p[j].Ancode).
-					Msg("both ancodes not planned by me")
+					Msg("both ancodes not planned by me (foreign)")
+				continue
+			}
+			if onlyPlannedByMe && (iForeign || jForeign) {
 				continue
 			}
 			if ancode != 0 && p[i].Ancode != ancode && p[j].Ancode != ancode {
 				continue
+			}
+			isAccepted := accepted.Contains(acceptedKey(student.Mtknr, p[i].Ancode, p[j].Ancode))
+			if isAccepted {
+				knownConflictsCount++
 			}
 
 			problem := ""

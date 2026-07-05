@@ -1291,7 +1291,11 @@ type ComplexityRoot struct {
 		UploadStudentRegsToZpa               func(childComplexity int) int
 		ValidateConflicts                    func(childComplexity int, onlyPlannedByMe bool, ancode int) int
 		ValidateConstraints                  func(childComplexity int) int
-		ValidateDb                           func(childComplexity int) int
+		ValidateDBConstraints                func(childComplexity int) int
+		ValidateDBNtas                       func(childComplexity int) int
+		ValidateDBPlanEntries                func(childComplexity int) int
+		ValidateDBReferences                 func(childComplexity int) int
+		ValidateDBRooms                      func(childComplexity int) int
 		ValidateInvigilationConstraints      func(childComplexity int) int
 		ValidateInvigilationDuplicates       func(childComplexity int) int
 		ValidateInvigilationsTimeDistance    func(childComplexity int) int
@@ -1698,7 +1702,11 @@ type SubscriptionResolver interface {
 	ValidateConflicts(ctx context.Context, onlyPlannedByMe bool, ancode int) (<-chan *model.LogLine, error)
 	ValidateConstraints(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateStudentRegs(ctx context.Context) (<-chan *model.LogLine, error)
-	ValidateDb(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateDBPlanEntries(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateDBConstraints(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateDBRooms(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateDBNtas(ctx context.Context) (<-chan *model.LogLine, error)
+	ValidateDBReferences(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidatePrePlannedExahmRooms(ctx context.Context) (<-chan *model.LogLine, error)
 	UploadExamsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error)
 	UploadExamsWithRoomsToZpa(ctx context.Context, dryRun bool) (<-chan *model.LogLine, error)
@@ -8493,12 +8501,40 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.ValidateConstraints(childComplexity), true
 
-	case "Subscription.validateDB":
-		if e.complexity.Subscription.ValidateDb == nil {
+	case "Subscription.validateDBConstraints":
+		if e.complexity.Subscription.ValidateDBConstraints == nil {
 			break
 		}
 
-		return e.complexity.Subscription.ValidateDb(childComplexity), true
+		return e.complexity.Subscription.ValidateDBConstraints(childComplexity), true
+
+	case "Subscription.validateDBNtas":
+		if e.complexity.Subscription.ValidateDBNtas == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ValidateDBNtas(childComplexity), true
+
+	case "Subscription.validateDBPlanEntries":
+		if e.complexity.Subscription.ValidateDBPlanEntries == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ValidateDBPlanEntries(childComplexity), true
+
+	case "Subscription.validateDBReferences":
+		if e.complexity.Subscription.ValidateDBReferences == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ValidateDBReferences(childComplexity), true
+
+	case "Subscription.validateDBRooms":
+		if e.complexity.Subscription.ValidateDBRooms == nil {
+			break
+		}
+
+		return e.complexity.Subscription.ValidateDBRooms(childComplexity), true
 
 	case "Subscription.validateInvigilationConstraints":
 		if e.complexity.Subscription.ValidateInvigilationConstraints == nil {
@@ -11702,7 +11738,15 @@ extend type Subscription {
   validateConflicts(onlyPlannedByMe: Boolean!, ancode: Int!): LogLine!
   validateConstraints: LogLine!
   validateStudentRegs: LogLine!
-  validateDB: LogLine!
+
+  # database integrity (referential/structural consistency, complements the
+  # planning-quality validators above).
+  validateDBPlanEntries: LogLine!
+  validateDBConstraints: LogLine!
+  validateDBRooms: LogLine!
+  validateDBNtas: LogLine!
+  validateDBReferences: LogLine!
+
   validatePrePlannedExahmRooms: LogLine!
 }
 `, BuiltIn: false},
@@ -63845,8 +63889,8 @@ func (ec *executionContext) fieldContext_Subscription_validateStudentRegs(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _Subscription_validateDB(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	fc, err := ec.fieldContext_Subscription_validateDB(ctx, field)
+func (ec *executionContext) _Subscription_validateDBPlanEntries(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateDBPlanEntries(ctx, field)
 	if err != nil {
 		return nil
 	}
@@ -63859,7 +63903,7 @@ func (ec *executionContext) _Subscription_validateDB(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Subscription().ValidateDb(rctx)
+		return ec.resolvers.Subscription().ValidateDBPlanEntries(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -63890,7 +63934,295 @@ func (ec *executionContext) _Subscription_validateDB(ctx context.Context, field 
 	}
 }
 
-func (ec *executionContext) fieldContext_Subscription_validateDB(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Subscription_validateDBPlanEntries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_validateDBConstraints(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateDBConstraints(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ValidateDBConstraints(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_validateDBConstraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_validateDBRooms(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateDBRooms(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ValidateDBRooms(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_validateDBRooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_validateDBNtas(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateDBNtas(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ValidateDBNtas(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_validateDBNtas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_LogLine_level(ctx, field)
+			case "text":
+				return ec.fieldContext_LogLine_text(ctx, field)
+			case "progress":
+				return ec.fieldContext_LogLine_progress(ctx, field)
+			case "report":
+				return ec.fieldContext_LogLine_report(ctx, field)
+			case "validation":
+				return ec.fieldContext_LogLine_validation(ctx, field)
+			case "examReport":
+				return ec.fieldContext_LogLine_examReport(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_validateDBReferences(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_validateDBReferences(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().ValidateDBReferences(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *model.LogLine):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLogLine(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_validateDBReferences(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Subscription",
 		Field:      field,
@@ -81826,8 +82158,16 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_validateConstraints(ctx, fields[0])
 	case "validateStudentRegs":
 		return ec._Subscription_validateStudentRegs(ctx, fields[0])
-	case "validateDB":
-		return ec._Subscription_validateDB(ctx, fields[0])
+	case "validateDBPlanEntries":
+		return ec._Subscription_validateDBPlanEntries(ctx, fields[0])
+	case "validateDBConstraints":
+		return ec._Subscription_validateDBConstraints(ctx, fields[0])
+	case "validateDBRooms":
+		return ec._Subscription_validateDBRooms(ctx, fields[0])
+	case "validateDBNtas":
+		return ec._Subscription_validateDBNtas(ctx, fields[0])
+	case "validateDBReferences":
+		return ec._Subscription_validateDBReferences(ctx, fields[0])
 	case "validatePrePlannedExahmRooms":
 		return ec._Subscription_validatePrePlannedExahmRooms(ctx, fields[0])
 	case "uploadExamsToZPA":

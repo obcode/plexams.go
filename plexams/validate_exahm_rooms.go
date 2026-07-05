@@ -43,6 +43,13 @@ func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.Valida
 		return nil, err
 	}
 
+	// largest single R-building (non-Anny) lab: an exam that fits it needs no T-Bau room.
+	rBauThreshold, err := p.maxNonAnnySebRoom(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot compute max R-building room")
+		return nil, err
+	}
+
 	for _, exam := range exams {
 		prePlannedRooms, err := p.dbClient.PrePlannedRoomsForExam(ctx, exam.Ancode)
 		if err != nil {
@@ -51,14 +58,20 @@ func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.Valida
 				Msg("error while trying to get prePlannedRooms")
 		}
 
-		// After the pre-planning, an exam with pre-planned rooms has its T-Bau rooms.
-		// An exam with none simply had no T-Bau room — fine when it is small enough for
-		// the R-building, where it should be scheduled instead. Report as info, not an
-		// error, and skip the room/slot/seat checks (there are no rooms to check).
+		// An exam with pre-planned rooms has its T-Bau rooms. An exam with none only makes
+		// sense when it is small enough for a single R-building lab (then it is scheduled
+		// there, no T-Bau room needed → info). If it is too big for the R-building, no
+		// T-Bau room is a real gap → warning.
 		if len(prePlannedRooms) == 0 {
-			v.infof(ref{Ancode: ptr(exam.Ancode)},
-				"Exam %d. %s (%s): keine T-Bau-Räume — im R-Bau einplanen (%d Teilnehmende erwartet)",
-				exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, exam.StudentRegsCount)
+			if exam.StudentRegsCount <= rBauThreshold {
+				v.infof(ref{Ancode: ptr(exam.Ancode)},
+					"Exam %d. %s (%s): keine T-Bau-Räume, passt aber in den R-Bau (%d Teilnehmende ≤ %d)",
+					exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, exam.StudentRegsCount, rBauThreshold)
+			} else {
+				v.warnf(ref{Ancode: ptr(exam.Ancode)},
+					"Exam %d. %s (%s): keine T-Bau-Räume und zu groß für den R-Bau (%d Teilnehmende > %d) — T-Bau-Raum nötig",
+					exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, exam.StudentRegsCount, rBauThreshold)
+			}
 			continue
 		}
 

@@ -377,9 +377,11 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	w := examplan.DefaultWeights()
 	if roomPhase {
 		// Phase A: main goal is to fill the booked T-building rooms with EXaHM/SEB;
-		// even distribution over all slots is off (we want concentration in T-Bau).
+		// even distribution over all slots is off (we want concentration in T-Bau), and
+		// interior-hole avoidance is meaningless for this subset (phase B fills the day).
 		w.TbauFill = 10000
 		w.SlotLoad = 0
+		w.Hole = 0
 	}
 	students := make([]examplan.Student, 0, len(studentsRaw))
 	for _, s := range studentsRaw {
@@ -629,6 +631,9 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	} else {
 		reporter.Println(fmt.Sprintf("direkt nacheinander %d, selber Tag %d (%d Studierende), Folgetag %d",
 			d.Adjacent, d.SameDay, d.StudentsWithSameDay, d.NextDay))
+		if d.InteriorHoles > 0 {
+			reporter.Println(fmt.Sprintf("freie Slots mitten am Tag: %d (ungünstig für die Aufsichtenplanung)", d.InteriorHoles))
+		}
 	}
 
 	if dryRun {

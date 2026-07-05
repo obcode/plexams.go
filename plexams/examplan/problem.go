@@ -105,6 +105,7 @@ type Weights struct {
 	Unplaced      float64 // penalty per unplaced unit (dominant)
 	CrossCampus   float64 // extra penalty for a same-day student pair across campuses (travel gap)
 	TbauFill      float64 // per unused booked T-building seat (EXaHM/SEB phase A: fill the rooms)
+	Hole          float64 // per empty slot that lies between two occupied slots on the same day
 }
 
 // DefaultWeights returns the calibrated weights (tuned against real data, Test26SS,
@@ -124,7 +125,8 @@ func DefaultWeights() Weights {
 		LoadThreshold: 200,
 		Unplaced:      1_000_000,
 		CrossCampus:   3000,
-		TbauFill:      0, // off by default (Phase B); the EXaHM/SEB phase A sets it high
+		TbauFill:      0,    // off by default (Phase B); the EXaHM/SEB phase A sets it high
+		Hole:          1500, // an empty slot mid-day is bad for invigilation planning; drive it to the day edge (or fill it). Below Adjacent (2500) so it never creates a directly-consecutive pair just to close a hole; above SameDay (900) so it may accept a mild same-day proximity.
 	}
 }
 
@@ -168,6 +170,10 @@ type Problem struct {
 	prevSlot    []int
 	overrunNext [][]int
 	overrunPrev [][]int
+	// day grouping for the interior-hole penalty: days[d] is the slot indices of one
+	// exam day, sorted by slot number; dayOfSlot maps a slot index back to its day group.
+	days      [][]int
+	dayOfSlot []int
 }
 
 type attractRef struct {
@@ -246,6 +252,29 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 			p.prevSlot[i] = j
 		}
 	}
+	// day grouping (for the interior-hole penalty): collect slot indices per exam day,
+	// each sorted by slot number, days themselves in ascending day order.
+	byDay := make(map[int][]int)
+	dayNums := make([]int, 0)
+	for i := range p.Slots {
+		d := p.Slots[i].Day
+		if _, ok := byDay[d]; !ok {
+			dayNums = append(dayNums, d)
+		}
+		byDay[d] = append(byDay[d], i)
+	}
+	sort.Ints(dayNums)
+	p.dayOfSlot = make([]int, len(p.Slots))
+	p.days = make([][]int, 0, len(dayNums))
+	for di, d := range dayNums {
+		slots := byDay[d]
+		sort.Slice(slots, func(a, b int) bool { return p.Slots[slots[a]].Slot < p.Slots[slots[b]].Slot })
+		for _, s := range slots {
+			p.dayOfSlot[s] = di
+		}
+		p.days = append(p.days, slots)
+	}
+
 	// allocated but empty until SetNTAOverruns is called (feasible() ranges over them)
 	p.overrunNext = make([][]int, len(p.Units))
 	p.overrunPrev = make([][]int, len(p.Units))

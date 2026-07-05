@@ -1,11 +1,22 @@
 package examplan
 
 import (
+	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/obcode/plexams.go/plexams/optimize"
 )
+
+// oneDaySlots builds n consecutive same-day slots (2h apart) with unlimited seats.
+func oneDaySlots(n int) []Slot {
+	t0 := time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC)
+	slots := make([]Slot, n)
+	for i := 0; i < n; i++ {
+		slots[i] = Slot{SlotRef: SlotRef{Day: 1, Slot: i + 1, Start: t0.Add(time.Duration(2*i) * time.Hour)}, Seats: 1000}
+	}
+	return slots
+}
 
 func testSlots() []Slot {
 	t0 := time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC) // Mon
@@ -236,9 +247,10 @@ func fullCost(st *State) float64 {
 	s, _ := spreadCost(st)
 	a, _ := attractCost(st)
 	l, _ := slotLoadCost(st)
+	h, _ := holeCost(st)
 	f, _ := tbauFillCost(st)
 	u, _ := unplacedCost(st)
-	return s + a + l + f + u
+	return s + a + l + h + f + u
 }
 
 func TestIncrementalMatchesFull(t *testing.T) {
@@ -297,6 +309,144 @@ func TestClosenessUsesRealHoursAcrossDays(t *testing.T) {
 	}
 	if overnightShort >= p.W.SameDay {
 		t.Errorf("across-day should be cheaper than same-day: %.1f >= %.1f", overnightShort, p.W.SameDay)
+	}
+}
+
+// TestHoleDrivesEmptySlotToDayEdge reproduces the reported case: a day where one slot
+// must stay empty and the LAST slot is occupied by a fixed SEB exam (must stay in the
+// T-building). The free slot must end up at the day edge (the first slot) rather than
+// between occupied slots, which is better for invigilation planning.
+func TestHoleDrivesEmptySlotToDayEdge(t *testing.T) {
+	slots := oneDaySlots(5) // one day, slots 1..5
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 80, Allowed: []int{0, 1, 2, 3}},
+		{ID: 2, Ancodes: []int{2}, Seats: 80, Allowed: []int{0, 1, 2, 3}},
+		{ID: 3, Ancodes: []int{3}, Seats: 80, Allowed: []int{0, 1, 2, 3}},
+		{ID: 9, Ancodes: []int{9}, Seats: 50, Seb: true, Fixed: true, FixedSlot: 4}, // SEB pinned to the last slot
+	}
+	p := NewProblem(slots, units, nil, nil, DefaultWeights())
+	st, _ := Solve(p, fastOpts(), false)
+
+	if d := st.Diagnostics(); d.InteriorHoles != 0 {
+		t.Errorf("free slot should sit at the day edge (0 interior holes), got %d; slots=%v", d.InteriorHoles, st.SlotOf)
+	}
+	if st.slotSeats[0] != 0 {
+		t.Errorf("the first slot should be the empty one (SEB fixed in the last), got seats=%d; slots=%v", st.slotSeats[0], st.SlotOf)
+	}
+	if vs := p.Registry().HardViolations(st); len(vs) != 0 {
+		t.Errorf("unexpected hard violations: %+v", vs)
+	}
+}
+
+// TestHoleFillsInteriorGap: with two fixed exams at the first and last slot of a day and
+// a small, conflict-free exam free to go anywhere, the small exam is pulled into the
+// middle slot so no free slot remains between occupied ones.
+func TestHoleFillsInteriorGap(t *testing.T) {
+	slots := oneDaySlots(3)
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 50, Fixed: true, FixedSlot: 0},
+		{ID: 2, Ancodes: []int{2}, Seats: 50, Fixed: true, FixedSlot: 2},
+		{ID: 3, Ancodes: []int{3}, Seats: 20, Allowed: []int{0, 1, 2}}, // small, no conflicts
+	}
+	w := DefaultWeights()
+	w.SlotLoad = 0 // isolate: only the hole term should decide where the small exam lands
+	p := NewProblem(slots, units, nil, nil, w)
+	st, _ := Solve(p, fastOpts(), false)
+
+	if st.SlotOf[2] != 1 {
+		t.Errorf("small exam should fill the interior gap (idx1) to avoid a hole, got %d", st.SlotOf[2])
+	}
+	if d := st.Diagnostics(); d.InteriorHoles != 0 {
+		t.Errorf("expected no interior holes after filling, got %d", d.InteriorHoles)
+	}
+}
+
+// TestHoleIncrementalMatchesFull exercises the incremental hole bookkeeping (moveUnit /
+// undo) against a from-scratch recompute over many random moves on a 4-slot day where
+// interior holes actually occur.
+func TestHoleIncrementalMatchesFull(t *testing.T) {
+	slots := oneDaySlots(4)
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 30},
+		{ID: 2, Ancodes: []int{2}, Seats: 30},
+		{ID: 3, Ancodes: []int{3}, Seats: 30},
+		{ID: 4, Ancodes: []int{4}, Seats: 30},
+	}
+	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1}, {A: 2, B: 3, Weight: 1}}}}
+	p := NewProblem(slots, units, students, nil, DefaultWeights())
+	st := construct(p)
+	rng := rand.New(rand.NewSource(7))
+	check := func(when string, i int) {
+		want, _ := holeCost(st)
+		if diff := st.holeTotal - want; diff > 1e-6 || diff < -1e-6 {
+			t.Fatalf("holeTotal %.4f != recompute %.4f %s move %d; slots=%v", st.holeTotal, want, when, i, st.SlotOf)
+		}
+	}
+	for i := 0; i < 3000; i++ {
+		undo := st.Propose(rng)
+		if undo == nil {
+			continue
+		}
+		check("after", i)
+		if i%3 == 0 {
+			undo()
+			check("after undo", i)
+		}
+	}
+}
+
+// TestHoleMultiDayGroupingAndIncremental checks the per-day grouping and the incremental
+// hole bookkeeping across MORE than one day (a hole on day 2 must not be affected by
+// day 1's occupancy, and moves that cross days must keep holeTotal correct).
+func TestHoleMultiDayGroupingAndIncremental(t *testing.T) {
+	t0 := time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC)
+	mk := func(day, slot, addH int) Slot {
+		return Slot{SlotRef: SlotRef{Day: day, Slot: slot, Start: t0.Add(time.Duration(addH) * time.Hour)}, Seats: 1000}
+	}
+	// day 1: slots 1..3 (idx 0..2); day 2: slots 1..4 (idx 3..6, on the next calendar day)
+	slots := []Slot{
+		mk(1, 1, 0), mk(1, 2, 2), mk(1, 3, 4),
+		mk(2, 1, 24), mk(2, 2, 26), mk(2, 3, 28), mk(2, 4, 30),
+	}
+	// dayOfSlot must group the two days correctly
+	p := NewProblem(slots, []Unit{{ID: 1, Seats: 1}}, nil, nil, DefaultWeights())
+	wantDay := []int{0, 0, 0, 1, 1, 1, 1}
+	for s, w := range wantDay {
+		if p.dayOfSlot[s] != w {
+			t.Fatalf("dayOfSlot[%d]=%d, want %d", s, p.dayOfSlot[s], w)
+		}
+	}
+	if len(p.days) != 2 || len(p.days[0]) != 3 || len(p.days[1]) != 4 {
+		t.Fatalf("day grouping wrong: %v", p.days)
+	}
+
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 20},
+		{ID: 2, Ancodes: []int{2}, Seats: 20},
+		{ID: 3, Ancodes: []int{3}, Seats: 20},
+		{ID: 4, Ancodes: []int{4}, Seats: 20},
+		{ID: 5, Ancodes: []int{5}, Seats: 20},
+	}
+	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1}, {A: 2, B: 3, Weight: 1}}}}
+	p2 := NewProblem(slots, units, students, nil, DefaultWeights())
+	st := construct(p2)
+	rng := rand.New(rand.NewSource(11))
+	for i := 0; i < 4000; i++ {
+		undo := st.Propose(rng)
+		if undo == nil {
+			continue
+		}
+		want, _ := holeCost(st)
+		if diff := st.holeTotal - want; diff > 1e-6 || diff < -1e-6 {
+			t.Fatalf("holeTotal %.4f != recompute %.4f after move %d; slots=%v", st.holeTotal, want, i, st.SlotOf)
+		}
+		if i%4 == 0 {
+			undo()
+			want2, _ := holeCost(st)
+			if diff := st.holeTotal - want2; diff > 1e-6 || diff < -1e-6 {
+				t.Fatalf("holeTotal %.4f != recompute %.4f after undo %d", st.holeTotal, want2, i)
+			}
+		}
 	}
 }
 

@@ -27,6 +27,7 @@ type Diagnostics struct {
 	SlotsUsed          int
 	SlotsOverThreshold int
 	MaxExamsPerSlot    int
+	InteriorHoles      int // empty slots between occupied ones on the same day (bad for invigilation)
 }
 
 // bucket classifies a placed pair by temporal proximity; returns an index into the
@@ -127,6 +128,9 @@ func (st *State) Diagnostics() Diagnostics {
 		if examsPerSlot[s] > d.MaxExamsPerSlot {
 			d.MaxExamsPerSlot = examsPerSlot[s]
 		}
+	}
+	for di := range p.days {
+		d.InteriorHoles += st.dayHoleCount(di)
 	}
 	return d
 }

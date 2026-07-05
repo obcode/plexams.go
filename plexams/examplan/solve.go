@@ -171,7 +171,7 @@ func (p *Problem) Registry() optimize.Registry[*State] {
 			fixedC{}, allowedC{}, sameStudentC{}, capacityC{}, ntaOverrunC{},
 		},
 		Soft: []optimize.SoftConstraint[*State]{
-			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, tbauFillC{p.W}, placementC{p.W},
+			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, holeC{p.W}, tbauFillC{p.W}, placementC{p.W},
 		},
 	}
 }
@@ -298,6 +298,14 @@ func (c slotLoadC) Info() optimize.Info {
 		Description: "Prüfungen möglichst gleichmäßig über die Slots verteilen: Abweichung von der idealen Auslastung (Anmeldungen / Slots) wird bestraft (leere und sehr volle Slots)."}
 }
 func (slotLoadC) Cost(st *State) (float64, []optimize.Violation) { return slotLoadCost(st) }
+
+type holeC struct{ w Weights }
+
+func (c holeC) Info() optimize.Info {
+	return optimize.Info{Name: "slot-hole", Title: "Keine Lücke mitten am Tag", Kind: optimize.KindSoft, Weight: c.w.Hole, Tier: 31,
+		Description: "Bleibt an einem Tag ein Slot frei, soll er nicht zwischen belegten Slots liegen (schlecht für die Aufsichtenplanung): freie Slots werden an den Tagesrand gedrängt, sonst mit einer kleinen Prüfung gefüllt."}
+}
+func (holeC) Cost(st *State) (float64, []optimize.Violation) { return holeCost(st) }
 
 type tbauFillC struct{ w Weights }
 

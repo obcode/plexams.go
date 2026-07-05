@@ -24,9 +24,10 @@ type Diagnostics struct {
 	WorstStudentPairs   [6]int // [sameSlot, adjacent, sameDay, nextDay, within3, further]
 
 	MaxSlotSeats       int
-	SlotsUsed          int
+	SlotsUsed          int // slots holding at least one of OUR exams (foreign-only slots excluded)
 	SlotsOverThreshold int
 	MaxExamsPerSlot    int
+	InteriorHoles      int // empty slots between occupied ones on the same day (bad for invigilation)
 }
 
 // bucket classifies a placed pair by temporal proximity; returns an index into the
@@ -115,7 +116,7 @@ func (st *State) Diagnostics() Diagnostics {
 		}
 	}
 	for s := range p.Slots {
-		if st.slotSeats[s] > 0 {
+		if st.slotOwn[s] > 0 { // slots with at least one of OUR exams (foreign-only slots don't count)
 			d.SlotsUsed++
 		}
 		if st.slotSeats[s] > d.MaxSlotSeats {
@@ -127,6 +128,9 @@ func (st *State) Diagnostics() Diagnostics {
 		if examsPerSlot[s] > d.MaxExamsPerSlot {
 			d.MaxExamsPerSlot = examsPerSlot[s]
 		}
+	}
+	for di := range p.days {
+		d.InteriorHoles += st.dayHoleCount(di)
 	}
 	return d
 }

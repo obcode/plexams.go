@@ -17,7 +17,10 @@ import (
 type State struct {
 	P         *Problem
 	SlotOf    []int
-	slotSeats []int
+	slotSeats []int // total seats per slot (incl. foreign exams) — capacity & load
+	slotOwn   []int // seats of OUR exams only (foreign/notPlannedByMe excluded) — used
+	// for the interior-hole term: a slot holding only foreign exams is, for our
+	// invigilation planning, effectively free.
 	slotExahm []int
 	slotSeb   []int
 
@@ -26,6 +29,7 @@ type State struct {
 	attractTotal  float64
 	slotLoadTotal float64
 	tbauFillTotal float64
+	holeTotal     float64
 	nUnplaced     int
 }
 
@@ -34,6 +38,7 @@ func newState(p *Problem) *State {
 		P:         p,
 		SlotOf:    make([]int, len(p.Units)),
 		slotSeats: make([]int, len(p.Slots)),
+		slotOwn:   make([]int, len(p.Slots)),
 		slotExahm: make([]int, len(p.Slots)),
 		slotSeb:   make([]int, len(p.Slots)),
 		pS:        make([]float64, len(p.Students)),
@@ -56,8 +61,12 @@ func (st *State) setPhysical(u, s int) {
 	seats := st.P.Units[u].Seats
 	exahm := st.P.Units[u].Exahm
 	seb := st.P.Units[u].Seb
+	own := !st.P.Units[u].Foreign
 	if old := st.SlotOf[u]; old >= 0 {
 		st.slotSeats[old] -= seats
+		if own {
+			st.slotOwn[old] -= seats
+		}
 		if exahm {
 			st.slotExahm[old] -= seats
 		}
@@ -68,6 +77,9 @@ func (st *State) setPhysical(u, s int) {
 	st.SlotOf[u] = s
 	if s >= 0 {
 		st.slotSeats[s] += seats
+		if own {
+			st.slotOwn[s] += seats
+		}
 		if exahm {
 			st.slotExahm[s] += seats
 		}
@@ -100,6 +112,10 @@ func (st *State) initCost() {
 		st.slotLoadTotal += p.loadPenalty(st.slotSeats[s])
 		st.tbauFillTotal += p.tbauPenalty(s, st.slotExahm[s], st.slotSeb[s])
 	}
+	st.holeTotal = 0
+	for d := range p.days {
+		st.holeTotal += p.W.Hole * float64(st.dayHoleCount(d))
+	}
 	st.nUnplaced = 0
 	for _, u := range p.movable {
 		if st.SlotOf[u] < 0 {
@@ -124,6 +140,50 @@ func (st *State) studentPenalty(si int) float64 {
 		ps += pr.Weight * c
 	}
 	return ps
+}
+
+// dayHoleCount counts the interior holes of day group d: slots without any of OUR exams
+// that lie between the first and the last own-occupied slot of that day. Occupancy is
+// measured in own seats (slotOwn), so a slot holding only foreign / not-planned-by-me
+// exams counts as free — for our invigilation planning it is. A day whose free slots are
+// all at the edges (or that is fully packed / fully empty) has 0 — good for invigilation.
+func (st *State) dayHoleCount(d int) int {
+	slots := st.P.days[d]
+	first, last := -1, -1
+	for i, s := range slots {
+		if st.slotOwn[s] > 0 {
+			if first < 0 {
+				first = i
+			}
+			last = i
+		}
+	}
+	if first < 0 {
+		return 0
+	}
+	holes := 0
+	for i := first + 1; i < last; i++ {
+		if st.slotOwn[slots[i]] == 0 {
+			holes++
+		}
+	}
+	return holes
+}
+
+// holeOfDays is the weighted interior-hole penalty summed over the (at most two) given
+// day groups; -1 entries and duplicates are ignored.
+func (st *State) holeOfDays(d1, d2 int) float64 {
+	if st.P.W.Hole == 0 {
+		return 0
+	}
+	total := 0
+	if d1 >= 0 {
+		total += st.dayHoleCount(d1)
+	}
+	if d2 >= 0 && d2 != d1 {
+		total += st.dayHoleCount(d2)
+	}
+	return st.P.W.Hole * float64(total)
 }
 
 // attractOfUnit is the attract cost contributed by unit u's attract pairs.
@@ -156,6 +216,7 @@ func (st *State) moveUnit(u, newSlot int) func() {
 	savedAttract := st.attractTotal
 	savedLoad := st.slotLoadTotal
 	savedFill := st.tbauFillTotal
+	savedHole := st.holeTotal
 	savedUnplaced := st.nUnplaced
 
 	// slot-load + T-building-fill deltas over the (at most two) touched slots
@@ -169,6 +230,15 @@ func (st *State) moveUnit(u, newSlot int) func() {
 		fillBefore += p.tbauPenalty(newSlot, st.slotExahm[newSlot], st.slotSeb[newSlot])
 	}
 	oldAttractU := st.attractOfUnit(u)
+	// interior-hole delta over the (at most two) days whose occupancy this move changes
+	dOld, dNew := -1, -1
+	if old >= 0 {
+		dOld = p.dayOfSlot[old]
+	}
+	if newSlot >= 0 {
+		dNew = p.dayOfSlot[newSlot]
+	}
+	holeBefore := st.holeOfDays(dOld, dNew)
 
 	st.setPhysical(u, newSlot)
 
@@ -183,6 +253,7 @@ func (st *State) moveUnit(u, newSlot int) func() {
 	}
 	st.slotLoadTotal += loadAfter - loadBefore
 	st.tbauFillTotal += fillAfter - fillBefore
+	st.holeTotal += st.holeOfDays(dOld, dNew) - holeBefore
 	st.attractTotal += st.attractOfUnit(u) - oldAttractU
 	if old < 0 && newSlot >= 0 {
 		st.nUnplaced--
@@ -202,6 +273,7 @@ func (st *State) moveUnit(u, newSlot int) func() {
 		st.attractTotal = savedAttract
 		st.slotLoadTotal = savedLoad
 		st.tbauFillTotal = savedFill
+		st.holeTotal = savedHole
 		st.nUnplaced = savedUnplaced
 	}
 }
@@ -353,13 +425,13 @@ func (st *State) Propose(rng *rand.Rand) func() {
 
 // Cost is the maintained total soft objective (O(1)).
 func (st *State) Cost() float64 {
-	return st.spreadTotal + st.attractTotal + st.slotLoadTotal + st.tbauFillTotal + st.P.W.Unplaced*float64(st.nUnplaced)
+	return st.spreadTotal + st.attractTotal + st.slotLoadTotal + st.tbauFillTotal + st.holeTotal + st.P.W.Unplaced*float64(st.nUnplaced)
 }
 
 func (st *State) Snapshot() any {
 	return snapshot{
-		slotOf: cp(st.SlotOf), slotSeats: cp(st.slotSeats), slotExahm: cp(st.slotExahm), slotSeb: cp(st.slotSeb),
-		pS: cpF(st.pS), spread: st.spreadTotal, attract: st.attractTotal, load: st.slotLoadTotal, fill: st.tbauFillTotal, nUnplaced: st.nUnplaced,
+		slotOf: cp(st.SlotOf), slotSeats: cp(st.slotSeats), slotOwn: cp(st.slotOwn), slotExahm: cp(st.slotExahm), slotSeb: cp(st.slotSeb),
+		pS: cpF(st.pS), spread: st.spreadTotal, attract: st.attractTotal, load: st.slotLoadTotal, fill: st.tbauFillTotal, hole: st.holeTotal, nUnplaced: st.nUnplaced,
 	}
 }
 
@@ -367,6 +439,7 @@ func (st *State) Restore(a any) {
 	sn := a.(snapshot)
 	copy(st.SlotOf, sn.slotOf)
 	copy(st.slotSeats, sn.slotSeats)
+	copy(st.slotOwn, sn.slotOwn)
 	copy(st.slotExahm, sn.slotExahm)
 	copy(st.slotSeb, sn.slotSeb)
 	copy(st.pS, sn.pS)
@@ -374,14 +447,15 @@ func (st *State) Restore(a any) {
 	st.attractTotal = sn.attract
 	st.slotLoadTotal = sn.load
 	st.tbauFillTotal = sn.fill
+	st.holeTotal = sn.hole
 	st.nUnplaced = sn.nUnplaced
 }
 
 type snapshot struct {
-	slotOf, slotSeats, slotExahm, slotSeb []int
-	pS                                    []float64
-	spread, attract, load, fill           float64
-	nUnplaced                             int
+	slotOf, slotSeats, slotOwn, slotExahm, slotSeb []int
+	pS                                             []float64
+	spread, attract, load, fill, hole              float64
+	nUnplaced                                      int
 }
 
 func cp(s []int) []int {
@@ -480,6 +554,37 @@ func tbauFillCost(st *State) (float64, []optimize.Violation) {
 		total += p.tbauPenalty(s, st.slotExahm[s], st.slotSeb[s])
 	}
 	return total, nil
+}
+
+// holeCost sums the interior-hole penalty over all days and reports each offending slot
+// (an empty slot with occupied slots both before and after it on the same day).
+func holeCost(st *State) (float64, []optimize.Violation) {
+	p := st.P
+	var total float64
+	var vs []optimize.Violation
+	for d := range p.days {
+		slots := p.days[d]
+		first, last := -1, -1
+		for i, s := range slots {
+			if st.slotOwn[s] > 0 {
+				if first < 0 {
+					first = i
+				}
+				last = i
+			}
+		}
+		if first < 0 {
+			continue
+		}
+		for i := first + 1; i < last; i++ {
+			if st.slotOwn[slots[i]] == 0 {
+				total += p.W.Hole
+				vs = append(vs, optimize.Violation{Constraint: "slot-hole", Message: "freier Slot (ohne eigene Prüfung) zwischen belegten Slots",
+					Refs: []int{p.Slots[slots[i]].Day, p.Slots[slots[i]].Slot}})
+			}
+		}
+	}
+	return total, vs
 }
 
 func unplacedCost(st *State) (float64, []optimize.Violation) {

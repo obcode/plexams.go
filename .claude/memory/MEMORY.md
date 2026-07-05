@@ -21,3 +21,5 @@
 - [mongotest without docker](mongotest-without-docker.md) — run integration tests via a downloaded standalone mongod + PLEXAMS_TEST_MONGO_URI when Docker is absent.
 - [GraphQL interface cleanup](graphql-interface-cleanup.md) — schema audited vs GUI usage & fully trimmed (all unused queries+mutations gone, 3 validators wired into GUI); done, on main.
 - [validation conflict severity](validation-conflict-severity.md) — ValidateConflicts graded (sameSlot=error/adjacent=warn/sameDay=info), sorted most-severe-first; accepted decisions (DB+YAML) shown as info not hidden.
+- [DB integrity validation](db-integrity-validation.md) — old ValidateDB split into 5 referential-integrity validators (plan/constraints/rooms/ntas/references); closes FixedDay + NTA-mtknr + planned_rooms-slot TODOs; GUI needs 5 new subscriptions.
+- [preplan validation severity](preplan-validation-severity.md) — EXaHM/SEB Anny pre-plan validation now graded (findings+level); small SEB in R-building = warning not failure; ok = no errors.

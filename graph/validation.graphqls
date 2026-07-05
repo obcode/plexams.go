@@ -77,6 +77,4 @@ extend type Subscription {
   validateDBRooms: LogLine!
   validateDBNtas: LogLine!
   validateDBReferences: LogLine!
-
-  validatePrePlannedExahmRooms: LogLine!
 }

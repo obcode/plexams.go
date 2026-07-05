@@ -122,8 +122,3 @@ func (r *subscriptionResolver) ValidateDBNtas(ctx context.Context) (<-chan *mode
 func (r *subscriptionResolver) ValidateDBReferences(ctx context.Context) (<-chan *model.LogLine, error) {
 	return r.runValidation(ctx, "db-references", r.plexams.ValidateDBReferences), nil
 }
-
-// ValidatePrePlannedExahmRooms is the resolver for the validatePrePlannedExahmRooms field.
-func (r *subscriptionResolver) ValidatePrePlannedExahmRooms(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runValidation(ctx, "preplanned-exahm-rooms", r.plexams.ValidatePrePlannedExahmRooms), nil
-}

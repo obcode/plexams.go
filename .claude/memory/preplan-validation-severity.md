@@ -15,3 +15,5 @@ Fixed 2026-07-05: findings are now graded. `PreplanValidation` gained `findings:
 - `ok` = no error-level findings (warnings/infos don't fail).
 
 GUI should render `findings` by level and treat `ok` as "no errors" (see [[gui-and-cli-sync.md]]); the query is GUI-only (no CLI). Related: [[two-phase-exahm-seb]], [[preplanning-seb-exahm]], [[validation-conflict-severity]].
+
+Same theme, different validator: `ValidatePrePlannedExahmRooms` ([plexams/validate_exahm_rooms.go](plexams/validate_exahm_rooms.go), CLI `validate preplanned-exahm-rooms` / GraphQL `validatePrePlannedExahmRooms`) used to error on every EXaHM/SEB exam without a plan entry ("has no plan entry yet") and ran its seat check even with zero pre-planned rooms (→ false "0 seats" error). Fixed 2026-07-05: "not scheduled yet" is now **info** (an unplaced exam can still go to the T-Bau), and the seat check only runs when `len(prePlannedRooms) > 0`. Wrong room type / disallowed slot / genuine seat shortage stay errors.

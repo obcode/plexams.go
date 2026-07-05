@@ -1216,8 +1216,14 @@ type ValidationFinding struct {
 // the final RESULT line of the validator's subscription (in LogLine.validation),
 // while the human-readable lines stream before it.
 type ValidationReport struct {
-	Name         string               `json:"name"`
-	Ok           bool                 `json:"ok"`
+	Name string `json:"name"`
+	Ok   bool   `json:"ok"`
+	// True when the validator did not run because the data it checks does not exist yet
+	// (e.g. no exam plan, no rooms, no invigilations). Not a failure — render neutrally
+	// ("übersprungen"), not as a green pass.
+	Skipped bool `json:"skipped"`
+	// Why the validator was skipped, if skipped.
+	SkipReason   *string              `json:"skipReason,omitempty"`
 	ErrorCount   int                  `json:"errorCount"`
 	WarningCount int                  `json:"warningCount"`
 	InfoCount    int                  `json:"infoCount"`

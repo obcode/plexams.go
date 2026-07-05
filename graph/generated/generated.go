@@ -1386,6 +1386,8 @@ type ComplexityRoot struct {
 		InfoCount    func(childComplexity int) int
 		Name         func(childComplexity int) int
 		Ok           func(childComplexity int) int
+		SkipReason   func(childComplexity int) int
+		Skipped      func(childComplexity int) int
 		WarningCount func(childComplexity int) int
 	}
 
@@ -9004,6 +9006,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ValidationReport.Ok(childComplexity), true
 
+	case "ValidationReport.skipReason":
+		if e.complexity.ValidationReport.SkipReason == nil {
+			break
+		}
+
+		return e.complexity.ValidationReport.SkipReason(childComplexity), true
+
+	case "ValidationReport.skipped":
+		if e.complexity.ValidationReport.Skipped == nil {
+			break
+		}
+
+		return e.complexity.ValidationReport.Skipped(childComplexity), true
+
 	case "ValidationReport.warningCount":
 		if e.complexity.ValidationReport.WarningCount == nil {
 			break
@@ -11745,6 +11761,14 @@ while the human-readable lines stream before it.
 type ValidationReport {
   name: String!
   ok: Boolean!
+  """
+  True when the validator did not run because the data it checks does not exist yet
+  (e.g. no exam plan, no rooms, no invigilations). Not a failure — render neutrally
+  ("übersprungen"), not as a green pass.
+  """
+  skipped: Boolean!
+  "Why the validator was skipped, if skipped."
+  skipReason: String
   errorCount: Int!
   warningCount: Int!
   infoCount: Int!
@@ -33914,6 +33938,10 @@ func (ec *executionContext) fieldContext_LogLine_validation(_ context.Context, f
 				return ec.fieldContext_ValidationReport_name(ctx, field)
 			case "ok":
 				return ec.fieldContext_ValidationReport_ok(ctx, field)
+			case "skipped":
+				return ec.fieldContext_ValidationReport_skipped(ctx, field)
+			case "skipReason":
+				return ec.fieldContext_ValidationReport_skipReason(ctx, field)
 			case "errorCount":
 				return ec.fieldContext_ValidationReport_errorCount(ctx, field)
 			case "warningCount":
@@ -67032,6 +67060,91 @@ func (ec *executionContext) fieldContext_ValidationReport_ok(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _ValidationReport_skipped(ctx context.Context, field graphql.CollectedField, obj *model.ValidationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ValidationReport_skipped(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Skipped, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ValidationReport_skipped(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ValidationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ValidationReport_skipReason(ctx context.Context, field graphql.CollectedField, obj *model.ValidationReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ValidationReport_skipReason(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SkipReason, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ValidationReport_skipReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ValidationReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ValidationReport_errorCount(ctx context.Context, field graphql.CollectedField, obj *model.ValidationReport) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ValidationReport_errorCount(ctx, field)
 	if err != nil {
@@ -82825,6 +82938,13 @@ func (ec *executionContext) _ValidationReport(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "skipped":
+			out.Values[i] = ec._ValidationReport_skipped(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "skipReason":
+			out.Values[i] = ec._ValidationReport_skipReason(ctx, field, obj)
 		case "errorCount":
 			out.Values[i] = ec._ValidationReport_errorCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

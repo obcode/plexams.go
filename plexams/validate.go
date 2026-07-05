@@ -102,6 +102,12 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 	ctx := context.Background()
 	v := newValidation(reporter, "conflicts", "validating conflicts")
 
+	if ok, err := p.hasPlanEntries(ctx); err != nil {
+		return nil, err
+	} else if !ok {
+		return v.skip(skipNoPlan), nil
+	}
+
 	validationMessages := make(map[conflictingAncodes]*problemWithStudents)
 
 	v.step("get planned ancodes")
@@ -563,6 +569,12 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
 	v := newValidation(reporter, "constraints", "validating constraints")
+
+	if ok, err := p.hasPlanEntries(ctx); err != nil {
+		return nil, err
+	} else if !ok {
+		return v.skip(skipNoPlan), nil
+	}
 
 	v.step("get constraints")
 	constraints, err := p.Constraints(ctx)

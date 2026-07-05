@@ -50,6 +50,18 @@ func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.Valida
 				Int("ancode", exam.Ancode).
 				Msg("error while trying to get prePlannedRooms")
 		}
+
+		// After the pre-planning, an exam with pre-planned rooms has its T-Bau rooms.
+		// An exam with none simply had no T-Bau room — fine when it is small enough for
+		// the R-building, where it should be scheduled instead. Report as info, not an
+		// error, and skip the room/slot/seat checks (there are no rooms to check).
+		if len(prePlannedRooms) == 0 {
+			v.infof(ref{Ancode: ptr(exam.Ancode)},
+				"Exam %d. %s (%s): keine T-Bau-Räume — im R-Bau einplanen (%d Teilnehmende erwartet)",
+				exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, exam.StudentRegsCount)
+			continue
+		}
+
 		for _, prePlannedRoom := range prePlannedRooms {
 			room := roomsMap[prePlannedRoom.RoomName]
 			if exam.Constraints.RoomConstraints.Seb && !room.Seb {
@@ -65,21 +77,16 @@ func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.Valida
 			}
 		}
 
-		// check if exam is planned in this slot if room is allowed
+		// If the exam is already placed into a slot, its pre-planned rooms must be
+		// allowed there. Not yet placed is fine — Phase A of the schedule generation
+		// places the pre-planned EXaHM/SEB exams into their T-Bau slots.
 		planEntry, err := p.dbClient.PlanEntry(ctx, exam.Ancode)
 		if err != nil {
 			log.Error().Err(err).
 				Int("ancode", exam.Ancode).
 				Msg("cannot get plan entry for exam")
 		}
-		if planEntry == nil {
-			// Not yet placed into a slot. With the current pre-planning that is a normal
-			// intermediate state — the exam can still be scheduled (e.g. in the T-Bau) —
-			// so it is info, not an error.
-			v.infof(ref{Ancode: ptr(exam.Ancode)},
-				"Exam %d. %s (%s) is not scheduled yet (can still be placed, e.g. in the T-Bau)",
-				exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer)
-		} else {
+		if planEntry != nil {
 			allowedRoomNames := roomsForSlots[SlotNumber{day: planEntry.DayNumber, slot: planEntry.SlotNumber}]
 			for _, prePlannedRoom := range prePlannedRooms {
 				found := false
@@ -98,20 +105,16 @@ func (p *Plexams) ValidatePrePlannedExahmRooms(reporter Reporter) (*model.Valida
 			}
 		}
 
-		// check if rooms have enough seats — only when rooms have actually been
-		// pre-planned. An exam without pre-planned rooms is not a seat shortage; it is
-		// simply not pre-planned yet (and can still be scheduled, e.g. in the T-Bau).
-		if len(prePlannedRooms) > 0 {
-			seats := 0
-			for _, prePlannedRoom := range prePlannedRooms {
-				room := roomsMap[prePlannedRoom.RoomName]
-				seats += room.Seats
-			}
-			if seats < exam.StudentRegsCount {
-				v.errorf(ref{Ancode: ptr(exam.Ancode)},
-					"Not enough seats for Exam %d. %s (%s): %d seats planned, but %d students",
-					exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, seats, exam.StudentRegsCount)
-			}
+		// pre-planned rooms are present → check they seat everyone.
+		seats := 0
+		for _, prePlannedRoom := range prePlannedRooms {
+			room := roomsMap[prePlannedRoom.RoomName]
+			seats += room.Seats
+		}
+		if seats < exam.StudentRegsCount {
+			v.errorf(ref{Ancode: ptr(exam.Ancode)},
+				"Not enough seats for Exam %d. %s (%s): %d seats planned, but %d students",
+				exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, seats, exam.StudentRegsCount)
 		}
 	}
 

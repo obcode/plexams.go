@@ -221,12 +221,51 @@ type EmailAttachmentInfo struct {
 type EmailTemplate struct {
 	// the template's file name, e.g. "exahmEmail.md.tmpl".
 	Name string `json:"name"`
+	// a short human-readable purpose of this email (for the GUI list; not part of the mail).
+	Description string `json:"description"`
 	// the effective Markdown: the stored override if any, otherwise the built-in default.
 	Markdown string `json:"markdown"`
 	// true when no override is stored (the built-in default is in use).
 	IsDefault bool `json:"isDefault"`
 	// the built-in default Markdown (for preview and reset-to-default).
 	DefaultMarkdown string `json:"defaultMarkdown"`
+	// the variables (placeholders) this template may use, with a description and an example.
+	Variables []*EmailTemplateVariable `json:"variables"`
+}
+
+// EmailTemplateFunction documents a helper function callable in every email template, e.g.
+// `jiraURL` or `plural`. The list is global (all functions are available in all templates).
+type EmailTemplateFunction struct {
+	// the function name, e.g. "plural".
+	Name string `json:"name"`
+	// how to call it, e.g. "{{ plural .N \"Platz\" \"Plätze\" }}".
+	Usage string `json:"usage"`
+	// what it does, in plain language.
+	Description string `json:"description"`
+}
+
+// EmailTemplatePreview is the rendered result of a (possibly not-yet-saved) template against
+// representative sample data. On a template error, `error` holds the message and html/text
+// are empty — so the GUI can show parse/exec mistakes live while editing.
+type EmailTemplatePreview struct {
+	// the rendered HTML part (the shared layout is applied), for an in-GUI preview.
+	HTML string `json:"html"`
+	// the rendered plain-text part.
+	Text string `json:"text"`
+	// the error message if the template does not parse/execute; null on success.
+	Error *string `json:"error,omitempty"`
+}
+
+// EmailTemplateVariable documents one placeholder available in a template, e.g.
+// `.Teacher.Fullname`. Meant to be shown next to the editor so a non-technical user knows
+// which values exist and how to write them.
+type EmailTemplateVariable struct {
+	// how to write it in the template, e.g. "{{ .Teacher.Fullname }}".
+	Name string `json:"name"`
+	// what the value is, in plain language.
+	Description string `json:"description"`
+	// the value used for this placeholder in the live preview.
+	Example string `json:"example"`
 }
 
 type Emails struct {

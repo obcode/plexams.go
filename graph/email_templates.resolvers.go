@@ -24,3 +24,13 @@ func (r *mutationResolver) ResetEmailTemplate(ctx context.Context, name string) 
 func (r *queryResolver) EmailTemplates(ctx context.Context) ([]*model.EmailTemplate, error) {
 	return r.plexams.EmailTemplates(ctx)
 }
+
+// EmailTemplateFunctions is the resolver for the emailTemplateFunctions field.
+func (r *queryResolver) EmailTemplateFunctions(ctx context.Context) ([]*model.EmailTemplateFunction, error) {
+	return r.plexams.EmailTemplateFunctions(ctx)
+}
+
+// RenderEmailTemplatePreview is the resolver for the renderEmailTemplatePreview field.
+func (r *queryResolver) RenderEmailTemplatePreview(ctx context.Context, name string, markdown string) (*model.EmailTemplatePreview, error) {
+	return r.plexams.RenderEmailTemplatePreview(ctx, name, markdown)
+}

@@ -39,6 +39,13 @@ func (r *Renderer) Render(name string, jira bool, data any) (text []byte, html [
 	if err != nil {
 		return nil, nil, err
 	}
+	return r.RenderSource(name, source, jira, data)
+}
+
+// RenderSource is Render for an explicitly supplied Markdown source (instead of the stored
+// override / embedded default). It is used for the live preview of not-yet-saved edits: the
+// GUI sends the edited Markdown, and it is rendered against representative sample data.
+func (r *Renderer) RenderSource(name, source string, jira bool, data any) (text []byte, html []byte, err error) {
 	tmpl, err := txttmpl.New(name).Funcs(txttmpl.FuncMap(r.funcs)).Parse(source)
 	if err != nil {
 		return nil, nil, err

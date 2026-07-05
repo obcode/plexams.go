@@ -237,9 +237,29 @@ type ComplexityRoot struct {
 
 	EmailTemplate struct {
 		DefaultMarkdown func(childComplexity int) int
+		Description     func(childComplexity int) int
 		IsDefault       func(childComplexity int) int
 		Markdown        func(childComplexity int) int
 		Name            func(childComplexity int) int
+		Variables       func(childComplexity int) int
+	}
+
+	EmailTemplateFunction struct {
+		Description func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Usage       func(childComplexity int) int
+	}
+
+	EmailTemplatePreview struct {
+		Error func(childComplexity int) int
+		HTML  func(childComplexity int) int
+		Text  func(childComplexity int) int
+	}
+
+	EmailTemplateVariable struct {
+		Description func(childComplexity int) int
+		Example     func(childComplexity int) int
+		Name        func(childComplexity int) int
 	}
 
 	Emails struct {
@@ -927,6 +947,7 @@ type ComplexityRoot struct {
 		ConnectedExams                func(childComplexity int) int
 		ConstraintForAncode           func(childComplexity int, ancode int) int
 		EmailAttachments              func(childComplexity int, kind string) int
+		EmailTemplateFunctions        func(childComplexity int) int
 		EmailTemplates                func(childComplexity int) int
 		ExamDurationOverrides         func(childComplexity int) int
 		ExamPlanningMailRecipients    func(childComplexity int) int
@@ -978,6 +999,7 @@ type ComplexityRoot struct {
 		PrimussExam                   func(childComplexity int, program string, ancode int) int
 		PrimussExams                  func(childComplexity int) int
 		PrimussExamsForAnCode         func(childComplexity int, ancode int) int
+		RenderEmailTemplatePreview    func(childComplexity int, name string, markdown string) int
 		RoomRequests                  func(childComplexity int) int
 		RoomRequestsPreview           func(childComplexity int) int
 		Rooms                         func(childComplexity int) int
@@ -1540,6 +1562,8 @@ type QueryResolver interface {
 	EmailAttachments(ctx context.Context, kind string) ([]*model.EmailAttachmentInfo, error)
 	ExamPlanningMailRecipients(ctx context.Context) ([]*model.ExamPlanningMailRecipient, error)
 	EmailTemplates(ctx context.Context) ([]*model.EmailTemplate, error)
+	EmailTemplateFunctions(ctx context.Context) ([]*model.EmailTemplateFunction, error)
+	RenderEmailTemplatePreview(ctx context.Context, name string, markdown string) (*model.EmailTemplatePreview, error)
 	ConnectedExam(ctx context.Context, ancode int) (*model.ConnectedExam, error)
 	ConnectedExams(ctx context.Context) ([]*model.ConnectedExam, error)
 	AssembledExams(ctx context.Context) ([]*model.AssembledExam, error)
@@ -2517,6 +2541,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.EmailTemplate.DefaultMarkdown(childComplexity), true
 
+	case "EmailTemplate.description":
+		if e.complexity.EmailTemplate.Description == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplate.Description(childComplexity), true
+
 	case "EmailTemplate.isDefault":
 		if e.complexity.EmailTemplate.IsDefault == nil {
 			break
@@ -2537,6 +2568,76 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.EmailTemplate.Name(childComplexity), true
+
+	case "EmailTemplate.variables":
+		if e.complexity.EmailTemplate.Variables == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplate.Variables(childComplexity), true
+
+	case "EmailTemplateFunction.description":
+		if e.complexity.EmailTemplateFunction.Description == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplateFunction.Description(childComplexity), true
+
+	case "EmailTemplateFunction.name":
+		if e.complexity.EmailTemplateFunction.Name == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplateFunction.Name(childComplexity), true
+
+	case "EmailTemplateFunction.usage":
+		if e.complexity.EmailTemplateFunction.Usage == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplateFunction.Usage(childComplexity), true
+
+	case "EmailTemplatePreview.error":
+		if e.complexity.EmailTemplatePreview.Error == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplatePreview.Error(childComplexity), true
+
+	case "EmailTemplatePreview.html":
+		if e.complexity.EmailTemplatePreview.HTML == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplatePreview.HTML(childComplexity), true
+
+	case "EmailTemplatePreview.text":
+		if e.complexity.EmailTemplatePreview.Text == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplatePreview.Text(childComplexity), true
+
+	case "EmailTemplateVariable.description":
+		if e.complexity.EmailTemplateVariable.Description == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplateVariable.Description(childComplexity), true
+
+	case "EmailTemplateVariable.example":
+		if e.complexity.EmailTemplateVariable.Example == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplateVariable.Example(childComplexity), true
+
+	case "EmailTemplateVariable.name":
+		if e.complexity.EmailTemplateVariable.Name == nil {
+			break
+		}
+
+		return e.complexity.EmailTemplateVariable.Name(childComplexity), true
 
 	case "Emails.additionalExamer":
 		if e.complexity.Emails.AdditionalExamer == nil {
@@ -6318,6 +6419,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.EmailAttachments(childComplexity, args["kind"].(string)), true
 
+	case "Query.emailTemplateFunctions":
+		if e.complexity.Query.EmailTemplateFunctions == nil {
+			break
+		}
+
+		return e.complexity.Query.EmailTemplateFunctions(childComplexity), true
+
 	case "Query.emailTemplates":
 		if e.complexity.Query.EmailTemplates == nil {
 			break
@@ -6749,6 +6857,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PrimussExamsForAnCode(childComplexity, args["ancode"].(int)), true
+
+	case "Query.renderEmailTemplatePreview":
+		if e.complexity.Query.RenderEmailTemplatePreview == nil {
+			break
+		}
+
+		args, err := ec.field_Query_renderEmailTemplatePreview_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.RenderEmailTemplatePreview(childComplexity, args["name"].(string), args["markdown"].(string)), true
 
 	case "Query.roomRequests":
 		if e.complexity.Query.RoomRequests == nil {
@@ -9569,17 +9689,70 @@ embedded template is the default; a stored override replaces it. The layout temp
 type EmailTemplate {
   "the template's file name, e.g. \"exahmEmail.md.tmpl\"."
   name: String!
+  "a short human-readable purpose of this email (for the GUI list; not part of the mail)."
+  description: String!
   "the effective Markdown: the stored override if any, otherwise the built-in default."
   markdown: String!
   "true when no override is stored (the built-in default is in use)."
   isDefault: Boolean!
   "the built-in default Markdown (for preview and reset-to-default)."
   defaultMarkdown: String!
+  "the variables (placeholders) this template may use, with a description and an example."
+  variables: [EmailTemplateVariable!]!
+}
+
+"""
+EmailTemplateVariable documents one placeholder available in a template, e.g.
+` + "`" + `.Teacher.Fullname` + "`" + `. Meant to be shown next to the editor so a non-technical user knows
+which values exist and how to write them.
+"""
+type EmailTemplateVariable {
+  "how to write it in the template, e.g. \"{{ .Teacher.Fullname }}\"."
+  name: String!
+  "what the value is, in plain language."
+  description: String!
+  "the value used for this placeholder in the live preview."
+  example: String!
+}
+
+"""
+EmailTemplateFunction documents a helper function callable in every email template, e.g.
+` + "`" + `jiraURL` + "`" + ` or ` + "`" + `plural` + "`" + `. The list is global (all functions are available in all templates).
+"""
+type EmailTemplateFunction {
+  "the function name, e.g. \"plural\"."
+  name: String!
+  "how to call it, e.g. \"{{ plural .N \\\"Platz\\\" \\\"Plätze\\\" }}\"."
+  usage: String!
+  "what it does, in plain language."
+  description: String!
+}
+
+"""
+EmailTemplatePreview is the rendered result of a (possibly not-yet-saved) template against
+representative sample data. On a template error, ` + "`" + `error` + "`" + ` holds the message and html/text
+are empty — so the GUI can show parse/exec mistakes live while editing.
+"""
+type EmailTemplatePreview {
+  "the rendered HTML part (the shared layout is applied), for an in-GUI preview."
+  html: String!
+  "the rendered plain-text part."
+  text: String!
+  "the error message if the template does not parse/execute; null on success."
+  error: String
 }
 
 extend type Query {
-  "All editable email templates with their effective Markdown and built-in default."
+  "All editable email templates with their effective Markdown, description and variables."
   emailTemplates: [EmailTemplate!]!
+  "The helper functions available in every email template (jiraURL, plural, …)."
+  emailTemplateFunctions: [EmailTemplateFunction!]!
+  """
+  Render the given Markdown for the named template against representative sample data and
+  return the HTML/text preview. Does not save. Used for the live preview + validation while
+  editing; a template error is returned in the preview's ` + "`" + `error` + "`" + ` field, not as a GraphQL error.
+  """
+  renderEmailTemplatePreview(name: String!, markdown: String!): EmailTemplatePreview!
 }
 
 extend type Mutation {
@@ -16670,6 +16843,57 @@ func (ec *executionContext) field_Query_primussExamsForAnCode_argsAncode(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Query_renderEmailTemplatePreview_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_renderEmailTemplatePreview_argsName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	arg1, err := ec.field_Query_renderEmailTemplatePreview_argsMarkdown(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["markdown"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Query_renderEmailTemplatePreview_argsName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["name"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+	if tmp, ok := rawArgs["name"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_renderEmailTemplatePreview_argsMarkdown(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["markdown"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("markdown"))
+	if tmp, ok := rawArgs["markdown"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query_roomsForSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -23651,6 +23875,50 @@ func (ec *executionContext) fieldContext_EmailTemplate_name(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _EmailTemplate_description(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplate) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplate_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplate_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _EmailTemplate_markdown(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplate) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_EmailTemplate_markdown(ctx, field)
 	if err != nil {
@@ -23773,6 +24041,451 @@ func (ec *executionContext) _EmailTemplate_defaultMarkdown(ctx context.Context, 
 func (ec *executionContext) fieldContext_EmailTemplate_defaultMarkdown(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "EmailTemplate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplate_variables(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplate) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplate_variables(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Variables, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.EmailTemplateVariable)
+	fc.Result = res
+	return ec.marshalNEmailTemplateVariable2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplateVariableᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplate_variables(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_EmailTemplateVariable_name(ctx, field)
+			case "description":
+				return ec.fieldContext_EmailTemplateVariable_description(ctx, field)
+			case "example":
+				return ec.fieldContext_EmailTemplateVariable_example(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EmailTemplateVariable", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplateFunction_name(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplateFunction) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplateFunction_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplateFunction_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplateFunction",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplateFunction_usage(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplateFunction) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplateFunction_usage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Usage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplateFunction_usage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplateFunction",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplateFunction_description(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplateFunction) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplateFunction_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplateFunction_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplateFunction",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplatePreview_html(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplatePreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplatePreview_html(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HTML, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplatePreview_html(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplatePreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplatePreview_text(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplatePreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplatePreview_text(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplatePreview_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplatePreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplatePreview_error(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplatePreview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplatePreview_error(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Error, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplatePreview_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplatePreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplateVariable_name(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplateVariable) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplateVariable_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplateVariable_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplateVariable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplateVariable_description(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplateVariable) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplateVariable_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplateVariable_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplateVariable",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EmailTemplateVariable_example(ctx context.Context, field graphql.CollectedField, obj *model.EmailTemplateVariable) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EmailTemplateVariable_example(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Example, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EmailTemplateVariable_example(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EmailTemplateVariable",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -34599,12 +35312,16 @@ func (ec *executionContext) fieldContext_Mutation_setEmailTemplate(ctx context.C
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_EmailTemplate_name(ctx, field)
+			case "description":
+				return ec.fieldContext_EmailTemplate_description(ctx, field)
 			case "markdown":
 				return ec.fieldContext_EmailTemplate_markdown(ctx, field)
 			case "isDefault":
 				return ec.fieldContext_EmailTemplate_isDefault(ctx, field)
 			case "defaultMarkdown":
 				return ec.fieldContext_EmailTemplate_defaultMarkdown(ctx, field)
+			case "variables":
+				return ec.fieldContext_EmailTemplate_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type EmailTemplate", field.Name)
 		},
@@ -47834,15 +48551,134 @@ func (ec *executionContext) fieldContext_Query_emailTemplates(_ context.Context,
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_EmailTemplate_name(ctx, field)
+			case "description":
+				return ec.fieldContext_EmailTemplate_description(ctx, field)
 			case "markdown":
 				return ec.fieldContext_EmailTemplate_markdown(ctx, field)
 			case "isDefault":
 				return ec.fieldContext_EmailTemplate_isDefault(ctx, field)
 			case "defaultMarkdown":
 				return ec.fieldContext_EmailTemplate_defaultMarkdown(ctx, field)
+			case "variables":
+				return ec.fieldContext_EmailTemplate_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type EmailTemplate", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_emailTemplateFunctions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_emailTemplateFunctions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().EmailTemplateFunctions(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.EmailTemplateFunction)
+	fc.Result = res
+	return ec.marshalNEmailTemplateFunction2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplateFunctionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_emailTemplateFunctions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_EmailTemplateFunction_name(ctx, field)
+			case "usage":
+				return ec.fieldContext_EmailTemplateFunction_usage(ctx, field)
+			case "description":
+				return ec.fieldContext_EmailTemplateFunction_description(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EmailTemplateFunction", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_renderEmailTemplatePreview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_renderEmailTemplatePreview(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().RenderEmailTemplatePreview(rctx, fc.Args["name"].(string), fc.Args["markdown"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.EmailTemplatePreview)
+	fc.Result = res
+	return ec.marshalNEmailTemplatePreview2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplatePreview(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_renderEmailTemplatePreview(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "html":
+				return ec.fieldContext_EmailTemplatePreview_html(ctx, field)
+			case "text":
+				return ec.fieldContext_EmailTemplatePreview_text(ctx, field)
+			case "error":
+				return ec.fieldContext_EmailTemplatePreview_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EmailTemplatePreview", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_renderEmailTemplatePreview_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -72127,6 +72963,11 @@ func (ec *executionContext) _EmailTemplate(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "description":
+			out.Values[i] = ec._EmailTemplate_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "markdown":
 			out.Values[i] = ec._EmailTemplate_markdown(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -72139,6 +72980,155 @@ func (ec *executionContext) _EmailTemplate(ctx context.Context, sel ast.Selectio
 			}
 		case "defaultMarkdown":
 			out.Values[i] = ec._EmailTemplate_defaultMarkdown(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "variables":
+			out.Values[i] = ec._EmailTemplate_variables(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var emailTemplateFunctionImplementors = []string{"EmailTemplateFunction"}
+
+func (ec *executionContext) _EmailTemplateFunction(ctx context.Context, sel ast.SelectionSet, obj *model.EmailTemplateFunction) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, emailTemplateFunctionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EmailTemplateFunction")
+		case "name":
+			out.Values[i] = ec._EmailTemplateFunction_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "usage":
+			out.Values[i] = ec._EmailTemplateFunction_usage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._EmailTemplateFunction_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var emailTemplatePreviewImplementors = []string{"EmailTemplatePreview"}
+
+func (ec *executionContext) _EmailTemplatePreview(ctx context.Context, sel ast.SelectionSet, obj *model.EmailTemplatePreview) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, emailTemplatePreviewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EmailTemplatePreview")
+		case "html":
+			out.Values[i] = ec._EmailTemplatePreview_html(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "text":
+			out.Values[i] = ec._EmailTemplatePreview_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._EmailTemplatePreview_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var emailTemplateVariableImplementors = []string{"EmailTemplateVariable"}
+
+func (ec *executionContext) _EmailTemplateVariable(ctx context.Context, sel ast.SelectionSet, obj *model.EmailTemplateVariable) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, emailTemplateVariableImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EmailTemplateVariable")
+		case "name":
+			out.Values[i] = ec._EmailTemplateVariable_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._EmailTemplateVariable_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "example":
+			out.Values[i] = ec._EmailTemplateVariable_example(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -77243,6 +78233,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_emailTemplates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "emailTemplateFunctions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_emailTemplateFunctions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "renderEmailTemplatePreview":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_renderEmailTemplatePreview(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -82993,6 +84027,128 @@ func (ec *executionContext) marshalNEmailTemplate2ᚖgithubᚗcomᚋobcodeᚋple
 		return graphql.Null
 	}
 	return ec._EmailTemplate(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEmailTemplateFunction2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplateFunctionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EmailTemplateFunction) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNEmailTemplateFunction2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplateFunction(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNEmailTemplateFunction2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplateFunction(ctx context.Context, sel ast.SelectionSet, v *model.EmailTemplateFunction) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EmailTemplateFunction(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEmailTemplatePreview2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplatePreview(ctx context.Context, sel ast.SelectionSet, v model.EmailTemplatePreview) graphql.Marshaler {
+	return ec._EmailTemplatePreview(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEmailTemplatePreview2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplatePreview(ctx context.Context, sel ast.SelectionSet, v *model.EmailTemplatePreview) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EmailTemplatePreview(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEmailTemplateVariable2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplateVariableᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EmailTemplateVariable) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNEmailTemplateVariable2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplateVariable(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNEmailTemplateVariable2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailTemplateVariable(ctx context.Context, sel ast.SelectionSet, v *model.EmailTemplateVariable) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EmailTemplateVariable(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNEmails2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmails(ctx context.Context, sel ast.SelectionSet, v *model.Emails) graphql.Marshaler {

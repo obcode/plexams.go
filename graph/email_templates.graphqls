@@ -6,17 +6,70 @@ embedded template is the default; a stored override replaces it. The layout temp
 type EmailTemplate {
   "the template's file name, e.g. \"exahmEmail.md.tmpl\"."
   name: String!
+  "a short human-readable purpose of this email (for the GUI list; not part of the mail)."
+  description: String!
   "the effective Markdown: the stored override if any, otherwise the built-in default."
   markdown: String!
   "true when no override is stored (the built-in default is in use)."
   isDefault: Boolean!
   "the built-in default Markdown (for preview and reset-to-default)."
   defaultMarkdown: String!
+  "the variables (placeholders) this template may use, with a description and an example."
+  variables: [EmailTemplateVariable!]!
+}
+
+"""
+EmailTemplateVariable documents one placeholder available in a template, e.g.
+`.Teacher.Fullname`. Meant to be shown next to the editor so a non-technical user knows
+which values exist and how to write them.
+"""
+type EmailTemplateVariable {
+  "how to write it in the template, e.g. \"{{ .Teacher.Fullname }}\"."
+  name: String!
+  "what the value is, in plain language."
+  description: String!
+  "the value used for this placeholder in the live preview."
+  example: String!
+}
+
+"""
+EmailTemplateFunction documents a helper function callable in every email template, e.g.
+`jiraURL` or `plural`. The list is global (all functions are available in all templates).
+"""
+type EmailTemplateFunction {
+  "the function name, e.g. \"plural\"."
+  name: String!
+  "how to call it, e.g. \"{{ plural .N \\\"Platz\\\" \\\"Plätze\\\" }}\"."
+  usage: String!
+  "what it does, in plain language."
+  description: String!
+}
+
+"""
+EmailTemplatePreview is the rendered result of a (possibly not-yet-saved) template against
+representative sample data. On a template error, `error` holds the message and html/text
+are empty — so the GUI can show parse/exec mistakes live while editing.
+"""
+type EmailTemplatePreview {
+  "the rendered HTML part (the shared layout is applied), for an in-GUI preview."
+  html: String!
+  "the rendered plain-text part."
+  text: String!
+  "the error message if the template does not parse/execute; null on success."
+  error: String
 }
 
 extend type Query {
-  "All editable email templates with their effective Markdown and built-in default."
+  "All editable email templates with their effective Markdown, description and variables."
   emailTemplates: [EmailTemplate!]!
+  "The helper functions available in every email template (jiraURL, plural, …)."
+  emailTemplateFunctions: [EmailTemplateFunction!]!
+  """
+  Render the given Markdown for the named template against representative sample data and
+  return the HTML/text preview. Does not save. Used for the live preview + validation while
+  editing; a template error is returned in the preview's `error` field, not as a GraphQL error.
+  """
+  renderEmailTemplatePreview(name: String!, markdown: String!): EmailTemplatePreview!
 }
 
 extend type Mutation {

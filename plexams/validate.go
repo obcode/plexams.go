@@ -67,6 +67,36 @@ func conflictSeverityRank(problem string) int {
 	}
 }
 
+// conflictLevel applies the severity rule: everything the user allows is only info — a
+// pair-level allowance (allowed: sameSlot constraint / canShareSlot) or all affected
+// students explicitly accepted (real == 0). Otherwise grade by proximity: same slot =
+// error, adjacent = warning, same day = info.
+func conflictLevel(problem string, real int, allowed bool) model.ValidationLevel {
+	if allowed || real == 0 {
+		return model.ValidationLevelInfo
+	}
+	switch problem {
+	case conflictSameSlot:
+		return model.ValidationLevelError
+	case conflictAdjacent:
+		return model.ValidationLevelWarning
+	default: // conflictSameDay
+		return model.ValidationLevelInfo
+	}
+}
+
+// levelRank orders finding levels most severe first: error (0) > warning (1) > info (2).
+func levelRank(level model.ValidationLevel) int {
+	switch level {
+	case model.ValidationLevelError:
+		return 0
+	case model.ValidationLevelWarning:
+		return 1
+	default: // info
+		return 2
+	}
+}
+
 func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter Reporter) (*model.ValidationReport, error) {
 	knownConflictsCount = 0
 	ctx := context.Background()
@@ -141,41 +171,99 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 
 	conflictingAncodesSlice, normalizedValidationMessages := p.sortConflictingAncodes(validationMessages)
 
-	// Order the pairs by their original (proximity) severity, most severe first: all
-	// same-slot pairs, then adjacent, then same-day. Stable, so the time order within a
-	// severity is kept.
-	sort.SliceStable(conflictingAncodesSlice, func(i, j int) bool {
-		return conflictSeverityRank(normalizedValidationMessages[conflictingAncodesSlice[i]].problem) <
-			conflictSeverityRank(normalizedValidationMessages[conflictingAncodesSlice[j]].problem)
-	})
+	// Pair-level allowances: exam pairs the user permits to share a slot, so any same-slot
+	// (or closer) proximity between them is not a problem, only info. Two sources: the
+	// sameSlot constraint (exams that MUST run together) and the canShareSlot
+	// ("canBeSameSlot") declarations. Keyed by the normalized (ancode1 < ancode2) pair;
+	// conflictingAncodes are already built in that order.
+	sameSlotConstraintPairs := set.NewSet[[2]int]()
+	canSharePairs := set.NewSet[[2]int]()
+	normPair := func(a, b int) [2]int {
+		if a > b {
+			a, b = b, a
+		}
+		return [2]int{a, b}
+	}
+	if cmap, err := p.ConstraintsMap(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot get constraints for sameSlot pairs")
+	} else {
+		for a, c := range cmap {
+			if c == nil {
+				continue
+			}
+			for _, other := range c.SameSlot {
+				sameSlotConstraintPairs.Add(normPair(a, other))
+			}
+		}
+	}
+	if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot get canShareSlot pairs")
+	} else {
+		for _, pr := range pairs {
+			canSharePairs.Add(normPair(pr[0], pr[1]))
+		}
+	}
+	// allowedReason reports why a pair's shared slot is permitted (→ info), if at all.
+	allowedReason := func(ca conflictingAncodes) (string, bool) {
+		key := [2]int{ca.ancode1, ca.ancode2}
+		switch {
+		case sameSlotConstraintPairs.Contains(key):
+			return "sameSlot-Constraint", true
+		case canSharePairs.Contains(key):
+			return "canShareSlot", true
+		default:
+			return "", false
+		}
+	}
 
-	// One structured finding per conflicting exam pair, graded by severity: same slot is
-	// a hard clash (error), adjacent slots are undesirable (warning), same day is usually
-	// acceptable (info). A pair whose affected students are ALL accepted (registration
-	// wrong, student writes only one, …) is downgraded to info but still shown.
+	// Grade one finding per conflicting exam pair. Everything the user allows is only
+	// info: a pair-level allowance (sameSlot constraint / canShareSlot) or all affected
+	// students explicitly accepted. Otherwise grade by proximity: same slot = error,
+	// adjacent = warning, same day = info.
+	type gradedConflict struct {
+		ca       conflictingAncodes
+		level    model.ValidationLevel
+		proxRank int
+		message  string
+	}
+	graded := make([]gradedConflict, 0, len(conflictingAncodesSlice))
 	for _, ca := range conflictingAncodesSlice {
 		problem := normalizedValidationMessages[ca]
-		r := ref{Ancode: ptr(ca.ancode1), RelatedAncodes: []int{ca.ancode2}}
 		real, acc := len(problem.students), len(problem.accepted)
-		if real == 0 { // fully accepted → info
-			v.infof(r, "%s (akzeptiert): %d student(s) affected between exam %d and %d",
+		reason, isAllowed := allowedReason(ca)
+		g := gradedConflict{
+			ca:       ca,
+			proxRank: conflictSeverityRank(problem.problem),
+			level:    conflictLevel(problem.problem, real, isAllowed),
+		}
+		switch {
+		case isAllowed:
+			g.message = fmt.Sprintf("%s (%s): %d student(s) affected between exam %d and %d",
+				problem.problem, reason, real+acc, ca.ancode1, ca.ancode2)
+		case real == 0: // all affected students explicitly accepted
+			g.message = fmt.Sprintf("%s (akzeptiert): %d student(s) affected between exam %d and %d",
 				problem.problem, acc, ca.ancode1, ca.ancode2)
-			continue
+		default:
+			suffix := ""
+			if acc > 0 {
+				suffix = fmt.Sprintf(" (+%d akzeptiert)", acc)
+			}
+			g.message = fmt.Sprintf("%s: %d student(s) affected between exam %d and %d%s",
+				problem.problem, real, ca.ancode1, ca.ancode2, suffix)
 		}
-		suffix := ""
-		if acc > 0 {
-			suffix = fmt.Sprintf(" (+%d akzeptiert)", acc)
+		graded = append(graded, g)
+	}
+	// Most severe first: primary by original proximity (same slot, then adjacent, then
+	// same day), secondary by effective level so real problems lead within a proximity
+	// group. Stable, so the time order from sortConflictingAncodes is kept within ties.
+	sort.SliceStable(graded, func(i, j int) bool {
+		if graded[i].proxRank != graded[j].proxRank {
+			return graded[i].proxRank < graded[j].proxRank
 		}
-		msg := fmt.Sprintf("%s: %d student(s) affected between exam %d and %d%s",
-			problem.problem, real, ca.ancode1, ca.ancode2, suffix)
-		switch problem.problem {
-		case conflictSameSlot:
-			v.errorf(r, "%s", msg)
-		case conflictAdjacent:
-			v.warnf(r, "%s", msg)
-		default: // conflictSameDay
-			v.infof(r, "%s", msg)
-		}
+		return levelRank(graded[i].level) < levelRank(graded[j].level)
+	})
+	for _, g := range graded {
+		v.add(g.level, ref{Ancode: ptr(g.ca.ancode1), RelatedAncodes: []int{g.ca.ancode2}}, "%s", g.message)
 	}
 
 	if len(validationMessages) > 0 {
@@ -203,6 +291,9 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		v.reporter.Println("  studentRegs:")
 		for _, conflictingAncodes := range conflictingAncodesSlice {
 			problemWithStudents := normalizedValidationMessages[conflictingAncodes]
+			if _, ok := allowedReason(conflictingAncodes); ok {
+				continue // pair may share a slot (sameSlot constraint / canShareSlot): nothing to accept
+			}
 			if len(problemWithStudents.students) == 0 {
 				continue // fully accepted: nothing left to accept
 			}

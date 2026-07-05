@@ -10,7 +10,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// TODO: all planned_rooms okay? especially after moving an exam? check room -> slot -> ancode sameslot?
+// ValidateStudentRegs reports students registered in more than one program. This is
+// purely imported Primuss data that we cannot fix in plexams (it has to be corrected in
+// Primuss), so the findings are info, not errors.
 func (p *Plexams) ValidateStudentRegs(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
 	v := newValidation(reporter, "student-regs", "validating student regs")
@@ -38,7 +40,7 @@ func (p *Plexams) ValidateStudentRegs(reporter Reporter) (*model.ValidationRepor
 				fmt.Fprintf(&sb, "%s/%d: %s (%s); ", reg.Program, zpaExam.AnCode, zpaExam.Module, zpaExam.MainExamer)
 			}
 
-			v.errorf(ref{StudentMtknr: ptr(studentReg.Mtknr)},
+			v.infof(ref{StudentMtknr: ptr(studentReg.Mtknr)},
 				"regs from more than one program for student %s (%s/%s): %v: %s",
 				studentReg.Name, studentReg.Program, studentReg.Mtknr, programs.ToSlice(), sb.String())
 		}

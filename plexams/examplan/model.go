@@ -17,7 +17,10 @@ import (
 type State struct {
 	P         *Problem
 	SlotOf    []int
-	slotSeats []int
+	slotSeats []int // total seats per slot (incl. foreign exams) — capacity & load
+	slotOwn   []int // seats of OUR exams only (foreign/notPlannedByMe excluded) — used
+	// for the interior-hole term: a slot holding only foreign exams is, for our
+	// invigilation planning, effectively free.
 	slotExahm []int
 	slotSeb   []int
 
@@ -35,6 +38,7 @@ func newState(p *Problem) *State {
 		P:         p,
 		SlotOf:    make([]int, len(p.Units)),
 		slotSeats: make([]int, len(p.Slots)),
+		slotOwn:   make([]int, len(p.Slots)),
 		slotExahm: make([]int, len(p.Slots)),
 		slotSeb:   make([]int, len(p.Slots)),
 		pS:        make([]float64, len(p.Students)),
@@ -57,8 +61,12 @@ func (st *State) setPhysical(u, s int) {
 	seats := st.P.Units[u].Seats
 	exahm := st.P.Units[u].Exahm
 	seb := st.P.Units[u].Seb
+	own := !st.P.Units[u].Foreign
 	if old := st.SlotOf[u]; old >= 0 {
 		st.slotSeats[old] -= seats
+		if own {
+			st.slotOwn[old] -= seats
+		}
 		if exahm {
 			st.slotExahm[old] -= seats
 		}
@@ -69,6 +77,9 @@ func (st *State) setPhysical(u, s int) {
 	st.SlotOf[u] = s
 	if s >= 0 {
 		st.slotSeats[s] += seats
+		if own {
+			st.slotOwn[s] += seats
+		}
 		if exahm {
 			st.slotExahm[s] += seats
 		}
@@ -131,14 +142,16 @@ func (st *State) studentPenalty(si int) float64 {
 	return ps
 }
 
-// dayHoleCount counts the interior holes of day group d: empty slots (no seats) that lie
-// between the first and the last occupied slot of that day. A day whose free slots are all
-// at the edges (or that is fully packed / fully empty) has 0 — good for invigilation.
+// dayHoleCount counts the interior holes of day group d: slots without any of OUR exams
+// that lie between the first and the last own-occupied slot of that day. Occupancy is
+// measured in own seats (slotOwn), so a slot holding only foreign / not-planned-by-me
+// exams counts as free — for our invigilation planning it is. A day whose free slots are
+// all at the edges (or that is fully packed / fully empty) has 0 — good for invigilation.
 func (st *State) dayHoleCount(d int) int {
 	slots := st.P.days[d]
 	first, last := -1, -1
 	for i, s := range slots {
-		if st.slotSeats[s] > 0 {
+		if st.slotOwn[s] > 0 {
 			if first < 0 {
 				first = i
 			}
@@ -150,7 +163,7 @@ func (st *State) dayHoleCount(d int) int {
 	}
 	holes := 0
 	for i := first + 1; i < last; i++ {
-		if st.slotSeats[slots[i]] == 0 {
+		if st.slotOwn[slots[i]] == 0 {
 			holes++
 		}
 	}
@@ -417,7 +430,7 @@ func (st *State) Cost() float64 {
 
 func (st *State) Snapshot() any {
 	return snapshot{
-		slotOf: cp(st.SlotOf), slotSeats: cp(st.slotSeats), slotExahm: cp(st.slotExahm), slotSeb: cp(st.slotSeb),
+		slotOf: cp(st.SlotOf), slotSeats: cp(st.slotSeats), slotOwn: cp(st.slotOwn), slotExahm: cp(st.slotExahm), slotSeb: cp(st.slotSeb),
 		pS: cpF(st.pS), spread: st.spreadTotal, attract: st.attractTotal, load: st.slotLoadTotal, fill: st.tbauFillTotal, hole: st.holeTotal, nUnplaced: st.nUnplaced,
 	}
 }
@@ -426,6 +439,7 @@ func (st *State) Restore(a any) {
 	sn := a.(snapshot)
 	copy(st.SlotOf, sn.slotOf)
 	copy(st.slotSeats, sn.slotSeats)
+	copy(st.slotOwn, sn.slotOwn)
 	copy(st.slotExahm, sn.slotExahm)
 	copy(st.slotSeb, sn.slotSeb)
 	copy(st.pS, sn.pS)
@@ -438,10 +452,10 @@ func (st *State) Restore(a any) {
 }
 
 type snapshot struct {
-	slotOf, slotSeats, slotExahm, slotSeb []int
-	pS                                    []float64
-	spread, attract, load, fill, hole     float64
-	nUnplaced                             int
+	slotOf, slotSeats, slotOwn, slotExahm, slotSeb []int
+	pS                                             []float64
+	spread, attract, load, fill, hole              float64
+	nUnplaced                                      int
 }
 
 func cp(s []int) []int {
@@ -552,7 +566,7 @@ func holeCost(st *State) (float64, []optimize.Violation) {
 		slots := p.days[d]
 		first, last := -1, -1
 		for i, s := range slots {
-			if st.slotSeats[s] > 0 {
+			if st.slotOwn[s] > 0 {
 				if first < 0 {
 					first = i
 				}
@@ -563,9 +577,9 @@ func holeCost(st *State) (float64, []optimize.Violation) {
 			continue
 		}
 		for i := first + 1; i < last; i++ {
-			if st.slotSeats[slots[i]] == 0 {
+			if st.slotOwn[slots[i]] == 0 {
 				total += p.W.Hole
-				vs = append(vs, optimize.Violation{Constraint: "slot-hole", Message: "freier Slot zwischen belegten Slots",
+				vs = append(vs, optimize.Violation{Constraint: "slot-hole", Message: "freier Slot (ohne eigene Prüfung) zwischen belegten Slots",
 					Refs: []int{p.Slots[slots[i]].Day, p.Slots[slots[i]].Slot}})
 			}
 		}

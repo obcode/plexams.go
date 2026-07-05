@@ -395,6 +395,50 @@ func TestHoleIncrementalMatchesFull(t *testing.T) {
 	}
 }
 
+// TestHoleTreatsForeignOnlySlotAsFree: a mid-day slot occupied ONLY by a foreign
+// (not-planned-by-me) exam counts as free for our planning. The small own exam must be
+// pulled into it so the day has no interior gap in OUR exams, and SlotsUsed must count
+// own-occupied slots only.
+func TestHoleTreatsForeignOnlySlotAsFree(t *testing.T) {
+	slots := oneDaySlots(3)
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 50, Fixed: true, FixedSlot: 0},                    // own, slot 1
+		{ID: 2, Ancodes: []int{2}, Seats: 50, Fixed: true, FixedSlot: 2},                    // own, slot 3
+		{ID: 435, Ancodes: []int{435}, Seats: 40, Fixed: true, FixedSlot: 1, Foreign: true}, // foreign, slot 2
+		{ID: 3, Ancodes: []int{3}, Seats: 20, Allowed: []int{0, 1, 2}},                      // small own, movable
+	}
+	w := DefaultWeights()
+	w.SlotLoad = 0 // isolate the hole term
+	p := NewProblem(slots, units, nil, nil, w)
+	st, _ := Solve(p, fastOpts(), false)
+
+	if st.SlotOf[3] != 1 {
+		t.Errorf("small own exam should fill the foreign-only middle slot (idx1), got %d", st.SlotOf[3])
+	}
+	if d := st.Diagnostics(); d.InteriorHoles != 0 {
+		t.Errorf("expected no interior holes once our exam fills the middle, got %d", d.InteriorHoles)
+	}
+}
+
+// TestSlotsUsedCountsOwnOnly: a slot holding only a foreign exam is not counted as used.
+func TestSlotsUsedCountsOwnOnly(t *testing.T) {
+	slots := oneDaySlots(3)
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 50, Fixed: true, FixedSlot: 0},                    // own, slot 1
+		{ID: 414, Ancodes: []int{414}, Seats: 40, Fixed: true, FixedSlot: 1, Foreign: true}, // foreign, slot 2
+	}
+	p := NewProblem(slots, units, nil, nil, DefaultWeights())
+	st := newState(p)
+	st.initCost()
+	if d := st.Diagnostics(); d.SlotsUsed != 1 {
+		t.Errorf("SlotsUsed should count only slots with our exams (1), got %d", d.SlotsUsed)
+	}
+	// the own exam is alone at the day edge → foreign-only middle slot is not an interior hole
+	if d := st.Diagnostics(); d.InteriorHoles != 0 {
+		t.Errorf("a single own exam at the edge is not a hole, got %d", d.InteriorHoles)
+	}
+}
+
 // TestHoleMultiDayGroupingAndIncremental checks the per-day grouping and the incremental
 // hole bookkeeping across MORE than one day (a hole on day 2 must not be affected by
 // day 1's occupancy, and moves that cross days must keep holeTotal correct).

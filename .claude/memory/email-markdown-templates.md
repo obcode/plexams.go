@@ -2,7 +2,9 @@
 name: email-markdown-templates
 description: All email bodies render from one Markdown template each via renderMarkdownEmail (single source); text+HTML no longer maintained separately.
 metadata:
+  node_type: memory
   type: project
+  originSessionId: 789fa500-ff1b-456b-882f-7f44a1be3914
 ---
 
 Email rendering (refactored 2026-07, branch `refactor/email-templates`): every email body is ONE Markdown Go-template (`tmpl/<name>.md.tmpl`), rendered by `plexams.renderMarkdownEmail(name, jira, data) (text, html, err)` in `plexams/email_markdown.go`:
@@ -21,4 +23,6 @@ PHASE 2 DONE (2026-07, branch feat/db-email-templates): DB-backed, GUI-editable 
 
 PHASE 3 DONE (2026-07, branch refactor/email-package): extracted the mail toolkit into package `plexams/email` — email.Renderer (Markdown→text+HTML, layout, override store List/Set/Reset) with INJECTED funcs+jiraURL (shared helpers pluralN/jiraURL/zpaURL/constraintsText stay in plexams, also used by pdf/statistics/preplan → no cycle), email.TemplateStore interface (*db.DB satisfies), and email.Sender (SMTPConfig + Attachment, buildMsg/SMTP/dry-run/.eml collector — go-mail confined here). plexams keeps thin delegates (mailRenderer/sendMail/recipientInfo/Begin+FlushMailCollection/SendTestMail) + `type mailAttachment = email.Attachment`; sender built in NewPlexams. The Send* data-gathering funcs stay in plexams (application layer). Behaviour-preserving (goldens/parse guard/override integration test green).
 
-NEXT (planned): GUI editor for the DB-editable templates (Markdown textarea + variable hints + preview + reset). See [[emails-over-graphql]].
+PHASE 4 DONE (backend, 2026-07): GUI-support API for the template editor. `plexams/email_template_catalog.go` = single source of truth: per template (keyed by *.md.tmpl name) a German `Description`, documented `Variables` ([]{Name like "{{ .Teacher.Fullname }}", Description, Example}), a `Jira` bool, and representative `Sample` data (minimal typed anon structs / map[string]any matching each template's field accesses; only examPlanningInfoEmail needs a real *model.Constraints for constraintsText) for a live preview. Plus `emailTemplateFuncDocs` (jiraURL/zpaURL/plural/constraintsText/add). GraphQL (graph/email_templates.graphqls): EmailTemplate gained `description` + `variables`; new query `emailTemplateFunctions` and query `renderEmailTemplatePreview(name, markdown): {html, text, error}` (renders unsaved Markdown vs sample data; template errors returned in `error`, NOT as GraphQL error, for live validation). Renderer got `RenderSource(name, source, jira, data)` (Render now delegates). Guard: `TestEmailTemplateCatalogPreviewRenders` — every template has a catalog entry + renders clean with no `<no value>`. No CLI command touches templates (inherently GUI-only). Note: current render entrypoint is `p.mailRenderer().Render(name, jira, data)` in `plexams/email` package (the old `renderMarkdownEmail`/`email_markdown.go` names in the phases above are superseded by PHASE 3's email package).
+
+NEXT (planned): GUI editor consuming this API — Markdown editor + variable/function reference panel + live preview + diff-vs-saved + reset. See [[emails-over-graphql]].

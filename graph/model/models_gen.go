@@ -837,6 +837,12 @@ type PreplanExamInput struct {
 	Notes            *string  `json:"notes,omitempty"`
 }
 
+// One graded finding of the pre-plan validation (same levels as ValidationFinding).
+type PreplanFinding struct {
+	Level   ValidationLevel `json:"level"`
+	Message string          `json:"message"`
+}
+
 type PreplanKindNeed struct {
 	ExamCount   int `json:"examCount"`
 	SeatsNeeded int `json:"seatsNeeded"`
@@ -889,13 +895,16 @@ type PreplanSlotNeed struct {
 }
 
 type PreplanValidation struct {
-	// True when there are no findings (everything assigned, within capacity, no overlaps).
+	// True when there are no error-level findings; warnings and infos do not fail the validation.
 	Ok            bool `json:"ok"`
 	AssignedCount int  `json:"assignedCount"`
 	// ids of pre-exams without a slot.
 	UnassignedIDs []int `json:"unassignedIDs"`
-	// Human-readable findings (German).
+	// Human-readable findings (German), flat text at all levels (kept for backward compatibility; prefer findings).
 	Messages []string `json:"messages"`
+	// Graded findings. Small SEB exams that fit the R-building (no Anny booking needed)
+	// are warnings, real capacity shortfalls are errors.
+	Findings []*PreplanFinding `json:"findings"`
 }
 
 type PrimussExamAncode struct {

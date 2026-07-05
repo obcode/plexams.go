@@ -18,11 +18,22 @@ extend type Mutation {
 }
 
 type PreplanValidation {
-  "True when there are no findings (everything assigned, within capacity, no overlaps)."
+  "True when there are no error-level findings; warnings and infos do not fail the validation."
   ok: Boolean!
   assignedCount: Int!
   "ids of pre-exams without a slot."
   unassignedIDs: [Int!]!
-  "Human-readable findings (German)."
+  "Human-readable findings (German), flat text at all levels (kept for backward compatibility; prefer findings)."
   messages: [String!]!
+  """
+  Graded findings. Small SEB exams that fit the R-building (no Anny booking needed)
+  are warnings, real capacity shortfalls are errors.
+  """
+  findings: [PreplanFinding!]!
+}
+
+"""One graded finding of the pre-plan validation (same levels as ValidationFinding)."""
+type PreplanFinding {
+  level: ValidationLevel!
+  message: String!
 }

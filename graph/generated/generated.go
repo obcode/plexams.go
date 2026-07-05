@@ -846,6 +846,11 @@ type ComplexityRoot struct {
 		Programs          func(childComplexity int) int
 	}
 
+	PreplanFinding struct {
+		Level   func(childComplexity int) int
+		Message func(childComplexity int) int
+	}
+
 	PreplanKindNeed struct {
 		ExamCount      func(childComplexity int) int
 		Rooms          func(childComplexity int) int
@@ -890,6 +895,7 @@ type ComplexityRoot struct {
 
 	PreplanValidation struct {
 		AssignedCount func(childComplexity int) int
+		Findings      func(childComplexity int) int
 		Messages      func(childComplexity int) int
 		Ok            func(childComplexity int) int
 		UnassignedIDs func(childComplexity int) int
@@ -5918,6 +5924,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreplanExam.Programs(childComplexity), true
 
+	case "PreplanFinding.level":
+		if e.complexity.PreplanFinding.Level == nil {
+			break
+		}
+
+		return e.complexity.PreplanFinding.Level(childComplexity), true
+
+	case "PreplanFinding.message":
+		if e.complexity.PreplanFinding.Message == nil {
+			break
+		}
+
+		return e.complexity.PreplanFinding.Message(childComplexity), true
+
 	case "PreplanKindNeed.examCount":
 		if e.complexity.PreplanKindNeed.ExamCount == nil {
 			break
@@ -6092,6 +6112,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PreplanValidation.AssignedCount(childComplexity), true
+
+	case "PreplanValidation.findings":
+		if e.complexity.PreplanValidation.Findings == nil {
+			break
+		}
+
+		return e.complexity.PreplanValidation.Findings(childComplexity), true
 
 	case "PreplanValidation.messages":
 		if e.complexity.PreplanValidation.Messages == nil {
@@ -10758,13 +10785,24 @@ extend type Mutation {
 }
 
 type PreplanValidation {
-  "True when there are no findings (everything assigned, within capacity, no overlaps)."
+  "True when there are no error-level findings; warnings and infos do not fail the validation."
   ok: Boolean!
   assignedCount: Int!
   "ids of pre-exams without a slot."
   unassignedIDs: [Int!]!
-  "Human-readable findings (German)."
+  "Human-readable findings (German), flat text at all levels (kept for backward compatibility; prefer findings)."
   messages: [String!]!
+  """
+  Graded findings. Small SEB exams that fit the R-building (no Anny booking needed)
+  are warnings, real capacity shortfalls are errors.
+  """
+  findings: [PreplanFinding!]!
+}
+
+"""One graded finding of the pre-plan validation (same levels as ValidationFinding)."""
+type PreplanFinding {
+  level: ValidationLevel!
+  message: String!
 }
 `, BuiltIn: false},
 	{Name: "../preplan_exam.graphqls", Input: `extend type Query {
@@ -37500,6 +37538,8 @@ func (ec *executionContext) fieldContext_Mutation_generatePreplanAssignment(ctx 
 				return ec.fieldContext_PreplanValidation_unassignedIDs(ctx, field)
 			case "messages":
 				return ec.fieldContext_PreplanValidation_messages(ctx, field)
+			case "findings":
+				return ec.fieldContext_PreplanValidation_findings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanValidation", field.Name)
 		},
@@ -45476,6 +45516,94 @@ func (ec *executionContext) fieldContext_PreplanExam_constraints(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanFinding_level(ctx context.Context, field graphql.CollectedField, obj *model.PreplanFinding) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanFinding_level(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Level, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.ValidationLevel)
+	fc.Result = res
+	return ec.marshalNValidationLevel2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐValidationLevel(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanFinding_level(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanFinding",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ValidationLevel does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanFinding_message(ctx context.Context, field graphql.CollectedField, obj *model.PreplanFinding) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanFinding_message(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanFinding_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanFinding",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreplanKindNeed_examCount(ctx context.Context, field graphql.CollectedField, obj *model.PreplanKindNeed) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreplanKindNeed_examCount(ctx, field)
 	if err != nil {
@@ -46757,6 +46885,56 @@ func (ec *executionContext) fieldContext_PreplanValidation_messages(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanValidation_findings(ctx context.Context, field graphql.CollectedField, obj *model.PreplanValidation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanValidation_findings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Findings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PreplanFinding)
+	fc.Result = res
+	return ec.marshalNPreplanFinding2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanFindingᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanValidation_findings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanValidation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_PreplanFinding_level(ctx, field)
+			case "message":
+				return ec.fieldContext_PreplanFinding_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanFinding", field.Name)
 		},
 	}
 	return fc, nil
@@ -51449,6 +51627,8 @@ func (ec *executionContext) fieldContext_Query_validatePreplanAssignment(_ conte
 				return ec.fieldContext_PreplanValidation_unassignedIDs(ctx, field)
 			case "messages":
 				return ec.fieldContext_PreplanValidation_messages(ctx, field)
+			case "findings":
+				return ec.fieldContext_PreplanValidation_findings(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanValidation", field.Name)
 		},
@@ -77635,6 +77815,50 @@ func (ec *executionContext) _PreplanExam(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var preplanFindingImplementors = []string{"PreplanFinding"}
+
+func (ec *executionContext) _PreplanFinding(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanFinding) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanFindingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanFinding")
+		case "level":
+			out.Values[i] = ec._PreplanFinding_level(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._PreplanFinding_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var preplanKindNeedImplementors = []string{"PreplanKindNeed"}
 
 func (ec *executionContext) _PreplanKindNeed(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanKindNeed) graphql.Marshaler {
@@ -77975,6 +78199,11 @@ func (ec *executionContext) _PreplanValidation(ctx context.Context, sel ast.Sele
 			}
 		case "messages":
 			out.Values[i] = ec._PreplanValidation_messages(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "findings":
+			out.Values[i] = ec._PreplanValidation_findings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -86461,6 +86690,60 @@ func (ec *executionContext) marshalNPreplanExam2ᚖgithubᚗcomᚋobcodeᚋplexa
 func (ec *executionContext) unmarshalNPreplanExamInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanExamInput(ctx context.Context, v any) (model.PreplanExamInput, error) {
 	res, err := ec.unmarshalInputPreplanExamInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPreplanFinding2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanFindingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreplanFinding) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPreplanFinding2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanFinding(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPreplanFinding2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanFinding(ctx context.Context, sel ast.SelectionSet, v *model.PreplanFinding) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanFinding(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPreplanKindNeed2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanKindNeed(ctx context.Context, sel ast.SelectionSet, v *model.PreplanKindNeed) graphql.Marshaler {

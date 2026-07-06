@@ -1,6 +1,6 @@
 # Memory Index
 
-- [slot time avoidance](slot-time-avoidance.md) — Terminplan soft constraint: avoid early (WS) / late (SS) start times; AUTO-by-semester toggle in GenerationConfig; T-Bau phase-A exception.
+- [slot time avoidance](slot-time-avoidance.md) — Terminplan soft constraint on start times: WS avoid early (threshold), SS prefer early (monotonic, size-weighted); AUTO-by-semester toggle in GenerationConfig; T-Bau phase-A exception; hard-violation logging.
 - [CLI→GUI migration](cli-to-gui-migration.md) — plan to move all CLI into the GraphQL/Svelte GUI; config to DB; stays local single-user; secrets stay in file.
 - [git workflow](git-workflow.md) — semantic-release + feature branches; commit in steps with Conventional Commits; don't commit .claude/settings.json.
 - [GUI & CLI sync](gui-and-cli-sync.md) — every backend change: always emit plexams.gui-agent instructions AND adjust/remove the matching CLI command.
@@ -27,3 +27,4 @@
 - [validation skip gating](validation-skip-gating.md) — validators skip (not fail) when planned data absent (data-driven); ValidationReport gained skipped/skipReason; GUI renders "übersprungen".
 - [semester dump/restore](semester-dump-restore.md) — download whole semester ZIP + per-page dataset up/download; restore into fresh workspace DB; refuse-if-non-empty; canonical ext JSON.
 - [fresh DB bootstrap](fresh-db-bootstrap.md) — empty Mongo can't auto-resolve a workspace; pin a semester (yaml/init auto-pins arg/import) to bootstrap; connect-vs-empty FATAL messages.
+- [CSV datasets export/import](csv-datasets-export-import.md) — human-readable CSV of entered data with ABSOLUTE times (period-shift robust); per-dataset + my-inputs ZIP; header-guarded upsert import; separate from JSON dump.

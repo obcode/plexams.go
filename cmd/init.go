@@ -36,7 +36,10 @@ var (
 		Long:  `Initialize a new semester. Interactively asks for the config and stores it in the semester's database (no YAML file is written). Requires .plexams.yaml with db.uri.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			semester := strings.TrimSpace(args[0])
+			// Assign the package-level `semester` (read by initPlexamsConfig) so the
+			// argument itself pins the target workspace — no separate --semester
+			// needed to bootstrap a fresh/empty database.
+			semester = strings.TrimSpace(args[0])
 			if !regexp.MustCompile(`^\d{4}-(SS|WS)$`).MatchString(semester) {
 				return fmt.Errorf("invalid semester '%s' (expected format YYYY-SS or YYYY-WS)", semester)
 			}

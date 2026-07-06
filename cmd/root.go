@@ -178,9 +178,15 @@ func initPlexamsConfig() *plexams.Plexams {
 		if strings.TrimSpace(dbOverride) != "" {
 			semester = logicalSemesterForDatabase(dbURI, dbOverride)
 		} else {
-			resolved, database, ok := resolveStartSemester(dbURI)
+			resolved, database, ok, connErr := resolveStartSemester(dbURI)
+			if connErr != nil {
+				log.Fatal().Err(connErr).Msg("cannot connect to the database (check db.uri / network)")
+			}
 			if !ok {
-				log.Fatal().Msg("no semester pinned and no usable (compatible) workspace found in the database")
+				log.Fatal().Msg("database has no usable (compatible) workspace yet — " +
+					"pin a semester with --semester <YYYY-SS> (e.g. --semester 2026-SS), " +
+					"create one with 'plexams.go init <YYYY-SS>', " +
+					"or restore a dump with 'plexams.go --semester <YYYY-SS> import semester-dump <file.zip>'")
 			}
 			semester = resolved
 			if database != "" {
@@ -218,19 +224,20 @@ func initPlexamsConfig() *plexams.Plexams {
 }
 
 // resolveStartSemester opens a temporary DB connection to pick the start semester
-// (last active, else newest compatible). Returns ok=false when nothing usable.
-func resolveStartSemester(dbURI string) (semester, database string, ok bool) {
+// (last active, else newest compatible). connErr is non-nil when the database is
+// unreachable; ok=false with connErr==nil means connected but no usable workspace.
+func resolveStartSemester(dbURI string) (semester, database string, ok bool, connErr error) {
 	client, err := db.NewDB(dbURI, "plexams", nil)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot connect to resolve start semester")
-		return "", "", false
+		return "", "", false, err
 	}
 	defer func() {
 		if err := client.Client.Disconnect(context.Background()); err != nil {
 			log.Debug().Err(err).Msg("cannot disconnect temporary client")
 		}
 	}()
-	return client.ResolveStartSemester(context.Background())
+	semester, database, ok = client.ResolveStartSemester(context.Background())
+	return semester, database, ok, nil
 }
 
 // logicalSemesterForDatabase opens a temporary DB connection to read the logical

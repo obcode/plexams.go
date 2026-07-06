@@ -434,7 +434,6 @@ type ComplexityRoot struct {
 		SlotTimeWeight         func(childComplexity int) int
 		SlotTimeWinterEarliest func(childComplexity int) int
 		StartTemp              func(childComplexity int) int
-		TimelagMin             func(childComplexity int) int
 		ToleranceMin           func(childComplexity int) int
 		WeightBeyondTolerance  func(childComplexity int) int
 		WeightCoverage         func(childComplexity int) int
@@ -1156,26 +1155,30 @@ type ComplexityRoot struct {
 	}
 
 	SemesterConfig struct {
-		Days           func(childComplexity int) int
-		Emails         func(childComplexity int) int
-		ExamGapMinutes func(childComplexity int) int
-		ForbiddenSlots func(childComplexity int) int
-		From           func(childComplexity int) int
-		MucDaiSlots    func(childComplexity int) int
-		MucDaiSlotsRaw func(childComplexity int) int
-		Slots          func(childComplexity int) int
-		Starttimes     func(childComplexity int) int
-		Until          func(childComplexity int) int
+		Days               func(childComplexity int) int
+		Emails             func(childComplexity int) int
+		ExamGapMinutes     func(childComplexity int) int
+		ForbiddenSlots     func(childComplexity int) int
+		From               func(childComplexity int) int
+		MucDaiAllowedTimes func(childComplexity int) int
+		MucDaiSlots        func(childComplexity int) int
+		NotTooCloseMinutes func(childComplexity int) int
+		Slots              func(childComplexity int) int
+		Starttimes         func(childComplexity int) int
+		TimelagMin         func(childComplexity int) int
+		Until              func(childComplexity int) int
 	}
 
 	SemesterConfigInput struct {
-		Emails         func(childComplexity int) int
-		ExamGapMinutes func(childComplexity int) int
-		ForbiddenDays  func(childComplexity int) int
-		From           func(childComplexity int) int
-		MucDaiSlots    func(childComplexity int) int
-		Slots          func(childComplexity int) int
-		Until          func(childComplexity int) int
+		Emails             func(childComplexity int) int
+		ExamGapMinutes     func(childComplexity int) int
+		ForbiddenDays      func(childComplexity int) int
+		From               func(childComplexity int) int
+		MucDaiAllowedTimes func(childComplexity int) int
+		NotTooCloseMinutes func(childComplexity int) int
+		StartTimes         func(childComplexity int) int
+		TimelagMin         func(childComplexity int) int
+		Until              func(childComplexity int) int
 	}
 
 	ServerInfo struct {
@@ -3465,13 +3468,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GenerationConfig.StartTemp(childComplexity), true
-
-	case "GenerationConfig.timelagMin":
-		if e.complexity.GenerationConfig.TimelagMin == nil {
-			break
-		}
-
-		return e.complexity.GenerationConfig.TimelagMin(childComplexity), true
 
 	case "GenerationConfig.toleranceMin":
 		if e.complexity.GenerationConfig.ToleranceMin == nil {
@@ -7766,6 +7762,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SemesterConfig.From(childComplexity), true
 
+	case "SemesterConfig.mucDaiAllowedTimes":
+		if e.complexity.SemesterConfig.MucDaiAllowedTimes == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.MucDaiAllowedTimes(childComplexity), true
+
 	case "SemesterConfig.mucDaiSlots":
 		if e.complexity.SemesterConfig.MucDaiSlots == nil {
 			break
@@ -7773,12 +7776,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SemesterConfig.MucDaiSlots(childComplexity), true
 
-	case "SemesterConfig.mucDaiSlotsRaw":
-		if e.complexity.SemesterConfig.MucDaiSlotsRaw == nil {
+	case "SemesterConfig.notTooCloseMinutes":
+		if e.complexity.SemesterConfig.NotTooCloseMinutes == nil {
 			break
 		}
 
-		return e.complexity.SemesterConfig.MucDaiSlotsRaw(childComplexity), true
+		return e.complexity.SemesterConfig.NotTooCloseMinutes(childComplexity), true
 
 	case "SemesterConfig.slots":
 		if e.complexity.SemesterConfig.Slots == nil {
@@ -7793,6 +7796,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SemesterConfig.Starttimes(childComplexity), true
+
+	case "SemesterConfig.timelagMin":
+		if e.complexity.SemesterConfig.TimelagMin == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.TimelagMin(childComplexity), true
 
 	case "SemesterConfig.until":
 		if e.complexity.SemesterConfig.Until == nil {
@@ -7829,19 +7839,33 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SemesterConfigInput.From(childComplexity), true
 
-	case "SemesterConfigInput.mucDaiSlots":
-		if e.complexity.SemesterConfigInput.MucDaiSlots == nil {
+	case "SemesterConfigInput.mucDaiAllowedTimes":
+		if e.complexity.SemesterConfigInput.MucDaiAllowedTimes == nil {
 			break
 		}
 
-		return e.complexity.SemesterConfigInput.MucDaiSlots(childComplexity), true
+		return e.complexity.SemesterConfigInput.MucDaiAllowedTimes(childComplexity), true
 
-	case "SemesterConfigInput.slots":
-		if e.complexity.SemesterConfigInput.Slots == nil {
+	case "SemesterConfigInput.notTooCloseMinutes":
+		if e.complexity.SemesterConfigInput.NotTooCloseMinutes == nil {
 			break
 		}
 
-		return e.complexity.SemesterConfigInput.Slots(childComplexity), true
+		return e.complexity.SemesterConfigInput.NotTooCloseMinutes(childComplexity), true
+
+	case "SemesterConfigInput.startTimes":
+		if e.complexity.SemesterConfigInput.StartTimes == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.StartTimes(childComplexity), true
+
+	case "SemesterConfigInput.timelagMin":
+		if e.complexity.SemesterConfigInput.TimelagMin == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.TimelagMin(childComplexity), true
 
 	case "SemesterConfigInput.until":
 		if e.complexity.SemesterConfigInput.Until == nil {
@@ -10281,9 +10305,10 @@ type ExamScheduleReport {
 `, BuiltIn: false},
 	{Name: "../generation_config.graphqls", Input: `extend type Query {
   """
-  Global generation tuning: the room time lag and the invigilation optimizer
-  (simulated annealing) parameters. Stored in the global plexams database; the
-  config file is only a seed/fallback. Steers room and invigilation generation.
+  Global generation tuning: the invigilation optimizer (simulated annealing)
+  parameters. Stored in the global plexams database; the config file is only a
+  seed/fallback. Steers invigilation generation. (The room/invigilation turnaround
+  moved to the per-semester config as timelagMin.)
   """
   generationConfig: GenerationConfig!
 }
@@ -10307,8 +10332,6 @@ enum SlotTimeConstraintMode {
 }
 
 type GenerationConfig {
-  "minutes buffer between two uses of a room / between invigilations."
-  timelagMin: Int!
   iterations: Int!
   startTemp: Float!
   endTemp: Float!
@@ -10332,7 +10355,6 @@ type GenerationConfig {
 }
 
 input GenerationConfigInput {
-  timelagMin: Int!
   iterations: Int!
   startTemp: Float!
   endTemp: Float!
@@ -11489,26 +11511,34 @@ type SemesterConfigInput {
   "Start of the planning period; day 1 = from. Exams of other faculties may lie earlier (no check)."
   from: Time!
   until: Time!
-  "Daily slot start times as \"HH:MM\"."
-  slots: [String!]!
+  "Allowed daily exam start times as \"HH:MM\"."
+  startTimes: [String!]!
   forbiddenDays: [Time!]
-  "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
-  mucDaiSlots: [[Int!]!]
+  "Absolute start times allowed for MUC.DAI exams (currently \"morning vs afternoon\"; will become allowed/forbidden times)."
+  mucDaiAllowedTimes: [Time!]
   emails: Emails!
   "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
   examGapMinutes: Int
+  "Minimum turnaround (minutes) between two uses of a room / between two invigilations (null = default)."
+  timelagMin: Int
+  "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
+  notTooCloseMinutes: Int
 }
 
 input SemesterConfigInputData {
   from: Time!
   until: Time!
-  slots: [String!]!
+  startTimes: [String!]!
   forbiddenDays: [Time!]
-  "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
-  mucDaiSlots: [[Int!]!]
+  "Absolute start times allowed for MUC.DAI exams (currently \"morning vs afternoon\"; will become allowed/forbidden times)."
+  mucDaiAllowedTimes: [Time!]
   emails: EmailsInput!
   "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
   examGapMinutes: Int
+  "Minimum turnaround (minutes) between two uses of a room / between two invigilations (null = default)."
+  timelagMin: Int
+  "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
+  notTooCloseMinutes: Int
 }
 
 input EmailsInput {
@@ -11550,7 +11580,8 @@ type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
   slots: [Slot!]!
-  mucDaiSlotsRaw: [[Int!]!]
+  "Absolute start times allowed for MUC.DAI exams (echo of the raw config)."
+  mucDaiAllowedTimes: [Time!]
   mucDaiSlots: [Slot!]!
   forbiddenSlots: [Slot!]
   from: Time!
@@ -11558,6 +11589,10 @@ type SemesterConfig {
   emails: Emails!
   "Effective travel/break buffer (minutes) between a student's consecutive exams."
   examGapMinutes: Int!
+  "Effective turnaround (minutes) between two uses of a room / between two invigilations."
+  timelagMin: Int!
+  "Effective \"too close\" threshold (minutes, same day) for a student's two exams."
+  notTooCloseMinutes: Int!
 }
 `, BuiltIn: false},
 	{Name: "../server_info.graphqls", Input: `extend type Query {
@@ -29871,50 +29906,6 @@ func (ec *executionContext) fieldContext_GenerateStudentRegsResult_studentCount(
 	return fc, nil
 }
 
-func (ec *executionContext) _GenerationConfig_timelagMin(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_GenerationConfig_timelagMin(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TimelagMin, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_GenerationConfig_timelagMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "GenerationConfig",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _GenerationConfig_iterations(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GenerationConfig_iterations(ctx, field)
 	if err != nil {
@@ -36470,8 +36461,6 @@ func (ec *executionContext) fieldContext_Mutation_setGenerationConfig(ctx contex
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "timelagMin":
-				return ec.fieldContext_GenerationConfig_timelagMin(ctx, field)
 			case "iterations":
 				return ec.fieldContext_GenerationConfig_iterations(ctx, field)
 			case "startTemp":
@@ -48291,8 +48280,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_starttimes(ctx, field)
 			case "slots":
 				return ec.fieldContext_SemesterConfig_slots(ctx, field)
-			case "mucDaiSlotsRaw":
-				return ec.fieldContext_SemesterConfig_mucDaiSlotsRaw(ctx, field)
+			case "mucDaiAllowedTimes":
+				return ec.fieldContext_SemesterConfig_mucDaiAllowedTimes(ctx, field)
 			case "mucDaiSlots":
 				return ec.fieldContext_SemesterConfig_mucDaiSlots(ctx, field)
 			case "forbiddenSlots":
@@ -48305,6 +48294,10 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_emails(ctx, field)
 			case "examGapMinutes":
 				return ec.fieldContext_SemesterConfig_examGapMinutes(ctx, field)
+			case "timelagMin":
+				return ec.fieldContext_SemesterConfig_timelagMin(ctx, field)
+			case "notTooCloseMinutes":
+				return ec.fieldContext_SemesterConfig_notTooCloseMinutes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
 		},
@@ -48352,16 +48345,20 @@ func (ec *executionContext) fieldContext_Query_semesterConfigInput(_ context.Con
 				return ec.fieldContext_SemesterConfigInput_from(ctx, field)
 			case "until":
 				return ec.fieldContext_SemesterConfigInput_until(ctx, field)
-			case "slots":
-				return ec.fieldContext_SemesterConfigInput_slots(ctx, field)
+			case "startTimes":
+				return ec.fieldContext_SemesterConfigInput_startTimes(ctx, field)
 			case "forbiddenDays":
 				return ec.fieldContext_SemesterConfigInput_forbiddenDays(ctx, field)
-			case "mucDaiSlots":
-				return ec.fieldContext_SemesterConfigInput_mucDaiSlots(ctx, field)
+			case "mucDaiAllowedTimes":
+				return ec.fieldContext_SemesterConfigInput_mucDaiAllowedTimes(ctx, field)
 			case "emails":
 				return ec.fieldContext_SemesterConfigInput_emails(ctx, field)
 			case "examGapMinutes":
 				return ec.fieldContext_SemesterConfigInput_examGapMinutes(ctx, field)
+			case "timelagMin":
+				return ec.fieldContext_SemesterConfigInput_timelagMin(ctx, field)
+			case "notTooCloseMinutes":
+				return ec.fieldContext_SemesterConfigInput_notTooCloseMinutes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfigInput", field.Name)
 		},
@@ -48412,16 +48409,20 @@ func (ec *executionContext) fieldContext_Query_newSemesterConfigDefaults(_ conte
 				return ec.fieldContext_SemesterConfigInput_from(ctx, field)
 			case "until":
 				return ec.fieldContext_SemesterConfigInput_until(ctx, field)
-			case "slots":
-				return ec.fieldContext_SemesterConfigInput_slots(ctx, field)
+			case "startTimes":
+				return ec.fieldContext_SemesterConfigInput_startTimes(ctx, field)
 			case "forbiddenDays":
 				return ec.fieldContext_SemesterConfigInput_forbiddenDays(ctx, field)
-			case "mucDaiSlots":
-				return ec.fieldContext_SemesterConfigInput_mucDaiSlots(ctx, field)
+			case "mucDaiAllowedTimes":
+				return ec.fieldContext_SemesterConfigInput_mucDaiAllowedTimes(ctx, field)
 			case "emails":
 				return ec.fieldContext_SemesterConfigInput_emails(ctx, field)
 			case "examGapMinutes":
 				return ec.fieldContext_SemesterConfigInput_examGapMinutes(ctx, field)
+			case "timelagMin":
+				return ec.fieldContext_SemesterConfigInput_timelagMin(ctx, field)
+			case "notTooCloseMinutes":
+				return ec.fieldContext_SemesterConfigInput_notTooCloseMinutes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfigInput", field.Name)
 		},
@@ -50129,8 +50130,6 @@ func (ec *executionContext) fieldContext_Query_generationConfig(_ context.Contex
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "timelagMin":
-				return ec.fieldContext_GenerationConfig_timelagMin(ctx, field)
 			case "iterations":
 				return ec.fieldContext_GenerationConfig_iterations(ctx, field)
 			case "startTemp":
@@ -58260,8 +58259,8 @@ func (ec *executionContext) fieldContext_SemesterConfig_slots(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _SemesterConfig_mucDaiSlotsRaw(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SemesterConfig_mucDaiSlotsRaw(ctx, field)
+func (ec *executionContext) _SemesterConfig_mucDaiAllowedTimes(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_mucDaiAllowedTimes(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -58274,7 +58273,7 @@ func (ec *executionContext) _SemesterConfig_mucDaiSlotsRaw(ctx context.Context, 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MucDaiSlotsRaw, nil
+		return obj.MucDaiAllowedTimes, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -58283,19 +58282,19 @@ func (ec *executionContext) _SemesterConfig_mucDaiSlotsRaw(ctx context.Context, 
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([][]int)
+	res := resTmp.([]*time.Time)
 	fc.Result = res
-	return ec.marshalOInt2ᚕᚕintᚄ(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_SemesterConfig_mucDaiSlotsRaw(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_SemesterConfig_mucDaiAllowedTimes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SemesterConfig",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -58598,6 +58597,94 @@ func (ec *executionContext) fieldContext_SemesterConfig_examGapMinutes(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _SemesterConfig_timelagMin(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_timelagMin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimelagMin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_timelagMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfig_notTooCloseMinutes(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_notTooCloseMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NotTooCloseMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_notTooCloseMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SemesterConfigInput_from(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SemesterConfigInput_from(ctx, field)
 	if err != nil {
@@ -58686,8 +58773,8 @@ func (ec *executionContext) fieldContext_SemesterConfigInput_until(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _SemesterConfigInput_slots(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SemesterConfigInput_slots(ctx, field)
+func (ec *executionContext) _SemesterConfigInput_startTimes(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_startTimes(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -58700,7 +58787,7 @@ func (ec *executionContext) _SemesterConfigInput_slots(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Slots, nil
+		return obj.StartTimes, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -58717,7 +58804,7 @@ func (ec *executionContext) _SemesterConfigInput_slots(ctx context.Context, fiel
 	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_SemesterConfigInput_slots(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_SemesterConfigInput_startTimes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SemesterConfigInput",
 		Field:      field,
@@ -58771,8 +58858,8 @@ func (ec *executionContext) fieldContext_SemesterConfigInput_forbiddenDays(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _SemesterConfigInput_mucDaiSlots(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_SemesterConfigInput_mucDaiSlots(ctx, field)
+func (ec *executionContext) _SemesterConfigInput_mucDaiAllowedTimes(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_mucDaiAllowedTimes(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -58785,7 +58872,7 @@ func (ec *executionContext) _SemesterConfigInput_mucDaiSlots(ctx context.Context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MucDaiSlots, nil
+		return obj.MucDaiAllowedTimes, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -58794,19 +58881,19 @@ func (ec *executionContext) _SemesterConfigInput_mucDaiSlots(ctx context.Context
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([][]int)
+	res := resTmp.([]time.Time)
 	fc.Result = res
-	return ec.marshalOInt2ᚕᚕintᚄ(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚕtimeᚐTimeᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_SemesterConfigInput_mucDaiSlots(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_SemesterConfigInput_mucDaiAllowedTimes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SemesterConfigInput",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -58905,6 +58992,88 @@ func (ec *executionContext) _SemesterConfigInput_examGapMinutes(ctx context.Cont
 }
 
 func (ec *executionContext) fieldContext_SemesterConfigInput_examGapMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_timelagMin(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_timelagMin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TimelagMin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_timelagMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_notTooCloseMinutes(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_notTooCloseMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NotTooCloseMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_notTooCloseMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SemesterConfigInput",
 		Field:      field,
@@ -72137,20 +72306,13 @@ func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"timelagMin", "iterations", "startTemp", "endTemp", "toleranceMin", "maxSpanHours", "weightMinuteBalance", "weightBeyondTolerance", "weightOverTargetFactor", "weightCoverage", "weightMaxDays", "weightPreferExamDays", "weightDistribution", "weightDaySpan", "slotTimeMode", "slotTimeWeight", "slotTimeWinterEarliest"}
+	fieldsInOrder := [...]string{"iterations", "startTemp", "endTemp", "toleranceMin", "maxSpanHours", "weightMinuteBalance", "weightBeyondTolerance", "weightOverTargetFactor", "weightCoverage", "weightMaxDays", "weightPreferExamDays", "weightDistribution", "weightDaySpan", "slotTimeMode", "slotTimeWeight", "slotTimeWinterEarliest"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "timelagMin":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timelagMin"))
-			data, err := ec.unmarshalNInt2int(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TimelagMin = data
 		case "iterations":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iterations"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -72659,7 +72821,7 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"from", "until", "slots", "forbiddenDays", "mucDaiSlots", "emails", "examGapMinutes"}
+	fieldsInOrder := [...]string{"from", "until", "startTimes", "forbiddenDays", "mucDaiAllowedTimes", "emails", "examGapMinutes", "timelagMin", "notTooCloseMinutes"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -72680,13 +72842,13 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 				return it, err
 			}
 			it.Until = data
-		case "slots":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slots"))
+		case "startTimes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startTimes"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Slots = data
+			it.StartTimes = data
 		case "forbiddenDays":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("forbiddenDays"))
 			data, err := ec.unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx, v)
@@ -72694,13 +72856,13 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 				return it, err
 			}
 			it.ForbiddenDays = data
-		case "mucDaiSlots":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mucDaiSlots"))
-			data, err := ec.unmarshalOInt2ᚕᚕintᚄ(ctx, v)
+		case "mucDaiAllowedTimes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mucDaiAllowedTimes"))
+			data, err := ec.unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.MucDaiSlots = data
+			it.MucDaiAllowedTimes = data
 		case "emails":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("emails"))
 			data, err := ec.unmarshalNEmailsInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailsInput(ctx, v)
@@ -72715,6 +72877,20 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 				return it, err
 			}
 			it.ExamGapMinutes = data
+		case "timelagMin":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timelagMin"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TimelagMin = data
+		case "notTooCloseMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notTooCloseMinutes"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NotTooCloseMinutes = data
 		}
 	}
 
@@ -75555,11 +75731,6 @@ func (ec *executionContext) _GenerationConfig(ctx context.Context, sel ast.Selec
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("GenerationConfig")
-		case "timelagMin":
-			out.Values[i] = ec._GenerationConfig_timelagMin(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "iterations":
 			out.Values[i] = ec._GenerationConfig_iterations(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -82256,8 +82427,8 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "mucDaiSlotsRaw":
-			out.Values[i] = ec._SemesterConfig_mucDaiSlotsRaw(ctx, field, obj)
+		case "mucDaiAllowedTimes":
+			out.Values[i] = ec._SemesterConfig_mucDaiAllowedTimes(ctx, field, obj)
 		case "mucDaiSlots":
 			out.Values[i] = ec._SemesterConfig_mucDaiSlots(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -82282,6 +82453,16 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			}
 		case "examGapMinutes":
 			out.Values[i] = ec._SemesterConfig_examGapMinutes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "timelagMin":
+			out.Values[i] = ec._SemesterConfig_timelagMin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "notTooCloseMinutes":
+			out.Values[i] = ec._SemesterConfig_notTooCloseMinutes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -82329,15 +82510,15 @@ func (ec *executionContext) _SemesterConfigInput(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "slots":
-			out.Values[i] = ec._SemesterConfigInput_slots(ctx, field, obj)
+		case "startTimes":
+			out.Values[i] = ec._SemesterConfigInput_startTimes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "forbiddenDays":
 			out.Values[i] = ec._SemesterConfigInput_forbiddenDays(ctx, field, obj)
-		case "mucDaiSlots":
-			out.Values[i] = ec._SemesterConfigInput_mucDaiSlots(ctx, field, obj)
+		case "mucDaiAllowedTimes":
+			out.Values[i] = ec._SemesterConfigInput_mucDaiAllowedTimes(ctx, field, obj)
 		case "emails":
 			out.Values[i] = ec._SemesterConfigInput_emails(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -82345,6 +82526,10 @@ func (ec *executionContext) _SemesterConfigInput(ctx context.Context, sel ast.Se
 			}
 		case "examGapMinutes":
 			out.Values[i] = ec._SemesterConfigInput_examGapMinutes(ctx, field, obj)
+		case "timelagMin":
+			out.Values[i] = ec._SemesterConfigInput_timelagMin(ctx, field, obj)
+		case "notTooCloseMinutes":
+			out.Values[i] = ec._SemesterConfigInput_notTooCloseMinutes(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -90453,42 +90638,6 @@ func (ec *executionContext) marshalOInt2ᚕintᚄ(ctx context.Context, sel ast.S
 	ret := make(graphql.Array, len(v))
 	for i := range v {
 		ret[i] = ec.marshalNInt2int(ctx, sel, v[i])
-	}
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalOInt2ᚕᚕintᚄ(ctx context.Context, v any) ([][]int, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([][]int, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNInt2ᚕintᚄ(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalOInt2ᚕᚕintᚄ(ctx context.Context, sel ast.SelectionSet, v [][]int) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	for i := range v {
-		ret[i] = ec.marshalNInt2ᚕintᚄ(ctx, sel, v[i])
 	}
 
 	for _, e := range ret {

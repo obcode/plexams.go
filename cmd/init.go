@@ -126,7 +126,7 @@ var (
 			input := &model.SemesterConfigInput{
 				From:          fromDate,
 				Until:         untilDate,
-				Slots:         slots,
+				StartTimes:    slots,
 				ForbiddenDays: forbiddenDayTimes,
 				Emails: &model.Emails{
 					Profs:            profs,

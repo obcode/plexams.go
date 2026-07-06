@@ -113,12 +113,16 @@ func TestSemesterConfigExamGapRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	gap := 45
+	lag := 25
+	tooClose := 90
 	in := &model.SemesterConfigInput{
-		From:           time.Date(2026, 7, 6, 0, 0, 0, 0, time.Local),
-		Until:          time.Date(2026, 7, 17, 0, 0, 0, 0, time.Local),
-		Slots:          []string{"08:30", "10:30"},
-		Emails:         &model.Emails{},
-		ExamGapMinutes: &gap,
+		From:               time.Date(2026, 7, 6, 0, 0, 0, 0, time.Local),
+		Until:              time.Date(2026, 7, 17, 0, 0, 0, 0, time.Local),
+		StartTimes:         []string{"08:30", "10:30"},
+		Emails:             &model.Emails{},
+		ExamGapMinutes:     &gap,
+		TimelagMin:         &lag,
+		NotTooCloseMinutes: &tooClose,
 	}
 	if err := d.SaveSemesterConfigInput(ctx, in); err != nil {
 		t.Fatal(err)
@@ -129,6 +133,12 @@ func TestSemesterConfigExamGapRoundTrip(t *testing.T) {
 	}
 	if out == nil || out.ExamGapMinutes == nil || *out.ExamGapMinutes != 45 {
 		t.Errorf("examGapMinutes not round-tripped, got %+v", out)
+	}
+	if out == nil || out.TimelagMin == nil || *out.TimelagMin != 25 {
+		t.Errorf("timelagMin not round-tripped, got %+v", out)
+	}
+	if out == nil || out.NotTooCloseMinutes == nil || *out.NotTooCloseMinutes != 90 {
+		t.Errorf("notTooCloseMinutes not round-tripped, got %+v", out)
 	}
 }
 

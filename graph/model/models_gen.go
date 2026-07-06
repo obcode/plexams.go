@@ -481,8 +481,6 @@ type GenerateStudentRegsResult struct {
 }
 
 type GenerationConfig struct {
-	// minutes buffer between two uses of a room / between invigilations.
-	TimelagMin int     `json:"timelagMin"`
 	Iterations int     `json:"iterations"`
 	StartTemp  float64 `json:"startTemp"`
 	EndTemp    float64 `json:"endTemp"`
@@ -506,7 +504,6 @@ type GenerationConfig struct {
 }
 
 type GenerationConfigInput struct {
-	TimelagMin             int                    `json:"timelagMin"`
 	Iterations             int                    `json:"iterations"`
 	StartTemp              float64                `json:"startTemp"`
 	EndTemp                float64                `json:"endTemp"`
@@ -1084,29 +1081,38 @@ type Semester struct {
 }
 
 type SemesterConfig struct {
-	Days           []*ExamDay   `json:"days"`
-	Starttimes     []*Starttime `json:"starttimes"`
-	Slots          []*Slot      `json:"slots"`
-	MucDaiSlotsRaw [][]int      `json:"mucDaiSlotsRaw,omitempty"`
-	MucDaiSlots    []*Slot      `json:"mucDaiSlots"`
-	ForbiddenSlots []*Slot      `json:"forbiddenSlots,omitempty"`
-	From           time.Time    `json:"from"`
-	Until          time.Time    `json:"until"`
-	Emails         *Emails      `json:"emails"`
+	Days       []*ExamDay   `json:"days"`
+	Starttimes []*Starttime `json:"starttimes"`
+	Slots      []*Slot      `json:"slots"`
+	// Absolute start times allowed for MUC.DAI exams (echo of the raw config).
+	MucDaiAllowedTimes []*time.Time `json:"mucDaiAllowedTimes,omitempty"`
+	MucDaiSlots        []*Slot      `json:"mucDaiSlots"`
+	ForbiddenSlots     []*Slot      `json:"forbiddenSlots,omitempty"`
+	From               time.Time    `json:"from"`
+	Until              time.Time    `json:"until"`
+	Emails             *Emails      `json:"emails"`
 	// Effective travel/break buffer (minutes) between a student's consecutive exams.
 	ExamGapMinutes int `json:"examGapMinutes"`
+	// Effective turnaround (minutes) between two uses of a room / between two invigilations.
+	TimelagMin int `json:"timelagMin"`
+	// Effective "too close" threshold (minutes, same day) for a student's two exams.
+	NotTooCloseMinutes int `json:"notTooCloseMinutes"`
 }
 
 type SemesterConfigInputData struct {
 	From          time.Time    `json:"from"`
 	Until         time.Time    `json:"until"`
-	Slots         []string     `json:"slots"`
+	StartTimes    []string     `json:"startTimes"`
 	ForbiddenDays []*time.Time `json:"forbiddenDays,omitempty"`
-	// MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from).
-	MucDaiSlots [][]int      `json:"mucDaiSlots,omitempty"`
-	Emails      *EmailsInput `json:"emails"`
+	// Absolute start times allowed for MUC.DAI exams (currently "morning vs afternoon"; will become allowed/forbidden times).
+	MucDaiAllowedTimes []*time.Time `json:"mucDaiAllowedTimes,omitempty"`
+	Emails             *EmailsInput `json:"emails"`
 	// Travel/break buffer (minutes) a student needs between two consecutive exams (null = default).
 	ExamGapMinutes *int `json:"examGapMinutes,omitempty"`
+	// Minimum turnaround (minutes) between two uses of a room / between two invigilations (null = default).
+	TimelagMin *int `json:"timelagMin,omitempty"`
+	// Two exams of a student closer than this (minutes, same day) are flagged as "too close" (null = default 120).
+	NotTooCloseMinutes *int `json:"notTooCloseMinutes,omitempty"`
 }
 
 type ServerInfo struct {

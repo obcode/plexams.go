@@ -199,10 +199,6 @@ func (p *Plexams) SetZPA() error {
 	return nil
 }
 
-func (p *Plexams) GetMucDaiSlots() [][]int {
-	return p.semesterConfig.MucDaiSlotsRaw
-}
-
 func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return p.dbClient.AllSemesterNames(ctx)
 }

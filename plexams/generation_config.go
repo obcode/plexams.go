@@ -53,7 +53,6 @@ func defaultGenerationConfig() *model.GenerationConfig {
 	w := invigplan.DefaultWeights()
 
 	cfg := &model.GenerationConfig{
-		TimelagMin:             15,
 		Iterations:             opts.Iterations,
 		StartTemp:              opts.StartTemp,
 		EndTemp:                opts.EndTemp,
@@ -73,9 +72,6 @@ func defaultGenerationConfig() *model.GenerationConfig {
 	}
 
 	// legacy seed from the config file
-	if viper.IsSet("rooms.timelag") {
-		cfg.TimelagMin = viper.GetInt("rooms.timelag")
-	}
 	if viper.IsSet("invigilation.optimizer.iterations") {
 		cfg.Iterations = viper.GetInt("invigilation.optimizer.iterations")
 	}
@@ -119,14 +115,13 @@ func defaultGenerationConfig() *model.GenerationConfig {
 	return cfg
 }
 
-// generationTimelagMin returns the configured room time lag (minutes), falling back
-// to the default on error.
-func (p *Plexams) generationTimelagMin(ctx context.Context) int {
-	cfg, err := p.GenerationConfig(ctx)
-	if err != nil {
-		return defaultGenerationConfig().TimelagMin
+// generationTimelagMin returns the configured room/invigilation turnaround (minutes)
+// from the semester config, falling back to the default when unset.
+func (p *Plexams) generationTimelagMin(_ context.Context) int {
+	if p.semesterConfig != nil && p.semesterConfig.TimelagMin > 0 {
+		return p.semesterConfig.TimelagMin
 	}
-	return cfg.TimelagMin
+	return defaultTimelagMin
 }
 
 // optimizerWeights maps the generation config to invigplan.Weights.

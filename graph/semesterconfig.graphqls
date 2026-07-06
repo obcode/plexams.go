@@ -61,26 +61,34 @@ type SemesterConfigInput {
   "Start of the planning period; day 1 = from. Exams of other faculties may lie earlier (no check)."
   from: Time!
   until: Time!
-  "Daily slot start times as \"HH:MM\"."
-  slots: [String!]!
+  "Allowed daily exam start times as \"HH:MM\"."
+  startTimes: [String!]!
   forbiddenDays: [Time!]
-  "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
-  mucDaiSlots: [[Int!]!]
+  "Absolute start times allowed for MUC.DAI exams (currently \"morning vs afternoon\"; will become allowed/forbidden times)."
+  mucDaiAllowedTimes: [Time!]
   emails: Emails!
   "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
   examGapMinutes: Int
+  "Minimum turnaround (minutes) between two uses of a room / between two invigilations (null = default)."
+  timelagMin: Int
+  "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
+  notTooCloseMinutes: Int
 }
 
 input SemesterConfigInputData {
   from: Time!
   until: Time!
-  slots: [String!]!
+  startTimes: [String!]!
   forbiddenDays: [Time!]
-  "MUC.DAI slots as absolute [dayNumber, slotNumber] pairs (day 1 = from)."
-  mucDaiSlots: [[Int!]!]
+  "Absolute start times allowed for MUC.DAI exams (currently \"morning vs afternoon\"; will become allowed/forbidden times)."
+  mucDaiAllowedTimes: [Time!]
   emails: EmailsInput!
   "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
   examGapMinutes: Int
+  "Minimum turnaround (minutes) between two uses of a room / between two invigilations (null = default)."
+  timelagMin: Int
+  "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
+  notTooCloseMinutes: Int
 }
 
 input EmailsInput {
@@ -122,7 +130,8 @@ type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
   slots: [Slot!]!
-  mucDaiSlotsRaw: [[Int!]!]
+  "Absolute start times allowed for MUC.DAI exams (echo of the raw config)."
+  mucDaiAllowedTimes: [Time!]
   mucDaiSlots: [Slot!]!
   forbiddenSlots: [Slot!]
   from: Time!
@@ -130,4 +139,8 @@ type SemesterConfig {
   emails: Emails!
   "Effective travel/break buffer (minutes) between a student's consecutive exams."
   examGapMinutes: Int!
+  "Effective turnaround (minutes) between two uses of a room / between two invigilations."
+  timelagMin: Int!
+  "Effective \"too close\" threshold (minutes, same day) for a student's two exams."
+  notTooCloseMinutes: Int!
 }

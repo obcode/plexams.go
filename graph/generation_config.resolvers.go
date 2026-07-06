@@ -13,7 +13,6 @@ import (
 // SetGenerationConfig is the resolver for the setGenerationConfig field.
 func (r *mutationResolver) SetGenerationConfig(ctx context.Context, input model.GenerationConfigInput) (*model.GenerationConfig, error) {
 	return r.plexams.SetGenerationConfig(ctx, &model.GenerationConfig{
-		TimelagMin:             input.TimelagMin,
 		Iterations:             input.Iterations,
 		StartTemp:              input.StartTemp,
 		EndTemp:                input.EndTemp,

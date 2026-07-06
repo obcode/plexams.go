@@ -592,7 +592,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		Positions:    positions,
 		Invigilators: invigilators,
 		Fixed:        fixed,
-		TimelagMin:   cfg.TimelagMin,
+		TimelagMin:   p.generationTimelagMin(ctx),
 		ToleranceMin: cfg.ToleranceMin,
 		MaxSpanHours: cfg.MaxSpanHours,
 		Weights:      optimizerWeights(cfg),

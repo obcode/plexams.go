@@ -13,6 +13,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	// defaultTimelagMin is the fallback room/invigilation turnaround (minutes) when
+	// the semester config leaves TimelagMin unset. Matches the former generation default.
+	defaultTimelagMin = 15
+	// defaultNotTooCloseMinutes is the fallback "too close" threshold (minutes) for a
+	// student's two exams on the same day when the config leaves it unset.
+	defaultNotTooCloseMinutes = 120
+)
+
 // semesterConfigInputFromViper reads the raw per-semester config from the YAML
 // (viper). It returns nil when no semesterConfig block is present, so the caller
 // can fall back to the DB-stored input.
@@ -43,96 +52,31 @@ func semesterConfigInputFromViper() *model.SemesterConfigInput {
 		}
 	}
 
-	// `from` now has the semantics of the former `fromFK07` (day 1 = from, no
-	// pre-period). For a legacy YAML the planning start is the former numbering
-	// anchor: `from` when dayNumberStart was "from", otherwise `fromFK07` — this
-	// keeps existing day numbers stable.
-	from := viper.GetTime("semesterConfig.from").Local()
-	if viper.GetString("semesterConfig.dayNumberStart") != "from" {
-		if fromFK07 := viper.GetTime("semesterConfig.fromFK07").Local(); !fromFK07.IsZero() {
-			from = fromFK07
-		}
-	}
-
-	// MUC.DAI slots: prefer the new absolute `mucdaislots`; otherwise convert the
-	// legacy `goslots` (offsets relative to goDay0) to absolute [day, slot].
-	mucDaiSlots := intPairsFromViper("mucdaislots")
-	if len(mucDaiSlots) == 0 {
-		if legacy := intPairsFromViper("goslots"); len(legacy) > 0 {
-			goDay0 := viper.GetTime("semesterConfig.goDay0").Local()
-			mucDaiSlots = absoluteMucDaiSlots(from, goDay0, legacy)
+	// MUC.DAI: absolute start times allowed for MUC.DAI exams (seed from YAML if present).
+	mucDaiAllowedTimes := make([]time.Time, 0)
+	if raw, ok := viper.Get("semesterConfig.mucDaiAllowedTimes").([]interface{}); ok {
+		for _, d := range raw {
+			if t, ok := d.(time.Time); ok {
+				mucDaiAllowedTimes = append(mucDaiAllowedTimes, t.Local())
+			}
 		}
 	}
 
 	input := &model.SemesterConfigInput{
-		From:          from,
-		Until:         viper.GetTime("semesterConfig.until").Local(),
-		Slots:         viper.GetStringSlice("semesterConfig.slots"),
-		ForbiddenDays: forbiddenDays,
-		MucDaiSlots:   mucDaiSlots,
-		Emails:        emails,
+		From:               viper.GetTime("semesterConfig.from").Local(),
+		Until:              viper.GetTime("semesterConfig.until").Local(),
+		StartTimes:         viper.GetStringSlice("semesterConfig.startTimes"),
+		ForbiddenDays:      forbiddenDays,
+		MucDaiAllowedTimes: mucDaiAllowedTimes,
+		Emails:             emails,
 	}
 	if gap := viper.GetInt("planer.examGapMinutes"); gap > 0 {
 		input.ExamGapMinutes = &gap
 	}
+	if lag := viper.GetInt("rooms.timelag"); lag > 0 {
+		input.TimelagMin = &lag
+	}
 	return input
-}
-
-// intPairsFromViper reads a [][]int block from the YAML.
-func intPairsFromViper(key string) [][]int {
-	raw, ok := viper.Get(key).([]interface{})
-	if !ok {
-		return nil
-	}
-	pairs := make([][]int, 0, len(raw))
-	for _, pairRaw := range raw {
-		inner, ok := pairRaw.([]interface{})
-		if !ok {
-			continue
-		}
-		pair := make([]int, 0, 2)
-		for _, intRaw := range inner {
-			number, ok := intRaw.(int)
-			if !ok {
-				log.Error().Interface("intRaw", intRaw).Msg("cannot convert slot pair entry to int")
-				continue
-			}
-			pair = append(pair, number)
-		}
-		pairs = append(pairs, pair)
-	}
-	return pairs
-}
-
-// weekdayDayNumber returns the 1-based day number of target within the Mon–Fri
-// sequence starting at from (0 when target is a weekend or before from).
-func weekdayDayNumber(from, target time.Time) int {
-	d := time.Date(from.Year(), from.Month(), from.Day(), 12, 0, 0, 0, time.Local)
-	end := time.Date(target.Year(), target.Month(), target.Day(), 12, 0, 0, 0, time.Local)
-	number := 0
-	for !d.After(end) {
-		if d.Weekday() != time.Saturday && d.Weekday() != time.Sunday {
-			number++
-			if d.Year() == end.Year() && d.Month() == end.Month() && d.Day() == end.Day() {
-				return number
-			}
-		}
-		d = d.Add(24 * time.Hour)
-	}
-	return 0
-}
-
-// absoluteMucDaiSlots converts legacy [dayOffsetFromGoDay0, slotNumber] pairs to
-// absolute [dayNumber, slotNumber] pairs (day 1 = from), used for migration.
-func absoluteMucDaiSlots(from, goDay0 time.Time, offsets [][]int) [][]int {
-	dayNumber := weekdayDayNumber(from, goDay0)
-	pairs := make([][]int, 0, len(offsets))
-	for _, o := range offsets {
-		if len(o) >= 2 {
-			pairs = append(pairs, []int{o[0] + dayNumber, o[1]})
-		}
-	}
-	return pairs
 }
 
 // SemesterConfigInput returns the raw, editable per-semester config (source of
@@ -201,14 +145,23 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 		}
 	}
 
+	mucDaiAllowedTimes := make([]time.Time, 0, len(data.MucDaiAllowedTimes))
+	for _, t := range data.MucDaiAllowedTimes {
+		if t != nil {
+			mucDaiAllowedTimes = append(mucDaiAllowedTimes, t.Local())
+		}
+	}
+
 	input := &model.SemesterConfigInput{
-		From:           data.From.Local(),
-		Until:          data.Until.Local(),
-		Slots:          data.Slots,
-		ForbiddenDays:  forbiddenDays,
-		MucDaiSlots:    data.MucDaiSlots,
-		Emails:         emails,
-		ExamGapMinutes: data.ExamGapMinutes,
+		From:               data.From.Local(),
+		Until:              data.Until.Local(),
+		StartTimes:         data.StartTimes,
+		ForbiddenDays:      forbiddenDays,
+		MucDaiAllowedTimes: mucDaiAllowedTimes,
+		Emails:             emails,
+		ExamGapMinutes:     data.ExamGapMinutes,
+		TimelagMin:         data.TimelagMin,
+		NotTooCloseMinutes: data.NotTooCloseMinutes,
 	}
 	if err := validateSemesterConfigInput(input); err != nil {
 		return nil, err
@@ -225,6 +178,24 @@ func examGapMinutesOf(input *model.SemesterConfigInput) int {
 	return defaultExamGapMinutes
 }
 
+// timelagMinOf returns the effective room/invigilation turnaround (minutes): the
+// configured value, or the built-in default when unset/invalid.
+func timelagMinOf(input *model.SemesterConfigInput) int {
+	if input != nil && input.TimelagMin != nil && *input.TimelagMin > 0 {
+		return *input.TimelagMin
+	}
+	return defaultTimelagMin
+}
+
+// notTooCloseMinutesOf returns the effective "too close" threshold (minutes) for a
+// student's two exams on the same day: the configured value, or the built-in default.
+func notTooCloseMinutesOf(input *model.SemesterConfigInput) int {
+	if input != nil && input.NotTooCloseMinutes != nil && *input.NotTooCloseMinutes > 0 {
+		return *input.NotTooCloseMinutes
+	}
+	return defaultNotTooCloseMinutes
+}
+
 // validateSemesterConfigInput checks date ordering and slot start-time format.
 func validateSemesterConfigInput(input *model.SemesterConfigInput) error {
 	if input == nil {
@@ -234,13 +205,13 @@ func validateSemesterConfigInput(input *model.SemesterConfigInput) error {
 		return fmt.Errorf("from (%s) must not be after until (%s)",
 			input.From.Format("2006-01-02"), input.Until.Format("2006-01-02"))
 	}
-	if len(input.Slots) == 0 {
-		return fmt.Errorf("at least one slot start time is required")
+	if len(input.StartTimes) == 0 {
+		return fmt.Errorf("at least one start time is required")
 	}
-	for _, s := range input.Slots {
+	for _, s := range input.StartTimes {
 		parts := strings.Split(s, ":")
 		if len(parts) != 2 {
-			return fmt.Errorf("invalid slot start time %q (expected HH:MM)", s)
+			return fmt.Errorf("invalid start time %q (expected HH:MM)", s)
 		}
 		hour, errH := strconv.Atoi(parts[0])
 		minute, errM := strconv.Atoi(parts[1])
@@ -266,8 +237,8 @@ func (p *Plexams) NewSemesterConfigDefaults(ctx context.Context) (*model.Semeste
 		return input, nil
 	}
 	return &model.SemesterConfigInput{
-		Slots:  []string{"08:30", "10:30", "12:30", "14:30", "16:30"},
-		Emails: &model.Emails{},
+		StartTimes: []string{"08:30", "10:30", "12:30", "14:30", "16:30"},
+		Emails:     &model.Emails{},
 	}, nil
 }
 
@@ -337,21 +308,18 @@ func (p *Plexams) semesterConfigChangeWarnings(ctx context.Context, input *model
 	if !old.From.Equal(input.From) {
 		warnings = append(warnings, "from geändert: gespeicherte Tag-Nummern im Plan verschieben sich.")
 	}
-	if len(old.Starttimes) != len(input.Slots) {
-		warnings = append(warnings, "Anzahl der Slots geändert: gespeicherte Slot-Nummern im Plan können ungültig werden.")
+	if len(old.Starttimes) != len(input.StartTimes) {
+		warnings = append(warnings, "Anzahl der Anfangszeiten geändert: gespeicherte Slot-Nummern im Plan können ungültig werden.")
 	}
 	return warnings
 }
 
 // loadSemesterConfig loads the raw per-semester config: from the DB if present,
 // otherwise from the YAML (viper), in which case it is migrated into the DB once.
-// It then derives and stores the runtime SemesterConfig (days, slots, go-slots).
+// It then derives and stores the runtime SemesterConfig (days, start times, MUC.DAI slots).
 func (p *Plexams) loadSemesterConfig(ctx context.Context) {
 	var input *model.SemesterConfigInput
 	if p.dbClient != nil {
-		if err := p.dbClient.MigrateLegacySemesterConfigInput(ctx); err != nil {
-			log.Error().Err(err).Msg("cannot migrate legacy semester config input")
-		}
 		var err error
 		input, err = p.dbClient.GetSemesterConfigInput(ctx)
 		if err != nil {
@@ -402,8 +370,8 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 		day = day.Add(24 * time.Hour)
 	}
 
-	starttimes := make([]*model.Starttime, 0, len(input.Slots))
-	for i, start := range input.Slots {
+	starttimes := make([]*model.Starttime, 0, len(input.StartTimes))
+	for i, start := range input.StartTimes {
 		starttimes = append(starttimes, &model.Starttime{
 			Number: i + 1,
 			Start:  start,
@@ -438,40 +406,41 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 		}
 	}
 
-	p.semesterConfig = &model.SemesterConfig{
-		Days:           days,
-		Starttimes:     starttimes,
-		Slots:          slots,
-		Emails:         input.Emails,
-		MucDaiSlots:    slots,
-		From:           from,
-		Until:          until,
-		ForbiddenSlots: forbiddenSlots,
-		ExamGapMinutes: examGapMinutesOf(input),
+	mucDaiAllowedTimes := make([]*time.Time, 0, len(input.MucDaiAllowedTimes))
+	for i := range input.MucDaiAllowedTimes {
+		t := input.MucDaiAllowedTimes[i].Local()
+		mucDaiAllowedTimes = append(mucDaiAllowedTimes, &t)
 	}
 
-	p.deriveMucDaiSlots(input.MucDaiSlots)
+	p.semesterConfig = &model.SemesterConfig{
+		Days:               days,
+		Starttimes:         starttimes,
+		Slots:              slots,
+		Emails:             input.Emails,
+		MucDaiAllowedTimes: mucDaiAllowedTimes,
+		MucDaiSlots:        slots,
+		From:               from,
+		Until:              until,
+		ForbiddenSlots:     forbiddenSlots,
+		ExamGapMinutes:     examGapMinutesOf(input),
+		TimelagMin:         timelagMinOf(input),
+		NotTooCloseMinutes: notTooCloseMinutesOf(input),
+	}
+
+	p.deriveMucDaiSlots(input.MucDaiAllowedTimes)
 }
 
-// deriveMucDaiSlots maps the raw MUC.DAI slot pairs ([dayNumber, slotNumber],
-// absolute) onto real slots and stores them on the semester config.
-func (p *Plexams) deriveMucDaiSlots(mucDaiSlotsRaw [][]int) {
-	p.semesterConfig.MucDaiSlotsRaw = mucDaiSlotsRaw
-
-	type slotNumber struct {
-		day, slot int
-	}
-	slotsMap := make(map[slotNumber]*model.Slot)
+// deriveMucDaiSlots maps the MUC.DAI allowed start times onto real slots (matching by
+// exact absolute start time) and stores them on the semester config.
+func (p *Plexams) deriveMucDaiSlots(mucDaiAllowedTimes []time.Time) {
+	slotsByStart := make(map[time.Time]*model.Slot)
 	for _, slot := range p.semesterConfig.Slots {
-		slotsMap[slotNumber{day: slot.DayNumber, slot: slot.SlotNumber}] = slot
+		slotsByStart[slot.Starttime] = slot
 	}
 
-	mucDaiSlots := make([]*model.Slot, 0, len(mucDaiSlotsRaw))
-	for _, pair := range mucDaiSlotsRaw {
-		if len(pair) < 2 {
-			continue
-		}
-		if slot, ok := slotsMap[slotNumber{day: pair[0], slot: pair[1]}]; ok {
+	mucDaiSlots := make([]*model.Slot, 0, len(mucDaiAllowedTimes))
+	for _, t := range mucDaiAllowedTimes {
+		if slot, ok := slotsByStart[t.Local()]; ok {
 			mucDaiSlots = append(mucDaiSlots, slot)
 		}
 	}

@@ -14,8 +14,10 @@ var (
 		Long: `Generate various CSVs.
 	planned-rooms - export rooms of planned exams.
 	semester-dump - export the whole semester (all collections) as a ZIP.
-	dataset       - export a single per-page dataset as JSON (use --name).`,
-		ValidArgs: []string{"planned-rooms", "semester-dump", "dataset"},
+	dataset       - export a single per-page dataset as JSON (use --name).
+	dataset-csv   - export a single entered dataset as human-readable CSV (use --name).
+	my-inputs-csv - export all entered data as a ZIP of CSVs.`,
+		ValidArgs: []string{"planned-rooms", "semester-dump", "dataset", "dataset-csv", "my-inputs-csv"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -49,6 +51,28 @@ var (
 				}
 				fmt.Printf("writing %s\n", jsonfile)
 				if err := plexams.ExportDataset(datasetName, jsonfile); err != nil {
+					os.Exit(1)
+				}
+
+			case "dataset-csv":
+				if datasetName == "" {
+					fmt.Println("export dataset-csv requires --name")
+					os.Exit(1)
+				}
+				if len(jsonfile) == 0 {
+					jsonfile = fmt.Sprintf("%s.csv", datasetName)
+				}
+				fmt.Printf("writing %s\n", jsonfile)
+				if err := plexams.ExportDatasetCSV(datasetName, jsonfile); err != nil {
+					os.Exit(1)
+				}
+
+			case "my-inputs-csv":
+				if len(jsonfile) == 0 {
+					jsonfile = "meine-eingaben-csv.zip"
+				}
+				fmt.Printf("writing %s\n", jsonfile)
+				if err := plexams.ExportMyInputsCSVZip(jsonfile); err != nil {
 					os.Exit(1)
 				}
 

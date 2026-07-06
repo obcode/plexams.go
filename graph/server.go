@@ -121,6 +121,12 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	router.Get("/download/dataset", plexams.HTTPDownloadDataset)
 	router.Post("/upload/dataset", plexams.HTTPUploadDataset)
 
+	// Human-readable CSV of the manually entered data (absolute date/time, robust
+	// against exam-period shifts): per-dataset and a combined "my inputs" ZIP.
+	router.Get("/download/dataset-csv", plexams.HTTPDownloadDatasetCSV)
+	router.Get("/download/my-inputs-csv.zip", plexams.HTTPDownloadMyInputsCSV)
+	router.Post("/upload/dataset-csv", plexams.HTTPUploadDatasetCSV)
+
 	server := &http.Server{Addr: fmt.Sprintf(":%s", port), Handler: router}
 	defer server.Shutdown(context.Background()) // nolint:errcheck
 

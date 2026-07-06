@@ -14,6 +14,7 @@ var importCmd = &cobra.Command{
 	Long: `Restore data into the CURRENT semester database.
 	semester-dump <file.zip> - restore a whole semester (only into a fresh/empty workspace).
 	dataset <file.json>       - restore a single per-page dataset (use --name).
+	dataset-csv <file.csv>    - restore a single entered dataset from human-readable CSV (use --name).
 
 The target is the currently selected semester (see --semester/--db-uri). Use this to
 re-upload a dump into a new test database.`,
@@ -56,6 +57,26 @@ re-upload a dump into a new test database.`,
 				os.Exit(1)
 			}
 			printRestoreResult(result.Restored, result.Total)
+
+		case "dataset-csv":
+			if datasetName == "" {
+				fmt.Println("import dataset-csv requires --name")
+				os.Exit(1)
+			}
+			if len(args) < 2 {
+				fmt.Println("import dataset-csv requires a <file.csv>")
+				os.Exit(1)
+			}
+			fmt.Printf("importing dataset %q from %s\n", datasetName, args[1])
+			result, err := plexams.ImportDatasetCSVFile(datasetName, args[1])
+			if err != nil {
+				fmt.Printf("import failed: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("applied %d rows\n", result.Applied)
+			for _, s := range result.Skipped {
+				fmt.Printf("  skipped: %s\n", s)
+			}
 
 		default:
 			fmt.Println("import called with unknown sub command")

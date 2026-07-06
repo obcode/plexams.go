@@ -65,10 +65,9 @@ func fiveSlots() []examplan.Slot {
 func TestComputeSlotTimeSeverity(t *testing.T) {
 	slots := fiveSlots()
 	earliest := parseDayMinutes(defaultSlotTimeWinterEarliest, "10:00") // 600
-	latest := parseDayMinutes(defaultSlotTimeSummerLatest, "13:00")     // 780
 
-	// winter, phase B: only 08:30 is before 10:00 → severity (600-510)/60 = 1.5.
-	sev, w := computeSlotTimeSeverity(slotTimeWinter, 5, earliest, latest, slots, false)
+	// winter, phase B: threshold — only 08:30 is before 10:00 → severity (600-510)/60 = 1.5.
+	sev, w := computeSlotTimeSeverity(slotTimeWinter, 5, earliest, slots, false)
 	if w != 5 {
 		t.Errorf("phase-B weight should be the full weight, got %v", w)
 	}
@@ -79,9 +78,11 @@ func TestComputeSlotTimeSeverity(t *testing.T) {
 		}
 	}
 
-	// summer, phase B: 14:30 → 1.5, 16:30 → 3.5 (later is worse), rest 0.
-	sev, _ = computeSlotTimeSeverity(slotTimeSummer, 5, earliest, latest, slots, false)
-	want = []float64{0, 0, 0, 1.5, 3.5}
+	// summer, phase B: monotonic — hours later than the earliest start (08:30). The later,
+	// the worse, so earlier is always strictly better (and, weighted by seats, large exams
+	// go first).
+	sev, _ = computeSlotTimeSeverity(slotTimeSummer, 5, earliest, slots, false)
+	want = []float64{0, 2, 4, 6, 8}
 	for i := range want {
 		if sev[i] != want[i] {
 			t.Errorf("summer severity[%d] = %v, want %v (%v)", i, sev[i], want[i], sev)
@@ -89,15 +90,15 @@ func TestComputeSlotTimeSeverity(t *testing.T) {
 	}
 
 	// phase A (T-Bau) in summer / off → no penalty at all (go by the booking).
-	if sev, w := computeSlotTimeSeverity(slotTimeSummer, 5, earliest, latest, slots, true); sev != nil || w != 0 {
+	if sev, w := computeSlotTimeSeverity(slotTimeSummer, 5, earliest, slots, true); sev != nil || w != 0 {
 		t.Errorf("phase-A summer must disable the penalty, got sev=%v w=%v", sev, w)
 	}
-	if _, w := computeSlotTimeSeverity(slotTimeOff, 5, earliest, latest, slots, false); w != 0 {
+	if _, w := computeSlotTimeSeverity(slotTimeOff, 5, earliest, slots, false); w != 0 {
 		t.Errorf("off must disable the penalty, got w=%v", w)
 	}
 
 	// phase A (T-Bau) in winter → gentle pull only: reduced weight, but 08:30 still penalized.
-	sev, w = computeSlotTimeSeverity(slotTimeWinter, 5, earliest, latest, slots, true)
+	sev, w = computeSlotTimeSeverity(slotTimeWinter, 5, earliest, slots, true)
 	if w != 5*tbauSlotTimePullFactor {
 		t.Errorf("phase-A winter weight should be reduced to %v, got %v", 5*tbauSlotTimePullFactor, w)
 	}

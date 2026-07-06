@@ -511,6 +511,28 @@ func TestTimeOfDayAvoidsPenalizedSlots(t *testing.T) {
 	}
 }
 
+// TestTimeOfDayPullsLargeExamsEarlier: summer "earlier is better" (monotonic severity,
+// per-seat weighted) — two conflicting exams that cannot share a slot; the LARGER one must
+// take the earlier slot.
+func TestTimeOfDayPullsLargeExamsEarlier(t *testing.T) {
+	slots := oneDaySlots(2) // idx0 = 08:30, idx1 = 10:30
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 200}, // large
+		{ID: 2, Ancodes: []int{2}, Seats: 20},  // small
+	}
+	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1}}}} // forces different slots
+	w := DefaultWeights()
+	w.SlotLoad = 0 // isolate the time term from the even-distribution term
+	w.TimeOfDay = 5
+	p := NewProblem(slots, units, students, nil, w)
+	p.SetTimeSeverity([]float64{0, 1}) // the later slot is worse
+	st, _ := Solve(p, fastOpts(), false)
+
+	if st.SlotOf[0] != 0 || st.SlotOf[1] != 1 {
+		t.Errorf("the large exam should take the earlier slot: got large=%d small=%d", st.SlotOf[0], st.SlotOf[1])
+	}
+}
+
 // TestTimeOfDayIncrementalMatchesFull exercises the incremental start-time bookkeeping
 // (moveUnit / undo) against a from-scratch recompute over many random moves.
 func TestTimeOfDayIncrementalMatchesFull(t *testing.T) {

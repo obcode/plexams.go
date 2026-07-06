@@ -13,10 +13,10 @@ extend type Mutation {
 }
 
 """
-When the exam-schedule generator (Terminplan) applies the start-time avoidance soft
-constraint, and which way. AUTO follows the semester (winter → avoid early starts,
-summer → avoid late starts); WINTER/SUMMER force one variant (for testing); OFF disables
-it. Default AUTO.
+When the exam-schedule generator (Terminplan) applies the start-time soft constraint, and
+which way. AUTO follows the semester (winter → avoid early starts before the morning limit;
+summer → prefer early starts, the later the worse, weighted by registrations so large exams
+go first); WINTER/SUMMER force one variant (for testing); OFF disables it. Default AUTO.
 """
 enum SlotTimeConstraintMode {
   AUTO
@@ -42,14 +42,12 @@ type GenerationConfig {
   weightPreferExamDays: Float!
   weightDistribution: Float!
   weightDaySpan: Float!
-  "Terminplan: whether/how to avoid unfavourable start times (default AUTO by semester)."
+  "Terminplan: whether/how to weight exam start times (default AUTO by semester)."
   slotTimeMode: SlotTimeConstraintMode!
-  "Terminplan: start-time avoidance weight (penalty per registration, per hour outside the window). 0 = use default."
+  "Terminplan: start-time weight (penalty per registration, per hour of badness). 0 = use default."
   slotTimeWeight: Float!
-  "Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00."
+  "Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00. Ignored in summer (there earlier is always better)."
   slotTimeWinterEarliest: String!
-  "Terminplan (summer): avoid a start time after this (HH:MM), e.g. 13:00."
-  slotTimeSummerLatest: String!
 }
 
 input GenerationConfigInput {
@@ -70,5 +68,4 @@ input GenerationConfigInput {
   slotTimeMode: SlotTimeConstraintMode!
   slotTimeWeight: Float!
   slotTimeWinterEarliest: String!
-  slotTimeSummerLatest: String!
 }

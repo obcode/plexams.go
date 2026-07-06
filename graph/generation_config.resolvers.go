@@ -30,7 +30,6 @@ func (r *mutationResolver) SetGenerationConfig(ctx context.Context, input model.
 		SlotTimeMode:           input.SlotTimeMode,
 		SlotTimeWeight:         input.SlotTimeWeight,
 		SlotTimeWinterEarliest: input.SlotTimeWinterEarliest,
-		SlotTimeSummerLatest:   input.SlotTimeSummerLatest,
 	})
 }
 

@@ -497,14 +497,12 @@ type GenerationConfig struct {
 	WeightPreferExamDays   float64 `json:"weightPreferExamDays"`
 	WeightDistribution     float64 `json:"weightDistribution"`
 	WeightDaySpan          float64 `json:"weightDaySpan"`
-	// Terminplan: whether/how to avoid unfavourable start times (default AUTO by semester).
+	// Terminplan: whether/how to weight exam start times (default AUTO by semester).
 	SlotTimeMode SlotTimeConstraintMode `json:"slotTimeMode"`
-	// Terminplan: start-time avoidance weight (penalty per registration, per hour outside the window). 0 = use default.
+	// Terminplan: start-time weight (penalty per registration, per hour of badness). 0 = use default.
 	SlotTimeWeight float64 `json:"slotTimeWeight"`
-	// Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00.
+	// Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00. Ignored in summer (there earlier is always better).
 	SlotTimeWinterEarliest string `json:"slotTimeWinterEarliest"`
-	// Terminplan (summer): avoid a start time after this (HH:MM), e.g. 13:00.
-	SlotTimeSummerLatest string `json:"slotTimeSummerLatest"`
 }
 
 type GenerationConfigInput struct {
@@ -525,7 +523,6 @@ type GenerationConfigInput struct {
 	SlotTimeMode           SlotTimeConstraintMode `json:"slotTimeMode"`
 	SlotTimeWeight         float64                `json:"slotTimeWeight"`
 	SlotTimeWinterEarliest string                 `json:"slotTimeWinterEarliest"`
-	SlotTimeSummerLatest   string                 `json:"slotTimeSummerLatest"`
 }
 
 type ImportMucDaiResult struct {
@@ -1524,10 +1521,10 @@ func (e RoomRequestType) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// When the exam-schedule generator (Terminplan) applies the start-time avoidance soft
-// constraint, and which way. AUTO follows the semester (winter → avoid early starts,
-// summer → avoid late starts); WINTER/SUMMER force one variant (for testing); OFF disables
-// it. Default AUTO.
+// When the exam-schedule generator (Terminplan) applies the start-time soft constraint, and
+// which way. AUTO follows the semester (winter → avoid early starts before the morning limit;
+// summer → prefer early starts, the later the worse, weighted by registrations so large exams
+// go first); WINTER/SUMMER force one variant (for testing); OFF disables it. Default AUTO.
 type SlotTimeConstraintMode string
 
 const (

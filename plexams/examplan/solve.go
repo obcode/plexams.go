@@ -319,8 +319,8 @@ func (tbauFillC) Cost(st *State) (float64, []optimize.Violation) { return tbauFi
 type timeOfDayC struct{ w Weights }
 
 func (c timeOfDayC) Info() optimize.Info {
-	return optimize.Info{Name: "time-of-day", Title: "Ungünstige Tageszeiten meiden", Kind: optimize.KindSoft, Weight: c.w.TimeOfDay, Tier: 32,
-		Description: "Semesterabhängig: im Wintersemester frühe Slots (Beginn vor der Morgen-Grenze, z.B. 08:30) meiden, im Sommersemester späte Slots (Beginn nach der Mittags-Grenze, z.B. 14:30/16:30). Je Anmeldung und je Stunde außerhalb des gewünschten Zeitfensters. Gebuchte T-Bau-Räume (Phase EXaHM/SEB) sind ausgenommen (im Sommer ganz, im Winter nur ein milder Sog Richtung späterer Beginn)."}
+	return optimize.Info{Name: "time-of-day", Title: "Tageszeit der Prüfungen", Kind: optimize.KindSoft, Weight: c.w.TimeOfDay, Tier: 32,
+		Description: "Semesterabhängig: im Wintersemester frühe Slots (Beginn vor der Morgen-Grenze, z.B. 08:30) meiden; im Sommersemester möglichst früh beginnen — je später, desto schlechter. Je Anmeldung gewichtet, d.h. große Prüfungen werden nach vorne gezogen. Gebuchte T-Bau-Räume (Phase EXaHM/SEB) sind ausgenommen (im Sommer ganz, im Winter nur ein milder Sog Richtung späterer Beginn)."}
 }
 func (c timeOfDayC) Cost(st *State) (float64, []optimize.Violation) { return timeOfDayCost(st) }
 

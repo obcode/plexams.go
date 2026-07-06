@@ -36,9 +36,6 @@ func fillSlotTimeDefaults(cfg *model.GenerationConfig) {
 	if cfg.SlotTimeWinterEarliest == "" {
 		cfg.SlotTimeWinterEarliest = defaultSlotTimeWinterEarliest
 	}
-	if cfg.SlotTimeSummerLatest == "" {
-		cfg.SlotTimeSummerLatest = defaultSlotTimeSummerLatest
-	}
 }
 
 // SetGenerationConfig stores the global generation config.
@@ -73,7 +70,6 @@ func defaultGenerationConfig() *model.GenerationConfig {
 		SlotTimeMode:           model.SlotTimeConstraintModeAuto,
 		SlotTimeWeight:         defaultSlotTimeWeight,
 		SlotTimeWinterEarliest: defaultSlotTimeWinterEarliest,
-		SlotTimeSummerLatest:   defaultSlotTimeSummerLatest,
 	}
 
 	// legacy seed from the config file

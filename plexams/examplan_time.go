@@ -10,14 +10,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Start-time-avoidance defaults, used when the generation config leaves a field unset (so
+// Start-time-preference defaults, used when the generation config leaves a field unset (so
 // an older stored config, or a fresh DB, still gets sensible behaviour).
 const (
-	defaultSlotTimeWeight         = 5.0     // penalty per registration, per hour outside the wanted window
+	defaultSlotTimeWeight         = 2.0     // penalty per registration, per hour of "badness" of the start time
 	defaultSlotTimeWinterEarliest = "10:00" // winter: avoid a start time before this
-	defaultSlotTimeSummerLatest   = "13:00" // summer: avoid a start time after this
 	// tbauSlotTimePullFactor: in phase A (EXaHM/SEB into booked T-Bau slots) the booked
-	// rooms are exempt from the avoidance — in summer entirely (they are climate-
+	// rooms are exempt from the constraint — in summer entirely (they are climate-
 	// controlled, so we go purely by the booking). In winter we still apply a gentle pull
 	// towards later starts, using this fraction of the normal weight, so an 08:30 booking
 	// is left empty when possible (and can then be dropped in favour of R-rooms).
@@ -25,13 +24,13 @@ const (
 )
 
 // slotTimeMode is the resolved (semester-independent) behaviour of the start-time
-// avoidance constraint for one generation run.
+// constraint for one generation run.
 type slotTimeMode int
 
 const (
 	slotTimeOff    slotTimeMode = iota // no penalty
-	slotTimeWinter                     // avoid early starts (before the morning limit)
-	slotTimeSummer                     // avoid late starts (after the midday limit)
+	slotTimeWinter                     // avoid early starts (before the morning limit) — threshold
+	slotTimeSummer                     // prefer early starts (the later, the worse) — monotonic
 )
 
 // isSummerSemester reports whether the current semester is a summer semester (SS). The
@@ -59,10 +58,10 @@ func (p *Plexams) resolveSlotTimeMode(mode model.SlotTimeConstraintMode) slotTim
 	}
 }
 
-// slotTimeSeverity computes the per-slot start-time avoidance severity (hours the slot's
-// start lies outside the wanted window) and the weight to use, honouring the phase-A
-// T-Bau exception:
-//   - phase B (general schedule): full weight; winter avoids early, summer avoids late starts.
+// slotTimeSeverity computes the per-slot start-time severity (hours of "badness" of the
+// slot's start time) and the weight to use, honouring the phase-A T-Bau exception:
+//   - phase B (general schedule): full weight; winter avoids early starts (threshold before
+//     the morning limit), summer prefers early starts (monotonic — the later, the worse).
 //   - phase A (booked T-Bau EXaHM/SEB): summer/off → no penalty (go by the booking); winter
 //     → a gentle pull (reduced weight) towards later starts so an early booking is left empty
 //     when possible.
@@ -71,7 +70,7 @@ func (p *Plexams) resolveSlotTimeMode(mode model.SlotTimeConstraintMode) slotTim
 func (p *Plexams) slotTimeSeverity(ctx context.Context, slots []examplan.Slot, roomPhase bool) ([]float64, float64) {
 	cfg, err := p.GenerationConfig(ctx)
 	if err != nil {
-		log.Warn().Err(err).Msg("cannot read generation config; start-time avoidance disabled for this run")
+		log.Warn().Err(err).Msg("cannot read generation config; start-time preference disabled for this run")
 		return nil, 0
 	}
 	weight := cfg.SlotTimeWeight
@@ -81,15 +80,20 @@ func (p *Plexams) slotTimeSeverity(ctx context.Context, slots []examplan.Slot, r
 	return computeSlotTimeSeverity(
 		p.resolveSlotTimeMode(cfg.SlotTimeMode), weight,
 		parseDayMinutes(cfg.SlotTimeWinterEarliest, defaultSlotTimeWinterEarliest),
-		parseDayMinutes(cfg.SlotTimeSummerLatest, defaultSlotTimeSummerLatest),
 		slots, roomPhase)
 }
 
 // computeSlotTimeSeverity is the pure core of slotTimeSeverity (no config/DB): it turns a
-// resolved mode, weight, and the morning/midday limits (minutes since midnight) into the
+// resolved mode, weight and the winter morning limit (minutes since midnight) into the
 // per-slot severity and the effective weight, applying the phase-A T-Bau exception.
-func computeSlotTimeSeverity(mode slotTimeMode, weight float64, earliestMin, latestMin int, slots []examplan.Slot, roomPhase bool) ([]float64, float64) {
-	if mode == slotTimeOff || weight <= 0 {
+//
+//   - winter: threshold — a start before winterEarliestMin is penalized by the hours it is
+//     too early (later slots are all equally fine).
+//   - summer: monotonic — every start is penalized by the hours it is later than the day's
+//     earliest possible start, so earlier is always strictly better. Combined with the
+//     per-registration weighting in timePenalty this pulls the LARGE exams to the front.
+func computeSlotTimeSeverity(mode slotTimeMode, weight float64, winterEarliestMin int, slots []examplan.Slot, roomPhase bool) ([]float64, float64) {
+	if mode == slotTimeOff || weight <= 0 || len(slots) == 0 {
 		return nil, 0
 	}
 	if roomPhase {
@@ -100,15 +104,22 @@ func computeSlotTimeSeverity(mode slotTimeMode, weight float64, earliestMin, lat
 		}
 		weight *= tbauSlotTimePullFactor
 	}
+	// earliest start time of day (clock minutes) — the reference for the summer gradient.
+	earliestStart := 24 * 60
+	for _, s := range slots {
+		if m := s.Start.Hour()*60 + s.Start.Minute(); m < earliestStart {
+			earliestStart = m
+		}
+	}
 	sev := make([]float64, len(slots))
 	for i, s := range slots {
 		startMin := s.Start.Hour()*60 + s.Start.Minute()
 		outside := 0
 		switch mode {
 		case slotTimeWinter:
-			outside = earliestMin - startMin // start before the morning limit
+			outside = winterEarliestMin - startMin // start before the morning limit
 		case slotTimeSummer:
-			outside = startMin - latestMin // start after the midday limit
+			outside = startMin - earliestStart // the later the start, the worse
 		}
 		if outside > 0 {
 			sev[i] = float64(outside) / 60.0

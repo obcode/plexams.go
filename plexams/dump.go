@@ -307,7 +307,9 @@ func (p *Plexams) DatasetDumpJSON(ctx context.Context, name string) ([]byte, str
 	if err != nil {
 		return nil, "", err
 	}
-	filename := fmt.Sprintf("%s_%s.json", strings.ReplaceAll(p.semester, " ", "_"), name)
+	// name the file after the physical database, not the logical semester, so a
+	// workspace clone (e.g. Test26SS with logical semester 2026-SS) is unambiguous.
+	filename := fmt.Sprintf("%s_%s.json", strings.ReplaceAll(p.dbClient.DatabaseName(), " ", "_"), name)
 	return data, filename, nil
 }
 
@@ -473,7 +475,9 @@ func (p *Plexams) HTTPDownloadSemesterDump(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "cannot build semester dump: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	filename := fmt.Sprintf("%s_semester-dump.zip", strings.ReplaceAll(p.semester, " ", "_"))
+	// name the file after the physical database, not the logical semester, so a
+	// workspace clone (e.g. Test26SS with logical semester 2026-SS) is unambiguous.
+	filename := fmt.Sprintf("%s_semester-dump.zip", strings.ReplaceAll(p.dbClient.DatabaseName(), " ", "_"))
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	if _, err := w.Write(data); err != nil {

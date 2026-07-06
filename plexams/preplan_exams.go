@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/rs/zerolog/log"
 )
 
 // validPreplanExamKinds are the allowed examKind values.
@@ -114,6 +115,30 @@ func (p *Plexams) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (
 	if _, err := p.dbClient.ReplacePreplanExam(ctx, preplanExam); err != nil {
 		return nil, err
 	}
+
+	// keep the linked ZPA exam's LOCKED plan entry in sync with the fix, mirroring
+	// ConnectPreplanExamToAncode / DisconnectPreplanExam: a fixed pre-exam pins its
+	// linked ancode into that slot as a locked plan entry, un-fixing drops it again.
+	// Without this the fix would stay dangling on the ZPA exam after un-fixing.
+	if preplanExam.Ancode != nil {
+		if fixed {
+			if _, err := p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
+				DayNumber:  *preplanExam.PlannedDayNumber,
+				SlotNumber: *preplanExam.PlannedSlotNumber,
+				Ancode:     *preplanExam.Ancode,
+				Locked:     true,
+			}); err != nil {
+				return nil, fmt.Errorf("cannot pin ancode %d into slot %d/%d: %w",
+					*preplanExam.Ancode, *preplanExam.PlannedDayNumber, *preplanExam.PlannedSlotNumber, err)
+			}
+		} else {
+			if err := p.dbClient.RemovePlanEntry(ctx, *preplanExam.Ancode); err != nil {
+				log.Error().Err(err).Int("ancode", *preplanExam.Ancode).
+					Msg("cannot remove pre-planned slot on un-fix")
+			}
+		}
+	}
+
 	return preplanExam, nil
 }
 

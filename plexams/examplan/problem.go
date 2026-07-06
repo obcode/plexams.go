@@ -106,6 +106,11 @@ type Weights struct {
 	CrossCampus   float64 // extra penalty for a same-day student pair across campuses (travel gap)
 	TbauFill      float64 // per unused booked T-building seat (EXaHM/SEB phase A: fill the rooms)
 	Hole          float64 // per empty slot that lies between two occupied slots on the same day
+	// TimeOfDay scales the start-time avoidance penalty: per seat, per hour a slot's start
+	// time lies outside the wanted window (see Problem.TimeSeverity). 0 = off. The window
+	// is semester-dependent (winter: avoid early starts; summer: avoid late starts) and is
+	// baked into TimeSeverity by the caller, so the solver only needs the scalar weight.
+	TimeOfDay float64
 }
 
 // DefaultWeights returns the calibrated weights (tuned against real data, Test26SS,
@@ -127,6 +132,7 @@ func DefaultWeights() Weights {
 		CrossCampus:   3000,
 		TbauFill:      0,    // off by default (Phase B); the EXaHM/SEB phase A sets it high
 		Hole:          1500, // an empty slot mid-day is bad for invigilation planning; drive it to the day edge (or fill it). Below Adjacent (2500) so it never creates a directly-consecutive pair just to close a hole; above SameDay (900) so it may accept a mild same-day proximity.
+		TimeOfDay:     0,    // off by default; the caller sets it (and TimeSeverity) per semester
 	}
 }
 
@@ -147,6 +153,22 @@ func (p *Problem) tbauPenalty(slotIdx, exahmUsed, sebUsed int) float64 {
 	return p.W.TbauFill * float64(unused)
 }
 
+// SetTimeSeverity installs the per-slot start-time avoidance severity (see
+// Problem.TimeSeverity). len(sev) must equal len(Slots); a shorter/nil slice or a zero
+// W.TimeOfDay simply disables the penalty. Call before Solve.
+func (p *Problem) SetTimeSeverity(sev []float64) {
+	p.TimeSeverity = sev
+}
+
+// timePenalty is the start-time avoidance penalty for placing `seats` students into slot
+// slotIdx: W.TimeOfDay * severity(slot) * seats. slotIdx < 0 (unplaced) costs nothing.
+func (p *Problem) timePenalty(seats, slotIdx int) float64 {
+	if p.W.TimeOfDay == 0 || slotIdx < 0 || slotIdx >= len(p.TimeSeverity) {
+		return 0
+	}
+	return p.W.TimeOfDay * p.TimeSeverity[slotIdx] * float64(seats)
+}
+
 // Problem is the immutable input to the solver.
 type Problem struct {
 	Slots    []Slot
@@ -154,6 +176,13 @@ type Problem struct {
 	Students []Student
 	Attract  []AttractPair
 	W        Weights
+
+	// TimeSeverity is the per-slot start-time avoidance severity (index-aligned with
+	// Slots): how far, in hours, the slot's start time lies outside the wanted window
+	// (0 = inside / no penalty). Semester-dependent and set by the caller via
+	// SetTimeSeverity; combined with W.TimeOfDay and a unit's seats into timePenalty.
+	// nil (or W.TimeOfDay == 0) disables the term.
+	TimeSeverity []float64
 
 	// derived
 	movable        []int

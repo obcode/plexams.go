@@ -249,8 +249,9 @@ func fullCost(st *State) float64 {
 	l, _ := slotLoadCost(st)
 	h, _ := holeCost(st)
 	f, _ := tbauFillCost(st)
+	td, _ := timeOfDayCost(st)
 	u, _ := unplacedCost(st)
-	return s + a + l + h + f + u
+	return s + a + l + h + f + td + u
 }
 
 func TestIncrementalMatchesFull(t *testing.T) {
@@ -489,6 +490,56 @@ func TestHoleMultiDayGroupingAndIncremental(t *testing.T) {
 			want2, _ := holeCost(st)
 			if diff := st.holeTotal - want2; diff > 1e-6 || diff < -1e-6 {
 				t.Fatalf("holeTotal %.4f != recompute %.4f after undo %d", st.holeTotal, want2, i)
+			}
+		}
+	}
+}
+
+// TestTimeOfDayAvoidsPenalizedSlots: with a start-time severity on the two 08:30 slots
+// (winter: avoid early starts), a single conflict-free exam lands in an un-penalized slot.
+func TestTimeOfDayAvoidsPenalizedSlots(t *testing.T) {
+	units := []Unit{{ID: 1, Ancodes: []int{1}, Seats: 50}}
+	w := DefaultWeights()
+	w.TimeOfDay = 100
+	p := NewProblem(testSlots(), units, nil, nil, w)
+	// penalize the two 08:30 slots (idx0, idx2); the 11:30 slots (idx1, idx3) are fine.
+	p.SetTimeSeverity([]float64{1.5, 0, 1.5, 0})
+
+	st, _ := Solve(p, fastOpts(), false)
+	if s := st.SlotOf[0]; s < 0 || p.TimeSeverity[s] != 0 {
+		t.Errorf("exam should avoid the penalized early start, landed in slot %d (severity %v)", s, p.TimeSeverity)
+	}
+}
+
+// TestTimeOfDayIncrementalMatchesFull exercises the incremental start-time bookkeeping
+// (moveUnit / undo) against a from-scratch recompute over many random moves.
+func TestTimeOfDayIncrementalMatchesFull(t *testing.T) {
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 30},
+		{ID: 2, Ancodes: []int{2}, Seats: 30},
+		{ID: 3, Ancodes: []int{3}, Seats: 30},
+	}
+	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1}}}}
+	w := DefaultWeights()
+	w.TimeOfDay = 50
+	p := NewProblem(testSlots(), units, students, nil, w)
+	p.SetTimeSeverity([]float64{1.5, 0, 1.5, 0})
+	st := construct(p)
+	rng := rand.New(rand.NewSource(5))
+	for i := 0; i < 3000; i++ {
+		undo := st.Propose(rng)
+		if undo == nil {
+			continue
+		}
+		want, _ := timeOfDayCost(st)
+		if diff := st.timeTotal - want; diff > 1e-6 || diff < -1e-6 {
+			t.Fatalf("timeTotal %.4f != recompute %.4f after move %d; slots=%v", st.timeTotal, want, i, st.SlotOf)
+		}
+		if i%3 == 0 {
+			undo()
+			want2, _ := timeOfDayCost(st)
+			if diff := st.timeTotal - want2; diff > 1e-6 || diff < -1e-6 {
+				t.Fatalf("timeTotal %.4f != recompute %.4f after undo %d", st.timeTotal, want2, i)
 			}
 		}
 	}

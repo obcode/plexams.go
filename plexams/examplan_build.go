@@ -383,6 +383,10 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		w.SlotLoad = 0
 		w.Hole = 0
 	}
+	// start-time avoidance (semester-dependent soft constraint): compute the per-slot
+	// severity and the weight, honouring the T-Bau exception in phase A.
+	timeSeverity, timeWeight := p.slotTimeSeverity(ctx, slots, roomPhase)
+	w.TimeOfDay = timeWeight
 	students := make([]examplan.Student, 0, len(studentsRaw))
 	for _, s := range studentsRaw {
 		seen := make(map[int]bool)
@@ -508,6 +512,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	})
 
 	prob := examplan.NewProblem(slots, units, students, attract, w)
+	prob.SetTimeSeverity(timeSeverity)
 	prob.SetNTAOverruns(gapForbidden)
 	return prob, nil
 }

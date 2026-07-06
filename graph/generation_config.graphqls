@@ -12,6 +12,19 @@ extend type Mutation {
   setGenerationConfig(input: GenerationConfigInput!): GenerationConfig!
 }
 
+"""
+When the exam-schedule generator (Terminplan) applies the start-time avoidance soft
+constraint, and which way. AUTO follows the semester (winter → avoid early starts,
+summer → avoid late starts); WINTER/SUMMER force one variant (for testing); OFF disables
+it. Default AUTO.
+"""
+enum SlotTimeConstraintMode {
+  AUTO
+  WINTER
+  SUMMER
+  OFF
+}
+
 type GenerationConfig {
   "minutes buffer between two uses of a room / between invigilations."
   timelagMin: Int!
@@ -29,6 +42,14 @@ type GenerationConfig {
   weightPreferExamDays: Float!
   weightDistribution: Float!
   weightDaySpan: Float!
+  "Terminplan: whether/how to avoid unfavourable start times (default AUTO by semester)."
+  slotTimeMode: SlotTimeConstraintMode!
+  "Terminplan: start-time avoidance weight (penalty per registration, per hour outside the window). 0 = use default."
+  slotTimeWeight: Float!
+  "Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00."
+  slotTimeWinterEarliest: String!
+  "Terminplan (summer): avoid a start time after this (HH:MM), e.g. 13:00."
+  slotTimeSummerLatest: String!
 }
 
 input GenerationConfigInput {
@@ -46,4 +67,8 @@ input GenerationConfigInput {
   weightPreferExamDays: Float!
   weightDistribution: Float!
   weightDaySpan: Float!
+  slotTimeMode: SlotTimeConstraintMode!
+  slotTimeWeight: Float!
+  slotTimeWinterEarliest: String!
+  slotTimeSummerLatest: String!
 }

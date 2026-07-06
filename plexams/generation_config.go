@@ -17,9 +17,28 @@ func (p *Plexams) GenerationConfig(ctx context.Context) (*model.GenerationConfig
 		return nil, err
 	}
 	if cfg != nil {
+		fillSlotTimeDefaults(cfg) // backfill fields absent from an older stored config
 		return cfg, nil
 	}
 	return defaultGenerationConfig(), nil
+}
+
+// fillSlotTimeDefaults sets sensible defaults for the start-time-avoidance fields when a
+// stored config predates them (so an existing DB keeps the AUTO-by-semester behaviour
+// instead of decoding to a zero-valued, effectively-OFF config).
+func fillSlotTimeDefaults(cfg *model.GenerationConfig) {
+	if cfg.SlotTimeMode == "" {
+		cfg.SlotTimeMode = model.SlotTimeConstraintModeAuto
+	}
+	if cfg.SlotTimeWeight == 0 {
+		cfg.SlotTimeWeight = defaultSlotTimeWeight
+	}
+	if cfg.SlotTimeWinterEarliest == "" {
+		cfg.SlotTimeWinterEarliest = defaultSlotTimeWinterEarliest
+	}
+	if cfg.SlotTimeSummerLatest == "" {
+		cfg.SlotTimeSummerLatest = defaultSlotTimeSummerLatest
+	}
 }
 
 // SetGenerationConfig stores the global generation config.
@@ -51,6 +70,10 @@ func defaultGenerationConfig() *model.GenerationConfig {
 		WeightPreferExamDays:   w.PreferExamDays,
 		WeightDistribution:     w.Distribution,
 		WeightDaySpan:          w.DaySpan,
+		SlotTimeMode:           model.SlotTimeConstraintModeAuto,
+		SlotTimeWeight:         defaultSlotTimeWeight,
+		SlotTimeWinterEarliest: defaultSlotTimeWinterEarliest,
+		SlotTimeSummerLatest:   defaultSlotTimeSummerLatest,
 	}
 
 	// legacy seed from the config file

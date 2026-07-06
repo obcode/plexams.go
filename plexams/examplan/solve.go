@@ -160,6 +160,7 @@ func addedCost(st *State, u, s int) float64 {
 	if over > 0 {
 		c += p.W.SlotLoad * float64(over) * float64(over)
 	}
+	c += p.timePenalty(seats, s)
 	return c
 }
 
@@ -171,7 +172,7 @@ func (p *Problem) Registry() optimize.Registry[*State] {
 			fixedC{}, allowedC{}, sameStudentC{}, capacityC{}, ntaOverrunC{},
 		},
 		Soft: []optimize.SoftConstraint[*State]{
-			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, holeC{p.W}, tbauFillC{p.W}, placementC{p.W},
+			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, holeC{p.W}, tbauFillC{p.W}, timeOfDayC{p.W}, placementC{p.W},
 		},
 	}
 }
@@ -314,6 +315,14 @@ func (c tbauFillC) Info() optimize.Info {
 		Description: "Phase EXaHM/SEB: die gebuchten T-Bau-Räume möglichst voll mit EXaHM/SEB-Prüfungen belegen (ungenutzte gebuchte Sitze werden bestraft)."}
 }
 func (tbauFillC) Cost(st *State) (float64, []optimize.Violation) { return tbauFillCost(st) }
+
+type timeOfDayC struct{ w Weights }
+
+func (c timeOfDayC) Info() optimize.Info {
+	return optimize.Info{Name: "time-of-day", Title: "Ungünstige Tageszeiten meiden", Kind: optimize.KindSoft, Weight: c.w.TimeOfDay, Tier: 32,
+		Description: "Semesterabhängig: im Wintersemester frühe Slots (Beginn vor der Morgen-Grenze, z.B. 08:30) meiden, im Sommersemester späte Slots (Beginn nach der Mittags-Grenze, z.B. 14:30/16:30). Je Anmeldung und je Stunde außerhalb des gewünschten Zeitfensters. Gebuchte T-Bau-Räume (Phase EXaHM/SEB) sind ausgenommen (im Sommer ganz, im Winter nur ein milder Sog Richtung späterer Beginn)."}
+}
+func (c timeOfDayC) Cost(st *State) (float64, []optimize.Violation) { return timeOfDayCost(st) }
 
 type placementC struct{ w Weights }
 

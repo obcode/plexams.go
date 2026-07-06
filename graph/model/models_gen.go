@@ -497,23 +497,35 @@ type GenerationConfig struct {
 	WeightPreferExamDays   float64 `json:"weightPreferExamDays"`
 	WeightDistribution     float64 `json:"weightDistribution"`
 	WeightDaySpan          float64 `json:"weightDaySpan"`
+	// Terminplan: whether/how to avoid unfavourable start times (default AUTO by semester).
+	SlotTimeMode SlotTimeConstraintMode `json:"slotTimeMode"`
+	// Terminplan: start-time avoidance weight (penalty per registration, per hour outside the window). 0 = use default.
+	SlotTimeWeight float64 `json:"slotTimeWeight"`
+	// Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00.
+	SlotTimeWinterEarliest string `json:"slotTimeWinterEarliest"`
+	// Terminplan (summer): avoid a start time after this (HH:MM), e.g. 13:00.
+	SlotTimeSummerLatest string `json:"slotTimeSummerLatest"`
 }
 
 type GenerationConfigInput struct {
-	TimelagMin             int     `json:"timelagMin"`
-	Iterations             int     `json:"iterations"`
-	StartTemp              float64 `json:"startTemp"`
-	EndTemp                float64 `json:"endTemp"`
-	ToleranceMin           int     `json:"toleranceMin"`
-	MaxSpanHours           float64 `json:"maxSpanHours"`
-	WeightMinuteBalance    float64 `json:"weightMinuteBalance"`
-	WeightBeyondTolerance  float64 `json:"weightBeyondTolerance"`
-	WeightOverTargetFactor float64 `json:"weightOverTargetFactor"`
-	WeightCoverage         float64 `json:"weightCoverage"`
-	WeightMaxDays          float64 `json:"weightMaxDays"`
-	WeightPreferExamDays   float64 `json:"weightPreferExamDays"`
-	WeightDistribution     float64 `json:"weightDistribution"`
-	WeightDaySpan          float64 `json:"weightDaySpan"`
+	TimelagMin             int                    `json:"timelagMin"`
+	Iterations             int                    `json:"iterations"`
+	StartTemp              float64                `json:"startTemp"`
+	EndTemp                float64                `json:"endTemp"`
+	ToleranceMin           int                    `json:"toleranceMin"`
+	MaxSpanHours           float64                `json:"maxSpanHours"`
+	WeightMinuteBalance    float64                `json:"weightMinuteBalance"`
+	WeightBeyondTolerance  float64                `json:"weightBeyondTolerance"`
+	WeightOverTargetFactor float64                `json:"weightOverTargetFactor"`
+	WeightCoverage         float64                `json:"weightCoverage"`
+	WeightMaxDays          float64                `json:"weightMaxDays"`
+	WeightPreferExamDays   float64                `json:"weightPreferExamDays"`
+	WeightDistribution     float64                `json:"weightDistribution"`
+	WeightDaySpan          float64                `json:"weightDaySpan"`
+	SlotTimeMode           SlotTimeConstraintMode `json:"slotTimeMode"`
+	SlotTimeWeight         float64                `json:"slotTimeWeight"`
+	SlotTimeWinterEarliest string                 `json:"slotTimeWinterEarliest"`
+	SlotTimeSummerLatest   string                 `json:"slotTimeSummerLatest"`
 }
 
 type ImportMucDaiResult struct {
@@ -1507,6 +1519,69 @@ func (e *RoomRequestType) UnmarshalJSON(b []byte) error {
 }
 
 func (e RoomRequestType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// When the exam-schedule generator (Terminplan) applies the start-time avoidance soft
+// constraint, and which way. AUTO follows the semester (winter → avoid early starts,
+// summer → avoid late starts); WINTER/SUMMER force one variant (for testing); OFF disables
+// it. Default AUTO.
+type SlotTimeConstraintMode string
+
+const (
+	SlotTimeConstraintModeAuto   SlotTimeConstraintMode = "AUTO"
+	SlotTimeConstraintModeWinter SlotTimeConstraintMode = "WINTER"
+	SlotTimeConstraintModeSummer SlotTimeConstraintMode = "SUMMER"
+	SlotTimeConstraintModeOff    SlotTimeConstraintMode = "OFF"
+)
+
+var AllSlotTimeConstraintMode = []SlotTimeConstraintMode{
+	SlotTimeConstraintModeAuto,
+	SlotTimeConstraintModeWinter,
+	SlotTimeConstraintModeSummer,
+	SlotTimeConstraintModeOff,
+}
+
+func (e SlotTimeConstraintMode) IsValid() bool {
+	switch e {
+	case SlotTimeConstraintModeAuto, SlotTimeConstraintModeWinter, SlotTimeConstraintModeSummer, SlotTimeConstraintModeOff:
+		return true
+	}
+	return false
+}
+
+func (e SlotTimeConstraintMode) String() string {
+	return string(e)
+}
+
+func (e *SlotTimeConstraintMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SlotTimeConstraintMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SlotTimeConstraintMode", str)
+	}
+	return nil
+}
+
+func (e SlotTimeConstraintMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SlotTimeConstraintMode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SlotTimeConstraintMode) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

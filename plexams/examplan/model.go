@@ -30,6 +30,7 @@ type State struct {
 	slotLoadTotal float64
 	tbauFillTotal float64
 	holeTotal     float64
+	timeTotal     float64
 	nUnplaced     int
 }
 
@@ -115,6 +116,12 @@ func (st *State) initCost() {
 	st.holeTotal = 0
 	for d := range p.days {
 		st.holeTotal += p.W.Hole * float64(st.dayHoleCount(d))
+	}
+	st.timeTotal = 0
+	for u := range p.Units {
+		if s := st.SlotOf[u]; s >= 0 {
+			st.timeTotal += p.timePenalty(p.Units[u].Seats, s)
+		}
 	}
 	st.nUnplaced = 0
 	for _, u := range p.movable {
@@ -217,7 +224,12 @@ func (st *State) moveUnit(u, newSlot int) func() {
 	savedLoad := st.slotLoadTotal
 	savedFill := st.tbauFillTotal
 	savedHole := st.holeTotal
+	savedTime := st.timeTotal
 	savedUnplaced := st.nUnplaced
+
+	// start-time avoidance delta: depends only on the moved unit's slot (and its seats)
+	uSeats := p.Units[u].Seats
+	st.timeTotal += p.timePenalty(uSeats, newSlot) - p.timePenalty(uSeats, old)
 
 	// slot-load + T-building-fill deltas over the (at most two) touched slots
 	loadBefore, fillBefore := 0.0, 0.0
@@ -274,6 +286,7 @@ func (st *State) moveUnit(u, newSlot int) func() {
 		st.slotLoadTotal = savedLoad
 		st.tbauFillTotal = savedFill
 		st.holeTotal = savedHole
+		st.timeTotal = savedTime
 		st.nUnplaced = savedUnplaced
 	}
 }
@@ -425,13 +438,13 @@ func (st *State) Propose(rng *rand.Rand) func() {
 
 // Cost is the maintained total soft objective (O(1)).
 func (st *State) Cost() float64 {
-	return st.spreadTotal + st.attractTotal + st.slotLoadTotal + st.tbauFillTotal + st.holeTotal + st.P.W.Unplaced*float64(st.nUnplaced)
+	return st.spreadTotal + st.attractTotal + st.slotLoadTotal + st.tbauFillTotal + st.holeTotal + st.timeTotal + st.P.W.Unplaced*float64(st.nUnplaced)
 }
 
 func (st *State) Snapshot() any {
 	return snapshot{
 		slotOf: cp(st.SlotOf), slotSeats: cp(st.slotSeats), slotOwn: cp(st.slotOwn), slotExahm: cp(st.slotExahm), slotSeb: cp(st.slotSeb),
-		pS: cpF(st.pS), spread: st.spreadTotal, attract: st.attractTotal, load: st.slotLoadTotal, fill: st.tbauFillTotal, hole: st.holeTotal, nUnplaced: st.nUnplaced,
+		pS: cpF(st.pS), spread: st.spreadTotal, attract: st.attractTotal, load: st.slotLoadTotal, fill: st.tbauFillTotal, hole: st.holeTotal, time: st.timeTotal, nUnplaced: st.nUnplaced,
 	}
 }
 
@@ -448,13 +461,14 @@ func (st *State) Restore(a any) {
 	st.slotLoadTotal = sn.load
 	st.tbauFillTotal = sn.fill
 	st.holeTotal = sn.hole
+	st.timeTotal = sn.time
 	st.nUnplaced = sn.nUnplaced
 }
 
 type snapshot struct {
 	slotOf, slotSeats, slotOwn, slotExahm, slotSeb []int
 	pS                                             []float64
-	spread, attract, load, fill, hole              float64
+	spread, attract, load, fill, hole, time        float64
 	nUnplaced                                      int
 }
 
@@ -582,6 +596,30 @@ func holeCost(st *State) (float64, []optimize.Violation) {
 				vs = append(vs, optimize.Violation{Constraint: "slot-hole", Message: "freier Slot (ohne eigene Prüfung) zwischen belegten Slots",
 					Refs: []int{p.Slots[slots[i]].Day, p.Slots[slots[i]].Slot}})
 			}
+		}
+	}
+	return total, vs
+}
+
+// timeOfDayCost sums the start-time avoidance penalty over all placed units and reports
+// each unit sitting in a penalized slot (start time outside the wanted window).
+func timeOfDayCost(st *State) (float64, []optimize.Violation) {
+	p := st.P
+	if p.W.TimeOfDay == 0 {
+		return 0, nil
+	}
+	var total float64
+	var vs []optimize.Violation
+	for u := range p.Units {
+		s := st.SlotOf[u]
+		if s < 0 {
+			continue
+		}
+		c := p.timePenalty(p.Units[u].Seats, s)
+		if c > 0 {
+			total += c
+			vs = append(vs, optimize.Violation{Constraint: "time-of-day", Message: "Prüfung in ungünstiger Tageszeit",
+				Refs: []int{p.Slots[s].Day, p.Slots[s].Slot}})
 		}
 	}
 	return total, vs

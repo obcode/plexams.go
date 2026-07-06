@@ -27,6 +27,10 @@ func (r *mutationResolver) SetGenerationConfig(ctx context.Context, input model.
 		WeightPreferExamDays:   input.WeightPreferExamDays,
 		WeightDistribution:     input.WeightDistribution,
 		WeightDaySpan:          input.WeightDaySpan,
+		SlotTimeMode:           input.SlotTimeMode,
+		SlotTimeWeight:         input.SlotTimeWeight,
+		SlotTimeWinterEarliest: input.SlotTimeWinterEarliest,
+		SlotTimeSummerLatest:   input.SlotTimeSummerLatest,
 	})
 }
 

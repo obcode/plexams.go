@@ -1,5 +1,6 @@
 # Memory Index
 
+- [slot time avoidance](slot-time-avoidance.md) — Terminplan soft constraint: avoid early (WS) / late (SS) start times; AUTO-by-semester toggle in GenerationConfig; T-Bau phase-A exception.
 - [CLI→GUI migration](cli-to-gui-migration.md) — plan to move all CLI into the GraphQL/Svelte GUI; config to DB; stays local single-user; secrets stay in file.
 - [git workflow](git-workflow.md) — semantic-release + feature branches; commit in steps with Conventional Commits; don't commit .claude/settings.json.
 - [GUI & CLI sync](gui-and-cli-sync.md) — every backend change: always emit plexams.gui-agent instructions AND adjust/remove the matching CLI command.

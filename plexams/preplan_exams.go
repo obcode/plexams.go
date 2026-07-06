@@ -122,11 +122,15 @@ func (p *Plexams) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (
 	// Without this the fix would stay dangling on the ZPA exam after un-fixing.
 	if preplanExam.Ancode != nil {
 		if fixed {
+			starttime, err := p.GetStarttime(*preplanExam.PlannedDayNumber, *preplanExam.PlannedSlotNumber)
+			if err != nil {
+				return nil, fmt.Errorf("cannot resolve start time for ancode %d slot %d/%d: %w",
+					*preplanExam.Ancode, *preplanExam.PlannedDayNumber, *preplanExam.PlannedSlotNumber, err)
+			}
 			if _, err := p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
-				DayNumber:  *preplanExam.PlannedDayNumber,
-				SlotNumber: *preplanExam.PlannedSlotNumber,
-				Ancode:     *preplanExam.Ancode,
-				Locked:     true,
+				Starttime: starttime,
+				Ancode:    *preplanExam.Ancode,
+				Locked:    true,
 			}); err != nil {
 				return nil, fmt.Errorf("cannot pin ancode %d into slot %d/%d: %w",
 					*preplanExam.Ancode, *preplanExam.PlannedDayNumber, *preplanExam.PlannedSlotNumber, err)

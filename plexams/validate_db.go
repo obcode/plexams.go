@@ -106,25 +106,18 @@ func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationRep
 		}
 
 		if planEntry.InSlot() {
-			// its slot must exist in the semester config. An external exam legitimately
-			// carries an ExternalTime *and* a slot when its time falls inside the exam
-			// period (see AddExamToSlottime) — that is not a conflict.
+			// its slot must exist in the semester config. An exam whose Starttime falls
+			// inside the exam period legitimately resolves to a slot — that is not a conflict.
 			if !slots[[2]int{planEntry.DayNumber, planEntry.SlotNumber}] {
 				v.errorf(ref{Ancode: ptr(planEntry.Ancode), Day: ptr(planEntry.DayNumber), Slot: ptr(planEntry.SlotNumber)},
 					"ancode %d is placed in slot (%d/%d) which does not exist in the semester config",
 					planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
 			}
 		} else {
-			// no real slot → must be an external-time-only entry.
-			if planEntry.ExternalTime == nil {
+			// no real slot → must carry an absolute start time (external / outside period).
+			if planEntry.Starttime == nil {
 				v.errorf(ref{Ancode: ptr(planEntry.Ancode)},
-					"ancode %d has neither a valid slot (day %d, slot %d) nor an external time",
-					planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
-			}
-			if planEntry.DayNumber != 0 || planEntry.SlotNumber != 0 {
-				v.errorf(ref{Ancode: ptr(planEntry.Ancode), Day: ptr(planEntry.DayNumber), Slot: ptr(planEntry.SlotNumber)},
-					"external-time entry for ancode %d has a partial slot (day %d, slot %d); expected 0/0",
-					planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
+					"ancode %d has neither a valid slot nor a start time", planEntry.Ancode)
 			}
 		}
 	}

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -10,12 +11,20 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// timeOrZero dereferences t or returns the zero time, for logging.
+func timeOrZero(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return *t
+}
+
 func (db *DB) AddExamToSlot(ctx context.Context, planEntry *model.PlanEntry) (bool, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
 	_, err := collection.DeleteMany(ctx, bson.D{{Key: "ancode", Value: planEntry.Ancode}})
 	if err != nil {
-		log.Error().Err(err).Int("day", planEntry.DayNumber).Int("time", planEntry.SlotNumber).Int("ancode", planEntry.Ancode).
+		log.Error().Err(err).Time("starttime", timeOrZero(planEntry.Starttime)).Int("ancode", planEntry.Ancode).
 			Msg("cannot rm exam from plan")
 		return false, err
 	}
@@ -23,7 +32,7 @@ func (db *DB) AddExamToSlot(ctx context.Context, planEntry *model.PlanEntry) (bo
 	_, err = collection.InsertOne(ctx, planEntry)
 
 	if err != nil {
-		log.Error().Err(err).Int("day", planEntry.DayNumber).Int("time", planEntry.SlotNumber).Int("ancode", planEntry.Ancode).
+		log.Error().Err(err).Time("starttime", timeOrZero(planEntry.Starttime)).Int("ancode", planEntry.Ancode).
 			Msg("cannot add exam to slot")
 		return false, err
 	}
@@ -31,14 +40,27 @@ func (db *DB) AddExamToSlot(ctx context.Context, planEntry *model.PlanEntry) (bo
 	return true, nil
 }
 
+// slotTimeFilter builds a plan query that matches the entries placed on the given
+// (day, slot), i.e. whose Starttime equals that slot's start time. It returns false
+// when there is no such slot (no resolver / unknown slot) so the caller can return
+// an empty result.
+func (db *DB) slotTimeFilter(day, slot int) (bson.M, bool) {
+	if db.slotResolver == nil {
+		return nil, false
+	}
+	t, ok := db.slotResolver.TimeForSlot(day, slot)
+	if !ok {
+		return nil, false
+	}
+	return bson.M{"starttime": t}, true
+}
+
 func (db *DB) GetPlanEntriesInSlot(ctx context.Context, day int, time int) ([]*model.PlanEntry, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	filter := bson.M{
-		"$and": []bson.M{
-			{"daynumber": day},
-			{"slotnumber": time},
-		},
+	filter, ok := db.slotTimeFilter(day, time)
+	if !ok {
+		return make([]*model.PlanEntry, 0), nil
 	}
 	cur, err := collection.Find(ctx, filter)
 	if err != nil {
@@ -55,6 +77,9 @@ func (db *DB) GetPlanEntriesInSlot(ctx context.Context, day int, time int) ([]*m
 			Msg("Cannot decode to nta")
 		return nil, err
 	}
+	for _, pe := range planEntries {
+		db.decoratePlanEntry(pe)
+	}
 
 	return planEntries, nil
 }
@@ -62,11 +87,9 @@ func (db *DB) GetPlanEntriesInSlot(ctx context.Context, day int, time int) ([]*m
 func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	filter := bson.M{
-		"$and": []bson.M{
-			{"daynumber": day},
-			{"slotnumber": time},
-		},
+	filter, ok := db.slotTimeFilter(day, time)
+	if !ok {
+		return make([]*model.PlannedExam, 0), nil
 	}
 	cur, err := collection.Find(ctx, filter)
 	if err != nil {
@@ -86,6 +109,7 @@ func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.Plan
 
 	exams := make([]*model.PlannedExam, 0, len(planEntries))
 	for _, planEntry := range planEntries {
+		db.decoratePlanEntry(planEntry)
 		exam, err := db.GetAssembledExam(ctx, planEntry.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
@@ -132,6 +156,9 @@ func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 			Msg("Cannot decode to plan entries")
 		return nil, err
 	}
+	for _, pe := range planEntries {
+		db.decoratePlanEntry(pe)
+	}
 
 	return planEntries, nil
 }
@@ -150,6 +177,9 @@ func (db *DB) PlannedAncodes(ctx context.Context) ([]*model.PlanEntry, error) {
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("cannot decode plan ancode entries")
 		return nil, err
+	}
+	for _, pe := range planEntries {
+		db.decoratePlanEntry(pe)
 	}
 
 	return planEntries, nil
@@ -174,6 +204,7 @@ func (db *DB) PlanEntry(ctx context.Context, ancode int) (*model.PlanEntry, erro
 			Msg("Cannot decode to plan entry")
 		return nil, err
 	}
+	db.decoratePlanEntry(&entry)
 
 	return &entry, nil
 }
@@ -307,15 +338,15 @@ func (db *DB) ClearAllPhaseFixed(ctx context.Context) error {
 }
 
 // ResetGeneratedPlanEntries removes the generated plan entries: everything that is
-// neither manually locked, nor an external / not-planned-by-me entry (ExternalTime
-// set), nor frozen by the EXaHM/SEB room phase (phaseFixed). Returns the number of
-// entries removed.
+// neither manually locked, nor an external / not-planned-by-me entry (External set),
+// nor frozen by the EXaHM/SEB room phase (phaseFixed). Returns the number of entries
+// removed.
 func (db *DB) ResetGeneratedPlanEntries(ctx context.Context) (int, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 	filter := bson.M{
-		"externaltime": nil,                 // matches missing or null: keep external / not-planned-by-me
-		"locked":       bson.M{"$ne": true}, // keep manual locks
-		"phasefixed":   bson.M{"$ne": true}, // keep frozen EXaHM/SEB (phase A)
+		"external":   bson.M{"$ne": true}, // keep external / not-planned-by-me
+		"locked":     bson.M{"$ne": true}, // keep manual locks
+		"phasefixed": bson.M{"$ne": true}, // keep frozen EXaHM/SEB (phase A)
 	}
 	res, err := collection.DeleteMany(ctx, filter)
 	if err != nil {

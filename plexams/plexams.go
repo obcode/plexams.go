@@ -228,6 +228,29 @@ func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {
 	return p.semesterConfig
 }
 
+// SlotForTime returns the (dayNumber, slotNumber) of the slot the given time falls
+// on, or (0, 0) when it matches no slot (e.g. outside the exam period). It implements
+// db.SlotResolver so the db layer can derive a plan entry's day/slot from its stored
+// Starttime.
+func (p *Plexams) SlotForTime(t time.Time) (int, int) {
+	slot, err := p.getSlotForTime(t, 1)
+	if err != nil || slot == nil {
+		return 0, 0
+	}
+	return slot.DayNumber, slot.SlotNumber
+}
+
+// TimeForSlot returns the start time of the given (dayNumber, slotNumber), and false
+// when there is no such slot. It implements db.SlotResolver.
+func (p *Plexams) TimeForSlot(dayNumber, slotNumber int) (time.Time, bool) {
+	for _, slot := range p.allSlots {
+		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
+			return slot.Starttime, true
+		}
+	}
+	return time.Time{}, false
+}
+
 func (p *Plexams) GetStarttime(dayNumber, slotNumber int) (*time.Time, error) {
 	for _, slot := range p.allSlots {
 		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {

@@ -22,9 +22,24 @@ func (p *Plexams) SetExternalExamTime(ctx context.Context, ancode int, date, t s
 	return p.AddExamToSlottime(ctx, ancode, slottime)
 }
 
-func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, time time.Time) (bool, error) {
+// SetExamTime places one of our own exams at an absolute start time (the source of
+// truth). Any time is accepted; the derived day/slot follow from the current slot grid
+// (0 when the time is outside the exam period). The GUI warns for non-standard times.
+func (p *Plexams) SetExamTime(ctx context.Context, ancode int, starttime time.Time) (bool, error) {
+	exam, err := p.AssembledExam(ctx, ancode)
+	if err != nil || exam == nil {
+		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist or does not need to be planned")
+		return false, fmt.Errorf("exam %d does not exist or does not need to be planned", ancode)
+	}
+	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
+		Starttime: &starttime,
+		Ancode:    ancode,
+		Locked:    false,
+	})
+}
+
+func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, slottime time.Time) (bool, error) {
 	exam, err := p.GetZpaExamByAncode(ctx, ancode)
-	duration := 90 // good default
 	if err != nil {
 		exam, err = p.dbClient.ExternalExam(ctx, ancode)
 		if err != nil {
@@ -42,34 +57,21 @@ func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, time time.T
 			err := fmt.Errorf("add exam to slot time is only allowed for exams not planned by me")
 			return false, err
 		}
-		duration = exam.Duration
 	}
 	if exam == nil {
 		err = fmt.Errorf("exam with ancode %d not found", ancode)
 		return false, err
 	}
 	log.Debug().Str("module", exam.Module).Str("main-examer", exam.MainExamer).
-		Msg("found exam")
-	log.Debug().Time("time", time).Str("timestr", time.String()).Msg("calculating slot for time")
-	// A time outside our exam period has no matching slot. That is fine for an
-	// external exam: we still store the time as information, just without a slot
-	// (day/slot 0), so the plan generator ignores it.
-	dayNumber, slotNumber := 0, 0
-	slot, err := p.getSlotForTime(time, duration)
-	if err != nil || slot == nil {
-		log.Warn().Time("slottime", time).Int("ancode", ancode).
-			Msg("no slot for external time (outside exam period); storing time without a slot")
-	} else {
-		dayNumber, slotNumber = slot.DayNumber, slot.SlotNumber
-		log.Debug().Int("day", dayNumber).Int("slot", slotNumber).Msg("found slot")
-	}
+		Time("time", slottime).Msg("adding exam to external time")
 
+	// External exam: the absolute time is the source of truth. Its day/slot are
+	// derived on read; a time outside our exam period simply has no slot.
 	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
-		DayNumber:    dayNumber,
-		SlotNumber:   slotNumber,
-		ExternalTime: &time,
-		Ancode:       ancode,
-		Locked:       false,
+		Starttime: &slottime,
+		Ancode:    ancode,
+		Locked:    false,
+		External:  true,
 	})
 }
 
@@ -127,11 +129,11 @@ func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, 
 		}
 	}
 
+	starttime := slot.Starttime
 	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
-		DayNumber:  slot.DayNumber,
-		SlotNumber: slot.SlotNumber,
-		Ancode:     ancode,
-		Locked:     false,
+		Starttime: &starttime,
+		Ancode:    ancode,
+		Locked:    false,
 	})
 }
 
@@ -158,11 +160,11 @@ func (p *Plexams) PreAddExamToSlot(ctx context.Context, ancode int, dayNumber in
 		return false, err
 	}
 
+	starttime := slot.Starttime
 	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
-		DayNumber:  slot.DayNumber,
-		SlotNumber: slot.SlotNumber,
-		Ancode:     ancode,
-		Locked:     false,
+		Starttime: &starttime,
+		Ancode:    ancode,
+		Locked:    false,
 	})
 }
 

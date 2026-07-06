@@ -548,8 +548,8 @@ func (p *Plexams) ExamInfo(ancode int) (string, error) {
 	fmt.Fprintf(&sb, "%5d. %s (%s)", ancode, module, mainExamer)
 	if planEntry != nil {
 		starttime := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
-		if planEntry.ExternalTime != nil {
-			starttime = *planEntry.ExternalTime
+		if planEntry.Starttime != nil {
+			starttime = *planEntry.Starttime
 		}
 		fmt.Fprintf(&sb, "\n    Termin: %s (Tag %d / Slot %d)", starttime.Format("02.01.06, 15:04 Uhr"), planEntry.DayNumber, planEntry.SlotNumber)
 	} else {

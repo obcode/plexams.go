@@ -128,7 +128,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 			log.Error().Err(err).Int("ancode", entry.Ancode).Msg("cannot get constraints for ancode")
 			return nil, err
 		}
-		if (constraints != nil && constraints.NotPlannedByMe) || entry.ExternalTime != nil || entry.Ancode >= externalAncodeBase {
+		if (constraints != nil && constraints.NotPlannedByMe) || entry.External || entry.Ancode >= externalAncodeBase {
 			foreignAncodes.Add(entry.Ancode)
 		}
 	}
@@ -357,8 +357,8 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 
 				planEntry := exam.PlanEntry
 				time := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
-				if planEntry.ExternalTime != nil {
-					time = *planEntry.ExternalTime
+				if planEntry.Starttime != nil {
+					time = *planEntry.Starttime
 				}
 
 				v.reporter.Printf("%s", aurora.Sprintf(aurora.Red("    # %s: %s. %s (%s): %s %s %s"),
@@ -408,8 +408,8 @@ func (plexams *Plexams) sortConflictingAncodes(validationMessages map[conflictin
 
 		planEntry := exam.PlanEntry
 		startTime := plexams.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
-		if planEntry.ExternalTime != nil {
-			startTime = *planEntry.ExternalTime
+		if planEntry.Starttime != nil {
+			startTime = *planEntry.Starttime
 		}
 
 		timeCache[ancode] = startTime

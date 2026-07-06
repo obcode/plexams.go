@@ -9,6 +9,56 @@ import (
 	"github.com/obcode/plexams.go/internal/mongotest"
 )
 
+// fakeSlotResolver maps a single slot (1,1) at 2026-07-06 08:30 for decoration tests.
+type fakeSlotResolver struct{}
+
+func (fakeSlotResolver) SlotForTime(t time.Time) (int, int) {
+	if t.Hour() == 8 && t.Minute() == 30 {
+		return 1, 1
+	}
+	return 0, 0
+}
+
+func (fakeSlotResolver) TimeForSlot(day, slot int) (time.Time, bool) {
+	if day == 1 && slot == 1 {
+		return time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local), true
+	}
+	return time.Time{}, false
+}
+
+// TestPlanEntryStarttimeDecoration verifies that Starttime is the persisted source of
+// truth and DayNumber/SlotNumber are derived on read via the slot resolver (not stored),
+// and that a (day, slot) slot query resolves through the start time.
+func TestPlanEntryStarttimeDecoration(t *testing.T) {
+	d := mongotest.NewDB(t)
+	d.SetSlotResolver(fakeSlotResolver{})
+	ctx := context.Background()
+
+	st := time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local)
+	if _, err := d.AddExamToSlot(ctx, &model.PlanEntry{Ancode: 7, Starttime: &st}); err != nil {
+		t.Fatal(err)
+	}
+
+	pe, err := d.PlanEntry(ctx, 7)
+	if err != nil || pe == nil {
+		t.Fatalf("PlanEntry: %v (pe=%v)", err, pe)
+	}
+	if pe.Starttime == nil || !pe.Starttime.Equal(st) {
+		t.Errorf("Starttime not round-tripped, got %v", pe.Starttime)
+	}
+	if pe.DayNumber != 1 || pe.SlotNumber != 1 {
+		t.Errorf("derived day/slot = (%d,%d), want (1,1)", pe.DayNumber, pe.SlotNumber)
+	}
+
+	inSlot, err := d.GetPlanEntriesInSlot(ctx, 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inSlot) != 1 || inSlot[0].Ancode != 7 {
+		t.Errorf("GetPlanEntriesInSlot(1,1) = %+v, want ancode 7", inSlot)
+	}
+}
+
 // TestResetGeneratedPlanEntries locks the reset semantics: only generated placements are
 // removed; manual locks, external / not-planned-by-me and phase-fixed entries survive.
 func TestResetGeneratedPlanEntries(t *testing.T) {
@@ -21,10 +71,11 @@ func TestResetGeneratedPlanEntries(t *testing.T) {
 			t.Fatalf("add %d: %v", pe.Ancode, err)
 		}
 	}
-	add(&model.PlanEntry{Ancode: 100, DayNumber: 1, SlotNumber: 1})                   // generated
-	add(&model.PlanEntry{Ancode: 200, DayNumber: 1, SlotNumber: 2, Locked: true})     // manual lock
-	add(&model.PlanEntry{Ancode: 300, DayNumber: 2, SlotNumber: 1, PhaseFixed: true}) // EXaHM/SEB freeze
-	add(&model.PlanEntry{Ancode: 400, ExternalTime: &ext})                            // external
+	st := time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local)
+	add(&model.PlanEntry{Ancode: 100, Starttime: &st})                   // generated
+	add(&model.PlanEntry{Ancode: 200, Starttime: &st, Locked: true})     // manual lock
+	add(&model.PlanEntry{Ancode: 300, Starttime: &st, PhaseFixed: true}) // EXaHM/SEB freeze
+	add(&model.PlanEntry{Ancode: 400, Starttime: &ext, External: true})  // external
 
 	n, err := d.ResetGeneratedPlanEntries(ctx)
 	if err != nil {

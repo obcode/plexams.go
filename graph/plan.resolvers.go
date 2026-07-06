@@ -6,27 +6,14 @@ package graph
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// Starttime is the resolver for the starttime field. An exam mapped to one of our
-// slots gets that slot's start time. An external exam whose time lies outside our exam
-// period has no matching slot; its real time is the external time. We decide by whether
-// a slot matches — not by the "no slot" sentinel value — so it stays robust regardless
-// of how that is stored.
-func (r *planEntryResolver) Starttime(ctx context.Context, obj *model.PlanEntry) (*time.Time, error) {
-	if st, err := r.plexams.GetStarttime(obj.DayNumber, obj.SlotNumber); err == nil {
-		return st, nil
-	}
-	if obj.ExternalTime != nil {
-		return obj.ExternalTime, nil
-	}
-	return nil, fmt.Errorf("plan entry for ancode %d has neither a slot (%d/%d) nor an external time",
-		obj.Ancode, obj.DayNumber, obj.SlotNumber)
+// SetExamTime is the resolver for the setExamTime field.
+func (r *mutationResolver) SetExamTime(ctx context.Context, ancode int, starttime time.Time) (bool, error) {
+	return r.plexams.SetExamTime(ctx, ancode, starttime)
 }
 
 // AllProgramsInPlan is the resolver for the allProgramsInPlan field.
@@ -73,8 +60,3 @@ func (r *queryResolver) AllowedSlots(ctx context.Context, ancode int) ([]*model.
 func (r *queryResolver) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
 	return r.plexams.AwkwardSlots(ctx, ancode)
 }
-
-// PlanEntry returns generated.PlanEntryResolver implementation.
-func (r *Resolver) PlanEntry() generated.PlanEntryResolver { return &planEntryResolver{r} }
-
-type planEntryResolver struct{ *Resolver }

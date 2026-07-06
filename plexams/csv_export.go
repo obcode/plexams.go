@@ -538,12 +538,12 @@ func (p *Plexams) csvExamTimes() csvDataset {
 			}
 			rows := make([][]string, 0)
 			for _, e := range entries {
-				if e.ExternalTime == nil {
+				if !e.External || e.Starttime == nil {
 					continue
 				}
 				rows = append(rows, []string{
 					strconv.Itoa(e.Ancode), p.moduleForAncode(ctx, e.Ancode),
-					e.ExternalTime.Format(csvDateLayout), e.ExternalTime.Format("15:04"),
+					e.Starttime.Format(csvDateLayout), e.Starttime.Format("15:04"),
 				})
 			}
 			sort.Slice(rows, func(i, j int) bool { return rows[i][0] < rows[j][0] })

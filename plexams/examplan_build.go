@@ -108,7 +108,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		pe := peByAncode[e.Ancode]
 		exahm := c != nil && c.RoomConstraints != nil && c.RoomConstraints.Exahm
 		seb := c != nil && c.RoomConstraints != nil && c.RoomConstraints.Seb
-		foreign := (c != nil && c.NotPlannedByMe) || (pe != nil && pe.ExternalTime != nil) || e.Ancode >= externalAncodeBase
+		foreign := (c != nil && c.NotPlannedByMe) || (pe != nil && pe.External) || e.Ancode >= externalAncodeBase
 		// no registrations → no exam: our own 0-registration exams are not planned
 		// (dynamic — reincluded automatically once registrations appear). Foreign exams
 		// keep 0 of our regs on purpose and stay as time obstacles.

@@ -17,6 +17,16 @@ extend type Query {
   awkwardSlots(ancode: Int!): [Slot!]! # slots before or after a conflict
 }
 
+extend type Mutation {
+  """
+  Place an exam at an absolute start time (the source of truth). Any time is accepted;
+  the GUI should warn — but still allow — when the time is not one of the semester's
+  standard start times (semesterConfig.starttimes). The derived day/slot follow from
+  the time and the current slot grid.
+  """
+  setExamTime(ancode: Int!, starttime: Time!): Boolean!
+}
+
 type Emails {
   profs: String!
   lbas: String!
@@ -60,12 +70,15 @@ type PreExam {
 }
 
 type PlanEntry {
+  "Derived from starttime against the current slot grid (0 when outside the exam period)."
   dayNumber: Int!
   slotNumber: Int!
+  "The absolute start time — the source of truth for the placement."
   starttime: Time!
-  externalTime: Time # only for exams from other faculties
   ancode: Int!
   locked: Boolean!
   "fixed by the EXaHM/SEB room phase (phase A), distinct from the manual lock."
   phaseFixed: Boolean!
+  "true for an exam placed by another faculty (kept when the generated plan is reset)."
+  external: Boolean!
 }

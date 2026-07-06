@@ -428,6 +428,11 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 	}
 
 	p.deriveMucDaiSlots(input.MucDaiAllowedTimes)
+
+	// Let the db layer derive plan-entry day/slot numbers from the stored Starttime.
+	if p.dbClient != nil {
+		p.dbClient.SetSlotResolver(p)
+	}
 }
 
 // deriveMucDaiSlots maps the MUC.DAI allowed start times onto real slots (matching by

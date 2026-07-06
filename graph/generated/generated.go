@@ -42,7 +42,6 @@ type Config struct {
 type ResolverRoot interface {
 	AssembledExam() AssembledExamResolver
 	Mutation() MutationResolver
-	PlanEntry() PlanEntryResolver
 	PlannedExam() PlannedExamResolver
 	PlannedRoom() PlannedRoomResolver
 	Query() QueryResolver
@@ -638,6 +637,7 @@ type ComplexityRoot struct {
 		SetAnnyPersonalizationNames   func(childComplexity int, names []string) int
 		SetEmailTemplate              func(childComplexity int, name string, markdown string) int
 		SetExamDuration               func(childComplexity int, ancode int, duration int) int
+		SetExamTime                   func(childComplexity int, ancode int, starttime time.Time) int
 		SetExamsCanShareSlot          func(childComplexity int, ancode1 int, ancode2 int) int
 		SetExternalExamTime           func(childComplexity int, ancode int, date string, time string) int
 		SetGenerationConfig           func(childComplexity int, input model.GenerationConfigInput) int
@@ -746,13 +746,13 @@ type ComplexityRoot struct {
 	}
 
 	PlanEntry struct {
-		Ancode       func(childComplexity int) int
-		DayNumber    func(childComplexity int) int
-		ExternalTime func(childComplexity int) int
-		Locked       func(childComplexity int) int
-		PhaseFixed   func(childComplexity int) int
-		SlotNumber   func(childComplexity int) int
-		Starttime    func(childComplexity int) int
+		Ancode     func(childComplexity int) int
+		DayNumber  func(childComplexity int) int
+		External   func(childComplexity int) int
+		Locked     func(childComplexity int) int
+		PhaseFixed func(childComplexity int) int
+		SlotNumber func(childComplexity int) int
+		Starttime  func(childComplexity int) int
 	}
 
 	Planer struct {
@@ -1522,6 +1522,7 @@ type MutationResolver interface {
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
 	AddNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int, reason string) (*model.NtaRoomAloneWaiver, error)
 	RemoveNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int) (bool, error)
+	SetExamTime(ctx context.Context, ancode int, starttime time.Time) (bool, error)
 	SetPlaner(ctx context.Context, name string, email string) (*model.Planer, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
 	GeneratePreparation(ctx context.Context) (*model.GeneratePreparationResult, error)
@@ -1564,9 +1565,6 @@ type MutationResolver interface {
 	SeedStudyProgramsFromConfig(ctx context.Context) (int, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
-}
-type PlanEntryResolver interface {
-	Starttime(ctx context.Context, obj *model.PlanEntry) (*time.Time, error)
 }
 type PlannedExamResolver interface {
 	MainExamer(ctx context.Context, obj *model.PlannedExam) (*model.Teacher, error)
@@ -4791,6 +4789,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetExamDuration(childComplexity, args["ancode"].(int), args["duration"].(int)), true
 
+	case "Mutation.setExamTime":
+		if e.complexity.Mutation.SetExamTime == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setExamTime_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetExamTime(childComplexity, args["ancode"].(int), args["starttime"].(time.Time)), true
+
 	case "Mutation.setExamsCanShareSlot":
 		if e.complexity.Mutation.SetExamsCanShareSlot == nil {
 			break
@@ -5480,12 +5490,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PlanEntry.DayNumber(childComplexity), true
 
-	case "PlanEntry.externalTime":
-		if e.complexity.PlanEntry.ExternalTime == nil {
+	case "PlanEntry.external":
+		if e.complexity.PlanEntry.External == nil {
 			break
 		}
 
-		return e.complexity.PlanEntry.ExternalTime(childComplexity), true
+		return e.complexity.PlanEntry.External(childComplexity), true
 
 	case "PlanEntry.locked":
 		if e.complexity.PlanEntry.Locked == nil {
@@ -10780,6 +10790,16 @@ extend type Mutation {
   awkwardSlots(ancode: Int!): [Slot!]! # slots before or after a conflict
 }
 
+extend type Mutation {
+  """
+  Place an exam at an absolute start time (the source of truth). Any time is accepted;
+  the GUI should warn — but still allow — when the time is not one of the semester's
+  standard start times (semesterConfig.starttimes). The derived day/slot follow from
+  the time and the current slot grid.
+  """
+  setExamTime(ancode: Int!, starttime: Time!): Boolean!
+}
+
 type Emails {
   profs: String!
   lbas: String!
@@ -10823,14 +10843,17 @@ type PreExam {
 }
 
 type PlanEntry {
+  "Derived from starttime against the current slot grid (0 when outside the exam period)."
   dayNumber: Int!
   slotNumber: Int!
+  "The absolute start time — the source of truth for the placement."
   starttime: Time!
-  externalTime: Time # only for exams from other faculties
   ancode: Int!
   locked: Boolean!
   "fixed by the EXaHM/SEB room phase (phase A), distinct from the manual lock."
   phaseFixed: Boolean!
+  "true for an exam placed by another faculty (kept when the generated plan is reset)."
+  external: Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../planer.graphqls", Input: `extend type Query {
@@ -14404,6 +14427,57 @@ func (ec *executionContext) field_Mutation_setExamDuration_argsDuration(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setExamTime_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setExamTime_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg0
+	arg1, err := ec.field_Mutation_setExamTime_argsStarttime(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["starttime"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setExamTime_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setExamTime_argsStarttime(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (time.Time, error) {
+	if _, ok := rawArgs["starttime"]; !ok {
+		var zeroVal time.Time
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("starttime"))
+	if tmp, ok := rawArgs["starttime"]; ok {
+		return ec.unmarshalNTime2timeᚐTime(ctx, tmp)
+	}
+
+	var zeroVal time.Time
 	return zeroVal, nil
 }
 
@@ -34980,14 +35054,14 @@ func (ec *executionContext) fieldContext_MucDaiExam_planEntry(_ context.Context,
 				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
-			case "externalTime":
-				return ec.fieldContext_PlanEntry_externalTime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
 				return ec.fieldContext_PlanEntry_locked(ctx, field)
 			case "phaseFixed":
 				return ec.fieldContext_PlanEntry_phaseFixed(ctx, field)
+			case "external":
+				return ec.fieldContext_PlanEntry_external(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
 		},
@@ -37599,6 +37673,61 @@ func (ec *executionContext) fieldContext_Mutation_removeNtaRoomAloneWaiver(ctx c
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeNtaRoomAloneWaiver_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setExamTime(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setExamTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetExamTime(rctx, fc.Args["ancode"].(int), fc.Args["starttime"].(time.Time))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setExamTime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setExamTime_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -42575,7 +42704,7 @@ func (ec *executionContext) _PlanEntry_starttime(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.PlanEntry().Starttime(rctx, obj)
+		return obj.Starttime, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -42593,47 +42722,6 @@ func (ec *executionContext) _PlanEntry_starttime(ctx context.Context, field grap
 }
 
 func (ec *executionContext) fieldContext_PlanEntry_starttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PlanEntry",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PlanEntry_externalTime(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PlanEntry_externalTime(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ExternalTime, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PlanEntry_externalTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PlanEntry",
 		Field:      field,
@@ -42766,6 +42854,50 @@ func (ec *executionContext) _PlanEntry_phaseFixed(ctx context.Context, field gra
 }
 
 func (ec *executionContext) fieldContext_PlanEntry_phaseFixed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlanEntry_external(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanEntry_external(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.External, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanEntry_external(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PlanEntry",
 		Field:      field,
@@ -43423,14 +43555,14 @@ func (ec *executionContext) fieldContext_PlannedExam_planEntry(_ context.Context
 				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
-			case "externalTime":
-				return ec.fieldContext_PlanEntry_externalTime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
 				return ec.fieldContext_PlanEntry_locked(ctx, field)
 			case "phaseFixed":
 				return ec.fieldContext_PlanEntry_phaseFixed(ctx, field)
+			case "external":
+				return ec.fieldContext_PlanEntry_external(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
 		},
@@ -44650,14 +44782,14 @@ func (ec *executionContext) fieldContext_PreExam_planEntry(_ context.Context, fi
 				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
-			case "externalTime":
-				return ec.fieldContext_PlanEntry_externalTime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
 				return ec.fieldContext_PlanEntry_locked(ctx, field)
 			case "phaseFixed":
 				return ec.fieldContext_PlanEntry_phaseFixed(ctx, field)
+			case "external":
+				return ec.fieldContext_PlanEntry_external(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
 		},
@@ -68977,14 +69109,14 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_planEntry(_ cont
 				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
-			case "externalTime":
-				return ec.fieldContext_PlanEntry_externalTime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_PlanEntry_ancode(ctx, field)
 			case "locked":
 				return ec.fieldContext_PlanEntry_locked(ctx, field)
 			case "phaseFixed":
 				return ec.fieldContext_PlanEntry_phaseFixed(ctx, field)
+			case "external":
+				return ec.fieldContext_PlanEntry_external(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlanEntry", field.Name)
 		},
@@ -77084,6 +77216,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setExamTime":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setExamTime(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setPlaner":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPlaner(ctx, field)
@@ -77957,65 +78096,37 @@ func (ec *executionContext) _PlanEntry(ctx context.Context, sel ast.SelectionSet
 		case "dayNumber":
 			out.Values[i] = ec._PlanEntry_dayNumber(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "slotNumber":
 			out.Values[i] = ec._PlanEntry_slotNumber(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "starttime":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._PlanEntry_starttime(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._PlanEntry_starttime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "externalTime":
-			out.Values[i] = ec._PlanEntry_externalTime(ctx, field, obj)
 		case "ancode":
 			out.Values[i] = ec._PlanEntry_ancode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "locked":
 			out.Values[i] = ec._PlanEntry_locked(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "phaseFixed":
 			out.Values[i] = ec._PlanEntry_phaseFixed(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
+			}
+		case "external":
+			out.Values[i] = ec._PlanEntry_external(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))

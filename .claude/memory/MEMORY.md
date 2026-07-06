@@ -1,5 +1,6 @@
 # Memory Index
 
+- [slotless time-based redesign](slotless-timebased-redesign.md) — planned big refactor: drop slot/day numbers, store exams as absolute times; conflicts/rooms/invig become interval-based; no migration, clean cut; plan in docs/plan-slotless-timebased.md.
 - [slot time avoidance](slot-time-avoidance.md) — Terminplan soft constraint on start times: WS avoid early (threshold), SS prefer early (monotonic, size-weighted); AUTO-by-semester toggle in GenerationConfig; T-Bau phase-A exception; hard-violation logging.
 - [CLI→GUI migration](cli-to-gui-migration.md) — plan to move all CLI into the GraphQL/Svelte GUI; config to DB; stays local single-user; secrets stay in file.
 - [git workflow](git-workflow.md) — semantic-release + feature branches; commit in steps with Conventional Commits; don't commit .claude/settings.json.

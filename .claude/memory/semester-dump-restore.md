@@ -29,6 +29,14 @@ it carries `non_zpaexams` (full replace) + the `plan` entries **filtered by exte
 ancode**; restore deletes plan entries for union(current+incoming external ancodes)
 then re-inserts — never drops the whole plan/schedule.
 
+**Two file formats (interoperable on upload):** dataset download = `{manifest,collections:{<coll>:[...]}}`;
+semester-ZIP per-collection file = bare `{documents:[...]}`. RestoreDataset accepts **both** for
+single-collection datasets (constraints/preplan/mucdai-links/room-requests), so a `constraints.json`
+extracted from the semester ZIP uploads fine on the Constraints page. **Guard (data-loss fix
+2026-07-06):** resolve all docs first and error "nothing changed" if the file has no recognized data
+— earlier a format mismatch did `ReplaceRawCollection(coll, nil)` = drop + insert 0 = silent wipe.
+Download filenames use `DatabaseName()` (physical DB), not the logical semester.
+
 CLI mirrors: `export semester-dump -o f.zip`, `export dataset --name x -o f.json`,
 `import semester-dump f.zip`, `import dataset --name x f.json`.
 

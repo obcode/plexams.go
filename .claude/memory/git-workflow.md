@@ -18,5 +18,7 @@ clean stepwise history matters.
 - Use Conventional Commit messages (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:` …).
 - Commit each completed logical step right away (don't batch unrelated work).
 - He's already on the feature branch — don't create a new branch unless asked.
+- Small follow-up fixes to an already-merged feature: committing **directly to main** is fine
+  (Oliver confirmed 2026-07-06: "direkt auf main ist wunderbar"). No need to branch for those.
 - Do NOT commit session noise like `.claude/settings.json` permission-allowlist changes.
 - End commit messages with the Co-Authored-By trailer.

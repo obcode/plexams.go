@@ -89,6 +89,20 @@ func (db *DB) ReplacePreplanExam(ctx context.Context, preplanExam *model.Preplan
 	return res.MatchedCount > 0, nil
 }
 
+// UpsertPreplanExam inserts or replaces a pre-exam keeping its explicit id (unlike
+// InsertPreplanExam, which assigns a fresh id). Used by the CSV import so that the id
+// references in notSameSlot/canShareSlot stay valid across a re-import.
+func (db *DB) UpsertPreplanExam(ctx context.Context, preplanExam *model.PreplanExam) error {
+	collection := db.getCollectionSemester(collectionPreplanExams)
+
+	_, err := collection.ReplaceOne(ctx, bson.M{"id": preplanExam.ID}, preplanExam,
+		options.Replace().SetUpsert(true))
+	if err != nil {
+		log.Error().Err(err).Int("id", preplanExam.ID).Msg("cannot upsert pre-exam")
+	}
+	return err
+}
+
 // DeletePreplanExam removes one pre-exam. Returns false if there was none.
 func (db *DB) DeletePreplanExam(ctx context.Context, id int) (bool, error) {
 	collection := db.getCollectionSemester(collectionPreplanExams)

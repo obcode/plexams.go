@@ -1100,6 +1100,24 @@ type SemesterConfigInputData struct {
 	ExamGapMinutes *int `json:"examGapMinutes,omitempty"`
 }
 
+type ServerInfo struct {
+	// plexams.go build version, e.g. "1.99.0" or "dev" for local builds.
+	Version string `json:"version"`
+	// Git commit the binary was built from ("none" if unknown).
+	Commit string `json:"commit"`
+	// Build date ("unknown" if not set).
+	Date string `json:"date"`
+	// Who built the binary ("unknown" if not set).
+	BuiltBy string `json:"builtBy"`
+	// Link to the GitHub release for this version, or null for dev/unreleased
+	// builds where no matching release exists.
+	ReleaseURL *string `json:"releaseURL,omitempty"`
+	// The MongoDB host:port the server is connected to (credentials redacted).
+	MongoHost string `json:"mongoHost"`
+	// The MongoDB database (workspace) currently in use, e.g. "2026-SS".
+	MongoDatabase string `json:"mongoDatabase"`
+}
+
 type Slot struct {
 	DayNumber  int       `json:"dayNumber"`
 	SlotNumber int       `json:"slotNumber"`

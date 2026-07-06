@@ -1,0 +1,27 @@
+extend type Query {
+  """
+  Runtime information about the running plexams.go server: its build version
+  and the MongoDB it is connected to. Used e.g. for the GUI footer.
+  """
+  serverInfo: ServerInfo!
+}
+
+type ServerInfo {
+  "plexams.go build version, e.g. \"1.99.0\" or \"dev\" for local builds."
+  version: String!
+  "Git commit the binary was built from (\"none\" if unknown)."
+  commit: String!
+  "Build date (\"unknown\" if not set)."
+  date: String!
+  "Who built the binary (\"unknown\" if not set)."
+  builtBy: String!
+  """
+  Link to the GitHub release for this version, or null for dev/unreleased
+  builds where no matching release exists.
+  """
+  releaseURL: String
+  "The MongoDB host:port the server is connected to (credentials redacted)."
+  mongoHost: String!
+  "The MongoDB database (workspace) currently in use, e.g. \"2026-SS\"."
+  mongoDatabase: String!
+}

@@ -13,6 +13,7 @@ import (
 
 type DB struct {
 	Client       *mongo.Client
+	uri          string
 	semester     string
 	databaseName string
 	// todosMu serializes the drop+insert in CacheInvigilatorTodos so concurrent
@@ -47,6 +48,7 @@ func NewDB(uri, semester string, dbName *string) (*DB, error) {
 
 	return &DB{
 		Client:       client,
+		uri:          uri,
 		semester:     semester,
 		databaseName: databaseName,
 	}, nil
@@ -54,4 +56,20 @@ func NewDB(uri, semester string, dbName *string) (*DB, error) {
 
 func semesterName(semester string) string {
 	return strings.Replace(semester, "-", " ", 1)
+}
+
+// MongoHost returns the host:port the client is connected to, with any
+// credentials (user:pass@) and path/query stripped, so it is safe to display.
+func (db *DB) MongoHost() string {
+	s := db.uri
+	if i := strings.Index(s, "://"); i >= 0 {
+		s = s[i+3:]
+	}
+	if at := strings.LastIndex(s, "@"); at >= 0 {
+		s = s[at+1:]
+	}
+	if i := strings.IndexAny(s, "/?"); i >= 0 {
+		s = s[:i]
+	}
+	return s
 }

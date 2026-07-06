@@ -1016,6 +1016,7 @@ type ComplexityRoot struct {
 		Semester                      func(childComplexity int) int
 		SemesterConfig                func(childComplexity int) int
 		SemesterConfigInput           func(childComplexity int) int
+		ServerInfo                    func(childComplexity int) int
 		SpecialInterests              func(childComplexity int) int
 		StudentByMtknr                func(childComplexity int, mtknr string) int
 		StudentConflictDecisions      func(childComplexity int) int
@@ -1172,6 +1173,16 @@ type ComplexityRoot struct {
 		MucDaiSlots    func(childComplexity int) int
 		Slots          func(childComplexity int) int
 		Until          func(childComplexity int) int
+	}
+
+	ServerInfo struct {
+		BuiltBy       func(childComplexity int) int
+		Commit        func(childComplexity int) int
+		Date          func(childComplexity int) int
+		MongoDatabase func(childComplexity int) int
+		MongoHost     func(childComplexity int) int
+		ReleaseURL    func(childComplexity int) int
+		Version       func(childComplexity int) int
 	}
 
 	Slot struct {
@@ -1643,6 +1654,7 @@ type QueryResolver interface {
 	UnplacedExams(ctx context.Context) ([]*model.UnplacedExam, error)
 	RoomRequests(ctx context.Context) ([]*model.RoomRequest, error)
 	RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error)
+	ServerInfo(ctx context.Context) (*model.ServerInfo, error)
 	SpecialInterests(ctx context.Context) ([]*model.SpecialInterest, error)
 	StudentRegsState(ctx context.Context) (*model.StudentRegsState, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
@@ -6990,6 +7002,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.SemesterConfigInput(childComplexity), true
 
+	case "Query.serverInfo":
+		if e.complexity.Query.ServerInfo == nil {
+			break
+		}
+
+		return e.complexity.Query.ServerInfo(childComplexity), true
+
 	case "Query.specialInterests":
 		if e.complexity.Query.SpecialInterests == nil {
 			break
@@ -7806,6 +7825,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SemesterConfigInput.Until(childComplexity), true
+
+	case "ServerInfo.builtBy":
+		if e.complexity.ServerInfo.BuiltBy == nil {
+			break
+		}
+
+		return e.complexity.ServerInfo.BuiltBy(childComplexity), true
+
+	case "ServerInfo.commit":
+		if e.complexity.ServerInfo.Commit == nil {
+			break
+		}
+
+		return e.complexity.ServerInfo.Commit(childComplexity), true
+
+	case "ServerInfo.date":
+		if e.complexity.ServerInfo.Date == nil {
+			break
+		}
+
+		return e.complexity.ServerInfo.Date(childComplexity), true
+
+	case "ServerInfo.mongoDatabase":
+		if e.complexity.ServerInfo.MongoDatabase == nil {
+			break
+		}
+
+		return e.complexity.ServerInfo.MongoDatabase(childComplexity), true
+
+	case "ServerInfo.mongoHost":
+		if e.complexity.ServerInfo.MongoHost == nil {
+			break
+		}
+
+		return e.complexity.ServerInfo.MongoHost(childComplexity), true
+
+	case "ServerInfo.releaseURL":
+		if e.complexity.ServerInfo.ReleaseURL == nil {
+			break
+		}
+
+		return e.complexity.ServerInfo.ReleaseURL(childComplexity), true
+
+	case "ServerInfo.version":
+		if e.complexity.ServerInfo.Version == nil {
+			break
+		}
+
+		return e.complexity.ServerInfo.Version(childComplexity), true
 
 	case "Slot.dayNumber":
 		if e.complexity.Slot.DayNumber == nil {
@@ -11444,6 +11512,34 @@ type SemesterConfig {
   emails: Emails!
   "Effective travel/break buffer (minutes) between a student's consecutive exams."
   examGapMinutes: Int!
+}
+`, BuiltIn: false},
+	{Name: "../server_info.graphqls", Input: `extend type Query {
+  """
+  Runtime information about the running plexams.go server: its build version
+  and the MongoDB it is connected to. Used e.g. for the GUI footer.
+  """
+  serverInfo: ServerInfo!
+}
+
+type ServerInfo {
+  "plexams.go build version, e.g. \"1.99.0\" or \"dev\" for local builds."
+  version: String!
+  "Git commit the binary was built from (\"none\" if unknown)."
+  commit: String!
+  "Build date (\"unknown\" if not set)."
+  date: String!
+  "Who built the binary (\"unknown\" if not set)."
+  builtBy: String!
+  """
+  Link to the GitHub release for this version, or null for dev/unreleased
+  builds where no matching release exists.
+  """
+  releaseURL: String
+  "The MongoDB host:port the server is connected to (credentials redacted)."
+  mongoHost: String!
+  "The MongoDB database (workspace) currently in use, e.g. \"2026-SS\"."
+  mongoDatabase: String!
 }
 `, BuiltIn: false},
 	{Name: "../special_interest.graphqls", Input: `extend type Query {
@@ -53108,6 +53204,66 @@ func (ec *executionContext) fieldContext_Query_roomRequestsPreview(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_serverInfo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_serverInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ServerInfo(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ServerInfo)
+	fc.Result = res
+	return ec.marshalNServerInfo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐServerInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_serverInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "version":
+				return ec.fieldContext_ServerInfo_version(ctx, field)
+			case "commit":
+				return ec.fieldContext_ServerInfo_commit(ctx, field)
+			case "date":
+				return ec.fieldContext_ServerInfo_date(ctx, field)
+			case "builtBy":
+				return ec.fieldContext_ServerInfo_builtBy(ctx, field)
+			case "releaseURL":
+				return ec.fieldContext_ServerInfo_releaseURL(ctx, field)
+			case "mongoHost":
+				return ec.fieldContext_ServerInfo_mongoHost(ctx, field)
+			case "mongoDatabase":
+				return ec.fieldContext_ServerInfo_mongoDatabase(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ServerInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_specialInterests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_specialInterests(ctx, field)
 	if err != nil {
@@ -58566,6 +58722,311 @@ func (ec *executionContext) fieldContext_SemesterConfigInput_examGapMinutes(_ co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServerInfo_version(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ServerInfo_version(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ServerInfo_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServerInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServerInfo_commit(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ServerInfo_commit(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Commit, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ServerInfo_commit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServerInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServerInfo_date(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ServerInfo_date(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Date, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ServerInfo_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServerInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServerInfo_builtBy(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ServerInfo_builtBy(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuiltBy, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ServerInfo_builtBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServerInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServerInfo_releaseURL(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ServerInfo_releaseURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ReleaseURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ServerInfo_releaseURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServerInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServerInfo_mongoHost(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ServerInfo_mongoHost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MongoHost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ServerInfo_mongoHost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServerInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServerInfo_mongoDatabase(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ServerInfo_mongoDatabase(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MongoDatabase, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ServerInfo_mongoDatabase(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServerInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -80298,6 +80759,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "serverInfo":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_serverInfo(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "specialInterests":
 			field := field
 
@@ -81636,6 +82119,72 @@ func (ec *executionContext) _SemesterConfigInput(ctx context.Context, sel ast.Se
 			}
 		case "examGapMinutes":
 			out.Values[i] = ec._SemesterConfigInput_examGapMinutes(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var serverInfoImplementors = []string{"ServerInfo"}
+
+func (ec *executionContext) _ServerInfo(ctx context.Context, sel ast.SelectionSet, obj *model.ServerInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, serverInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ServerInfo")
+		case "version":
+			out.Values[i] = ec._ServerInfo_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "commit":
+			out.Values[i] = ec._ServerInfo_commit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "date":
+			out.Values[i] = ec._ServerInfo_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "builtBy":
+			out.Values[i] = ec._ServerInfo_builtBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "releaseURL":
+			out.Values[i] = ec._ServerInfo_releaseURL(ctx, field, obj)
+		case "mongoHost":
+			out.Values[i] = ec._ServerInfo_mongoHost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mongoDatabase":
+			out.Values[i] = ec._ServerInfo_mongoDatabase(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -87853,6 +88402,20 @@ func (ec *executionContext) marshalNSemesterConfigInput2ᚖgithubᚗcomᚋobcode
 func (ec *executionContext) unmarshalNSemesterConfigInputData2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterConfigInputData(ctx context.Context, v any) (model.SemesterConfigInputData, error) {
 	res, err := ec.unmarshalInputSemesterConfigInputData(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNServerInfo2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐServerInfo(ctx context.Context, sel ast.SelectionSet, v model.ServerInfo) graphql.Marshaler {
+	return ec._ServerInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNServerInfo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐServerInfo(ctx context.Context, sel ast.SelectionSet, v *model.ServerInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ServerInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNSlot2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Slot) graphql.Marshaler {

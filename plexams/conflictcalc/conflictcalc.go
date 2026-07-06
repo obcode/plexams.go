@@ -1,21 +1,29 @@
 // Package conflictcalc holds the pure schedule-conflict math: normalising an ancode
 // pair into a stable key, ranking a conflict's proximity (how close in time two of a
-// student's exams ended up), the proximity of two placed slots, and diffing a freshly
-// generated conflict list against the saved one. All functions are I/O-free over
-// graph/model types; the DB access and aggregation stay in the plexams package.
+// student's exams ended up), classifying two placed exams by their absolute times and
+// durations, and diffing a freshly generated conflict list against the saved one. All
+// functions are I/O-free over graph/model types; the DB access and aggregation stay in
+// the plexams package.
 package conflictcalc
 
 import (
 	"math"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 )
 
 // Proximity labels, worst (closest in time) to mildest. Two exams closer than NextDay
 // count as a conflict; NextDay and farther are acceptable.
+//
+//	Overlap  – the exams (incl. NTA time) run at the same time, or leave a student less
+//	           than the travel/break buffer (examGapMinutes) between them: impossible.
+//	TooClose – same day, start times closer than notTooCloseMinutes: undesirable.
+//	SameDay  – same day, but far enough apart.
+//	NextDay  – consecutive calendar day.
 const (
-	SameSlot = "SAME_SLOT"
-	Adjacent = "ADJACENT"
+	Overlap  = "OVERLAP"
+	TooClose = "TOO_CLOSE"
 	SameDay  = "SAME_DAY"
 	NextDay  = "NEXT_DAY"
 )
@@ -29,14 +37,14 @@ func NormPair(a, b int) (int, int) {
 	return a, b
 }
 
-// ProximityRank orders a proximity label from worst (SAME_SLOT) to mildest, so two
-// plans' conflicts can be compared ("got worse / better") and a conflict list sorted
+// ProximityRank orders a proximity label from worst (OVERLAP) to mildest, so two plans'
+// conflicts can be compared ("got worse / better") and a conflict list sorted
 // worst-first. Unknown/empty labels rank 0.
 func ProximityRank(label string) int {
 	switch label {
-	case SameSlot:
+	case Overlap:
 		return 4
-	case Adjacent:
+	case TooClose:
 		return 3
 	case SameDay:
 		return 2
@@ -46,28 +54,47 @@ func ProximityRank(label string) int {
 	return 0
 }
 
-// SlotProximity returns the proximity rank and label of two placed slots (higher rank =
-// closer in time = worse); rank 0 with an empty label means far enough apart to not
-// count as a conflict.
-func SlotProximity(a, b *model.Slot) (int, string) {
-	if a.DayNumber == b.DayNumber {
-		switch absInt(a.SlotNumber - b.SlotNumber) {
-		case 0:
-			return 4, SameSlot
-		case 1:
-			return 3, Adjacent
-		default:
-			return 2, SameDay
+// TimeProximity classifies two of a student's placed exams by their absolute start/end
+// times (end = start + duration incl. NTA), returning a rank (higher = worse) and label.
+// examGapMinutes is the required travel/break buffer between two exams; a smaller gap
+// (including a real overlap) is an OVERLAP. notTooCloseMinutes is the start-to-start
+// distance below which two same-day exams are flagged TOO_CLOSE. Rank 0 / "" means far
+// enough apart to not count as a conflict.
+func TimeProximity(startA, endA, startB, endB time.Time, examGapMinutes, notTooCloseMinutes int) (int, string) {
+	// identify the earlier and later exam by start time
+	earlierStart, earlierEnd, laterStart := startA, endA, startB
+	if startB.Before(startA) {
+		earlierStart, earlierEnd, laterStart = startB, endB, startA
+	}
+
+	gap := laterStart.Sub(earlierEnd) // break between the earlier exam's end and the later's start
+	if gap < time.Duration(examGapMinutes)*time.Minute {
+		return 4, Overlap
+	}
+	if sameCalendarDay(earlierStart, laterStart) {
+		if laterStart.Sub(earlierStart) < time.Duration(notTooCloseMinutes)*time.Minute {
+			return 3, TooClose
 		}
+		return 2, SameDay
 	}
-	diff := a.Starttime.Sub(b.Starttime)
-	if diff < 0 {
-		diff = -diff
-	}
-	if int(math.Round(diff.Hours()/24)) == 1 {
+	if daysApart(earlierStart, laterStart) == 1 {
 		return 1, NextDay
 	}
 	return 0, ""
+}
+
+func sameCalendarDay(a, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+	return ay == by && am == bm && ad == bd
+}
+
+func daysApart(a, b time.Time) int {
+	diff := b.Sub(a)
+	if diff < 0 {
+		diff = -diff
+	}
+	return int(math.Round(diff.Hours() / 24))
 }
 
 // DiffAgainstSaved tags each generated conflict with its status relative to the
@@ -104,11 +131,4 @@ func DiffAgainstSaved(generated, saved []*model.ExamScheduleConflict) []*model.E
 		}
 	}
 	return resolved
-}
-
-func absInt(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

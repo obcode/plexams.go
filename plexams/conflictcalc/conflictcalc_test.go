@@ -24,8 +24,8 @@ func TestProximityRank(t *testing.T) {
 		label string
 		want  int
 	}{
-		{SameSlot, 4},
-		{Adjacent, 3},
+		{Overlap, 4},
+		{TooClose, 3},
 		{SameDay, 2},
 		{NextDay, 1},
 		{"", 0},
@@ -37,7 +37,7 @@ func TestProximityRank(t *testing.T) {
 		}
 	}
 	// ranking must be strictly worst→mildest so worse/better comparisons hold
-	ordered := []string{SameSlot, Adjacent, SameDay, NextDay, ""}
+	ordered := []string{Overlap, TooClose, SameDay, NextDay, ""}
 	for i := 1; i < len(ordered); i++ {
 		if ProximityRank(ordered[i-1]) <= ProximityRank(ordered[i]) {
 			t.Errorf("proximity ranks not strictly ordered at %q vs %q", ordered[i-1], ordered[i])
@@ -45,34 +45,40 @@ func TestProximityRank(t *testing.T) {
 	}
 }
 
-func slotAt(day, slot int, start time.Time) *model.Slot {
-	return &model.Slot{DayNumber: day, SlotNumber: slot, Starttime: start}
-}
-
-func TestSlotProximity(t *testing.T) {
-	day1 := time.Date(2026, 1, 12, 8, 30, 0, 0, time.Local)
-	day2 := time.Date(2026, 1, 13, 8, 30, 0, 0, time.Local)
-	day5 := time.Date(2026, 1, 16, 8, 30, 0, 0, time.Local)
+func TestTimeProximity(t *testing.T) {
+	const (
+		examGap     = 30  // required break (minutes)
+		notTooClose = 120 // same-day start-to-start warning threshold (minutes)
+	)
+	// day 1 = Mon 12 Jan 2026
+	at := func(day, hour, min int) time.Time {
+		return time.Date(2026, 1, 11+day, hour, min, 0, 0, time.Local)
+	}
+	end := func(t time.Time, durMin int) time.Time { return t.Add(time.Duration(durMin) * time.Minute) }
 
 	tests := []struct {
 		name      string
-		a, b      *model.Slot
+		startA    time.Time
+		durA      int
+		startB    time.Time
+		durB      int
 		wantRank  int
 		wantLabel string
 	}{
-		{"same slot", slotAt(1, 2, day1), slotAt(1, 2, day1), 4, SameSlot},
-		{"adjacent slot", slotAt(1, 2, day1), slotAt(1, 3, day1), 3, Adjacent},
-		{"adjacent slot reversed", slotAt(1, 3, day1), slotAt(1, 2, day1), 3, Adjacent},
-		{"same day, two apart", slotAt(1, 2, day1), slotAt(1, 4, day1), 2, SameDay},
-		{"next day", slotAt(1, 2, day1), slotAt(2, 2, day2), 1, NextDay},
-		{"next day reversed", slotAt(2, 2, day2), slotAt(1, 2, day1), 1, NextDay},
-		{"far apart", slotAt(1, 2, day1), slotAt(4, 2, day5), 0, ""},
+		{"identical start → overlap", at(1, 8, 30), 90, at(1, 8, 30), 90, 4, Overlap},
+		{"intervals overlap → overlap", at(1, 8, 30), 90, at(1, 9, 30), 90, 4, Overlap},
+		{"break shorter than gap → overlap", at(1, 8, 30), 90, at(1, 10, 15), 90, 4, Overlap},          // 15min break < 30
+		{"too close (enough break, <120 start gap)", at(1, 8, 30), 60, at(1, 10, 15), 90, 3, TooClose}, // break 45, start gap 105
+		{"same day far enough (120 grid)", at(1, 8, 30), 90, at(1, 10, 30), 90, 2, SameDay},            // break 30, start gap 120
+		{"next day", at(1, 8, 30), 90, at(2, 8, 30), 90, 1, NextDay},
+		{"next day reversed", at(2, 8, 30), 90, at(1, 8, 30), 90, 1, NextDay},
+		{"far apart", at(1, 8, 30), 90, at(5, 8, 30), 90, 0, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rank, label := SlotProximity(tt.a, tt.b)
+			rank, label := TimeProximity(tt.startA, end(tt.startA, tt.durA), tt.startB, end(tt.startB, tt.durB), examGap, notTooClose)
 			if rank != tt.wantRank || label != tt.wantLabel {
-				t.Errorf("SlotProximity = (%d, %q), want (%d, %q)", rank, label, tt.wantRank, tt.wantLabel)
+				t.Errorf("TimeProximity = (%d, %q), want (%d, %q)", rank, label, tt.wantRank, tt.wantLabel)
 			}
 		})
 	}
@@ -84,16 +90,16 @@ func conflict(a1, a2 int, prox string) *model.ExamScheduleConflict {
 
 func TestDiffAgainstSaved(t *testing.T) {
 	saved := []*model.ExamScheduleConflict{
-		conflict(1, 2, Adjacent), // will stay ADJACENT -> unchanged
-		conflict(1, 3, SameDay),  // will become ADJACENT -> worse
-		conflict(1, 4, SameSlot), // will become SameDay -> better
-		conflict(1, 5, Adjacent), // gone in generated -> resolved
+		conflict(1, 2, TooClose), // will stay TOO_CLOSE -> unchanged
+		conflict(1, 3, SameDay),  // will become TOO_CLOSE -> worse
+		conflict(1, 4, Overlap),  // will become SameDay -> better
+		conflict(1, 5, TooClose), // gone in generated -> resolved
 	}
 	generated := []*model.ExamScheduleConflict{
-		conflict(1, 2, Adjacent),
-		conflict(1, 3, Adjacent),
+		conflict(1, 2, TooClose),
+		conflict(1, 3, TooClose),
 		conflict(1, 4, SameDay),
-		conflict(1, 6, SameSlot), // not in saved -> new
+		conflict(1, 6, Overlap), // not in saved -> new
 	}
 
 	resolved := DiffAgainstSaved(generated, saved)
@@ -124,7 +130,7 @@ func TestDiffAgainstSaved(t *testing.T) {
 
 func TestDiffAgainstSavedEmpty(t *testing.T) {
 	// no saved plan: everything is new, nothing resolved
-	generated := []*model.ExamScheduleConflict{conflict(1, 2, SameSlot)}
+	generated := []*model.ExamScheduleConflict{conflict(1, 2, Overlap)}
 	resolved := DiffAgainstSaved(generated, nil)
 	if len(resolved) != 0 {
 		t.Errorf("resolved = %d, want 0", len(resolved))

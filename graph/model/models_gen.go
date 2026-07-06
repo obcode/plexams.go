@@ -374,7 +374,7 @@ type ExamScheduleConflict struct {
 	Slot2           *Slot    `json:"slot2"`
 	// number of students registered in both, in the plan.
 	StudentCount int `json:"studentCount"`
-	// worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY.
+	// worst time proximity across affected students: OVERLAP | TOO_CLOSE | SAME_DAY.
 	Proximity string `json:"proximity"`
 	// true if the pair is declared can-share-slot.
 	CanShareSlot bool `json:"canShareSlot"`

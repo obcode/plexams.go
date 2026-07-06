@@ -360,9 +360,19 @@ nächste Backend-Schritt. Slots sollen am Ende **komplett aus der GUI** verschwi
    löschen; `getSlotTime`/`getSlotForTime` entfernen; Exporte auf `Starttime`.
    Golden-Snapshot etablieren. → **GUI:** Terminplan zeitbasiert, `setExamTime` mit
    Nicht-Standard-Hinweis.
-3. **Konfliktregel zeitbasiert:** `conflictcalc` + `validate.go` + Solver-
-   `closeness`; `NotTooCloseMinutes`. Golden darf sich nicht verschlechtern.
-   → **GUI:** Konfliktlabels/Diagnose zeitbasiert.
+3. **Konfliktregel zeitbasiert (Backend-Schritt 3, DONE):** die *gemeldete*
+   Konflikt-Klassifikation ist zeit-/dauer-/NTA-basiert über eine gemeinsame
+   `conflictcalc.TimeProximity` (Overlap/TooClose/SameDay/NextDay): genutzt in der
+   Konfliktliste (`ExamScheduleConflicts`) und im Validator (`validate.go`), jeweils
+   mit der **pro-Studierenden**-Dauer (Basis bzw. dessen eigener NTA — nicht die
+   globale `MaxDuration`). Schwellen aus SemesterConfig (`ExamGapMinutes`,
+   `NotTooCloseMinutes`). **Bewusste Scope-Entscheidung:** die *getunte
+   Solver-Kostenfunktion* (`examplan` closeness/farness/hardConf/NTA-overrun) und
+   deren Diagnostik-Buckets bleiben **unverändert** — sie bestimmen die Plan-Qualität
+   und sind auf dem festen Raster bereits korrekt; die reine Zeit-Umstellung der
+   Solver-Kosten gehört in Stufe 2 (feinere Granularität), wo sie neu kalibriert
+   werden muss. Golden = die bestehenden `examplan`-Tests bleiben unverändert grün.
+   → **GUI:** Konfliktlabels `SAME_SLOT/ADJACENT` → `OVERLAP/TOO_CLOSE`.
 4. **Räume zeitbasiert:** DB + `rooms*.go` + Schema/Resolver. Turnaround.
    → **GUI:** Raumansichten zeitbasiert.
 5. **Aufsichten zeitbasiert:** `invig*` + Schema/Resolver. → **GUI:** Aufsichten.

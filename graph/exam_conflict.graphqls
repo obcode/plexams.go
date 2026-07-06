@@ -53,7 +53,7 @@ type ExamScheduleConflict {
   slot2: Slot!
   "number of students registered in both, in the plan."
   studentCount: Int!
-  "worst proximity across affected students: SAME_SLOT | ADJACENT | SAME_DAY."
+  "worst time proximity across affected students: OVERLAP | TOO_CLOSE | SAME_DAY."
   proximity: String!
   "true if the pair is declared can-share-slot."
   canShareSlot: Boolean!

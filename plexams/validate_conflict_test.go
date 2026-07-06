@@ -30,11 +30,11 @@ func TestConflictLevelRule(t *testing.T) {
 		allowed bool
 		want    model.ValidationLevel
 	}{
-		{"same slot, real, not allowed", conflictSameSlot, 2, false, model.ValidationLevelError},
-		{"same slot, pair allowed", conflictSameSlot, 2, true, model.ValidationLevelInfo},
-		{"same slot, all accepted", conflictSameSlot, 0, false, model.ValidationLevelInfo},
-		{"adjacent, real", conflictAdjacent, 1, false, model.ValidationLevelWarning},
-		{"adjacent, allowed", conflictAdjacent, 1, true, model.ValidationLevelInfo},
+		{"overlap, real, not allowed", conflictOverlap, 2, false, model.ValidationLevelError},
+		{"overlap, pair allowed", conflictOverlap, 2, true, model.ValidationLevelInfo},
+		{"overlap, all accepted", conflictOverlap, 0, false, model.ValidationLevelInfo},
+		{"too close, real", conflictTooClose, 1, false, model.ValidationLevelWarning},
+		{"too close, allowed", conflictTooClose, 1, true, model.ValidationLevelInfo},
 		{"same day, real", conflictSameDay, 3, false, model.ValidationLevelInfo},
 	}
 	for _, c := range cases {
@@ -45,9 +45,9 @@ func TestConflictLevelRule(t *testing.T) {
 }
 
 func TestConflictSeverityRankOrdersMostSevereFirst(t *testing.T) {
-	if conflictSeverityRank(conflictSameSlot) >= conflictSeverityRank(conflictAdjacent) ||
-		conflictSeverityRank(conflictAdjacent) >= conflictSeverityRank(conflictSameDay) {
-		t.Errorf("severity order wrong: sameSlot=%d adjacent=%d sameDay=%d",
-			conflictSeverityRank(conflictSameSlot), conflictSeverityRank(conflictAdjacent), conflictSeverityRank(conflictSameDay))
+	if conflictSeverityRank(conflictOverlap) >= conflictSeverityRank(conflictTooClose) ||
+		conflictSeverityRank(conflictTooClose) >= conflictSeverityRank(conflictSameDay) {
+		t.Errorf("severity order wrong: overlap=%d tooClose=%d sameDay=%d",
+			conflictSeverityRank(conflictOverlap), conflictSeverityRank(conflictTooClose), conflictSeverityRank(conflictSameDay))
 	}
 }

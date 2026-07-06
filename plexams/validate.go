@@ -11,6 +11,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/anny"
+	"github.com/obcode/plexams.go/plexams/conflictcalc"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -44,23 +45,24 @@ type problemWithStudents struct {
 	accepted []string // affected students whose conflict the user has accepted (→ info)
 }
 
-// Conflict severity by proximity of two of a student's exams. Same slot is a hard
-// clash (a student cannot sit both at once) → error. Adjacent slots (back-to-back, no
-// break) are undesirable → warning. Same day (not adjacent) is usually acceptable →
-// info. These strings are also the human labels streamed in the report.
+// Conflict severity by time proximity of two of a student's exams. An overlap (their
+// exams incl. NTA time collide, or leave less than the travel/break buffer) is a hard
+// clash → error. "Too close" (same day, start times closer than notTooCloseMinutes) is
+// undesirable → warning. Same day (far enough) is usually acceptable → info. These
+// strings are also the human labels streamed in the report.
 const (
-	conflictSameSlot = "same slot"
-	conflictAdjacent = "adjacent slot"
+	conflictOverlap  = "overlap"
+	conflictTooClose = "too close"
 	conflictSameDay  = "same day"
 )
 
 // conflictSeverityRank orders the conflict kinds by their inherent (original) severity,
-// most severe first: same slot (0) > adjacent (1) > same day (2).
+// most severe first: overlap (0) > too close (1) > same day (2).
 func conflictSeverityRank(problem string) int {
 	switch problem {
-	case conflictSameSlot:
+	case conflictOverlap:
 		return 0
-	case conflictAdjacent:
+	case conflictTooClose:
 		return 1
 	default: // conflictSameDay
 		return 2
@@ -69,16 +71,16 @@ func conflictSeverityRank(problem string) int {
 
 // conflictLevel applies the severity rule: everything the user allows is only info — a
 // pair-level allowance (allowed: sameSlot constraint / canShareSlot) or all affected
-// students explicitly accepted (real == 0). Otherwise grade by proximity: same slot =
-// error, adjacent = warning, same day = info.
+// students explicitly accepted (real == 0). Otherwise grade by proximity: overlap =
+// error, too close = warning, same day = info.
 func conflictLevel(problem string, real int, allowed bool) model.ValidationLevel {
 	if allowed || real == 0 {
 		return model.ValidationLevelInfo
 	}
 	switch problem {
-	case conflictSameSlot:
+	case conflictOverlap:
 		return model.ValidationLevelError
-	case conflictAdjacent:
+	case conflictTooClose:
 		return model.ValidationLevelWarning
 	default: // conflictSameDay
 		return model.ValidationLevelInfo
@@ -173,10 +175,12 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 
 	log.Debug().Int("count", accepted.Cardinality()).Interface("accepted", accepted).Msg("found accepted conflicts")
 
+	durByAncode := p.examDurationsByAncode(ctx)
+
 	v.step("validating students")
 	for _, student := range students {
 		p.validateStudentReg(student, planAncodeEntries, foreignAncodes, onlyPlannedByMe,
-			accepted, ancode, &validationMessages)
+			accepted, ancode, durByAncode, &validationMessages)
 	}
 
 	conflictingAncodesSlice, normalizedValidationMessages := p.sortConflictingAncodes(validationMessages)
@@ -464,7 +468,7 @@ func (plexams *Plexams) sortConflictingAncodes(validationMessages map[conflictin
 
 func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanEntry,
 	foreignAncodes set.Set[int], onlyPlannedByMe bool, accepted set.Set[studentPair], ancode int,
-	validationMessages *map[conflictingAncodes]*problemWithStudents) {
+	durByAncode map[int]examDurations, validationMessages *map[conflictingAncodes]*problemWithStudents) {
 	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("checking regs for student")
 
 	planAncodeEntriesForStudent := make([]*model.PlanEntry, 0)
@@ -485,13 +489,21 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 		Int("count", len(planAncodeEntriesForStudent)).
 		Msg("found exams for student in plan")
 
+	endOf := func(pe *model.PlanEntry) time.Time {
+		if pe.Starttime == nil {
+			return time.Time{}
+		}
+		return pe.Starttime.Add(time.Duration(durByAncode[pe.Ancode].forStudent(student.Mtknr)) * time.Minute)
+	}
+
 	p := planAncodeEntriesForStudent
 	for i := 0; i < len(planAncodeEntriesForStudent); i++ {
 		for j := i + 1; j < len(planAncodeEntriesForStudent); j++ {
-			if p[i].DayNumber == p[j].DayNumber &&
-				p[i].SlotNumber == p[j].SlotNumber &&
-				p[i].Ancode == p[j].Ancode {
+			if p[i].Ancode == p[j].Ancode {
 				continue
+			}
+			if p[i].Starttime == nil || p[j].Starttime == nil {
+				continue // an unplaced / timeless entry cannot conflict
 			}
 			// A conflict between two exams we do not plan (external / not planned by me)
 			// is not ours to resolve — never report it. With onlyPlannedByMe, restrict to
@@ -515,19 +527,14 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 			}
 
 			problem := ""
-			// same slot
-			if p[i].DayNumber == p[j].DayNumber &&
-				p[i].SlotNumber == p[j].SlotNumber {
-				problem = conflictSameSlot
-			} else
-			// adjacent slots
-			if p[i].DayNumber == p[j].DayNumber &&
-				(p[i].SlotNumber+1 == p[j].SlotNumber ||
-					p[i].SlotNumber-1 == p[j].SlotNumber) {
-				problem = conflictAdjacent
-			} else
-			// same day
-			if p[i].DayNumber == p[j].DayNumber {
+			switch _, label := conflictcalc.TimeProximity(
+				*p[i].Starttime, endOf(p[i]), *p[j].Starttime, endOf(p[j]),
+				plexams.semesterConfig.ExamGapMinutes, plexams.semesterConfig.NotTooCloseMinutes); label {
+			case conflictcalc.Overlap:
+				problem = conflictOverlap
+			case conflictcalc.TooClose:
+				problem = conflictTooClose
+			case conflictcalc.SameDay:
 				problem = conflictSameDay
 			}
 

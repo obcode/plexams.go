@@ -4,11 +4,61 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/conflictcalc"
 	"github.com/obcode/plexams.go/plexams/repeatcalc"
+	"github.com/rs/zerolog/log"
 )
+
+// examDurations holds an exam's base duration and the per-student NTA-extended
+// durations (only for the students who actually have an NTA for this exam). The gap
+// between two of a student's exams must use THAT student's own writing time — not the
+// exam's global maximum, which may be inflated by a single other student's NTA.
+type examDurations struct {
+	base      int
+	byStudent map[string]int // mtknr -> NTA-extended duration (minutes)
+}
+
+// forStudent returns the exam's duration (minutes) for one student: their NTA-extended
+// duration if they have an NTA, otherwise the base duration.
+func (ed examDurations) forStudent(mtknr string) int {
+	if ext, ok := ed.byStudent[mtknr]; ok {
+		return ext
+	}
+	return ed.base
+}
+
+// examDurationsByAncode returns, per assembled exam, its base duration and per-student
+// NTA-extended durations, used to compute student-specific exam end times for the
+// time-based conflict proximity.
+func (p *Plexams) examDurationsByAncode(ctx context.Context) map[int]examDurations {
+	durs := make(map[int]examDurations)
+	exams, err := p.dbClient.GetAssembledExams(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get assembled exams for durations")
+		return durs
+	}
+	for _, e := range exams {
+		base := 0
+		if e.ZpaExam != nil {
+			base = e.ZpaExam.Duration
+		}
+		ed := examDurations{base: base}
+		for _, nta := range e.Ntas {
+			ext := base * (100 + nta.DeltaDurationPercent) / 100
+			if ext > base {
+				if ed.byStudent == nil {
+					ed.byStudent = make(map[string]int)
+				}
+				ed.byStudent[nta.Mtknr] = ext
+			}
+		}
+		durs[e.Ancode] = ed
+	}
+	return durs
+}
 
 // SetStudentConflictDecision sets an explicit per-student decision: ACCEPT drops that
 // student's proximity penalty (same-slot stays hard); VETO forces the conflict to count
@@ -228,6 +278,12 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		return nil, err
 	}
 
+	// End time of each placed exam is its slot start + the CURRENT student's own
+	// (possibly NTA-extended) duration, so the proximity is per-student and NTA-aware.
+	durByAncode := p.examDurationsByAncode(ctx)
+	examGap := p.semesterConfig.ExamGapMinutes
+	notTooClose := p.semesterConfig.NotTooCloseMinutes
+
 	type studInfo struct{ mtknr, name, program, group string }
 	type agg struct {
 		rank     int
@@ -243,9 +299,16 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 			}
 		}
 		sort.Ints(placed)
+		endOf := func(ancode int, slot *model.Slot) time.Time {
+			return slot.Starttime.Add(time.Duration(durByAncode[ancode].forStudent(s.Mtknr)) * time.Minute)
+		}
 		for i := 0; i < len(placed); i++ {
 			for j := i + 1; j < len(placed); j++ {
-				rank, label := conflictcalc.SlotProximity(slotByAncode[placed[i]], slotByAncode[placed[j]])
+				si, sj := slotByAncode[placed[i]], slotByAncode[placed[j]]
+				rank, label := conflictcalc.TimeProximity(
+					si.Starttime, endOf(placed[i], si),
+					sj.Starttime, endOf(placed[j], sj),
+					examGap, notTooClose)
 				if rank <= 1 {
 					continue // drop NEXT_DAY (and farther): always acceptable, handled by the objective
 				}

@@ -88,6 +88,31 @@ func TestDatasetDumpRoundTrip(t *testing.T) {
 	}
 }
 
+// TestDatasetDumpAcceptsDocumentsEnvelope ensures a single-collection dataset can be
+// parsed both from the {collections:{...}} envelope and from the bare {documents:[...]}
+// envelope used inside a semester ZIP.
+func TestDatasetDumpAcceptsDocumentsEnvelope(t *testing.T) {
+	// bare per-collection envelope (as extracted from a semester ZIP)
+	env := collectionDump{Documents: []bson.M{{"ancode": int32(112)}, {"ancode": int32(113)}}}
+	data, err := bson.MarshalExtJSON(env, true, false)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var dump datasetDump
+	if err := bson.UnmarshalExtJSON(data, true, &dump); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if dump.Collections != nil {
+		t.Errorf("expected no collections in a documents envelope")
+	}
+	if len(dump.Documents) != 2 {
+		t.Fatalf("expected 2 documents, got %d", len(dump.Documents))
+	}
+	if a, ok := toInt(dump.Documents[0]["ancode"]); !ok || a != 112 {
+		t.Errorf("ancode lost: %v", dump.Documents[0]["ancode"])
+	}
+}
+
 func TestAncodeHelpers(t *testing.T) {
 	docs := []bson.M{
 		{"ancode": int32(1)},

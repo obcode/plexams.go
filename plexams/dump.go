@@ -253,9 +253,13 @@ type datasetManifest struct {
 }
 
 // datasetDump is the (extended-JSON) file format of a per-page dataset export.
+// Documents is only read (never written): it lets a single-collection dataset also
+// accept the bare {documents:[...]} envelope used by the per-collection files inside
+// a semester ZIP, so those can be uploaded directly on the matching page.
 type datasetDump struct {
 	Manifest    datasetManifest     `bson:"manifest" json:"manifest"`
 	Collections map[string][]bson.M `bson:"collections" json:"collections"`
+	Documents   []bson.M            `bson:"documents,omitempty" json:"documents,omitempty"`
 }
 
 // DatasetDumpJSON builds the extended-JSON export of a single dataset and a
@@ -331,11 +335,30 @@ func (p *Plexams) RestoreDataset(ctx context.Context, name string, data []byte) 
 		return nil, fmt.Errorf("file holds dataset %q, but %q was expected", dump.Manifest.Dataset, name)
 	}
 
+	// resolve the documents for a collection from the file, accepting both the dataset
+	// envelope ({collections:{<coll>:[...]}}) and — for a single-collection dataset —
+	// the bare per-collection envelope ({documents:[...]}) used inside a semester ZIP.
+	resolve := func(coll string) ([]bson.M, bool) {
+		if dump.Collections != nil {
+			if docs, ok := dump.Collections[coll]; ok {
+				return docs, true
+			}
+		}
+		if !spec.external && len(spec.Collections) == 1 && dump.Documents != nil {
+			return dump.Documents, true
+		}
+		return nil, false
+	}
+
 	result := newRestoreResult()
 
 	if spec.external {
-		incoming := dump.Collections["non_zpaexams"]
-		planDocs := dump.Collections["plan"]
+		incoming, hasExt := dump.Collections["non_zpaexams"]
+		planDocs, hasPlan := dump.Collections["plan"]
+		// guard: never wipe when the file doesn't look like this dataset's export.
+		if !hasExt && !hasPlan {
+			return nil, fmt.Errorf("file does not look like an %q export (expected collections non_zpaexams/plan) — nothing changed", name)
+		}
 
 		// clear the external plan entries before re-inserting them, so no stale
 		// external time survives; never touch the regular (non-external) schedule.
@@ -358,8 +381,18 @@ func (p *Plexams) RestoreDataset(ctx context.Context, name string, data []byte) 
 		}
 		result.add("plan (Zeiten)", m)
 	} else {
+		// resolve every collection first so a mismatched file errors out BEFORE any
+		// collection is dropped (a drop-then-insert-nothing would silently wipe data).
+		resolved := make(map[string][]bson.M, len(spec.Collections))
 		for _, coll := range spec.Collections {
-			n, err := p.dbClient.ReplaceRawCollection(ctx, coll, dump.Collections[coll])
+			docs, ok := resolve(coll)
+			if !ok {
+				return nil, fmt.Errorf("file does not contain data for dataset %q (neither collections.%s nor a documents envelope) — nothing changed", name, coll)
+			}
+			resolved[coll] = docs
+		}
+		for _, coll := range spec.Collections {
+			n, err := p.dbClient.ReplaceRawCollection(ctx, coll, resolved[coll])
 			if err != nil {
 				return nil, fmt.Errorf("cannot restore collection %q: %w", coll, err)
 			}

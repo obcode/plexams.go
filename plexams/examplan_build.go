@@ -630,6 +630,12 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 
 	d := result.Diagnostics
 	reporter.Println(fmt.Sprintf("geplant %d, ungeplant %d, harte Verletzungen %d", result.Placed, result.Unplaced, len(hard)))
+	// list the concrete hard violations (they block the write): both to the stream so the
+	// GUI shows them and to the server log so they are visible without the GUI report.
+	for _, h := range hard {
+		reporter.Println("  harte Verletzung: " + h)
+		log.Warn().Bool("roomPhase", roomPhase).Str("violation", h).Msg("exam schedule hard violation")
+	}
 	if roomPhase {
 		be, ue, bs, us := st.TbauUsage()
 		reporter.Println(fmt.Sprintf("T-Bau EXaHM: %d/%d Sitze genutzt, SEB: %d/%d Sitze genutzt", ue, be, us, bs))

@@ -113,6 +113,8 @@ type RoomsForSlot {
 }
 
 type PlannedRoom {
+  "Absolute start time of the exam using this room (source of truth; day/slot are derived)."
+  starttime: Time
   day: Int!
   slot: Int!
   room: Room!
@@ -128,6 +130,8 @@ type PlannedRoom {
 
 "Students of an exam that could not be assigned a real room in their slot during room generation (kept out of the planned rooms)."
 type UnplacedExam {
+  "Absolute start time of the exam (source of truth; day/slot are derived)."
+  starttime: Time
   ancode: Int!
   day: Int!
   slot: Int!
@@ -147,6 +151,8 @@ type PrePlannedRoom {
 
 "A room blocked for one slot (not usable for planning there)."
 type BlockedRoom {
+  "Absolute start time of the blocked slot (source of truth; day/slot are derived)."
+  starttime: Time
   room: String!
   day: Int!
   slot: Int!

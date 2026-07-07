@@ -239,7 +239,10 @@ func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {
 func (db *DB) PlannedRoomNamesInSlot(ctx context.Context, day, slot int) ([]string, error) {
 	collection := db.getCollectionSemester(collectionRoomsPlanned)
 
-	filter := bson.M{"day": day, "slot": slot}
+	filter, ok := db.slotTimeFilter(day, slot)
+	if !ok {
+		return []string{}, nil
+	}
 
 	rawNames, err := collection.Distinct(ctx, "roomname", filter)
 	if err != nil {
@@ -274,6 +277,9 @@ func (db *DB) PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error) {
 		log.Error().Err(err).Msg("cannot decode planned rooms")
 		return nil, err
 	}
+	for _, pr := range plannedRooms {
+		db.decoratePlannedRoom(pr)
+	}
 
 	return plannedRooms, nil
 }
@@ -281,7 +287,10 @@ func (db *DB) PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error) {
 func (db *DB) PlannedRoomsInSlot(ctx context.Context, day, slot int) ([]*model.PlannedRoom, error) {
 	collection := db.getCollectionSemester(collectionRoomsPlanned)
 
-	filter := bson.M{"day": day, "slot": slot}
+	filter, ok := db.slotTimeFilter(day, slot)
+	if !ok {
+		return make([]*model.PlannedRoom, 0), nil
+	}
 
 	cur, err := collection.Find(ctx, filter)
 	if err != nil {
@@ -294,6 +303,9 @@ func (db *DB) PlannedRoomsInSlot(ctx context.Context, day, slot int) ([]*model.P
 	if err != nil {
 		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot decode rooms for slot")
 		return nil, err
+	}
+	for _, pr := range plannedRooms {
+		db.decoratePlannedRoom(pr)
 	}
 
 	return plannedRooms, nil
@@ -318,6 +330,9 @@ func (db *DB) PlannedRoomsForAncode(ctx context.Context, ancode int) ([]*model.P
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot decode rooms for ancode")
 		return nil, err
+	}
+	for _, pr := range plannedRooms {
+		db.decoratePlannedRoom(pr)
 	}
 
 	return plannedRooms, nil

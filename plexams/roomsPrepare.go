@@ -37,6 +37,15 @@ func (p *Plexams) PrepareRoomForExams(ctx context.Context, reporter Reporter) er
 				Msg("error while preparing rooms for exams in slot")
 			continue
 		}
+		// The absolute slot start is the persisted source of truth; day/slot are
+		// derived from it on read. All rooms/unplaced of this call belong to this slot.
+		st := slot.Starttime
+		for _, r := range slotRooms {
+			r.Starttime = &st
+		}
+		for _, u := range slotUnplaced {
+			u.Starttime = &st
+		}
 		examRooms = append(examRooms, slotRooms...)
 		unplaced = append(unplaced, slotUnplaced...)
 	}

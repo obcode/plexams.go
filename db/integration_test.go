@@ -59,6 +59,57 @@ func TestPlanEntryStarttimeDecoration(t *testing.T) {
 	}
 }
 
+// TestRoomStorageStarttimeDecoration verifies that planned rooms and blocked rooms
+// persist Starttime as the source of truth and derive Day/Slot on read, and that the
+// (day, slot) queries resolve through the start time.
+func TestRoomStorageStarttimeDecoration(t *testing.T) {
+	d := mongotest.NewDB(t)
+	d.SetSlotResolver(fakeSlotResolver{})
+	ctx := context.Background()
+
+	st := time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local)
+	if err := d.ReplacePlannedRooms(ctx, []*model.PlannedRoom{
+		{Starttime: &st, RoomName: "R1.234", Ancode: 7, Duration: 90},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	inSlot, err := d.PlannedRoomsInSlot(ctx, 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inSlot) != 1 {
+		t.Fatalf("PlannedRoomsInSlot(1,1) = %d rooms, want 1", len(inSlot))
+	}
+	if inSlot[0].Day != 1 || inSlot[0].Slot != 1 {
+		t.Errorf("derived day/slot = (%d,%d), want (1,1)", inSlot[0].Day, inSlot[0].Slot)
+	}
+	if inSlot[0].Starttime == nil || !inSlot[0].Starttime.Equal(st) {
+		t.Errorf("Starttime not round-tripped, got %v", inSlot[0].Starttime)
+	}
+
+	names, err := d.PlannedRoomNamesInSlot(ctx, 1, 1)
+	if err != nil || len(names) != 1 || names[0] != "R1.234" {
+		t.Errorf("PlannedRoomNamesInSlot(1,1) = %v (err %v), want [R1.234]", names, err)
+	}
+
+	// blocked room: keyed by room + starttime, day/slot derived
+	if err := d.BlockRoomForSlot(ctx, &model.BlockedRoom{Starttime: &st, Room: "R1.234"}); err != nil {
+		t.Fatal(err)
+	}
+	blocked, err := d.BlockedRooms(ctx)
+	if err != nil || len(blocked) != 1 {
+		t.Fatalf("BlockedRooms = %d (err %v), want 1", len(blocked), err)
+	}
+	if blocked[0].Day != 1 || blocked[0].Slot != 1 {
+		t.Errorf("blocked derived day/slot = (%d,%d), want (1,1)", blocked[0].Day, blocked[0].Slot)
+	}
+	removed, err := d.UnblockRoomForSlot(ctx, "R1.234", st)
+	if err != nil || !removed {
+		t.Errorf("UnblockRoomForSlot = %v (err %v), want true", removed, err)
+	}
+}
+
 // TestResetGeneratedPlanEntries locks the reset semantics: only generated placements are
 // removed; manual locks, external / not-planned-by-me and phase-fixed entries survive.
 func TestResetGeneratedPlanEntries(t *testing.T) {

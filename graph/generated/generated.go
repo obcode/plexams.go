@@ -140,10 +140,11 @@ type ComplexityRoot struct {
 	}
 
 	BlockedRoom struct {
-		Day    func(childComplexity int) int
-		Reason func(childComplexity int) int
-		Room   func(childComplexity int) int
-		Slot   func(childComplexity int) int
+		Day       func(childComplexity int) int
+		Reason    func(childComplexity int) int
+		Room      func(childComplexity int) int
+		Slot      func(childComplexity int) int
+		Starttime func(childComplexity int) int
 	}
 
 	Conflict struct {
@@ -785,6 +786,7 @@ type ComplexityRoot struct {
 		Reserve           func(childComplexity int) int
 		Room              func(childComplexity int) int
 		Slot              func(childComplexity int) int
+		Starttime         func(childComplexity int) int
 		StudentsInRoom    func(childComplexity int) int
 	}
 
@@ -1377,11 +1379,12 @@ type ComplexityRoot struct {
 	}
 
 	UnplacedExam struct {
-		Ancode   func(childComplexity int) int
-		Day      func(childComplexity int) int
-		Mtknrs   func(childComplexity int) int
-		NtaMtknr func(childComplexity int) int
-		Slot     func(childComplexity int) int
+		Ancode    func(childComplexity int) int
+		Day       func(childComplexity int) int
+		Mtknrs    func(childComplexity int) int
+		NtaMtknr  func(childComplexity int) int
+		Slot      func(childComplexity int) int
+		Starttime func(childComplexity int) int
 	}
 
 	ValidationFinding struct {
@@ -2199,6 +2202,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BlockedRoom.Slot(childComplexity), true
+
+	case "BlockedRoom.starttime":
+		if e.complexity.BlockedRoom.Starttime == nil {
+			break
+		}
+
+		return e.complexity.BlockedRoom.Starttime(childComplexity), true
 
 	case "Conflict.ancode":
 		if e.complexity.Conflict.AnCode == nil {
@@ -5686,6 +5696,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PlannedRoom.Slot(childComplexity), true
 
+	case "PlannedRoom.starttime":
+		if e.complexity.PlannedRoom.Starttime == nil {
+			break
+		}
+
+		return e.complexity.PlannedRoom.Starttime(childComplexity), true
+
 	case "PlannedRoom.studentsInRoom":
 		if e.complexity.PlannedRoom.StudentsInRoom == nil {
 			break
@@ -9025,6 +9042,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UnplacedExam.Slot(childComplexity), true
 
+	case "UnplacedExam.starttime":
+		if e.complexity.UnplacedExam.Starttime == nil {
+			break
+		}
+
+		return e.complexity.UnplacedExam.Starttime(childComplexity), true
+
 	case "ValidationFinding.ancode":
 		if e.complexity.ValidationFinding.Ancode == nil {
 			break
@@ -11350,6 +11374,8 @@ type RoomsForSlot {
 }
 
 type PlannedRoom {
+  "Absolute start time of the exam using this room (source of truth; day/slot are derived)."
+  starttime: Time
   day: Int!
   slot: Int!
   room: Room!
@@ -11365,6 +11391,8 @@ type PlannedRoom {
 
 "Students of an exam that could not be assigned a real room in their slot during room generation (kept out of the planned rooms)."
 type UnplacedExam {
+  "Absolute start time of the exam (source of truth; day/slot are derived)."
+  starttime: Time
   ancode: Int!
   day: Int!
   slot: Int!
@@ -11384,6 +11412,8 @@ type PrePlannedRoom {
 
 "A room blocked for one slot (not usable for planning there)."
 type BlockedRoom {
+  "Absolute start time of the blocked slot (source of truth; day/slot are derived)."
+  starttime: Time
   room: String!
   day: Int!
   slot: Int!
@@ -21646,6 +21676,47 @@ func (ec *executionContext) fieldContext_BalanceReport_maxUnder(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _BlockedRoom_starttime(ctx context.Context, field graphql.CollectedField, obj *model.BlockedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BlockedRoom_starttime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Starttime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BlockedRoom_starttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BlockedRoom_room(ctx context.Context, field graphql.CollectedField, obj *model.BlockedRoom) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BlockedRoom_room(ctx, field)
 	if err != nil {
@@ -29335,6 +29406,8 @@ func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_rooms(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
 			case "day":
 				return ec.fieldContext_PlannedRoom_day(ctx, field)
 			case "slot":
@@ -38978,6 +39051,8 @@ func (ec *executionContext) fieldContext_Mutation_blockRoomForSlot(ctx context.C
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_BlockedRoom_starttime(ctx, field)
 			case "room":
 				return ec.fieldContext_BlockedRoom_room(ctx, field)
 			case "day":
@@ -39098,6 +39173,8 @@ func (ec *executionContext) fieldContext_Mutation_blockRoomForSlots(ctx context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_BlockedRoom_starttime(ctx, field)
 			case "room":
 				return ec.fieldContext_BlockedRoom_room(ctx, field)
 			case "day":
@@ -43606,6 +43683,8 @@ func (ec *executionContext) fieldContext_PlannedExam_plannedRooms(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
 			case "day":
 				return ec.fieldContext_PlannedRoom_day(ctx, field)
 			case "slot":
@@ -43630,6 +43709,47 @@ func (ec *executionContext) fieldContext_PlannedExam_plannedRooms(_ context.Cont
 				return ec.fieldContext_PlannedRoom_prePlanned(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PlannedRoom", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlannedRoom_starttime(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannedRoom_starttime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Starttime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlannedRoom_starttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlannedRoom",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -52942,6 +53062,8 @@ func (ec *executionContext) fieldContext_Query_plannedRooms(_ context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
 			case "day":
 				return ec.fieldContext_PlannedRoom_day(ctx, field)
 			case "slot":
@@ -53100,6 +53222,8 @@ func (ec *executionContext) fieldContext_Query_plannedRoomsInSlot(ctx context.Co
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
 			case "day":
 				return ec.fieldContext_PlannedRoom_day(ctx, field)
 			case "slot":
@@ -53176,6 +53300,8 @@ func (ec *executionContext) fieldContext_Query_plannedRoomForStudent(ctx context
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
 			case "day":
 				return ec.fieldContext_PlannedRoom_day(ctx, field)
 			case "slot":
@@ -53255,6 +53381,8 @@ func (ec *executionContext) fieldContext_Query_blockedRooms(_ context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_BlockedRoom_starttime(ctx, field)
 			case "room":
 				return ec.fieldContext_BlockedRoom_room(ctx, field)
 			case "day":
@@ -53384,6 +53512,8 @@ func (ec *executionContext) fieldContext_Query_unplacedExams(_ context.Context, 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_UnplacedExam_starttime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_UnplacedExam_ancode(ctx, field)
 			case "day":
@@ -55670,6 +55800,8 @@ func (ec *executionContext) fieldContext_RoomAndExam_room(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
 			case "day":
 				return ec.fieldContext_PlannedRoom_day(ctx, field)
 			case "slot":
@@ -67249,6 +67381,47 @@ func (ec *executionContext) fieldContext_Teacher_isActive(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _UnplacedExam_starttime(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UnplacedExam_starttime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Starttime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UnplacedExam_starttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnplacedExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UnplacedExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UnplacedExam_ancode(ctx, field)
 	if err != nil {
@@ -73803,6 +73976,8 @@ func (ec *executionContext) _BlockedRoom(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("BlockedRoom")
+		case "starttime":
+			out.Values[i] = ec._BlockedRoom_starttime(ctx, field, obj)
 		case "room":
 			out.Values[i] = ec._BlockedRoom_room(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -78317,6 +78492,8 @@ func (ec *executionContext) _PlannedRoom(ctx context.Context, sel ast.SelectionS
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("PlannedRoom")
+		case "starttime":
+			out.Values[i] = ec._PlannedRoom_starttime(ctx, field, obj)
 		case "day":
 			out.Values[i] = ec._PlannedRoom_day(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -83800,6 +83977,8 @@ func (ec *executionContext) _UnplacedExam(ctx context.Context, sel ast.Selection
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("UnplacedExam")
+		case "starttime":
+			out.Values[i] = ec._UnplacedExam_starttime(ctx, field, obj)
 		case "ancode":
 			out.Values[i] = ec._UnplacedExam_ancode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

@@ -88,14 +88,6 @@ type BalanceReport struct {
 	MaxUnder        int  `json:"maxUnder"`
 }
 
-// A room blocked for one slot (not usable for planning there).
-type BlockedRoom struct {
-	Room   string  `json:"room"`
-	Day    int     `json:"day"`
-	Slot   int     `json:"slot"`
-	Reason *string `json:"reason,omitempty"`
-}
-
 type ConflictPerProgram struct {
 	Program   string      `json:"program"`
 	Conflicts []*Conflict `json:"conflicts"`

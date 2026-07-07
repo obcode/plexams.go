@@ -26,11 +26,16 @@ func (p *Plexams) BlockRoomForSlot(ctx context.Context, room string, day, slot i
 	if dbRoom == nil {
 		return nil, fmt.Errorf("room %s not found", room)
 	}
+	starttime, ok := p.TimeForSlot(day, slot)
+	if !ok {
+		return nil, fmt.Errorf("slot (%d,%d) does not exist", day, slot)
+	}
 	block := &model.BlockedRoom{
-		Room:   room,
-		Day:    day,
-		Slot:   slot,
-		Reason: reason,
+		Starttime: &starttime,
+		Room:      room,
+		Day:       day,
+		Slot:      slot,
+		Reason:    reason,
 	}
 	if err := p.dbClient.BlockRoomForSlot(ctx, block); err != nil {
 		return nil, err
@@ -50,7 +55,11 @@ func (p *Plexams) BlockRoomForSlots(ctx context.Context, room string, slots []*m
 	}
 	blocks := make([]*model.BlockedRoom, 0, len(slots))
 	for _, s := range slots {
-		block := &model.BlockedRoom{Room: room, Day: s.Day, Slot: s.Slot, Reason: reason}
+		starttime, ok := p.TimeForSlot(s.Day, s.Slot)
+		if !ok {
+			return nil, fmt.Errorf("slot (%d,%d) does not exist", s.Day, s.Slot)
+		}
+		block := &model.BlockedRoom{Starttime: &starttime, Room: room, Day: s.Day, Slot: s.Slot, Reason: reason}
 		if err := p.dbClient.BlockRoomForSlot(ctx, block); err != nil {
 			return nil, err
 		}
@@ -64,7 +73,11 @@ func (p *Plexams) BlockRoomForSlots(ctx context.Context, room string, slots []*m
 func (p *Plexams) UnblockRoomForSlots(ctx context.Context, room string, slots []*model.SlotInput) (int, error) {
 	removed := 0
 	for _, s := range slots {
-		wasRemoved, err := p.dbClient.UnblockRoomForSlot(ctx, room, s.Day, s.Slot)
+		starttime, ok := p.TimeForSlot(s.Day, s.Slot)
+		if !ok {
+			continue
+		}
+		wasRemoved, err := p.dbClient.UnblockRoomForSlot(ctx, room, starttime)
 		if err != nil {
 			return removed, err
 		}
@@ -77,7 +90,11 @@ func (p *Plexams) UnblockRoomForSlots(ctx context.Context, room string, slots []
 
 // UnblockRoomForSlot removes a room-slot block. Errors if no such block exists.
 func (p *Plexams) UnblockRoomForSlot(ctx context.Context, room string, day, slot int) (bool, error) {
-	removed, err := p.dbClient.UnblockRoomForSlot(ctx, room, day, slot)
+	starttime, ok := p.TimeForSlot(day, slot)
+	if !ok {
+		return false, fmt.Errorf("slot (%d,%d) does not exist", day, slot)
+	}
+	removed, err := p.dbClient.UnblockRoomForSlot(ctx, room, starttime)
 	if err != nil {
 		return false, err
 	}

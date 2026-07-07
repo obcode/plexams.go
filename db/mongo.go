@@ -56,6 +56,30 @@ func (db *DB) decoratePlanEntry(pe *model.PlanEntry) {
 	pe.DayNumber, pe.SlotNumber = db.slotResolver.SlotForTime(*pe.Starttime)
 }
 
+// decoratePlannedRoom fills the derived Day/Slot from the persisted Starttime.
+func (db *DB) decoratePlannedRoom(pr *model.PlannedRoom) {
+	if pr == nil || pr.Starttime == nil || db.slotResolver == nil {
+		return
+	}
+	pr.Day, pr.Slot = db.slotResolver.SlotForTime(*pr.Starttime)
+}
+
+// decorateUnplacedExam fills the derived Day/Slot from the persisted Starttime.
+func (db *DB) decorateUnplacedExam(ue *model.UnplacedExam) {
+	if ue == nil || ue.Starttime == nil || db.slotResolver == nil {
+		return
+	}
+	ue.Day, ue.Slot = db.slotResolver.SlotForTime(*ue.Starttime)
+}
+
+// decorateBlockedRoom fills the derived Day/Slot from the persisted Starttime.
+func (db *DB) decorateBlockedRoom(br *model.BlockedRoom) {
+	if br == nil || br.Starttime == nil || db.slotResolver == nil {
+		return
+	}
+	br.Day, br.Slot = db.slotResolver.SlotForTime(*br.Starttime)
+}
+
 func NewDB(uri, semester string, dbName *string) (*DB, error) {
 	// MongoDB stores all datetimes as UTC. Decode them back into the local
 	// timezone (Europe/Berlin, set in main.go via time.Local) so that the rest

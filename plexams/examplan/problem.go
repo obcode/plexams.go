@@ -18,12 +18,11 @@ import (
 	"time"
 )
 
-// SlotRef identifies a slot in the exam period; Start is its absolute start time,
-// used so temporal distance naturally includes weekends (Fri->Mon is farther than
-// Tue->Wed even though the day numbers are consecutive).
+// SlotRef identifies a candidate placement in the exam period purely by its absolute
+// start time. Temporal distance (same calendar day, directly-consecutive, weekend gaps)
+// is derived from Start alone — the solver carries no day/slot ordinals; NewProblem
+// precomputes the day grouping and within-day position from these times.
 type SlotRef struct {
-	Day   int // 1-based exam day number
-	Slot  int // 1-based slot number within the day
 	Start time.Time
 }
 
@@ -449,6 +448,13 @@ func (p *Problem) farness(a, b int) float64 {
 		return p.W.Attract * float64(abs(p.slotDayPos[a]-p.slotDayPos[b]))
 	}
 	return p.W.Attract * float64(calDays(p.Slots[a].Start, p.Slots[b].Start)+5) // different day: at least beyond any intra-day distance
+}
+
+// slotDayRef returns a human-readable reference for slot index s as a derived
+// (day, within-day position) 1-based pair, for violation messages. Both are computed
+// from Start (dayOfSlot/slotDayPos), so no slot ordinals are stored on the slot.
+func (p *Problem) slotDayRef(s int) []int {
+	return []int{p.dayOfSlot[s] + 1, p.slotDayPos[s] + 1}
 }
 
 // dayKey maps an absolute time to a calendar-day ordinal (YYYYMMDD in local time) used

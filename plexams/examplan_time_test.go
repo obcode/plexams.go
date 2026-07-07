@@ -57,7 +57,7 @@ func fiveSlots() []examplan.Slot {
 	slots := make([]examplan.Slot, len(starts))
 	for i, s := range starts {
 		start := time.Date(2026, 2, 2, s.h, s.m, 0, 0, time.Local)
-		slots[i] = examplan.Slot{SlotRef: examplan.SlotRef{Day: 1, Slot: i + 1, Start: start}}
+		slots[i] = examplan.Slot{SlotRef: examplan.SlotRef{Start: start}}
 	}
 	return slots
 }

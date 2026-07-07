@@ -62,7 +62,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		slotIdx[key] = len(slots)
 		slotKeys = append(slotKeys, key)
 		slots = append(slots, examplan.Slot{
-			SlotRef: examplan.SlotRef{Day: s.DayNumber, Slot: s.SlotNumber, Start: s.Starttime},
+			SlotRef: examplan.SlotRef{Start: s.Starttime},
 			// Seats caps how many students may be examined at this start time. The
 			// configurable per-time capacity (SemesterConfig.MaxSeatsPerSlot); 0 = unlimited.
 			Seats: sc.MaxSeatsPerSlot,
@@ -516,7 +516,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		for s := range slots {
 			var targets []int
 			for t := range slots {
-				if t == s || slots[t].Day != slots[s].Day {
+				if t == s || !sameCalendarDay(slots[t].Start, slots[s].Start) {
 					continue
 				}
 				d := int(slots[t].Start.Sub(slots[s].Start).Minutes())
@@ -774,6 +774,14 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// sameCalendarDay reports whether two absolute times fall on the same local calendar
+// day (used for the room-overrun check now that slots carry no day ordinal).
+func sameCalendarDay(a, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+	return ay == by && am == bm && ad == bd
 }
 
 // ExamScheduleConstraints returns the read-only description of the hard/soft

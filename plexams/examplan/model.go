@@ -603,7 +603,7 @@ func holeCost(st *State) (float64, []optimize.Violation) {
 			if st.slotOwn[slots[i]] == 0 {
 				total += p.W.Hole
 				vs = append(vs, optimize.Violation{Constraint: "slot-hole", Message: "freier Slot (ohne eigene Prüfung) zwischen belegten Slots",
-					Refs: []int{p.Slots[slots[i]].Day, p.Slots[slots[i]].Slot}})
+					Refs: p.slotDayRef(slots[i])})
 			}
 		}
 	}
@@ -628,7 +628,7 @@ func timeOfDayCost(st *State) (float64, []optimize.Violation) {
 		if c > 0 {
 			total += c
 			vs = append(vs, optimize.Violation{Constraint: "time-of-day", Message: "Prüfung in ungünstiger Tageszeit",
-				Refs: []int{p.Slots[s].Day, p.Slots[s].Slot}})
+				Refs: p.slotDayRef(s)})
 		}
 	}
 	return total, vs

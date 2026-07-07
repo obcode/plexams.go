@@ -238,10 +238,10 @@ func (capacityC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
 	for s := range st.P.Slots {
 		if cap := st.P.Slots[s].Seats; cap > 0 && st.slotSeats[s] > cap {
-			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über Gesamt-Kapazität", Refs: []int{st.P.Slots[s].Day, st.P.Slots[s].Slot}})
+			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über Gesamt-Kapazität", Refs: st.P.slotDayRef(s)})
 		}
 		if st.slotExahm[s] > st.P.Slots[s].ExahmSeats {
-			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über EXaHM-Kapazität", Refs: []int{st.P.Slots[s].Day, st.P.Slots[s].Slot}})
+			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über EXaHM-Kapazität", Refs: st.P.slotDayRef(s)})
 		}
 	}
 	return vs

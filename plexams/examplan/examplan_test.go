@@ -13,7 +13,7 @@ func oneDaySlots(n int) []Slot {
 	t0 := time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC)
 	slots := make([]Slot, n)
 	for i := 0; i < n; i++ {
-		slots[i] = Slot{SlotRef: SlotRef{Day: 1, Slot: i + 1, Start: t0.Add(time.Duration(2*i) * time.Hour)}, Seats: 1000}
+		slots[i] = Slot{SlotRef: SlotRef{Start: t0.Add(time.Duration(2*i) * time.Hour)}, Seats: 1000}
 	}
 	return slots
 }
@@ -21,7 +21,7 @@ func oneDaySlots(n int) []Slot {
 func testSlots() []Slot {
 	t0 := time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC) // Mon
 	mk := func(day, slot, addH int) Slot {
-		return Slot{SlotRef: SlotRef{Day: day, Slot: slot, Start: t0.Add(time.Duration(addH) * time.Hour)}, Seats: 1000}
+		return Slot{SlotRef: SlotRef{Start: t0.Add(time.Duration(addH) * time.Hour)}, Seats: 1000}
 	}
 	return []Slot{
 		mk(1, 1, 0),  // idx0 Mon 08:30
@@ -60,7 +60,8 @@ func TestSolveSpreadsConflictingExams(t *testing.T) {
 		t.Fatalf("conflicting exams in same slot (hard violation): %v", st.SlotOf)
 	}
 	// best spread puts them on different days
-	if p.Slots[st.SlotOf[0]].Day == p.Slots[st.SlotOf[1]].Day {
+	d0, d1 := p.Slots[st.SlotOf[0]].Start, p.Slots[st.SlotOf[1]].Start
+	if d0.YearDay() == d1.YearDay() && d0.Year() == d1.Year() {
 		t.Errorf("conflicting exams not spread to different days: slots %v", st.SlotOf)
 	}
 	if vs := p.Registry().HardViolations(st); len(vs) != 0 {
@@ -98,7 +99,7 @@ func TestTimeOverlapBlocksTooCloseSlot(t *testing.T) {
 func TestSolveRespectsTimeOverlap(t *testing.T) {
 	t0 := time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC)
 	mk := func(slot, addH int) Slot {
-		return Slot{SlotRef: SlotRef{Day: 1, Slot: slot, Start: t0.Add(time.Duration(addH) * time.Hour)}, Seats: 1000}
+		return Slot{SlotRef: SlotRef{Start: t0.Add(time.Duration(addH) * time.Hour)}, Seats: 1000}
 	}
 	slots := []Slot{mk(1, 0), mk(2, 2), mk(3, 4)} // 08:30, 10:30, 12:30 same day
 	units := []Unit{
@@ -336,7 +337,7 @@ func TestClosenessUsesRealHoursAcrossDays(t *testing.T) {
 	base := time.Date(2026, 7, 6, 0, 0, 0, 0, time.UTC) // Mon
 	mk := func(day, slot, hour int) Slot {
 		d := base.AddDate(0, 0, day-1).Add(time.Duration(hour) * time.Hour)
-		return Slot{SlotRef: SlotRef{Day: day, Slot: slot, Start: d}, Seats: 100}
+		return Slot{SlotRef: SlotRef{Start: d}, Seats: 100}
 	}
 	slots := []Slot{
 		mk(1, 1, 8),  // idx0 Mon 08:00
@@ -488,7 +489,7 @@ func TestSlotsUsedCountsOwnOnly(t *testing.T) {
 func TestHoleMultiDayGroupingAndIncremental(t *testing.T) {
 	t0 := time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC)
 	mk := func(day, slot, addH int) Slot {
-		return Slot{SlotRef: SlotRef{Day: day, Slot: slot, Start: t0.Add(time.Duration(addH) * time.Hour)}, Seats: 1000}
+		return Slot{SlotRef: SlotRef{Start: t0.Add(time.Duration(addH) * time.Hour)}, Seats: 1000}
 	}
 	// day 1: slots 1..3 (idx 0..2); day 2: slots 1..4 (idx 3..6, on the next calendar day)
 	slots := []Slot{

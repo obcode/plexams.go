@@ -1,7 +1,5 @@
 package examplan
 
-import "sort"
-
 // Diagnostics is a human-readable quality report of a solved schedule: how close
 // students' exams ended up, the worst-off student, and per-slot load. It is used to
 // judge and calibrate a run (the raw cost alone is not interpretable).
@@ -132,23 +130,4 @@ func (st *State) Diagnostics() Diagnostics {
 		d.InteriorHoles += st.dayHoleCount(di)
 	}
 	return d
-}
-
-// TopLoadedSlots returns the (day, slot, seats) of the n most loaded slots, for
-// reporting.
-func (st *State) TopLoadedSlots(n int) [][3]int {
-	type ls struct{ day, slot, seats int }
-	all := make([]ls, 0, len(st.P.Slots))
-	for s := range st.P.Slots {
-		all = append(all, ls{st.P.Slots[s].Day, st.P.Slots[s].Slot, st.slotSeats[s]})
-	}
-	sort.Slice(all, func(i, j int) bool { return all[i].seats > all[j].seats })
-	if n > len(all) {
-		n = len(all)
-	}
-	out := make([][3]int, 0, n)
-	for i := 0; i < n; i++ {
-		out = append(out, [3]int{all[i].day, all[i].slot, all[i].seats})
-	}
-	return out
 }

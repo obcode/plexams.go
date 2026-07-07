@@ -102,9 +102,9 @@ func RoomBookedDuringExamTime(bookings []RoomBooking, slot *model.Slot) bool {
 	return false
 }
 
-// CoversSlot reports whether a booking spanning [from, until) makes its rooms usable in an
-// exam slot starting at slotStart: the booking must start before the slot and end after
-// the slot's ~90-minute window (slotStart + 89 minutes).
-func CoversSlot(from, until, slotStart time.Time) bool {
-	return from.Before(slotStart) && until.After(slotStart.Add(89*time.Minute))
+// Covers reports whether a booking spanning [from, until] fully covers the window
+// [windowStart, windowEnd] — used to check that a booked room is available for the whole
+// time an exam needs it (its start/end plus the setup/teardown buffers).
+func Covers(from, until, windowStart, windowEnd time.Time) bool {
+	return !from.After(windowStart) && !until.Before(windowEnd)
 }

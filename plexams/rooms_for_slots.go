@@ -160,9 +160,15 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]se
 			aurora.Magenta(entry.From.Format("02.01.06 15:04")),
 			aurora.Magenta(entry.Until.Format("02.01.06 15:04")),
 		))
+		// a booked room is usable in a slot only if the booking covers the whole exam
+		// window [start - buffer, start + block + buffer]; the slot block bounds the exam
+		// length on the grid (single NTAs run into the post-buffer).
+		block := slotBlockDuration(p.semesterConfig.Starttimes)
 		var sb strings.Builder
 		for _, slot := range p.semesterConfig.Slots {
-			if anny.CoversSlot(entry.From, entry.Until, slot.Starttime) {
+			winStart := slot.Starttime.Add(-roomRequestBuffer)
+			winEnd := slot.Starttime.Add(block + roomRequestBuffer)
+			if anny.Covers(entry.From, entry.Until, winStart, winEnd) {
 				fmt.Fprintf(&sb, "(%d, %d), rooms: ", slot.DayNumber, slot.SlotNumber)
 				for _, roomName := range entry.Rooms {
 					fmt.Fprintf(&sb, "%s, ", roomName)

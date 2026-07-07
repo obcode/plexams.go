@@ -12,9 +12,12 @@ import (
 // most this many students does not need a building-management request room.
 const normalRoomSeats = 25
 
-// roomRequestBuffer is the time the building management needs the room before
-// the exam starts (setup) and keeps it reserved after it ends (teardown). It is
-// applied on both ends of the requested time range.
+// roomRequestBuffer is how long a booked room (Gebäudemanagement / anny) must be
+// available before an exam starts (setup) and after it ends (teardown). A single NTA's
+// time extension runs into the post-buffer (e.g. a 9-minute extension leaves 6 minutes),
+// which is enough for individual NTAs; longer extensions get their own room later — not a
+// scheduling concern. Applied on both ends of the room window around the BASE exam
+// duration (NTAs are not added on top).
 const roomRequestBuffer = 15 * time.Minute
 
 // managementRooms returns the active rooms that are requested via the building
@@ -112,25 +115,6 @@ func pickRequestRooms(mgmt []*model.Room, usedInSlot map[string]bool, studs int)
 	return free
 }
 
-// examMaxDuration is the exam duration extended for NTAs that do not need a room
-// of their own (they sit in the requested room and may need more time).
-func examMaxDuration(exam *model.PlannedExam) int {
-	if exam.ZpaExam == nil {
-		return 0
-	}
-	maxDuration := exam.ZpaExam.Duration
-	for _, nta := range exam.Ntas {
-		if nta == nil || nta.NeedsRoomAlone {
-			continue
-		}
-		ntaDuration := (exam.ZpaExam.Duration * (nta.DeltaDurationPercent + 100)) / 100
-		if ntaDuration > maxDuration {
-			maxDuration = ntaDuration
-		}
-	}
-	return maxDuration
-}
-
 // needsRequestRoom reports whether an exam is a candidate for a building-
 // management request room: planned by me and without specific room constraints
 // (exahm/lab/seb/places-with-socket are handled elsewhere).
@@ -185,9 +169,14 @@ func (p *Plexams) GenerateRoomRequestsPreview(ctx context.Context) ([]*model.Roo
 			if len(chosen) == 0 {
 				continue
 			}
-			maxDuration := examMaxDuration(exam)
+			// Room window = [start - buffer, start + base duration + buffer]. A single NTA
+			// runs into the post-buffer; larger extensions get a separate room later.
+			duration := 0
+			if exam.ZpaExam != nil {
+				duration = exam.ZpaExam.Duration
+			}
 			from := start.Add(-roomRequestBuffer)
-			until := start.Add(time.Duration(maxDuration)*time.Minute + roomRequestBuffer)
+			until := start.Add(time.Duration(duration)*time.Minute + roomRequestBuffer)
 			simultaneous := make([]*model.PlannedExam, 0, len(examsInSlot))
 			for _, other := range examsInSlot {
 				if other.Ancode != exam.Ancode {

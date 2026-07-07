@@ -115,22 +115,22 @@ func TestRoomBookedDuringExamTime(t *testing.T) {
 	}
 }
 
-func TestCoversSlot(t *testing.T) {
-	start := at(8, 0) // window end is exclusive at 08:00+89min = 09:29
+func TestCovers(t *testing.T) {
+	winStart, winEnd := at(8, 0), at(9, 45) // required window [08:00, 09:45]
 	cases := []struct {
 		name        string
 		from, until time.Time
 		want        bool
 	}{
-		{"covers strictly", at(7, 59), at(9, 30), true},
-		{"starts exactly at slot (not before)", at(8, 0), at(9, 30), false},
-		{"ends exactly at +89 (not after)", at(7, 0), at(9, 29), false},
-		{"ends one minute after +89", at(7, 0), at(9, 30), true},
+		{"covers strictly", at(7, 59), at(9, 46), true},
+		{"covers exactly", at(8, 0), at(9, 45), true},
+		{"starts too late", at(8, 1), at(9, 46), false},
+		{"ends too early", at(7, 59), at(9, 44), false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := CoversSlot(c.from, c.until, start); got != c.want {
-				t.Errorf("CoversSlot = %v, want %v", got, c.want)
+			if got := Covers(c.from, c.until, winStart, winEnd); got != c.want {
+				t.Errorf("Covers = %v, want %v", got, c.want)
 			}
 		})
 	}

@@ -1184,9 +1184,7 @@ type ComplexityRoot struct {
 	}
 
 	Slot struct {
-		DayNumber  func(childComplexity int) int
-		SlotNumber func(childComplexity int) int
-		Starttime  func(childComplexity int) int
+		Starttime func(childComplexity int) int
 	}
 
 	SoftCostItem struct {
@@ -7855,20 +7853,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ServerInfo.Version(childComplexity), true
 
-	case "Slot.dayNumber":
-		if e.complexity.Slot.DayNumber == nil {
-			break
-		}
-
-		return e.complexity.Slot.DayNumber(childComplexity), true
-
-	case "Slot.slotNumber":
-		if e.complexity.Slot.SlotNumber == nil {
-			break
-		}
-
-		return e.complexity.Slot.SlotNumber(childComplexity), true
-
 	case "Slot.starttime":
 		if e.complexity.Slot.Starttime == nil {
 			break
@@ -10732,8 +10716,6 @@ type Starttime {
 }
 
 type Slot {
-  dayNumber: Int!
-  slotNumber: Int!
   starttime: Time!
 }
 
@@ -26339,10 +26321,6 @@ func (ec *executionContext) fieldContext_ExamScheduleConflict_slot1(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_Slot_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_Slot_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
@@ -26655,10 +26633,6 @@ func (ec *executionContext) fieldContext_ExamScheduleConflict_slot2(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_Slot_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_Slot_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
@@ -30548,10 +30522,6 @@ func (ec *executionContext) fieldContext_Invigilation_slot(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_Slot_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_Slot_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
@@ -50904,10 +50874,6 @@ func (ec *executionContext) fieldContext_Query_allowedSlots(ctx context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_Slot_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_Slot_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
@@ -50967,10 +50933,6 @@ func (ec *executionContext) fieldContext_Query_awkwardSlots(ctx context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_Slot_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_Slot_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
@@ -57299,10 +57261,6 @@ func (ec *executionContext) fieldContext_SemesterConfig_slots(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_Slot_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_Slot_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
@@ -57392,10 +57350,6 @@ func (ec *executionContext) fieldContext_SemesterConfig_mucDaiSlots(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_Slot_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_Slot_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
@@ -57441,10 +57395,6 @@ func (ec *executionContext) fieldContext_SemesterConfig_forbiddenSlots(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_Slot_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_Slot_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_Slot_starttime(ctx, field)
 			}
@@ -58439,94 +58389,6 @@ func (ec *executionContext) fieldContext_ServerInfo_mongoDatabase(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Slot_dayNumber(ctx context.Context, field graphql.CollectedField, obj *model.Slot) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Slot_dayNumber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DayNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Slot_dayNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Slot",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Slot_slotNumber(ctx context.Context, field graphql.CollectedField, obj *model.Slot) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Slot_slotNumber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.SlotNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Slot_slotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Slot",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -81572,16 +81434,6 @@ func (ec *executionContext) _Slot(ctx context.Context, sel ast.SelectionSet, obj
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Slot")
-		case "dayNumber":
-			out.Values[i] = ec._Slot_dayNumber(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "slotNumber":
-			out.Values[i] = ec._Slot_slotNumber(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "starttime":
 			out.Values[i] = ec._Slot_starttime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

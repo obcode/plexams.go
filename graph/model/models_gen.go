@@ -1076,12 +1076,6 @@ type ServerInfo struct {
 	MongoDatabase string `json:"mongoDatabase"`
 }
 
-type Slot struct {
-	DayNumber  int       `json:"dayNumber"`
-	SlotNumber int       `json:"slotNumber"`
-	Starttime  time.Time `json:"starttime"`
-}
-
 type SoftCostItem struct {
 	Name string  `json:"name"`
 	Cost float64 `json:"cost"`

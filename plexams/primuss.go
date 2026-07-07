@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/primuss"
@@ -17,6 +18,22 @@ func (p *Plexams) ImportPrimussZip(ctx context.Context, zipData []byte) (*primus
 // ImportPrimussDir zips all .xlsx under dir and imports them like an uploaded ZIP.
 func (p *Plexams) ImportPrimussDir(ctx context.Context, dir string) (*primuss.ImportResult, error) {
 	return p.primuss.ImportDir(ctx, dir)
+}
+
+// ResetPrimussData deletes all imported Primuss Sammellisten collections (undoing an
+// ImportPrimussZip); the manually maintained ancode overlay is kept. Returns the
+// programs whose data was removed. Blocked while a validation or transfer/email is
+// running.
+func (p *Plexams) ResetPrimussData(ctx context.Context) ([]string, error) {
+	if !p.WritesAllowed() {
+		return nil, fmt.Errorf("a validation or transfer/email is running, cannot reset now")
+	}
+	programs, err := p.dbClient.DropPrimussData(ctx)
+	if err != nil {
+		return nil, err
+	}
+	p.unmarkCondition(ctx, condPrimussImported)
+	return programs, nil
 }
 
 func (p *Plexams) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {

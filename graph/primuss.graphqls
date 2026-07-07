@@ -5,6 +5,16 @@ extend type Query {
   studentRegsForProgram(program: String!): [StudentReg!]
 }
 
+extend type Mutation {
+  """
+  resetPrimussData deletes all imported Primuss Sammellisten collections (the
+  per-program studentregs/exams/count/conflicts written by the ZIP import), undoing an
+  import. The manually maintained ancode overlay is kept. Returns the programs whose
+  data was removed. Blocked while a validation or transfer/email is running.
+  """
+  resetPrimussData: [String!]!
+}
+
 type PrimussExam {
   ancode: Int!
   module: String!

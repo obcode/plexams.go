@@ -19,8 +19,9 @@ var primussCmd = &cobra.Command{
 	fix-ancode program from to         			  --- fix ancode in primuss data (exam and studentregs)
 	rm-studentreg program ancode mtknr 			  --- remove a student registration
 	add-studentreg program ancode mtknr           --- add a student registration
-	import-xlsx dir                               --- import the Primuss Sammellisten XLSX (per program) from a directory`,
-	ValidArgs: []string{"add-ancode", "fix-ancode", "rm-studentreg", "add-studentreg", "import-xlsx"},
+	import-xlsx dir                               --- import the Primuss Sammellisten XLSX (per program) from a directory
+	reset                                         --- delete all imported Primuss Sammellisten collections`,
+	ValidArgs: []string{"add-ancode", "fix-ancode", "rm-studentreg", "add-studentreg", "import-xlsx", "reset"},
 	Args:      cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		plexams := initPlexamsConfig()
@@ -196,6 +197,17 @@ var primussCmd = &cobra.Command{
 					pr.Program, pr.ExamsImported, pr.StudentRegs, pr.CountRows, pr.ConflictRows, len(pr.ChangedAncodes), pr.Missing)
 			}
 			color.Green.Printf("\n>>> imported %d program(s), %d file(s) skipped\n", len(result.Programs), len(result.Skipped))
+
+		case "reset":
+			ctx := context.Background()
+			if !confirm("delete ALL imported Primuss Sammellisten (studentregs/exams/count/conflicts) for every program?", 10) {
+				os.Exit(0)
+			}
+			programs, err := plexams.ResetPrimussData(ctx)
+			if err != nil {
+				log.Fatalf("cannot reset primuss data: %v", err)
+			}
+			color.Green.Printf("\n>>> removed Primuss data for %d program(s): %v\n", len(programs), programs)
 
 		default:
 			fmt.Println("primuss called with unknown sub command")

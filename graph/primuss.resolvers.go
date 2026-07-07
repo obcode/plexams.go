@@ -10,6 +10,11 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// ResetPrimussData is the resolver for the resetPrimussData field.
+func (r *mutationResolver) ResetPrimussData(ctx context.Context) ([]string, error) {
+	return r.plexams.ResetPrimussData(ctx)
+}
+
 // PrimussExams is the resolver for the primussExams field.
 func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	return r.plexams.PrimussExams(ctx)

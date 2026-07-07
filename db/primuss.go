@@ -34,6 +34,27 @@ func (db *DB) GetPrograms(ctx context.Context) ([]string, error) {
 	return programs, err
 }
 
+// DropPrimussData removes all imported Primuss Sammellisten collections (the per-program
+// studentregs_/exams_/count_/conflicts_ that ImportZip writes). The manually maintained
+// ancode overlay (primuss_ancodes) is NOT touched. Returns the programs whose data was
+// dropped (from GetPrograms, i.e. those with an exams_<program> collection).
+func (db *DB) DropPrimussData(ctx context.Context) ([]string, error) {
+	programs, err := db.GetPrograms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, program := range programs {
+		for _, primussType := range []PrimussType{StudentRegs, Exams, Counts, Conflicts} {
+			if err := db.getCollection(program, primussType).Drop(ctx); err != nil {
+				log.Error().Err(err).Str("semester", db.semester).Str("program", program).
+					Str("type", string(primussType)).Msg("cannot drop primuss collection")
+				return nil, err
+			}
+		}
+	}
+	return programs, nil
+}
+
 func (db *DB) AddAncode(ctx context.Context, zpaAncode int, program string, primussAncode int) error {
 	collection := db.Client.Database(db.databaseName).Collection(collectionPrimussAncodes)
 

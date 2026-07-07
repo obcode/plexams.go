@@ -632,6 +632,7 @@ type ComplexityRoot struct {
 		ResetEmailTemplate            func(childComplexity int, name string) int
 		ResetExamSchedule             func(childComplexity int) int
 		ResetInvigilations            func(childComplexity int) int
+		ResetPrimussData              func(childComplexity int) int
 		ResetRoomsForExams            func(childComplexity int) int
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
 		Seb                           func(childComplexity int, ancode int) int
@@ -1527,6 +1528,7 @@ type MutationResolver interface {
 	SetPreplanExamNotSameSlot(ctx context.Context, id int, otherID int, conflict bool) (*model.PreplanExam, error)
 	SetPreplanExamCanShareSlot(ctx context.Context, id int, otherID int, canShare bool) (*model.PreplanExam, error)
 	SetPreplanExamConstraints(ctx context.Context, id int, constraints model.ConstraintsInput) (*model.PreplanExam, error)
+	ResetPrimussData(ctx context.Context) ([]string, error)
 	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string, seats *int) (bool, error)
 	RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error)
 	BlockRoomAt(ctx context.Context, room string, starttime time.Time, reason *string) (*model.BlockedRoom, error)
@@ -4706,6 +4708,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ResetInvigilations(childComplexity), true
+
+	case "Mutation.resetPrimussData":
+		if e.complexity.Mutation.ResetPrimussData == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ResetPrimussData(childComplexity), true
 
 	case "Mutation.resetRoomsForExams":
 		if e.complexity.Mutation.ResetRoomsForExams == nil {
@@ -11059,6 +11068,16 @@ type PreplanProgramConflict {
   primussExam(program: String!, ancode: Int!): PrimussExam!
   primussExamsForAnCode(ancode: Int!): [PrimussExam!]
   studentRegsForProgram(program: String!): [StudentReg!]
+}
+
+extend type Mutation {
+  """
+  resetPrimussData deletes all imported Primuss Sammellisten collections (the
+  per-program studentregs/exams/count/conflicts written by the ZIP import), undoing an
+  import. The manually maintained ancode overlay is kept. Returns the programs whose
+  data was removed. Blocked while a validation or transfer/email is running.
+  """
+  resetPrimussData: [String!]!
 }
 
 type PrimussExam {
@@ -38240,6 +38259,50 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamConstraints(ctx 
 	if fc.Args, err = ec.field_Mutation_setPreplanExamConstraints_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetPrimussData(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetPrimussData(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetPrimussData(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetPrimussData(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -76095,6 +76158,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setPreplanExamConstraints":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPreplanExamConstraints(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetPrimussData":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetPrimussData(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

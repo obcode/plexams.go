@@ -125,6 +125,16 @@ capacity; eventual full removal of day/slot from GraphQL/GUI.
   the grid = per-slot concurrent load; with finer times = the per-time cap that keeps overlaps
   roomable WITHOUT wiring the room inventory into the solver (the option Oliver chose:
   "konfigurierbares Limit pro Zeit"). GUI: add maxSeatsPerSlot to the Semester-Config form.
+- **Writeback + SlotRef DONE** (branch, 2 more commits): the generator writes placements via
+  SetExamTime(start) (behaviour-identical to old AddExamToSlot force=true) and the conflict
+  slot-model is keyed by Starttime. Then SlotRef lost its Day/Slot fields ENTIRELY — the
+  examplan package now carries NO day/slot ordinals: the room-overrun same-day test uses a
+  calendar-day compare (sameCalendarDay in the build), violation Refs use Problem.slotDayRef
+  (derives a readable (day,pos) from dayOfSlot/slotDayPos), dead TopLoadedSlots removed, all
+  test SlotRef literals are Start-only. examplan golden tests green (grid-equivalent). The
+  plexams build GLUE still forms [2]int{day,slot} keys from model.Slot for the SHARED
+  annyBookedBySlot helper (6 callers incl. preplan) — that signature de-keying is deliberately
+  left as a separate low-value step.
 - Remaining Stufe 2 (branch feature/slotless-stufe2): **B** finer/free start times just need
   the planner to add StartTimes to config — candidates already flow through per-(day,slot); the
   cleanup is de-keying buildExamPlanProblem/AllowedSlots/MucDaiSlots + writeback to time and

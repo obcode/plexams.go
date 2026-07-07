@@ -348,19 +348,19 @@ type ComplexityRoot struct {
 	}
 
 	ExamScheduleDiagnostics struct {
-		Adjacent             func(childComplexity int) int
 		Further              func(childComplexity int) int
-		MaxExamsPerSlot      func(childComplexity int) int
-		MaxSlotSeats         func(childComplexity int) int
+		MaxExamsAt           func(childComplexity int) int
+		MaxSeatsAt           func(childComplexity int) int
 		NextDay              func(childComplexity int) int
+		Overlaps             func(childComplexity int) int
 		Pairs                func(childComplexity int) int
 		SameDay              func(childComplexity int) int
-		SameSlot             func(childComplexity int) int
 		SlotsOverThreshold   func(childComplexity int) int
-		SlotsUsed            func(childComplexity int) int
+		StarttimesUsed       func(childComplexity int) int
 		Students             func(childComplexity int) int
-		StudentsWithAdjacent func(childComplexity int) int
 		StudentsWithSameDay  func(childComplexity int) int
+		StudentsWithTooClose func(childComplexity int) int
+		TooClose             func(childComplexity int) int
 		Within3              func(childComplexity int) int
 		WorstStudentPenalty  func(childComplexity int) int
 	}
@@ -3066,13 +3066,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamScheduleConflict.StudentCount(childComplexity), true
 
-	case "ExamScheduleDiagnostics.adjacent":
-		if e.complexity.ExamScheduleDiagnostics.Adjacent == nil {
-			break
-		}
-
-		return e.complexity.ExamScheduleDiagnostics.Adjacent(childComplexity), true
-
 	case "ExamScheduleDiagnostics.further":
 		if e.complexity.ExamScheduleDiagnostics.Further == nil {
 			break
@@ -3080,19 +3073,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamScheduleDiagnostics.Further(childComplexity), true
 
-	case "ExamScheduleDiagnostics.maxExamsPerSlot":
-		if e.complexity.ExamScheduleDiagnostics.MaxExamsPerSlot == nil {
+	case "ExamScheduleDiagnostics.maxExamsAt":
+		if e.complexity.ExamScheduleDiagnostics.MaxExamsAt == nil {
 			break
 		}
 
-		return e.complexity.ExamScheduleDiagnostics.MaxExamsPerSlot(childComplexity), true
+		return e.complexity.ExamScheduleDiagnostics.MaxExamsAt(childComplexity), true
 
-	case "ExamScheduleDiagnostics.maxSlotSeats":
-		if e.complexity.ExamScheduleDiagnostics.MaxSlotSeats == nil {
+	case "ExamScheduleDiagnostics.maxSeatsAt":
+		if e.complexity.ExamScheduleDiagnostics.MaxSeatsAt == nil {
 			break
 		}
 
-		return e.complexity.ExamScheduleDiagnostics.MaxSlotSeats(childComplexity), true
+		return e.complexity.ExamScheduleDiagnostics.MaxSeatsAt(childComplexity), true
 
 	case "ExamScheduleDiagnostics.nextDay":
 		if e.complexity.ExamScheduleDiagnostics.NextDay == nil {
@@ -3100,6 +3093,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleDiagnostics.NextDay(childComplexity), true
+
+	case "ExamScheduleDiagnostics.overlaps":
+		if e.complexity.ExamScheduleDiagnostics.Overlaps == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.Overlaps(childComplexity), true
 
 	case "ExamScheduleDiagnostics.pairs":
 		if e.complexity.ExamScheduleDiagnostics.Pairs == nil {
@@ -3115,13 +3115,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamScheduleDiagnostics.SameDay(childComplexity), true
 
-	case "ExamScheduleDiagnostics.sameSlot":
-		if e.complexity.ExamScheduleDiagnostics.SameSlot == nil {
-			break
-		}
-
-		return e.complexity.ExamScheduleDiagnostics.SameSlot(childComplexity), true
-
 	case "ExamScheduleDiagnostics.slotsOverThreshold":
 		if e.complexity.ExamScheduleDiagnostics.SlotsOverThreshold == nil {
 			break
@@ -3129,12 +3122,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamScheduleDiagnostics.SlotsOverThreshold(childComplexity), true
 
-	case "ExamScheduleDiagnostics.slotsUsed":
-		if e.complexity.ExamScheduleDiagnostics.SlotsUsed == nil {
+	case "ExamScheduleDiagnostics.starttimesUsed":
+		if e.complexity.ExamScheduleDiagnostics.StarttimesUsed == nil {
 			break
 		}
 
-		return e.complexity.ExamScheduleDiagnostics.SlotsUsed(childComplexity), true
+		return e.complexity.ExamScheduleDiagnostics.StarttimesUsed(childComplexity), true
 
 	case "ExamScheduleDiagnostics.students":
 		if e.complexity.ExamScheduleDiagnostics.Students == nil {
@@ -3143,19 +3136,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamScheduleDiagnostics.Students(childComplexity), true
 
-	case "ExamScheduleDiagnostics.studentsWithAdjacent":
-		if e.complexity.ExamScheduleDiagnostics.StudentsWithAdjacent == nil {
-			break
-		}
-
-		return e.complexity.ExamScheduleDiagnostics.StudentsWithAdjacent(childComplexity), true
-
 	case "ExamScheduleDiagnostics.studentsWithSameDay":
 		if e.complexity.ExamScheduleDiagnostics.StudentsWithSameDay == nil {
 			break
 		}
 
 		return e.complexity.ExamScheduleDiagnostics.StudentsWithSameDay(childComplexity), true
+
+	case "ExamScheduleDiagnostics.studentsWithTooClose":
+		if e.complexity.ExamScheduleDiagnostics.StudentsWithTooClose == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.StudentsWithTooClose(childComplexity), true
+
+	case "ExamScheduleDiagnostics.tooClose":
+		if e.complexity.ExamScheduleDiagnostics.TooClose == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleDiagnostics.TooClose(childComplexity), true
 
 	case "ExamScheduleDiagnostics.within3":
 		if e.complexity.ExamScheduleDiagnostics.Within3 == nil {
@@ -10240,19 +10240,24 @@ type ConstraintCost {
 type ExamScheduleDiagnostics {
   students: Int!
   pairs: Int!
-  sameSlot: Int!
-  adjacent: Int!
+  "Two of a student's exams overlap in time (a hard violation — should be 0)."
+  overlaps: Int!
+  "Two of a student's exams are directly consecutive / too close in time."
+  tooClose: Int!
   sameDay: Int!
   nextDay: Int!
   within3: Int!
   further: Int!
-  studentsWithAdjacent: Int!
+  studentsWithTooClose: Int!
   studentsWithSameDay: Int!
   worstStudentPenalty: Float!
-  maxSlotSeats: Int!
-  slotsUsed: Int!
+  "Peak concurrent seats across all start times."
+  maxSeatsAt: Int!
+  "Distinct start times holding at least one of our exams."
+  starttimesUsed: Int!
   slotsOverThreshold: Int!
-  maxExamsPerSlot: Int!
+  "Peak number of exams sharing a single start time."
+  maxExamsAt: Int!
 }
 
 type ExamScheduleReport {
@@ -27102,8 +27107,8 @@ func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_pairs(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamScheduleDiagnostics_sameSlot(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamScheduleDiagnostics_sameSlot(ctx, field)
+func (ec *executionContext) _ExamScheduleDiagnostics_overlaps(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_overlaps(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -27116,7 +27121,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_sameSlot(ctx context.Contex
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.SameSlot, nil
+		return obj.Overlaps, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27133,7 +27138,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_sameSlot(ctx context.Contex
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_sameSlot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_overlaps(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExamScheduleDiagnostics",
 		Field:      field,
@@ -27146,8 +27151,8 @@ func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_sameSlot(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamScheduleDiagnostics_adjacent(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamScheduleDiagnostics_adjacent(ctx, field)
+func (ec *executionContext) _ExamScheduleDiagnostics_tooClose(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_tooClose(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -27160,7 +27165,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_adjacent(ctx context.Contex
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Adjacent, nil
+		return obj.TooClose, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27177,7 +27182,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_adjacent(ctx context.Contex
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_adjacent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_tooClose(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExamScheduleDiagnostics",
 		Field:      field,
@@ -27366,8 +27371,8 @@ func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_further(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamScheduleDiagnostics_studentsWithAdjacent(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamScheduleDiagnostics_studentsWithAdjacent(ctx, field)
+func (ec *executionContext) _ExamScheduleDiagnostics_studentsWithTooClose(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_studentsWithTooClose(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -27380,7 +27385,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_studentsWithAdjacent(ctx co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.StudentsWithAdjacent, nil
+		return obj.StudentsWithTooClose, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27397,7 +27402,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_studentsWithAdjacent(ctx co
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_studentsWithAdjacent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_studentsWithTooClose(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExamScheduleDiagnostics",
 		Field:      field,
@@ -27498,8 +27503,8 @@ func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_worstStudentPen
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamScheduleDiagnostics_maxSlotSeats(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamScheduleDiagnostics_maxSlotSeats(ctx, field)
+func (ec *executionContext) _ExamScheduleDiagnostics_maxSeatsAt(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_maxSeatsAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -27512,7 +27517,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_maxSlotSeats(ctx context.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MaxSlotSeats, nil
+		return obj.MaxSeatsAt, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27529,7 +27534,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_maxSlotSeats(ctx context.Co
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_maxSlotSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_maxSeatsAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExamScheduleDiagnostics",
 		Field:      field,
@@ -27542,8 +27547,8 @@ func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_maxSlotSeats(_ 
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamScheduleDiagnostics_slotsUsed(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamScheduleDiagnostics_slotsUsed(ctx, field)
+func (ec *executionContext) _ExamScheduleDiagnostics_starttimesUsed(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_starttimesUsed(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -27556,7 +27561,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_slotsUsed(ctx context.Conte
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.SlotsUsed, nil
+		return obj.StarttimesUsed, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27573,7 +27578,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_slotsUsed(ctx context.Conte
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_slotsUsed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_starttimesUsed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExamScheduleDiagnostics",
 		Field:      field,
@@ -27630,8 +27635,8 @@ func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_slotsOverThresh
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamScheduleDiagnostics_maxExamsPerSlot(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamScheduleDiagnostics_maxExamsPerSlot(ctx, field)
+func (ec *executionContext) _ExamScheduleDiagnostics_maxExamsAt(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleDiagnostics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleDiagnostics_maxExamsAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -27644,7 +27649,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_maxExamsPerSlot(ctx context
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MaxExamsPerSlot, nil
+		return obj.MaxExamsAt, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -27661,7 +27666,7 @@ func (ec *executionContext) _ExamScheduleDiagnostics_maxExamsPerSlot(ctx context
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_maxExamsPerSlot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamScheduleDiagnostics_maxExamsAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ExamScheduleDiagnostics",
 		Field:      field,
@@ -28251,10 +28256,10 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_diagnostics(_ contex
 				return ec.fieldContext_ExamScheduleDiagnostics_students(ctx, field)
 			case "pairs":
 				return ec.fieldContext_ExamScheduleDiagnostics_pairs(ctx, field)
-			case "sameSlot":
-				return ec.fieldContext_ExamScheduleDiagnostics_sameSlot(ctx, field)
-			case "adjacent":
-				return ec.fieldContext_ExamScheduleDiagnostics_adjacent(ctx, field)
+			case "overlaps":
+				return ec.fieldContext_ExamScheduleDiagnostics_overlaps(ctx, field)
+			case "tooClose":
+				return ec.fieldContext_ExamScheduleDiagnostics_tooClose(ctx, field)
 			case "sameDay":
 				return ec.fieldContext_ExamScheduleDiagnostics_sameDay(ctx, field)
 			case "nextDay":
@@ -28263,20 +28268,20 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_diagnostics(_ contex
 				return ec.fieldContext_ExamScheduleDiagnostics_within3(ctx, field)
 			case "further":
 				return ec.fieldContext_ExamScheduleDiagnostics_further(ctx, field)
-			case "studentsWithAdjacent":
-				return ec.fieldContext_ExamScheduleDiagnostics_studentsWithAdjacent(ctx, field)
+			case "studentsWithTooClose":
+				return ec.fieldContext_ExamScheduleDiagnostics_studentsWithTooClose(ctx, field)
 			case "studentsWithSameDay":
 				return ec.fieldContext_ExamScheduleDiagnostics_studentsWithSameDay(ctx, field)
 			case "worstStudentPenalty":
 				return ec.fieldContext_ExamScheduleDiagnostics_worstStudentPenalty(ctx, field)
-			case "maxSlotSeats":
-				return ec.fieldContext_ExamScheduleDiagnostics_maxSlotSeats(ctx, field)
-			case "slotsUsed":
-				return ec.fieldContext_ExamScheduleDiagnostics_slotsUsed(ctx, field)
+			case "maxSeatsAt":
+				return ec.fieldContext_ExamScheduleDiagnostics_maxSeatsAt(ctx, field)
+			case "starttimesUsed":
+				return ec.fieldContext_ExamScheduleDiagnostics_starttimesUsed(ctx, field)
 			case "slotsOverThreshold":
 				return ec.fieldContext_ExamScheduleDiagnostics_slotsOverThreshold(ctx, field)
-			case "maxExamsPerSlot":
-				return ec.fieldContext_ExamScheduleDiagnostics_maxExamsPerSlot(ctx, field)
+			case "maxExamsAt":
+				return ec.fieldContext_ExamScheduleDiagnostics_maxExamsAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleDiagnostics", field.Name)
 		},
@@ -74304,13 +74309,13 @@ func (ec *executionContext) _ExamScheduleDiagnostics(ctx context.Context, sel as
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "sameSlot":
-			out.Values[i] = ec._ExamScheduleDiagnostics_sameSlot(ctx, field, obj)
+		case "overlaps":
+			out.Values[i] = ec._ExamScheduleDiagnostics_overlaps(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "adjacent":
-			out.Values[i] = ec._ExamScheduleDiagnostics_adjacent(ctx, field, obj)
+		case "tooClose":
+			out.Values[i] = ec._ExamScheduleDiagnostics_tooClose(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -74334,8 +74339,8 @@ func (ec *executionContext) _ExamScheduleDiagnostics(ctx context.Context, sel as
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "studentsWithAdjacent":
-			out.Values[i] = ec._ExamScheduleDiagnostics_studentsWithAdjacent(ctx, field, obj)
+		case "studentsWithTooClose":
+			out.Values[i] = ec._ExamScheduleDiagnostics_studentsWithTooClose(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -74349,13 +74354,13 @@ func (ec *executionContext) _ExamScheduleDiagnostics(ctx context.Context, sel as
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "maxSlotSeats":
-			out.Values[i] = ec._ExamScheduleDiagnostics_maxSlotSeats(ctx, field, obj)
+		case "maxSeatsAt":
+			out.Values[i] = ec._ExamScheduleDiagnostics_maxSeatsAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "slotsUsed":
-			out.Values[i] = ec._ExamScheduleDiagnostics_slotsUsed(ctx, field, obj)
+		case "starttimesUsed":
+			out.Values[i] = ec._ExamScheduleDiagnostics_starttimesUsed(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -74364,8 +74369,8 @@ func (ec *executionContext) _ExamScheduleDiagnostics(ctx context.Context, sel as
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "maxExamsPerSlot":
-			out.Values[i] = ec._ExamScheduleDiagnostics_maxExamsPerSlot(ctx, field, obj)
+		case "maxExamsAt":
+			out.Values[i] = ec._ExamScheduleDiagnostics_maxExamsAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

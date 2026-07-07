@@ -64,19 +64,24 @@ type ConstraintCost {
 type ExamScheduleDiagnostics {
   students: Int!
   pairs: Int!
-  sameSlot: Int!
-  adjacent: Int!
+  "Two of a student's exams overlap in time (a hard violation — should be 0)."
+  overlaps: Int!
+  "Two of a student's exams are directly consecutive / too close in time."
+  tooClose: Int!
   sameDay: Int!
   nextDay: Int!
   within3: Int!
   further: Int!
-  studentsWithAdjacent: Int!
+  studentsWithTooClose: Int!
   studentsWithSameDay: Int!
   worstStudentPenalty: Float!
-  maxSlotSeats: Int!
-  slotsUsed: Int!
+  "Peak concurrent seats across all start times."
+  maxSeatsAt: Int!
+  "Distinct start times holding at least one of our exams."
+  starttimesUsed: Int!
   slotsOverThreshold: Int!
-  maxExamsPerSlot: Int!
+  "Peak number of exams sharing a single start time."
+  maxExamsAt: Int!
 }
 
 type ExamScheduleReport {

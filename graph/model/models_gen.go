@@ -386,21 +386,26 @@ type ExamScheduleConflict struct {
 
 // Quality report of a generated (or current) exam schedule.
 type ExamScheduleDiagnostics struct {
-	Students             int     `json:"students"`
-	Pairs                int     `json:"pairs"`
-	SameSlot             int     `json:"sameSlot"`
-	Adjacent             int     `json:"adjacent"`
+	Students int `json:"students"`
+	Pairs    int `json:"pairs"`
+	// Two of a student's exams overlap in time (a hard violation — should be 0).
+	Overlaps int `json:"overlaps"`
+	// Two of a student's exams are directly consecutive / too close in time.
+	TooClose             int     `json:"tooClose"`
 	SameDay              int     `json:"sameDay"`
 	NextDay              int     `json:"nextDay"`
 	Within3              int     `json:"within3"`
 	Further              int     `json:"further"`
-	StudentsWithAdjacent int     `json:"studentsWithAdjacent"`
+	StudentsWithTooClose int     `json:"studentsWithTooClose"`
 	StudentsWithSameDay  int     `json:"studentsWithSameDay"`
 	WorstStudentPenalty  float64 `json:"worstStudentPenalty"`
-	MaxSlotSeats         int     `json:"maxSlotSeats"`
-	SlotsUsed            int     `json:"slotsUsed"`
-	SlotsOverThreshold   int     `json:"slotsOverThreshold"`
-	MaxExamsPerSlot      int     `json:"maxExamsPerSlot"`
+	// Peak concurrent seats across all start times.
+	MaxSeatsAt int `json:"maxSeatsAt"`
+	// Distinct start times holding at least one of our exams.
+	StarttimesUsed     int `json:"starttimesUsed"`
+	SlotsOverThreshold int `json:"slotsOverThreshold"`
+	// Peak number of exams sharing a single start time.
+	MaxExamsAt int `json:"maxExamsAt"`
 }
 
 type ExamScheduleReport struct {

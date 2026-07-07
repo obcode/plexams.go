@@ -14,7 +14,7 @@ import (
 // constraints – the exact same hard and soft rules the automatic generator
 // uses. It runs in addition to the hand-written invigilator validations.
 func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "invigilation-constraints", "validating invigilation constraints (shared rules)")
+	v := newValidation(p.TimeForSlot, reporter, "invigilation-constraints", "validating invigilation constraints (shared rules)")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {

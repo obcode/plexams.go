@@ -10,7 +10,7 @@ import (
 )
 
 func (p *Plexams) ValidateZPADateTimes(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "zpa-date-times", "validating zpa dates and times")
+	v := newValidation(p.TimeForSlot, reporter, "zpa-date-times", "validating zpa dates and times")
 
 	v.step("fetching exams from ZPA")
 	if err := p.SetZPA(); err != nil {
@@ -79,7 +79,7 @@ func (p *Plexams) ValidateZPADateTimes(reporter Reporter) (*model.ValidationRepo
 }
 
 func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "zpa-rooms", "validating zpa rooms")
+	v := newValidation(p.TimeForSlot, reporter, "zpa-rooms", "validating zpa rooms")
 
 	v.step("fetching exams from ZPA")
 	if err := p.SetZPA(); err != nil {
@@ -138,7 +138,7 @@ func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, 
 }
 
 func (p *Plexams) ValidateZPAInvigilators(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "zpa-invigilators", "validating zpa invigilations")
+	v := newValidation(p.TimeForSlot, reporter, "zpa-invigilators", "validating zpa invigilations")
 
 	v.step("fetching exams from ZPA")
 	if err := p.SetZPA(); err != nil {

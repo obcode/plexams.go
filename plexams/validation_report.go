@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
@@ -19,6 +20,8 @@ type validation struct {
 	name     string
 	reporter Reporter
 	findings []*model.ValidationFinding
+	// timeForSlot derives a finding's absolute Starttime from its ref's day/slot.
+	timeForSlot func(day, slot int) (time.Time, bool)
 }
 
 // ref carries the optional references that link a finding to the affected
@@ -35,9 +38,9 @@ type ref struct {
 
 // newValidation starts a validator: name is the stable machine name (used in the
 // report and by the GUI), title is the human status shown while it runs.
-func newValidation(reporter Reporter, name, title string) *validation {
+func newValidation(timeForSlot func(day, slot int) (time.Time, bool), reporter Reporter, name, title string) *validation {
 	reporter.Step(aurora.Sprintf(aurora.Cyan("%s"), title))
-	return &validation{name: name, reporter: reporter}
+	return &validation{name: name, reporter: reporter, timeForSlot: timeForSlot}
 }
 
 // step updates the transient status line while the validator works.
@@ -46,14 +49,19 @@ func (v *validation) step(format string, a ...any) {
 }
 
 func (v *validation) add(level model.ValidationLevel, r ref, format string, a ...any) {
+	var starttime *time.Time
+	if r.Day != nil && r.Slot != nil && v.timeForSlot != nil {
+		if t, ok := v.timeForSlot(*r.Day, *r.Slot); ok {
+			starttime = &t
+		}
+	}
 	v.findings = append(v.findings, &model.ValidationFinding{
 		Level:          level,
 		Message:        fmt.Sprintf(format, a...),
 		Ancode:         r.Ancode,
 		RelatedAncodes: r.RelatedAncodes,
 		Room:           r.Room,
-		Day:            r.Day,
-		Slot:           r.Slot,
+		Starttime:      starttime,
 		InvigilatorID:  r.InvigilatorID,
 		StudentMtknr:   r.StudentMtknr,
 	})

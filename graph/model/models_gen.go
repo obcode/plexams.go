@@ -1176,10 +1176,10 @@ type ValidationFinding struct {
 	Ancode         *int            `json:"ancode,omitempty"`
 	RelatedAncodes []int           `json:"relatedAncodes,omitempty"`
 	Room           *string         `json:"room,omitempty"`
-	Day            *int            `json:"day,omitempty"`
-	Slot           *int            `json:"slot,omitempty"`
-	InvigilatorID  *int            `json:"invigilatorID,omitempty"`
-	StudentMtknr   *string         `json:"studentMtknr,omitempty"`
+	// Absolute start time of the affected slot (derived; null when not slot-related).
+	Starttime     *time.Time `json:"starttime,omitempty"`
+	InvigilatorID *int       `json:"invigilatorID,omitempty"`
+	StudentMtknr  *string    `json:"studentMtknr,omitempty"`
 }
 
 // ValidationReport is the structured outcome of one validator. It is delivered on

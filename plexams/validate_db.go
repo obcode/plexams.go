@@ -73,7 +73,7 @@ func sameDate(a, b time.Time) bool {
 // fields are mutually consistent.
 func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-plan-entries", "validating plan entries")
+	v := newValidation(p.TimeForSlot, reporter, "db-plan-entries", "validating plan entries")
 
 	planEntries, err := p.dbClient.PlanEntries(ctx)
 	if err != nil {
@@ -132,7 +132,7 @@ func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationRep
 // by ValidateConstraints and deliberately not repeated here.
 func (p *Plexams) ValidateDBConstraints(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-constraints", "validating constraints entries")
+	v := newValidation(p.TimeForSlot, reporter, "db-constraints", "validating constraints entries")
 
 	constraints, err := p.dbClient.GetConstraints(ctx)
 	if err != nil {
@@ -197,7 +197,7 @@ func (p *Plexams) ValidateDBConstraints(reporter Reporter) (*model.ValidationRep
 // reference.
 func (p *Plexams) ValidateDBRooms(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-rooms", "validating planned rooms")
+	v := newValidation(p.TimeForSlot, reporter, "db-rooms", "validating planned rooms")
 
 	plannedRooms, err := p.dbClient.PlannedRooms(ctx)
 	if err != nil {
@@ -337,7 +337,7 @@ func (p *Plexams) regsPerAncode(ctx context.Context) (map[int]map[string]bool, e
 // (the TODO in validate.go), a plausible duration delta, and no duplicate Matrikelnummer.
 func (p *Plexams) ValidateDBNtas(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-ntas", "validating ntas")
+	v := newValidation(p.TimeForSlot, reporter, "db-ntas", "validating ntas")
 
 	ntas, err := p.dbClient.Ntas(ctx)
 	if err != nil {
@@ -371,7 +371,7 @@ func (p *Plexams) ValidateDBNtas(reporter Reporter) (*model.ValidationReport, er
 // exams that exist: duration overrides, canShareSlot pairs and MUC.DAI links.
 func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-references", "validating cross references")
+	v := newValidation(p.TimeForSlot, reporter, "db-references", "validating cross references")
 
 	known, err := p.knownAncodes(ctx)
 	if err != nil {

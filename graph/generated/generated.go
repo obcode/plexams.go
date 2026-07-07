@@ -1377,13 +1377,12 @@ type ComplexityRoot struct {
 
 	ValidationFinding struct {
 		Ancode         func(childComplexity int) int
-		Day            func(childComplexity int) int
 		InvigilatorID  func(childComplexity int) int
 		Level          func(childComplexity int) int
 		Message        func(childComplexity int) int
 		RelatedAncodes func(childComplexity int) int
 		Room           func(childComplexity int) int
-		Slot           func(childComplexity int) int
+		Starttime      func(childComplexity int) int
 		StudentMtknr   func(childComplexity int) int
 	}
 
@@ -8948,13 +8947,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ValidationFinding.Ancode(childComplexity), true
 
-	case "ValidationFinding.day":
-		if e.complexity.ValidationFinding.Day == nil {
-			break
-		}
-
-		return e.complexity.ValidationFinding.Day(childComplexity), true
-
 	case "ValidationFinding.invigilatorID":
 		if e.complexity.ValidationFinding.InvigilatorID == nil {
 			break
@@ -8990,12 +8982,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ValidationFinding.Room(childComplexity), true
 
-	case "ValidationFinding.slot":
-		if e.complexity.ValidationFinding.Slot == nil {
+	case "ValidationFinding.starttime":
+		if e.complexity.ValidationFinding.Starttime == nil {
 			break
 		}
 
-		return e.complexity.ValidationFinding.Slot(childComplexity), true
+		return e.complexity.ValidationFinding.Starttime(childComplexity), true
 
 	case "ValidationFinding.studentMtknr":
 		if e.complexity.ValidationFinding.StudentMtknr == nil {
@@ -11841,8 +11833,8 @@ type ValidationFinding {
   ancode: Int
   relatedAncodes: [Int!]
   room: String
-  day: Int
-  slot: Int
+  "Absolute start time of the affected slot (derived; null when not slot-related)."
+  starttime: Time
   invigilatorID: Int
   studentMtknr: String
 }
@@ -66559,8 +66551,8 @@ func (ec *executionContext) fieldContext_ValidationFinding_room(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _ValidationFinding_day(ctx context.Context, field graphql.CollectedField, obj *model.ValidationFinding) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ValidationFinding_day(ctx, field)
+func (ec *executionContext) _ValidationFinding_starttime(ctx context.Context, field graphql.CollectedField, obj *model.ValidationFinding) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ValidationFinding_starttime(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -66573,7 +66565,7 @@ func (ec *executionContext) _ValidationFinding_day(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Day, nil
+		return obj.Starttime, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -66582,60 +66574,19 @@ func (ec *executionContext) _ValidationFinding_day(ctx context.Context, field gr
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ValidationFinding_day(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ValidationFinding_starttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ValidationFinding",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ValidationFinding_slot(ctx context.Context, field graphql.CollectedField, obj *model.ValidationFinding) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ValidationFinding_slot(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Slot, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ValidationFinding_slot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ValidationFinding",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -67077,10 +67028,8 @@ func (ec *executionContext) fieldContext_ValidationReport_findings(_ context.Con
 				return ec.fieldContext_ValidationFinding_relatedAncodes(ctx, field)
 			case "room":
 				return ec.fieldContext_ValidationFinding_room(ctx, field)
-			case "day":
-				return ec.fieldContext_ValidationFinding_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_ValidationFinding_slot(ctx, field)
+			case "starttime":
+				return ec.fieldContext_ValidationFinding_starttime(ctx, field)
 			case "invigilatorID":
 				return ec.fieldContext_ValidationFinding_invigilatorID(ctx, field)
 			case "studentMtknr":
@@ -82746,10 +82695,8 @@ func (ec *executionContext) _ValidationFinding(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._ValidationFinding_relatedAncodes(ctx, field, obj)
 		case "room":
 			out.Values[i] = ec._ValidationFinding_room(ctx, field, obj)
-		case "day":
-			out.Values[i] = ec._ValidationFinding_day(ctx, field, obj)
-		case "slot":
-			out.Values[i] = ec._ValidationFinding_slot(ctx, field, obj)
+		case "starttime":
+			out.Values[i] = ec._ValidationFinding_starttime(ctx, field, obj)
 		case "invigilatorID":
 			out.Values[i] = ec._ValidationFinding_invigilatorID(ctx, field, obj)
 		case "studentMtknr":

@@ -15,7 +15,7 @@ import (
 
 func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "rooms-per-slot", "validating rooms per slot (allowed and enough seats)")
+	v := newValidation(p.TimeForSlot, reporter, "rooms-per-slot", "validating rooms per slot (allowed and enough seats)")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 
 func (p *Plexams) ValidateRoomsNeedRequest(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "rooms-need-request", "validating rooms which need requests")
+	v := newValidation(p.TimeForSlot, reporter, "rooms-need-request", "validating rooms which need requests")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
@@ -235,7 +235,7 @@ PLANNEDROOM:
 // run, so this surfaces the inconsistency until then).
 func (p *Plexams) ValidateRoomsBlocked(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "rooms-blocked", "validating blocked rooms against planned rooms")
+	v := newValidation(p.TimeForSlot, reporter, "rooms-blocked", "validating blocked rooms against planned rooms")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
@@ -285,7 +285,7 @@ func (p *Plexams) ValidateRoomsBlocked(reporter Reporter) (*model.ValidationRepo
 // fewer free seats than the buffer max(roomFreeSeatsMin, roomFreeSeatsPercent%).
 func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "rooms-enough-seats", "validating enough free seats per exam")
+	v := newValidation(p.TimeForSlot, reporter, "rooms-enough-seats", "validating enough free seats per exam")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
@@ -390,7 +390,7 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 
 func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "rooms-per-exam", "validating rooms per exam")
+	v := newValidation(p.TimeForSlot, reporter, "rooms-per-exam", "validating rooms per exam")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
@@ -549,7 +549,7 @@ func (p *Plexams) ValidateRoomsTimeDistance(reporter Reporter) (*model.Validatio
 	ctx := context.Background()
 	timelag := p.generationTimelagMin(ctx)
 
-	v := newValidation(reporter, "rooms-time-distance",
+	v := newValidation(p.TimeForSlot, reporter, "rooms-time-distance",
 		fmt.Sprintf("validating time lag of planned rooms (%d minutes)", timelag))
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {

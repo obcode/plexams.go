@@ -102,7 +102,7 @@ func levelRank(level model.ValidationLevel) int {
 func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter Reporter) (*model.ValidationReport, error) {
 	knownConflictsCount = 0
 	ctx := context.Background()
-	v := newValidation(reporter, "conflicts", "validating conflicts")
+	v := newValidation(p.TimeForSlot, reporter, "conflicts", "validating conflicts")
 
 	if ok, err := p.planGenerated(ctx); err != nil {
 		return nil, err
@@ -575,7 +575,7 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 
 func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "constraints", "validating constraints")
+	v := newValidation(p.TimeForSlot, reporter, "constraints", "validating constraints")
 
 	if ok, err := p.planGenerated(ctx); err != nil {
 		return nil, err

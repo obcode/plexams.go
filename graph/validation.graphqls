@@ -16,8 +16,8 @@ type ValidationFinding {
   ancode: Int
   relatedAncodes: [Int!]
   room: String
-  day: Int
-  slot: Int
+  "Absolute start time of the affected slot (derived; null when not slot-related)."
+  starttime: Time
   invigilatorID: Int
   studentMtknr: String
 }

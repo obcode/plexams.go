@@ -12,7 +12,7 @@ import (
 )
 
 func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "invigilator-requirements", "validating invigilator requirements")
+	v := newValidation(p.TimeForSlot, reporter, "invigilator-requirements", "validating invigilator requirements")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -97,7 +97,7 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 	return v.finish(), nil
 }
 func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "invigilation-duplicates", "validating invigilator duplicates")
+	v := newValidation(p.TimeForSlot, reporter, "invigilation-duplicates", "validating invigilator duplicates")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -150,7 +150,7 @@ func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.Validation
 
 // TODO: NTA- und Reserve-Aufsicht (wenn NTA) nicht im folgenden Slot einteilen!
 func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "invigilator-slots", "validating invigilator for all slots")
+	v := newValidation(p.TimeForSlot, reporter, "invigilator-slots", "validating invigilator for all slots")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -240,7 +240,7 @@ func (p *Plexams) ValidateInvigilationsTimeDistance(reporter Reporter) (*model.V
 	ctx := context.Background()
 	timelag := p.generationTimelagMin(ctx)
 
-	v := newValidation(reporter, "invigilations-time-distance",
+	v := newValidation(p.TimeForSlot, reporter, "invigilations-time-distance",
 		fmt.Sprintf("validating time lag of invigilations (%d minutes)", timelag))
 
 	if ok, err := p.hasInvigilations(ctx); err != nil {

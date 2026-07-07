@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/conflictcalc"
@@ -621,16 +622,16 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	}
 	// conflicts of the just-generated schedule (so they can be reviewed/rated even on a
 	// dry run, before anything is written)
-	slotModel := make(map[[2]int]*model.Slot, len(p.semesterConfig.Slots))
+	slotModel := make(map[time.Time]*model.Slot, len(p.semesterConfig.Slots))
 	for _, s := range p.semesterConfig.Slots {
-		slotModel[[2]int{s.DayNumber, s.SlotNumber}] = s
+		slotModel[s.Starttime] = s
 	}
 	slotByAncode := make(map[int]*model.Slot)
 	for i := range prob.Units {
 		if st.SlotOf[i] < 0 {
 			continue
 		}
-		if ms := slotModel[[2]int{prob.Slots[st.SlotOf[i]].Day, prob.Slots[st.SlotOf[i]].Slot}]; ms != nil {
+		if ms := slotModel[prob.Slots[st.SlotOf[i]].Start]; ms != nil {
 			for _, a := range prob.Units[i].Ancodes {
 				slotByAncode[a] = ms
 			}
@@ -693,9 +694,9 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 			}
 			continue
 		}
-		day, slot := prob.Slots[st.SlotOf[i]].Day, prob.Slots[st.SlotOf[i]].Slot
+		start := prob.Slots[st.SlotOf[i]].Start
 		for _, a := range u.Ancodes {
-			if _, err := p.AddExamToSlot(ctx, a, day, slot, true); err != nil {
+			if _, err := p.SetExamTime(ctx, a, start); err != nil {
 				reporter.StopProgressFail("Schreiben fehlgeschlagen: " + err.Error())
 				return result, fmt.Errorf("cannot write plan entry for %d: %w", a, err)
 			}

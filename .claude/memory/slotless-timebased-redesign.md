@@ -109,8 +109,27 @@ capacity; eventual full removal of day/slot from GraphQL/GUI.
   hand-written; internal DayNumber/SlotNumber kept). ExamDay.number/Starttime.number remain
   as grid ordinals. GraphQL API fully time-based; day/slot only inside Go. Timezone verified:
   backend emits Berlin local offsets (never UTC Z).
-- Remaining Stufe 2: **A2** soft closeness → pure time-distance (recalibration of tuned
-  Weights Adjacent/SameDay/DayFactor; judgment + real-data) + diagnostics bucket time-based;
-  **C** capacity per time window in the solver (Slot.Seats currently 0=unlimited) so
-  morning-packing stays roomable; **B** finer/free start times (config or snap :00/:30);
-  **D** remove day/slot from GraphQL/GUI.
+- **A2a DONE** (branch feature/slotless-stufe2, refactor(examplan)): the SOFT cost logic is
+  now Start-derived, not slot-ordinal. NewProblem precomputes dayOfSlot + slotDayPos from each
+  slot's absolute Start (calendar-day grouping + chronological position); closeness/farness,
+  the CrossCampus same-day test, the interior-hole grouping and the diagnostics bucket use
+  dayOfSlot/slotDayPos instead of SlotRef.Day/.Slot. Grid-equivalent by construction (a day's
+  chronological positions reproduce SlotNumber±1), so examplan golden tests are UNCHANGED.
+  SlotRef.Day/.Slot fields still exist (build/writeback use them until slice B) but drive no
+  cost. This makes the objective correct at any start-time granularity.
+- **C DONE** (branch, feat(examplan)): configurable per-time seat cap. New
+  SemesterConfig(Input).MaxSeatsPerSlot (0/unset = unlimited) plumbed through GraphQL
+  (SemesterConfig + SemesterConfigInput + SemesterConfigInputData input), the hand input
+  model (bson round-trips), the derived-config builder + regenerated gqlgen. buildExamPlanProblem
+  sets each examplan.Slot.Seats = MaxSeatsPerSlot; feasible()/canSwap() already enforce it. On
+  the grid = per-slot concurrent load; with finer times = the per-time cap that keeps overlaps
+  roomable WITHOUT wiring the room inventory into the solver (the option Oliver chose:
+  "konfigurierbares Limit pro Zeit"). GUI: add maxSeatsPerSlot to the Semester-Config form.
+- Remaining Stufe 2 (branch feature/slotless-stufe2): **B** finer/free start times just need
+  the planner to add StartTimes to config — candidates already flow through per-(day,slot); the
+  cleanup is de-keying buildExamPlanProblem/AllowedSlots/MucDaiSlots + writeback to time and
+  removing SlotRef.Day/.Slot; **A2b** OPTIONAL further recalibration of closeness to a
+  continuous time-gap falloff (needs real Test26SS data — neighbor-based is already
+  granularity-safe); **D** remove day/slot from remaining GraphQL (Slot type in slot1/slot2 +
+  Invigilation.slot, ExamDay.number, diagnostics rename sameSlot→overlaps) + internal model
+  fields + GUI slot labels; clean rooms_for_slots.go remnants.

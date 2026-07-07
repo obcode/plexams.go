@@ -1077,6 +1077,8 @@ type ComplexityRoot struct {
 		Lab              func(childComplexity int) int
 		MaxStudents      func(childComplexity int) int
 		PlacesWithSocket func(childComplexity int) int
+		PostExamMinutes  func(childComplexity int) int
+		PreExamMinutes   func(childComplexity int) int
 		Seb              func(childComplexity int) int
 	}
 
@@ -7356,6 +7358,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RoomConstraints.PlacesWithSocket(childComplexity), true
 
+	case "RoomConstraints.postExamMinutes":
+		if e.complexity.RoomConstraints.PostExamMinutes == nil {
+			break
+		}
+
+		return e.complexity.RoomConstraints.PostExamMinutes(childComplexity), true
+
+	case "RoomConstraints.preExamMinutes":
+		if e.complexity.RoomConstraints.PreExamMinutes == nil {
+			break
+		}
+
+		return e.complexity.RoomConstraints.PreExamMinutes(childComplexity), true
+
 	case "RoomConstraints.seb":
 		if e.complexity.RoomConstraints.Seb == nil {
 			break
@@ -9636,6 +9652,17 @@ type RoomConstraints {
   maxStudents: Int
   "extra seats to reserve on top of the registered students (capacity buffer)."
   additionalSeats: Int
+  """
+  Lead time (Vorlauf) in minutes the rooms must be free BEFORE this exam starts, as a
+  total that REPLACES the default 15 min (null = default). Used for setup that exceeds the
+  ordinary turnaround, e.g. an EXaHM exam in the T-building.
+  """
+  preExamMinutes: Int
+  """
+  Trailing time (Nachlauf) in minutes the rooms stay occupied AFTER this exam ends, total
+  that REPLACES the default 15 min (null = default).
+  """
+  postExamMinutes: Int
   comments: String
 }
 
@@ -9659,6 +9686,10 @@ input ConstraintsInput {
   kdpJiraURL: String
   maxStudents: Int
   additionalSeats: Int
+  "Lead time (Vorlauf) in minutes before the exam; total that replaces the default 15."
+  preExamMinutes: Int
+  "Trailing time (Nachlauf) in minutes after the exam; total that replaces the default 15."
+  postExamMinutes: Int
   comments: String
 }
 `, BuiltIn: false},
@@ -23144,6 +23175,10 @@ func (ec *executionContext) fieldContext_Constraints_roomConstraints(_ context.C
 				return ec.fieldContext_RoomConstraints_maxStudents(ctx, field)
 			case "additionalSeats":
 				return ec.fieldContext_RoomConstraints_additionalSeats(ctx, field)
+			case "preExamMinutes":
+				return ec.fieldContext_RoomConstraints_preExamMinutes(ctx, field)
+			case "postExamMinutes":
+				return ec.fieldContext_RoomConstraints_postExamMinutes(ctx, field)
 			case "comments":
 				return ec.fieldContext_RoomConstraints_comments(ctx, field)
 			}
@@ -55126,6 +55161,88 @@ func (ec *executionContext) fieldContext_RoomConstraints_additionalSeats(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _RoomConstraints_preExamMinutes(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomConstraints_preExamMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PreExamMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomConstraints_preExamMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomConstraints_postExamMinutes(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomConstraints_postExamMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PostExamMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomConstraints_postExamMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RoomConstraints_comments(ctx context.Context, field graphql.CollectedField, obj *model.RoomConstraints) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoomConstraints_comments(ctx, field)
 	if err != nil {
@@ -70891,7 +71008,7 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"allowedRooms", "notPlannedByMe", "doNotPublish", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "location", "notPlannedByMeInFK", "placesWithSocket", "lab", "exahm", "seb", "kdpJiraURL", "maxStudents", "additionalSeats", "comments"}
+	fieldsInOrder := [...]string{"allowedRooms", "notPlannedByMe", "doNotPublish", "excludeDays", "possibleDays", "fixedDay", "fixedTime", "sameSlot", "online", "location", "notPlannedByMeInFK", "placesWithSocket", "lab", "exahm", "seb", "kdpJiraURL", "maxStudents", "additionalSeats", "preExamMinutes", "postExamMinutes", "comments"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71024,6 +71141,20 @@ func (ec *executionContext) unmarshalInputConstraintsInput(ctx context.Context, 
 				return it, err
 			}
 			it.AdditionalSeats = data
+		case "preExamMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("preExamMinutes"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PreExamMinutes = data
+		case "postExamMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("postExamMinutes"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PostExamMinutes = data
 		case "comments":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("comments"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -80614,6 +80745,10 @@ func (ec *executionContext) _RoomConstraints(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._RoomConstraints_maxStudents(ctx, field, obj)
 		case "additionalSeats":
 			out.Values[i] = ec._RoomConstraints_additionalSeats(ctx, field, obj)
+		case "preExamMinutes":
+			out.Values[i] = ec._RoomConstraints_preExamMinutes(ctx, field, obj)
+		case "postExamMinutes":
+			out.Values[i] = ec._RoomConstraints_postExamMinutes(ctx, field, obj)
 		case "comments":
 			out.Values[i] = ec._RoomConstraints_comments(ctx, field, obj)
 		default:

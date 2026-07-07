@@ -109,6 +109,8 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 			constraintsInput.Seb != nil ||
 			constraintsInput.Exahm != nil ||
 			constraintsInput.AdditionalSeats != nil ||
+			constraintsInput.PreExamMinutes != nil ||
+			constraintsInput.PostExamMinutes != nil ||
 			constraintsInput.AllowedRooms != nil {
 			constraints.RoomConstraints = &model.RoomConstraints{}
 			if len(constraintsInput.AllowedRooms) > 0 {
@@ -142,6 +144,14 @@ func (p *Plexams) AddConstraints(ctx context.Context, ancode int, constraintsInp
 			}
 			if constraintsInput.AdditionalSeats != nil && *constraintsInput.AdditionalSeats > 0 {
 				constraints.RoomConstraints.AdditionalSeats = constraintsInput.AdditionalSeats
+			}
+			// Vorlauf/Nachlauf: total minutes that replace the default 15; only kept when
+			// given as a positive value (0 = no override, stays nil = default 15).
+			if constraintsInput.PreExamMinutes != nil && *constraintsInput.PreExamMinutes > 0 {
+				constraints.RoomConstraints.PreExamMinutes = constraintsInput.PreExamMinutes
+			}
+			if constraintsInput.PostExamMinutes != nil && *constraintsInput.PostExamMinutes > 0 {
+				constraints.RoomConstraints.PostExamMinutes = constraintsInput.PostExamMinutes
 			}
 			if constraintsInput.Comments != nil && *constraintsInput.Comments != "" {
 				constraints.RoomConstraints.Comments = constraintsInput.Comments

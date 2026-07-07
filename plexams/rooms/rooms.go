@@ -61,6 +61,13 @@ type Cfg struct {
 	BlockedRooms         map[SlotKey]set.Set[string] // slot -> blocked room names
 	ExactSeatRooms       map[int]map[string]bool     // ancode -> room names with an exact seat count (do not refill with this exam)
 	RoomsForSlots        map[SlotKey][]string        // slot -> allowed room names (computed once)
+	// SlotBlockMinutes is the spacing between consecutive slot start times (e.g. 120);
+	// RoomTurnaroundMinutes is the ordinary Vorlauf/Nachlauf (15). Together they decide
+	// whether an exam with an extended Nachlauf keeps its room past the following slot's
+	// start (see roomOccupancyOverrunsSlot). 0 disables the check (default room turnaround
+	// stays governed by the NTA-overrun rule only).
+	SlotBlockMinutes      int
+	RoomTurnaroundMinutes int
 
 	exams                     []*model.ExamWithRegsAndRooms
 	examsMap                  map[int]*model.PlannedExam
@@ -705,6 +712,33 @@ func addPlannedRoom(cfg *Cfg, exam *model.ExamWithRegsAndRooms, room *model.Room
 			break
 		}
 	}
+	// An exam with an extended Nachlauf keeps this room occupied past the ordinary
+	// turnaround; if that reaches into the following slot, the room must not be reused
+	// there (the time-based counterpart of the NTA-overrun rule above).
+	if cfg.roomOccupancyOverrunsSlot(exam.Exam.Constraints, examRoom.Duration) {
+		cfg.RoomsNotUsableInSlot.Add(room.Name)
+	}
+}
+
+// roomOccupancyOverrunsSlot reports whether an exam that asks for an extended Nachlauf
+// keeps its room past the following slot's start. Occupancy ends at start + examDuration +
+// Nachlauf; the next slot's exam needs the room from nextStart − turnaround = start +
+// SlotBlockMinutes − RoomTurnaroundMinutes. It fires only for a Nachlauf larger than the
+// ordinary turnaround, so exams on the default buffer keep their existing behavior.
+func (cfg *Cfg) roomOccupancyOverrunsSlot(constraints *model.Constraints, examDuration int) bool {
+	if cfg.SlotBlockMinutes <= 0 {
+		return false
+	}
+	post := cfg.RoomTurnaroundMinutes
+	if constraints != nil && constraints.RoomConstraints != nil && constraints.RoomConstraints.PostExamMinutes != nil {
+		if p := *constraints.RoomConstraints.PostExamMinutes; p > post {
+			post = p
+		}
+	}
+	if post <= cfg.RoomTurnaroundMinutes {
+		return false
+	}
+	return examDuration+post > cfg.SlotBlockMinutes-cfg.RoomTurnaroundMinutes
 }
 
 func findRoomWithFreeSeats(cfg *Cfg, exam *model.ExamWithRegsAndRooms, neededSeats int) *model.Room {

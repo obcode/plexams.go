@@ -195,7 +195,13 @@ type Problem struct {
 	// minimal separation (same start time forbidden, any different time allowed). Set via
 	// SetHardSeparations; on the fixed grid this reproduces the old same-slot + NTA-overrun
 	// behaviour, but it is correct at any start-time granularity.
-	hardSep      []map[int]int
+	hardSep []map[int]int
+	// overrun[u][s] lists the slot indices an EXaHM unit u, placed at slot s, keeps its
+	// (T-building) rooms occupied into — i.e. later slots whose exam window it reaches with
+	// an extended Nachlauf. Those slots' booked EXaHM seats are then also consumed by u, so
+	// the capacity check (feasible/canSwap) counts u against them too. Empty for every unit
+	// on the ordinary turnaround, so default plans are unaffected. Set via SetOverrunTargets.
+	overrun      []map[int][]int
 	unitStudents [][]int        // unit -> student indices that have a pair with it
 	unitAttract  [][]attractRef // unit -> its attract partners
 	targetLoad   float64        // ideal seats per slot = total seats / number of slots
@@ -325,6 +331,33 @@ func (p *Problem) SetHardSeparations(sep map[[2]int]int) {
 		}
 		p.hardSep[u][v] = minutes
 	}
+}
+
+// SetOverrunTargets installs, per (unit, slot), the later slots the unit's extended
+// Nachlauf keeps its EXaHM rooms occupied into (see the overrun field). targets keyed by
+// [2]int{unit, slot}. Only EXaHM units with an extended Nachlauf have entries; all others
+// stay absent, so the capacity check is unchanged for them. Idempotent.
+func (p *Problem) SetOverrunTargets(targets map[[2]int][]int) {
+	p.overrun = make([]map[int][]int, len(p.Units))
+	for key, slots := range targets {
+		u, s := key[0], key[1]
+		if u < 0 || u >= len(p.Units) || len(slots) == 0 {
+			continue
+		}
+		if p.overrun[u] == nil {
+			p.overrun[u] = make(map[int][]int)
+		}
+		p.overrun[u][s] = slots
+	}
+}
+
+// overrunTargets returns the later slots unit u (placed at slot s) keeps its EXaHM rooms
+// occupied into, or nil when u is on the ordinary turnaround.
+func (p *Problem) overrunTargets(u, s int) []int {
+	if p.overrun == nil || p.overrun[u] == nil {
+		return nil
+	}
+	return p.overrun[u][s]
 }
 
 // sepMinutes returns the required minutes from u's start until v may start: the installed

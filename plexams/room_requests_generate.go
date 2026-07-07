@@ -169,14 +169,16 @@ func (p *Plexams) GenerateRoomRequestsPreview(ctx context.Context) ([]*model.Roo
 			if len(chosen) == 0 {
 				continue
 			}
-			// Room window = [start - buffer, start + base duration + buffer]. A single NTA
-			// runs into the post-buffer; larger extensions get a separate room later.
+			// Room window = [start - preBuffer, start + base duration + postBuffer]. A single
+			// NTA runs into the post-buffer; larger extensions get a separate room later. The
+			// buffers default to 15 min but an exam may request a larger Vorlauf/Nachlauf.
 			duration := 0
 			if exam.ZpaExam != nil {
 				duration = exam.ZpaExam.Duration
 			}
-			from := start.Add(-roomRequestBuffer)
-			until := start.Add(time.Duration(duration)*time.Minute + roomRequestBuffer)
+			preBuffer, postBuffer := roomBuffers(exam.Constraints)
+			from := start.Add(-preBuffer)
+			until := start.Add(time.Duration(duration)*time.Minute + postBuffer)
 			simultaneous := make([]*model.PlannedExam, 0, len(examsInSlot))
 			for _, other := range examsInSlot {
 				if other.Ancode != exam.Ancode {

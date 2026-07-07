@@ -102,9 +102,12 @@ func (p *Plexams) removePreplanSameSlot(ctx context.Context, id, remove int) err
 // preplanConstraintsFromInput maps a ConstraintsInput to a model.Constraints without
 // any persistence side effects. SameSlot is kept verbatim (pre-exam ids).
 // preplanConstraintsFromInput maps a ConstraintsInput to a pre-exam's stored
-// constraints. Pre-planning is deliberately slim: only same-slot (pre-exam ids) and
-// allowedRooms are kept; the SEB/EXaHM room kind comes from the exam itself, and the
-// other ZPA constraint fields cannot be set during pre-planning.
+// constraints. Pre-planning is deliberately slim: same-slot (pre-exam ids), allowedRooms
+// and the extended room Vorlauf/Nachlauf are kept; the SEB/EXaHM room kind comes from the
+// exam itself, and the other ZPA constraint fields cannot be set during pre-planning.
+// Keeping the Vorlauf/Nachlauf here lets an EXaHM exam in T-building rooms carry its larger
+// room window from the very first pre-planning step (it is later carried over to the ZPA
+// exam on connect, see syncPreplanGroupZPAConstraints).
 func preplanConstraintsFromInput(input *model.ConstraintsInput) *model.Constraints {
 	c := &model.Constraints{}
 	if input == nil {
@@ -112,15 +115,24 @@ func preplanConstraintsFromInput(input *model.ConstraintsInput) *model.Constrain
 	}
 	c.SameSlot = dedupeInts(input.SameSlot)
 
-	if len(input.AllowedRooms) > 0 {
-		rooms := make([]string, 0, len(input.AllowedRooms))
-		for _, r := range input.AllowedRooms {
-			if r != "" {
-				rooms = append(rooms, r)
-			}
+	rooms := make([]string, 0, len(input.AllowedRooms))
+	for _, r := range input.AllowedRooms {
+		if r != "" {
+			rooms = append(rooms, r)
 		}
+	}
+	pre := input.PreExamMinutes != nil && *input.PreExamMinutes > 0
+	post := input.PostExamMinutes != nil && *input.PostExamMinutes > 0
+	if len(rooms) > 0 || pre || post {
+		c.RoomConstraints = &model.RoomConstraints{}
 		if len(rooms) > 0 {
-			c.RoomConstraints = &model.RoomConstraints{AllowedRooms: rooms}
+			c.RoomConstraints.AllowedRooms = rooms
+		}
+		if pre {
+			c.RoomConstraints.PreExamMinutes = input.PreExamMinutes
+		}
+		if post {
+			c.RoomConstraints.PostExamMinutes = input.PostExamMinutes
 		}
 	}
 	return c

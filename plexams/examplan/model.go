@@ -23,6 +23,12 @@ type State struct {
 	// invigilation planning, effectively free.
 	slotExahm []int
 	slotSeb   []int
+	// slotExahmOverrun[s] = EXaHM seats of units placed in EARLIER slots whose extended
+	// Nachlauf keeps their T-building rooms occupied into slot s (see Problem.overrun). It
+	// is added to slotExahm in the EXaHM capacity check so an overrunning exam still counts
+	// against the booked seats of the slot(s) it reaches into. Stays all-zero for plans
+	// without an extended Nachlauf, leaving the capacity check bit-for-bit unchanged.
+	slotExahmOverrun []int
 
 	pS            []float64
 	spreadTotal   float64
@@ -36,13 +42,14 @@ type State struct {
 
 func newState(p *Problem) *State {
 	st := &State{
-		P:         p,
-		SlotOf:    make([]int, len(p.Units)),
-		slotSeats: make([]int, len(p.Slots)),
-		slotOwn:   make([]int, len(p.Slots)),
-		slotExahm: make([]int, len(p.Slots)),
-		slotSeb:   make([]int, len(p.Slots)),
-		pS:        make([]float64, len(p.Students)),
+		P:                p,
+		SlotOf:           make([]int, len(p.Units)),
+		slotSeats:        make([]int, len(p.Slots)),
+		slotOwn:          make([]int, len(p.Slots)),
+		slotExahm:        make([]int, len(p.Slots)),
+		slotSeb:          make([]int, len(p.Slots)),
+		slotExahmOverrun: make([]int, len(p.Slots)),
+		pS:               make([]float64, len(p.Students)),
 	}
 	for i := range st.SlotOf {
 		st.SlotOf[i] = -1
@@ -70,6 +77,9 @@ func (st *State) setPhysical(u, s int) {
 		}
 		if exahm {
 			st.slotExahm[old] -= seats
+			for _, t := range st.P.overrunTargets(u, old) {
+				st.slotExahmOverrun[t] -= seats
+			}
 		}
 		if seb {
 			st.slotSeb[old] -= seats
@@ -83,6 +93,9 @@ func (st *State) setPhysical(u, s int) {
 		}
 		if exahm {
 			st.slotExahm[s] += seats
+			for _, t := range st.P.overrunTargets(u, s) {
+				st.slotExahmOverrun[t] += seats
+			}
 		}
 		if seb {
 			st.slotSeb[s] += seats
@@ -320,9 +333,18 @@ func (st *State) feasible(u, s int) bool {
 		return false
 	}
 	// EXaHM exams may only go where enough EXaHM seats are booked; 0 booked means
-	// "not an EXaHM slot" (forbidden), unlike the global seat cap where 0 = unknown.
-	if p.Units[u].Exahm && st.slotExahm[s]+seats > p.Slots[s].ExahmSeats {
-		return false
+	// "not an EXaHM slot" (forbidden), unlike the global seat cap where 0 = unknown. The
+	// booked seats also have to cover any exam overrunning into s (slotExahmOverrun) and,
+	// if u has an extended Nachlauf, the later slots u itself keeps its rooms occupied into.
+	if p.Units[u].Exahm {
+		if st.slotExahm[s]+st.slotExahmOverrun[s]+seats > p.Slots[s].ExahmSeats {
+			return false
+		}
+		for _, t := range p.overrunTargets(u, s) {
+			if st.slotExahm[t]+st.slotExahmOverrun[t]+seats > p.Slots[t].ExahmSeats {
+				return false
+			}
+		}
 	}
 	return true
 }
@@ -362,13 +384,27 @@ func (st *State) canSwap(u, v int) bool {
 	if cap := p.Slots[su].Seats; cap > 0 && sv2 > cap {
 		return false
 	}
-	if p.Units[u].Exahm && st.slotExahm[sv]-boolSeats(p, v)+p.Units[u].Seats > p.Slots[sv].ExahmSeats {
+	// Swapping a unit whose extended Nachlauf overruns into other slots would have to move
+	// its overrun contribution as well; that bookkeeping is skipped for so rare a case (the
+	// fully overrun-aware relocate move still explores these units). Empty for all units on
+	// the ordinary turnaround, so default plans keep exploring every swap.
+	if p.mayOverrun(u) || p.mayOverrun(v) {
 		return false
 	}
-	if p.Units[v].Exahm && st.slotExahm[su]-boolSeats(p, u)+p.Units[v].Seats > p.Slots[su].ExahmSeats {
+	if p.Units[u].Exahm && st.slotExahm[sv]+st.slotExahmOverrun[sv]-boolSeats(p, v)+p.Units[u].Seats > p.Slots[sv].ExahmSeats {
+		return false
+	}
+	if p.Units[v].Exahm && st.slotExahm[su]+st.slotExahmOverrun[su]-boolSeats(p, u)+p.Units[v].Seats > p.Slots[su].ExahmSeats {
 		return false
 	}
 	return true
+}
+
+// mayOverrun reports whether unit u has an extended Nachlauf that overruns into a later
+// slot in at least one placement (i.e. carries overrun targets). False for every unit on
+// the ordinary turnaround.
+func (p *Problem) mayOverrun(u int) bool {
+	return p.overrun != nil && p.overrun[u] != nil
 }
 
 // boolSeats returns a unit's seats if it is an EXaHM exam, else 0 (its contribution
@@ -415,7 +451,7 @@ func (st *State) Cost() float64 {
 
 func (st *State) Snapshot() any {
 	return snapshot{
-		slotOf: cp(st.SlotOf), slotSeats: cp(st.slotSeats), slotOwn: cp(st.slotOwn), slotExahm: cp(st.slotExahm), slotSeb: cp(st.slotSeb),
+		slotOf: cp(st.SlotOf), slotSeats: cp(st.slotSeats), slotOwn: cp(st.slotOwn), slotExahm: cp(st.slotExahm), slotSeb: cp(st.slotSeb), slotExahmOverrun: cp(st.slotExahmOverrun),
 		pS: cpF(st.pS), spread: st.spreadTotal, attract: st.attractTotal, load: st.slotLoadTotal, fill: st.tbauFillTotal, hole: st.holeTotal, time: st.timeTotal, nUnplaced: st.nUnplaced,
 	}
 }
@@ -427,6 +463,7 @@ func (st *State) Restore(a any) {
 	copy(st.slotOwn, sn.slotOwn)
 	copy(st.slotExahm, sn.slotExahm)
 	copy(st.slotSeb, sn.slotSeb)
+	copy(st.slotExahmOverrun, sn.slotExahmOverrun)
 	copy(st.pS, sn.pS)
 	st.spreadTotal = sn.spread
 	st.attractTotal = sn.attract
@@ -438,10 +475,10 @@ func (st *State) Restore(a any) {
 }
 
 type snapshot struct {
-	slotOf, slotSeats, slotOwn, slotExahm, slotSeb []int
-	pS                                             []float64
-	spread, attract, load, fill, hole, time        float64
-	nUnplaced                                      int
+	slotOf, slotSeats, slotOwn, slotExahm, slotSeb, slotExahmOverrun []int
+	pS                                                               []float64
+	spread, attract, load, fill, hole, time                          float64
+	nUnplaced                                                        int
 }
 
 func cp(s []int) []int {

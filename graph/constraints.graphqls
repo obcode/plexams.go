@@ -44,6 +44,17 @@ type RoomConstraints {
   maxStudents: Int
   "extra seats to reserve on top of the registered students (capacity buffer)."
   additionalSeats: Int
+  """
+  Lead time (Vorlauf) in minutes the rooms must be free BEFORE this exam starts, as a
+  total that REPLACES the default 15 min (null = default). Used for setup that exceeds the
+  ordinary turnaround, e.g. an EXaHM exam in the T-building.
+  """
+  preExamMinutes: Int
+  """
+  Trailing time (Nachlauf) in minutes the rooms stay occupied AFTER this exam ends, total
+  that REPLACES the default 15 min (null = default).
+  """
+  postExamMinutes: Int
   comments: String
 }
 
@@ -67,5 +78,9 @@ input ConstraintsInput {
   kdpJiraURL: String
   maxStudents: Int
   additionalSeats: Int
+  "Lead time (Vorlauf) in minutes before the exam; total that replaces the default 15."
+  preExamMinutes: Int
+  "Trailing time (Nachlauf) in minutes after the exam; total that replaces the default 15."
+  postExamMinutes: Int
   comments: String
 }

@@ -180,7 +180,11 @@ type ConstraintsInput struct {
 	KdpJiraURL         *string `json:"kdpJiraURL,omitempty"`
 	MaxStudents        *int    `json:"maxStudents,omitempty"`
 	AdditionalSeats    *int    `json:"additionalSeats,omitempty"`
-	Comments           *string `json:"comments,omitempty"`
+	// Lead time (Vorlauf) in minutes before the exam; total that replaces the default 15.
+	PreExamMinutes *int `json:"preExamMinutes,omitempty"`
+	// Trailing time (Nachlauf) in minutes after the exam; total that replaces the default 15.
+	PostExamMinutes *int    `json:"postExamMinutes,omitempty"`
+	Comments        *string `json:"comments,omitempty"`
 }
 
 // CoverageReport: how many positions are filled.
@@ -952,7 +956,14 @@ type RoomConstraints struct {
 	KdpJiraURL       *string  `json:"kdpJiraURL,omitempty"`
 	MaxStudents      *int     `json:"maxStudents,omitempty"`
 	// extra seats to reserve on top of the registered students (capacity buffer).
-	AdditionalSeats *int    `json:"additionalSeats,omitempty"`
+	AdditionalSeats *int `json:"additionalSeats,omitempty"`
+	// Lead time (Vorlauf) in minutes the rooms must be free BEFORE this exam starts, as a
+	// total that REPLACES the default 15 min (null = default). Used for setup that exceeds the
+	// ordinary turnaround, e.g. an EXaHM exam in the T-building.
+	PreExamMinutes *int `json:"preExamMinutes,omitempty"`
+	// Trailing time (Nachlauf) in minutes the rooms stay occupied AFTER this exam ends, total
+	// that REPLACES the default 15 min (null = default).
+	PostExamMinutes *int    `json:"postExamMinutes,omitempty"`
 	Comments        *string `json:"comments,omitempty"`
 }
 

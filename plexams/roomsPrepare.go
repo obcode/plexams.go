@@ -122,12 +122,14 @@ func (p *Plexams) prepareRoomsCfg(ctx context.Context) (*rooms.Cfg, error) {
 	}
 
 	cfg := &rooms.Cfg{
-		RoomInfo:        roomInfo,
-		PrePlannedRooms: p.prePlannedRooms(ctx, roomInfo),
-		AdditionalSeats: p.additionalSeats(ctx),
-		BlockedRooms:    blockedRooms,
-		ExactSeatRooms:  make(map[int]map[string]bool),
-		RoomsForSlots:   roomsForSlots,
+		RoomInfo:              roomInfo,
+		PrePlannedRooms:       p.prePlannedRooms(ctx, roomInfo),
+		AdditionalSeats:       p.additionalSeats(ctx),
+		BlockedRooms:          blockedRooms,
+		ExactSeatRooms:        make(map[int]map[string]bool),
+		RoomsForSlots:         roomsForSlots,
+		SlotBlockMinutes:      int(slotBlockDuration(p.semesterConfig.Starttimes).Minutes()),
+		RoomTurnaroundMinutes: int(roomRequestBuffer.Minutes()),
 	}
 
 	log.Info().Interface("prePlannedRooms", cfg.PrePlannedRooms).Msg("prepareRoomsCfg initialized")

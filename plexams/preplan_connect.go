@@ -174,8 +174,15 @@ func (p *Plexams) syncPreplanGroupZPAConstraints(ctx context.Context, startID in
 		case "EXaHM":
 			input.Exahm = boolPtr(true)
 		}
-		if m.Constraints != nil && m.Constraints.RoomConstraints != nil && len(m.Constraints.RoomConstraints.AllowedRooms) > 0 {
-			input.AllowedRooms = m.Constraints.RoomConstraints.AllowedRooms
+		if m.Constraints != nil && m.Constraints.RoomConstraints != nil {
+			rc := m.Constraints.RoomConstraints
+			if len(rc.AllowedRooms) > 0 {
+				input.AllowedRooms = rc.AllowedRooms
+			}
+			// carry the extended Vorlauf/Nachlauf over to the ZPA exam, so the room
+			// buffers survive the pre-plan → ZPA transition.
+			input.PreExamMinutes = rc.PreExamMinutes
+			input.PostExamMinutes = rc.PostExamMinutes
 		}
 		sameSlot := make([]int, 0, len(connected)-1)
 		for _, other := range connected {

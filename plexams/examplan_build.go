@@ -450,6 +450,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	}
 	unitBaseDur := make(map[int]int)       // unit -> exam duration
 	ntaExt := make(map[int]map[string]int) // unit -> mtknr -> NTA-extended duration
+	unitPostMin := make(map[int]int)       // unit -> Nachlauf minutes (default 15, larger if extended)
 	for _, e := range assembled {
 		ui, ok := unitOf[e.Ancode]
 		if !ok || e.ZpaExam == nil {
@@ -457,6 +458,9 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		}
 		if e.ZpaExam.Duration > unitBaseDur[ui] {
 			unitBaseDur[ui] = e.ZpaExam.Duration
+		}
+		if _, post := roomBuffers(e.Constraints); int(post.Minutes()) > unitPostMin[ui] {
+			unitPostMin[ui] = int(post.Minutes())
 		}
 		for _, nta := range e.Ntas {
 			ext := e.ZpaExam.Duration * (100 + nta.DeltaDurationPercent) / 100
@@ -493,9 +497,42 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		}
 	}
 
+	// Room overrun (time-based): an EXaHM exam with an extended Nachlauf keeps its booked
+	// T-building rooms occupied past its own start time; the later slots whose exam window
+	// it reaches must count it against their booked EXaHM seats too. Compute, per such unit
+	// and candidate slot, the later same-day slots it overruns into, from the absolute slot
+	// start times (no slot-number arithmetic). Empty for every exam on the ordinary
+	// turnaround, so the solver's capacity check is unchanged for them.
+	turnaround := int(roomRequestBuffer.Minutes())
+	overrun := make(map[[2]int][]int)
+	for u := range units {
+		if !units[u].Exahm || unitPostMin[u] <= turnaround {
+			continue
+		}
+		holdAfterStart := unitBaseDur[u] + unitPostMin[u] // room occupied until start + this
+		for s := range slots {
+			var targets []int
+			for t := range slots {
+				if t == s || slots[t].Day != slots[s].Day {
+					continue
+				}
+				d := int(slots[t].Start.Sub(slots[s].Start).Minutes())
+				// t's exam needs the room from Start[t]-turnaround; u releases it at
+				// Start[s]+holdAfterStart. They compete iff the former is earlier.
+				if d > 0 && d-turnaround < holdAfterStart {
+					targets = append(targets, t)
+				}
+			}
+			if len(targets) > 0 {
+				overrun[[2]int{u, s}] = targets
+			}
+		}
+	}
+
 	prob := examplan.NewProblem(slots, units, students, attract, w)
 	prob.SetTimeSeverity(timeSeverity)
 	prob.SetHardSeparations(hardSep)
+	prob.SetOverrunTargets(overrun)
 	return prob, nil
 }
 

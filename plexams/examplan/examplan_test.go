@@ -142,6 +142,43 @@ func TestSolveRespectsExahmCapacity(t *testing.T) {
 	}
 }
 
+func TestOverrunConsumesNeighborExahmCapacity(t *testing.T) {
+	slots := oneDaySlots(3) // 08:30, 10:30, 12:30 same day
+	for i := range slots {
+		slots[i].ExahmSeats = 10 // all three fully booked for EXaHM
+	}
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 10, Exahm: true}, // extended Nachlauf: overruns idx0 -> idx1
+		{ID: 2, Ancodes: []int{2}, Seats: 10, Exahm: true},
+	}
+	p := NewProblem(slots, units, nil, nil, DefaultWeights())
+	p.SetOverrunTargets(map[[2]int][]int{{0, 0}: {1}}) // unit 0 in idx0 also occupies idx1
+
+	st := newState(p)
+	// unit 0 fits idx0 initially (its overrun target idx1 is still empty).
+	if !st.feasible(0, 0) {
+		t.Fatal("extended EXaHM exam must fit its own slot when the neighbour is free")
+	}
+	st.setPhysical(0, 0)
+
+	// unit 1 must NOT fit idx1: unit 0 overruns into it and consumes the 10 booked seats.
+	if st.feasible(1, 1) {
+		t.Error("a second EXaHM exam must not fit the slot the extended exam overruns into")
+	}
+	// but idx2 (no overrun) still has its full booking.
+	if !st.feasible(1, 2) {
+		t.Error("a non-overrun EXaHM slot must still be available")
+	}
+
+	// Control: without overrun targets the neighbour slot stays available (default behaviour).
+	p2 := NewProblem(slots, units, nil, nil, DefaultWeights())
+	st2 := newState(p2)
+	st2.setPhysical(0, 0)
+	if !st2.feasible(1, 1) {
+		t.Error("without an extended Nachlauf the neighbour slot must remain feasible (default unchanged)")
+	}
+}
+
 func TestSolveKeepsFixedAndAttracts(t *testing.T) {
 	// two parallel sections that should sit together; one is fixed to idx0.
 	units := []Unit{

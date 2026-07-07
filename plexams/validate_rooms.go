@@ -564,10 +564,20 @@ func (p *Plexams) ValidateRoomsTimeDistance(reporter Reporter) (*model.Validatio
 		return nil, err
 	}
 
+	constraintsMap, err := p.ConstraintsMap(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	// Collect, per room, the end time of each distinct start it is used at (the longest
 	// duration among the rows sharing that start). This is granularity-independent: it
-	// works for any start times, not just consecutive grid slots.
+	// works for any start times, not just consecutive grid slots. Alongside it we track
+	// the largest EXTRA Vorlauf/Nachlauf any exam at that start demands beyond the ordinary
+	// turnaround, so an exam that needs a bigger setup/teardown window widens the required
+	// gap to its neighbours (see roomBuffers; extra = requested total − default 15 min).
 	endByStart := make(map[string]map[time.Time]time.Time) // room -> start -> end
+	preExtraByStart := make(map[string]map[time.Time]time.Duration)
+	postExtraByStart := make(map[string]map[time.Time]time.Duration)
 	for _, pr := range plannedRooms {
 		if pr.Starttime == nil {
 			continue
@@ -576,9 +586,18 @@ func (p *Plexams) ValidateRoomsTimeDistance(reporter Reporter) (*model.Validatio
 		end := start.Add(time.Duration(pr.Duration) * time.Minute)
 		if endByStart[pr.RoomName] == nil {
 			endByStart[pr.RoomName] = make(map[time.Time]time.Time)
+			preExtraByStart[pr.RoomName] = make(map[time.Time]time.Duration)
+			postExtraByStart[pr.RoomName] = make(map[time.Time]time.Duration)
 		}
 		if cur, ok := endByStart[pr.RoomName][start]; !ok || end.After(cur) {
 			endByStart[pr.RoomName][start] = end
+		}
+		pre, post := roomBuffers(constraintsMap[pr.Ancode])
+		if e := pre - roomRequestBuffer; e > preExtraByStart[pr.RoomName][start] {
+			preExtraByStart[pr.RoomName][start] = e
+		}
+		if e := post - roomRequestBuffer; e > postExtraByStart[pr.RoomName][start] {
+			postExtraByStart[pr.RoomName][start] = e
 		}
 	}
 
@@ -591,20 +610,27 @@ func (p *Plexams) ValidateRoomsTimeDistance(reporter Reporter) (*model.Validatio
 	v.step("checking %d room(s) for enough turnaround time", len(roomNames))
 	lag := time.Duration(timelag) * time.Minute
 	for _, name := range roomNames {
-		type use struct{ start, end time.Time }
+		type use struct {
+			start, end          time.Time
+			preExtra, postExtra time.Duration
+		}
 		uses := make([]use, 0, len(endByStart[name]))
 		for s, e := range endByStart[name] {
-			uses = append(uses, use{s, e})
+			uses = append(uses, use{s, e, preExtraByStart[name][s], postExtraByStart[name][s]})
 		}
 		sort.Slice(uses, func(i, j int) bool { return uses[i].start.Before(uses[j].start) })
 		for i := 1; i < len(uses); i++ {
 			prev, cur := uses[i-1], uses[i]
-			if cur.start.Before(prev.end.Add(lag)) {
+			// required gap = ordinary turnaround + the previous exam's extra teardown +
+			// this exam's extra setup (both 0 for exams on the default 15-min buffer, so
+			// default plans are unaffected).
+			required := lag + prev.postExtra + cur.preExtra
+			if cur.start.Before(prev.end.Add(required)) {
 				day, slot := p.SlotForTime(cur.start)
 				v.errorf(ref{Room: ptr(name), Day: ptr(day), Slot: ptr(slot)},
-					"Zu wenig Zeit in Raum %s: vorige Prüfung endet %s, nächste beginnt %s (%g Min dazwischen, benötigt %d)",
+					"Zu wenig Zeit in Raum %s: vorige Prüfung endet %s, nächste beginnt %s (%g Min dazwischen, benötigt %g)",
 					name, prev.end.Format("02.01. 15:04"), cur.start.Format("02.01. 15:04"),
-					cur.start.Sub(prev.end).Minutes(), timelag)
+					cur.start.Sub(prev.end).Minutes(), required.Minutes())
 			}
 		}
 	}

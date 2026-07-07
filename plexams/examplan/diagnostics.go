@@ -36,14 +36,13 @@ func (p *Problem) bucket(a, b int) int {
 	if a == b {
 		return 0 // same slot
 	}
-	sa, sb := p.Slots[a].SlotRef, p.Slots[b].SlotRef
-	if sa.Day == sb.Day {
-		if abs(sa.Slot-sb.Slot) == 1 {
+	if p.dayOfSlot[a] == p.dayOfSlot[b] {
+		if abs(p.slotDayPos[a]-p.slotDayPos[b]) == 1 {
 			return 1 // adjacent
 		}
 		return 2 // same day
 	}
-	switch d := calDays(sa.Start, sb.Start); {
+	switch d := calDays(p.Slots[a].Start, p.Slots[b].Start); {
 	case d == 1:
 		return 3
 	case d <= 3:

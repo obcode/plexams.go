@@ -205,10 +205,15 @@ type Problem struct {
 	unitStudents [][]int        // unit -> student indices that have a pair with it
 	unitAttract  [][]attractRef // unit -> its attract partners
 	targetLoad   float64        // ideal seats per slot = total seats / number of slots
-	// day grouping for the interior-hole penalty: days[d] is the slot indices of one
-	// exam day, sorted by slot number; dayOfSlot maps a slot index back to its day group.
-	days      [][]int
-	dayOfSlot []int
+	// day grouping for the interior-hole and same-day penalties, derived purely from each
+	// slot's absolute Start time (no slot-ordinal input): days[d] is the slot indices of
+	// one calendar day, sorted chronologically; dayOfSlot maps a slot index back to its day
+	// group, and slotDayPos to its 0-based position within that day (chronological). Two
+	// slots are "directly consecutive" iff their positions differ by 1 — the granularity-
+	// independent replacement for the former SlotNumber±1 test.
+	days       [][]int
+	dayOfSlot  []int
+	slotDayPos []int
 }
 
 type attractRef struct {
@@ -270,25 +275,28 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 		p.unitAttract[ap.B] = append(p.unitAttract[ap.B], attractRef{ap.A, ap.Weight})
 	}
 
-	// day grouping (for the interior-hole penalty): collect slot indices per exam day,
-	// each sorted by slot number, days themselves in ascending day order.
+	// day grouping (for the interior-hole and same-day penalties): collect slot indices per
+	// CALENDAR day derived from each slot's Start (no slot-ordinal input), each sorted
+	// chronologically, days themselves in ascending date order.
 	byDay := make(map[int][]int)
-	dayNums := make([]int, 0)
+	dayKeys := make([]int, 0)
 	for i := range p.Slots {
-		d := p.Slots[i].Day
+		d := dayKey(p.Slots[i].Start)
 		if _, ok := byDay[d]; !ok {
-			dayNums = append(dayNums, d)
+			dayKeys = append(dayKeys, d)
 		}
 		byDay[d] = append(byDay[d], i)
 	}
-	sort.Ints(dayNums)
+	sort.Ints(dayKeys)
 	p.dayOfSlot = make([]int, len(p.Slots))
-	p.days = make([][]int, 0, len(dayNums))
-	for di, d := range dayNums {
+	p.slotDayPos = make([]int, len(p.Slots))
+	p.days = make([][]int, 0, len(dayKeys))
+	for di, d := range dayKeys {
 		slots := byDay[d]
-		sort.Slice(slots, func(a, b int) bool { return p.Slots[slots[a]].Slot < p.Slots[slots[b]].Slot })
-		for _, s := range slots {
+		sort.Slice(slots, func(a, b int) bool { return p.Slots[slots[a]].Start.Before(p.Slots[slots[b]].Start) })
+		for pos, s := range slots {
 			p.dayOfSlot[s] = di
+			p.slotDayPos[s] = pos
 		}
 		p.days = append(p.days, slots)
 	}
@@ -418,14 +426,13 @@ func (p *Problem) allows(u, s int) bool {
 // (in hours), so an exam at 16:30 followed by one the next morning at 08:30 (16 h) costs
 // more than 08:30 → next 16:30 (32 h), and a weekend gap (many hours) is naturally cheap.
 func (p *Problem) closeness(a, b int) float64 {
-	sa, sb := p.Slots[a].SlotRef, p.Slots[b].SlotRef
-	if sa.Day == sb.Day {
-		if abs(sa.Slot-sb.Slot) == 1 {
+	if p.dayOfSlot[a] == p.dayOfSlot[b] {
+		if abs(p.slotDayPos[a]-p.slotDayPos[b]) == 1 {
 			return p.W.Adjacent
 		}
 		return p.W.SameDay
 	}
-	hours := math.Abs(sa.Start.Sub(sb.Start).Hours())
+	hours := math.Abs(p.Slots[a].Start.Sub(p.Slots[b].Start).Hours())
 	if hours < 1 {
 		hours = 1
 	}
@@ -438,11 +445,17 @@ func (p *Problem) farness(a, b int) float64 {
 	if a == b {
 		return 0
 	}
-	sa, sb := p.Slots[a].SlotRef, p.Slots[b].SlotRef
-	if sa.Day == sb.Day {
-		return p.W.Attract * float64(abs(sa.Slot-sb.Slot))
+	if p.dayOfSlot[a] == p.dayOfSlot[b] {
+		return p.W.Attract * float64(abs(p.slotDayPos[a]-p.slotDayPos[b]))
 	}
-	return p.W.Attract * float64(calDays(sa.Start, sb.Start)+5) // different day: at least beyond any intra-day distance
+	return p.W.Attract * float64(calDays(p.Slots[a].Start, p.Slots[b].Start)+5) // different day: at least beyond any intra-day distance
+}
+
+// dayKey maps an absolute time to a calendar-day ordinal (YYYYMMDD in local time) used
+// to group slots into exam days without any slot-number input.
+func dayKey(t time.Time) int {
+	y, m, d := t.Date()
+	return y*10000 + int(m)*100 + d
 }
 
 func calDays(a, b time.Time) int {

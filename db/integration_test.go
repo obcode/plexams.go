@@ -142,6 +142,45 @@ func TestInvigilationStarttimeDecoration(t *testing.T) {
 
 func ptr(s string) *string { return &s }
 
+// TestStarttimeDecodedInLocalZone guards the MongoDB decode-timezone setting
+// (SetBSONOptions UseLocalTimeZone: true in NewDB). BSON stores datetimes as
+// UTC; without that option the driver would hand them back in UTC, and the
+// GraphQL layer would then serve them with a trailing "Z" — breaking the
+// frontend's slot derivation and plannedStarttime===slot.starttime matching.
+//
+// The existing decoration tests compare with time.Time.Equal, which is
+// instant-based and passes regardless of zone, so they do NOT catch this. Here
+// we pin time.Local to Berlin (as main.go does in production) and assert the
+// round-tripped value serializes with a Berlin offset, not Z.
+func TestStarttimeDecodedInLocalZone(t *testing.T) {
+	berlin, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatalf("load Europe/Berlin: %v", err)
+	}
+	orig := time.Local
+	time.Local = berlin
+	defer func() { time.Local = orig }()
+
+	d := mongotest.NewDB(t)
+	ctx := context.Background()
+
+	st := time.Date(2026, 2, 2, 8, 30, 0, 0, berlin) // winter -> +01:00
+	if _, err := d.AddExamToSlot(ctx, &model.PlanEntry{Ancode: 7, Starttime: &st}); err != nil {
+		t.Fatal(err)
+	}
+	pe, err := d.PlanEntry(ctx, 7)
+	if err != nil || pe == nil || pe.Starttime == nil {
+		t.Fatalf("PlanEntry: %v (pe=%v)", err, pe)
+	}
+
+	want := marshalGQLTime(st)
+	got := marshalGQLTime(*pe.Starttime)
+	if got != want {
+		t.Fatalf("round-tripped starttime serializes as %q, want %q; "+
+			"MongoDB UseLocalTimeZone decode option likely dropped", got, want)
+	}
+}
+
 // TestResetGeneratedPlanEntries locks the reset semantics: only generated placements are
 // removed; manual locks, external / not-planned-by-me and phase-fixed entries survive.
 func TestResetGeneratedPlanEntries(t *testing.T) {

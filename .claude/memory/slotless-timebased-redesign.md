@@ -91,6 +91,24 @@ capacity; eventual full removal of day/slot from GraphQL/GUI.
   buggy len(Days)-1 guard). Granularity-independent → shortening start times stays correct
   on the room side. Remaining finer-grid caveat: anny coverage still uses the slot block
   as exam-length proxy (needs per-exam duration when granularity < exam length).
+- **D (de-slot API) part 1+2 DONE** (on main): removed day/slot OUTPUT fields from
+  PlanEntry/PlannedRoom/UnplacedExam/BlockedRoom/PrePlannedInvigilation (all expose
+  starttime); converted plan/room/invigilation in-slot QUERIES + block/pre-plan MUTATIONS
+  to `starttime: Time!` (resolvers convert via SlotForTime); renamed examsInSlot→examsAt,
+  plannedRoomsInSlot→plannedRoomsAt, roomsForSlot→roomsAt, roomsWithFreeSeatsForSlot→
+  roomsWithFreeSeatsAt, roomsWithInvigilationsForSlot→roomsWithInvigilationsAt,
+  blockRoomForSlot(s)→blockRoomAt/blockRoomAtTimes, prePlanInvigilationInSlot→
+  prePlanInvigilationAt; invigilatorsForDay/invigilator take date/starttime; SlotInput
+  removed; RoomsForSlot gains starttime. Added Plexams.DayNumberForDate. Internal
+  (day,slot) grid unchanged (model structs keep derived Day/Slot). GUI must switch these.
+- **D COMPLETE** (on main): remainder done — preplan (setPreplanExamTime,
+  PreplanExam.plannedStarttime, PreplanSlotNeed de-slotted), room_request (RoomRequest/
+  Preview expose starttime, mutations take starttime; both models hand-written to keep
+  Day/Slot as the db key), ValidationFinding.day/slot→starttime (central conversion in
+  validation.add; newValidation takes p.TimeForSlot), Slot type → {starttime} (model.Slot
+  hand-written; internal DayNumber/SlotNumber kept). ExamDay.number/Starttime.number remain
+  as grid ordinals. GraphQL API fully time-based; day/slot only inside Go. Timezone verified:
+  backend emits Berlin local offsets (never UTC Z).
 - Remaining Stufe 2: **A2** soft closeness → pure time-distance (recalibration of tuned
   Weights Adjacent/SameDay/DayFactor; judgment + real-data) + diagnostics bucket time-based;
   **C** capacity per time window in the solver (Slot.Seats currently 0=unlimited) so

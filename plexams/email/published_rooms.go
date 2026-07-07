@@ -108,14 +108,12 @@ func roomAllocations(exam *model.PlannedExam, roomName string) []string {
 // to all exams placed there (pre-fetched by the caller); examerShort resolves an exam to its
 // examer's short name; slotTime resolves a plan entry to its start.
 func BuildPublishedRoomsExam(exam *model.PlannedExam,
-	examsInSlot map[[2]int][]*model.PlannedExam, examerShort func(*model.PlannedExam) string,
-	slotTime func(day, slot int) time.Time,
+	examsInSlot map[time.Time][]*model.PlannedExam, examerShort func(*model.PlannedExam) string,
 ) *PublishedRoomsExam {
-	if exam.PlanEntry == nil {
+	if exam.PlanEntry == nil || exam.PlanEntry.Starttime == nil {
 		return nil
 	}
-	day, slot := exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber
-	start := slotTime(day, slot)
+	start := *exam.PlanEntry.Starttime
 
 	// room names of this exam, first-seen order
 	order := make([]string, 0)
@@ -135,7 +133,7 @@ func BuildPublishedRoomsExam(exam *model.PlannedExam,
 	for _, name := range order {
 		// co-usage: other exams (grouped) with seat blocks in the same room.
 		shared := make([]*PublishedRoomsShared, 0)
-		for _, other := range examsInSlot[[2]int{day, slot}] {
+		for _, other := range examsInSlot[start] {
 			if other.Ancode == exam.Ancode {
 				continue
 			}

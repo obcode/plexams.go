@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -11,15 +12,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (db *DB) GetInvigilatorInSlot(ctx context.Context, roomname string, day, slot int) (*model.Teacher, error) {
-	invigilations, err := db.GetInvigilationInSlot(ctx, roomname, day, slot)
+func (db *DB) GetInvigilatorAt(ctx context.Context, roomname string, starttime time.Time) (*model.Teacher, error) {
+	invigilations, err := db.GetInvigilationsAt(ctx, roomname, starttime)
 	if err != nil {
-		log.Error().Err(err).Str("room", roomname).Int("day", day).Int("slot", slot).Msg("cannot get invigilations")
+		log.Error().Err(err).Str("room", roomname).Time("starttime", starttime).Msg("cannot get invigilations")
 		return nil, err
 	}
 
 	if len(invigilations) > 1 {
-		log.Error().Str("room", roomname).Int("day", day).Int("slot", slot).
+		log.Error().Str("room", roomname).Time("starttime", starttime).
 			Interface("invigilations", invigilations).
 			Msg("found more than one invigilation")
 		return nil, fmt.Errorf("found more than one invigilation")
@@ -31,29 +32,24 @@ func (db *DB) GetInvigilatorInSlot(ctx context.Context, roomname string, day, sl
 	return db.GetTeacher(ctx, invigilations[0].InvigilatorID)
 }
 
-func (db *DB) GetInvigilationInSlot(ctx context.Context, roomname string, day, slot int) ([]*model.Invigilation, error) {
-	invigilations, err := db.getInvigilationInSlot(ctx, collectionSelfInvigilations, roomname, day, slot)
+func (db *DB) GetInvigilationsAt(ctx context.Context, roomname string, starttime time.Time) ([]*model.Invigilation, error) {
+	invigilations, err := db.getInvigilationsAt(ctx, collectionSelfInvigilations, roomname, starttime)
 	if err != nil {
-		log.Error().Err(err).Str("room", roomname).Int("day", day).Int("slot", slot).Msg("cannot get self invigilations")
+		log.Error().Err(err).Str("room", roomname).Time("starttime", starttime).Msg("cannot get self invigilations")
 		return nil, err
 	}
 
-	other, err := db.getInvigilationInSlot(ctx, collectionOtherInvigilations, roomname, day, slot)
+	other, err := db.getInvigilationsAt(ctx, collectionOtherInvigilations, roomname, starttime)
 	if err != nil {
-		log.Error().Err(err).Str("room", roomname).Int("day", day).Int("slot", slot).Msg("cannot get other invigilations")
+		log.Error().Err(err).Str("room", roomname).Time("starttime", starttime).Msg("cannot get other invigilations")
 		return nil, err
 	}
 
 	return append(invigilations, other...), nil
 }
 
-func (db *DB) getInvigilationInSlot(ctx context.Context, collectionName, roomname string, day, slot int) ([]*model.Invigilation, error) {
+func (db *DB) getInvigilationsAt(ctx context.Context, collectionName, roomname string, starttime time.Time) ([]*model.Invigilation, error) {
 	collection := db.getCollectionSemester(collectionName)
-
-	starttime, ok := db.timeForSlot(day, slot)
-	if !ok {
-		return make([]*model.Invigilation, 0), nil
-	}
 
 	var filter primitive.M
 	if roomname == "reserve" {
@@ -190,18 +186,13 @@ func (db *DB) GetOtherInvigilations(ctx context.Context) ([]*model.Invigilation,
 	return invigilations, nil
 }
 
-func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invigilatorID int) error {
+func (db *DB) AddInvigilationAt(ctx context.Context, room string, starttime time.Time, invigilatorID int) error {
 	collection := db.getCollectionSemester(collectionOtherInvigilations)
-
-	starttime, ok := db.timeForSlot(day, slot)
-	if !ok {
-		return fmt.Errorf("slot (%d,%d) does not exist", day, slot)
-	}
 
 	var filter primitive.M
 	// default is reserve: its duration is the slot's longest invigilation (not
 	// the credited 60 min, which is applied in PrepareInvigilationTodos).
-	duration := db.getMaxDurationInSlot(ctx, day, slot)
+	duration := db.getMaxDurationAt(ctx, starttime)
 	isReserve := true
 	var roomname *string
 	if room == "reserve" {
@@ -220,7 +211,7 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 				{"starttime": starttime},
 			},
 		}
-		duration = db.getMaxDurationForRoomInSlot(ctx, room, day, slot)
+		duration = db.getMaxDurationForRoomAt(ctx, room, starttime)
 		isReserve = false
 		roomname = &room
 	}
@@ -239,7 +230,7 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 		opts)
 
 	if err != nil {
-		log.Error().Err(err).Str("room", room).Int("day", day).Int("slot", slot).Int("invigilator-id", invigilatorID).
+		log.Error().Err(err).Str("room", room).Time("starttime", starttime).Int("invigilator-id", invigilatorID).
 			Msg("cannot add  invigilation")
 		return err
 	}
@@ -247,15 +238,11 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 	return nil
 }
 
-// SetInvigilationPrePlanned sets the prePlanned flag on the invigilation for a
-// room (roomName != nil) or the reserve (roomName == nil) in a slot in the
+// SetInvigilationPrePlannedAt sets the prePlanned flag on the invigilation for a
+// room (roomName != nil) or the reserve (roomName == nil) at a start time in the
 // invigilations_other collection.
-func (db *DB) SetInvigilationPrePlanned(ctx context.Context, day, slot int, roomName *string, prePlanned bool) error {
+func (db *DB) SetInvigilationPrePlannedAt(ctx context.Context, starttime time.Time, roomName *string, prePlanned bool) error {
 	collection := db.getCollectionSemester(collectionOtherInvigilations)
-	starttime, ok := db.timeForSlot(day, slot)
-	if !ok {
-		return fmt.Errorf("slot (%d,%d) does not exist", day, slot)
-	}
 	filter := bson.M{
 		"roomname":  roomName,
 		"isreserve": roomName == nil,
@@ -263,19 +250,19 @@ func (db *DB) SetInvigilationPrePlanned(ctx context.Context, day, slot int, room
 	}
 	res, err := collection.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"preplanned": prePlanned}})
 	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot set prePlanned on invigilation")
+		log.Error().Err(err).Time("starttime", starttime).Msg("cannot set prePlanned on invigilation")
 		return err
 	}
 	if res.MatchedCount == 0 {
-		return fmt.Errorf("no invigilation found to mark as pre-planned in slot (%d,%d)", day, slot)
+		return fmt.Errorf("no invigilation found to mark as pre-planned at %s", starttime.Format("02.01. 15:04"))
 	}
 	return nil
 }
 
-func (db *DB) getMaxDurationForRoomInSlot(ctx context.Context, roomname string, day, slot int) int {
+func (db *DB) getMaxDurationForRoomAt(ctx context.Context, roomname string, starttime time.Time) int {
 	maxDuration := 0
 
-	examsInSlot, _ := db.ExamsInSlot(ctx, day, slot)
+	examsInSlot, _ := db.ExamsAt(ctx, starttime)
 	for _, exam := range examsInSlot {
 		for _, room := range exam.PlannedRooms {
 			if roomname == room.RoomName && maxDuration < room.Duration {
@@ -287,12 +274,12 @@ func (db *DB) getMaxDurationForRoomInSlot(ctx context.Context, roomname string, 
 	return maxDuration
 }
 
-// getMaxDurationInSlot returns the longest invigilation (room duration) across
-// all rooms in the slot, used as the time block for a reserve invigilation.
-func (db *DB) getMaxDurationInSlot(ctx context.Context, day, slot int) int {
+// getMaxDurationAt returns the longest invigilation (room duration) across
+// all rooms at the start time, used as the time block for a reserve invigilation.
+func (db *DB) getMaxDurationAt(ctx context.Context, starttime time.Time) int {
 	maxDuration := 0
 
-	examsInSlot, _ := db.ExamsInSlot(ctx, day, slot)
+	examsInSlot, _ := db.ExamsAt(ctx, starttime)
 	for _, exam := range examsInSlot {
 		for _, room := range exam.PlannedRooms {
 			if maxDuration < room.Duration {
@@ -320,9 +307,6 @@ func (db *DB) PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedI
 		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).Msg("Cannot decode to pre planned invigilations")
 		return nil, err
 	}
-	for _, ppi := range invigilations {
-		db.decoratePrePlannedInvigilation(ppi)
-	}
 
 	return invigilations, nil
 }
@@ -343,21 +327,17 @@ func (db *DB) PrePlannedInvigilationsForInvigilator(ctx context.Context, invigil
 		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).Msg("Cannot decode to pre planned invigilations")
 		return nil, err
 	}
-	for _, ppi := range invigilations {
-		db.decoratePrePlannedInvigilation(ppi)
-	}
 
 	return invigilations, nil
 }
 
 func (db *DB) AddPrePlannedInvigilation(ctx context.Context, prePlannedInvigilation *model.PrePlannedInvigilation) (bool, error) {
 	collection := db.getCollectionSemester(collectionInvigilationsPrePlanned)
-	// The absolute start time is the source of truth; day/slot are derived on read.
-	starttime, ok := db.timeForSlot(prePlannedInvigilation.Day, prePlannedInvigilation.Slot)
-	if !ok {
-		return false, fmt.Errorf("slot (%d,%d) does not exist", prePlannedInvigilation.Day, prePlannedInvigilation.Slot)
+	// The absolute start time is the source of truth; the caller sets it.
+	if prePlannedInvigilation.Starttime == nil {
+		return false, fmt.Errorf("pre-planned invigilation has no start time")
 	}
-	prePlannedInvigilation.Starttime = &starttime
+	starttime := *prePlannedInvigilation.Starttime
 	// Only one invigilator per room (or reserve) at a time: delete any existing
 	// document with the same start time and room before inserting the new one.
 	filter := bson.M{
@@ -367,7 +347,7 @@ func (db *DB) AddPrePlannedInvigilation(ctx context.Context, prePlannedInvigilat
 	_, err := collection.DeleteOne(ctx, filter)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).
-			Int("day", prePlannedInvigilation.Day).Int("slot", prePlannedInvigilation.Slot).
+			Time("starttime", starttime).
 			Interface("roomname", prePlannedInvigilation.RoomName).
 			Msg("cannot delete existing pre planned invigilation")
 		return false, err
@@ -375,7 +355,7 @@ func (db *DB) AddPrePlannedInvigilation(ctx context.Context, prePlannedInvigilat
 	_, err = collection.InsertOne(ctx, prePlannedInvigilation)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).
-			Int("day", prePlannedInvigilation.Day).Int("slot", prePlannedInvigilation.Slot).
+			Time("starttime", starttime).
 			Int("invigilator-id", prePlannedInvigilation.InvigilatorID).
 			Msg("cannot insert pre planned invigilation")
 		return false, err
@@ -395,15 +375,11 @@ func (db *DB) ResetGeneratedInvigilations(ctx context.Context) error {
 	return nil
 }
 
-// RemovePrePlannedInvigilation deletes a pre-planned invigilation (key:
-// day/slot/roomName; roomName nil = the reserve). It reports whether a document
+// RemovePrePlannedInvigilationAt deletes a pre-planned invigilation (key:
+// starttime/roomName; roomName nil = the reserve). It reports whether a document
 // was actually removed.
-func (db *DB) RemovePrePlannedInvigilation(ctx context.Context, day, slot int, roomName *string) (bool, error) {
+func (db *DB) RemovePrePlannedInvigilationAt(ctx context.Context, starttime time.Time, roomName *string) (bool, error) {
 	collection := db.getCollectionSemester(collectionInvigilationsPrePlanned)
-	starttime, ok := db.timeForSlot(day, slot)
-	if !ok {
-		return false, fmt.Errorf("slot (%d,%d) does not exist", day, slot)
-	}
 	filter := bson.M{
 		"starttime": starttime,
 		"roomname":  roomName,
@@ -411,7 +387,7 @@ func (db *DB) RemovePrePlannedInvigilation(ctx context.Context, day, slot int, r
 	res, err := collection.DeleteOne(ctx, filter)
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).
-			Int("day", day).Int("slot", slot).Interface("roomname", roomName).
+			Time("starttime", starttime).Interface("roomname", roomName).
 			Msg("cannot delete pre planned invigilation")
 		return false, err
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -13,97 +12,24 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-// SlotResolver converts between an absolute start time and our slot grid. It is
-// provided by the plexams layer (which owns the semester config) so the db layer can
-// derive a plan entry's DayNumber/SlotNumber from its persisted Starttime on read,
-// and translate a (day, slot) filter into the matching start time.
-type SlotResolver interface {
-	// SlotForTime returns the (dayNumber, slotNumber) of the slot the given time
-	// falls on, or (0, 0) when it matches no slot (e.g. outside the exam period).
-	SlotForTime(t time.Time) (day, slot int)
-	// TimeForSlot returns the start time of the given (dayNumber, slotNumber), and
-	// false when there is no such slot.
-	TimeForSlot(day, slot int) (time.Time, bool)
-}
-
 type DB struct {
 	Client       *mongo.Client
 	uri          string
 	semester     string
 	databaseName string
-	// slotResolver derives plan-entry day/slot numbers from the persisted Starttime
-	// and vice versa; set by the plexams layer after the semester config is loaded.
-	slotResolver SlotResolver
 	// todosMu serializes the drop+insert in CacheInvigilatorTodos so concurrent
 	// callers (e.g. parallel validation subscriptions) cannot interleave their
 	// drops and inserts and leave more than one todos document behind.
 	todosMu sync.Mutex
 }
 
-// SetSlotResolver installs the slot resolver used to derive plan-entry day/slot
-// numbers from their persisted start time. Called after the semester config is
-// (re-)derived.
-func (db *DB) SetSlotResolver(r SlotResolver) {
-	db.slotResolver = r
-}
-
-// timeForSlot resolves a (day, slot) to its start time via the slot resolver.
-func (db *DB) timeForSlot(day, slot int) (time.Time, bool) {
-	if db.slotResolver == nil {
-		return time.Time{}, false
-	}
-	return db.slotResolver.TimeForSlot(day, slot)
-}
-
-// decoratePlanEntry fills the derived DayNumber/SlotNumber from the persisted
-// Starttime using the slot resolver (no-op when unset or unplanned).
-func (db *DB) decoratePlanEntry(pe *model.PlanEntry) {
-	if pe == nil || pe.Starttime == nil || db.slotResolver == nil {
-		return
-	}
-	pe.DayNumber, pe.SlotNumber = db.slotResolver.SlotForTime(*pe.Starttime)
-}
-
-// decoratePlannedRoom fills the derived Day/Slot from the persisted Starttime.
-func (db *DB) decoratePlannedRoom(pr *model.PlannedRoom) {
-	if pr == nil || pr.Starttime == nil || db.slotResolver == nil {
-		return
-	}
-	pr.Day, pr.Slot = db.slotResolver.SlotForTime(*pr.Starttime)
-}
-
-// decorateUnplacedExam fills the derived Day/Slot from the persisted Starttime.
-func (db *DB) decorateUnplacedExam(ue *model.UnplacedExam) {
-	if ue == nil || ue.Starttime == nil || db.slotResolver == nil {
-		return
-	}
-	ue.Day, ue.Slot = db.slotResolver.SlotForTime(*ue.Starttime)
-}
-
-// decorateBlockedRoom fills the derived Day/Slot from the persisted Starttime.
-func (db *DB) decorateBlockedRoom(br *model.BlockedRoom) {
-	if br == nil || br.Starttime == nil || db.slotResolver == nil {
-		return
-	}
-	br.Day, br.Slot = db.slotResolver.SlotForTime(*br.Starttime)
-}
-
-// decorateInvigilation rebuilds the derived Slot (day/slot + start time) from the
-// persisted Starttime.
+// decorateInvigilation wraps the persisted Starttime in the Slot the API exposes
+// (the absolute start time is the sole coordinate).
 func (db *DB) decorateInvigilation(inv *model.Invigilation) {
-	if inv == nil || inv.Starttime == nil || db.slotResolver == nil {
+	if inv == nil || inv.Starttime == nil {
 		return
 	}
-	d, s := db.slotResolver.SlotForTime(*inv.Starttime)
-	inv.Slot = &model.Slot{DayNumber: d, SlotNumber: s, Starttime: *inv.Starttime}
-}
-
-// decoratePrePlannedInvigilation fills the derived Day/Slot from the persisted Starttime.
-func (db *DB) decoratePrePlannedInvigilation(ppi *model.PrePlannedInvigilation) {
-	if ppi == nil || ppi.Starttime == nil || db.slotResolver == nil {
-		return
-	}
-	ppi.Day, ppi.Slot = db.slotResolver.SlotForTime(*ppi.Starttime)
+	inv.Slot = &model.Slot{Starttime: *inv.Starttime}
 }
 
 func NewDB(uri, semester string, dbName *string) (*DB, error) {

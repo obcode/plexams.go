@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -11,8 +12,8 @@ import (
 // RoomsWithFreeSeatsForSlot returns, for every room allowed in the slot, its
 // capacity, how many seats are already used, the free seats and which exams use
 // it — so the GUI can offer a (partly used) room for sharing, e.g. as a reserve.
-func (p *Plexams) RoomsWithFreeSeatsForSlot(ctx context.Context, day, time int) ([]*model.RoomWithFreeSeats, error) {
-	slotRooms, err := p.RoomsForSlot(ctx, day, time)
+func (p *Plexams) RoomsWithFreeSeatsForSlot(ctx context.Context, starttime time.Time) ([]*model.RoomWithFreeSeats, error) {
+	slotRooms, err := p.RoomsForSlot(ctx, starttime)
 	if err != nil {
 		return nil, err
 	}
@@ -20,7 +21,7 @@ func (p *Plexams) RoomsWithFreeSeatsForSlot(ctx context.Context, day, time int) 
 		return []*model.RoomWithFreeSeats{}, nil
 	}
 
-	plannedRooms, err := p.PlannedRoomsInSlot(ctx, day, time)
+	plannedRooms, err := p.PlannedRoomsInSlot(ctx, starttime)
 	if err != nil {
 		return nil, err
 	}

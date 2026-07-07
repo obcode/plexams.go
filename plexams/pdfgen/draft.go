@@ -56,7 +56,7 @@ func draftRow(m pdf.Maroto, height float64, style consts.Style, text string) {
 // Termin) sorted by ancode. For an exam with a Primuss section in this program the
 // section's ancode is used; a section with no registrations stops the listing (matching
 // the original behaviour). slotTime resolves a plan entry's (day, slot) to its start.
-func ProgramRows(exams []*model.PlannedExam, program string, slotTime func(day, slot int) time.Time) [][]string {
+func ProgramRows(exams []*model.PlannedExam, program string) [][]string {
 	contentsMap := make(map[int][]string)
 	ancodes := make([]int, 0, len(exams))
 
@@ -74,8 +74,8 @@ OUTER:
 		ancodes = append(ancodes, ancode)
 
 		termin := "fehlt noch"
-		if exam.PlanEntry != nil {
-			termin = FormatTermin(slotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber))
+		if exam.PlanEntry != nil && exam.PlanEntry.Starttime != nil {
+			termin = FormatTermin(*exam.PlanEntry.Starttime)
 		}
 		contentsMap[ancode] = []string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer, termin}
 	}
@@ -110,7 +110,7 @@ func ProgramTable(m pdf.Maroto, programLong string, rows [][]string) {
 // ExamRows builds the simple (AnCode, Modul, Prüfender, Termin) draft table rows sorted
 // by ancode. An exam without a plan entry shows "fehlt noch"; slotTime resolves a plan
 // entry's (day, slot) to its start. Used by the special-interest / LBA-repeater drafts.
-func ExamRows(exams []*model.PlannedExam, slotTime func(day, slot int) time.Time) [][]string {
+func ExamRows(exams []*model.PlannedExam) [][]string {
 	examsMap := make(map[int]*model.PlannedExam)
 	ancodes := make([]int, 0, len(exams))
 	for _, exam := range exams {
@@ -123,8 +123,8 @@ func ExamRows(exams []*model.PlannedExam, slotTime func(day, slot int) time.Time
 	for _, ancode := range ancodes {
 		exam := examsMap[ancode]
 		termin := "fehlt noch"
-		if exam.PlanEntry != nil {
-			termin = FormatTermin(slotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber))
+		if exam.PlanEntry != nil && exam.PlanEntry.Starttime != nil {
+			termin = FormatTermin(*exam.PlanEntry.Starttime)
 		}
 		contents = append(contents, []string{strconv.Itoa(ancode), exam.ZpaExam.Module, exam.ZpaExam.MainExamer, termin})
 	}
@@ -164,23 +164,21 @@ func ExahmHeading(sortByDate bool) string {
 // prePlannedRooms maps an ancode to its pre-planned room names, used only when the exam
 // has no planned rooms yet. Every exam must already carry non-nil Constraints.RoomConstraints
 // (the caller filters to EXaHM/SEB exams).
-func ExahmRows(exams []*model.PlannedExam, sortByDate bool, slotTime func(day, slot int) time.Time,
+func ExahmRows(exams []*model.PlannedExam, sortByDate bool,
 	prePlannedRooms map[int][]string) [][]string {
 	sorted := make([]*model.PlannedExam, len(exams))
 	copy(sorted, exams)
 	if sortByDate {
 		sort.Slice(sorted, func(i, j int) bool {
-			if sorted[i].PlanEntry == nil {
+			si, sj := sorted[i].PlanEntry, sorted[j].PlanEntry
+			if si == nil || si.Starttime == nil {
 				return false
 			}
-			if sorted[j].PlanEntry == nil {
+			if sj == nil || sj.Starttime == nil {
 				return true
 			}
-			if sorted[i].PlanEntry.DayNumber != sorted[j].PlanEntry.DayNumber {
-				return sorted[i].PlanEntry.DayNumber < sorted[j].PlanEntry.DayNumber
-			}
-			if sorted[i].PlanEntry.SlotNumber != sorted[j].PlanEntry.SlotNumber {
-				return sorted[i].PlanEntry.SlotNumber < sorted[j].PlanEntry.SlotNumber
+			if !si.Starttime.Equal(*sj.Starttime) {
+				return si.Starttime.Before(*sj.Starttime)
 			}
 			return sorted[i].Ancode < sorted[j].Ancode
 		})
@@ -189,8 +187,8 @@ func ExahmRows(exams []*model.PlannedExam, sortByDate bool, slotTime func(day, s
 	contents := make([][]string, 0, len(sorted))
 	for _, exam := range sorted {
 		termin := "fehlt noch"
-		if exam.PlanEntry != nil {
-			termin = FormatTermin(slotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber))
+		if exam.PlanEntry != nil && exam.PlanEntry.Starttime != nil {
+			termin = FormatTermin(*exam.PlanEntry.Starttime)
 		}
 
 		rooms := "fehlen noch"

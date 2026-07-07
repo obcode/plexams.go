@@ -46,7 +46,7 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 		return err
 	}
 
-	slots, csvRows := email.BuildKdp(plannedExams, p.getSlotTime)
+	slots, csvRows := email.BuildKdp(plannedExams)
 	if len(slots) == 0 {
 		reporter.StopProgress("no EXaHM/SEB rooms planned, nothing to send")
 		return nil

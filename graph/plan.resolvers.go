@@ -38,14 +38,12 @@ func (r *queryResolver) ExamersWithExamsPlannedByMe(ctx context.Context) ([]*mod
 
 // PreExamsAt is the resolver for the preExamsAt field.
 func (r *queryResolver) PreExamsAt(ctx context.Context, starttime time.Time) ([]*model.PreExam, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.PreExamsInSlot(ctx, day, slot)
+	return r.plexams.PreExamsAt(ctx, starttime)
 }
 
 // ExamsAt is the resolver for the examsAt field.
 func (r *queryResolver) ExamsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedExam, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.ExamsInSlot(ctx, day, slot)
+	return r.plexams.ExamsAt(ctx, starttime)
 }
 
 // ExamsWithoutSlot is the resolver for the examsWithoutSlot field.

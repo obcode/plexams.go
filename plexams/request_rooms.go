@@ -62,28 +62,21 @@ func (p *Plexams) PlannedRoomInfo(roomName string) error {
 		return err
 	}
 
-	type slot struct {
-		day  int
-		slot int
-	}
-
-	entriesMap := make(map[slot]*model.PlannedRoom)
+	// The exam's absolute Starttime is the source of truth; deduplicate per start
+	// time, keeping the longest exam in the room at that time.
+	entriesMap := make(map[time.Time]*model.PlannedRoom)
 
 	for _, plannedRoom := range plannedRooms {
-		if plannedRoom.RoomName == roomName {
-			entry, okay := entriesMap[slot{plannedRoom.Day, plannedRoom.Slot}]
-			if !okay {
-				entriesMap[slot{plannedRoom.Day, plannedRoom.Slot}] = plannedRoom
-			} else {
-				if plannedRoom.Duration > entry.Duration {
-					// If the new entry has a longer duration, replace the existing one
-					entriesMap[slot{plannedRoom.Day, plannedRoom.Slot}] = plannedRoom
-				}
-			}
+		if plannedRoom.RoomName != roomName || plannedRoom.Starttime == nil {
+			continue
+		}
+		start := *plannedRoom.Starttime
+		if entry, okay := entriesMap[start]; !okay || plannedRoom.Duration > entry.Duration {
+			entriesMap[start] = plannedRoom
 		}
 	}
 
-	entriesForRoom := make([]*model.PlannedRoom, 0)
+	entriesForRoom := make([]*model.PlannedRoom, 0, len(entriesMap))
 	for _, entry := range entriesMap {
 		entriesForRoom = append(entriesForRoom, entry)
 	}
@@ -93,36 +86,16 @@ func (p *Plexams) PlannedRoomInfo(roomName string) error {
 		return nil
 	}
 
-	// Sort entriesForRoom by Day and Slot
+	// Sort chronologically by absolute start time.
 	sort.Slice(entriesForRoom, func(i, j int) bool {
-		if entriesForRoom[i].Day != entriesForRoom[j].Day {
-			return entriesForRoom[i].Day < entriesForRoom[j].Day
-		}
-		return entriesForRoom[i].Slot < entriesForRoom[j].Slot
+		return entriesForRoom[i].Starttime.Before(*entriesForRoom[j].Starttime)
 	})
-
-	starttimes := make(map[int]map[int]time.Time)
-	for _, day := range p.semesterConfig.Days {
-		dayMap := make(map[int]time.Time)
-		starttimes[day.Number] = dayMap
-		for i, slot := range p.semesterConfig.Starttimes {
-			starttime, err := time.Parse("15:04", slot.Start)
-			if err != nil {
-				log.Error().Err(err).Str("time-string", slot.Start).Msg("cannot parse time")
-				return err
-			}
-			realStartTime := time.Date(
-				day.Date.Year(), day.Date.Month(), day.Date.Day(),
-				starttime.Hour(), starttime.Minute(), 0, 0, day.Date.Location())
-			dayMap[i+1] = realStartTime
-		}
-	}
 
 	fmt.Printf("Planung für Raum %s:\n\n", roomName)
 
 	for _, entry := range entriesForRoom {
-		starttime := starttimes[entry.Day][entry.Slot]
-		endtime := starttime.Add(time.Duration(entry.Duration) * time.Minute) // 90 minutes for the exam slot
+		starttime := *entry.Starttime
+		endtime := starttime.Add(time.Duration(entry.Duration) * time.Minute)
 		fmt.Printf("- %s - %s (= %3d Minuten reine Prüfungszeit)\n",
 			starttime.Format("02.01.06: 15:04"), endtime.Format("15:04 Uhr"), entry.Duration)
 	}

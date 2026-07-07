@@ -20,12 +20,9 @@ type Invigilation struct {
 
 // PrePlannedInvigilation fixes an invigilator for a room (or the reserve) at one exam
 // time before the automatic invigilation planning runs. It is a user-entered seed that
-// survives regeneration, so the absolute Starttime is the persisted source of truth;
-// Day/Slot are derived from it on read.
+// survives regeneration, so the absolute Starttime is the persisted source of truth.
 type PrePlannedInvigilation struct {
 	Starttime     *time.Time `json:"starttime,omitempty" bson:"starttime,omitempty"`
-	Day           int        `json:"day" bson:"-"`
-	Slot          int        `json:"slot" bson:"-"`
 	InvigilatorID int        `json:"invigilatorID" bson:"invigilatorid"`
 	RoomName      *string    `json:"roomName,omitempty" bson:"roomname,omitempty"`
 	IsReserve     bool       `json:"isReserve" bson:"isreserve"`

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/invigplan"
@@ -14,7 +15,7 @@ import (
 // constraints – the exact same hard and soft rules the automatic generator
 // uses. It runs in addition to the hand-written invigilator validations.
 func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(p.TimeForSlot, reporter, "invigilation-constraints", "validating invigilation constraints (shared rules)")
+	v := newValidation(reporter, "invigilation-constraints", "validating invigilation constraints (shared rules)")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -37,7 +38,7 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 
 	index := make(map[string]int, len(problem.Positions))
 	for i, pos := range problem.Positions {
-		index[positionKey(pos.Day, pos.Slot, pos.IsReserve, pos.Room)] = i
+		index[positionKey(pos.Start, pos.IsReserve, pos.Room)] = i
 	}
 
 	invigilations, err := p.dbClient.GetAllInvigilations(ctx)
@@ -52,16 +53,19 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 		if inv.RoomName != nil {
 			room = *inv.RoomName
 		}
-		key := positionKey(inv.Slot.DayNumber, inv.Slot.SlotNumber, isReserve, room)
+		if inv.Starttime == nil {
+			continue
+		}
+		key := positionKey(*inv.Starttime, isReserve, room)
 		idx, ok := index[key]
 		if !ok {
 			where := room
 			if isReserve {
 				where = "reserve"
 			}
-			v.warnf(ref{Room: inv.RoomName, Day: ptr(inv.Slot.DayNumber), Slot: ptr(inv.Slot.SlotNumber), InvigilatorID: ptr(inv.InvigilatorID)},
-				"invigilation for %s in slot (%d,%d) has no matching position (room/slot not planned)",
-				where, inv.Slot.DayNumber, inv.Slot.SlotNumber)
+			v.warnf(ref{Room: inv.RoomName, InvigilatorID: ptr(inv.InvigilatorID), Starttime: inv.Starttime},
+				"invigilation for %s at %s has no matching position (room/slot not planned)",
+				where, inv.Starttime.Format("02.01. 15:04"))
 			continue
 		}
 		plan.Set(idx, inv.InvigilatorID)
@@ -79,22 +83,26 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 		if pp.RoomName != nil {
 			room = *pp.RoomName
 		}
-		idx, ok := index[positionKey(pp.Day, pp.Slot, pp.RoomName == nil, room)]
+		if pp.Starttime == nil {
+			continue
+		}
+		when := pp.Starttime.Format("02.01. 15:04")
+		idx, ok := index[positionKey(*pp.Starttime, pp.RoomName == nil, room)]
 		if !ok {
-			v.errorf(ref{Room: pp.RoomName, Day: ptr(pp.Day), Slot: ptr(pp.Slot), InvigilatorID: ptr(pp.InvigilatorID)},
-				"pre-planned %s in slot (%d,%d) has no matching position (room/slot not planned)",
-				room, pp.Day, pp.Slot)
+			v.errorf(ref{Room: pp.RoomName, InvigilatorID: ptr(pp.InvigilatorID), Starttime: pp.Starttime},
+				"pre-planned %s at %s has no matching position (room/slot not planned)",
+				room, when)
 			continue
 		}
 		switch assigned := plan.Assign[idx]; {
 		case assigned == invigplan.Unassigned:
-			v.errorf(ref{Room: pp.RoomName, Day: ptr(pp.Day), Slot: ptr(pp.Slot), InvigilatorID: ptr(pp.InvigilatorID)},
-				"pre-planned invigilator %d for %s in slot (%d,%d) is missing in the plan",
-				pp.InvigilatorID, room, pp.Day, pp.Slot)
+			v.errorf(ref{Room: pp.RoomName, InvigilatorID: ptr(pp.InvigilatorID), Starttime: pp.Starttime},
+				"pre-planned invigilator %d for %s at %s is missing in the plan",
+				pp.InvigilatorID, room, when)
 		case assigned != pp.InvigilatorID:
-			v.errorf(ref{Room: pp.RoomName, Day: ptr(pp.Day), Slot: ptr(pp.Slot), InvigilatorID: ptr(pp.InvigilatorID)},
-				"pre-planned invigilator %d for %s in slot (%d,%d) was overridden by %d",
-				pp.InvigilatorID, room, pp.Day, pp.Slot, assigned)
+			v.errorf(ref{Room: pp.RoomName, InvigilatorID: ptr(pp.InvigilatorID), Starttime: pp.Starttime},
+				"pre-planned invigilator %d for %s at %s was overridden by %d",
+				pp.InvigilatorID, room, when, assigned)
 		}
 	}
 
@@ -129,10 +137,11 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 }
 
 // positionKey is the lookup key matching a persisted invigilation to a problem
-// position.
-func positionKey(day, slot int, isReserve bool, room string) string {
+// position. It is keyed on the absolute start time (Unix seconds) instead of the
+// former day/slot ordinals.
+func positionKey(start time.Time, isReserve bool, room string) string {
 	if isReserve {
-		return fmt.Sprintf("%d/%d/\x00reserve", day, slot)
+		return fmt.Sprintf("%d/\x00reserve", start.Unix())
 	}
-	return fmt.Sprintf("%d/%d/%s", day, slot, room)
+	return fmt.Sprintf("%d/%s", start.Unix(), room)
 }

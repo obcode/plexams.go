@@ -254,18 +254,28 @@ func (p *Plexams) ExamScheduleConflicts(ctx context.Context) ([]*model.ExamSched
 	if err != nil {
 		return nil, err
 	}
-	slotModel := make(map[[2]int]*model.Slot, len(p.semesterConfig.Slots))
+	// A plan entry counts as "placed on our grid" iff its Starttime matches one of the
+	// configured slot start times. An external exam outside the exam period has a
+	// Starttime but no grid slot — it is skipped (matching the old InSlot()==false).
+	slotStarts := make([]time.Time, 0, len(p.semesterConfig.Slots))
 	for _, s := range p.semesterConfig.Slots {
-		slotModel[[2]int{s.DayNumber, s.SlotNumber}] = s
+		slotStarts = append(slotStarts, s.Starttime)
+	}
+	onGrid := func(t time.Time) bool {
+		for _, st := range slotStarts {
+			if st.Equal(t) {
+				return true
+			}
+		}
+		return false
 	}
 	slotByAncode := make(map[int]*model.Slot)
 	for _, pe := range planEntries {
-		if !pe.InSlot() {
-			continue // external, outside the period → no slot
+		if pe.Starttime == nil || !onGrid(*pe.Starttime) {
+			continue // not placed, or external outside the period → no slot
 		}
-		if s := slotModel[[2]int{pe.DayNumber, pe.SlotNumber}]; s != nil {
-			slotByAncode[pe.Ancode] = s
-		}
+		st := *pe.Starttime
+		slotByAncode[pe.Ancode] = &model.Slot{Starttime: st}
 	}
 	return p.conflictsFromSlots(ctx, slotByAncode)
 }

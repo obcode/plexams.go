@@ -167,13 +167,19 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 			continue
 		}
 
+		// absolute start time is the source of truth in the time-based model
+		start, ok := planEntryStart(exam.PlanEntry)
+		if !ok {
+			continue
+		}
+
 		// FIXME: with rooms -> zpa
 		var rooms []*model.ZPAExamPlanRoom
 		reserveInvigilatorID := 0
 		if withInvigilators {
-			invigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			invigilator, err := p.invigilatorForRoomAtTime(ctx, "reserve", start)
 			if err != nil {
-				log.Error().Err(err).Int("ancode", exam.Ancode).Int("day", exam.PlanEntry.DayNumber).Int("slot", exam.PlanEntry.SlotNumber).
+				log.Error().Err(err).Int("ancode", exam.Ancode).Time("starttime", start).
 					Msg("cannot get reserve invigilator for slot")
 				return nil, err
 			}
@@ -195,7 +201,7 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 					for _, roomForAncode := range roomsForAncode {
 						invigilatorID := 0
 						if withInvigilators {
-							invigilator, err := p.GetInvigilatorInSlot(ctx, roomForAncode.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+							invigilator, err := p.invigilatorForRoomAtTime(ctx, roomForAncode.RoomName, start)
 							if err != nil {
 								log.Error().Err(err).Int("ancode", exam.Ancode).Str("room", roomForAncode.RoomName).
 									Msg("cannot get invigilator for room")
@@ -273,13 +279,11 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 			}
 		}
 
-		starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-
 		exams = append(exams, &model.ZPAExamPlan{
 			Semester:             p.semester,
 			AnCode:               exam.ZpaExam.AnCode,
-			Date:                 starttime.Format("02.01.2006"),
-			Time:                 starttime.Format("15:04"),
+			Date:                 start.Format("02.01.2006"),
+			Time:                 start.Format("15:04"),
 			StudentCount:         exam.StudentRegsCount,
 			ReserveInvigilatorID: reserveInvigilatorID,
 			Rooms:                rooms,

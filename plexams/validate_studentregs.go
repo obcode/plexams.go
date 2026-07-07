@@ -25,7 +25,7 @@ func (p *Plexams) examByAncode(ctx context.Context, ancode int) (*model.ZPAExam,
 // Primuss), so the findings are info, not errors.
 func (p *Plexams) ValidateStudentRegs(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "student-regs", "validating student regs")
+	v := newValidation(reporter, "student-regs", "validating student regs")
 
 	studentRegs, err := p.dbClient.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {

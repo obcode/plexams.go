@@ -52,9 +52,6 @@ func (db *DB) UnplacedExams(ctx context.Context) ([]*model.UnplacedExam, error) 
 		log.Error().Err(err).Msg("cannot decode unplaced exams")
 		return nil, err
 	}
-	for _, ue := range unplaced {
-		db.decorateUnplacedExam(ue)
-	}
 
 	return unplaced, nil
 }

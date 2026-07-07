@@ -57,11 +57,10 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]anny.RoomBo
 }
 
 type TimeRange struct {
-	From       time.Time
-	Until      time.Time
-	DayNumber  int
-	SlotNumber int
-	Approved   bool
+	From      time.Time
+	Until     time.Time
+	Starttime *time.Time
+	Approved  bool
 }
 
 // GetReservations returns the active building-management room requests as time
@@ -82,11 +81,10 @@ func (p *Plexams) GetReservations() (map[string][]TimeRange, error) {
 			continue
 		}
 		reservations[r.Room] = append(reservations[r.Room], TimeRange{
-			From:       r.From,
-			Until:      r.Until,
-			DayNumber:  r.Day,
-			SlotNumber: r.Slot,
-			Approved:   r.Approved,
+			From:      r.From,
+			Until:     r.Until,
+			Starttime: r.Starttime,
+			Approved:  r.Approved,
 		})
 	}
 	return reservations, nil
@@ -198,13 +196,13 @@ func (p *Plexams) RoomsForSlots(ctx context.Context) ([]*model.RoomsForSlot, err
 
 // RoomsForSlot returns the allowed rooms for a single slot (computed live). For
 // loops, compute the map once via roomsForSlotsMap instead.
-func (p *Plexams) RoomsForSlot(ctx context.Context, day int, time int) (*model.RoomsForSlot, error) {
+func (p *Plexams) RoomsForSlot(ctx context.Context, starttime time.Time) (*model.RoomsForSlot, error) {
 	roomsForSlots, err := p.computeRoomsForSlots(ctx, newDiscardReporter())
 	if err != nil {
 		return nil, err
 	}
 	for _, rfs := range roomsForSlots {
-		if rfs.Day == day && rfs.Slot == time {
+		if rfs.Starttime.Equal(starttime) {
 			return rfs, nil
 		}
 	}
@@ -220,7 +218,11 @@ func (p *Plexams) roomsForSlotsMap(ctx context.Context) (map[SlotNumber][]string
 	}
 	m := make(map[SlotNumber][]string, len(roomsForSlots))
 	for _, rfs := range roomsForSlots {
-		m[SlotNumber{day: rfs.Day, slot: rfs.Slot}] = rfs.RoomNames
+		slot := p.slotForStarttime(rfs.Starttime)
+		if slot == nil {
+			continue
+		}
+		m[SlotNumber{day: slot.DayNumber, slot: slot.SlotNumber}] = rfs.RoomNames
 	}
 	return m, nil
 }
@@ -281,13 +283,18 @@ func (p *Plexams) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	return p.dbClient.PlannedRoomNames(ctx)
 }
 
-func (p *Plexams) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedRoom, error) {
-	rooms, err := p.dbClient.PlannedRoomsInSlot(ctx, day, time)
+func (p *Plexams) PlannedRoomsInSlot(ctx context.Context, starttime time.Time) ([]*model.PlannedRoom, error) {
+	rooms, err := p.dbClient.PlannedRoomsAt(ctx, starttime)
 	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get exams in slot")
+		log.Error().Err(err).Time("starttime", starttime).Msg("cannot get exams in slot")
 	}
 
 	return rooms, nil
+}
+
+// PlannedRoomsAt is an alias for PlannedRoomsInSlot keyed on the absolute start time.
+func (p *Plexams) PlannedRoomsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedRoom, error) {
+	return p.PlannedRoomsInSlot(ctx, starttime)
 }
 
 func (p *Plexams) PlannedRoomForStudent(ctx context.Context, ancode int, mtknr string) (*model.PlannedRoom, error) {
@@ -307,8 +314,13 @@ func (p *Plexams) PlannedRoomForStudent(ctx context.Context, ancode int, mtknr s
 	return nil, nil
 }
 
-func (p *Plexams) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
-	return p.dbClient.PlannedRoomNamesInSlot(ctx, day, time)
+func (p *Plexams) PlannedRoomNamesInSlot(ctx context.Context, starttime time.Time) ([]string, error) {
+	return p.dbClient.PlannedRoomNamesAt(ctx, starttime)
+}
+
+// PlannedRoomNamesAt is an alias for PlannedRoomNamesInSlot keyed on the start time.
+func (p *Plexams) PlannedRoomNamesAt(ctx context.Context, starttime time.Time) ([]string, error) {
+	return p.dbClient.PlannedRoomNamesAt(ctx, starttime)
 }
 
 func (p *Plexams) PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error) {

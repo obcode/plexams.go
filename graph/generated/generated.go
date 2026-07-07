@@ -44,10 +44,7 @@ type ResolverRoot interface {
 	Mutation() MutationResolver
 	PlannedExam() PlannedExamResolver
 	PlannedRoom() PlannedRoomResolver
-	PreplanExam() PreplanExamResolver
 	Query() QueryResolver
-	RoomRequest() RoomRequestResolver
-	RoomRequestPreview() RoomRequestPreviewResolver
 	RoomsForSlot() RoomsForSlotResolver
 	Subscription() SubscriptionResolver
 }
@@ -1568,9 +1565,6 @@ type PlannedExamResolver interface {
 type PlannedRoomResolver interface {
 	Room(ctx context.Context, obj *model.PlannedRoom) (*model.Room, error)
 }
-type PreplanExamResolver interface {
-	PlannedStarttime(ctx context.Context, obj *model.PreplanExam) (*time.Time, error)
-}
 type QueryResolver interface {
 	AllSemesterNames(ctx context.Context) ([]*model.Semester, error)
 	Semester(ctx context.Context) (*model.Semester, error)
@@ -1676,12 +1670,6 @@ type QueryResolver interface {
 	ZpaAnCodes(ctx context.Context) ([]*model.AnCode, error)
 	StudentRegsImportErrors(ctx context.Context) ([]*model.RegWithError, error)
 	SyncLog(ctx context.Context, limit *int) ([]*model.SyncLogEntry, error)
-}
-type RoomRequestResolver interface {
-	Starttime(ctx context.Context, obj *model.RoomRequest) (*time.Time, error)
-}
-type RoomRequestPreviewResolver interface {
-	Starttime(ctx context.Context, obj *model.RoomRequestPreview) (*time.Time, error)
 }
 type RoomsForSlotResolver interface {
 	Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error)
@@ -44952,7 +44940,7 @@ func (ec *executionContext) _PreplanExam_plannedStarttime(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.PreplanExam().PlannedStarttime(rctx, obj)
+		return obj.PlannedStarttime, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -44970,8 +44958,8 @@ func (ec *executionContext) fieldContext_PreplanExam_plannedStarttime(_ context.
 	fc = &graphql.FieldContext{
 		Object:     "PreplanExam",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
 		},
@@ -55674,7 +55662,7 @@ func (ec *executionContext) _RoomRequest_starttime(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.RoomRequest().Starttime(rctx, obj)
+		return obj.Starttime, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -55695,8 +55683,8 @@ func (ec *executionContext) fieldContext_RoomRequest_starttime(_ context.Context
 	fc = &graphql.FieldContext{
 		Object:     "RoomRequest",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
 		},
@@ -55938,7 +55926,7 @@ func (ec *executionContext) _RoomRequestPreview_starttime(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.RoomRequestPreview().Starttime(rctx, obj)
+		return obj.Starttime, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -55959,8 +55947,8 @@ func (ec *executionContext) fieldContext_RoomRequestPreview_starttime(_ context.
 	fc = &graphql.FieldContext{
 		Object:     "RoomRequestPreview",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
 		},
@@ -77752,77 +77740,46 @@ func (ec *executionContext) _PreplanExam(ctx context.Context, sel ast.SelectionS
 		case "id":
 			out.Values[i] = ec._PreplanExam_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "examKind":
 			out.Values[i] = ec._PreplanExam_examKind(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "examerID":
 			out.Values[i] = ec._PreplanExam_examerID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "examerName":
 			out.Values[i] = ec._PreplanExam_examerName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "module":
 			out.Values[i] = ec._PreplanExam_module(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "programs":
 			out.Values[i] = ec._PreplanExam_programs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "expectedStudents":
 			out.Values[i] = ec._PreplanExam_expectedStudents(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "duration":
 			out.Values[i] = ec._PreplanExam_duration(ctx, field, obj)
 		case "plannedStarttime":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._PreplanExam_plannedStarttime(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._PreplanExam_plannedStarttime(ctx, field, obj)
 		case "isFixed":
 			out.Values[i] = ec._PreplanExam_isFixed(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "notSameSlot":
 			out.Values[i] = ec._PreplanExam_notSameSlot(ctx, field, obj)
@@ -81104,63 +81061,32 @@ func (ec *executionContext) _RoomRequest(ctx context.Context, sel ast.SelectionS
 		case "room":
 			out.Values[i] = ec._RoomRequest_room(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "starttime":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._RoomRequest_starttime(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._RoomRequest_starttime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "from":
 			out.Values[i] = ec._RoomRequest_from(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "until":
 			out.Values[i] = ec._RoomRequest_until(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "approved":
 			out.Values[i] = ec._RoomRequest_approved(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "active":
 			out.Values[i] = ec._RoomRequest_active(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -81199,73 +81125,42 @@ func (ec *executionContext) _RoomRequestPreview(ctx context.Context, sel ast.Sel
 		case "room":
 			out.Values[i] = ec._RoomRequestPreview_room(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "starttime":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._RoomRequestPreview_starttime(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._RoomRequestPreview_starttime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "from":
 			out.Values[i] = ec._RoomRequestPreview_from(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "until":
 			out.Values[i] = ec._RoomRequestPreview_until(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "students":
 			out.Values[i] = ec._RoomRequestPreview_students(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "seats":
 			out.Values[i] = ec._RoomRequestPreview_seats(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "exam":
 			out.Values[i] = ec._RoomRequestPreview_exam(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		case "simultaneousExams":
 			out.Values[i] = ec._RoomRequestPreview_simultaneousExams(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))

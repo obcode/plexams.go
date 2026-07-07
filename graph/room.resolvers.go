@@ -25,14 +25,12 @@ func (r *mutationResolver) RemovePrePlannedRoom(ctx context.Context, ancode int,
 
 // BlockRoomAt is the resolver for the blockRoomAt field.
 func (r *mutationResolver) BlockRoomAt(ctx context.Context, room string, starttime time.Time, reason *string) (*model.BlockedRoom, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.BlockRoomForSlot(ctx, room, day, slot, reason)
+	return r.plexams.BlockRoomForSlot(ctx, room, starttime, reason)
 }
 
 // UnblockRoomAt is the resolver for the unblockRoomAt field.
 func (r *mutationResolver) UnblockRoomAt(ctx context.Context, room string, starttime time.Time) (bool, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.UnblockRoomForSlot(ctx, room, day, slot)
+	return r.plexams.UnblockRoomForSlot(ctx, room, starttime)
 }
 
 // BlockRoomAtTimes is the resolver for the blockRoomAtTimes field.
@@ -42,8 +40,7 @@ func (r *mutationResolver) BlockRoomAtTimes(ctx context.Context, room string, st
 		if st == nil {
 			continue
 		}
-		day, slot := r.plexams.SlotForTime(*st)
-		block, err := r.plexams.BlockRoomForSlot(ctx, room, day, slot, reason)
+		block, err := r.plexams.BlockRoomForSlot(ctx, room, *st, reason)
 		if err != nil {
 			return nil, err
 		}
@@ -59,8 +56,7 @@ func (r *mutationResolver) UnblockRoomAtTimes(ctx context.Context, room string, 
 		if st == nil {
 			continue
 		}
-		day, slot := r.plexams.SlotForTime(*st)
-		if ok, err := r.plexams.UnblockRoomForSlot(ctx, room, day, slot); err != nil {
+		if ok, err := r.plexams.UnblockRoomForSlot(ctx, room, *st); err != nil {
 			return removed, err
 		} else if ok {
 			removed++
@@ -109,8 +105,7 @@ func (r *queryResolver) PrePlannedRooms(ctx context.Context) ([]*model.PrePlanne
 
 // RoomsAt is the resolver for the roomsAt field.
 func (r *queryResolver) RoomsAt(ctx context.Context, starttime time.Time) (*model.RoomsForSlot, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.RoomsForSlot(ctx, day, slot)
+	return r.plexams.RoomsForSlot(ctx, starttime)
 }
 
 // RoomsForSlots is the resolver for the roomsForSlots field.
@@ -130,14 +125,12 @@ func (r *queryResolver) PlannedRoomNames(ctx context.Context) ([]string, error) 
 
 // PlannedRoomNamesAt is the resolver for the plannedRoomNamesAt field.
 func (r *queryResolver) PlannedRoomNamesAt(ctx context.Context, starttime time.Time) ([]string, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.PlannedRoomNamesInSlot(ctx, day, slot)
+	return r.plexams.PlannedRoomNamesInSlot(ctx, starttime)
 }
 
 // PlannedRoomsAt is the resolver for the plannedRoomsAt field.
 func (r *queryResolver) PlannedRoomsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedRoom, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.PlannedRoomsInSlot(ctx, day, slot)
+	return r.plexams.PlannedRoomsInSlot(ctx, starttime)
 }
 
 // PlannedRoomForNta is the resolver for the plannedRoomForNTA field.
@@ -152,8 +145,7 @@ func (r *queryResolver) BlockedRooms(ctx context.Context) ([]*model.BlockedRoom,
 
 // RoomsWithFreeSeatsAt is the resolver for the roomsWithFreeSeatsAt field.
 func (r *queryResolver) RoomsWithFreeSeatsAt(ctx context.Context, starttime time.Time) ([]*model.RoomWithFreeSeats, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.RoomsWithFreeSeatsForSlot(ctx, day, slot)
+	return r.plexams.RoomsWithFreeSeatsForSlot(ctx, starttime)
 }
 
 // UnplacedExams is the resolver for the unplacedExams field.

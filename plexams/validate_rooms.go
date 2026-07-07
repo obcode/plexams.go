@@ -15,15 +15,13 @@ import (
 
 func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "rooms-per-slot", "validating rooms per slot (allowed and enough seats)")
+	v := newValidation(reporter, "rooms-per-slot", "validating rooms per slot (allowed and enough seats)")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
 	} else if !ok {
 		return v.skip(skipNoRooms), nil
 	}
-
-	slots := p.semesterConfig.Slots
 
 	roomInfos, err := p.roomInfoMapFromDB(ctx)
 	if err != nil {
@@ -43,60 +41,71 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 		if u.NtaMtknr != nil {
 			what = "NTA student(s)"
 		}
-		v.errorf(ref{Ancode: ptr(u.Ancode), Day: ptr(u.Day), Slot: ptr(u.Slot)},
-			"exam %d: %d %s without a room in slot (%d/%d)", u.Ancode, len(u.Mtknrs), what, u.Day, u.Slot)
+		v.errorf(ref{Ancode: ptr(u.Ancode), Starttime: u.Starttime},
+			"exam %d: %d %s without a room at %s", u.Ancode, len(u.Mtknrs), what, fmtStart(u.Starttime))
 	}
 
-	// allowed rooms per slot, computed once (no stored cache anymore)
-	roomsForSlots, err := p.roomsForSlotsMap(ctx)
+	// allowed room names per start time, computed once (no stored cache anymore).
+	roomsForSlots, err := p.RoomsForSlots(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot compute rooms for slots")
 		return nil, err
 	}
-
-	for _, slot := range slots {
-
-		plannedExams, err := p.dbClient.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
-		if err != nil {
-			log.Error().Err(err).
-				Int("day", slot.DayNumber).
-				Int("time", slot.SlotNumber).
-				Msg("error while getting exams planned in slot")
-			return nil, err
+	allowedByStart := make(map[string]set.Set[string], len(roomsForSlots))
+	for _, rfs := range roomsForSlots {
+		names := set.NewSet[string]()
+		for _, n := range rfs.RoomNames {
+			names.Add(n)
 		}
+		allowedByStart[startKey(rfs.Starttime)] = names
+	}
 
-		plannedRooms := make([]*model.PlannedRoom, 0)
-		for _, plannedExam := range plannedExams {
-			plannedRooms = append(plannedRooms, plannedExam.PlannedRooms...)
+	// group all planned rooms by their absolute start time.
+	plannedRooms, err := p.dbClient.PlannedRooms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planned rooms")
+		return nil, err
+	}
+	type startGroup struct {
+		start time.Time
+		rooms []*model.PlannedRoom
+	}
+	groups := make(map[string]*startGroup)
+	for _, pr := range plannedRooms {
+		if pr.Starttime == nil {
+			continue
 		}
-
-		v.step("checking slot (%d/%d) with %d rooms in %d exams",
-			slot.DayNumber, slot.SlotNumber, len(plannedRooms), len(plannedExams))
-
-		// allowed rooms for this slot (empty for forbidden/pre-period slots — any
-		// room planned there is then flagged below).
-		allAllowedRooms, err := p.RoomsFromRoomNames(ctx, roomsForSlots[SlotNumber{day: slot.DayNumber, slot: slot.SlotNumber}])
-		if err != nil {
-			log.Error().Err(err).
-				Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
-				Msg("error while getting rooms from names")
+		key := startKey(*pr.Starttime)
+		g := groups[key]
+		if g == nil {
+			g = &startGroup{start: *pr.Starttime}
+			groups[key] = g
 		}
+		g.rooms = append(g.rooms, pr)
+	}
+	orderedGroups := make([]*startGroup, 0, len(groups))
+	for _, g := range groups {
+		orderedGroups = append(orderedGroups, g)
+	}
+	sort.Slice(orderedGroups, func(i, j int) bool { return orderedGroups[i].start.Before(orderedGroups[j].start) })
 
-		for _, plannedRoom := range plannedRooms {
+	for _, g := range orderedGroups {
+		key := startKey(g.start)
+		startStr := g.start.Format("02.01. 15:04")
+
+		v.step("checking start %s with %d rooms", startStr, len(g.rooms))
+
+		// allowed rooms for this start (empty for forbidden/pre-period times — any room
+		// planned there is then flagged below).
+		allowedRooms := allowedByStart[key]
+
+		for _, plannedRoom := range g.rooms {
 			if plannedRoom.RoomName == "ONLINE" {
 				continue
 			}
-
-			isAllowed := false
-			for _, allowedRoom := range allAllowedRooms {
-				if allowedRoom.Name == plannedRoom.RoomName {
-					isAllowed = true
-					break
-				}
-			}
-			if !isAllowed {
-				v.errorf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
-					"Room %s is not allowed in slot (%d/%d)", plannedRoom.RoomName, slot.DayNumber, slot.SlotNumber)
+			if allowedRooms == nil || !allowedRooms.Contains(plannedRoom.RoomName) {
+				v.errorf(ref{Room: ptr(plannedRoom.RoomName), Starttime: plannedRoom.Starttime},
+					"Room %s is not allowed at %s", plannedRoom.RoomName, startStr)
 			}
 		}
 
@@ -105,7 +114,7 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 		}
 		seats := make(map[string]roomSeats)
 
-		for _, plannedRoom := range plannedRooms {
+		for _, plannedRoom := range g.rooms {
 			// TODO: Remove this hack
 			if strings.HasPrefix(plannedRoom.RoomName, "ONLINE") {
 				continue
@@ -113,9 +122,9 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 
 			roomInfo := roomInfos[plannedRoom.RoomName]
 			if roomInfo == nil {
-				v.warnf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
-					"No room info found for planned room %s in slot (%d/%d); cannot check seats",
-					plannedRoom.RoomName, slot.DayNumber, slot.SlotNumber)
+				v.warnf(ref{Room: ptr(plannedRoom.RoomName), Starttime: plannedRoom.Starttime},
+					"No room info found for planned room %s at %s; cannot check seats",
+					plannedRoom.RoomName, startStr)
 				continue
 			}
 
@@ -128,9 +137,9 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 
 		for roomName, roomSeats := range seats {
 			if roomSeats.seatsPlanned > roomSeats.seats {
-				v.errorf(ref{Room: ptr(roomName), Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
-					"Room %s is overbooked in slot (%d/%d): %d seats planned, but only %d available",
-					roomName, slot.DayNumber, slot.SlotNumber, roomSeats.seatsPlanned, roomSeats.seats)
+				v.errorf(ref{Room: ptr(roomName), Starttime: &g.start},
+					"Room %s is overbooked at %s: %d seats planned, but only %d available",
+					roomName, startStr, roomSeats.seatsPlanned, roomSeats.seats)
 			}
 		}
 
@@ -141,7 +150,7 @@ func (p *Plexams) ValidateRoomsPerSlot(reporter Reporter) (*model.ValidationRepo
 
 func (p *Plexams) ValidateRoomsNeedRequest(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "rooms-need-request", "validating rooms which need requests")
+	v := newValidation(reporter, "rooms-need-request", "validating rooms which need requests")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
@@ -193,38 +202,42 @@ PLANNEDROOM:
 
 		roomInfo := roomInfos[plannedRoom.RoomName]
 		if roomInfo == nil {
-			v.warnf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(plannedRoom.Day), Slot: ptr(plannedRoom.Slot)},
-				"No room info found for planned room %s in slot (%d/%d); cannot check whether it needs a request",
-				plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot)
+			v.warnf(ref{Room: ptr(plannedRoom.RoomName), Starttime: plannedRoom.Starttime},
+				"No room info found for planned room %s at %s; cannot check whether it needs a request",
+				plannedRoom.RoomName, fmtStart(plannedRoom.Starttime))
 			continue
 		}
 		if !roomInfo.NeedsRequest {
 			log.Debug().Str("room", plannedRoom.RoomName).Msg("room needs no request")
 			continue
 		}
+		if plannedRoom.Starttime == nil {
+			continue
+		}
 
-		v.step("checking room %s in slot (%d/%d)", plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot)
-
-		startTime := p.getSlotTime(plannedRoom.Day, plannedRoom.Slot)
+		startTime := *plannedRoom.Starttime
+		startStr := startTime.Format("02.01. 15:04")
 		endTime := startTime.Add(time.Duration(plannedRoom.Duration) * time.Minute)
+
+		v.step("checking room %s at %s", plannedRoom.RoomName, startStr)
 
 		for _, timerange := range roomTimetables[plannedRoom.RoomName] {
 			if timerange.From.Before(startTime) && timerange.Until.After(endTime) {
 				log.Debug().Str("room", plannedRoom.RoomName).Msg("found reservation")
 
 				if !timerange.Approved {
-					v.warnf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(plannedRoom.Day), Slot: ptr(plannedRoom.Slot)},
-						"Reservation for room %s found in slot (%d/%d) is not yet approved",
-						plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot)
+					v.warnf(ref{Room: ptr(plannedRoom.RoomName), Starttime: plannedRoom.Starttime},
+						"Reservation for room %s at %s is not yet approved",
+						plannedRoom.RoomName, startStr)
 				}
 
 				continue PLANNEDROOM
 			}
 		}
 
-		v.errorf(ref{Room: ptr(plannedRoom.RoomName), Day: ptr(plannedRoom.Day), Slot: ptr(plannedRoom.Slot)},
-			"No Reservation for room %s found in slot (%d/%d)",
-			plannedRoom.RoomName, plannedRoom.Day, plannedRoom.Slot)
+		v.errorf(ref{Room: ptr(plannedRoom.RoomName), Starttime: plannedRoom.Starttime},
+			"No Reservation for room %s found at %s",
+			plannedRoom.RoomName, startStr)
 	}
 
 	return v.finish(), nil
@@ -235,7 +248,7 @@ PLANNEDROOM:
 // run, so this surfaces the inconsistency until then).
 func (p *Plexams) ValidateRoomsBlocked(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "rooms-blocked", "validating blocked rooms against planned rooms")
+	v := newValidation(reporter, "rooms-blocked", "validating blocked rooms against planned rooms")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
@@ -258,22 +271,25 @@ func (p *Plexams) ValidateRoomsBlocked(reporter Reporter) (*model.ValidationRepo
 		return nil, err
 	}
 
-	type slotRoom struct {
-		room string
-		day  int
-		slot int
-	}
-	planned := make(map[slotRoom]bool)
+	// key a planned room by its room name + absolute start time.
+	planned := make(map[string]bool)
 	for _, pr := range plannedRooms {
-		planned[slotRoom{pr.RoomName, pr.Day, pr.Slot}] = true
+		if pr.Starttime == nil {
+			continue
+		}
+		planned[pr.RoomName+"@"+startKey(*pr.Starttime)] = true
 	}
 
 	for _, b := range blocks {
-		v.step("checking block %s in slot (%d/%d)", b.Room, b.Day, b.Slot)
-		if planned[slotRoom{b.Room, b.Day, b.Slot}] {
-			v.errorf(ref{Room: ptr(b.Room), Day: ptr(b.Day), Slot: ptr(b.Slot)},
-				"room %s is blocked in slot (%d/%d) but still planned there; regenerate rooms for exams",
-				b.Room, b.Day, b.Slot)
+		if b.Starttime == nil {
+			continue
+		}
+		startStr := b.Starttime.Format("02.01. 15:04")
+		v.step("checking block %s at %s", b.Room, startStr)
+		if planned[b.Room+"@"+startKey(*b.Starttime)] {
+			v.errorf(ref{Room: ptr(b.Room), Starttime: b.Starttime},
+				"room %s is blocked at %s but still planned there; regenerate rooms for exams",
+				b.Room, startStr)
 		}
 	}
 
@@ -285,7 +301,7 @@ func (p *Plexams) ValidateRoomsBlocked(reporter Reporter) (*model.ValidationRepo
 // fewer free seats than the buffer max(roomFreeSeatsMin, roomFreeSeatsPercent%).
 func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "rooms-enough-seats", "validating enough free seats per exam")
+	v := newValidation(reporter, "rooms-enough-seats", "validating enough free seats per exam")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
@@ -338,27 +354,36 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 			if exam.ZpaExam != nil {
 				module = exam.ZpaExam.Module
 			}
-			v.warnf(ref{Ancode: ptr(exam.Ancode)},
+			var examStart *time.Time
+			if exam.PlanEntry != nil {
+				examStart = exam.PlanEntry.Starttime
+			}
+			v.warnf(ref{Ancode: ptr(exam.Ancode), Starttime: examStart},
 				"exam %d (%s): only %d free seat(s) for %d students; recommended buffer %d — too tight",
 				exam.Ancode, module, free, normal, buffer)
 		}
 	}
 
-	// shared rooms: a room used by several exams in a slot must have enough free
-	// seats for the combined reserve buffers of those exams (the per-exam check
-	// above counts each room's full capacity and would miss this).
-	type slotRoom struct {
-		day, slot int
-		room      string
+	// shared rooms: a room used by several exams at the same start time must have
+	// enough free seats for the combined reserve buffers of those exams (the per-exam
+	// check above counts each room's full capacity and would miss this).
+	type startRoom struct {
+		start string
+		room  string
 	}
-	occupants := make(map[slotRoom]int)
-	sharers := make(map[slotRoom]map[int]bool) // -> set of ancodes using it for normal/reserve
+	occupants := make(map[startRoom]int)
+	sharers := make(map[startRoom]map[int]bool) // -> set of ancodes using it for normal/reserve
+	startRep := make(map[startRoom]time.Time)   // representative start time for messages
 	for _, exam := range plannedExams {
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
 		}
 		for _, r := range exam.PlannedRooms {
-			key := slotRoom{r.Day, r.Slot, r.RoomName}
+			if r.Starttime == nil {
+				continue
+			}
+			key := startRoom{startKey(*r.Starttime), r.RoomName}
+			startRep[key] = *r.Starttime
 			occupants[key] += len(r.StudentsInRoom)
 			if r.NtaMtknr == nil { // normal block or (empty) reserve
 				if sharers[key] == nil {
@@ -379,9 +404,10 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 		}
 		free := seats[key.room] - occupants[key]
 		if free < required {
-			v.warnf(ref{Room: ptr(key.room), Day: ptr(key.day), Slot: ptr(key.slot)},
-				"room %s in slot (%d/%d) is shared by %d exams: only %d free seat(s) for a combined reserve of %d — too tight",
-				key.room, key.day, key.slot, len(ancodes), free, required)
+			start := startRep[key]
+			v.warnf(ref{Room: ptr(key.room), Starttime: &start},
+				"room %s at %s is shared by %d exams: only %d free seat(s) for a combined reserve of %d — too tight",
+				key.room, startRep[key].Format("02.01. 15:04"), len(ancodes), free, required)
 		}
 	}
 
@@ -390,7 +416,7 @@ func (p *Plexams) ValidateRoomsEnoughSeats(reporter Reporter) (*model.Validation
 
 func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "rooms-per-exam", "validating rooms per exam")
+	v := newValidation(reporter, "rooms-per-exam", "validating rooms per exam")
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
 		return nil, err
@@ -424,6 +450,8 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 			continue
 		}
 
+		examStart := fmtStart(exam.PlanEntry.Starttime)
+
 		v.step("checking rooms for %d. %s (%s) with %d students and %d ntas",
 			exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, exam.StudentRegsCount, len(exam.Ntas))
 		// check if each student has a room
@@ -446,10 +474,10 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 				}
 			}
 			if !studentHasSeat {
-				v.errorf(ref{Ancode: ptr(exam.Ancode), StudentMtknr: ptr(studentReg.Mtknr), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
-					"Student %s (%s) has no seat for exam %d. %s (%s) in slot (%d,%d)",
+				v.errorf(ref{Ancode: ptr(exam.Ancode), StudentMtknr: ptr(studentReg.Mtknr), Starttime: exam.PlanEntry.Starttime},
+					"Student %s (%s) has no seat for exam %d. %s (%s) at %s",
 					studentReg.Name, studentReg.Mtknr, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-					exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+					examStart)
 			}
 		}
 
@@ -462,10 +490,10 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 				}
 				for _, room := range exam.PlannedRooms {
 					if !allowedRooms.Contains(room.RoomName) {
-						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
-							"Room %s is not allowed for exam %d. %s (%s) in slot (%d,%d)",
+						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Starttime: exam.PlanEntry.Starttime},
+							"Room %s is not allowed for exam %d. %s (%s) at %s",
 							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+							examStart)
 					}
 				}
 			}
@@ -473,17 +501,17 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 				for _, room := range exam.PlannedRooms {
 					roomInfo := roomInfos[room.RoomName]
 					if roomInfo == nil {
-						v.warnf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
-							"No room info found for room %s for exam %d. %s (%s) in slot (%d,%d); cannot check %s",
+						v.warnf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Starttime: exam.PlanEntry.Starttime},
+							"No room info found for room %s for exam %d. %s (%s) at %s; cannot check %s",
 							room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber, name)
+							examStart, name)
 						continue
 					}
 					if !ok(roomInfo) {
-						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)},
-							"%s %s for exam %d. %s (%s) in slot (%d,%d)",
+						v.errorf(ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), Starttime: exam.PlanEntry.Starttime},
+							"%s %s for exam %d. %s (%s) at %s",
 							label, room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-							exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+							examStart)
 					}
 				}
 			}
@@ -520,17 +548,17 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 						if room.RoomName == roomForNta.RoomName {
 							for _, mtknr := range room.StudentsInRoom {
 								if mtknr != nta.Mtknr {
-									r := ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), StudentMtknr: ptr(nta.Mtknr), Day: ptr(exam.PlanEntry.DayNumber), Slot: ptr(exam.PlanEntry.SlotNumber)}
+									r := ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), StudentMtknr: ptr(nta.Mtknr), Starttime: exam.PlanEntry.Starttime}
 									if reason, ok := waiverReasons[ntaExamKey{nta.Mtknr, exam.Ancode}]; ok {
 										v.infof(r,
-											"NTA %s waives the room of their own for exam %d. %s (%s) in slot (%d,%d): %s",
+											"NTA %s waives the room of their own for exam %d. %s (%s) at %s: %s",
 											nta.Name, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-											exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber, reason)
+											examStart, reason)
 									} else {
 										v.errorf(r,
-											"NTA %s has room %s not alone for exam %d. %s (%s) in slot (%d,%d)",
+											"NTA %s has room %s not alone for exam %d. %s (%s) at %s",
 											nta.Name, room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
-											exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+											examStart)
 									}
 									break OUTER
 								}
@@ -549,7 +577,7 @@ func (p *Plexams) ValidateRoomsTimeDistance(reporter Reporter) (*model.Validatio
 	ctx := context.Background()
 	timelag := p.generationTimelagMin(ctx)
 
-	v := newValidation(p.TimeForSlot, reporter, "rooms-time-distance",
+	v := newValidation(reporter, "rooms-time-distance",
 		fmt.Sprintf("validating time lag of planned rooms (%d minutes)", timelag))
 
 	if ok, err := p.hasPlannedRooms(ctx); err != nil {
@@ -626,8 +654,7 @@ func (p *Plexams) ValidateRoomsTimeDistance(reporter Reporter) (*model.Validatio
 			// default plans are unaffected).
 			required := lag + prev.postExtra + cur.preExtra
 			if cur.start.Before(prev.end.Add(required)) {
-				day, slot := p.SlotForTime(cur.start)
-				v.errorf(ref{Room: ptr(name), Day: ptr(day), Slot: ptr(slot)},
+				v.errorf(ref{Room: ptr(name), Starttime: &cur.start},
 					"Zu wenig Zeit in Raum %s: vorige Prüfung endet %s, nächste beginnt %s (%g Min dazwischen, benötigt %g)",
 					name, prev.end.Format("02.01. 15:04"), cur.start.Format("02.01. 15:04"),
 					cur.start.Sub(prev.end).Minutes(), required.Minutes())

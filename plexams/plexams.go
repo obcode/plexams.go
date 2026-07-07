@@ -228,22 +228,21 @@ func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {
 	return p.semesterConfig
 }
 
-// SlotForTime returns the (dayNumber, slotNumber) of the slot the given time falls
-// on, or (0, 0) when it matches no slot (e.g. outside the exam period). It implements
-// db.SlotResolver so the db layer can derive a plan entry's day/slot from its stored
-// Starttime.
-func (p *Plexams) SlotForTime(t time.Time) (int, int) {
-	slot, err := p.getSlotForTime(t, 1)
-	if err != nil || slot == nil {
-		return 0, 0
+// slotForStarttime returns the config grid slot whose start time equals t exactly, or
+// nil when t matches no slot (e.g. an external exam whose time lies outside our exam
+// period). It derives the internal day/slot notion from the sorted config start times.
+func (p *Plexams) slotForStarttime(t time.Time) *model.Slot {
+	for _, slot := range p.semesterConfig.Slots {
+		if slot.Starttime.Equal(t) {
+			return slot
+		}
 	}
-	return slot.DayNumber, slot.SlotNumber
+	return nil
 }
 
-// DayNumberForDate returns the 1-based exam-day number of the given calendar date (0
-// when it is not an exam day). Used to translate a date from the API into the internal
-// day number.
-func (p *Plexams) DayNumberForDate(date time.Time) int {
+// dayNumberForDate returns the 1-based exam-day number of the given calendar date (0
+// when it is not an exam day). Internal helper only (no exported day/slot API).
+func (p *Plexams) dayNumberForDate(date time.Time) int {
 	d := date.Local()
 	for _, day := range p.allDays {
 		if day.Date.Year() == d.Year() && day.Date.Month() == d.Month() && day.Date.Day() == d.Day() {
@@ -251,71 +250,6 @@ func (p *Plexams) DayNumberForDate(date time.Time) int {
 		}
 	}
 	return 0
-}
-
-// TimeForSlot returns the start time of the given (dayNumber, slotNumber), and false
-// when there is no such slot. It implements db.SlotResolver.
-func (p *Plexams) TimeForSlot(dayNumber, slotNumber int) (time.Time, bool) {
-	for _, slot := range p.allSlots {
-		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
-			return slot.Starttime, true
-		}
-	}
-	return time.Time{}, false
-}
-
-func (p *Plexams) GetStarttime(dayNumber, slotNumber int) (*time.Time, error) {
-	for _, slot := range p.allSlots {
-		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
-			time := slot.Starttime
-			return &time, nil
-		}
-	}
-	return nil, fmt.Errorf("no starttime for slot (%d/%d)", dayNumber, slotNumber)
-}
-
-func (p *Plexams) getSlotTime(dayNumber, slotNumber int) time.Time {
-	for _, slot := range p.allSlots {
-		if slot.DayNumber == dayNumber && slot.SlotNumber == slotNumber {
-			return slot.Starttime
-		}
-	}
-	log.Error().Int("dayNumber", dayNumber).Int("slotNumber", slotNumber).
-		Msg("no slot found for (day/slot), returning zero time")
-	return time.Time{}
-}
-
-func (p *Plexams) getSlotForTime(starttime time.Time, duration int) (*model.Slot, error) {
-	var slotWithStarttimeInSlot, slotWithEndtimeInSlot *model.Slot
-	endtime := starttime.Add(time.Duration(duration) * time.Minute)
-	for _, slot := range p.allSlots {
-		if starttime.After(slot.Starttime.Add(-1*time.Minute)) &&
-			starttime.Before(slot.Starttime.Add(119*time.Minute)) {
-			slotWithStarttimeInSlot = slot
-		}
-		if endtime.After(slot.Starttime.Add(-1*time.Minute)) &&
-			endtime.Before(slot.Starttime.Add(119*time.Minute)) {
-			slotWithEndtimeInSlot = slot
-		}
-		if slotWithStarttimeInSlot != nil &&
-			slotWithEndtimeInSlot != nil {
-			break
-		}
-	}
-
-	if slotWithStarttimeInSlot == nil {
-		return slotWithEndtimeInSlot, nil
-	}
-	if slotWithEndtimeInSlot == nil {
-		return slotWithStarttimeInSlot, nil
-	}
-
-	minutesInEndtimeSlot := int(endtime.Sub(slotWithEndtimeInSlot.Starttime).Minutes())
-	if minutesInEndtimeSlot >= duration/2 {
-		return slotWithEndtimeInSlot, nil
-	}
-
-	return slotWithStarttimeInSlot, nil
 }
 
 func (p *Plexams) PrintInfo() {

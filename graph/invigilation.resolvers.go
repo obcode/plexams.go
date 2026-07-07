@@ -13,20 +13,17 @@ import (
 
 // PrePlanInvigilation is the resolver for the prePlanInvigilation field.
 func (r *mutationResolver) PrePlanInvigilation(ctx context.Context, invigilatorID int, starttime time.Time, roomName *string) (bool, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.PreAddInvigilation(ctx, invigilatorID, day, slot, roomName)
+	return r.plexams.PreAddInvigilation(ctx, invigilatorID, starttime, roomName)
 }
 
 // RemovePrePlannedInvigilation is the resolver for the removePrePlannedInvigilation field.
 func (r *mutationResolver) RemovePrePlannedInvigilation(ctx context.Context, starttime time.Time, roomName *string) (bool, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.RemovePrePlannedInvigilation(ctx, day, slot, roomName)
+	return r.plexams.RemovePrePlannedInvigilation(ctx, starttime, roomName)
 }
 
 // PrePlanInvigilationAt is the resolver for the prePlanInvigilationAt field.
 func (r *mutationResolver) PrePlanInvigilationAt(ctx context.Context, starttime time.Time, roomName *string) (bool, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.PrePlanInvigilationInSlot(ctx, day, slot, roomName)
+	return r.plexams.PrePlanInvigilationInSlot(ctx, starttime, roomName)
 }
 
 // ResetInvigilations is the resolver for the resetInvigilations field.
@@ -74,19 +71,17 @@ func (r *queryResolver) InvigilatorsExcludedByConfig(ctx context.Context) ([]*mo
 
 // RoomsWithInvigilationsAt is the resolver for the roomsWithInvigilationsAt field.
 func (r *queryResolver) RoomsWithInvigilationsAt(ctx context.Context, starttime time.Time) (*model.InvigilationSlot, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.RoomsWithInvigilationsForSlot(ctx, day, slot)
+	return r.plexams.RoomsWithInvigilationsForSlot(ctx, starttime)
 }
 
 // InvigilatorsForDay is the resolver for the invigilatorsForDay field.
 func (r *queryResolver) InvigilatorsForDay(ctx context.Context, date time.Time) (*model.InvigilatorsForDay, error) {
-	return r.plexams.InvigilatorsForDay(ctx, r.plexams.DayNumberForDate(date))
+	return r.plexams.InvigilatorsForDay(ctx, date)
 }
 
 // Invigilator is the resolver for the invigilator field.
 func (r *queryResolver) Invigilator(ctx context.Context, room string, starttime time.Time) (*model.Teacher, error) {
-	day, slot := r.plexams.SlotForTime(starttime)
-	return r.plexams.Invigilator(ctx, room, day, slot)
+	return r.plexams.Invigilator(ctx, room, starttime)
 }
 
 // PrePlannedInvigilations is the resolver for the prePlannedInvigilations field.

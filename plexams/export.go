@@ -7,10 +7,50 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
+
+// planEntryStart returns the absolute start time of a plan entry, or false when the
+// exam is not (yet) placed. In the time-based model the absolute Starttime is the
+// source of truth; this replaces the former (DayNumber, SlotNumber) → time
+// derivation via getSlotTime/GetStarttime.
+func planEntryStart(pe *model.PlanEntry) (time.Time, bool) {
+	if pe == nil || pe.Starttime == nil {
+		return time.Time{}, false
+	}
+	return *pe.Starttime, true
+}
+
+// invigilatorForRoomAtTime resolves the invigilator on duty in a room (or the
+// reserve, roomName == "reserve") at the given absolute start time by matching the
+// persisted invigilation Starttime. It replaces the slot-based
+// GetInvigilatorForRoom / GetInvigilatorInSlot lookups. Returns (nil, nil) when no
+// invigilation covers that room at that time.
+func (p *Plexams) invigilatorForRoomAtTime(ctx context.Context, roomName string, start time.Time) (*model.Teacher, error) {
+	invigilations, err := p.dbClient.GetAllInvigilations(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get invigilations")
+		return nil, err
+	}
+	for _, inv := range invigilations {
+		if inv.Starttime == nil || !inv.Starttime.Equal(start) {
+			continue
+		}
+		if roomName == "reserve" {
+			if inv.RoomName == nil && inv.IsReserve {
+				return p.GetTeacher(ctx, inv.InvigilatorID)
+			}
+			continue
+		}
+		if inv.RoomName != nil && *inv.RoomName == roomName {
+			return p.GetTeacher(ctx, inv.InvigilatorID)
+		}
+	}
+	return nil, nil
+}
 
 type ExportNtas struct {
 	Name     string `json:"name"`
@@ -57,7 +97,10 @@ func (p *Plexams) PlannedRoomsForExport(ctx context.Context) ([]*ExportPlannedRo
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
 		}
-		starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+		starttime, ok := planEntryStart(exam.PlanEntry)
+		if !ok {
+			continue
+		}
 
 		plannedRoomsMap := make(map[string][]*model.PlannedRoom)
 		for _, plannedRoom := range exam.PlannedRooms {
@@ -68,7 +111,7 @@ func (p *Plexams) PlannedRoomsForExport(ctx context.Context) ([]*ExportPlannedRo
 		}
 
 		for roomName, plannedRooms := range plannedRoomsMap {
-			invigilator, err := p.GetInvigilatorInSlot(ctx, roomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			invigilator, err := p.invigilatorForRoomAtTime(ctx, roomName, starttime)
 			if err != nil {
 				log.Error().Err(err).Int("ancode", exam.Ancode).Str("room", roomName).
 					Msg("cannot get invigilator for room")

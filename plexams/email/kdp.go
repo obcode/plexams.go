@@ -76,16 +76,15 @@ func IsExahmSeb(exam *model.PlannedExam) bool {
 // per-slot/room/exam seat allocation. It returns the ordered slot/room/exam view
 // (day/time, then room, then ancode) and the room-oriented CSV rows. Pure over the
 // already-fetched exams; slotTime resolves a plan entry's (day, slot) to its start.
-func BuildKdp(plannedExams []*model.PlannedExam, slotTime func(day, slot int) time.Time) ([]*KdpSlot, []CsvKdpRoom) {
-	// slotKey -> roomName -> ancode -> block aggregation
-	type re struct{ day, slot int }
+func BuildKdp(plannedExams []*model.PlannedExam) ([]*KdpSlot, []CsvKdpRoom) {
+	// start time -> roomName -> ancode -> block aggregation
 	type ra struct {
 		room   string
 		ancode int
 	}
-	slotRooms := make(map[re]map[string]bool)
-	slotStartMap := make(map[re]time.Time)
-	blocks := make(map[re]map[ra]map[kdpBlock]int) // -> seats
+	slotRooms := make(map[time.Time]map[string]bool)
+	slotStartMap := make(map[time.Time]time.Time)
+	blocks := make(map[time.Time]map[ra]map[kdpBlock]int) // -> seats
 	type examMeta struct {
 		module, examer, typ string
 		start               time.Time
@@ -96,15 +95,15 @@ func BuildKdp(plannedExams []*model.PlannedExam, slotTime func(day, slot int) ti
 		if !IsExahmSeb(exam) {
 			continue
 		}
-		if exam.PlanEntry == nil {
+		if exam.PlanEntry == nil || exam.PlanEntry.Starttime == nil {
 			continue
 		}
 		typ := "EXaHM"
 		if exam.Constraints.RoomConstraints.Seb {
 			typ = "SEB"
 		}
-		key := re{exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber}
-		start := slotTime(key.day, key.slot)
+		key := *exam.PlanEntry.Starttime
+		start := key
 		slotStartMap[key] = start
 		module, examer := "", ""
 		if exam.ZpaExam != nil {
@@ -140,7 +139,7 @@ func BuildKdp(plannedExams []*model.PlannedExam, slotTime func(day, slot int) ti
 	}
 
 	// assemble the ordered slot/room/exam view + CSV rows
-	slotKeys := make([]re, 0, len(slotRooms))
+	slotKeys := make([]time.Time, 0, len(slotRooms))
 	for key := range slotRooms {
 		slotKeys = append(slotKeys, key)
 	}

@@ -46,12 +46,11 @@ type LbaRepeaterEmail struct {
 // their time and invigilators, ordered chronologically. Pure over the already-fetched
 // exams: examer resolves an examer ID to its teacher (nil ⇒ skip the exam, e.g. lookup
 // error); only non-profs are kept. invigilatorForRoom resolves a room in a slot to its
-// invigilator (nil ⇒ skip that room); slotTime resolves a plan entry to its start.
+// invigilator (nil ⇒ skip that room). The exam's start time is its PlanEntry.Starttime.
 func BuildLbaRepeaterExams(
 	plannedExams []*model.PlannedExam,
-	slotTime func(day, slot int) time.Time,
 	examer func(id int) *model.Teacher,
-	invigilatorForRoom func(room string, day, slot int) *model.Teacher,
+	invigilatorForRoom func(room string, start time.Time) *model.Teacher,
 ) []*LbaRepeaterExam {
 	result := make([]*LbaRepeaterExam, 0)
 	for _, exam := range plannedExams {
@@ -71,20 +70,20 @@ func BuildLbaRepeaterExams(
 
 		date, timeStr := "noch nicht geplant", ""
 		var start time.Time
-		if exam.PlanEntry != nil {
-			start = slotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+		if exam.PlanEntry != nil && exam.PlanEntry.Starttime != nil {
+			start = *exam.PlanEntry.Starttime
 			date = DateDE(start)
 			timeStr = TimeDE(start)
 		}
 
 		invigilators := make([]LbaPerson, 0)
-		if exam.PlanEntry != nil {
+		if exam.PlanEntry != nil && exam.PlanEntry.Starttime != nil {
 			seen := set.NewSet[int]()
 			for _, room := range exam.PlannedRooms {
 				if room.RoomName == "ONLINE" {
 					continue
 				}
-				invigilator := invigilatorForRoom(room.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+				invigilator := invigilatorForRoom(room.RoomName, *exam.PlanEntry.Starttime)
 				if invigilator == nil || seen.Contains(invigilator.ID) {
 					continue
 				}

@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
@@ -62,11 +61,6 @@ func (r *mutationResolver) SetPreplanExamConstraints(ctx context.Context, id int
 	return r.plexams.SetPreplanExamConstraints(ctx, id, &constraints)
 }
 
-// PlannedStarttime is the resolver for the plannedStarttime field.
-func (r *preplanExamResolver) PlannedStarttime(ctx context.Context, obj *model.PreplanExam) (*time.Time, error) {
-	return obj.PlannedStarttime, nil
-}
-
 // PreplanExams is the resolver for the preplanExams field.
 func (r *queryResolver) PreplanExams(ctx context.Context) ([]*model.PreplanExam, error) {
 	return r.plexams.PreplanExams(ctx)
@@ -86,8 +80,3 @@ func (r *queryResolver) PreplanExamAncodeSuggestions(ctx context.Context, id int
 func (r *queryResolver) PreplanSameSlotGroups(ctx context.Context) ([]*model.PreplanSameSlotGroup, error) {
 	return r.plexams.PreplanSameSlotGroups(ctx)
 }
-
-// PreplanExam returns generated.PreplanExamResolver implementation.
-func (r *Resolver) PreplanExam() generated.PreplanExamResolver { return &preplanExamResolver{r} }
-
-type preplanExamResolver struct{ *Resolver }

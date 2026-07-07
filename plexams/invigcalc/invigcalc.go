@@ -9,6 +9,7 @@ package invigcalc
 import (
 	"math"
 	"sort"
+	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
@@ -126,12 +127,15 @@ func FairTargets(workMinutes int, reqs []*model.Invigilator) (
 
 // Todos builds the per-invigilator todos: the credited doingMinutes (self invigilations
 // count 0, reserves a fixed 60 min, see SumReserve), the set of invigilation days and the
-// given fair target.
-func Todos(invigilations []*model.Invigilation, totalMinutes int, enough bool) *model.InvigilatorTodos {
+// given fair target. dayForTime maps an invigilation's absolute start time to its 1-based
+// exam-day number (0 if it is not an exam day).
+func Todos(invigilations []*model.Invigilation, totalMinutes int, enough bool, dayForTime func(time.Time) int) *model.InvigilatorTodos {
 	invigilationSet := set.NewSet[int]()
 	doingMinutes := 0
 	for _, invigilation := range invigilations {
-		invigilationSet.Add(invigilation.Slot.DayNumber)
+		if invigilation.Starttime != nil {
+			invigilationSet.Add(dayForTime(*invigilation.Starttime))
+		}
 		if !invigilation.IsSelfInvigilation {
 			if invigilation.IsReserve {
 				// reserves are credited with a fixed 60 min (matches SumReserve), not the

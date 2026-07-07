@@ -3,7 +3,7 @@ package plexams
 import "testing"
 
 func TestValidationSkip(t *testing.T) {
-	v := newValidation(nil, newDiscardReporter(), "rooms-per-slot", "validating rooms per slot")
+	v := newValidation(newDiscardReporter(), "rooms-per-slot", "validating rooms per slot")
 	report := v.skip(skipNoRooms)
 
 	if report.Name != "rooms-per-slot" {

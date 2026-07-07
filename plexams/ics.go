@@ -26,6 +26,11 @@ func (p *Plexams) ExportICS(program string, filename string) error {
 	}
 
 	for _, exam := range exams {
+		// Skip exams that are not (yet) placed: the absolute Starttime is the
+		// source of truth in the time-based model.
+		if exam.PlanEntry == nil || exam.PlanEntry.Starttime == nil {
+			continue
+		}
 		vevent := cal.AddEvent(fmt.Sprintf("%s-%s-%d", p.semester, program, exam.Ancode))
 		programAncode := exam.Ancode
 		for _, primussExam := range exam.PrimussExams {
@@ -34,13 +39,8 @@ func (p *Plexams) ExportICS(program string, filename string) error {
 			}
 		}
 		vevent.SetSummary(fmt.Sprintf("FK07/%s: %d. %s (%s)", program, programAncode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer))
-		starttime, err := p.GetStarttime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-		if err != nil {
-			return err
-		}
-		vevent.SetStartAt(*starttime)
-		err = vevent.SetDuration(time.Duration(exam.ZpaExam.Duration) * time.Minute)
-		if err != nil {
+		vevent.SetStartAt(*exam.PlanEntry.Starttime)
+		if err := vevent.SetDuration(time.Duration(exam.ZpaExam.Duration) * time.Minute); err != nil {
 			return err
 		}
 	}

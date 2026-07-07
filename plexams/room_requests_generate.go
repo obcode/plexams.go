@@ -143,7 +143,7 @@ func (p *Plexams) GenerateRoomRequestsPreview(ctx context.Context) ([]*model.Roo
 
 	preview := make([]*model.RoomRequestPreview, 0)
 	for _, slot := range p.semesterConfig.Slots {
-		examsInSlot, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		examsInSlot, err := p.ExamsAt(ctx, slot.Starttime)
 		if err != nil {
 			return nil, err
 		}
@@ -158,7 +158,8 @@ func (p *Plexams) GenerateRoomRequestsPreview(ctx context.Context) ([]*model.Roo
 			return candidates[i].StudentRegsCount > candidates[j].StudentRegsCount
 		})
 
-		start := p.getSlotTime(slot.DayNumber, slot.SlotNumber)
+		// The slot's absolute start time is the source of truth for the room window.
+		start := slot.Starttime
 		usedInSlot := make(map[string]bool)
 		for _, exam := range candidates {
 			studs := exam.StudentRegsCount
@@ -187,10 +188,10 @@ func (p *Plexams) GenerateRoomRequestsPreview(ctx context.Context) ([]*model.Roo
 			}
 			for _, room := range chosen {
 				usedInSlot[room.Name] = true
+				startCopy := start
 				preview = append(preview, &model.RoomRequestPreview{
 					Room:              room.Name,
-					Day:               slot.DayNumber,
-					Slot:              slot.SlotNumber,
+					Starttime:         &startCopy,
 					From:              from,
 					Until:             until,
 					Students:          studs,
@@ -206,10 +207,7 @@ func (p *Plexams) GenerateRoomRequestsPreview(ctx context.Context) ([]*model.Roo
 		if preview[i].Room != preview[j].Room {
 			return preview[i].Room < preview[j].Room
 		}
-		if preview[i].Day != preview[j].Day {
-			return preview[i].Day < preview[j].Day
-		}
-		return preview[i].Slot < preview[j].Slot
+		return preview[i].From.Before(preview[j].From)
 	})
 	return preview, nil
 }

@@ -114,9 +114,8 @@ func mergeRoomIntervals(intervals []roomInterval) []roomInterval {
 // BuildSecretariatRooms lists, per room that does not have to be requested separately, when
 // it is occupied by an exam. Overlapping times (e.g. caused by NTAs) are merged. roomInfo
 // maps a room name to its master data (a room is skipped when unknown, deactivated, needing
-// a request or an ONLINE pseudo-room); slotTime resolves a (day, slot) to its start.
+// a request or an ONLINE pseudo-room). The room's start time is its PlannedRoom.Starttime.
 func BuildSecretariatRooms(plannedRooms []*model.PlannedRoom, roomInfo map[string]*model.Room,
-	slotTime func(day, slot int) time.Time,
 ) []*RoomRequestEmailRoom {
 	// the online "rooms" are not real bookable rooms for the secretariat.
 	skipRoom := map[string]bool{"ONLINE": true, "ONLINE_1": true, "ONLINE_2": true}
@@ -127,7 +126,10 @@ func BuildSecretariatRooms(plannedRooms []*model.PlannedRoom, roomInfo map[strin
 		if !ok || room.NeedsRequest || room.Deactivated || skipRoom[pr.RoomName] {
 			continue // only real, active rooms that do not have to be requested
 		}
-		start := slotTime(pr.Day, pr.Slot)
+		if pr.Starttime == nil {
+			continue
+		}
+		start := *pr.Starttime
 		end := start.Add(time.Duration(pr.Duration) * time.Minute)
 		intervalsByRoom[pr.RoomName] = append(intervalsByRoom[pr.RoomName], roomInterval{start: start, end: end})
 	}

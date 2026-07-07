@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/email"
@@ -25,17 +26,16 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 	}
 
 	// caches across all examers
-	examsInSlot := make(map[[2]int][]*model.PlannedExam)
-	getExamsInSlot := func(day, slot int) []*model.PlannedExam {
-		key := [2]int{day, slot}
-		if exams, ok := examsInSlot[key]; ok {
+	examsInSlot := make(map[time.Time][]*model.PlannedExam)
+	getExamsInSlot := func(start time.Time) []*model.PlannedExam {
+		if exams, ok := examsInSlot[start]; ok {
 			return exams
 		}
-		exams, err := p.ExamsInSlot(ctx, day, slot)
+		exams, err := p.ExamsAt(ctx, start)
 		if err != nil {
-			log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot get exams in slot")
+			log.Error().Err(err).Time("starttime", start).Msg("cannot get exams in slot")
 		}
-		examsInSlot[key] = exams
+		examsInSlot[start] = exams
 		return exams
 	}
 	shortCache := make(map[int]string)
@@ -67,14 +67,14 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 
 		// prime the slot cache so co-usage sees every exam in the slot
 		for _, exam := range plannedExams {
-			if exam.PlanEntry != nil {
-				getExamsInSlot(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			if exam.PlanEntry != nil && exam.PlanEntry.Starttime != nil {
+				getExamsInSlot(*exam.PlanEntry.Starttime)
 			}
 		}
 
 		exams := make([]*email.PublishedRoomsExam, 0, len(plannedExams))
 		for _, exam := range plannedExams {
-			if e := email.BuildPublishedRoomsExam(exam, examsInSlot, examerShort, p.getSlotTime); e != nil {
+			if e := email.BuildPublishedRoomsExam(exam, examsInSlot, examerShort); e != nil {
 				exams = append(exams, e)
 			}
 		}

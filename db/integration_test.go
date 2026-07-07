@@ -9,29 +9,10 @@ import (
 	"github.com/obcode/plexams.go/internal/mongotest"
 )
 
-// fakeSlotResolver maps a single slot (1,1) at 2026-07-06 08:30 for decoration tests.
-type fakeSlotResolver struct{}
-
-func (fakeSlotResolver) SlotForTime(t time.Time) (int, int) {
-	if t.Hour() == 8 && t.Minute() == 30 {
-		return 1, 1
-	}
-	return 0, 0
-}
-
-func (fakeSlotResolver) TimeForSlot(day, slot int) (time.Time, bool) {
-	if day == 1 && slot == 1 {
-		return time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local), true
-	}
-	return time.Time{}, false
-}
-
-// TestPlanEntryStarttimeDecoration verifies that Starttime is the persisted source of
-// truth and DayNumber/SlotNumber are derived on read via the slot resolver (not stored),
-// and that a (day, slot) slot query resolves through the start time.
-func TestPlanEntryStarttimeDecoration(t *testing.T) {
+// TestPlanEntryStarttimeStorage verifies that Starttime is the persisted source of
+// truth and that a start-time query resolves the entry.
+func TestPlanEntryStarttimeStorage(t *testing.T) {
 	d := mongotest.NewDB(t)
-	d.SetSlotResolver(fakeSlotResolver{})
 	ctx := context.Background()
 
 	st := time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local)
@@ -46,25 +27,20 @@ func TestPlanEntryStarttimeDecoration(t *testing.T) {
 	if pe.Starttime == nil || !pe.Starttime.Equal(st) {
 		t.Errorf("Starttime not round-tripped, got %v", pe.Starttime)
 	}
-	if pe.DayNumber != 1 || pe.SlotNumber != 1 {
-		t.Errorf("derived day/slot = (%d,%d), want (1,1)", pe.DayNumber, pe.SlotNumber)
-	}
 
-	inSlot, err := d.GetPlanEntriesInSlot(ctx, 1, 1)
+	at, err := d.PlanEntriesAt(ctx, st)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(inSlot) != 1 || inSlot[0].Ancode != 7 {
-		t.Errorf("GetPlanEntriesInSlot(1,1) = %+v, want ancode 7", inSlot)
+	if len(at) != 1 || at[0].Ancode != 7 {
+		t.Errorf("PlanEntriesAt(st) = %+v, want ancode 7", at)
 	}
 }
 
-// TestRoomStorageStarttimeDecoration verifies that planned rooms and blocked rooms
-// persist Starttime as the source of truth and derive Day/Slot on read, and that the
-// (day, slot) queries resolve through the start time.
-func TestRoomStorageStarttimeDecoration(t *testing.T) {
+// TestRoomStorageStarttime verifies that planned rooms and blocked rooms persist
+// Starttime as the source of truth and that the start-time queries resolve them.
+func TestRoomStorageStarttime(t *testing.T) {
 	d := mongotest.NewDB(t)
-	d.SetSlotResolver(fakeSlotResolver{})
 	ctx := context.Background()
 
 	st := time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local)
@@ -74,26 +50,23 @@ func TestRoomStorageStarttimeDecoration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	inSlot, err := d.PlannedRoomsInSlot(ctx, 1, 1)
+	at, err := d.PlannedRoomsAt(ctx, st)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(inSlot) != 1 {
-		t.Fatalf("PlannedRoomsInSlot(1,1) = %d rooms, want 1", len(inSlot))
+	if len(at) != 1 {
+		t.Fatalf("PlannedRoomsAt(st) = %d rooms, want 1", len(at))
 	}
-	if inSlot[0].Day != 1 || inSlot[0].Slot != 1 {
-		t.Errorf("derived day/slot = (%d,%d), want (1,1)", inSlot[0].Day, inSlot[0].Slot)
-	}
-	if inSlot[0].Starttime == nil || !inSlot[0].Starttime.Equal(st) {
-		t.Errorf("Starttime not round-tripped, got %v", inSlot[0].Starttime)
+	if at[0].Starttime == nil || !at[0].Starttime.Equal(st) {
+		t.Errorf("Starttime not round-tripped, got %v", at[0].Starttime)
 	}
 
-	names, err := d.PlannedRoomNamesInSlot(ctx, 1, 1)
+	names, err := d.PlannedRoomNamesAt(ctx, st)
 	if err != nil || len(names) != 1 || names[0] != "R1.234" {
-		t.Errorf("PlannedRoomNamesInSlot(1,1) = %v (err %v), want [R1.234]", names, err)
+		t.Errorf("PlannedRoomNamesAt(st) = %v (err %v), want [R1.234]", names, err)
 	}
 
-	// blocked room: keyed by room + starttime, day/slot derived
+	// blocked room: keyed by room + starttime
 	if err := d.BlockRoomForSlot(ctx, &model.BlockedRoom{Starttime: &st, Room: "R1.234"}); err != nil {
 		t.Fatal(err)
 	}
@@ -101,8 +74,8 @@ func TestRoomStorageStarttimeDecoration(t *testing.T) {
 	if err != nil || len(blocked) != 1 {
 		t.Fatalf("BlockedRooms = %d (err %v), want 1", len(blocked), err)
 	}
-	if blocked[0].Day != 1 || blocked[0].Slot != 1 {
-		t.Errorf("blocked derived day/slot = (%d,%d), want (1,1)", blocked[0].Day, blocked[0].Slot)
+	if blocked[0].Starttime == nil || !blocked[0].Starttime.Equal(st) {
+		t.Errorf("blocked starttime not round-tripped, got %v", blocked[0].Starttime)
 	}
 	removed, err := d.UnblockRoomForSlot(ctx, "R1.234", st)
 	if err != nil || !removed {
@@ -110,17 +83,15 @@ func TestRoomStorageStarttimeDecoration(t *testing.T) {
 	}
 }
 
-// TestInvigilationStarttimeDecoration verifies that (pre-planned) invigilations persist
-// Starttime as the source of truth and derive Day/Slot (and the Invigilation.Slot) on
-// read, and that the room/slot lookup resolves through the start time.
-func TestInvigilationStarttimeDecoration(t *testing.T) {
+// TestInvigilationStarttimeStorage verifies that pre-planned invigilations persist
+// Starttime as the source of truth and that the start-time lookup resolves them.
+func TestInvigilationStarttimeStorage(t *testing.T) {
 	d := mongotest.NewDB(t)
-	d.SetSlotResolver(fakeSlotResolver{})
 	ctx := context.Background()
 
-	// pre-planned invigilation: given day/slot, stores starttime, derives back
+	st := time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local)
 	if _, err := d.AddPrePlannedInvigilation(ctx, &model.PrePlannedInvigilation{
-		InvigilatorID: 42, Day: 1, Slot: 1, RoomName: ptr("R1.234"),
+		InvigilatorID: 42, Starttime: &st, RoomName: ptr("R1.234"),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -128,15 +99,12 @@ func TestInvigilationStarttimeDecoration(t *testing.T) {
 	if err != nil || len(ppis) != 1 {
 		t.Fatalf("PrePlannedInvigilations = %d (err %v), want 1", len(ppis), err)
 	}
-	if ppis[0].Day != 1 || ppis[0].Slot != 1 {
-		t.Errorf("derived day/slot = (%d,%d), want (1,1)", ppis[0].Day, ppis[0].Slot)
-	}
-	if ppis[0].Starttime == nil {
+	if ppis[0].Starttime == nil || !ppis[0].Starttime.Equal(st) {
 		t.Error("pre-planned invigilation lost its starttime")
 	}
-	removed, err := d.RemovePrePlannedInvigilation(ctx, 1, 1, ptr("R1.234"))
+	removed, err := d.RemovePrePlannedInvigilationAt(ctx, st, ptr("R1.234"))
 	if err != nil || !removed {
-		t.Errorf("RemovePrePlannedInvigilation = %v (err %v), want true", removed, err)
+		t.Errorf("RemovePrePlannedInvigilationAt = %v (err %v), want true", removed, err)
 	}
 }
 
@@ -230,7 +198,8 @@ func TestPlanEntryLockAndPhaseFixed(t *testing.T) {
 	d := mongotest.NewDB(t)
 	ctx := context.Background()
 
-	if _, err := d.AddExamToSlot(ctx, &model.PlanEntry{Ancode: 42, DayNumber: 3, SlotNumber: 2}); err != nil {
+	st42 := time.Date(2026, 7, 6, 12, 30, 0, 0, time.Local)
+	if _, err := d.AddExamToSlot(ctx, &model.PlanEntry{Ancode: 42, Starttime: &st42}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := d.LockExam(ctx, 42); err != nil {

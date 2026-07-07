@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/logrusorgru/aurora"
@@ -35,9 +36,16 @@ type SlotKey struct {
 	Day, Slot int
 }
 
+// slotStartPtr returns a fresh pointer to the current slot's absolute start time,
+// used as the persisted coordinate of planned/unplaced rooms.
+func slotStartPtr(cfg *Cfg) *time.Time {
+	s := cfg.Slot.Starttime
+	return &s
+}
+
 // DB is the persistence the room machine needs; *db.DB satisfies it.
 type DB interface {
-	ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error)
+	ExamsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedExam, error)
 	RoomByName(ctx context.Context, roomName string) (*model.Room, error)
 }
 
@@ -92,7 +100,8 @@ func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]
 
 	log.Debug().Int("day", cfg.Slot.DayNumber).Int("slot", cfg.Slot.SlotNumber).Msg("preparing rooms for slot")
 
-	examsInSlot, err := db.ExamsInSlot(ctx, cfg.Slot.DayNumber, cfg.Slot.SlotNumber)
+	slotStart := cfg.Slot.Starttime
+	examsInSlot, err := db.ExamsAt(ctx, slotStart)
 	if err != nil {
 		log.Error().Err(err).Int("day", cfg.Slot.DayNumber).Int("time", cfg.Slot.SlotNumber).
 			Msg("error while trying to find exams in slot")
@@ -158,10 +167,9 @@ func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]
 				log.Error().Int("ancode", exam.Exam.Ancode).Int("students", len(exam.NormalRegsMtknr)).
 					Msg("no room found for exam, students unplaced")
 				unplaced = append(unplaced, &model.UnplacedExam{
-					Ancode: exam.Exam.Ancode,
-					Day:    cfg.Slot.DayNumber,
-					Slot:   cfg.Slot.SlotNumber,
-					Mtknrs: append([]string{}, exam.NormalRegsMtknr...),
+					Ancode:    exam.Exam.Ancode,
+					Starttime: slotStartPtr(cfg),
+					Mtknrs:    append([]string{}, exam.NormalRegsMtknr...),
 				})
 				reporter.Println(aurora.Sprintf(aurora.Red("no room for %d student(s) of exam %d — unplaced"),
 					len(exam.NormalRegsMtknr), exam.Exam.Ancode))
@@ -184,8 +192,7 @@ func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]
 		exam.NormalRegsMtknr = exam.NormalRegsMtknr[studentCountInRoom:]
 
 		examRoom := &model.PlannedRoom{
-			Day:               cfg.Slot.DayNumber,
-			Slot:              cfg.Slot.SlotNumber,
+			Starttime:         slotStartPtr(cfg),
 			RoomName:          room.Name,
 			Ancode:            exam.Exam.Ancode,
 			Duration:          exam.Exam.ZpaExam.Duration,
@@ -241,11 +248,10 @@ func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]
 				for _, nta := range exam.NtasInNormalRooms {
 					mtknr := nta.Mtknr
 					unplaced = append(unplaced, &model.UnplacedExam{
-						Ancode:   exam.Exam.Ancode,
-						Day:      cfg.Slot.DayNumber,
-						Slot:     cfg.Slot.SlotNumber,
-						Mtknrs:   []string{mtknr},
-						NtaMtknr: &mtknr,
+						Ancode:    exam.Exam.Ancode,
+						Starttime: slotStartPtr(cfg),
+						Mtknrs:    []string{mtknr},
+						NtaMtknr:  &mtknr,
 					})
 				}
 				reporter.Println(aurora.Sprintf(aurora.Red("no room for %d NTA(s) of exam %d — unplaced"),
@@ -256,8 +262,7 @@ func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]
 		for _, nta := range exam.NtasInNormalRooms {
 			ntaDuration := int(math.Ceil(float64(exam.Exam.ZpaExam.Duration*(100+nta.DeltaDurationPercent)) / 100))
 			examRoom := &model.PlannedRoom{
-				Day:               cfg.Slot.DayNumber,
-				Slot:              cfg.Slot.SlotNumber,
+				Starttime:         slotStartPtr(cfg),
 				RoomName:          room.Name,
 				Ancode:            exam.Exam.Ancode,
 				Duration:          ntaDuration,
@@ -299,11 +304,10 @@ func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]
 					Msg("no room found for NTA alone room, student unplaced")
 				mtknr := nta.Mtknr
 				unplaced = append(unplaced, &model.UnplacedExam{
-					Ancode:   exam.Exam.Ancode,
-					Day:      cfg.Slot.DayNumber,
-					Slot:     cfg.Slot.SlotNumber,
-					Mtknrs:   []string{mtknr},
-					NtaMtknr: &mtknr,
+					Ancode:    exam.Exam.Ancode,
+					Starttime: slotStartPtr(cfg),
+					Mtknrs:    []string{mtknr},
+					NtaMtknr:  &mtknr,
 				})
 				reporter.Println(aurora.Sprintf(aurora.Red("no room for NTA %s of exam %d — unplaced"),
 					nta.Mtknr, exam.Exam.Ancode))
@@ -311,8 +315,7 @@ func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]
 			}
 
 			examRoom := &model.PlannedRoom{
-				Day:               cfg.Slot.DayNumber,
-				Slot:              cfg.Slot.SlotNumber,
+				Starttime:         slotStartPtr(cfg),
 				RoomName:          room.Name,
 				Ancode:            exam.Exam.Ancode,
 				Duration:          ntaDuration,
@@ -402,8 +405,7 @@ func addReserveBuffer(cfg *Cfg, examRooms []*model.PlannedRoom, reporter Reporte
 			continue
 		}
 		examRoom := &model.PlannedRoom{
-			Day:            cfg.Slot.DayNumber,
-			Slot:           cfg.Slot.SlotNumber,
+			Starttime:      slotStartPtr(cfg),
 			RoomName:       room.Name,
 			Ancode:         ancode,
 			Duration:       exam.ZpaExam.Duration,
@@ -582,7 +584,7 @@ func assignPrePlannedRooms(cfg *Cfg, exam *model.ExamWithRegsAndRooms,
 		}
 
 		// a room blocked for this slot wins over the pre-planning: skip it.
-		slotKey := SlotKey{Day: exam.Exam.PlanEntry.DayNumber, Slot: exam.Exam.PlanEntry.SlotNumber}
+		slotKey := SlotKey{Day: cfg.Slot.DayNumber, Slot: cfg.Slot.SlotNumber}
 		if blocked, ok := cfg.BlockedRooms[slotKey]; ok && blocked.Contains(prePlannedRoom.RoomName) {
 			reporter.Warnf(aurora.Sprintf(
 				aurora.Red("pre-planned room %s for %d is blocked in slot (%d,%d); skipped"),
@@ -631,8 +633,7 @@ func assignPrePlannedRooms(cfg *Cfg, exam *model.ExamWithRegsAndRooms,
 			exam.NormalRegsMtknr = exam.NormalRegsMtknr[studentCountInRoom:]
 
 			examRoom = &model.PlannedRoom{
-				Day:            exam.Exam.PlanEntry.DayNumber,
-				Slot:           exam.Exam.PlanEntry.SlotNumber,
+				Starttime:      slotStartPtr(cfg),
 				RoomName:       room.Name,
 				Ancode:         exam.Exam.Ancode,
 				Duration:       exam.Exam.ZpaExam.Duration,
@@ -669,8 +670,7 @@ func assignPrePlannedRooms(cfg *Cfg, exam *model.ExamWithRegsAndRooms,
 			}
 			duration := int(math.Ceil(float64(exam.Exam.ZpaExam.Duration*(100+nta.DeltaDurationPercent)) / 100))
 			examRoom = &model.PlannedRoom{
-				Day:               exam.Exam.PlanEntry.DayNumber,
-				Slot:              exam.Exam.PlanEntry.SlotNumber,
+				Starttime:         slotStartPtr(cfg),
 				RoomName:          room.Name,
 				Ancode:            exam.Exam.Ancode,
 				Duration:          duration,

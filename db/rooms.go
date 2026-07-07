@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -236,17 +237,12 @@ func (db *DB) PlannedRoomNames(ctx context.Context) ([]string, error) {
 	return names, nil
 }
 
-func (db *DB) PlannedRoomNamesInSlot(ctx context.Context, day, slot int) ([]string, error) {
+func (db *DB) PlannedRoomNamesAt(ctx context.Context, starttime time.Time) ([]string, error) {
 	collection := db.getCollectionSemester(collectionRoomsPlanned)
 
-	filter, ok := db.slotTimeFilter(day, slot)
-	if !ok {
-		return []string{}, nil
-	}
-
-	rawNames, err := collection.Distinct(ctx, "roomname", filter)
+	rawNames, err := collection.Distinct(ctx, "roomname", bson.M{"starttime": starttime})
 	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot find roomnames for slot")
+		log.Error().Err(err).Time("starttime", starttime).Msg("cannot find roomnames for slot")
 		return nil, err
 	}
 
@@ -277,35 +273,24 @@ func (db *DB) PlannedRooms(ctx context.Context) ([]*model.PlannedRoom, error) {
 		log.Error().Err(err).Msg("cannot decode planned rooms")
 		return nil, err
 	}
-	for _, pr := range plannedRooms {
-		db.decoratePlannedRoom(pr)
-	}
 
 	return plannedRooms, nil
 }
 
-func (db *DB) PlannedRoomsInSlot(ctx context.Context, day, slot int) ([]*model.PlannedRoom, error) {
+func (db *DB) PlannedRoomsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedRoom, error) {
 	collection := db.getCollectionSemester(collectionRoomsPlanned)
 
-	filter, ok := db.slotTimeFilter(day, slot)
-	if !ok {
-		return make([]*model.PlannedRoom, 0), nil
-	}
-
-	cur, err := collection.Find(ctx, filter)
+	cur, err := collection.Find(ctx, bson.M{"starttime": starttime})
 	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot find rooms for slot")
+		log.Error().Err(err).Time("starttime", starttime).Msg("cannot find rooms for slot")
 		return nil, err
 	}
 
 	plannedRooms := make([]*model.PlannedRoom, 0)
 	err = cur.All(ctx, &plannedRooms)
 	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("cannot decode rooms for slot")
+		log.Error().Err(err).Time("starttime", starttime).Msg("cannot decode rooms for slot")
 		return nil, err
-	}
-	for _, pr := range plannedRooms {
-		db.decoratePlannedRoom(pr)
 	}
 
 	return plannedRooms, nil
@@ -330,9 +315,6 @@ func (db *DB) PlannedRoomsForAncode(ctx context.Context, ancode int) ([]*model.P
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot decode rooms for ancode")
 		return nil, err
-	}
-	for _, pr := range plannedRooms {
-		db.decoratePlannedRoom(pr)
 	}
 
 	return plannedRooms, nil

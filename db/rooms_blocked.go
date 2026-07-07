@@ -24,9 +24,6 @@ func (db *DB) BlockedRooms(ctx context.Context) ([]*model.BlockedRoom, error) {
 		log.Error().Err(err).Msg("cannot decode blocked rooms")
 		return nil, err
 	}
-	for _, br := range blocked {
-		db.decorateBlockedRoom(br)
-	}
 	return blocked, nil
 }
 

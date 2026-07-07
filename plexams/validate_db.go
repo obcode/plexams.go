@@ -37,27 +37,35 @@ func (p *Plexams) knownAncodes(ctx context.Context) (map[int]bool, error) {
 	return known, nil
 }
 
-// validSlots returns the set of real (day, slot) pairs a plan entry or planned room may
-// use: the regular exam slots plus the MUC.DAI slots (used by external exams).
-func (p *Plexams) validSlots() map[[2]int]bool {
-	slots := make(map[[2]int]bool)
-	for _, s := range p.semesterConfig.Slots {
-		slots[[2]int{s.DayNumber, s.SlotNumber}] = true
-	}
-	for _, s := range p.semesterConfig.MucDaiSlots {
-		slots[[2]int{s.DayNumber, s.SlotNumber}] = true
-	}
-	return slots
+// startKey is the canonical map key for an absolute start time, robust against
+// time.Time's monotonic-clock / location comparison pitfalls. Two placements share a
+// start iff their startKeys are equal.
+func startKey(t time.Time) string {
+	return t.Format("2006-01-02T15:04")
 }
 
-// dayDates maps a day number to its calendar date (midnight), for comparing a plan
-// entry's day against a FixedDay constraint.
-func (p *Plexams) dayDates() map[int]time.Time {
-	dates := make(map[int]time.Time)
-	for _, d := range p.semesterConfig.Days {
-		dates[d.Number] = d.Date
+// fmtStart renders an absolute start time for user-facing messages, or a placeholder
+// when the entity is not (yet) placed.
+func fmtStart(t *time.Time) string {
+	if t == nil {
+		return "nicht geplant"
 	}
-	return dates
+	return t.Format("02.01.06 15:04")
+}
+
+// validStarttimes returns the set (by startKey) of allowed exam start times a plan
+// entry or planned room may use: the regular exam slots plus the MUC.DAI slots (used by
+// external exams). A start time outside this set is only legitimate for an external exam
+// whose time lies outside our exam period.
+func (p *Plexams) validStarttimes() map[string]bool {
+	starts := make(map[string]bool)
+	for _, s := range p.semesterConfig.Slots {
+		starts[startKey(s.Starttime)] = true
+	}
+	for _, s := range p.semesterConfig.MucDaiSlots {
+		starts[startKey(s.Starttime)] = true
+	}
+	return starts
 }
 
 // sameDate reports whether a and b fall on the same calendar day.
@@ -73,7 +81,7 @@ func sameDate(a, b time.Time) bool {
 // fields are mutually consistent.
 func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "db-plan-entries", "validating plan entries")
+	v := newValidation(reporter, "db-plan-entries", "validating plan entries")
 
 	planEntries, err := p.dbClient.PlanEntries(ctx)
 	if err != nil {
@@ -86,39 +94,35 @@ func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationRep
 	if err != nil {
 		return nil, err
 	}
-	slots := p.validSlots()
+	validStarts := p.validStarttimes()
 
 	v.step("validating plan entries")
 	planEntryMap := make(map[int]*model.PlanEntry)
 	for _, planEntry := range planEntries {
 		if other, ok := planEntryMap[planEntry.Ancode]; ok {
-			v.errorf(ref{Ancode: ptr(planEntry.Ancode)},
-				"more than one plan entry for ancode %d: (%d/%d) and (%d/%d)",
-				planEntry.Ancode, other.DayNumber, other.SlotNumber,
-				planEntry.DayNumber, planEntry.SlotNumber)
+			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
+				"more than one plan entry for ancode %d: %s and %s",
+				planEntry.Ancode, fmtStart(other.Starttime), fmtStart(planEntry.Starttime))
 			continue
 		}
 		planEntryMap[planEntry.Ancode] = planEntry
 
 		if !known[planEntry.Ancode] {
-			v.errorf(ref{Ancode: ptr(planEntry.Ancode)},
+			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
 				"plan entry for ancode %d, but no such exam (neither to-plan nor external)", planEntry.Ancode)
 		}
 
-		if planEntry.InSlot() {
-			// its slot must exist in the semester config. An exam whose Starttime falls
-			// inside the exam period legitimately resolves to a slot — that is not a conflict.
-			if !slots[[2]int{planEntry.DayNumber, planEntry.SlotNumber}] {
-				v.errorf(ref{Ancode: ptr(planEntry.Ancode), Day: ptr(planEntry.DayNumber), Slot: ptr(planEntry.SlotNumber)},
-					"ancode %d is placed in slot (%d/%d) which does not exist in the semester config",
-					planEntry.Ancode, planEntry.DayNumber, planEntry.SlotNumber)
-			}
-		} else {
-			// no real slot → must carry an absolute start time (external / outside period).
-			if planEntry.Starttime == nil {
-				v.errorf(ref{Ancode: ptr(planEntry.Ancode)},
-					"ancode %d has neither a valid slot nor a start time", planEntry.Ancode)
-			}
+		switch {
+		case planEntry.Starttime == nil:
+			// present in the plan but carries no start time → not actually placed.
+			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
+				"ancode %d has no start time (not planned)", planEntry.Ancode)
+		case !validStarts[startKey(*planEntry.Starttime)] && !planEntry.External:
+			// a start time that matches no allowed slot start is only legitimate for an
+			// external exam whose time lies outside our exam period.
+			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
+				"ancode %d is placed at %s, which is not an allowed start time in the semester config",
+				planEntry.Ancode, planEntry.Starttime.Format("02.01.06 15:04"))
 		}
 	}
 
@@ -132,7 +136,7 @@ func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationRep
 // by ValidateConstraints and deliberately not repeated here.
 func (p *Plexams) ValidateDBConstraints(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "db-constraints", "validating constraints entries")
+	v := newValidation(reporter, "db-constraints", "validating constraints entries")
 
 	constraints, err := p.dbClient.GetConstraints(ctx)
 	if err != nil {
@@ -154,7 +158,6 @@ func (p *Plexams) ValidateDBConstraints(reporter Reporter) (*model.ValidationRep
 	for _, pe := range planEntries {
 		planEntryMap[pe.Ancode] = pe
 	}
-	dayDates := p.dayDates()
 
 	v.step("validating constraints")
 	for _, c := range constraints {
@@ -166,22 +169,13 @@ func (p *Plexams) ValidateDBConstraints(reporter Reporter) (*model.ValidationRep
 		if c.FixedDay != nil {
 			pe, ok := planEntryMap[c.Ancode]
 			switch {
-			case !ok:
+			case !ok || pe.Starttime == nil:
 				v.warnf(ref{Ancode: ptr(c.Ancode)},
 					"ancode %d is fixed to day %s but is not planned", c.Ancode, c.FixedDay.Format("2006-01-02"))
-			case !pe.InSlot():
-				v.warnf(ref{Ancode: ptr(c.Ancode)},
-					"ancode %d is fixed to day %s but has no real slot", c.Ancode, c.FixedDay.Format("2006-01-02"))
-			default:
-				date, hasDate := dayDates[pe.DayNumber]
-				if !hasDate {
-					v.errorf(ref{Ancode: ptr(c.Ancode), Day: ptr(pe.DayNumber), Slot: ptr(pe.SlotNumber)},
-						"ancode %d is planned on day %d which has no date in the semester config", c.Ancode, pe.DayNumber)
-				} else if !sameDate(date, *c.FixedDay) {
-					v.errorf(ref{Ancode: ptr(c.Ancode), Day: ptr(pe.DayNumber), Slot: ptr(pe.SlotNumber)},
-						"ancode %d is fixed to day %s but is planned on %s (day %d)",
-						c.Ancode, c.FixedDay.Format("2006-01-02"), date.Format("2006-01-02"), pe.DayNumber)
-				}
+			case !sameDate(*pe.Starttime, *c.FixedDay):
+				v.errorf(ref{Ancode: ptr(c.Ancode), Starttime: pe.Starttime},
+					"ancode %d is fixed to day %s but is planned on %s",
+					c.Ancode, c.FixedDay.Format("2006-01-02"), pe.Starttime.Format("2006-01-02"))
 			}
 		}
 	}
@@ -197,7 +191,7 @@ func (p *Plexams) ValidateDBConstraints(reporter Reporter) (*model.ValidationRep
 // reference.
 func (p *Plexams) ValidateDBRooms(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "db-rooms", "validating planned rooms")
+	v := newValidation(reporter, "db-rooms", "validating planned rooms")
 
 	plannedRooms, err := p.dbClient.PlannedRooms(ctx)
 	if err != nil {
@@ -247,20 +241,20 @@ func (p *Plexams) ValidateDBRooms(reporter Reporter) (*model.ValidationReport, e
 
 	v.step("validating planned rooms")
 	for _, pr := range plannedRooms {
-		roomRef := ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), Day: ptr(pr.Day), Slot: ptr(pr.Slot)}
+		roomRef := ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), Starttime: pr.Starttime}
 
-		// room must reference a planned exam, in the same slot.
+		// room must reference a planned exam, at the same start time.
 		pe, ok := planEntryMap[pr.Ancode]
 		switch {
 		case !ok:
-			v.errorf(roomRef, "planned room %s in slot (%d/%d) for ancode %d, but that exam is not planned",
-				pr.RoomName, pr.Day, pr.Slot, pr.Ancode)
-		case !pe.InSlot():
-			v.errorf(roomRef, "planned room %s for ancode %d, but the exam has no real slot (external time?)",
+			v.errorf(roomRef, "planned room %s at %s for ancode %d, but that exam is not planned",
+				pr.RoomName, fmtStart(pr.Starttime), pr.Ancode)
+		case pe.Starttime == nil:
+			v.errorf(roomRef, "planned room %s for ancode %d, but the exam has no start time (external?)",
 				pr.RoomName, pr.Ancode)
-		case pe.DayNumber != pr.Day || pe.SlotNumber != pr.Slot:
-			v.errorf(roomRef, "planned room %s for ancode %d is in slot (%d/%d) but the exam is planned in slot (%d/%d) — stale after a move?",
-				pr.RoomName, pr.Ancode, pr.Day, pr.Slot, pe.DayNumber, pe.SlotNumber)
+		case pr.Starttime == nil || !pr.Starttime.Equal(*pe.Starttime):
+			v.errorf(roomRef, "planned room %s for ancode %d is at %s but the exam is planned at %s — stale after a move?",
+				pr.RoomName, pr.Ancode, fmtStart(pr.Starttime), fmtStart(pe.Starttime))
 		}
 
 		// room must exist in the global room master data and be active.
@@ -279,10 +273,10 @@ func (p *Plexams) ValidateDBRooms(reporter Reporter) (*model.ValidationReport, e
 		// NtaMtknr must reference a known, non-deactivated NTA and be seated in the room.
 		if pr.NtaMtknr != nil {
 			if nta, ok := ntaMap[*pr.NtaMtknr]; !ok {
-				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), Day: ptr(pr.Day), Slot: ptr(pr.Slot), StudentMtknr: pr.NtaMtknr},
+				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: pr.NtaMtknr, Starttime: pr.Starttime},
 					"planned room %s (ancode %d) references NTA %s, but no such NTA exists", pr.RoomName, pr.Ancode, *pr.NtaMtknr)
 			} else if nta.Deactivated {
-				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), Day: ptr(pr.Day), Slot: ptr(pr.Slot), StudentMtknr: pr.NtaMtknr},
+				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: pr.NtaMtknr, Starttime: pr.Starttime},
 					"planned room %s (ancode %d) references deactivated NTA %s", pr.RoomName, pr.Ancode, *pr.NtaMtknr)
 			}
 		}
@@ -296,11 +290,11 @@ func (p *Plexams) ValidateDBRooms(reporter Reporter) (*model.ValidationReport, e
 		}
 		for _, mtknr := range pr.StudentsInRoom {
 			if ancodeRegs != nil && !ancodeRegs[mtknr] {
-				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), Day: ptr(pr.Day), Slot: ptr(pr.Slot), StudentMtknr: ptr(mtknr)},
+				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: ptr(mtknr), Starttime: pr.Starttime},
 					"student %s is seated in room %s for ancode %d but is not registered for it", mtknr, pr.RoomName, pr.Ancode)
 			}
 			if otherRoom, dup := seated[mtknr]; dup {
-				v.errorf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), Day: ptr(pr.Day), Slot: ptr(pr.Slot), StudentMtknr: ptr(mtknr)},
+				v.errorf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: ptr(mtknr), Starttime: pr.Starttime},
 					"student %s is seated twice for ancode %d: in %s and %s", mtknr, pr.Ancode, otherRoom, pr.RoomName)
 			} else {
 				seated[mtknr] = pr.RoomName
@@ -337,7 +331,7 @@ func (p *Plexams) regsPerAncode(ctx context.Context) (map[int]map[string]bool, e
 // (the TODO in validate.go), a plausible duration delta, and no duplicate Matrikelnummer.
 func (p *Plexams) ValidateDBNtas(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "db-ntas", "validating ntas")
+	v := newValidation(reporter, "db-ntas", "validating ntas")
 
 	ntas, err := p.dbClient.Ntas(ctx)
 	if err != nil {
@@ -371,7 +365,7 @@ func (p *Plexams) ValidateDBNtas(reporter Reporter) (*model.ValidationReport, er
 // exams that exist: duration overrides, canShareSlot pairs and MUC.DAI links.
 func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "db-references", "validating cross references")
+	v := newValidation(reporter, "db-references", "validating cross references")
 
 	known, err := p.knownAncodes(ctx)
 	if err != nil {

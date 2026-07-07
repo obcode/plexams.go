@@ -66,7 +66,7 @@ func (p *Plexams) draftSI(name string, outfile string, exams []*model.PlannedExa
 		fmt.Sprintf("Vorläufiger Planungsstand der Prüfungen der FK07 im %s", p.semesterFull()),
 		p.planer.Name, p.planer.Email, "--- ENTWURF ---")
 
-	pdfgen.ExamTable(m, name, pdfgen.ExamRows(exams, p.getSlotTime))
+	pdfgen.ExamTable(m, name, pdfgen.ExamRows(exams))
 
 	err := m.OutputFileAndClose(outfile)
 	if err != nil {

@@ -67,7 +67,7 @@ func (p *Plexams) tableForProgram(ctx context.Context, program, programLong stri
 	if err != nil {
 		log.Error().Err(err).Msg("error while getting exams")
 	}
-	pdfgen.ProgramTable(m, programLong, pdfgen.ProgramRows(exams, program, p.getSlotTime))
+	pdfgen.ProgramTable(m, programLong, pdfgen.ProgramRows(exams, program))
 }
 
 func (p *Plexams) DraftExahmPDF(ctx context.Context, outfile string) error {
@@ -119,5 +119,5 @@ func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto, sortByDate bo
 		prePlannedRooms[exam.Ancode] = names
 	}
 
-	pdfgen.ExahmTable(m, sortByDate, pdfgen.ExahmRows(exams, sortByDate, p.getSlotTime, prePlannedRooms))
+	pdfgen.ExahmTable(m, sortByDate, pdfgen.ExahmRows(exams, sortByDate, prePlannedRooms))
 }

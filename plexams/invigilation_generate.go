@@ -357,10 +357,14 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 	}
 	selfByPosition := make(map[[3]any]int) // (day, slot, room) -> examerID
 	for _, si := range selfInvigilations {
-		if si.RoomName == nil {
+		if si.RoomName == nil || si.Starttime == nil {
 			continue
 		}
-		selfByPosition[[3]any{si.Slot.DayNumber, si.Slot.SlotNumber, *si.RoomName}] = si.InvigilatorID
+		s := p.slotForStarttime(*si.Starttime)
+		if s == nil {
+			continue
+		}
+		selfByPosition[[3]any{s.DayNumber, s.SlotNumber, *si.RoomName}] = si.InvigilatorID
 	}
 
 	prePlanned, err := p.PrePlannedInvigilations(ctx)
@@ -396,7 +400,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 
 	for _, slot := range p.semesterConfig.Slots {
 		day, sn := slot.DayNumber, slot.SlotNumber
-		rooms, err := p.PlannedRoomsInSlot(ctx, day, sn)
+		rooms, err := p.PlannedRoomsInSlot(ctx, slot.Starttime)
 		if err != nil {
 			log.Error().Err(err).Int("day", day).Int("slot", sn).Msg("cannot get rooms in slot")
 			return nil, err
@@ -406,7 +410,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		}
 
 		// own-exam slots from the exams in this slot (with NTA overrun).
-		exams, err := p.ExamsInSlot(ctx, day, sn)
+		exams, err := p.ExamsAt(ctx, slot.Starttime)
 		if err != nil {
 			log.Error().Err(err).Int("day", day).Int("slot", sn).Msg("cannot get exams in slot")
 			return nil, err
@@ -502,22 +506,28 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 
 	// apply pre-planned invigilations as fixed assignments.
 	for _, pp := range prePlanned {
+		ppDay, ppSlot := 0, 0
+		if pp.Starttime != nil {
+			if s := p.slotForStarttime(*pp.Starttime); s != nil {
+				ppDay, ppSlot = s.DayNumber, s.SlotNumber
+			}
+		}
 		var posIdx int
 		var ok bool
 		if pp.RoomName == nil {
-			posIdx, ok = reserveBySlot[[2]int{pp.Day, pp.Slot}]
+			posIdx, ok = reserveBySlot[[2]int{ppDay, ppSlot}]
 		} else {
-			posIdx, ok = posIndexBySlotRoom[[3]any{pp.Day, pp.Slot, *pp.RoomName}]
+			posIdx, ok = posIndexBySlotRoom[[3]any{ppDay, ppSlot, *pp.RoomName}]
 		}
 		if !ok {
 			room := "reserve"
 			if pp.RoomName != nil {
 				room = *pp.RoomName
 			}
-			log.Error().Int("invigilator", pp.InvigilatorID).Int("day", pp.Day).Int("slot", pp.Slot).Str("room", room).
+			log.Error().Int("invigilator", pp.InvigilatorID).Int("day", ppDay).Int("slot", ppSlot).Str("room", room).
 				Msg("pre-planned invigilation has no matching position (room/slot not planned)")
 			return nil, fmt.Errorf("pre-planned invigilation for invigilator %d has no matching position: %s in slot (%d,%d) is not planned",
-				pp.InvigilatorID, room, pp.Day, pp.Slot)
+				pp.InvigilatorID, room, ppDay, ppSlot)
 		}
 		fixed[posIdx] = pp.InvigilatorID
 	}

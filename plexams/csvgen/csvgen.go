@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
@@ -38,13 +37,13 @@ type CsvExamEXaHM struct {
 	Jira        string `csv:"Jira"`
 }
 
-// examDate renders the exam's slot start as "02.01.06, 15:04 Uhr", or "fehlt" if the exam
+// examDate renders the exam's start time as "02.01.06, 15:04 Uhr", or "fehlt" if the exam
 // has no plan entry yet.
-func examDate(exam *model.PlannedExam, slotTime func(day, slot int) time.Time) string {
-	if exam.PlanEntry == nil {
+func examDate(exam *model.PlannedExam) string {
+	if exam.PlanEntry == nil || exam.PlanEntry.Starttime == nil {
 		return "fehlt"
 	}
-	return slotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber).Format("02.01.06, 15:04 Uhr")
+	return exam.PlanEntry.Starttime.Format("02.01.06, 15:04 Uhr")
 }
 
 // roomComment builds the per-room "Anmerkungen" cell (NTA duration, reserve note, and the
@@ -70,7 +69,7 @@ func roomComment(room *model.PlannedRoom) string {
 // with no registrations is skipped, and an exam without a matching section is dropped
 // (it never enters the sort order). One row per planned room; a placeholder row when no
 // rooms are planned yet.
-func ProgramRows(exams []*model.PlannedExam, program string, slotTime func(day, slot int) time.Time) []CsvExam {
+func ProgramRows(exams []*model.PlannedExam, program string) []CsvExam {
 	rowsByAncode := make(map[int][]CsvExam)
 	ancodes := make([]int, 0, len(exams))
 
@@ -87,7 +86,7 @@ func ProgramRows(exams []*model.PlannedExam, program string, slotTime func(day, 
 			}
 		}
 
-		date := examDate(exam, slotTime)
+		date := examDate(exam)
 		if len(exam.PlannedRooms) > 0 {
 			rows := make([]CsvExam, 0, len(exam.PlannedRooms))
 			for _, room := range exam.PlannedRooms {
@@ -122,7 +121,7 @@ func ProgramRows(exams []*model.PlannedExam, program string, slotTime func(day, 
 
 // ExahmRows builds the EXaHM/SEB CSV rows for the exams carrying an EXaHM or SEB room
 // constraint. slotTime resolves the plan entry to its start.
-func ExahmRows(exams []*model.PlannedExam, slotTime func(day, slot int) time.Time) []CsvExamEXaHM {
+func ExahmRows(exams []*model.PlannedExam) []CsvExamEXaHM {
 	rows := make([]CsvExamEXaHM, 0)
 	for _, exam := range exams {
 		if exam.Constraints == nil || exam.Constraints.RoomConstraints == nil ||
@@ -155,7 +154,7 @@ func ExahmRows(exams []*model.PlannedExam, slotTime func(day, slot int) time.Tim
 			Ancode:      exam.Ancode,
 			Module:      exam.ZpaExam.Module,
 			MainExamer:  exam.ZpaExam.MainExamer,
-			ExamDate:    examDate(exam, slotTime),
+			ExamDate:    examDate(exam),
 			MaxDuration: exam.MaxDuration,
 			Students:    exam.StudentRegsCount,
 			Rooms:       fmt.Sprintf("%v", rooms),

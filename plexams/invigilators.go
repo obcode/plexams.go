@@ -14,6 +14,125 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// --- time-keyed lookup helpers (slotless migration) ---------------------------
+//
+// These derive their results from the entity's absolute Starttime instead of the
+// day/slot ordinals. They filter the existing "get all" DB reads by Starttime, so
+// no day/slot coordinate is needed. They are the local stand-ins for the shared
+// p.PlannedRoomsAt / p.ExamsAt / db.GetInvigilationsAt / db.GetInvigilatorAt
+// methods that other clusters will eventually provide.
+
+// plannedRoomsAt returns all planned rooms whose exam starts at start.
+func (p *Plexams) plannedRoomsAt(ctx context.Context, start time.Time) ([]*model.PlannedRoom, error) {
+	all, err := p.dbClient.PlannedRooms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rooms := make([]*model.PlannedRoom, 0)
+	for _, r := range all {
+		if r.Starttime != nil && r.Starttime.Equal(start) {
+			rooms = append(rooms, r)
+		}
+	}
+	return rooms, nil
+}
+
+// plannedRoomNamesAt returns the distinct room names planned at start.
+func (p *Plexams) plannedRoomNamesAt(ctx context.Context, start time.Time) ([]string, error) {
+	rooms, err := p.plannedRoomsAt(ctx, start)
+	if err != nil {
+		return nil, err
+	}
+	names := set.NewSet[string]()
+	for _, r := range rooms {
+		names.Add(r.RoomName)
+	}
+	namesSlice := names.ToSlice()
+	sort.Strings(namesSlice)
+	return namesSlice, nil
+}
+
+// examsAt returns the planned exams starting at start (mirrors db.ExamsInSlot,
+// keyed by absolute time instead of day/slot).
+func (p *Plexams) examsAt(ctx context.Context, start time.Time) ([]*model.PlannedExam, error) {
+	planEntries, err := p.dbClient.PlanEntries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	exams := make([]*model.PlannedExam, 0)
+	for _, planEntry := range planEntries {
+		if planEntry.Starttime == nil || !planEntry.Starttime.Equal(start) {
+			continue
+		}
+		exam, err := p.dbClient.GetAssembledExam(ctx, planEntry.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
+			return nil, err
+		}
+		rooms, err := p.dbClient.PlannedRoomsForAncode(ctx, planEntry.Ancode)
+		if err != nil {
+			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get rooms")
+			return nil, err
+		}
+		exams = append(exams, &model.PlannedExam{
+			Ancode:           exam.Ancode,
+			ZpaExam:          exam.ZpaExam,
+			PrimussExams:     exam.PrimussExams,
+			Constraints:      exam.Constraints,
+			Conflicts:        exam.Conflicts,
+			StudentRegsCount: exam.StudentRegsCount,
+			Ntas:             exam.Ntas,
+			MaxDuration:      exam.MaxDuration,
+			PlanEntry:        planEntry,
+			PlannedRooms:     rooms,
+		})
+	}
+	return exams, nil
+}
+
+// invigilationsAt returns the invigilations for a room (or "reserve") at start,
+// mirroring db.GetInvigilationInSlot but keyed by absolute time.
+func (p *Plexams) invigilationsAt(ctx context.Context, roomname string, start time.Time) ([]*model.Invigilation, error) {
+	all, err := p.dbClient.GetAllInvigilations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*model.Invigilation, 0)
+	for _, inv := range all {
+		if inv.Starttime == nil || !inv.Starttime.Equal(start) {
+			continue
+		}
+		if roomname == "reserve" {
+			if inv.RoomName == nil && inv.IsReserve {
+				result = append(result, inv)
+			}
+			continue
+		}
+		if inv.RoomName != nil && *inv.RoomName == roomname && !inv.IsReserve {
+			result = append(result, inv)
+		}
+	}
+	return result, nil
+}
+
+// invigilatorAt returns the invigilator (teacher) assigned to a room at start,
+// mirroring db.GetInvigilatorForRoom but keyed by absolute time.
+func (p *Plexams) invigilatorAt(ctx context.Context, roomname string, start time.Time) (*model.Teacher, error) {
+	all, err := p.dbClient.GetAllInvigilations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, inv := range all {
+		if inv.Starttime == nil || !inv.Starttime.Equal(start) {
+			continue
+		}
+		if inv.RoomName != nil && *inv.RoomName == roomname {
+			return p.dbClient.GetTeacher(ctx, inv.InvigilatorID)
+		}
+	}
+	return nil, nil
+}
+
 func (p *Plexams) InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error) {
 	teachers, err := p.getInvigilators(ctx)
 	if err != nil {
@@ -134,21 +253,14 @@ func (p *Plexams) buildInvigilator(ctx context.Context, teacher *model.Teacher, 
 				log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get plan entry for ancode")
 			}
 			if planEntry != nil {
-				// Slot (0,0) is the marker for exams outside the exam period
-				// (außerhalb des Prüfungszeitraums); they have no real slot time,
-				// so they contribute no exam time for the invigilator.
-				if planEntry.DayNumber == 0 && planEntry.SlotNumber == 0 {
+				// An exam outside the exam period (außerhalb des
+				// Prüfungszeitraums) is either not placed at all or placed by
+				// another faculty; it has no slot time of ours and contributes no
+				// exam time for the invigilator.
+				if planEntry.Starttime == nil || planEntry.External {
 					continue
 				}
-				starttimePtr, err := p.GetStarttime(planEntry.DayNumber, planEntry.SlotNumber)
-				if err != nil {
-					log.Error().Err(err).Str("name", teacher.Shortname).
-						Int("ancode", exam.Ancode).
-						Int("dayNumber", planEntry.DayNumber).Int("slotNumber", planEntry.SlotNumber).
-						Msg("plan entry does not map to a valid slot, skipping exam time for invigilator")
-					continue
-				}
-				starttime := *starttimePtr
+				starttime := *planEntry.Starttime
 				endtime := starttime.Add(time.Duration(exam.MaxDuration) * time.Minute)
 				examTimes = append(examTimes, &model.ExamTime{
 					From:  starttime,
@@ -247,9 +359,9 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 	todos := model.InvigilationTodos{}
 
 	for _, slot := range p.semesterConfig.Slots {
-		roomsInSlot, err := p.PlannedRoomsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		roomsInSlot, err := p.plannedRoomsAt(ctx, slot.Starttime)
 		if err != nil {
-			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+			log.Error().Err(err).Time("start", slot.Starttime).
 				Msg("cannot get rooms for slot")
 		} else {
 			if len(roomsInSlot) == 0 {
@@ -259,10 +371,11 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 		OUTER:
 			for _, room := range roomsInSlot {
 				for _, selfInvigilation := range selfInvigilations {
-					if selfInvigilation.Slot.DayNumber == slot.DayNumber &&
-						selfInvigilation.Slot.SlotNumber == slot.SlotNumber &&
+					if selfInvigilation.Starttime != nil &&
+						selfInvigilation.Starttime.Equal(slot.Starttime) &&
+						selfInvigilation.RoomName != nil &&
 						*selfInvigilation.RoomName == room.RoomName {
-						log.Debug().Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Str("room", room.RoomName).
+						log.Debug().Time("start", slot.Starttime).Str("room", room.RoomName).
 							Msg("found self invigilation")
 						continue OUTER
 					}
@@ -322,7 +435,7 @@ func (p *Plexams) PrepareInvigilationTodos(ctx context.Context) (*model.Invigila
 		}
 
 		invigilator.Todos = invigcalc.Todos(invigilationsForInvigilator,
-			targets[invigilator.Teacher.ID], enough[invigilator.Teacher.ID])
+			targets[invigilator.Teacher.ID], enough[invigilator.Teacher.ID], p.dayNumberForDate)
 	}
 
 	err = p.dbClient.CacheInvigilatorTodos(ctx, &todos)
@@ -360,13 +473,14 @@ func (p *Plexams) AddInvigilatorsToInvigilationTodos(ctx context.Context, todos 
 		}
 
 		invigilator.Todos = invigcalc.Todos(invigilationsForInvigilator,
-			targets[invigilator.Teacher.ID], enough[invigilator.Teacher.ID])
+			targets[invigilator.Teacher.ID], enough[invigilator.Teacher.ID], p.dayNumberForDate)
 	}
 
 	return nil
 }
 
-func (p *Plexams) InvigilatorsForDay(ctx context.Context, day int) (*model.InvigilatorsForDay, error) {
+func (p *Plexams) InvigilatorsForDay(ctx context.Context, date time.Time) (*model.InvigilatorsForDay, error) {
+	day := p.dayNumberForDate(date)
 	invigilationTodos, err := p.dbClient.GetInvigilationTodos(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get invigilation todos")
@@ -447,16 +561,15 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 
 	type key struct {
 		roomName string
-		day      int
-		slot     int
+		start    int64 // Unix seconds of the slot start (stable map key)
 	}
 
 	invigilationsMap := make(map[key][]*model.Invigilation)
 
 	for _, slot := range p.semesterConfig.Slots {
-		examsInSlot, err := p.ExamsInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		examsInSlot, err := p.examsAt(ctx, slot.Starttime)
 		if err != nil {
-			log.Error().Err(err).Int("day", slot.DayNumber).Int("time", slot.SlotNumber).
+			log.Error().Err(err).Time("start", slot.Starttime).
 				Msg("cannot get exams in slot")
 			continue
 		}
@@ -475,10 +588,10 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 			if len(exam.PlannedRooms) == 0 {
 				continue
 			}
-			if invigilator.Requirements != nil {
-				for _, day := range invigilator.Requirements.ExcludedDays {
-					if day == exam.PlanEntry.DayNumber {
-						log.Debug().Str("name", exam.ZpaExam.MainExamer).Interface("slot", exam.PlanEntry).
+			if invigilator.Requirements != nil && exam.PlanEntry != nil && exam.PlanEntry.Starttime != nil {
+				for _, excludedDate := range invigilator.Requirements.ExcludedDates {
+					if excludedDate != nil && sameCalendarDay(*excludedDate, *exam.PlanEntry.Starttime) {
+						log.Debug().Str("name", exam.ZpaExam.MainExamer).Time("start", *exam.PlanEntry.Starttime).
 							Msg("Tag ist gesperrt für Aufsicht")
 						continue OUTER
 					}
@@ -501,23 +614,21 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 			}
 
 			if roomNames.Cardinality() == 1 {
-				log.Debug().Int("examerid", examer).Interface("room", roomNames).Interface("slot", slot).
+				log.Debug().Int("examerid", examer).Interface("room", roomNames).Time("start", slot.Starttime).
 					Msg("found self invigilation")
 				key := key{
 					roomName: roomNames.ToSlice()[0],
-					day:      slot.DayNumber,
-					slot:     slot.SlotNumber,
+					start:    slot.Starttime.Unix(),
 				}
 				invigilationsForKey, ok := invigilationsMap[key]
 				if !ok {
 					invigilationsForKey = make([]*model.Invigilation, 0, 1)
 				}
 				invigilationsMap[key] = append(invigilationsForKey, &model.Invigilation{
-					Starttime:          &slot.Starttime, // source of truth; day/slot derived on read
+					Starttime:          &slot.Starttime, // source of truth; slot (day/slot) derived on read
 					RoomName:           &roomNames.ToSlice()[0],
 					Duration:           0, // FIXME: ?? self-invigilation does not count
 					InvigilatorID:      examer,
-					Slot:               slot,
 					IsReserve:          false,
 					IsSelfInvigilation: true,
 				})
@@ -547,15 +658,16 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 	return invigilations, nil
 }
 
-func (p *Plexams) GetInvigilatorForRoom(ctx context.Context, name string, day, time int) (*model.Teacher, error) {
-	return p.dbClient.GetInvigilatorForRoom(ctx, name, day, time)
+// GetInvigilatorForRoom returns the invigilator assigned to a room at the given
+// absolute start time (nil when none is assigned).
+func (p *Plexams) GetInvigilatorForRoom(ctx context.Context, name string, start time.Time) (*model.Teacher, error) {
+	return p.dbClient.GetInvigilatorAt(ctx, name, start)
 }
 
-// TODO: rewrite me
-func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, time int) (*model.InvigilationSlot, error) {
-	rooms, err := p.PlannedRoomsInSlot(ctx, day, time)
+func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, starttime time.Time) (*model.InvigilationSlot, error) {
+	rooms, err := p.PlannedRoomsInSlot(ctx, starttime)
 	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("time", time).
+		log.Error().Err(err).Time("starttime", starttime).
 			Msg("cannot get rooms for slot")
 		return nil, err
 	}
@@ -564,9 +676,9 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 		return nil, nil // okay?
 	}
 
-	reserve, err := p.dbClient.GetInvigilatorInSlot(ctx, "reserve", day, time)
+	reserve, err := p.dbClient.GetInvigilatorAt(ctx, "reserve", starttime)
 	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("time", time).
+		log.Error().Err(err).Time("starttime", starttime).
 			Msg("cannot get reserve for slot")
 		return nil, err
 	}
@@ -580,7 +692,7 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 	prePlannedRooms := make(map[string]bool)
 	reservePrePlanned := false
 	for _, ppi := range prePlannedInvigilations {
-		if ppi.Day != day || ppi.Slot != time {
+		if ppi.Starttime == nil || !ppi.Starttime.Equal(starttime) {
 			continue
 		}
 		if ppi.RoomName == nil {
@@ -614,9 +726,9 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 
 	for _, name := range keys {
 		roomsForExam := roomMap[name]
-		invigilator, err := p.GetInvigilatorForRoom(ctx, name, day, time)
+		invigilator, err := p.GetInvigilatorForRoom(ctx, name, starttime)
 		if err != nil {
-			log.Error().Err(err).Int("day", day).Int("slot", time).Str("room", name).
+			log.Error().Err(err).Time("starttime", starttime).Str("room", name).
 				Msg("cannot get invigilator for rooms in slot")
 		}
 
@@ -652,6 +764,6 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, day int, ti
 	return slot, nil
 }
 
-func (p *Plexams) Invigilator(ctx context.Context, room string, day int, time int) (*model.Teacher, error) {
-	return p.dbClient.GetInvigilatorForRoom(ctx, room, day, time)
+func (p *Plexams) Invigilator(ctx context.Context, room string, starttime time.Time) (*model.Teacher, error) {
+	return p.dbClient.GetInvigilatorAt(ctx, room, starttime)
 }

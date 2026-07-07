@@ -75,99 +75,6 @@ func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, slottime ti
 	})
 }
 
-func (p *Plexams) AddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int, force bool) (bool, error) {
-	var slot *model.Slot
-
-	for _, s := range p.semesterConfig.Slots {
-		if s.DayNumber == dayNumber && s.SlotNumber == timeNumber {
-			slot = s
-			break
-		}
-	}
-
-	if slot == nil {
-		err := fmt.Errorf("slot (%d,%d) does not exist", dayNumber, timeNumber)
-		log.Error().Err(err).Int("day", dayNumber).Int("slot", timeNumber).Msg("slot does not exist")
-		return false, err
-	}
-
-	// check if exam with ancode exists
-	exam, err := p.AssembledExam(ctx, ancode)
-	if err != nil || exam == nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist or does not need to be planned")
-		return false, err
-	}
-
-	if !force {
-		allowedSlots, err := p.AllowedSlots(ctx, ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get allowed slots")
-		}
-		slotIsAllowed := false
-
-		for _, slot := range allowedSlots {
-			if slot.DayNumber == dayNumber && slot.SlotNumber == timeNumber {
-				slotIsAllowed = true
-				break
-			}
-		}
-		if !slotIsAllowed {
-			log.Debug().Int("day", dayNumber).Int("time", timeNumber).Int("ancode", ancode).
-				Msg("slot is not allowed")
-			return false, fmt.Errorf("slot (%d,%d) is not allowed for exam %d",
-				dayNumber, timeNumber, ancode)
-		}
-		planEntry, err := p.dbClient.PlanEntry(ctx, ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get plan entry")
-			return false, err
-		}
-		if planEntry != nil && exam.Constraints != nil && exam.Constraints.RoomConstraints != nil &&
-			(exam.Constraints.RoomConstraints.Exahm || exam.Constraints.RoomConstraints.Seb) {
-			log.Debug().Int("ancode", ancode).Msg("exam needs EXaHM rooms")
-			return false, fmt.Errorf("exam %d needs EXaHM rooms", ancode)
-		}
-	}
-
-	starttime := slot.Starttime
-	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
-		Starttime: &starttime,
-		Ancode:    ancode,
-		Locked:    false,
-	})
-}
-
-func (p *Plexams) PreAddExamToSlot(ctx context.Context, ancode int, dayNumber int, timeNumber int) (bool, error) {
-	var slot *model.Slot
-
-	for _, s := range p.semesterConfig.Slots {
-		if s.DayNumber == dayNumber && s.SlotNumber == timeNumber {
-			slot = s
-			break
-		}
-	}
-
-	if slot == nil {
-		err := fmt.Errorf("slot (%d,%d) does not exist", dayNumber, timeNumber)
-		log.Error().Err(err).Int("day", dayNumber).Int("slot", timeNumber).Msg("slot does not exist")
-		return false, err
-	}
-
-	// check if exam with ancode exists
-	exam, err := p.GetZPAExam(ctx, ancode)
-	if err != nil || exam == nil {
-		log.Error().Err(err).Int("ancode", ancode).Msg("zpa exam does not exist")
-		return false, err
-	}
-
-	starttime := slot.Starttime
-	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
-		Starttime: &starttime,
-		Ancode:    ancode,
-		Locked:    false,
-	})
-}
-
 func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
 	exam, err := p.AssembledExam(ctx, ancode)
 	if err != nil {
@@ -228,13 +135,17 @@ func (p *Plexams) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist")
 	}
 
-	type SlotID struct {
-		DayNumber, SlotNumber int
-	}
-
-	allSlotsMap := make(map[SlotID]*model.Slot)
+	// Group the configured slots by calendar day and order each day by start time. The
+	// time-neighbours (previous / next start time on the same day) replace the former
+	// SlotNumber±1 adjacency — identical on the fixed grid, but derived purely from time.
+	slotsByDay := make(map[string][]*model.Slot)
 	for _, slot := range p.semesterConfig.Slots {
-		allSlotsMap[SlotID{slot.DayNumber, slot.SlotNumber}] = slot
+		key := slot.Starttime.Format("2006-01-02")
+		slotsByDay[key] = append(slotsByDay[key], slot)
+	}
+	for key := range slotsByDay {
+		day := slotsByDay[key]
+		sort.Slice(day, func(i, j int) bool { return day[i].Starttime.Before(day[j].Starttime) })
 	}
 
 	slotsWithConflicts, err := p.slotsWithConflicts(ctx, exam)
@@ -245,13 +156,22 @@ func (p *Plexams) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 
 	awkwardSlots := make([]*model.Slot, 0)
 	for _, slot := range slotsWithConflicts.ToSlice() {
-		slotMinus1, ok := allSlotsMap[SlotID{slot.DayNumber, slot.SlotNumber - 1}]
-		if ok {
-			awkwardSlots = append(awkwardSlots, slotMinus1)
+		day := slotsByDay[slot.Starttime.Format("2006-01-02")]
+		idx := -1
+		for i, s := range day {
+			if s.Starttime.Equal(slot.Starttime) {
+				idx = i
+				break
+			}
 		}
-		slotPlus1, ok := allSlotsMap[SlotID{slot.DayNumber, slot.SlotNumber + 1}]
-		if ok {
-			awkwardSlots = append(awkwardSlots, slotPlus1)
+		if idx < 0 {
+			continue
+		}
+		if idx-1 >= 0 {
+			awkwardSlots = append(awkwardSlots, day[idx-1])
+		}
+		if idx+1 < len(day) {
+			awkwardSlots = append(awkwardSlots, day[idx+1])
 		}
 	}
 
@@ -368,14 +288,15 @@ func (p *Plexams) AncodesInPlan(ctx context.Context) ([]int, error) {
 	return p.dbClient.AncodesInPlan(ctx)
 }
 
-func (p *Plexams) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
-	return p.dbClient.ExamsInSlot(ctx, day, time)
+// ExamsAt returns all planned exams whose PlanEntry.Starttime equals starttime.
+func (p *Plexams) ExamsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedExam, error) {
+	return p.dbClient.ExamsAt(ctx, starttime)
 }
 
-func (p *Plexams) PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.PreExam, error) {
-	planEntries, err := p.dbClient.GetPlanEntriesInSlot(ctx, day, time)
+func (p *Plexams) PreExamsAt(ctx context.Context, starttime time.Time) ([]*model.PreExam, error) {
+	planEntries, err := p.dbClient.PlanEntriesAt(ctx, starttime)
 	if err != nil {
-		log.Error().Err(err).Int("day", day).Int("time", time).Msg("cannot get plan entries in slot")
+		log.Error().Err(err).Time("starttime", starttime).Msg("cannot get plan entries in slot")
 		return nil, err
 	}
 	if len(planEntries) == 0 {
@@ -418,22 +339,18 @@ func (p *Plexams) SlotForAncode(ctx context.Context, ancode int) (*model.Slot, e
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot get plan entry for exam")
 		return nil, err
 	}
-	if planEntry == nil {
+	if planEntry == nil || planEntry.Starttime == nil {
 		return nil, nil
 	}
-	// no in-period slot (e.g. an external exam whose time lies outside our exam period)
-	// is not an error — the exam simply has no slot.
-	if !planEntry.InSlot() {
-		return nil, nil
-	}
-
+	// A start time not on the grid (e.g. an external exam whose time lies outside our
+	// exam period) is not an error — the exam simply has no slot.
 	for _, slot := range p.semesterConfig.Slots {
-		if planEntry.DayNumber == slot.DayNumber && planEntry.SlotNumber == slot.SlotNumber {
+		if slot.Starttime.Equal(*planEntry.Starttime) {
 			return slot, nil
 		}
 	}
 
-	return nil, fmt.Errorf("slot for exam #%d not found", ancode)
+	return nil, nil
 }
 
 func (p *Plexams) LockPlan(ctx context.Context) error {

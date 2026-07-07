@@ -33,7 +33,7 @@ func (p *Plexams) PrepareRoomForExams(ctx context.Context, reporter Reporter) er
 		cfg.Slot = slot
 		slotRooms, slotUnplaced, err := rooms.PrepareForSlot(ctx, p.dbClient, cfg, reporter)
 		if err != nil {
-			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).
+			log.Error().Err(err).Time("starttime", slot.Starttime).
 				Msg("error while preparing rooms for exams in slot")
 			continue
 		}
@@ -104,7 +104,14 @@ func (p *Plexams) prepareRoomsCfg(ctx context.Context) (*rooms.Cfg, error) {
 	}
 	blockedRooms := make(map[rooms.SlotKey]set.Set[string])
 	for _, b := range blocks {
-		key := rooms.SlotKey{Day: b.Day, Slot: b.Slot}
+		if b.Starttime == nil {
+			continue
+		}
+		slot := p.slotForStarttime(*b.Starttime)
+		if slot == nil {
+			continue
+		}
+		key := rooms.SlotKey{Day: slot.DayNumber, Slot: slot.SlotNumber}
 		if _, ok := blockedRooms[key]; !ok {
 			blockedRooms[key] = set.NewSet[string]()
 		}

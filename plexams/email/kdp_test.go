@@ -10,45 +10,46 @@ import (
 
 func ptr(s string) *string { return &s }
 
-func kdpExam(ancode int, exahm bool, day, slot int, rooms []*model.PlannedRoom) *model.PlannedExam {
+func kdpExam(ancode int, exahm bool, start time.Time, rooms []*model.PlannedRoom) *model.PlannedExam {
 	return &model.PlannedExam{
 		Ancode:       ancode,
 		ZpaExam:      &model.ZPAExam{Module: "M" + string(rune('0'+ancode%10)), MainExamer: "Prof"},
 		Constraints:  &model.Constraints{RoomConstraints: &model.RoomConstraints{Exahm: exahm, Seb: !exahm}},
-		PlanEntry:    &model.PlanEntry{DayNumber: day, SlotNumber: slot},
+		PlanEntry:    &model.PlanEntry{Starttime: &start},
 		PlannedRooms: rooms,
 	}
 }
 
 func students(n int) []string { return make([]string, n) }
 
-// slotTimes gives slot (1,1) an earlier start than (1,2), so ordering is testable.
-func testSlotTime(day, slot int) time.Time {
-	return time.Date(2026, 7, 6, 8+slot, 0, 0, 0, time.UTC)
-}
+// slot1Start is earlier than slot2Start, so slot ordering is testable.
+var (
+	slot1Start = time.Date(2026, 7, 6, 9, 0, 0, 0, time.UTC)
+	slot2Start = time.Date(2026, 7, 6, 10, 0, 0, 0, time.UTC)
+)
 
 func TestBuildKdpAggregation(t *testing.T) {
 	exams := []*model.PlannedExam{
 		// EXaHM in T3.023, slot (1,1): 2 normal seats (90 min) + 1 reserve seat
-		kdpExam(111, true, 1, 1, []*model.PlannedRoom{
+		kdpExam(111, true, slot1Start, []*model.PlannedRoom{
 			{RoomName: "T3.023", Duration: 90, StudentsInRoom: students(2)},
 			{RoomName: "T3.023", Duration: 90, Reserve: true, StudentsInRoom: students(1)},
 		}),
 		// SEB in T3.023, same slot: 1 NTA seat (120 min)
-		kdpExam(222, false, 1, 1, []*model.PlannedRoom{
+		kdpExam(222, false, slot1Start, []*model.PlannedRoom{
 			{RoomName: "T3.023", Duration: 120, NtaMtknr: ptr("m1"), StudentsInRoom: students(1)},
 		}),
 		// EXaHM in a later slot, ONLINE room is ignored -> contributes no slot
-		kdpExam(333, true, 1, 2, []*model.PlannedRoom{
+		kdpExam(333, true, slot2Start, []*model.PlannedRoom{
 			{RoomName: "ONLINE", Duration: 90, StudentsInRoom: students(4)},
 		}),
 		// not EXaHM/SEB -> skipped entirely
-		{Ancode: 444, ZpaExam: &model.ZPAExam{}, PlanEntry: &model.PlanEntry{DayNumber: 1, SlotNumber: 1}},
+		{Ancode: 444, ZpaExam: &model.ZPAExam{}, PlanEntry: &model.PlanEntry{Starttime: &slot1Start}},
 		// EXaHM without a plan entry -> skipped
 		{Ancode: 555, ZpaExam: &model.ZPAExam{}, Constraints: &model.Constraints{RoomConstraints: &model.RoomConstraints{Exahm: true}}},
 	}
 
-	slots, csv := BuildKdp(exams, testSlotTime)
+	slots, csv := BuildKdp(exams)
 
 	// only one slot has a (non-ONLINE) room
 	if len(slots) != 1 {
@@ -99,7 +100,7 @@ func TestBuildKdpAggregation(t *testing.T) {
 }
 
 func TestBuildKdpEmpty(t *testing.T) {
-	slots, csv := BuildKdp(nil, testSlotTime)
+	slots, csv := BuildKdp(nil)
 	if len(slots) != 0 || len(csv) != 0 {
 		t.Errorf("BuildKdp(nil) = %d slots, %d csv; want 0, 0", len(slots), len(csv))
 	}
@@ -108,10 +109,10 @@ func TestBuildKdpEmpty(t *testing.T) {
 func TestBuildKdpSlotOrdering(t *testing.T) {
 	// exam in the later slot listed first in the input; output must be time-ordered.
 	exams := []*model.PlannedExam{
-		kdpExam(200, true, 1, 2, []*model.PlannedRoom{{RoomName: "R2", Duration: 90, StudentsInRoom: students(1)}}),
-		kdpExam(100, true, 1, 1, []*model.PlannedRoom{{RoomName: "R1", Duration: 90, StudentsInRoom: students(1)}}),
+		kdpExam(200, true, slot2Start, []*model.PlannedRoom{{RoomName: "R2", Duration: 90, StudentsInRoom: students(1)}}),
+		kdpExam(100, true, slot1Start, []*model.PlannedRoom{{RoomName: "R1", Duration: 90, StudentsInRoom: students(1)}}),
 	}
-	slots, _ := BuildKdp(exams, testSlotTime)
+	slots, _ := BuildKdp(exams)
 	if len(slots) != 2 || slots[0].Time != "09:00" || slots[1].Time != "10:00" {
 		t.Errorf("slot ordering = %+v", []string{slots[0].Time, slots[1].Time})
 	}

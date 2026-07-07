@@ -40,29 +40,11 @@ func (db *DB) AddExamToSlot(ctx context.Context, planEntry *model.PlanEntry) (bo
 	return true, nil
 }
 
-// slotTimeFilter builds a plan query that matches the entries placed on the given
-// (day, slot), i.e. whose Starttime equals that slot's start time. It returns false
-// when there is no such slot (no resolver / unknown slot) so the caller can return
-// an empty result.
-func (db *DB) slotTimeFilter(day, slot int) (bson.M, bool) {
-	if db.slotResolver == nil {
-		return nil, false
-	}
-	t, ok := db.slotResolver.TimeForSlot(day, slot)
-	if !ok {
-		return nil, false
-	}
-	return bson.M{"starttime": t}, true
-}
-
-func (db *DB) GetPlanEntriesInSlot(ctx context.Context, day int, time int) ([]*model.PlanEntry, error) {
+// PlanEntriesAt returns the plan entries placed at the given absolute start time.
+func (db *DB) PlanEntriesAt(ctx context.Context, starttime time.Time) ([]*model.PlanEntry, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	filter, ok := db.slotTimeFilter(day, time)
-	if !ok {
-		return make([]*model.PlanEntry, 0), nil
-	}
-	cur, err := collection.Find(ctx, filter)
+	cur, err := collection.Find(ctx, bson.M{"starttime": starttime})
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("MongoDB Find")
 		return nil, err
@@ -77,21 +59,15 @@ func (db *DB) GetPlanEntriesInSlot(ctx context.Context, day int, time int) ([]*m
 			Msg("Cannot decode to nta")
 		return nil, err
 	}
-	for _, pe := range planEntries {
-		db.decoratePlanEntry(pe)
-	}
 
 	return planEntries, nil
 }
 
-func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
+// ExamsAt returns the assembled exams placed at the given absolute start time.
+func (db *DB) ExamsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	filter, ok := db.slotTimeFilter(day, time)
-	if !ok {
-		return make([]*model.PlannedExam, 0), nil
-	}
-	cur, err := collection.Find(ctx, filter)
+	cur, err := collection.Find(ctx, bson.M{"starttime": starttime})
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("MongoDB Find")
 		return nil, err
@@ -109,7 +85,6 @@ func (db *DB) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.Plan
 
 	exams := make([]*model.PlannedExam, 0, len(planEntries))
 	for _, planEntry := range planEntries {
-		db.decoratePlanEntry(planEntry)
 		exam, err := db.GetAssembledExam(ctx, planEntry.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
@@ -156,9 +131,6 @@ func (db *DB) PlanEntries(ctx context.Context) ([]*model.PlanEntry, error) {
 			Msg("Cannot decode to plan entries")
 		return nil, err
 	}
-	for _, pe := range planEntries {
-		db.decoratePlanEntry(pe)
-	}
 
 	return planEntries, nil
 }
@@ -177,9 +149,6 @@ func (db *DB) PlannedAncodes(ctx context.Context) ([]*model.PlanEntry, error) {
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionNamePlan).Msg("cannot decode plan ancode entries")
 		return nil, err
-	}
-	for _, pe := range planEntries {
-		db.decoratePlanEntry(pe)
 	}
 
 	return planEntries, nil
@@ -204,7 +173,6 @@ func (db *DB) PlanEntry(ctx context.Context, ancode int) (*model.PlanEntry, erro
 			Msg("Cannot decode to plan entry")
 		return nil, err
 	}
-	db.decoratePlanEntry(&entry)
 
 	return &entry, nil
 }

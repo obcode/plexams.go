@@ -12,25 +12,8 @@ import (
 )
 
 // slot11Time is the start time of slot (1,1) used by the room tests. Plan entries are
-// stored with this absolute time; the resolver derives (1,1) back from it.
+// stored with this absolute time; the machine keys its DB reads on it.
 var slot11Time = time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local)
-
-// slot11Resolver maps only slot (1,1) ↔ slot11Time, for the single-slot room tests.
-type slot11Resolver struct{}
-
-func (slot11Resolver) SlotForTime(t time.Time) (int, int) {
-	if t.Equal(slot11Time) {
-		return 1, 1
-	}
-	return 0, 0
-}
-
-func (slot11Resolver) TimeForSlot(day, slot int) (time.Time, bool) {
-	if day == 1 && slot == 1 {
-		return slot11Time, true
-	}
-	return time.Time{}, false
-}
 
 // Characterization test for the stateful room-allocation state machine
 // (PrepareForSlot). It runs against an ephemeral MongoDB (PLEXAMS_TEST_MONGO_URI
@@ -62,7 +45,6 @@ func mtknr(prefix string, i int) string { return prefix + string(rune('a'+i)) }
 func roomsTestDB(t *testing.T, rooms []*model.Room) (*db.DB, context.Context, map[string]*model.Room, []string) {
 	t.Helper()
 	dbClient := mongotest.NewDB(t)
-	dbClient.SetSlotResolver(slot11Resolver{})
 	ctx := context.Background()
 	roomInfo := make(map[string]*model.Room, len(rooms))
 	roomNames := make([]string, 0, len(rooms))
@@ -106,7 +88,7 @@ func slotCfg(roomInfo map[string]*model.Room, roomNames []string) *Cfg {
 		RoomInfo:             roomInfo,
 		PrePlannedRooms:      map[int][]*model.PrePlannedRoom{},
 		AdditionalSeats:      map[int]int{},
-		Slot:                 &model.Slot{DayNumber: 1, SlotNumber: 1},
+		Slot:                 &model.Slot{DayNumber: 1, SlotNumber: 1, Starttime: slot11Time},
 		RoomsNotUsableInSlot: set.NewSet[string](),
 		BlockedRooms:         map[SlotKey]set.Set[string]{},
 		ExactSeatRooms:       map[int]map[string]bool{},

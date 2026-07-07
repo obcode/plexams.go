@@ -23,9 +23,12 @@ func repeaterExam(examerID int, examer, module string, notPlannedByMe bool, pe *
 	}
 }
 
-func lbaSlotTime(_, slot int) time.Time {
-	return time.Date(2026, 7, 6, 6+2*slot, 0, 0, 0, time.UTC) // slot1 -> 08:00, slot2 -> 10:00
-}
+var (
+	lbaSlot1 = time.Date(2026, 7, 6, 8, 0, 0, 0, time.UTC)  // 08:00
+	lbaSlot2 = time.Date(2026, 7, 6, 10, 0, 0, 0, time.UTC) // 10:00
+)
+
+func lbaStart(t time.Time) *time.Time { return &t }
 
 func TestBuildLbaRepeaterExams(t *testing.T) {
 	teachers := map[int]*model.Teacher{
@@ -40,7 +43,7 @@ func TestBuildLbaRepeaterExams(t *testing.T) {
 		"R2": {ID: 10, Shortname: "Inv10", Email: "i10@hm.edu"}, // same ID -> deduped
 		"R3": {ID: 20, Shortname: "Inv20", Email: "i20@hm.edu"},
 	}
-	invigilatorForRoom := func(room string, _, _ int) *model.Teacher { return invigs[room] }
+	invigilatorForRoom := func(room string, _ time.Time) *model.Teacher { return invigs[room] }
 
 	prog := func(name string, regs int) *model.EnhancedPrimussExam {
 		return &model.EnhancedPrimussExam{Exam: &model.PrimussExam{Program: name}, StudentRegs: make([]*model.EnhancedStudentReg, regs)}
@@ -48,25 +51,25 @@ func TestBuildLbaRepeaterExams(t *testing.T) {
 
 	exams := []*model.PlannedExam{
 		// A: slot2 (later), rooms R1, R2 (dup invig), ONLINE (skipped); programs IF(2), IB(1), XX(0 -> skip)
-		repeaterExam(1, "LBA One", "MA", false, &model.PlanEntry{DayNumber: 1, SlotNumber: 2},
+		repeaterExam(1, "LBA One", "MA", false, &model.PlanEntry{Starttime: lbaStart(lbaSlot2)},
 			[]*model.PlannedRoom{{RoomName: "R1"}, {RoomName: "R2"}, {RoomName: "ONLINE"}},
 			[]*model.EnhancedPrimussExam{prog("IF", 2), prog("IB", 1), prog("XX", 0)}),
 		// B: slot1 (earlier) -> sorts before A
-		repeaterExam(2, "LBA Two", "MB", false, &model.PlanEntry{DayNumber: 1, SlotNumber: 1},
+		repeaterExam(2, "LBA Two", "MB", false, &model.PlanEntry{Starttime: lbaStart(lbaSlot1)},
 			[]*model.PlannedRoom{{RoomName: "R3"}}, nil),
 		// C: prof examer -> excluded
-		repeaterExam(3, "Prof", "MC", false, &model.PlanEntry{DayNumber: 1, SlotNumber: 1}, nil, nil),
+		repeaterExam(3, "Prof", "MC", false, &model.PlanEntry{Starttime: lbaStart(lbaSlot1)}, nil, nil),
 		// D: not a repeater -> excluded
 		{ZpaExam: &model.ZPAExam{IsRepeaterExam: false, MainExamerID: 1}},
 		// E: examer lookup fails -> excluded
-		repeaterExam(4, "Ghost", "ME", false, &model.PlanEntry{DayNumber: 1, SlotNumber: 1}, nil, nil),
+		repeaterExam(4, "Ghost", "ME", false, &model.PlanEntry{Starttime: lbaStart(lbaSlot1)}, nil, nil),
 		// F: NotPlannedByMe -> excluded
-		repeaterExam(1, "LBA One", "MF", true, &model.PlanEntry{DayNumber: 1, SlotNumber: 1}, nil, nil),
+		repeaterExam(1, "LBA One", "MF", true, &model.PlanEntry{Starttime: lbaStart(lbaSlot1)}, nil, nil),
 		// G: no plan entry -> "noch nicht geplant", sorts first (zero time)
 		repeaterExam(5, "LBA Five", "MG", false, nil, nil, nil),
 	}
 
-	got := BuildLbaRepeaterExams(exams, lbaSlotTime, examer, invigilatorForRoom)
+	got := BuildLbaRepeaterExams(exams, examer, invigilatorForRoom)
 
 	// kept: G (unplanned, zero time first), B (08:00), A (10:00)
 	if len(got) != 3 {

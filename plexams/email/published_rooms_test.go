@@ -48,13 +48,13 @@ func TestNtaNote(t *testing.T) {
 	}
 }
 
-func fixedStart(_, _ int) time.Time { return time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC) }
+var pubStart = time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC)
 
 func TestBuildPublishedRoomsExam(t *testing.T) {
 	main := &model.PlannedExam{
 		Ancode:    111,
 		ZpaExam:   &model.ZPAExam{Module: "Mathe"},
-		PlanEntry: &model.PlanEntry{DayNumber: 1, SlotNumber: 1},
+		PlanEntry: &model.PlanEntry{Starttime: &pubStart},
 		PlannedRooms: []*model.PlannedRoom{
 			room("R1", 20, 90, false, ""),
 			room("R1", 20, 90, false, ""), // same room again -> first-seen order, listed once
@@ -64,10 +64,10 @@ func TestBuildPublishedRoomsExam(t *testing.T) {
 	other := &model.PlannedExam{
 		Ancode:       222,
 		ZpaExam:      &model.ZPAExam{Module: "Physik"},
-		PlanEntry:    &model.PlanEntry{DayNumber: 1, SlotNumber: 1},
+		PlanEntry:    &model.PlanEntry{Starttime: &pubStart},
 		PlannedRooms: []*model.PlannedRoom{room("R1", 5, 90, false, "")}, // shares R1
 	}
-	examsInSlot := map[[2]int][]*model.PlannedExam{{1, 1}: {main, other}}
+	examsInSlot := map[time.Time][]*model.PlannedExam{pubStart: {main, other}}
 	examerShort := func(e *model.PlannedExam) string {
 		if e.Ancode == 222 {
 			return "PB"
@@ -75,7 +75,7 @@ func TestBuildPublishedRoomsExam(t *testing.T) {
 		return "PA"
 	}
 
-	got := BuildPublishedRoomsExam(main, examsInSlot, examerShort, fixedStart)
+	got := BuildPublishedRoomsExam(main, examsInSlot, examerShort)
 	if got == nil {
 		t.Fatal("BuildPublishedRoomsExam returned nil")
 	}
@@ -102,12 +102,12 @@ func TestBuildPublishedRoomsExam(t *testing.T) {
 
 func TestBuildPublishedRoomsExamNil(t *testing.T) {
 	// no plan entry
-	if got := BuildPublishedRoomsExam(&model.PlannedExam{Ancode: 1}, nil, nil, fixedStart); got != nil {
+	if got := BuildPublishedRoomsExam(&model.PlannedExam{Ancode: 1}, nil, nil); got != nil {
 		t.Errorf("no plan entry -> want nil, got %+v", got)
 	}
 	// plan entry but no rooms
-	noRooms := &model.PlannedExam{Ancode: 1, PlanEntry: &model.PlanEntry{DayNumber: 1, SlotNumber: 1}}
-	if got := BuildPublishedRoomsExam(noRooms, map[[2]int][]*model.PlannedExam{}, nil, fixedStart); got != nil {
+	noRooms := &model.PlannedExam{Ancode: 1, PlanEntry: &model.PlanEntry{Starttime: &pubStart}}
+	if got := BuildPublishedRoomsExam(noRooms, map[time.Time][]*model.PlannedExam{}, nil); got != nil {
 		t.Errorf("no rooms -> want nil, got %+v", got)
 	}
 }

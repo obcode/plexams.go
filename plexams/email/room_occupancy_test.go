@@ -69,16 +69,16 @@ func TestBuildSecretariatRooms(t *testing.T) {
 		"R2": {Name: "R2", NeedsRequest: true},
 		"R3": {Name: "R3", Deactivated: true},
 	}
-	slotTime := func(_, _ int) time.Time { return at(8, 0) }
+	st := at(8, 0)
 	plannedRooms := []*model.PlannedRoom{
-		{RoomName: "R1", Day: 1, Slot: 1, Duration: 90},     // 08:00-09:30
-		{RoomName: "R1", Day: 1, Slot: 1, Duration: 120},    // 08:00-10:00 -> merges to 08:00-10:00
-		{RoomName: "R2", Day: 1, Slot: 1, Duration: 90},     // NeedsRequest -> skipped
-		{RoomName: "R3", Day: 1, Slot: 1, Duration: 90},     // Deactivated -> skipped
-		{RoomName: "ONLINE", Day: 1, Slot: 1, Duration: 90}, // pseudo-room -> skipped
-		{RoomName: "RX", Day: 1, Slot: 1, Duration: 90},     // unknown -> skipped
+		{RoomName: "R1", Starttime: &st, Duration: 90},     // 08:00-09:30
+		{RoomName: "R1", Starttime: &st, Duration: 120},    // 08:00-10:00 -> merges to 08:00-10:00
+		{RoomName: "R2", Starttime: &st, Duration: 90},     // NeedsRequest -> skipped
+		{RoomName: "R3", Starttime: &st, Duration: 90},     // Deactivated -> skipped
+		{RoomName: "ONLINE", Starttime: &st, Duration: 90}, // pseudo-room -> skipped
+		{RoomName: "RX", Starttime: &st, Duration: 90},     // unknown -> skipped
 	}
-	rooms := BuildSecretariatRooms(plannedRooms, roomInfo, slotTime)
+	rooms := BuildSecretariatRooms(plannedRooms, roomInfo)
 	if len(rooms) != 1 || rooms[0].Room != "R1" {
 		t.Fatalf("rooms = %+v (want only R1)", rooms)
 	}

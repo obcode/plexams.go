@@ -21,16 +21,16 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 	cal.SetMethod(ical.MethodRequest)
 	cal.SetProductId(fmt.Sprintf("-//Plexams Invigilation ICS//%s", p.semester))
 
-	// caches to avoid repeated DB lookups
-	examsInSlot := make(map[[2]int][]*model.PlannedExam)
-	getExams := func(day, slot int) []*model.PlannedExam {
-		key := [2]int{day, slot}
-		if exams, ok := examsInSlot[key]; ok {
+	// caches to avoid repeated DB lookups, keyed by absolute start (Unix seconds)
+	examsAtCache := make(map[int64][]*model.PlannedExam)
+	getExamsAt := func(start time.Time) []*model.PlannedExam {
+		key := start.Unix()
+		if exams, ok := examsAtCache[key]; ok {
 			return exams
 		}
-		exams, err := p.ExamsInSlot(ctx, day, slot)
+		exams, err := p.examsAt(ctx, start)
 		if err != nil {
-			log.Error().Err(err).Int("day", day).Int("slot", slot).Msg("ics: cannot get exams in slot")
+			log.Error().Err(err).Time("start", start).Msg("ics: cannot get exams in slot")
 			exams = nil
 		}
 		plannedByMe := make([]*model.PlannedExam, 0, len(exams))
@@ -40,11 +40,11 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 			}
 			plannedByMe = append(plannedByMe, exam)
 		}
-		examsInSlot[key] = plannedByMe
+		examsAtCache[key] = plannedByMe
 		return plannedByMe
 	}
-	invigName := func(room string, day, slot int) string {
-		t, err := p.GetInvigilatorInSlot(ctx, room, day, slot)
+	invigName := func(room string, start time.Time) string {
+		t, err := p.invigilatorAt(ctx, room, start)
 		if err != nil || t == nil {
 			return "—"
 		}
@@ -68,7 +68,11 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 		var b strings.Builder
 		fmt.Fprintf(&b, "%s (%d min, %d Stud.)", room.RoomName, room.Duration, len(room.StudentsInRoom))
 		if withInvigilator {
-			fmt.Fprintf(&b, ", Aufsicht: %s", invigName(room.RoomName, room.Day, room.Slot))
+			name := "—"
+			if room.Starttime != nil {
+				name = invigName(room.RoomName, *room.Starttime)
+			}
+			fmt.Fprintf(&b, ", Aufsicht: %s", name)
 		}
 		if nta := roomNTA(exam, room); nta != nil {
 			alone := ""
@@ -125,18 +129,17 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 	if err != nil {
 		return nil, err
 	}
-	selfRoomBySlot := make(map[[2]int]string)
+	selfRoomBySlot := make(map[int64]string) // keyed by start (Unix seconds)
 	for _, inv := range allInvigs {
-		if inv.InvigilatorID != invigilatorID || inv.Slot == nil {
+		if inv.InvigilatorID != invigilatorID || inv.Starttime == nil {
 			continue
 		}
-		day, slot := inv.Slot.DayNumber, inv.Slot.SlotNumber
-		start := inv.Slot.Starttime
+		start := *inv.Starttime
 
 		switch {
 		case inv.IsSelfInvigilation:
 			if inv.RoomName != nil {
-				selfRoomBySlot[[2]int{day, slot}] = *inv.RoomName
+				selfRoomBySlot[start.Unix()] = *inv.RoomName
 			}
 			// the exam event below renders it as Eigenaufsicht
 
@@ -144,7 +147,7 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 			// Reserve: all exams in the slot with rooms, invigilators and NTAs.
 			var b strings.Builder
 			b.WriteString("Prüfungen in diesem Slot:")
-			for _, exam := range getExams(day, slot) {
+			for _, exam := range getExamsAt(start) {
 				fmt.Fprintf(&b, "\n%s", examHeader(exam))
 				for _, line := range examRooms(exam, true, "") {
 					b.WriteString("\n" + line)
@@ -162,7 +165,7 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 				room = *inv.RoomName
 			}
 			var ownExam *model.PlannedExam
-			for _, exam := range getExams(day, slot) {
+			for _, exam := range getExamsAt(start) {
 				for _, r := range exam.PlannedRooms {
 					if r.RoomName == room {
 						ownExam = exam
@@ -216,10 +219,12 @@ func (p *Plexams) InvigilatorICS(ctx context.Context, invigilatorID int) ([]byte
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
 		}
-		day, slot := exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber
-		start := p.getSlotTime(day, slot)
+		if exam.PlanEntry.Starttime == nil {
+			continue
+		}
+		start := *exam.PlanEntry.Starttime
 
-		selfRoom, isSelf := selfRoomBySlot[[2]int{day, slot}]
+		selfRoom, isSelf := selfRoomBySlot[start.Unix()]
 
 		var b strings.Builder
 		kind := "Fremdaufsicht"

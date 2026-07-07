@@ -102,7 +102,7 @@ func levelRank(level model.ValidationLevel) int {
 func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter Reporter) (*model.ValidationReport, error) {
 	knownConflictsCount = 0
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "conflicts", "validating conflicts")
+	v := newValidation(reporter, "conflicts", "validating conflicts")
 
 	if ok, err := p.planGenerated(ctx); err != nil {
 		return nil, err
@@ -360,13 +360,13 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 				}
 
 				planEntry := exam.PlanEntry
-				time := p.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
+				var startTime time.Time
 				if planEntry.Starttime != nil {
-					time = *planEntry.Starttime
+					startTime = *planEntry.Starttime
 				}
 
 				v.reporter.Printf("%s", aurora.Sprintf(aurora.Red("    # %s: %s. %s (%s): %s %s %s"),
-					time.Format("02.01.06, 15:04 Uhr"),
+					startTime.Format("02.01.06, 15:04 Uhr"),
 					aurora.Magenta(ancodeStr),
 					aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
 					aurora.Yellow(exam.ZpaExam.Groups),
@@ -411,7 +411,7 @@ func (plexams *Plexams) sortConflictingAncodes(validationMessages map[conflictin
 		}
 
 		planEntry := exam.PlanEntry
-		startTime := plexams.getSlotTime(planEntry.DayNumber, planEntry.SlotNumber)
+		var startTime time.Time
 		if planEntry.Starttime != nil {
 			startTime = *planEntry.Starttime
 		}
@@ -575,7 +575,7 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 
 func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(p.TimeForSlot, reporter, "constraints", "validating constraints")
+	v := newValidation(reporter, "constraints", "validating constraints")
 
 	if ok, err := p.planGenerated(ctx); err != nil {
 		return nil, err
@@ -625,14 +625,16 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 					continue
 				}
 
-				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}},
-					"Exams %d and %d must be in the same slot, are %v and %v", constraint.Ancode, otherAncode, slot, otherSlot)
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}, Starttime: &slot.Starttime},
+					"Exams %d and %d must be in the same slot, %d is at %s and %d is not planned",
+					constraint.Ancode, otherAncode, constraint.Ancode, slot.Starttime.Format("02.01.06 15:04"), otherAncode)
 				continue
 			}
 
-			if *slot != *otherSlot {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}},
-					"Exams %d and %d must be in the same slot, are %v and %v", constraint.Ancode, otherAncode, slot, otherSlot)
+			if !slot.Starttime.Equal(otherSlot.Starttime) {
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}, Starttime: &slot.Starttime},
+					"Exams %d and %d must be in the same slot, are at %s and %s",
+					constraint.Ancode, otherAncode, slot.Starttime.Format("02.01.06 15:04"), otherSlot.Starttime.Format("02.01.06 15:04"))
 			}
 		}
 
@@ -647,14 +649,14 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 				fixed.Month() != slot.Starttime.Month() ||
 				fixed.Hour() != slot.Starttime.Hour() ||
 				fixed.Minute() != slot.Starttime.Minute() {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
 					"Exam %d has fixed slot %s, is %s", constraint.Ancode, fixed.Format("02.01.06 15:04"), constraint.FixedTime.Format("02.01.06 15:04"))
 			}
 		}
 
 		for _, day := range constraint.ExcludeDays {
 			if day.Equal(time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)) {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
 					"Exam %d planned on excluded day %s", constraint.Ancode, day.Format("02.01.06"))
 			}
 		}
@@ -674,14 +676,14 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 				if dayPlanned != nil {
 					dayStr = dayPlanned.Format("02.01.06")
 				}
-				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
 					"Exam %d planned on day %s which is not a possible day", constraint.Ancode, dayStr)
 			}
 		}
 
 		if constraint.RoomConstraints != nil && (constraint.RoomConstraints.Exahm || constraint.RoomConstraints.Seb) {
 			if !anny.RoomBookedDuringExamTime(annyRoomBookings, slot) {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
 					"Exam %d planned at %s, but no room booked", constraint.Ancode, slot.Starttime.Format("02.01.06 15:04"))
 			}
 		}
@@ -697,12 +699,12 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 			}
 			for _, room := range plannedRooms {
 				if !allowedRooms.Contains(room.RoomName) {
-					v.errorf(ref{Ancode: ptr(constraint.Ancode), Room: ptr(room.RoomName)},
+					v.errorf(ref{Ancode: ptr(constraint.Ancode), Room: ptr(room.RoomName), Starttime: &slot.Starttime},
 						"Exam %d planned in room %s, but allowed rooms are %s", constraint.Ancode, room.RoomName, constraint.RoomConstraints.AllowedRooms)
 				}
 			}
 			if len(plannedRooms) == 0 {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode)},
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
 					"Exam %d planned in no room, but allowed rooms are %s", constraint.Ancode, constraint.RoomConstraints.AllowedRooms)
 			}
 		}

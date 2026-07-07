@@ -7,18 +7,27 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/spf13/cobra"
 )
+
+// parseCLIStarttime parses an absolute exam start time given on the command line in
+// the layout 2006-01-02T15:04, interpreted in the local (Europe/Berlin) timezone.
+func parseCLIStarttime(s string) (time.Time, error) {
+	return time.ParseInLocation("2006-01-02T15:04", s, time.Local)
+}
 
 var (
 	invigilationCmd = &cobra.Command{
 		Use:   "invigilation [subcommand|roomname]",
 		Short: "Add an invigilation",
 		Long: `Add an invigilation.
-reserve    [daynumber] [slotnumber] [invigilator ID] --- add reserve for slot (daynumber,slotnumber).
-[roomname] [daynumber] [slotnumber] [invigilator ID] --- add invigilator for room in slot
+reserve    [starttime] [invigilator ID] --- add reserve for the slot starting at starttime.
+[roomname] [starttime] [invigilator ID] --- add invigilator for room at starttime
+
+starttime is an absolute time in the layout 2006-01-02T15:04 (Europe/Berlin).
 
 With --pre-plan/-p the invigilation is pre-planned instead of added, i.e. it is
 stored as a fixed assignment that the automatic invigilation planning respects.`,
@@ -26,25 +35,20 @@ stored as a fixed assignment that the automatic invigilation planning respects.`
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
 			ctx := context.Background()
-			if len(args) < 4 {
-				fmt.Println("need day number, slot numbers, and the invigilators id")
+			if len(args) < 3 {
+				fmt.Println("need a starttime (2006-01-02T15:04) and the invigilator's id")
 				os.Exit(1)
 			}
 
-			day, err := strconv.Atoi(args[1])
+			starttime, err := parseCLIStarttime(args[1])
 			if err != nil {
-				fmt.Printf("cannot use %s as day number", args[1])
-				os.Exit(1)
-			}
-			slot, err := strconv.Atoi(args[2])
-			if err != nil {
-				fmt.Printf("cannot use %s as slot number", args[2])
+				fmt.Printf("cannot use %s as starttime (want 2006-01-02T15:04)", args[1])
 				os.Exit(1)
 			}
 
 			room := args[0]
 			if room != "reserve" {
-				roomnames, err := plexams.PlannedRoomNamesInSlot(ctx, day, slot)
+				roomnames, err := plexams.PlannedRoomNamesInSlot(ctx, starttime)
 				if err != nil {
 					fmt.Printf("error %s", err)
 					os.Exit(1)
@@ -61,18 +65,18 @@ stored as a fixed assignment that the automatic invigilation planning respects.`
 				}
 			}
 
-			invigilatorID, err := strconv.Atoi(args[3])
+			invigilatorID, err := strconv.Atoi(args[2])
 			if err != nil {
 				// find invigilator by name
-				invigilatorName := args[3]
+				invigilatorName := args[2]
 				invigilatorID, err = plexams.GetTeacherIdByRegex(ctx, invigilatorName)
 				if err != nil || invigilatorID == 0 {
-					fmt.Printf("cannot find invigilator with regex %s", args[3])
+					fmt.Printf("cannot find invigilator with regex %s", args[2])
 					os.Exit(1)
 				}
 			}
 
-			oldInvigilator, err := plexams.GetInvigilatorInSlot(ctx, room, day, slot)
+			oldInvigilator, err := plexams.GetInvigilatorAt(ctx, room, starttime)
 			if err != nil {
 				os.Exit(1)
 			}
@@ -86,18 +90,19 @@ stored as a fixed assignment that the automatic invigilation planning respects.`
 				os.Exit(1)
 			}
 
+			when := starttime.Format("02.01. 15:04")
 			verb := "Add"
 			if prePlanInvigilation {
 				verb = "Pre-plan"
 			}
 			if oldInvigilator != nil {
-				if !confirm(fmt.Sprintf("%s \"%s\" and override existing invigilator \"%s\" in slot (%d,%d) for \"%s\"?",
-					verb, newInvigilator.Teacher.Shortname, oldInvigilator.Shortname, day, slot, room), 1) {
+				if !confirm(fmt.Sprintf("%s \"%s\" and override existing invigilator \"%s\" at %s for \"%s\"?",
+					verb, newInvigilator.Teacher.Shortname, oldInvigilator.Shortname, when, room), 1) {
 					os.Exit(0)
 				}
 			} else {
-				if !confirm(fmt.Sprintf("%s \"%s\" for \"%s\" in slot (%d,%d)?",
-					verb, newInvigilator.Teacher.Shortname, room, day, slot), 1) {
+				if !confirm(fmt.Sprintf("%s \"%s\" for \"%s\" at %s?",
+					verb, newInvigilator.Teacher.Shortname, room, when), 1) {
 					os.Exit(0)
 				}
 			}
@@ -107,18 +112,18 @@ stored as a fixed assignment that the automatic invigilation planning respects.`
 				if room != "reserve" {
 					roomName = &room
 				}
-				success, err := plexams.PreAddInvigilation(context.Background(), invigilatorID, day, slot, roomName)
+				success, err := plexams.PreAddInvigilation(context.Background(), invigilatorID, starttime, roomName)
 				if err != nil {
 					log.Fatalf("got error: %v\n", err)
 				}
 				if success {
-					fmt.Printf("successfully pre-planned \"%s\" for \"%s\" in slot (%d,%d)\n",
-						newInvigilator.Teacher.Shortname, room, day, slot)
+					fmt.Printf("successfully pre-planned \"%s\" for \"%s\" at %s\n",
+						newInvigilator.Teacher.Shortname, room, when)
 				}
 				return
 			}
 
-			err = plexams.AddInvigilation(context.Background(), room, day, slot, invigilatorID)
+			err = plexams.AddInvigilation(context.Background(), room, starttime, invigilatorID)
 			if err != nil {
 				log.Fatalf("got error: %v\n", err)
 			}
@@ -172,28 +177,24 @@ assignment across runs, move it to the pre-planning (invigilation -p ...).`,
 	}
 
 	invigilationRemovePrePlanCmd = &cobra.Command{
-		Use:   "rm-pre-plan [roomname|reserve] [day] [slot]",
+		Use:   "rm-pre-plan [roomname|reserve] [starttime]",
 		Short: "Remove a pre-planned invigilation",
-		Long:  `Remove a pre-planned invigilation for a room (or "reserve") in a slot.`,
-		Args:  cobra.ExactArgs(3),
+		Long:  `Remove a pre-planned invigilation for a room (or "reserve") at a starttime (2006-01-02T15:04).`,
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			plxms := initPlexamsConfig()
-			day, err := strconv.Atoi(args[1])
+			starttime, err := parseCLIStarttime(args[1])
 			if err != nil {
-				log.Fatalf("cannot use %s as day number", args[1])
-			}
-			slot, err := strconv.Atoi(args[2])
-			if err != nil {
-				log.Fatalf("cannot use %s as slot number", args[2])
+				log.Fatalf("cannot use %s as starttime (want 2006-01-02T15:04)", args[1])
 			}
 			var roomName *string
 			if args[0] != "reserve" {
 				roomName = &args[0]
 			}
-			if _, err := plxms.RemovePrePlannedInvigilation(context.Background(), day, slot, roomName); err != nil {
+			if _, err := plxms.RemovePrePlannedInvigilation(context.Background(), starttime, roomName); err != nil {
 				log.Fatalf("got error: %v\n", err)
 			}
-			fmt.Printf("removed pre-planned invigilation for %s in slot (%d,%d)\n", args[0], day, slot)
+			fmt.Printf("removed pre-planned invigilation for %s at %s\n", args[0], starttime.Format("02.01. 15:04"))
 		},
 	}
 

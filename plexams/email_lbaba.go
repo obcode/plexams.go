@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/email"
@@ -23,14 +24,14 @@ func (p *Plexams) buildLbaRepeaterExams(ctx context.Context) ([]*email.LbaRepeat
 		}
 		return t
 	}
-	invigilatorForRoom := func(room string, day, slot int) *model.Teacher {
-		inv, err := p.GetInvigilatorForRoom(ctx, room, day, slot)
+	invigilatorForRoom := func(room string, start time.Time) *model.Teacher {
+		inv, err := p.GetInvigilatorForRoom(ctx, room, start)
 		if err != nil {
 			return nil
 		}
 		return inv
 	}
-	return email.BuildLbaRepeaterExams(plannedExams, p.getSlotTime, examer, invigilatorForRoom), nil
+	return email.BuildLbaRepeaterExams(plannedExams, examer, invigilatorForRoom), nil
 }
 
 // SendEmailLbaRepeaters sends the Lehrbeauftragten-Beauftragte:r (emails.lbaba)

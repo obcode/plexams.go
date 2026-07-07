@@ -3,22 +3,25 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) GetInvigilatorInSlot(ctx context.Context, roomname string, day, time int) (*model.Teacher, error) {
-	return p.dbClient.GetInvigilatorInSlot(ctx, roomname, day, time)
+// GetInvigilatorAt returns the invigilator assigned to a room (or "reserve") at the
+// given absolute start time.
+func (p *Plexams) GetInvigilatorAt(ctx context.Context, roomname string, starttime time.Time) (*model.Teacher, error) {
+	return p.dbClient.GetInvigilatorAt(ctx, roomname, starttime)
 }
 
-func (p *Plexams) AddInvigilation(ctx context.Context, room string, day, slot, invigilatorID int) error {
+func (p *Plexams) AddInvigilation(ctx context.Context, room string, starttime time.Time, invigilatorID int) error {
 	invigilator, err := p.GetInvigilator(ctx, invigilatorID)
 	if err != nil {
 		return err
 	}
-	// check if (day,slot) needs a reserve, i.e. contains exams
-	examsInSlot, err := p.ExamsInSlot(ctx, day, slot)
+	// check if the slot needs a reserve, i.e. contains exams
+	examsInSlot, err := p.ExamsAt(ctx, starttime)
 	if err != nil {
 		return err
 	}
@@ -28,6 +31,7 @@ func (p *Plexams) AddInvigilation(ctx context.Context, room string, day, slot, i
 
 	// check constraints
 	// excluded day
+	day := p.dayNumberForDate(starttime)
 	for _, excludedDay := range invigilator.Requirements.ExcludedDays {
 		if day == excludedDay {
 			return fmt.Errorf("cannot add invigilation on excluded day for %s", invigilator.Teacher.Shortname)
@@ -41,20 +45,20 @@ func (p *Plexams) AddInvigilation(ctx context.Context, room string, day, slot, i
 	}
 
 	// add to DB
-	return p.dbClient.AddInvigilation(context.Background(), room, day, slot, invigilatorID)
+	return p.dbClient.AddInvigilationAt(context.Background(), room, starttime, invigilatorID)
 }
 
 // PreAddInvigilation fixes an invigilator for a room (roomName != nil) or the
-// reserve (roomName == nil) in a slot before the automatic invigilation
+// reserve (roomName == nil) at a start time before the automatic invigilation
 // planning runs. It validates the same constraints as AddInvigilation.
-func (p *Plexams) PreAddInvigilation(ctx context.Context, invigilatorID, day, slot int, roomName *string) (bool, error) {
+func (p *Plexams) PreAddInvigilation(ctx context.Context, invigilatorID int, starttime time.Time, roomName *string) (bool, error) {
 	invigilator, err := p.GetInvigilator(ctx, invigilatorID)
 	if err != nil {
 		return false, err
 	}
 
-	// check if (day,slot) needs an invigilation, i.e. contains exams
-	examsInSlot, err := p.ExamsInSlot(ctx, day, slot)
+	// check if the slot needs an invigilation, i.e. contains exams
+	examsInSlot, err := p.ExamsAt(ctx, starttime)
 	if err != nil {
 		return false, err
 	}
@@ -64,6 +68,7 @@ func (p *Plexams) PreAddInvigilation(ctx context.Context, invigilatorID, day, sl
 
 	// check constraints
 	// excluded day
+	day := p.dayNumberForDate(starttime)
 	for _, excludedDay := range invigilator.Requirements.ExcludedDays {
 		if day == excludedDay {
 			return false, fmt.Errorf("cannot pre-plan invigilation on excluded day for %s", invigilator.Teacher.Shortname)
@@ -80,7 +85,7 @@ func (p *Plexams) PreAddInvigilation(ctx context.Context, invigilatorID, day, sl
 	isReserve := true
 	if roomName != nil {
 		isReserve = false
-		roomnames, err := p.PlannedRoomNamesInSlot(ctx, day, slot)
+		roomnames, err := p.PlannedRoomNamesInSlot(ctx, starttime)
 		if err != nil {
 			return false, err
 		}
@@ -92,14 +97,13 @@ func (p *Plexams) PreAddInvigilation(ctx context.Context, invigilatorID, day, sl
 			}
 		}
 		if !found {
-			return false, fmt.Errorf("room %s not found in slot (%d,%d)", *roomName, day, slot)
+			return false, fmt.Errorf("room %s not found at %s", *roomName, starttime.Format("02.01. 15:04"))
 		}
 	}
 
 	return p.dbClient.AddPrePlannedInvigilation(ctx, &model.PrePlannedInvigilation{
 		InvigilatorID: invigilatorID,
-		Day:           day,
-		Slot:          slot,
+		Starttime:     &starttime,
 		RoomName:      roomName,
 		IsReserve:     isReserve,
 	})
@@ -110,11 +114,11 @@ func (p *Plexams) PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlan
 }
 
 // RemovePrePlannedInvigilation removes a pre-planned invigilation (key:
-// day/slot/roomName; roomName nil = the reserve). If a live invigilation in that
-// slot was marked pre-planned (via PrePlanInvigilationInSlot), that flag is
+// starttime/roomName; roomName nil = the reserve). If a live invigilation at that
+// start time was marked pre-planned (via PrePlanInvigilationInSlot), that flag is
 // cleared too. Errors if no such pre-planned invigilation exists.
-func (p *Plexams) RemovePrePlannedInvigilation(ctx context.Context, day, slot int, roomName *string) (bool, error) {
-	removed, err := p.dbClient.RemovePrePlannedInvigilation(ctx, day, slot, roomName)
+func (p *Plexams) RemovePrePlannedInvigilation(ctx context.Context, starttime time.Time, roomName *string) (bool, error) {
+	removed, err := p.dbClient.RemovePrePlannedInvigilationAt(ctx, starttime, roomName)
 	if err != nil {
 		return false, err
 	}
@@ -123,40 +127,40 @@ func (p *Plexams) RemovePrePlannedInvigilation(ctx context.Context, day, slot in
 		if roomName != nil {
 			room = *roomName
 		}
-		return false, fmt.Errorf("no pre-planned invigilation for %s in slot (%d,%d)", room, day, slot)
+		return false, fmt.Errorf("no pre-planned invigilation for %s at %s", room, starttime.Format("02.01. 15:04"))
 	}
 	// best-effort: clear the pre-planned flag on the live invigilation, if any.
-	if err := p.dbClient.SetInvigilationPrePlanned(ctx, day, slot, roomName, false); err != nil {
-		log.Debug().Err(err).Int("day", day).Int("slot", slot).Msg("no live invigilation to unmark as pre-planned")
+	if err := p.dbClient.SetInvigilationPrePlannedAt(ctx, starttime, roomName, false); err != nil {
+		log.Debug().Err(err).Time("starttime", starttime).Msg("no live invigilation to unmark as pre-planned")
 	}
 	return true, nil
 }
 
 // PrePlanInvigilationInSlot promotes the invigilation currently planned for a
-// room (roomName != nil) or the reserve (roomName == nil) in a slot to a
+// room (roomName != nil) or the reserve (roomName == nil) at a start time to a
 // pre-planned, fixed assignment. It looks up the assigned invigilator, stores a
 // pre-planned invigilation for them and marks the live invigilation as
 // pre-planned so the GUI can show it.
-func (p *Plexams) PrePlanInvigilationInSlot(ctx context.Context, day, slot int, roomName *string) (bool, error) {
+func (p *Plexams) PrePlanInvigilationInSlot(ctx context.Context, starttime time.Time, roomName *string) (bool, error) {
 	room := "reserve"
 	if roomName != nil {
 		room = *roomName
 	}
 
-	teacher, err := p.dbClient.GetInvigilatorInSlot(ctx, room, day, slot)
+	teacher, err := p.dbClient.GetInvigilatorAt(ctx, room, starttime)
 	if err != nil {
 		return false, err
 	}
 	if teacher == nil {
-		return false, fmt.Errorf("no invigilation for %s in slot (%d,%d) to pre-plan", room, day, slot)
+		return false, fmt.Errorf("no invigilation for %s at %s to pre-plan", room, starttime.Format("02.01. 15:04"))
 	}
 
-	ok, err := p.PreAddInvigilation(ctx, teacher.ID, day, slot, roomName)
+	ok, err := p.PreAddInvigilation(ctx, teacher.ID, starttime, roomName)
 	if err != nil || !ok {
 		return false, err
 	}
 
-	if err := p.dbClient.SetInvigilationPrePlanned(ctx, day, slot, roomName, true); err != nil {
+	if err := p.dbClient.SetInvigilationPrePlannedAt(ctx, starttime, roomName, true); err != nil {
 		return false, err
 	}
 	return true, nil

@@ -23,7 +23,7 @@ import (
 // exam-to-plan selection, duration overrides, conflict ratings). Unlike the JSON
 // semester dump it stores ABSOLUTE date/time (not period-relative slot numbers), so a
 // re-import stays correct after the exam period shifts: times are fed back through
-// SetExternalExamTime/getSlotForTime, which recompute the slot in the current period.
+// SetExternalExamTime, which stores the absolute Starttime directly (time-based model).
 //
 // Safety: imports never drop a whole collection. Row-keyed datasets upsert per row
 // (missing rows are simply not touched); the only full-replace dataset (room requests)
@@ -562,8 +562,8 @@ func (p *Plexams) csvExamTimes() csvDataset {
 					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d (ancode %d): Datum/Uhrzeit fehlt", i+2, ancode))
 					continue
 				}
-				// SetExternalExamTime recomputes the slot from the absolute time in the
-				// CURRENT period, so a period shift no longer misplaces the exam.
+				// SetExternalExamTime stores the absolute Starttime directly, so a period
+				// shift no longer misplaces the exam.
 				if _, err := p.SetExternalExamTime(ctx, ancode, date, t); err != nil {
 					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d (ancode %d): %v", i+2, ancode, err))
 					continue
@@ -664,10 +664,10 @@ func (p *Plexams) csvPreplan() csvDataset {
 	}
 }
 
-// ---- room requests (full replace; day/slot are period-relative) ---------------
+// ---- room requests (full replace; absolute start times) -----------------------
 
 func (p *Plexams) csvRoomRequests() csvDataset {
-	header := []string{"room", "day", "slot", "fromDate", "fromTime", "untilDate", "untilTime", "approved", "active"}
+	header := []string{"room", "startDate", "startTime", "fromDate", "fromTime", "untilDate", "untilTime", "approved", "active"}
 	return csvDataset{
 		Title:  "Raumanfragen",
 		File:   "room-requests.csv",
@@ -679,8 +679,13 @@ func (p *Plexams) csvRoomRequests() csvDataset {
 			}
 			rows := make([][]string, 0, len(reqs))
 			for _, r := range reqs {
+				startDate, startTime := "", ""
+				if r.Starttime != nil {
+					startDate = r.Starttime.Format(csvDateLayout)
+					startTime = r.Starttime.Format("15:04")
+				}
 				rows = append(rows, []string{
-					r.Room, strconv.Itoa(r.Day), strconv.Itoa(r.Slot),
+					r.Room, startDate, startTime,
 					r.From.Format(csvDateLayout), r.From.Format("15:04"),
 					r.Until.Format(csvDateLayout), r.Until.Format("15:04"),
 					b2s(r.Approved), b2s(r.Active),
@@ -696,15 +701,14 @@ func (p *Plexams) csvRoomRequests() csvDataset {
 			}
 			requests := make([]*model.RoomRequest, 0, len(rows))
 			for i, row := range rows {
-				day, err1 := strconv.Atoi(cell(row, 1))
-				slot, err2 := strconv.Atoi(cell(row, 2))
+				start, err1 := time.ParseInLocation(csvDateTimeLayout, cell(row, 1)+" "+cell(row, 2), time.Local)
 				from, err3 := time.ParseInLocation(csvDateTimeLayout, cell(row, 3)+" "+cell(row, 4), time.Local)
 				until, err4 := time.ParseInLocation(csvDateTimeLayout, cell(row, 5)+" "+cell(row, 6), time.Local)
-				if err := firstErr(err1, err2, err3, err4); err != nil {
+				if err := firstErr(err1, err3, err4); err != nil {
 					return nil, fmt.Errorf("ungültige Zeile %d: %w — nichts geändert", i+2, err)
 				}
 				requests = append(requests, &model.RoomRequest{
-					Room: cell(row, 0), Day: day, Slot: slot, From: from, Until: until,
+					Room: cell(row, 0), Starttime: &start, From: from, Until: until,
 					Approved: s2b(cell(row, 7)), Active: s2b(cell(row, 8)),
 				})
 			}

@@ -18,7 +18,7 @@ func (p *Plexams) CsvForProgram(program, filename string) error {
 		return err
 	}
 
-	b, err := csvutil.Marshal(csvgen.ProgramRows(exams, program, p.getSlotTime))
+	b, err := csvutil.Marshal(csvgen.ProgramRows(exams, program))
 	if err != nil {
 		log.Error().Err(err).Msg("error when marshaling to csv")
 	}
@@ -34,7 +34,7 @@ func (p *Plexams) CsvForEXaHM(filename string) error {
 		return err
 	}
 
-	b, err := csvutil.Marshal(csvgen.ExahmRows(exams, p.getSlotTime))
+	b, err := csvutil.Marshal(csvgen.ExahmRows(exams))
 	if err != nil {
 		log.Error().Err(err).Msg("error when marshaling to csv")
 	}
@@ -81,26 +81,28 @@ func (p *Plexams) CsvForLBARepeater(filename string) error {
 		}
 
 		examDate := "fehlt"
-		if exam.PlanEntry != nil {
-			starttime := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			examDate = starttime.Format("02.01.06, 15:04 Uhr")
+		start, hasStart := planEntryStart(exam.PlanEntry)
+		if hasStart {
+			examDate = start.Format("02.01.06, 15:04 Uhr")
 		}
 
 		invigilators, invigilatorEmails := "", ""
 
-		invigs := set.NewSet[int]()
-		for _, room := range exam.PlannedRooms {
-			invigilator, err := p.GetInvigilatorForRoom(ctx, room.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
-			if err != nil {
-				log.Error().Err(err).Msg("cannot get invigilator")
-				return err
+		if hasStart {
+			invigs := set.NewSet[int]()
+			for _, room := range exam.PlannedRooms {
+				invigilator, err := p.invigilatorForRoomAtTime(ctx, room.RoomName, start)
+				if err != nil {
+					log.Error().Err(err).Msg("cannot get invigilator")
+					return err
+				}
+				if invigilator == nil || invigs.Contains(invigilator.ID) {
+					continue
+				}
+				invigilators += invigilator.Shortname + ", "
+				invigilatorEmails += invigilator.Email + ", "
+				invigs.Add(invigilator.ID)
 			}
-			if invigs.Contains(invigilator.ID) {
-				continue
-			}
-			invigilators += invigilator.Shortname + ", "
-			invigilatorEmails += invigilator.Email + ", "
-			invigs.Add(invigilator.ID)
 		}
 
 		csvEntries = append(csvEntries, CsvLBARepeater{

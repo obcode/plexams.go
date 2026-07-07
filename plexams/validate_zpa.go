@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
 
 func (p *Plexams) ValidateZPADateTimes(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(p.TimeForSlot, reporter, "zpa-date-times", "validating zpa dates and times")
+	v := newValidation(reporter, "zpa-date-times", "validating zpa dates and times")
 
 	v.step("fetching exams from ZPA")
 	if err := p.SetZPA(); err != nil {
@@ -52,15 +53,19 @@ func (p *Plexams) ValidateZPADateTimes(reporter Reporter) (*model.ValidationRepo
 
 		plannedExamDate := "-"
 		plannedExamStarttime := "-"
-		if !shouldHaveNoTimeAndDate && plannedExam.PlanEntry != nil {
-			starttime := p.getSlotTime(plannedExam.PlanEntry.DayNumber, plannedExam.PlanEntry.SlotNumber)
+		if !shouldHaveNoTimeAndDate && plannedExam.PlanEntry != nil && plannedExam.PlanEntry.Starttime != nil {
+			starttime := *plannedExam.PlanEntry.Starttime
 			plannedExamDate = starttime.Format("2006-01-02")
 			plannedExamStarttime = starttime.Format("15:04:05")
 		}
 
+		var plannedStart *time.Time
+		if plannedExam.PlanEntry != nil {
+			plannedStart = plannedExam.PlanEntry.Starttime
+		}
 		if zpaExam.Date != plannedExamDate ||
 			zpaExam.Starttime != plannedExamStarttime {
-			v.errorf(ref{Ancode: ptr(zpaExam.AnCode)},
+			v.errorf(ref{Ancode: ptr(zpaExam.AnCode), Starttime: plannedStart},
 				"wrong date for %d. %s (%s), want: %s %s, got: %s %s",
 				zpaExam.AnCode, zpaExam.Module, zpaExam.MainExamer,
 				plannedExamDate, plannedExamStarttime, zpaExam.Date, zpaExam.Starttime)
@@ -79,7 +84,7 @@ func (p *Plexams) ValidateZPADateTimes(reporter Reporter) (*model.ValidationRepo
 }
 
 func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(p.TimeForSlot, reporter, "zpa-rooms", "validating zpa rooms")
+	v := newValidation(reporter, "zpa-rooms", "validating zpa rooms")
 
 	v.step("fetching exams from ZPA")
 	if err := p.SetZPA(); err != nil {
@@ -109,6 +114,10 @@ func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, 
 		if err != nil {
 			log.Error().Err(err).Int("ancode", plannedExam.Ancode).Msg("cannot get planned rooms for ancode")
 		}
+		var plannedStart *time.Time
+		if plannedExam.PlanEntry != nil {
+			plannedStart = plannedExam.PlanEntry.Starttime
+		}
 		for _, room := range roomsForAncode {
 			found := false
 			for _, zpaExam := range plannedExamsFromZPA {
@@ -124,7 +133,7 @@ func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, 
 				}
 			}
 			if !found {
-				v.errorf(ref{Ancode: ptr(plannedExam.Ancode), Room: ptr(room.RoomName)},
+				v.errorf(ref{Ancode: ptr(plannedExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedStart},
 					"room %s for exam %d. %s (%s) not found in ZPA",
 					room.RoomName, plannedExam.Ancode, plannedExam.ZpaExam.Module, plannedExam.ZpaExam.MainExamer)
 			}
@@ -138,7 +147,7 @@ func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, 
 }
 
 func (p *Plexams) ValidateZPAInvigilators(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(p.TimeForSlot, reporter, "zpa-invigilators", "validating zpa invigilations")
+	v := newValidation(reporter, "zpa-invigilators", "validating zpa invigilations")
 
 	v.step("fetching exams from ZPA")
 	if err := p.SetZPA(); err != nil {
@@ -168,15 +177,21 @@ func (p *Plexams) ValidateZPAInvigilators(reporter Reporter) (*model.ValidationR
 			plannedExam.Ancode, plannedExam.ZpaExam.Module, plannedExam.ZpaExam.MainExamer)
 
 		roomsForAncode := plannedExam.PlannedRooms
-		reserveInvigilator, err := p.GetInvigilatorInSlot(ctx, "reserve", plannedExam.PlanEntry.DayNumber, plannedExam.PlanEntry.SlotNumber)
+		// The invigilator lookup is keyed by the exam's absolute start time.
+		if plannedExam.PlanEntry.Starttime == nil {
+			continue
+		}
+		examStartTime := *plannedExam.PlanEntry.Starttime
+		examStart := fmtStart(plannedExam.PlanEntry.Starttime)
+		reserveInvigilator, err := p.GetInvigilatorAt(ctx, "reserve", examStartTime)
 		if err != nil {
-			log.Error().Err(err).Int("day", plannedExam.PlanEntry.DayNumber).Int("slot", plannedExam.PlanEntry.SlotNumber).
+			log.Error().Err(err).Str("start", examStart).
 				Msg("cannot get reserve invigilator for slot")
 		}
 		for _, room := range roomsForAncode {
-			invigilator, err := p.GetInvigilatorInSlot(ctx, room.RoomName, plannedExam.PlanEntry.DayNumber, plannedExam.PlanEntry.SlotNumber)
+			invigilator, err := p.GetInvigilatorAt(ctx, room.RoomName, examStartTime)
 			if err != nil {
-				log.Error().Err(err).Int("day", plannedExam.PlanEntry.DayNumber).Int("slot", plannedExam.PlanEntry.SlotNumber).
+				log.Error().Err(err).Str("start", examStart).
 					Msg("cannot get reserve invigilator for slot")
 			}
 			found := false
@@ -184,13 +199,13 @@ func (p *Plexams) ValidateZPAInvigilators(reporter Reporter) (*model.ValidationR
 				if room.Ancode == zpaExam.Ancode &&
 					roomNameOK(room.RoomName, zpaExam.RoomName) {
 					if zpaExam.ReserveSupervisor != shorterName(reserveInvigilator.Shortname) {
-						v.errorf(ref{Ancode: ptr(zpaExam.Ancode), Room: ptr(room.RoomName), Day: ptr(plannedExam.PlanEntry.DayNumber), Slot: ptr(plannedExam.PlanEntry.SlotNumber)},
+						v.errorf(ref{Ancode: ptr(zpaExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedExam.PlanEntry.Starttime},
 							"%d. %s (%s), %s %s: wrong reserve invigilator in zpa: %s, wanted: %s",
 							zpaExam.Ancode, zpaExam.Module, zpaExam.MainExamer, zpaExam.Date, zpaExam.Starttime,
 							zpaExam.ReserveSupervisor, shorterName(reserveInvigilator.Shortname))
 					}
 					if zpaExam.Supervisor != shorterName(invigilator.Shortname) {
-						v.errorf(ref{Ancode: ptr(zpaExam.Ancode), Room: ptr(room.RoomName), Day: ptr(plannedExam.PlanEntry.DayNumber), Slot: ptr(plannedExam.PlanEntry.SlotNumber)},
+						v.errorf(ref{Ancode: ptr(zpaExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedExam.PlanEntry.Starttime},
 							"%d. %s (%s), %s %s: wrong invigilator in zpa: %s, wanted: %s",
 							zpaExam.Ancode, zpaExam.Module, zpaExam.MainExamer, zpaExam.Date, zpaExam.Starttime,
 							zpaExam.Supervisor, shorterName(invigilator.Shortname))
@@ -199,10 +214,10 @@ func (p *Plexams) ValidateZPAInvigilators(reporter Reporter) (*model.ValidationR
 				}
 			}
 			if !found {
-				v.errorf(ref{Ancode: ptr(plannedExam.Ancode), Room: ptr(room.RoomName), Day: ptr(plannedExam.PlanEntry.DayNumber), Slot: ptr(plannedExam.PlanEntry.SlotNumber)},
-					"%d. %s (%s), (%d/%d): ancode or room not found, supervisor or reserve supervisor not found in ZPA",
+				v.errorf(ref{Ancode: ptr(plannedExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedExam.PlanEntry.Starttime},
+					"%d. %s (%s), %s: ancode or room not found, supervisor or reserve supervisor not found in ZPA",
 					plannedExam.Ancode, plannedExam.ZpaExam.Module, plannedExam.ZpaExam.MainExamer,
-					plannedExam.PlanEntry.DayNumber, plannedExam.PlanEntry.SlotNumber)
+					examStart)
 			}
 		}
 

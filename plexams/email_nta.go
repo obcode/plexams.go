@@ -186,17 +186,21 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 				log.Error().Int("ancode", exam.Ancode).Str("mtknr", nta.Mtknr).Msg("no room")
 				continue
 			}
-			invigilator, err := p.GetInvigilatorInSlot(ctx, room.RoomName, exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
+			start, ok := planEntryStart(exam.PlanEntry)
+			if !ok {
+				log.Error().Int("ancode", exam.Ancode).Str("mtknr", nta.Mtknr).Msg("exam not planned")
+				continue
+			}
+			invigilator, err := p.invigilatorForRoomAtTime(ctx, room.RoomName, start)
 			if err != nil || invigilator == nil {
 				log.Error().Err(err).Int("ancode", exam.Ancode).Str("room", room.RoomName).
-					Int("slot", exam.PlanEntry.SlotNumber).Int("day", exam.PlanEntry.DayNumber).
+					Time("starttime", start).
 					Msg("cannot get invigilator")
 				continue
 			}
 			log.Debug().Str("mtknr", nta.Mtknr).Str("name", nta.Name).Str("room", room.RoomName).Str("invigilator", invigilator.Fullname).
 				Msg("found info")
 			ccSet.Add(invigilator.Email)
-			start := p.getSlotTime(exam.PlanEntry.DayNumber, exam.PlanEntry.SlotNumber)
 			examsWithRoom = append(examsWithRoom, NTAEmailExamAndRoom{
 				Exam:        exam,
 				Room:        room,

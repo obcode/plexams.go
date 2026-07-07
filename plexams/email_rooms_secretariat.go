@@ -37,7 +37,7 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 		roomInfo[room.Name] = room
 	}
 
-	rooms := email.BuildSecretariatRooms(plannedRooms, roomInfo, p.getSlotTime)
+	rooms := email.BuildSecretariatRooms(plannedRooms, roomInfo)
 	if len(rooms) == 0 {
 		reporter.StopProgress("no (non-request) rooms planned, nothing to send")
 		return nil

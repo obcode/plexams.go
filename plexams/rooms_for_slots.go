@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/logrusorgru/aurora"
@@ -55,12 +56,9 @@ func (p *Plexams) computeRoomsForSlots(ctx context.Context, reporter Reporter) (
 		return nil, err
 	}
 
-	slotsWithRoomNames := make(map[SlotNumber]set.Set[string])
+	slotsWithRoomNames := make(map[time.Time]set.Set[string])
 	for _, slot := range p.semesterConfig.Slots {
-		slotsWithRoomNames[SlotNumber{
-			day:  slot.DayNumber,
-			slot: slot.SlotNumber,
-		}] = set.NewSet[string]()
+		slotsWithRoomNames[slot.Starttime] = set.NewSet[string]()
 	}
 
 	for _, room := range globalRooms {
@@ -95,14 +93,11 @@ func (p *Plexams) computeRoomsForSlots(ctx context.Context, reporter Reporter) (
 	}
 
 	roomsForSlots := make([]*model.RoomsForSlot, 0, len(slotsWithRoomNames))
-	for slot, roomNames := range slotsWithRoomNames {
+	for starttime, roomNames := range slotsWithRoomNames {
 		roomNames := roomNames.ToSlice()
 		sort.Strings(roomNames)
-		starttime, _ := p.TimeForSlot(slot.day, slot.slot)
 		roomsForSlots = append(roomsForSlots, &model.RoomsForSlot{
 			Starttime: starttime,
-			Day:       slot.day,
-			Slot:      slot.slot,
 			RoomNames: roomNames,
 		})
 	}
@@ -110,15 +105,8 @@ func (p *Plexams) computeRoomsForSlots(ctx context.Context, reporter Reporter) (
 	return roomsForSlots, nil
 }
 
-func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room, reporter Reporter) (map[string]set.Set[SlotNumber], error) {
-	restrictedSlots := make(map[string]set.Set[SlotNumber])
-	allSlots := set.NewSet[SlotNumber]()
-	for _, slot := range p.semesterConfig.Slots {
-		allSlots.Add(SlotNumber{
-			day:  slot.DayNumber,
-			slot: slot.SlotNumber,
-		})
-	}
+func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room, reporter Reporter) (map[string]set.Set[time.Time], error) {
+	restrictedSlots := make(map[string]set.Set[time.Time])
 
 	// EXaHM rooms
 	restrictedSlotsForEXaHMRooms, err := p.restrictedSlotsForEXaHMRooms(reporter)
@@ -144,8 +132,8 @@ func (p *Plexams) roomsWithRestrictedSlots(globalRooms []*model.Room, reporter R
 	return restrictedSlots, nil
 }
 
-func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]set.Set[SlotNumber], error) {
-	restrictedSlots := make(map[string]set.Set[SlotNumber])
+func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]set.Set[time.Time], error) {
+	restrictedSlots := make(map[string]set.Set[time.Time])
 	// EXaHM rooms come from the Anny bookings in the DB (import via `rooms anny`
 	// / importAnnyBookings).
 	ctx := context.Background()
@@ -171,16 +159,13 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]se
 			winStart := slot.Starttime.Add(-roomRequestBuffer)
 			winEnd := slot.Starttime.Add(block + roomRequestBuffer)
 			if anny.Covers(entry.From, entry.Until, winStart, winEnd) {
-				fmt.Fprintf(&sb, "(%d, %d), rooms: ", slot.DayNumber, slot.SlotNumber)
+				fmt.Fprintf(&sb, "%s, rooms: ", slot.Starttime.Format("02.01. 15:04"))
 				for _, roomName := range entry.Rooms {
 					fmt.Fprintf(&sb, "%s, ", roomName)
 					if _, ok := restrictedSlots[roomName]; !ok {
-						restrictedSlots[roomName] = set.NewSet[SlotNumber]()
+						restrictedSlots[roomName] = set.NewSet[time.Time]()
 					}
-					restrictedSlots[roomName].Add(SlotNumber{
-						day:  slot.DayNumber,
-						slot: slot.SlotNumber,
-					})
+					restrictedSlots[roomName].Add(slot.Starttime)
 				}
 			}
 		}
@@ -193,7 +178,7 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]se
 // restrictedSlotsForOtherRooms restricts building-management request rooms to
 // the slots they were actually requested for. (Per-slot room blocks are applied
 // separately, see applyRoomBlocks, so they also cover non-request rooms.)
-func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[string]set.Set[SlotNumber], error) {
+func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[string]set.Set[time.Time], error) {
 	// building-management room requests come from the DB (active ones only);
 	// a requested room is restricted to the slots it was requested for.
 	dbReservations, err := p.GetReservations()
@@ -201,13 +186,13 @@ func (p *Plexams) restrictedSlotsForOtherRooms(globalRooms []*model.Room) (map[s
 		return nil, err
 	}
 
-	restrictedSlots := make(map[string]set.Set[SlotNumber])
+	restrictedSlots := make(map[string]set.Set[time.Time])
 	for _, room := range globalRooms {
 		if timeRanges := dbReservations[room.Name]; len(timeRanges) > 0 {
-			reservedSlots := set.NewSet[SlotNumber]()
+			reservedSlots := set.NewSet[time.Time]()
 			for _, tr := range timeRanges {
-				if tr.DayNumber > 0 && tr.SlotNumber > 0 {
-					reservedSlots.Add(SlotNumber{day: tr.DayNumber, slot: tr.SlotNumber})
+				if tr.Starttime != nil {
+					reservedSlots.Add(*tr.Starttime)
 				}
 			}
 			restrictedSlots[room.Name] = reservedSlots

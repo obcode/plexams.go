@@ -14,27 +14,27 @@ func (p *Plexams) RoomRequests(ctx context.Context) ([]*model.RoomRequest, error
 }
 
 // SetRoomRequestApproved sets the approved flag of a room request (key:
-// room/day/slot). Errors if no such request exists.
-func (p *Plexams) SetRoomRequestApproved(ctx context.Context, room string, day, slot int, approved bool) (*model.RoomRequest, error) {
-	request, err := p.dbClient.SetRoomRequestApproved(ctx, room, day, slot, approved)
+// room/starttime). Errors if no such request exists.
+func (p *Plexams) SetRoomRequestApproved(ctx context.Context, room string, starttime time.Time, approved bool) (*model.RoomRequest, error) {
+	request, err := p.dbClient.SetRoomRequestApproved(ctx, room, starttime, approved)
 	if err != nil {
 		return nil, err
 	}
 	if request == nil {
-		return nil, fmt.Errorf("no room request for %s in slot (%d,%d)", room, day, slot)
+		return nil, fmt.Errorf("no room request for %s at %s", room, starttime.Format("02.01. 15:04"))
 	}
 	return request, nil
 }
 
-// SetRoomRequestActive activates/deactivates a room request (key: room/day/slot).
+// SetRoomRequestActive activates/deactivates a room request (key: room/starttime).
 // An inactive request is not used for room planning. Errors if it does not exist.
-func (p *Plexams) SetRoomRequestActive(ctx context.Context, room string, day, slot int, active bool) (*model.RoomRequest, error) {
-	request, err := p.dbClient.SetRoomRequestActive(ctx, room, day, slot, active)
+func (p *Plexams) SetRoomRequestActive(ctx context.Context, room string, starttime time.Time, active bool) (*model.RoomRequest, error) {
+	request, err := p.dbClient.SetRoomRequestActive(ctx, room, starttime, active)
 	if err != nil {
 		return nil, err
 	}
 	if request == nil {
-		return nil, fmt.Errorf("no room request for %s in slot (%d,%d)", room, day, slot)
+		return nil, fmt.Errorf("no room request for %s at %s", room, starttime.Format("02.01. 15:04"))
 	}
 	return request, nil
 }
@@ -71,13 +71,12 @@ func (p *Plexams) ApplyRoomRequestsPreview(ctx context.Context, force bool) (int
 	requests := make([]*model.RoomRequest, 0, len(preview))
 	for _, item := range preview {
 		requests = append(requests, &model.RoomRequest{
-			Room:     item.Room,
-			Day:      item.Day,
-			Slot:     item.Slot,
-			From:     item.From,
-			Until:    item.Until,
-			Approved: false,
-			Active:   true,
+			Room:      item.Room,
+			Starttime: item.Starttime,
+			From:      item.From,
+			Until:     item.Until,
+			Approved:  false,
+			Active:    true,
 		})
 	}
 
@@ -87,24 +86,23 @@ func (p *Plexams) ApplyRoomRequestsPreview(ctx context.Context, force bool) (int
 	return len(requests), nil
 }
 
-// AddRoomRequest manually adds a single room request (key: room/day/slot). It
+// AddRoomRequest manually adds a single room request (key: room/starttime). It
 // starts active and not approved. Errors if one already exists.
-func (p *Plexams) AddRoomRequest(ctx context.Context, room string, day, slot int, from, until time.Time) (*model.RoomRequest, error) {
-	existing, err := p.dbClient.GetRoomRequest(ctx, room, day, slot)
+func (p *Plexams) AddRoomRequest(ctx context.Context, room string, starttime time.Time, from, until time.Time) (*model.RoomRequest, error) {
+	existing, err := p.dbClient.GetRoomRequest(ctx, room, starttime)
 	if err != nil {
 		return nil, err
 	}
 	if existing != nil {
-		return nil, fmt.Errorf("room request for %s in slot (%d,%d) already exists", room, day, slot)
+		return nil, fmt.Errorf("room request for %s at %s already exists", room, starttime.Format("02.01. 15:04"))
 	}
 	request := &model.RoomRequest{
-		Room:     room,
-		Day:      day,
-		Slot:     slot,
-		From:     from,
-		Until:    until,
-		Approved: false,
-		Active:   true,
+		Room:      room,
+		Starttime: &starttime,
+		From:      from,
+		Until:     until,
+		Approved:  false,
+		Active:    true,
 	}
 	if err := p.dbClient.AddRoomRequest(ctx, request); err != nil {
 		return nil, err
@@ -113,14 +111,14 @@ func (p *Plexams) AddRoomRequest(ctx context.Context, room string, day, slot int
 }
 
 // UpdateRoomRequestTime changes the time range of an existing room request, e.g.
-// to extend it for an NTA (key: room/day/slot). Errors if it does not exist.
-func (p *Plexams) UpdateRoomRequestTime(ctx context.Context, room string, day, slot int, from, until time.Time) (*model.RoomRequest, error) {
-	request, err := p.dbClient.UpdateRoomRequestTime(ctx, room, day, slot, from, until)
+// to extend it for an NTA (key: room/starttime). Errors if it does not exist.
+func (p *Plexams) UpdateRoomRequestTime(ctx context.Context, room string, starttime time.Time, from, until time.Time) (*model.RoomRequest, error) {
+	request, err := p.dbClient.UpdateRoomRequestTime(ctx, room, starttime, from, until)
 	if err != nil {
 		return nil, err
 	}
 	if request == nil {
-		return nil, fmt.Errorf("no room request for %s in slot (%d,%d)", room, day, slot)
+		return nil, fmt.Errorf("no room request for %s at %s", room, starttime.Format("02.01. 15:04"))
 	}
 	return request, nil
 }

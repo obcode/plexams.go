@@ -12,7 +12,7 @@ import (
 )
 
 func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(p.TimeForSlot, reporter, "invigilator-requirements", "validating invigilator requirements")
+	v := newValidation(reporter, "invigilator-requirements", "validating invigilator requirements")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -35,22 +35,25 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 		for _, invigilationDay := range invigilator.Todos.InvigilationDays {
 			for _, excludedDay := range invigilator.Requirements.ExcludedDays {
 				if invigilationDay == excludedDay {
-					v.errorf(ref{InvigilatorID: ptr(invigilator.Teacher.ID), Day: ptr(invigilationDay)},
+					v.errorf(ref{InvigilatorID: ptr(invigilator.Teacher.ID)},
 						"%s has invigilation on excluded day %d", invigilator.Teacher.Fullname, invigilationDay)
 				}
 			}
 		}
 
 		// nur ein Raum oder Reserve
-		invigilationSlots := set.NewSet[int]() // day * 10 + slot
+		invigilationSlots := set.NewSet[int64]() // keyed by the absolute start (Unix)
 		for _, invigilation := range invigilator.Todos.Invigilations {
-			combinedNumber := invigilation.Slot.DayNumber*10 + invigilation.Slot.SlotNumber
-			if invigilationSlots.Contains(combinedNumber) {
-				v.errorf(ref{InvigilatorID: ptr(invigilator.Teacher.ID), Day: ptr(invigilation.Slot.DayNumber), Slot: ptr(invigilation.Slot.SlotNumber)},
-					"%s has more than one invigilation in slot (%d,%d)",
-					invigilator.Teacher.Fullname, invigilation.Slot.DayNumber, invigilation.Slot.SlotNumber)
+			if invigilation.Starttime == nil {
+				continue
 			}
-			invigilationSlots.Add(combinedNumber)
+			startKey := invigilation.Starttime.Unix()
+			if invigilationSlots.Contains(startKey) {
+				v.errorf(ref{InvigilatorID: ptr(invigilator.Teacher.ID), Starttime: invigilation.Starttime},
+					"%s has more than one invigilation at %s",
+					invigilator.Teacher.Fullname, invigilation.Starttime.Format("02.01. 15:04"))
+			}
+			invigilationSlots.Add(startKey)
 
 		}
 
@@ -62,13 +65,14 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 
 		for _, exam := range exams {
 			for _, invigilation := range invigilator.Todos.Invigilations {
-				if exam.PlanEntry.DayNumber == invigilation.Slot.DayNumber &&
-					exam.PlanEntry.SlotNumber == invigilation.Slot.SlotNumber {
+				if exam.PlanEntry != nil && exam.PlanEntry.Starttime != nil &&
+					invigilation.Starttime != nil &&
+					exam.PlanEntry.Starttime.Equal(*invigilation.Starttime) {
+					when := invigilation.Starttime.Format("02.01. 15:04")
 					if invigilation.IsReserve {
-						v.errorf(ref{Ancode: ptr(exam.Constraints.Ancode), InvigilatorID: ptr(invigilator.Teacher.ID), Day: ptr(invigilation.Slot.DayNumber), Slot: ptr(invigilation.Slot.SlotNumber)},
-							"%s has reserve invigilation during own exam %d. %s in slot (%d,%d)",
-							invigilator.Teacher.Fullname, exam.Constraints.Ancode, exam.ZpaExam.Module,
-							invigilation.Slot.DayNumber, invigilation.Slot.SlotNumber)
+						v.errorf(ref{Ancode: ptr(exam.Constraints.Ancode), InvigilatorID: ptr(invigilator.Teacher.ID), Starttime: invigilation.Starttime},
+							"%s has reserve invigilation during own exam %d. %s at %s",
+							invigilator.Teacher.Fullname, exam.Constraints.Ancode, exam.ZpaExam.Module, when)
 					}
 
 					roomsForExam, err := p.dbClient.PlannedRoomsForAncode(ctx, exam.Ancode)
@@ -81,10 +85,9 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 						log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get rooms for exam")
 					} else {
 						if rooms.Cardinality() > 1 {
-							v.errorf(ref{Ancode: ptr(exam.Constraints.Ancode), InvigilatorID: ptr(invigilator.Teacher.ID), Day: ptr(invigilation.Slot.DayNumber), Slot: ptr(invigilation.Slot.SlotNumber)},
-								"%s has invigilation during own exam with more than one room: %d. %s in slot (%d,%d): found rooms %v",
-								invigilator.Teacher.Fullname, exam.Constraints.Ancode, exam.ZpaExam.Module,
-								invigilation.Slot.DayNumber, invigilation.Slot.SlotNumber, rooms)
+							v.errorf(ref{Ancode: ptr(exam.Constraints.Ancode), InvigilatorID: ptr(invigilator.Teacher.ID), Starttime: invigilation.Starttime},
+								"%s has invigilation during own exam with more than one room: %d. %s at %s: found rooms %v",
+								invigilator.Teacher.Fullname, exam.Constraints.Ancode, exam.ZpaExam.Module, when, rooms)
 						}
 					}
 
@@ -97,7 +100,7 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 	return v.finish(), nil
 }
 func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(p.TimeForSlot, reporter, "invigilation-duplicates", "validating invigilator duplicates")
+	v := newValidation(reporter, "invigilation-duplicates", "validating invigilator duplicates")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -114,15 +117,17 @@ func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.Validation
 	}
 
 	type key struct {
-		room string
-		day  int
-		slot int
+		room  string
+		start int64 // Unix seconds of the absolute start
 	}
 
 	invigilationsMap := make(map[key]*model.Invigilation)
 
 	v.step("checking %d invigilations", len(invigilations))
 	for _, invigilation := range invigilations {
+		if invigilation.Starttime == nil {
+			continue
+		}
 		var room string
 		if invigilation.RoomName == nil {
 			room = "null"
@@ -130,16 +135,15 @@ func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.Validation
 			room = *invigilation.RoomName
 		}
 		key := key{
-			room: room,
-			day:  invigilation.Slot.DayNumber,
-			slot: invigilation.Slot.SlotNumber,
+			room:  room,
+			start: invigilation.Starttime.Unix(),
 		}
 
 		_, ok := invigilationsMap[key]
 		if ok {
-			v.errorf(ref{Room: invigilation.RoomName, Day: ptr(invigilation.Slot.DayNumber), Slot: ptr(invigilation.Slot.SlotNumber), InvigilatorID: ptr(invigilation.InvigilatorID)},
-				"double entry for {roomname: %s, slot.daynumber: %d, slot.slotnumber: %d}",
-				room, invigilation.Slot.DayNumber, invigilation.Slot.SlotNumber)
+			v.errorf(ref{Room: invigilation.RoomName, InvigilatorID: ptr(invigilation.InvigilatorID), Starttime: invigilation.Starttime},
+				"double entry for {roomname: %s, start: %s}",
+				room, invigilation.Starttime.Format("02.01. 15:04"))
 		} else {
 			invigilationsMap[key] = invigilation
 		}
@@ -150,7 +154,7 @@ func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.Validation
 
 // TODO: NTA- und Reserve-Aufsicht (wenn NTA) nicht im folgenden Slot einteilen!
 func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(p.TimeForSlot, reporter, "invigilator-slots", "validating invigilator for all slots")
+	v := newValidation(reporter, "invigilator-slots", "validating invigilator for all slots")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -159,58 +163,62 @@ func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.Validation
 		return v.skip(skipNoInvigilations), nil
 	}
 
-	// count rooms and reserves without and print number
-	roomWithoutInvigilatorDay := make(map[int]int)
-	slotWithoutReserveDay := make(map[int]int)
-
-	maxInvigsMissingInOneSlot := make(map[int]int)
+	// count rooms and reserves without and print number, keyed by calendar date
+	// ("2006-01-02" sorts chronologically as a string).
+	roomWithoutInvigilatorDay := make(map[string]int)
+	slotWithoutReserveDay := make(map[string]int)
+	maxInvigsMissingInOneSlot := make(map[string]int)
+	dateByKey := make(map[string]time.Time)
 
 	// all rooms and reserve max one invigilator
 	for _, slot := range p.semesterConfig.Slots {
 		invigsMissing := 0
-		v.step("checking slot (%d,%d)", slot.DayNumber, slot.SlotNumber)
+		v.step("checking slot %s", slot.Starttime.Format("02.01. 15:04"))
 
-		rooms, err := p.PlannedRoomNamesInSlot(ctx, slot.DayNumber, slot.SlotNumber)
+		rooms, err := p.plannedRoomNamesAt(ctx, slot.Starttime)
 		if err != nil {
-			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Msg("cannot get rooms for")
+			log.Error().Err(err).Time("start", slot.Starttime).Msg("cannot get rooms for")
 		}
 		if len(rooms) == 0 {
 			continue
 		}
-		invigilations, err := p.dbClient.GetInvigilationInSlot(ctx, "reserve", slot.DayNumber, slot.SlotNumber)
+		dayKey := slot.Starttime.Format("2006-01-02")
+		dateByKey[dayKey] = slot.Starttime
+
+		invigilations, err := p.invigilationsAt(ctx, "reserve", slot.Starttime)
 		if err != nil {
-			log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Msg("cannot get reserve invigilator")
+			log.Error().Err(err).Time("start", slot.Starttime).Msg("cannot get reserve invigilator")
 		}
 
 		if len(invigilations) == 0 {
-			slotWithoutReserveDay[slot.DayNumber]++
+			slotWithoutReserveDay[dayKey]++
 			invigsMissing++
 		} else if len(invigilations) > 1 {
-			v.errorf(ref{Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
-				"more than one reserve invigilator in slot (%d,%d)", slot.DayNumber, slot.SlotNumber)
+			v.errorf(ref{Starttime: &slot.Starttime},
+				"more than one reserve invigilator at %s", slot.Starttime.Format("02.01. 15:04"))
 		}
 
 		for _, room := range rooms {
-			invigilations, err := p.dbClient.GetInvigilationInSlot(ctx, room, slot.DayNumber, slot.SlotNumber)
+			invigilations, err := p.invigilationsAt(ctx, room, slot.Starttime)
 			if err != nil {
-				log.Error().Err(err).Int("day", slot.DayNumber).Int("slot", slot.SlotNumber).Str("room", room).
+				log.Error().Err(err).Time("start", slot.Starttime).Str("room", room).
 					Msg("cannot get reserve invigilator")
 			}
 			if len(invigilations) == 0 {
-				roomWithoutInvigilatorDay[slot.DayNumber]++
+				roomWithoutInvigilatorDay[dayKey]++
 				invigsMissing++
 			} else if len(invigilations) > 1 {
-				v.warnf(ref{Room: ptr(room), Day: ptr(slot.DayNumber), Slot: ptr(slot.SlotNumber)},
-					"more than one invigilator for room %s in slot (%d,%d)", room, slot.DayNumber, slot.SlotNumber)
+				v.warnf(ref{Room: ptr(room), Starttime: &slot.Starttime},
+					"more than one invigilator for room %s at %s", room, slot.Starttime.Format("02.01. 15:04"))
 			}
 		}
-		if invigsMissing > maxInvigsMissingInOneSlot[slot.DayNumber] {
-			maxInvigsMissingInOneSlot[slot.DayNumber] = invigsMissing
+		if invigsMissing > maxInvigsMissingInOneSlot[dayKey] {
+			maxInvigsMissingInOneSlot[dayKey] = invigsMissing
 		}
 	}
 
 	if len(roomWithoutInvigilatorDay) > 0 || len(slotWithoutReserveDay) > 0 {
-		keySet := set.NewSet[int]()
+		keySet := set.NewSet[string]()
 		for k := range roomWithoutInvigilatorDay {
 			keySet.Add(k)
 		}
@@ -219,16 +227,17 @@ func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.Validation
 		}
 		keys := keySet.ToSlice()
 
-		sort.Ints(keys)
+		sort.Strings(keys)
 
-		for _, day := range keys {
-			roomsWithoutInvig := roomWithoutInvigilatorDay[day]
-			slotsWithoutReserve := slotWithoutReserveDay[day]
+		for _, dayKey := range keys {
+			roomsWithoutInvig := roomWithoutInvigilatorDay[dayKey]
+			slotsWithoutReserve := slotWithoutReserveDay[dayKey]
 
 			if roomsWithoutInvig+slotsWithoutReserve > 0 {
-				v.warnf(ref{Day: ptr(day)},
-					"Day %d: %d open invigilations (%d max. in one slot), %d rooms without invigilator, %d slots without reserve",
-					day, roomsWithoutInvig+slotsWithoutReserve, maxInvigsMissingInOneSlot[day], roomsWithoutInvig, slotsWithoutReserve)
+				dayStart := dateByKey[dayKey]
+				v.warnf(ref{Starttime: &dayStart},
+					"Tag %s: %d open invigilations (%d max. in one slot), %d rooms without invigilator, %d slots without reserve",
+					dateByKey[dayKey].Format("02.01."), roomsWithoutInvig+slotsWithoutReserve, maxInvigsMissingInOneSlot[dayKey], roomsWithoutInvig, slotsWithoutReserve)
 			}
 		}
 	}
@@ -240,7 +249,7 @@ func (p *Plexams) ValidateInvigilationsTimeDistance(reporter Reporter) (*model.V
 	ctx := context.Background()
 	timelag := p.generationTimelagMin(ctx)
 
-	v := newValidation(p.TimeForSlot, reporter, "invigilations-time-distance",
+	v := newValidation(reporter, "invigilations-time-distance",
 		fmt.Sprintf("validating time lag of invigilations (%d minutes)", timelag))
 
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -256,99 +265,71 @@ func (p *Plexams) ValidateInvigilationsTimeDistance(reporter Reporter) (*model.V
 		log.Error().Err(err).Msg("cannot get all invigilations")
 	}
 
-	type slot struct {
-		day  int
-		slot int
-	}
-
-	invigilations := make(map[slot][]*model.Invigilation)
+	// Group the invigilations per invigilator and sort each group by absolute
+	// start time. The old positional "consecutive slot pair per day" scan becomes
+	// a time-interval rule: for two invigilations of the same person on the same
+	// calendar day the later one must not begin before the earlier one ends plus
+	// the required time lag.
+	byInvigilator := make(map[int][]*model.Invigilation)
 	for _, invigilation := range allInvigilations {
-		slot := slot{
-			day:  invigilation.Slot.DayNumber,
-			slot: invigilation.Slot.SlotNumber,
+		if invigilation.Starttime == nil {
+			continue
 		}
-
-		invigilationsInSlot, ok := invigilations[slot]
-		if !ok {
-			invigilationsInSlot = make([]*model.Invigilation, 0, 1)
-		}
-		invigilations[slot] = append(invigilationsInSlot, invigilation)
+		byInvigilator[invigilation.InvigilatorID] = append(byInvigilator[invigilation.InvigilatorID], invigilation)
 	}
 
-	for _, day := range p.semesterConfig.Days {
-		v.step("checking day %d (%s)", day.Number, day.Date.Format("02.01.06"))
+	invigilatorIDs := make([]int, 0, len(byInvigilator))
+	for id := range byInvigilator {
+		invigilatorIDs = append(invigilatorIDs, id)
+	}
+	sort.Ints(invigilatorIDs)
 
-		for i := range p.semesterConfig.Starttimes {
-			if i == len(p.semesterConfig.Days)-1 {
+	for _, id := range invigilatorIDs {
+		invigs := byInvigilator[id]
+		sort.Slice(invigs, func(i, j int) bool {
+			return invigs[i].Starttime.Before(*invigs[j].Starttime)
+		})
+
+		for i := 0; i+1 < len(invigs); i++ {
+			inv1, inv2 := invigs[i], invigs[i+1]
+			// only compare invigilations on the same calendar day
+			if !sameCalendarDay(*inv1.Starttime, *inv2.Starttime) {
 				continue
 			}
-			slot1, slot2 := slot{day: day.Number, slot: i + 1}, slot{day: day.Number, slot: i + 2}
-			log.Debug().Interface("slot 1", slot1).Interface("slot 2", slot2).Msg("checking slot")
+			v.step("checking invigilator %d on %s", id, inv1.Starttime.Format("02.01."))
 
-			invigilationsSlot1, ok := invigilations[slot1]
-			if !ok || len(invigilationsSlot1) == 0 {
-				log.Debug().Interface("slot", slot1).Msg("no invigilations in slot")
-				continue
-			}
+			realtime := inv1.Duration // TODO: calculate me
 
-			invigilationsSlot2, ok := invigilations[slot2]
-			if !ok || len(invigilationsSlot2) == 0 {
-				log.Debug().Interface("slot", slot2).Msg("no invigilations in slot")
-				continue
-			}
-
-			for _, invigilation1 := range invigilationsSlot1 {
-				for _, invigilation2 := range invigilationsSlot2 {
-					if invigilation1.InvigilatorID != invigilation2.InvigilatorID {
+			// self- and reserve-invigilations occupy the whole slot: extend the
+			// occupied time to the longest room duration at that start time.
+			if inv1.IsSelfInvigilation || inv1.IsReserve {
+				roomsAtStart, err := p.plannedRoomsAt(ctx, *inv1.Starttime)
+				if err != nil {
+					log.Error().Err(err).Time("start", *inv1.Starttime).Msg("cannot get rooms in slot")
+				}
+				for _, room := range roomsAtStart {
+					if inv1.IsSelfInvigilation && (inv1.RoomName == nil || *inv1.RoomName != room.RoomName) {
 						continue
 					}
-
-					startSlot1 := p.getSlotTime(invigilation1.Slot.DayNumber, invigilation1.Slot.SlotNumber)
-					startSlot2 := p.getSlotTime(invigilation2.Slot.DayNumber, invigilation2.Slot.SlotNumber)
-
-					realtime := invigilation1.Duration // TODO: calculate me
-
-					if invigilation1.IsSelfInvigilation {
-						roomsInSlot, err := p.dbClient.PlannedRoomsInSlot(ctx, slot1.day, slot1.slot)
-						if err != nil {
-							log.Error().Err(err).Interface("slot", slot1).Msg("cannot get rooms in slot")
-						}
-						for _, room := range roomsInSlot {
-							if invigilation1.RoomName == &room.RoomName {
-								if room.Duration > realtime {
-									realtime = room.Duration
-								}
-							}
-						}
-					}
-
-					if invigilation1.IsReserve {
-						roomsInSlot, err := p.dbClient.PlannedRoomsInSlot(ctx, slot1.day, slot1.slot)
-						if err != nil {
-							log.Error().Err(err).Interface("slot", slot1).Msg("cannot get rooms in slot")
-						}
-						for _, room := range roomsInSlot {
-							if room.Duration > realtime {
-								realtime = room.Duration
-							}
-						}
-					}
-
-					endSlot1 := startSlot1.Add(time.Duration(realtime) * time.Minute)
-
-					if startSlot2.Before(endSlot1.Add(time.Duration(timelag) * time.Minute)) {
-						comment := ""
-						if invigilation1.IsReserve {
-							comment = " (reserve in first slot)"
-						}
-
-						v.errorf(ref{InvigilatorID: ptr(invigilation1.InvigilatorID), Day: ptr(day.Number), Slot: ptr(slot2.slot)},
-							"Not enough time for invigilator %d between slot (%d/%d) ends %s and slot (%d/%d) begins %s: %g minutes between%s",
-							invigilation1.InvigilatorID, day.Number, slot1.slot, endSlot1.Format("15:04"),
-							day.Number, slot2.slot, startSlot2.Format("15:04"),
-							startSlot2.Sub(endSlot1).Minutes(), comment)
+					if room.Duration > realtime {
+						realtime = room.Duration
 					}
 				}
+			}
+
+			end1 := inv1.Starttime.Add(time.Duration(realtime) * time.Minute)
+
+			if inv2.Starttime.Before(end1.Add(time.Duration(timelag) * time.Minute)) {
+				comment := ""
+				if inv1.IsReserve {
+					comment = " (reserve first)"
+				}
+
+				v.errorf(ref{InvigilatorID: ptr(id), Starttime: inv1.Starttime},
+					"Not enough time for invigilator %d on %s: invigilation ends %s and next begins %s: %g minutes between%s",
+					id, inv1.Starttime.Format("02.01."), end1.Format("15:04"),
+					inv2.Starttime.Format("15:04"),
+					inv2.Starttime.Sub(end1).Minutes(), comment)
 			}
 		}
 	}

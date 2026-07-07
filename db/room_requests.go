@@ -12,11 +12,11 @@ import (
 )
 
 // RoomRequests returns all building-management room requests of the semester,
-// sorted by room, day, slot.
+// sorted by room, starttime.
 func (db *DB) RoomRequests(ctx context.Context) ([]*model.RoomRequest, error) {
 	collection := db.getCollectionSemester(collectionRoomRequests)
 	cur, err := collection.Find(ctx, bson.M{},
-		options.Find().SetSort(bson.D{{Key: "room", Value: 1}, {Key: "day", Value: 1}, {Key: "slot", Value: 1}}))
+		options.Find().SetSort(bson.D{{Key: "room", Value: 1}, {Key: "starttime", Value: 1}}))
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get room requests")
 		return nil, err
@@ -50,10 +50,10 @@ func (db *DB) ReplaceAllRoomRequests(ctx context.Context, requests []*model.Room
 	return nil
 }
 
-// GetRoomRequest returns one room request (key: room/day/slot) or nil.
-func (db *DB) GetRoomRequest(ctx context.Context, room string, day, slot int) (*model.RoomRequest, error) {
+// GetRoomRequest returns one room request (key: room/starttime) or nil.
+func (db *DB) GetRoomRequest(ctx context.Context, room string, starttime time.Time) (*model.RoomRequest, error) {
 	collection := db.getCollectionSemester(collectionRoomRequests)
-	res := collection.FindOne(ctx, bson.M{"room": room, "day": day, "slot": slot})
+	res := collection.FindOne(ctx, bson.M{"room": room, "starttime": starttime})
 	if res.Err() == mongo.ErrNoDocuments {
 		return nil, nil
 	}
@@ -65,10 +65,10 @@ func (db *DB) GetRoomRequest(ctx context.Context, room string, day, slot int) (*
 	return &request, nil
 }
 
-func (db *DB) setRoomRequestField(ctx context.Context, room string, day, slot int, field string, value bool) (*model.RoomRequest, error) {
+func (db *DB) setRoomRequestField(ctx context.Context, room string, starttime time.Time, field string, value bool) (*model.RoomRequest, error) {
 	collection := db.getCollectionSemester(collectionRoomRequests)
 	res, err := collection.UpdateOne(ctx,
-		bson.M{"room": room, "day": day, "slot": slot},
+		bson.M{"room": room, "starttime": starttime},
 		bson.D{{Key: "$set", Value: bson.D{{Key: field, Value: value}}}})
 	if err != nil {
 		log.Error().Err(err).Str("room", room).Str("field", field).Msg("cannot update room request")
@@ -77,19 +77,19 @@ func (db *DB) setRoomRequestField(ctx context.Context, room string, day, slot in
 	if res.MatchedCount == 0 {
 		return nil, nil
 	}
-	return db.GetRoomRequest(ctx, room, day, slot)
+	return db.GetRoomRequest(ctx, room, starttime)
 }
 
-// SetRoomRequestApproved sets the approved flag (key: room/day/slot). Returns nil
+// SetRoomRequestApproved sets the approved flag (key: room/starttime). Returns nil
 // if no such request exists.
-func (db *DB) SetRoomRequestApproved(ctx context.Context, room string, day, slot int, approved bool) (*model.RoomRequest, error) {
-	return db.setRoomRequestField(ctx, room, day, slot, "approved", approved)
+func (db *DB) SetRoomRequestApproved(ctx context.Context, room string, starttime time.Time, approved bool) (*model.RoomRequest, error) {
+	return db.setRoomRequestField(ctx, room, starttime, "approved", approved)
 }
 
-// SetRoomRequestActive sets the active flag (key: room/day/slot). Returns nil if
+// SetRoomRequestActive sets the active flag (key: room/starttime). Returns nil if
 // no such request exists.
-func (db *DB) SetRoomRequestActive(ctx context.Context, room string, day, slot int, active bool) (*model.RoomRequest, error) {
-	return db.setRoomRequestField(ctx, room, day, slot, "active", active)
+func (db *DB) SetRoomRequestActive(ctx context.Context, room string, starttime time.Time, active bool) (*model.RoomRequest, error) {
+	return db.setRoomRequestField(ctx, room, starttime, "active", active)
 }
 
 // AddRoomRequest inserts a single room request.
@@ -103,11 +103,11 @@ func (db *DB) AddRoomRequest(ctx context.Context, request *model.RoomRequest) er
 }
 
 // UpdateRoomRequestTime changes the time range of a room request (key:
-// room/day/slot). Returns nil if no such request exists.
-func (db *DB) UpdateRoomRequestTime(ctx context.Context, room string, day, slot int, from, until time.Time) (*model.RoomRequest, error) {
+// room/starttime). Returns nil if no such request exists.
+func (db *DB) UpdateRoomRequestTime(ctx context.Context, room string, starttime time.Time, from, until time.Time) (*model.RoomRequest, error) {
 	collection := db.getCollectionSemester(collectionRoomRequests)
 	res, err := collection.UpdateOne(ctx,
-		bson.M{"room": room, "day": day, "slot": slot},
+		bson.M{"room": room, "starttime": starttime},
 		bson.D{{Key: "$set", Value: bson.D{{Key: "from", Value: from}, {Key: "until", Value: until}}}})
 	if err != nil {
 		log.Error().Err(err).Str("room", room).Msg("cannot update room request time")
@@ -116,5 +116,5 @@ func (db *DB) UpdateRoomRequestTime(ctx context.Context, room string, day, slot 
 	if res.MatchedCount == 0 {
 		return nil, nil
 	}
-	return db.GetRoomRequest(ctx, room, day, slot)
+	return db.GetRoomRequest(ctx, room, starttime)
 }

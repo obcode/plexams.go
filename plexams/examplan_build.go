@@ -54,12 +54,10 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	}
 
 	// --- slots ---
-	slotIdx := make(map[[2]int]int, len(sc.Slots))
 	slotStarts := make([]time.Time, 0, len(sc.Slots))
 	idxByStart := make(map[time.Time]int, len(sc.Slots))
 	slots := make([]examplan.Slot, 0, len(sc.Slots))
 	for _, s := range sc.Slots {
-		slotIdx[[2]int{s.DayNumber, s.SlotNumber}] = len(slots)
 		idxByStart[s.Starttime] = len(slots)
 		slotStarts = append(slotStarts, s.Starttime)
 		slots = append(slots, examplan.Slot{
@@ -127,10 +125,10 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			fixed = true
 		}
 		if fixed {
-			if pe == nil {
-				continue // fixed but no slot known → not schedulable, no obstacle
+			if pe == nil || pe.Starttime == nil {
+				continue // fixed but no time known → not schedulable, no obstacle
 			}
-			idx, ok := slotIdx[[2]int{pe.DayNumber, pe.SlotNumber}]
+			idx, ok := slotIndexAt(slotStarts, *pe.Starttime)
 			if !ok {
 				continue
 			}
@@ -147,7 +145,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		}
 		idxs := make([]int, 0, len(allowedSlots))
 		for _, s := range allowedSlots {
-			if idx, ok := slotIdx[[2]int{s.DayNumber, s.SlotNumber}]; ok {
+			if idx, ok := idxByStart[s.Starttime]; ok {
 				idxs = append(idxs, idx)
 			}
 		}
@@ -262,8 +260,8 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		}
 		// warm-start slot = this exam's current plan entry (if any)
 		u.StartSlot = -1
-		if pe := peByAncode[members[0]]; pe != nil {
-			if idx, ok := slotIdx[[2]int{pe.DayNumber, pe.SlotNumber}]; ok {
+		if pe := peByAncode[members[0]]; pe != nil && pe.Starttime != nil {
+			if idx, ok := slotIndexAt(slotStarts, *pe.Starttime); ok {
 				u.StartSlot = idx
 			}
 		}
@@ -353,8 +351,8 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		mucDaiProg[prog] = true
 	}
 	mucDaiSlotIdx := make([]int, 0)
-	for _, s := range sc.MucDaiSlots {
-		if idx, ok := slotIdx[[2]int{s.DayNumber, s.SlotNumber}]; ok {
+	for _, t := range sc.MucDaiAllowedTimes {
+		if idx, ok := slotIndexAt(slotStarts, *t); ok {
 			mucDaiSlotIdx = append(mucDaiSlotIdx, idx)
 		}
 	}
@@ -775,6 +773,18 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// slotIndexAt returns the index i where slotStarts[i] equals t (via time.Equal, robust
+// for BSON-decoded plan-entry times whose internal representation may differ from the
+// config-built grid times), and whether such an index exists.
+func slotIndexAt(slotStarts []time.Time, t time.Time) (int, bool) {
+	for i := range slotStarts {
+		if slotStarts[i].Equal(t) {
+			return i, true
+		}
+	}
+	return 0, false
 }
 
 // sameCalendarDay reports whether two absolute times fall on the same local calendar

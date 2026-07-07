@@ -20,7 +20,9 @@ import (
 const (
 	condExahmRequested            = "exahmRequested"
 	condAnnyRoomsBooked           = "annyRoomsBooked"
+	condSebExahmPreplanned        = "sebExahmPreplanned"
 	condZPAImported               = "zpaImported"
+	condZPAExamsSelected          = "zpaExamsSelected"
 	condMucDaiImported            = "mucDaiImported"
 	condPrimussImported           = "primussImported"
 	condZpaPrimussConnected       = "zpaPrimussConnected"
@@ -62,7 +64,9 @@ var planningPhaseDefs = []planstate.PhaseDef{
 var planningConditionDefs = []planstate.CondDef{
 	{Key: condExahmRequested, Title: "EXaHM/SEB-Abfrage verschickt", Phase: "phaseMinus1"},
 	{Key: condAnnyRoomsBooked, Title: "Anny-Räume gebucht", Phase: "phaseMinus1"},
+	{Key: condSebExahmPreplanned, Title: "SEB/EXaHM-Vorplanung erzeugt", Phase: "phaseMinus1"},
 	{Key: condZPAImported, Title: "Prüfungen & Personen aus ZPA importiert", Phase: "phase0"},
+	{Key: condZPAExamsSelected, Title: "ZPA-Prüfungen für die Planung ausgewählt", Phase: "phase0"},
 	{Key: condExamPlanningInfoSent, Title: "Prüfungsplanungs-Info an Prüfende verschickt", Phase: "phase0"},
 	{Key: condMucDaiImported, Title: "MUC.DAI-Prüfungen importiert & verknüpft", Phase: "phase0"},
 	{Key: condPrimussImported, Title: "Primuss-Anmeldedaten importiert", Phase: "phase0"},

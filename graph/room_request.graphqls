@@ -5,8 +5,8 @@
 # not represented here.
 type RoomRequest {
   room: String!
-  day: Int!
-  slot: Int!
+  "Absolute start time of the exam the room is requested for."
+  starttime: Time!
   from: Time!
   until: Time!
   approved: Boolean!
@@ -21,8 +21,8 @@ be eyeballed in the GUI. The preview is read-only and changes nothing.
 """
 type RoomRequestPreview {
   room: String!
-  day: Int!
-  slot: Int!
+  "Absolute start time of the exam the room would be requested for."
+  starttime: Time!
   from: Time!
   until: Time!
   students: Int!
@@ -39,14 +39,14 @@ extend type Query {
 }
 
 extend type Mutation {
-  "Set the approved flag of a room request (key: room/day/slot)."
-  setRoomRequestApproved(room: String!, day: Int!, slot: Int!, approved: Boolean!): RoomRequest!
+  "Set the approved flag of a room request (key: room + starttime)."
+  setRoomRequestApproved(room: String!, starttime: Time!, approved: Boolean!): RoomRequest!
   "Activate/deactivate a room request; inactive requests are not used for room planning."
-  setRoomRequestActive(room: String!, day: Int!, slot: Int!, active: Boolean!): RoomRequest!
+  setRoomRequestActive(room: String!, starttime: Time!, active: Boolean!): RoomRequest!
   "Generate room requests from the current plan and REPLACE all existing ones (one-shot, no merge). Generated requests start active and not approved. Errors if requests already exist unless force is true (force discards them, including approved flags). Returns the number written."
   applyRoomRequestsPreview(force: Boolean!): Int!
-  "Manually add a single room request (key: room/day/slot). Errors if one already exists. Starts active and not approved."
-  addRoomRequest(room: String!, day: Int!, slot: Int!, from: Time!, until: Time!): RoomRequest!
-  "Change the time range of an existing room request, e.g. extend it for an NTA (key: room/day/slot). Errors if it does not exist."
-  updateRoomRequestTime(room: String!, day: Int!, slot: Int!, from: Time!, until: Time!): RoomRequest!
+  "Manually add a single room request (key: room + starttime). Errors if one already exists. Starts active and not approved."
+  addRoomRequest(room: String!, starttime: Time!, from: Time!, until: Time!): RoomRequest!
+  "Change the time range of an existing room request, e.g. extend it for an NTA (key: room + starttime). Errors if it does not exist."
+  updateRoomRequestTime(room: String!, starttime: Time!, from: Time!, until: Time!): RoomRequest!
 }

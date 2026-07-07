@@ -8,16 +8,19 @@ import (
 	"context"
 	"time"
 
+	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
 // SetRoomRequestApproved is the resolver for the setRoomRequestApproved field.
-func (r *mutationResolver) SetRoomRequestApproved(ctx context.Context, room string, day int, slot int, approved bool) (*model.RoomRequest, error) {
+func (r *mutationResolver) SetRoomRequestApproved(ctx context.Context, room string, starttime time.Time, approved bool) (*model.RoomRequest, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
 	return r.plexams.SetRoomRequestApproved(ctx, room, day, slot, approved)
 }
 
 // SetRoomRequestActive is the resolver for the setRoomRequestActive field.
-func (r *mutationResolver) SetRoomRequestActive(ctx context.Context, room string, day int, slot int, active bool) (*model.RoomRequest, error) {
+func (r *mutationResolver) SetRoomRequestActive(ctx context.Context, room string, starttime time.Time, active bool) (*model.RoomRequest, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
 	return r.plexams.SetRoomRequestActive(ctx, room, day, slot, active)
 }
 
@@ -27,12 +30,14 @@ func (r *mutationResolver) ApplyRoomRequestsPreview(ctx context.Context, force b
 }
 
 // AddRoomRequest is the resolver for the addRoomRequest field.
-func (r *mutationResolver) AddRoomRequest(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error) {
+func (r *mutationResolver) AddRoomRequest(ctx context.Context, room string, starttime time.Time, from time.Time, until time.Time) (*model.RoomRequest, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
 	return r.plexams.AddRoomRequest(ctx, room, day, slot, from, until)
 }
 
 // UpdateRoomRequestTime is the resolver for the updateRoomRequestTime field.
-func (r *mutationResolver) UpdateRoomRequestTime(ctx context.Context, room string, day int, slot int, from time.Time, until time.Time) (*model.RoomRequest, error) {
+func (r *mutationResolver) UpdateRoomRequestTime(ctx context.Context, room string, starttime time.Time, from time.Time, until time.Time) (*model.RoomRequest, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
 	return r.plexams.UpdateRoomRequestTime(ctx, room, day, slot, from, until)
 }
 
@@ -45,3 +50,24 @@ func (r *queryResolver) RoomRequests(ctx context.Context) ([]*model.RoomRequest,
 func (r *queryResolver) RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error) {
 	return r.plexams.GenerateRoomRequestsPreview(ctx)
 }
+
+// Starttime is the resolver for the starttime field.
+func (r *roomRequestResolver) Starttime(ctx context.Context, obj *model.RoomRequest) (*time.Time, error) {
+	return r.plexams.GetStarttime(obj.Day, obj.Slot)
+}
+
+// Starttime is the resolver for the starttime field.
+func (r *roomRequestPreviewResolver) Starttime(ctx context.Context, obj *model.RoomRequestPreview) (*time.Time, error) {
+	return r.plexams.GetStarttime(obj.Day, obj.Slot)
+}
+
+// RoomRequest returns generated.RoomRequestResolver implementation.
+func (r *Resolver) RoomRequest() generated.RoomRequestResolver { return &roomRequestResolver{r} }
+
+// RoomRequestPreview returns generated.RoomRequestPreviewResolver implementation.
+func (r *Resolver) RoomRequestPreview() generated.RoomRequestPreviewResolver {
+	return &roomRequestPreviewResolver{r}
+}
+
+type roomRequestResolver struct{ *Resolver }
+type roomRequestPreviewResolver struct{ *Resolver }

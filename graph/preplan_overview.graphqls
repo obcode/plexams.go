@@ -12,9 +12,7 @@ type PreplanOverview {
 }
 
 type PreplanSlotNeed {
-  "null day/slot = the bucket of pre-exams without a slot yet."
-  dayNumber: Int
-  slotNumber: Int
+  "null starttime = the bucket of pre-exams without a slot yet."
   starttime: Time
   exahm: PreplanKindNeed!
   seb: PreplanKindNeed!

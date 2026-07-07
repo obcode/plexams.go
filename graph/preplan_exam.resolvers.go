@@ -6,7 +6,9 @@ package graph
 
 import (
 	"context"
+	"time"
 
+	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
@@ -25,9 +27,13 @@ func (r *mutationResolver) DeletePreplanExam(ctx context.Context, id int) (bool,
 	return r.plexams.DeletePreplanExam(ctx, id)
 }
 
-// SetPreplanExamSlot is the resolver for the setPreplanExamSlot field.
-func (r *mutationResolver) SetPreplanExamSlot(ctx context.Context, id int, dayNumber *int, slotNumber *int) (*model.PreplanExam, error) {
-	return r.plexams.SetPreplanExamSlot(ctx, id, dayNumber, slotNumber)
+// SetPreplanExamTime is the resolver for the setPreplanExamTime field.
+func (r *mutationResolver) SetPreplanExamTime(ctx context.Context, id int, starttime *time.Time) (*model.PreplanExam, error) {
+	if starttime == nil {
+		return r.plexams.SetPreplanExamSlot(ctx, id, nil, nil)
+	}
+	day, slot := r.plexams.SlotForTime(*starttime)
+	return r.plexams.SetPreplanExamSlot(ctx, id, &day, &slot)
 }
 
 // ConnectPreplanExamToAncode is the resolver for the connectPreplanExamToAncode field.
@@ -60,6 +66,17 @@ func (r *mutationResolver) SetPreplanExamConstraints(ctx context.Context, id int
 	return r.plexams.SetPreplanExamConstraints(ctx, id, &constraints)
 }
 
+// PlannedStarttime is the resolver for the plannedStarttime field.
+func (r *preplanExamResolver) PlannedStarttime(ctx context.Context, obj *model.PreplanExam) (*time.Time, error) {
+	if obj.PlannedDayNumber == nil || obj.PlannedSlotNumber == nil {
+		return nil, nil
+	}
+	if st, err := r.plexams.GetStarttime(*obj.PlannedDayNumber, *obj.PlannedSlotNumber); err == nil {
+		return st, nil
+	}
+	return nil, nil
+}
+
 // PreplanExams is the resolver for the preplanExams field.
 func (r *queryResolver) PreplanExams(ctx context.Context) ([]*model.PreplanExam, error) {
 	return r.plexams.PreplanExams(ctx)
@@ -79,3 +96,8 @@ func (r *queryResolver) PreplanExamAncodeSuggestions(ctx context.Context, id int
 func (r *queryResolver) PreplanSameSlotGroups(ctx context.Context) ([]*model.PreplanSameSlotGroup, error) {
 	return r.plexams.PreplanSameSlotGroups(ctx)
 }
+
+// PreplanExam returns generated.PreplanExamResolver implementation.
+func (r *Resolver) PreplanExam() generated.PreplanExamResolver { return &preplanExamResolver{r} }
+
+type preplanExamResolver struct{ *Resolver }

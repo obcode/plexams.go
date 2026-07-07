@@ -35,10 +35,10 @@ extend type Mutation {
   updatePreplanExam(id: Int!, input: PreplanExamInput!): PreplanExam!
   deletePreplanExam(id: Int!): Boolean!
   """
-  Assign the pre-exam to a slot, or clear it (pass both dayNumber and slotNumber,
-  or neither). The slot must be a real slot of this semester.
+  Assign the pre-exam to a start time, or clear it (pass starttime or null). The time
+  must be a real slot start of this semester.
   """
-  setPreplanExamSlot(id: Int!, dayNumber: Int, slotNumber: Int): PreplanExam!
+  setPreplanExamTime(id: Int!, starttime: Time): PreplanExam!
   """
   Link the pre-exam to a real ZPA exam (its ancode). The ancode must exist and
   must not already be linked by another pre-exam.
@@ -88,8 +88,8 @@ type PreplanExam {
   programs: [String!]!
   expectedStudents: Int!
   duration: Int
-  plannedDayNumber: Int
-  plannedSlotNumber: Int
+  "Absolute start time the pre-exam is assigned to (null = not yet assigned)."
+  plannedStarttime: Time
   "True when the slot is pinned and survives a re-run of the automatic assignment."
   isFixed: Boolean!
   """

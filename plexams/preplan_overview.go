@@ -75,8 +75,6 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 		}
 		if key.slotted {
 			day, slot := key.day, key.slot
-			need.DayNumber = &day
-			need.SlotNumber = &slot
 			if start, err := p.GetStarttime(day, slot); err == nil {
 				need.Starttime = start
 			}

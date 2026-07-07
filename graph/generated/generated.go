@@ -44,6 +44,7 @@ type ResolverRoot interface {
 	Mutation() MutationResolver
 	PlannedExam() PlannedExamResolver
 	PlannedRoom() PlannedRoomResolver
+	PreplanExam() PreplanExamResolver
 	Query() QueryResolver
 	RoomsForSlot() RoomsForSlotResolver
 	Subscription() SubscriptionResolver
@@ -650,7 +651,7 @@ type ComplexityRoot struct {
 		SetPreplanExamConstraints     func(childComplexity int, id int, constraints model.ConstraintsInput) int
 		SetPreplanExamFixed           func(childComplexity int, id int, fixed bool) int
 		SetPreplanExamNotSameSlot     func(childComplexity int, id int, otherID int, conflict bool) int
-		SetPreplanExamSlot            func(childComplexity int, id int, dayNumber *int, slotNumber *int) int
+		SetPreplanExamTime            func(childComplexity int, id int, starttime *time.Time) int
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, day int, slot int, active bool) int
 		SetRoomRequestApproved        func(childComplexity int, room string, day int, slot int, approved bool) int
@@ -825,22 +826,21 @@ type ComplexityRoot struct {
 	}
 
 	PreplanExam struct {
-		Ancode            func(childComplexity int) int
-		CanShareSlot      func(childComplexity int) int
-		Constraints       func(childComplexity int) int
-		Duration          func(childComplexity int) int
-		ExamKind          func(childComplexity int) int
-		ExamerID          func(childComplexity int) int
-		ExamerName        func(childComplexity int) int
-		ExpectedStudents  func(childComplexity int) int
-		ID                func(childComplexity int) int
-		IsFixed           func(childComplexity int) int
-		Module            func(childComplexity int) int
-		NotSameSlot       func(childComplexity int) int
-		Notes             func(childComplexity int) int
-		PlannedDayNumber  func(childComplexity int) int
-		PlannedSlotNumber func(childComplexity int) int
-		Programs          func(childComplexity int) int
+		Ancode           func(childComplexity int) int
+		CanShareSlot     func(childComplexity int) int
+		Constraints      func(childComplexity int) int
+		Duration         func(childComplexity int) int
+		ExamKind         func(childComplexity int) int
+		ExamerID         func(childComplexity int) int
+		ExamerName       func(childComplexity int) int
+		ExpectedStudents func(childComplexity int) int
+		ID               func(childComplexity int) int
+		IsFixed          func(childComplexity int) int
+		Module           func(childComplexity int) int
+		NotSameSlot      func(childComplexity int) int
+		Notes            func(childComplexity int) int
+		PlannedStarttime func(childComplexity int) int
+		Programs         func(childComplexity int) int
 	}
 
 	PreplanFinding struct {
@@ -882,12 +882,10 @@ type ComplexityRoot struct {
 	}
 
 	PreplanSlotNeed struct {
-		Conflicts  func(childComplexity int) int
-		DayNumber  func(childComplexity int) int
-		Exahm      func(childComplexity int) int
-		Seb        func(childComplexity int) int
-		SlotNumber func(childComplexity int) int
-		Starttime  func(childComplexity int) int
+		Conflicts func(childComplexity int) int
+		Exahm     func(childComplexity int) int
+		Seb       func(childComplexity int) int
+		Starttime func(childComplexity int) int
 	}
 
 	PreplanValidation struct {
@@ -1523,7 +1521,7 @@ type MutationResolver interface {
 	AddPreplanExam(ctx context.Context, input model.PreplanExamInput) (*model.PreplanExam, error)
 	UpdatePreplanExam(ctx context.Context, id int, input model.PreplanExamInput) (*model.PreplanExam, error)
 	DeletePreplanExam(ctx context.Context, id int) (bool, error)
-	SetPreplanExamSlot(ctx context.Context, id int, dayNumber *int, slotNumber *int) (*model.PreplanExam, error)
+	SetPreplanExamTime(ctx context.Context, id int, starttime *time.Time) (*model.PreplanExam, error)
 	ConnectPreplanExamToAncode(ctx context.Context, id int, ancode int) (*model.PreplanExam, error)
 	DisconnectPreplanExam(ctx context.Context, id int) (*model.PreplanExam, error)
 	SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (*model.PreplanExam, error)
@@ -1564,6 +1562,9 @@ type PlannedExamResolver interface {
 }
 type PlannedRoomResolver interface {
 	Room(ctx context.Context, obj *model.PlannedRoom) (*model.Room, error)
+}
+type PreplanExamResolver interface {
+	PlannedStarttime(ctx context.Context, obj *model.PreplanExam) (*time.Time, error)
 }
 type QueryResolver interface {
 	AllSemesterNames(ctx context.Context) ([]*model.Semester, error)
@@ -4943,17 +4944,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetPreplanExamNotSameSlot(childComplexity, args["id"].(int), args["otherID"].(int), args["conflict"].(bool)), true
 
-	case "Mutation.setPreplanExamSlot":
-		if e.complexity.Mutation.SetPreplanExamSlot == nil {
+	case "Mutation.setPreplanExamTime":
+		if e.complexity.Mutation.SetPreplanExamTime == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_setPreplanExamSlot_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_setPreplanExamTime_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetPreplanExamSlot(childComplexity, args["id"].(int), args["dayNumber"].(*int), args["slotNumber"].(*int)), true
+		return e.complexity.Mutation.SetPreplanExamTime(childComplexity, args["id"].(int), args["starttime"].(*time.Time)), true
 
 	case "Mutation.setRoomActive":
 		if e.complexity.Mutation.SetRoomActive == nil {
@@ -5903,19 +5904,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreplanExam.Notes(childComplexity), true
 
-	case "PreplanExam.plannedDayNumber":
-		if e.complexity.PreplanExam.PlannedDayNumber == nil {
+	case "PreplanExam.plannedStarttime":
+		if e.complexity.PreplanExam.PlannedStarttime == nil {
 			break
 		}
 
-		return e.complexity.PreplanExam.PlannedDayNumber(childComplexity), true
-
-	case "PreplanExam.plannedSlotNumber":
-		if e.complexity.PreplanExam.PlannedSlotNumber == nil {
-			break
-		}
-
-		return e.complexity.PreplanExam.PlannedSlotNumber(childComplexity), true
+		return e.complexity.PreplanExam.PlannedStarttime(childComplexity), true
 
 	case "PreplanExam.programs":
 		if e.complexity.PreplanExam.Programs == nil {
@@ -6071,13 +6065,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreplanSlotNeed.Conflicts(childComplexity), true
 
-	case "PreplanSlotNeed.dayNumber":
-		if e.complexity.PreplanSlotNeed.DayNumber == nil {
-			break
-		}
-
-		return e.complexity.PreplanSlotNeed.DayNumber(childComplexity), true
-
 	case "PreplanSlotNeed.exahm":
 		if e.complexity.PreplanSlotNeed.Exahm == nil {
 			break
@@ -6091,13 +6078,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PreplanSlotNeed.Seb(childComplexity), true
-
-	case "PreplanSlotNeed.slotNumber":
-		if e.complexity.PreplanSlotNeed.SlotNumber == nil {
-			break
-		}
-
-		return e.complexity.PreplanSlotNeed.SlotNumber(childComplexity), true
 
 	case "PreplanSlotNeed.starttime":
 		if e.complexity.PreplanSlotNeed.Starttime == nil {
@@ -10947,10 +10927,10 @@ extend type Mutation {
   updatePreplanExam(id: Int!, input: PreplanExamInput!): PreplanExam!
   deletePreplanExam(id: Int!): Boolean!
   """
-  Assign the pre-exam to a slot, or clear it (pass both dayNumber and slotNumber,
-  or neither). The slot must be a real slot of this semester.
+  Assign the pre-exam to a start time, or clear it (pass starttime or null). The time
+  must be a real slot start of this semester.
   """
-  setPreplanExamSlot(id: Int!, dayNumber: Int, slotNumber: Int): PreplanExam!
+  setPreplanExamTime(id: Int!, starttime: Time): PreplanExam!
   """
   Link the pre-exam to a real ZPA exam (its ancode). The ancode must exist and
   must not already be linked by another pre-exam.
@@ -11000,8 +10980,8 @@ type PreplanExam {
   programs: [String!]!
   expectedStudents: Int!
   duration: Int
-  plannedDayNumber: Int
-  plannedSlotNumber: Int
+  "Absolute start time the pre-exam is assigned to (null = not yet assigned)."
+  plannedStarttime: Time
   "True when the slot is pinned and survives a re-run of the automatic assignment."
   isFixed: Boolean!
   """
@@ -11048,9 +11028,7 @@ type PreplanOverview {
 }
 
 type PreplanSlotNeed {
-  "null day/slot = the bucket of pre-exams without a slot yet."
-  dayNumber: Int
-  slotNumber: Int
+  "null starttime = the bucket of pre-exams without a slot yet."
   starttime: Time
   exahm: PreplanKindNeed!
   seb: PreplanKindNeed!
@@ -15054,27 +15032,22 @@ func (ec *executionContext) field_Mutation_setPreplanExamNotSameSlot_argsConflic
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Mutation_setPreplanExamSlot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_setPreplanExamTime_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_setPreplanExamSlot_argsID(ctx, rawArgs)
+	arg0, err := ec.field_Mutation_setPreplanExamTime_argsID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
-	arg1, err := ec.field_Mutation_setPreplanExamSlot_argsDayNumber(ctx, rawArgs)
+	arg1, err := ec.field_Mutation_setPreplanExamTime_argsStarttime(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["dayNumber"] = arg1
-	arg2, err := ec.field_Mutation_setPreplanExamSlot_argsSlotNumber(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["slotNumber"] = arg2
+	args["starttime"] = arg1
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_setPreplanExamSlot_argsID(
+func (ec *executionContext) field_Mutation_setPreplanExamTime_argsID(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (int, error) {
@@ -15092,39 +15065,21 @@ func (ec *executionContext) field_Mutation_setPreplanExamSlot_argsID(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Mutation_setPreplanExamSlot_argsDayNumber(
+func (ec *executionContext) field_Mutation_setPreplanExamTime_argsStarttime(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (*int, error) {
-	if _, ok := rawArgs["dayNumber"]; !ok {
-		var zeroVal *int
+) (*time.Time, error) {
+	if _, ok := rawArgs["starttime"]; !ok {
+		var zeroVal *time.Time
 		return zeroVal, nil
 	}
 
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dayNumber"))
-	if tmp, ok := rawArgs["dayNumber"]; ok {
-		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("starttime"))
+	if tmp, ok := rawArgs["starttime"]; ok {
+		return ec.unmarshalOTime2ᚖtimeᚐTime(ctx, tmp)
 	}
 
-	var zeroVal *int
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_setPreplanExamSlot_argsSlotNumber(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*int, error) {
-	if _, ok := rawArgs["slotNumber"]; !ok {
-		var zeroVal *int
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slotNumber"))
-	if tmp, ok := rawArgs["slotNumber"]; ok {
-		return ec.unmarshalOInt2ᚖint(ctx, tmp)
-	}
-
-	var zeroVal *int
+	var zeroVal *time.Time
 	return zeroVal, nil
 }
 
@@ -37609,10 +37564,8 @@ func (ec *executionContext) fieldContext_Mutation_addPreplanExam(ctx context.Con
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -37698,10 +37651,8 @@ func (ec *executionContext) fieldContext_Mutation_updatePreplanExam(ctx context.
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -37787,8 +37738,8 @@ func (ec *executionContext) fieldContext_Mutation_deletePreplanExam(ctx context.
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_setPreplanExamSlot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_setPreplanExamSlot(ctx, field)
+func (ec *executionContext) _Mutation_setPreplanExamTime(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setPreplanExamTime(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -37801,7 +37752,7 @@ func (ec *executionContext) _Mutation_setPreplanExamSlot(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetPreplanExamSlot(rctx, fc.Args["id"].(int), fc.Args["dayNumber"].(*int), fc.Args["slotNumber"].(*int))
+		return ec.resolvers.Mutation().SetPreplanExamTime(rctx, fc.Args["id"].(int), fc.Args["starttime"].(*time.Time))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -37818,7 +37769,7 @@ func (ec *executionContext) _Mutation_setPreplanExamSlot(ctx context.Context, fi
 	return ec.marshalNPreplanExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanExam(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_setPreplanExamSlot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_setPreplanExamTime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -37842,10 +37793,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamSlot(ctx context
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -37869,7 +37818,7 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamSlot(ctx context
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_setPreplanExamSlot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_setPreplanExamTime_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -37931,10 +37880,8 @@ func (ec *executionContext) fieldContext_Mutation_connectPreplanExamToAncode(ctx
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -38020,10 +37967,8 @@ func (ec *executionContext) fieldContext_Mutation_disconnectPreplanExam(ctx cont
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -38109,10 +38054,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamFixed(ctx contex
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -38198,10 +38141,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamNotSameSlot(ctx 
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -38287,10 +38228,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamCanShareSlot(ctx
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -38376,10 +38315,8 @@ func (ec *executionContext) fieldContext_Mutation_setPreplanExamConstraints(ctx 
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -44962,8 +44899,8 @@ func (ec *executionContext) fieldContext_PreplanExam_duration(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _PreplanExam_plannedDayNumber(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
+func (ec *executionContext) _PreplanExam_plannedStarttime(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -44976,7 +44913,7 @@ func (ec *executionContext) _PreplanExam_plannedDayNumber(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PlannedDayNumber, nil
+		return ec.resolvers.PreplanExam().PlannedStarttime(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -44985,60 +44922,19 @@ func (ec *executionContext) _PreplanExam_plannedDayNumber(ctx context.Context, f
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PreplanExam_plannedDayNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PreplanExam_plannedStarttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PreplanExam",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PreplanExam_plannedSlotNumber(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PlannedSlotNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PreplanExam_plannedSlotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PreplanExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -45754,10 +45650,6 @@ func (ec *executionContext) fieldContext_PreplanOverview_slots(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_PreplanSlotNeed_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_PreplanSlotNeed_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PreplanSlotNeed_starttime(ctx, field)
 			case "exahm":
@@ -46212,88 +46104,6 @@ func (ec *executionContext) _PreplanSameSlotMember_ancode(ctx context.Context, f
 func (ec *executionContext) fieldContext_PreplanSameSlotMember_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PreplanSameSlotMember",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PreplanSlotNeed_dayNumber(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSlotNeed) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PreplanSlotNeed_dayNumber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DayNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PreplanSlotNeed_dayNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PreplanSlotNeed",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PreplanSlotNeed_slotNumber(ctx context.Context, field graphql.CollectedField, obj *model.PreplanSlotNeed) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PreplanSlotNeed_slotNumber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.SlotNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PreplanSlotNeed_slotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PreplanSlotNeed",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -51508,10 +51318,8 @@ func (ec *executionContext) fieldContext_Query_preplanExams(_ context.Context, f
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -51583,10 +51391,8 @@ func (ec *executionContext) fieldContext_Query_preplanExam(ctx context.Context, 
 				return ec.fieldContext_PreplanExam_expectedStudents(ctx, field)
 			case "duration":
 				return ec.fieldContext_PreplanExam_duration(ctx, field)
-			case "plannedDayNumber":
-				return ec.fieldContext_PreplanExam_plannedDayNumber(ctx, field)
-			case "plannedSlotNumber":
-				return ec.fieldContext_PreplanExam_plannedSlotNumber(ctx, field)
+			case "plannedStarttime":
+				return ec.fieldContext_PreplanExam_plannedStarttime(ctx, field)
 			case "isFixed":
 				return ec.fieldContext_PreplanExam_isFixed(ctx, field)
 			case "notSameSlot":
@@ -76502,9 +76308,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "setPreplanExamSlot":
+		case "setPreplanExamTime":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_setPreplanExamSlot(ctx, field)
+				return ec._Mutation_setPreplanExamTime(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -77942,48 +77748,77 @@ func (ec *executionContext) _PreplanExam(ctx context.Context, sel ast.SelectionS
 		case "id":
 			out.Values[i] = ec._PreplanExam_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "examKind":
 			out.Values[i] = ec._PreplanExam_examKind(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "examerID":
 			out.Values[i] = ec._PreplanExam_examerID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "examerName":
 			out.Values[i] = ec._PreplanExam_examerName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "module":
 			out.Values[i] = ec._PreplanExam_module(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "programs":
 			out.Values[i] = ec._PreplanExam_programs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "expectedStudents":
 			out.Values[i] = ec._PreplanExam_expectedStudents(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "duration":
 			out.Values[i] = ec._PreplanExam_duration(ctx, field, obj)
-		case "plannedDayNumber":
-			out.Values[i] = ec._PreplanExam_plannedDayNumber(ctx, field, obj)
-		case "plannedSlotNumber":
-			out.Values[i] = ec._PreplanExam_plannedSlotNumber(ctx, field, obj)
+		case "plannedStarttime":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PreplanExam_plannedStarttime(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "isFixed":
 			out.Values[i] = ec._PreplanExam_isFixed(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "notSameSlot":
 			out.Values[i] = ec._PreplanExam_notSameSlot(ctx, field, obj)
@@ -78330,10 +78165,6 @@ func (ec *executionContext) _PreplanSlotNeed(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("PreplanSlotNeed")
-		case "dayNumber":
-			out.Values[i] = ec._PreplanSlotNeed_dayNumber(ctx, field, obj)
-		case "slotNumber":
-			out.Values[i] = ec._PreplanSlotNeed_slotNumber(ctx, field, obj)
 		case "starttime":
 			out.Values[i] = ec._PreplanSlotNeed_starttime(ctx, field, obj)
 		case "exahm":

@@ -861,12 +861,10 @@ type PreplanSameSlotMember struct {
 }
 
 type PreplanSlotNeed struct {
-	// null day/slot = the bucket of pre-exams without a slot yet.
-	DayNumber  *int             `json:"dayNumber,omitempty"`
-	SlotNumber *int             `json:"slotNumber,omitempty"`
-	Starttime  *time.Time       `json:"starttime,omitempty"`
-	Exahm      *PreplanKindNeed `json:"exahm"`
-	Seb        *PreplanKindNeed `json:"seb"`
+	// null starttime = the bucket of pre-exams without a slot yet.
+	Starttime *time.Time       `json:"starttime,omitempty"`
+	Exahm     *PreplanKindNeed `json:"exahm"`
+	Seb       *PreplanKindNeed `json:"seb"`
 	// Programs that appear in more than one pre-exam of this slot (possible clash).
 	Conflicts []*PreplanProgramConflict `json:"conflicts"`
 }

@@ -88,11 +88,12 @@ func slotCfg(roomInfo map[string]*model.Room, roomNames []string) *Cfg {
 		RoomInfo:             roomInfo,
 		PrePlannedRooms:      map[int][]*model.PrePlannedRoom{},
 		AdditionalSeats:      map[int]int{},
-		Slot:                 &model.Slot{DayNumber: 1, SlotNumber: 1, Starttime: slot11Time},
+		Slot:                 &model.Slot{Starttime: slot11Time},
+		IsNewDay:             true,
 		RoomsNotUsableInSlot: set.NewSet[string](),
 		BlockedRooms:         map[SlotKey]set.Set[string]{},
 		ExactSeatRooms:       map[int]map[string]bool{},
-		RoomsForSlots:        map[SlotKey][]string{{Day: 1, Slot: 1}: roomNames},
+		RoomsForSlots:        map[SlotKey][]string{StartKey(slot11Time): roomNames},
 	}
 }
 

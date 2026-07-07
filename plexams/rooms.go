@@ -11,10 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type SlotNumber struct {
-	day, slot int
-}
-
 func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]anny.RoomBooking, error) {
 	dbBookings, err := p.dbClient.AllAnnyBookings(ctx)
 	if err != nil {
@@ -209,20 +205,16 @@ func (p *Plexams) RoomsForSlot(ctx context.Context, starttime time.Time) (*model
 	return nil, nil
 }
 
-// roomsForSlotsMap computes the allowed rooms once and indexes them by slot, for
-// callers that need many slots (validations, generation).
-func (p *Plexams) roomsForSlotsMap(ctx context.Context) (map[SlotNumber][]string, error) {
+// roomsForSlotsMap computes the allowed rooms once and indexes them by the slot's
+// absolute start time, for callers that need many slots (validations, generation).
+func (p *Plexams) roomsForSlotsMap(ctx context.Context) (map[time.Time][]string, error) {
 	roomsForSlots, err := p.computeRoomsForSlots(ctx, newDiscardReporter())
 	if err != nil {
 		return nil, err
 	}
-	m := make(map[SlotNumber][]string, len(roomsForSlots))
+	m := make(map[time.Time][]string, len(roomsForSlots))
 	for _, rfs := range roomsForSlots {
-		slot := p.slotForStarttime(rfs.Starttime)
-		if slot == nil {
-			continue
-		}
-		m[SlotNumber{day: slot.DayNumber, slot: slot.SlotNumber}] = rfs.RoomNames
+		m[rfs.Starttime] = rfs.RoomNames
 	}
 	return m, nil
 }

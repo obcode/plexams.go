@@ -314,9 +314,9 @@ func (p *Plexams) buildInvigilator(ctx context.Context, teacher *model.Teacher, 
 func (p *Plexams) datesToDay(dates []*time.Time) []int {
 	days := set.NewSet[int]()
 	for _, date := range dates {
-		for _, day := range p.semesterConfig.Days {
+		for i, day := range p.semesterConfig.Days {
 			if day.Date.Month() == date.Month() && day.Date.Day() == date.Day() {
-				days.Add(day.Number)
+				days.Add(i + 1)
 			}
 		}
 	}

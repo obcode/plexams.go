@@ -28,9 +28,9 @@ func annyTestPlexams(t *testing.T) (*Plexams, context.Context, time.Time) {
 	p := &Plexams{
 		dbClient: dbClient,
 		semesterConfig: &model.SemesterConfig{
-			Starttimes: []*model.Starttime{{Number: 1, Start: "08:30"}, {Number: 2, Start: "10:30"}},
+			Starttimes: []*model.Starttime{{Start: "08:30"}, {Start: "10:30"}},
 		},
-		allSlots: []*model.Slot{{DayNumber: 1, SlotNumber: 1, Starttime: slotStart}},
+		allSlots: []*model.Slot{{Starttime: slotStart}},
 	}
 	p.anny = anny.New(dbClient, anny.Config{})
 	return p, ctx, slotStart

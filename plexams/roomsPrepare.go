@@ -29,8 +29,15 @@ func (p *Plexams) PrepareRoomForExams(ctx context.Context, reporter Reporter) er
 	reporter.Println(aurora.Sprintf(aurora.Cyan("preparing rooms for exams")))
 	examRooms := make([]*model.PlannedRoom, 0)
 	unplaced := make([]*model.UnplacedExam, 0)
+	// The slots are ordered day-by-day, then by start time; the first slot seen for a
+	// new calendar date is its earliest one (the former SlotNumber == 1), which resets
+	// the blocked-room carryover.
+	lastDate := ""
 	for _, slot := range p.semesterConfig.Slots {
+		date := slot.Starttime.Format("2006-01-02")
 		cfg.Slot = slot
+		cfg.IsNewDay = date != lastDate
+		lastDate = date
 		slotRooms, slotUnplaced, err := rooms.PrepareForSlot(ctx, p.dbClient, cfg, reporter)
 		if err != nil {
 			log.Error().Err(err).Time("starttime", slot.Starttime).
@@ -102,30 +109,29 @@ func (p *Plexams) prepareRoomsCfg(ctx context.Context) (*rooms.Cfg, error) {
 		log.Error().Err(err).Msg("cannot get blocked rooms")
 		return nil, err
 	}
+	// Blocked rooms and allowed rooms are keyed on the slot's absolute start time
+	// (canonicalized via rooms.StartKey); a block whose time is off the grid simply
+	// never matches a slot lookup.
 	blockedRooms := make(map[rooms.SlotKey]set.Set[string])
 	for _, b := range blocks {
 		if b.Starttime == nil {
 			continue
 		}
-		slot := p.slotForStarttime(*b.Starttime)
-		if slot == nil {
-			continue
-		}
-		key := rooms.SlotKey{Day: slot.DayNumber, Slot: slot.SlotNumber}
+		key := rooms.StartKey(*b.Starttime)
 		if _, ok := blockedRooms[key]; !ok {
 			blockedRooms[key] = set.NewSet[string]()
 		}
 		blockedRooms[key].Add(b.Room)
 	}
 
-	roomsForSlotsBySlotNumber, err := p.roomsForSlotsMap(ctx)
+	roomsForSlotsByStart, err := p.roomsForSlotsMap(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot compute rooms for slots")
 		return nil, err
 	}
-	roomsForSlots := make(map[rooms.SlotKey][]string, len(roomsForSlotsBySlotNumber))
-	for k, v := range roomsForSlotsBySlotNumber {
-		roomsForSlots[rooms.SlotKey{Day: k.day, Slot: k.slot}] = v
+	roomsForSlots := make(map[rooms.SlotKey][]string, len(roomsForSlotsByStart))
+	for start, v := range roomsForSlotsByStart {
+		roomsForSlots[rooms.StartKey(start)] = v
 	}
 
 	cfg := &rooms.Cfg{

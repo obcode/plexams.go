@@ -84,7 +84,7 @@ func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 	allSlots := p.semesterConfig.Slots
 
 	if exam.Constraints != nil && exam.Constraints.FixedTime != nil {
-		return []*model.Slot{getSlotForTime(allSlots, exam.Constraints.FixedTime)}, nil
+		return []*model.Slot{matchSlotForFixedTime(allSlots, exam.Constraints.FixedTime)}, nil
 	}
 
 	if exam.Constraints != nil && exam.Constraints.FixedDay != nil {
@@ -137,7 +137,7 @@ func (p *Plexams) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 
 	// Group the configured slots by calendar day and order each day by start time. The
 	// time-neighbours (previous / next start time on the same day) replace the former
-	// SlotNumber±1 adjacency — identical on the fixed grid, but derived purely from time.
+	// slot-ordinal ±1 adjacency — identical on the fixed grid, but derived purely from time.
 	slotsByDay := make(map[string][]*model.Slot)
 	for _, slot := range p.semesterConfig.Slots {
 		key := slot.Starttime.Format("2006-01-02")
@@ -193,7 +193,10 @@ func (p *Plexams) slotsWithConflicts(ctx context.Context, exam *model.AssembledE
 	return slotSet, nil
 }
 
-func getSlotForTime(slots []*model.Slot, time *time.Time) *model.Slot {
+// matchSlotForFixedTime returns the grid slot whose start time matches the given
+// fixed time (by day, month, hour and minute), or nil. It compares start times only;
+// there is no day/slot ordinal involved.
+func matchSlotForFixedTime(slots []*model.Slot, time *time.Time) *model.Slot {
 	for _, slot := range slots {
 		if time.Day() == slot.Starttime.Day() && time.Month() == slot.Starttime.Month() &&
 			time.Hour() == slot.Starttime.Hour() && time.Minute() == slot.Starttime.Minute() {

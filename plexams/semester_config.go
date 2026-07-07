@@ -365,26 +365,24 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 	from := input.From.Local()
 	until := input.Until.Local()
 
-	// Days from `from` through until, no saturdays, no sundays; day 1 = from.
+	// Days from `from` through until, no saturdays, no sundays; day 1 = from. The
+	// day order (ascending) is the only positional notion; it is derived from the
+	// dates, never stored as a number.
 	days := make([]*model.ExamDay, 0)
 	day := time.Date(from.Year(), from.Month(), from.Day(), 12, 0, 0, 0, time.Local)
-	number := 1
 	for !day.After(until.Add(23 * time.Hour)) {
 		if day.Weekday() != time.Saturday && day.Weekday() != time.Sunday {
 			days = append(days, &model.ExamDay{
-				Number: number,
-				Date:   time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local),
+				Date: time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, time.Local),
 			})
-			number++
 		}
 		day = day.Add(24 * time.Hour)
 	}
 
 	starttimes := make([]*model.Starttime, 0, len(input.StartTimes))
-	for i, start := range input.StartTimes {
+	for _, start := range input.StartTimes {
 		starttimes = append(starttimes, &model.Starttime{
-			Number: i + 1,
-			Start:  start,
+			Start: start,
 		})
 	}
 
@@ -395,9 +393,7 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 			hour, _ := strconv.Atoi(start[0])
 			minute, _ := strconv.Atoi(start[1])
 			slots = append(slots, &model.Slot{
-				DayNumber:  day.Number,
-				SlotNumber: starttime.Number,
-				Starttime:  time.Date(day.Date.Year(), day.Date.Month(), day.Date.Day(), hour, minute, 0, 0, time.Local),
+				Starttime: time.Date(day.Date.Year(), day.Date.Month(), day.Date.Day(), hour, minute, 0, 0, time.Local),
 			})
 		}
 	}

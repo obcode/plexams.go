@@ -2,11 +2,9 @@ package model
 
 import "time"
 
-// Slot is one candidate slot of the internal exam grid. DayNumber/SlotNumber are the
-// internal grid coordinates (used throughout the planning logic); the API exposes only
-// the absolute Starttime.
+// Slot is one candidate start time of the exam grid. The absolute Starttime is the
+// only identity; any positional (day/slot) notion is derived locally from the sorted
+// config start times where needed, never stored.
 type Slot struct {
-	DayNumber  int       `json:"-"`
-	SlotNumber int       `json:"-"`
-	Starttime  time.Time `json:"starttime"`
+	Starttime time.Time `json:"starttime"`
 }

@@ -15,8 +15,7 @@ import (
 
 // planEntryStart returns the absolute start time of a plan entry, or false when the
 // exam is not (yet) placed. In the time-based model the absolute Starttime is the
-// source of truth; this replaces the former (DayNumber, SlotNumber) → time
-// derivation via getSlotTime/GetStarttime.
+// source of truth; there is no slot-ordinal-to-time derivation anymore.
 func planEntryStart(pe *model.PlanEntry) (time.Time, bool) {
 	if pe == nil || pe.Starttime == nil {
 		return time.Time{}, false

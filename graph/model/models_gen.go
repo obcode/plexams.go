@@ -309,8 +309,7 @@ type EnhancedStudentReg struct {
 }
 
 type ExamDay struct {
-	Number int       `json:"number"`
-	Date   time.Time `json:"date"`
+	Date time.Time `json:"date"`
 }
 
 type ExamDurationOverride struct {
@@ -1121,8 +1120,7 @@ type SpecialInterestInput struct {
 }
 
 type Starttime struct {
-	Number int    `json:"number"`
-	Start  string `json:"start"`
+	Start string `json:"start"`
 }
 
 type Student struct {

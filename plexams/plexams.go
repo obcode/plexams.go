@@ -228,25 +228,14 @@ func (p *Plexams) GetSemesterConfig() *model.SemesterConfig {
 	return p.semesterConfig
 }
 
-// slotForStarttime returns the config grid slot whose start time equals t exactly, or
-// nil when t matches no slot (e.g. an external exam whose time lies outside our exam
-// period). It derives the internal day/slot notion from the sorted config start times.
-func (p *Plexams) slotForStarttime(t time.Time) *model.Slot {
-	for _, slot := range p.semesterConfig.Slots {
-		if slot.Starttime.Equal(t) {
-			return slot
-		}
-	}
-	return nil
-}
-
 // dayNumberForDate returns the 1-based exam-day number of the given calendar date (0
-// when it is not an exam day). Internal helper only (no exported day/slot API).
+// when it is not an exam day). The number is the day's position in the ascending list
+// of exam days, derived locally from the config — no stored day ordinal.
 func (p *Plexams) dayNumberForDate(date time.Time) int {
 	d := date.Local()
-	for _, day := range p.allDays {
+	for i, day := range p.allDays {
 		if day.Date.Year() == d.Year() && day.Date.Month() == d.Month() && day.Date.Day() == d.Day() {
-			return day.Number
+			return i + 1
 		}
 	}
 	return 0

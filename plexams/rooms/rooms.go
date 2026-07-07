@@ -28,12 +28,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// SlotKey identifies a slot by day and slot number. It is the rooms-package-local
-// counterpart of plexams.SlotNumber (which stays in plexams because it is used
-// package-wide); the plexams Cfg builder converts its SlotNumber-keyed maps to
-// SlotKey at the boundary.
-type SlotKey struct {
-	Day, Slot int
+// SlotKey identifies a slot by its absolute start time, canonicalized to Unix
+// seconds so it is a stable, location-independent map key. The plexams Cfg builder
+// keys its blocked-rooms / rooms-for-slots maps with StartKey at the boundary.
+type SlotKey int64
+
+// StartKey canonicalizes a start time into a SlotKey (instant-based, so it matches
+// regardless of the time's monotonic reading or location).
+func StartKey(t time.Time) SlotKey {
+	return SlotKey(t.Unix())
 }
 
 // slotStartPtr returns a fresh pointer to the current slot's absolute start time,
@@ -61,14 +64,17 @@ type Reporter interface {
 // builder (and the characterization test); the unexported fields are the runtime
 // state set during PrepareForSlot.
 type Cfg struct {
-	RoomInfo             map[string]*model.Room
-	PrePlannedRooms      map[int][]*model.PrePlannedRoom
-	AdditionalSeats      map[int]int
-	Slot                 *model.Slot
+	RoomInfo        map[string]*model.Room
+	PrePlannedRooms map[int][]*model.PrePlannedRoom
+	AdditionalSeats map[int]int
+	Slot            *model.Slot
+	// IsNewDay marks the first slot (earliest start time) of its calendar day, so the
+	// carryover of rooms blocked by an over-running exam is reset at the start of a day.
+	IsNewDay             bool
 	RoomsNotUsableInSlot set.Set[string]
-	BlockedRooms         map[SlotKey]set.Set[string] // slot -> blocked room names
+	BlockedRooms         map[SlotKey]set.Set[string] // start time -> blocked room names
 	ExactSeatRooms       map[int]map[string]bool     // ancode -> room names with an exact seat count (do not refill with this exam)
-	RoomsForSlots        map[SlotKey][]string        // slot -> allowed room names (computed once)
+	RoomsForSlots        map[SlotKey][]string        // start time -> allowed room names (computed once)
 	// SlotBlockMinutes is the spacing between consecutive slot start times (e.g. 120);
 	// RoomTurnaroundMinutes is the ordinary Vorlauf/Nachlauf (15). Together they decide
 	// whether an exam with an extended Nachlauf keeps its room past the following slot's
@@ -93,17 +99,16 @@ type plannedRoomsWithFreeSeats struct {
 // runtime state (exams/availableRooms/plannedRoomsWithFreeSeats/RoomsNotUsableInSlot).
 func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]*model.PlannedRoom, []*model.UnplacedExam, error) {
 	unplaced := make([]*model.UnplacedExam, 0)
-	reporter.Step(aurora.Sprintf(aurora.Black("preparing data for slot (%d/%d)"),
-		aurora.Yellow(cfg.Slot.DayNumber),
-		aurora.Yellow(cfg.Slot.SlotNumber),
+	slotStart := cfg.Slot.Starttime
+	reporter.Step(aurora.Sprintf(aurora.Black("preparing data for slot %s"),
+		aurora.Yellow(slotStart.Format("02.01. 15:04")),
 	))
 
-	log.Debug().Int("day", cfg.Slot.DayNumber).Int("slot", cfg.Slot.SlotNumber).Msg("preparing rooms for slot")
+	log.Debug().Time("starttime", slotStart).Msg("preparing rooms for slot")
 
-	slotStart := cfg.Slot.Starttime
 	examsInSlot, err := db.ExamsAt(ctx, slotStart)
 	if err != nil {
-		log.Error().Err(err).Int("day", cfg.Slot.DayNumber).Int("time", cfg.Slot.SlotNumber).
+		log.Error().Err(err).Time("starttime", slotStart).
 			Msg("error while trying to find exams in slot")
 		return nil, nil, err
 	}
@@ -113,10 +118,10 @@ func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]
 		return nil, nil, nil
 	}
 
-	reporter.Println(aurora.Sprintf(aurora.Blue("slot (%d/%d): start planning"),
-		cfg.Slot.DayNumber, cfg.Slot.SlotNumber))
+	reporter.Println(aurora.Sprintf(aurora.Blue("slot %s: start planning"),
+		slotStart.Format("02.01. 15:04")))
 
-	if cfg.Slot.SlotNumber == 1 { // a new day
+	if cfg.IsNewDay {
 		cfg.RoomsNotUsableInSlot = set.NewSet[string]()
 	}
 
@@ -124,7 +129,7 @@ func PrepareForSlot(ctx context.Context, db DB, cfg *Cfg, reporter Reporter) ([]
 	cfg.availableRooms, err = availableRoomsInSlot(ctx, db, cfg)
 
 	if err != nil {
-		log.Error().Err(err).Int("day", cfg.Slot.DayNumber).Int("time", cfg.Slot.SlotNumber).
+		log.Error().Err(err).Time("starttime", slotStart).
 			Msg("error while trying to get rooms for slot")
 		return nil, nil, err
 	}
@@ -452,10 +457,7 @@ func mkExamsMap(cfg *Cfg, examsInPlan []*model.PlannedExam, reporter Reporter) (
 }
 
 func availableRoomsInSlot(ctx context.Context, db DB, cfg *Cfg) ([]*model.Room, error) {
-	slotRoomNames := cfg.RoomsForSlots[SlotKey{
-		Day:  cfg.Slot.DayNumber,
-		Slot: cfg.Slot.SlotNumber,
-	}]
+	slotRoomNames := cfg.RoomsForSlots[StartKey(cfg.Slot.Starttime)]
 
 	roomNames := set.NewSet(slotRoomNames...).Difference(cfg.RoomsNotUsableInSlot)
 	cfg.RoomsNotUsableInSlot = set.NewSet[string]()
@@ -584,11 +586,10 @@ func assignPrePlannedRooms(cfg *Cfg, exam *model.ExamWithRegsAndRooms,
 		}
 
 		// a room blocked for this slot wins over the pre-planning: skip it.
-		slotKey := SlotKey{Day: cfg.Slot.DayNumber, Slot: cfg.Slot.SlotNumber}
-		if blocked, ok := cfg.BlockedRooms[slotKey]; ok && blocked.Contains(prePlannedRoom.RoomName) {
+		if blocked, ok := cfg.BlockedRooms[StartKey(cfg.Slot.Starttime)]; ok && blocked.Contains(prePlannedRoom.RoomName) {
 			reporter.Warnf(aurora.Sprintf(
-				aurora.Red("pre-planned room %s for %d is blocked in slot (%d,%d); skipped"),
-				prePlannedRoom.RoomName, exam.Exam.Ancode, slotKey.Day, slotKey.Slot))
+				aurora.Red("pre-planned room %s for %d is blocked at %s; skipped"),
+				prePlannedRoom.RoomName, exam.Exam.Ancode, cfg.Slot.Starttime.Format("02.01. 15:04")))
 			continue
 		}
 

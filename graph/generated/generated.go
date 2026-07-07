@@ -290,8 +290,7 @@ type ComplexityRoot struct {
 	}
 
 	ExamDay struct {
-		Date   func(childComplexity int) int
-		Number func(childComplexity int) int
+		Date func(childComplexity int) int
 	}
 
 	ExamDurationOverride struct {
@@ -1207,8 +1206,7 @@ type ComplexityRoot struct {
 	}
 
 	Starttime struct {
-		Number func(childComplexity int) int
-		Start  func(childComplexity int) int
+		Start func(childComplexity int) int
 	}
 
 	Student struct {
@@ -2801,13 +2799,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamDay.Date(childComplexity), true
-
-	case "ExamDay.number":
-		if e.complexity.ExamDay.Number == nil {
-			break
-		}
-
-		return e.complexity.ExamDay.Number(childComplexity), true
 
 	case "ExamDurationOverride.ancode":
 		if e.complexity.ExamDurationOverride.Ancode == nil {
@@ -7947,13 +7938,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SpecialInterest.Name(childComplexity), true
 
-	case "Starttime.number":
-		if e.complexity.Starttime.Number == nil {
-			break
-		}
-
-		return e.complexity.Starttime.Number(childComplexity), true
-
 	case "Starttime.start":
 		if e.complexity.Starttime.Start == nil {
 			break
@@ -10749,8 +10733,7 @@ extend type Mutation {
   """
   Place an exam at an absolute start time (the source of truth). Any time is accepted;
   the GUI should warn — but still allow — when the time is not one of the semester's
-  standard start times (semesterConfig.starttimes). The derived day/slot follow from
-  the time and the current slot grid.
+  standard start times (semesterConfig.starttimes).
   """
   setExamTime(ancode: Int!, starttime: Time!): Boolean!
 }
@@ -10771,12 +10754,10 @@ type Emails {
 }
 
 type ExamDay {
-  number: Int!
   date: Time!
 }
 
 type Starttime {
-  number: Int!
   start: String!
 }
 
@@ -25293,50 +25274,6 @@ func (ec *executionContext) fieldContext_EnhancedStudentReg_zpaStudent(_ context
 				return ec.fieldContext_ZPAStudent_group(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ZPAStudent", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ExamDay_number(ctx context.Context, field graphql.CollectedField, obj *model.ExamDay) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamDay_number(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Number, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ExamDay_number(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ExamDay",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -57422,8 +57359,6 @@ func (ec *executionContext) fieldContext_SemesterConfig_days(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "number":
-				return ec.fieldContext_ExamDay_number(ctx, field)
 			case "date":
 				return ec.fieldContext_ExamDay_date(ctx, field)
 			}
@@ -57472,8 +57407,6 @@ func (ec *executionContext) fieldContext_SemesterConfig_starttimes(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "number":
-				return ec.fieldContext_Starttime_number(ctx, field)
 			case "start":
 				return ec.fieldContext_Starttime_start(ctx, field)
 			}
@@ -59088,50 +59021,6 @@ func (ec *executionContext) _SpecialInterest_ancodes(ctx context.Context, field 
 func (ec *executionContext) fieldContext_SpecialInterest_ancodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SpecialInterest",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Starttime_number(ctx context.Context, field graphql.CollectedField, obj *model.Starttime) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Starttime_number(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Number, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Starttime_number(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Starttime",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -73901,11 +73790,6 @@ func (ec *executionContext) _ExamDay(ctx context.Context, sel ast.SelectionSet, 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ExamDay")
-		case "number":
-			out.Values[i] = ec._ExamDay_number(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "date":
 			out.Values[i] = ec._ExamDay_date(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -81909,11 +81793,6 @@ func (ec *executionContext) _Starttime(ctx context.Context, sel ast.SelectionSet
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Starttime")
-		case "number":
-			out.Values[i] = ec._Starttime_number(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "start":
 			out.Values[i] = ec._Starttime_start(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

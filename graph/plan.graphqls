@@ -21,8 +21,7 @@ extend type Mutation {
   """
   Place an exam at an absolute start time (the source of truth). Any time is accepted;
   the GUI should warn — but still allow — when the time is not one of the semester's
-  standard start times (semesterConfig.starttimes). The derived day/slot follow from
-  the time and the current slot grid.
+  standard start times (semesterConfig.starttimes).
   """
   setExamTime(ancode: Int!, starttime: Time!): Boolean!
 }
@@ -43,12 +42,10 @@ type Emails {
 }
 
 type ExamDay {
-  number: Int!
   date: Time!
 }
 
 type Starttime {
-  number: Int!
   start: String!
 }
 

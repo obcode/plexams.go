@@ -209,7 +209,7 @@ type Problem struct {
 	// one calendar day, sorted chronologically; dayOfSlot maps a slot index back to its day
 	// group, and slotDayPos to its 0-based position within that day (chronological). Two
 	// slots are "directly consecutive" iff their positions differ by 1 — the granularity-
-	// independent replacement for the former SlotNumber±1 test.
+	// independent replacement for the former slot-ordinal ±1 test.
 	days       [][]int
 	dayOfSlot  []int
 	slotDayPos []int

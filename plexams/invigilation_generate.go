@@ -355,27 +355,63 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		log.Error().Err(err).Msg("cannot get self invigilations")
 		return nil, err
 	}
-	selfByPosition := make(map[[3]any]int) // (day, slot, room) -> examerID
+	// Day/slot ordinals are derived purely from the sorted config start times
+	// (time-based, never persisted): dayIndexOf gives a stable 1-based calendar-day
+	// index (matching semesterConfig.Days order), slotIndexOf a 1-based position within
+	// the day, and nextStartOf the following start time on the same day. They replace
+	// the former model.Slot.DayNumber/SlotNumber.
+	starts := make([]time.Time, 0, len(p.semesterConfig.Slots))
+	for _, slot := range p.semesterConfig.Slots {
+		starts = append(starts, slot.Starttime)
+	}
+	sort.Slice(starts, func(i, j int) bool { return starts[i].Before(starts[j]) })
+
+	dayIndexByDate := make(map[string]int)
+	slotsByDay := make(map[string][]time.Time)
+	for _, t := range starts {
+		key := t.Format("2006-01-02")
+		if _, ok := dayIndexByDate[key]; !ok {
+			dayIndexByDate[key] = len(dayIndexByDate) + 1
+		}
+		slotsByDay[key] = append(slotsByDay[key], t)
+	}
+	dayIndexOf := func(t time.Time) int { return dayIndexByDate[t.Format("2006-01-02")] }
+	slotIndexOf := func(t time.Time) int {
+		for i, s := range slotsByDay[t.Format("2006-01-02")] {
+			if s.Equal(t) {
+				return i + 1
+			}
+		}
+		return 0
+	}
+	nextStartOf := func(t time.Time) (time.Time, bool) {
+		day := slotsByDay[t.Format("2006-01-02")]
+		for i, s := range day {
+			if s.Equal(t) && i+1 < len(day) {
+				return day[i+1], true
+			}
+		}
+		return time.Time{}, false
+	}
+
+	// posKey identifies a room position by its slot start time (Unix seconds) and room.
+	type posKey struct {
+		start int64
+		room  string
+	}
+
+	selfByPosition := make(map[posKey]int) // (start, room) -> examerID
 	for _, si := range selfInvigilations {
 		if si.RoomName == nil || si.Starttime == nil {
 			continue
 		}
-		s := p.slotForStarttime(*si.Starttime)
-		if s == nil {
-			continue
-		}
-		selfByPosition[[3]any{s.DayNumber, s.SlotNumber, *si.RoomName}] = si.InvigilatorID
+		selfByPosition[posKey{si.Starttime.Unix(), *si.RoomName}] = si.InvigilatorID
 	}
 
 	prePlanned, err := p.PrePlannedInvigilations(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get pre planned invigilations")
 		return nil, err
-	}
-
-	slotStart := make(map[[2]int]time.Time)
-	for _, slot := range p.semesterConfig.Slots {
-		slotStart[[2]int{slot.DayNumber, slot.SlotNumber}] = slot.Starttime
 	}
 
 	ownExamSlots := make(map[int]map[[2]int]bool)
@@ -393,16 +429,17 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 	positions := make([]invigplan.Position, 0)
 	fixed := make(map[int]int)
 
-	// posIndexBySlotRoom and reserveBySlot let pre-planned invigilations find
-	// "their" position again after the sweep.
-	posIndexBySlotRoom := make(map[[3]any]int)
-	reserveBySlot := make(map[[2]int]int)
+	// posIndexByRoomAt and reserveAt let pre-planned invigilations find "their"
+	// position again after the sweep, keyed on the slot's absolute start time.
+	posIndexByRoomAt := make(map[posKey]int)
+	reserveAt := make(map[int64]int)
 
 	for _, slot := range p.semesterConfig.Slots {
-		day, sn := slot.DayNumber, slot.SlotNumber
-		rooms, err := p.PlannedRoomsInSlot(ctx, slot.Starttime)
+		start := slot.Starttime
+		day, sn := dayIndexOf(start), slotIndexOf(start)
+		rooms, err := p.PlannedRoomsInSlot(ctx, start)
 		if err != nil {
-			log.Error().Err(err).Int("day", day).Int("slot", sn).Msg("cannot get rooms in slot")
+			log.Error().Err(err).Time("starttime", start).Msg("cannot get rooms in slot")
 			return nil, err
 		}
 		if len(rooms) == 0 {
@@ -410,12 +447,12 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		}
 
 		// own-exam slots from the exams in this slot (with NTA overrun).
-		exams, err := p.ExamsAt(ctx, slot.Starttime)
+		exams, err := p.ExamsAt(ctx, start)
 		if err != nil {
-			log.Error().Err(err).Int("day", day).Int("slot", sn).Msg("cannot get exams in slot")
+			log.Error().Err(err).Time("starttime", start).Msg("cannot get exams in slot")
 			return nil, err
 		}
-		nextStart, hasNext := slotStart[[2]int{day, sn + 1}]
+		nextStart, hasNext := nextStartOf(start)
 		for _, exam := range exams {
 			if exam.ZpaExam == nil || exam.PlanEntry == nil {
 				continue
@@ -430,13 +467,12 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 				}
 			}
 			if maxDur > 0 {
-				examStart := slotStart[[2]int{day, sn}]
-				examEnd := examStart.Add(time.Duration(maxDur) * time.Minute)
+				examEnd := start.Add(time.Duration(maxDur) * time.Minute)
 				ownExamTimes[examerID] = append(ownExamTimes[examerID],
-					invigplan.TimeSpan{Day: day, Start: examStart, End: examEnd})
+					invigplan.TimeSpan{Day: day, Start: start, End: examEnd})
 				// NTA exams running into the following slot block it too.
 				if hasNext && examEnd.After(nextStart) {
-					addOwnExam(examerID, day, sn+1)
+					addOwnExam(examerID, dayIndexOf(nextStart), slotIndexOf(nextStart))
 				}
 			}
 		}
@@ -471,7 +507,6 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		}
 		sort.Strings(roomNames)
 
-		start := slotStart[[2]int{day, sn}]
 		for _, name := range roomNames {
 			info := roomMap[name]
 			pos := invigplan.Position{
@@ -483,17 +518,17 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 				Block:   info.maxDuration,
 				Start:   start,
 			}
-			if examerID, ok := selfByPosition[[3]any{day, sn, name}]; ok {
+			if examerID, ok := selfByPosition[posKey{start.Unix(), name}]; ok {
 				pos.IsSelf = true
 				pos.Minutes = 0
 				fixed[len(positions)] = examerID
 			}
-			posIndexBySlotRoom[[3]any{day, sn, name}] = len(positions)
+			posIndexByRoomAt[posKey{start.Unix(), name}] = len(positions)
 			positions = append(positions, pos)
 		}
 
 		// one reserve per slot with exams.
-		reserveBySlot[[2]int{day, sn}] = len(positions)
+		reserveAt[start.Unix()] = len(positions)
 		positions = append(positions, invigplan.Position{
 			Day:       day,
 			Slot:      sn,
@@ -506,28 +541,28 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 
 	// apply pre-planned invigilations as fixed assignments.
 	for _, pp := range prePlanned {
-		ppDay, ppSlot := 0, 0
-		if pp.Starttime != nil {
-			if s := p.slotForStarttime(*pp.Starttime); s != nil {
-				ppDay, ppSlot = s.DayNumber, s.SlotNumber
-			}
-		}
 		var posIdx int
-		var ok bool
-		if pp.RoomName == nil {
-			posIdx, ok = reserveBySlot[[2]int{ppDay, ppSlot}]
-		} else {
-			posIdx, ok = posIndexBySlotRoom[[3]any{ppDay, ppSlot, *pp.RoomName}]
+		ok := false
+		if pp.Starttime != nil {
+			if pp.RoomName == nil {
+				posIdx, ok = reserveAt[pp.Starttime.Unix()]
+			} else {
+				posIdx, ok = posIndexByRoomAt[posKey{pp.Starttime.Unix(), *pp.RoomName}]
+			}
 		}
 		if !ok {
 			room := "reserve"
 			if pp.RoomName != nil {
 				room = *pp.RoomName
 			}
-			log.Error().Int("invigilator", pp.InvigilatorID).Int("day", ppDay).Int("slot", ppSlot).Str("room", room).
+			when := "unknown time"
+			if pp.Starttime != nil {
+				when = pp.Starttime.Format("02.01. 15:04")
+			}
+			log.Error().Int("invigilator", pp.InvigilatorID).Str("starttime", when).Str("room", room).
 				Msg("pre-planned invigilation has no matching position (room/slot not planned)")
-			return nil, fmt.Errorf("pre-planned invigilation for invigilator %d has no matching position: %s in slot (%d,%d) is not planned",
-				pp.InvigilatorID, room, ppDay, ppSlot)
+			return nil, fmt.Errorf("pre-planned invigilation for invigilator %d has no matching position: %s at %s is not planned",
+				pp.InvigilatorID, room, when)
 		}
 		fixed[posIdx] = pp.InvigilatorID
 	}

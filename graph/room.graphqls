@@ -113,10 +113,8 @@ type RoomsForSlot {
 }
 
 type PlannedRoom {
-  "Absolute start time of the exam using this room (source of truth; day/slot are derived)."
+  "Absolute start time of the exam using this room."
   starttime: Time
-  day: Int!
-  slot: Int!
   room: Room!
   ancode: Int!
   duration: Int!
@@ -130,11 +128,9 @@ type PlannedRoom {
 
 "Students of an exam that could not be assigned a real room in their slot during room generation (kept out of the planned rooms)."
 type UnplacedExam {
-  "Absolute start time of the exam (source of truth; day/slot are derived)."
+  "Absolute start time of the exam."
   starttime: Time
   ancode: Int!
-  day: Int!
-  slot: Int!
   mtknrs: [String!]!
   "set if these are NTA students (then mtknrs has exactly one entry)."
   ntaMtknr: String
@@ -149,13 +145,11 @@ type PrePlannedRoom {
   seats: Int
 }
 
-"A room blocked for one slot (not usable for planning there)."
+"A room blocked at one exam time (not usable for planning there)."
 type BlockedRoom {
-  "Absolute start time of the blocked slot (source of truth; day/slot are derived)."
+  "Absolute start time of the blocked slot."
   starttime: Time
   room: String!
-  day: Int!
-  slot: Int!
   reason: String
 }
 

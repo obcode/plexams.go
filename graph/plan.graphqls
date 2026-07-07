@@ -70,9 +70,6 @@ type PreExam {
 }
 
 type PlanEntry {
-  "Derived from starttime against the current slot grid (0 when outside the exam period)."
-  dayNumber: Int!
-  slotNumber: Int!
   "The absolute start time — the source of truth for the placement."
   starttime: Time!
   ancode: Int!

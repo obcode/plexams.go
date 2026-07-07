@@ -140,10 +140,8 @@ type ComplexityRoot struct {
 	}
 
 	BlockedRoom struct {
-		Day       func(childComplexity int) int
 		Reason    func(childComplexity int) int
 		Room      func(childComplexity int) int
-		Slot      func(childComplexity int) int
 		Starttime func(childComplexity int) int
 	}
 
@@ -748,11 +746,9 @@ type ComplexityRoot struct {
 
 	PlanEntry struct {
 		Ancode     func(childComplexity int) int
-		DayNumber  func(childComplexity int) int
 		External   func(childComplexity int) int
 		Locked     func(childComplexity int) int
 		PhaseFixed func(childComplexity int) int
-		SlotNumber func(childComplexity int) int
 		Starttime  func(childComplexity int) int
 	}
 
@@ -777,7 +773,6 @@ type ComplexityRoot struct {
 
 	PlannedRoom struct {
 		Ancode            func(childComplexity int) int
-		Day               func(childComplexity int) int
 		Duration          func(childComplexity int) int
 		Handicap          func(childComplexity int) int
 		HandicapRoomAlone func(childComplexity int) int
@@ -785,7 +780,6 @@ type ComplexityRoot struct {
 		PrePlanned        func(childComplexity int) int
 		Reserve           func(childComplexity int) int
 		Room              func(childComplexity int) int
-		Slot              func(childComplexity int) int
 		Starttime         func(childComplexity int) int
 		StudentsInRoom    func(childComplexity int) int
 	}
@@ -816,11 +810,9 @@ type ComplexityRoot struct {
 	}
 
 	PrePlannedInvigilation struct {
-		Day           func(childComplexity int) int
 		InvigilatorID func(childComplexity int) int
 		IsReserve     func(childComplexity int) int
 		RoomName      func(childComplexity int) int
-		Slot          func(childComplexity int) int
 		Starttime     func(childComplexity int) int
 	}
 
@@ -1381,10 +1373,8 @@ type ComplexityRoot struct {
 
 	UnplacedExam struct {
 		Ancode    func(childComplexity int) int
-		Day       func(childComplexity int) int
 		Mtknrs    func(childComplexity int) int
 		NtaMtknr  func(childComplexity int) int
-		Slot      func(childComplexity int) int
 		Starttime func(childComplexity int) int
 	}
 
@@ -2176,13 +2166,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.BalanceReport.WithinTolerance(childComplexity), true
 
-	case "BlockedRoom.day":
-		if e.complexity.BlockedRoom.Day == nil {
-			break
-		}
-
-		return e.complexity.BlockedRoom.Day(childComplexity), true
-
 	case "BlockedRoom.reason":
 		if e.complexity.BlockedRoom.Reason == nil {
 			break
@@ -2196,13 +2179,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BlockedRoom.Room(childComplexity), true
-
-	case "BlockedRoom.slot":
-		if e.complexity.BlockedRoom.Slot == nil {
-			break
-		}
-
-		return e.complexity.BlockedRoom.Slot(childComplexity), true
 
 	case "BlockedRoom.starttime":
 		if e.complexity.BlockedRoom.Starttime == nil {
@@ -5494,13 +5470,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PlanEntry.Ancode(childComplexity), true
 
-	case "PlanEntry.dayNumber":
-		if e.complexity.PlanEntry.DayNumber == nil {
-			break
-		}
-
-		return e.complexity.PlanEntry.DayNumber(childComplexity), true
-
 	case "PlanEntry.external":
 		if e.complexity.PlanEntry.External == nil {
 			break
@@ -5521,13 +5490,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PlanEntry.PhaseFixed(childComplexity), true
-
-	case "PlanEntry.slotNumber":
-		if e.complexity.PlanEntry.SlotNumber == nil {
-			break
-		}
-
-		return e.complexity.PlanEntry.SlotNumber(childComplexity), true
 
 	case "PlanEntry.starttime":
 		if e.complexity.PlanEntry.Starttime == nil {
@@ -5634,13 +5596,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PlannedRoom.Ancode(childComplexity), true
 
-	case "PlannedRoom.day":
-		if e.complexity.PlannedRoom.Day == nil {
-			break
-		}
-
-		return e.complexity.PlannedRoom.Day(childComplexity), true
-
 	case "PlannedRoom.duration":
 		if e.complexity.PlannedRoom.Duration == nil {
 			break
@@ -5689,13 +5644,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PlannedRoom.Room(childComplexity), true
-
-	case "PlannedRoom.slot":
-		if e.complexity.PlannedRoom.Slot == nil {
-			break
-		}
-
-		return e.complexity.PlannedRoom.Slot(childComplexity), true
 
 	case "PlannedRoom.starttime":
 		if e.complexity.PlannedRoom.Starttime == nil {
@@ -5802,13 +5750,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreExam.ZpaExam(childComplexity), true
 
-	case "PrePlannedInvigilation.day":
-		if e.complexity.PrePlannedInvigilation.Day == nil {
-			break
-		}
-
-		return e.complexity.PrePlannedInvigilation.Day(childComplexity), true
-
 	case "PrePlannedInvigilation.invigilatorID":
 		if e.complexity.PrePlannedInvigilation.InvigilatorID == nil {
 			break
@@ -5829,13 +5770,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PrePlannedInvigilation.RoomName(childComplexity), true
-
-	case "PrePlannedInvigilation.slot":
-		if e.complexity.PrePlannedInvigilation.Slot == nil {
-			break
-		}
-
-		return e.complexity.PrePlannedInvigilation.Slot(childComplexity), true
 
 	case "PrePlannedInvigilation.starttime":
 		if e.complexity.PrePlannedInvigilation.Starttime == nil {
@@ -9022,13 +8956,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UnplacedExam.Ancode(childComplexity), true
 
-	case "UnplacedExam.day":
-		if e.complexity.UnplacedExam.Day == nil {
-			break
-		}
-
-		return e.complexity.UnplacedExam.Day(childComplexity), true
-
 	case "UnplacedExam.mtknrs":
 		if e.complexity.UnplacedExam.Mtknrs == nil {
 			break
@@ -9042,13 +8969,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UnplacedExam.NtaMtknr(childComplexity), true
-
-	case "UnplacedExam.slot":
-		if e.complexity.UnplacedExam.Slot == nil {
-			break
-		}
-
-		return e.complexity.UnplacedExam.Slot(childComplexity), true
 
 	case "UnplacedExam.starttime":
 		if e.complexity.UnplacedExam.Starttime == nil {
@@ -10471,11 +10391,9 @@ slot before the automatic invigilation planning runs. roomName is null for a
 reserve invigilation.
 """
 type PrePlannedInvigilation {
-  "Absolute start time (source of truth; day/slot are derived)."
+  "Absolute start time."
   starttime: Time
   invigilatorID: Int!
-  day: Int!
-  slot: Int!
   roomName: String
   isReserve: Boolean!
 }
@@ -10877,9 +10795,6 @@ type PreExam {
 }
 
 type PlanEntry {
-  "Derived from starttime against the current slot grid (0 when outside the exam period)."
-  dayNumber: Int!
-  slotNumber: Int!
   "The absolute start time — the source of truth for the placement."
   starttime: Time!
   ancode: Int!
@@ -11384,10 +11299,8 @@ type RoomsForSlot {
 }
 
 type PlannedRoom {
-  "Absolute start time of the exam using this room (source of truth; day/slot are derived)."
+  "Absolute start time of the exam using this room."
   starttime: Time
-  day: Int!
-  slot: Int!
   room: Room!
   ancode: Int!
   duration: Int!
@@ -11401,11 +11314,9 @@ type PlannedRoom {
 
 "Students of an exam that could not be assigned a real room in their slot during room generation (kept out of the planned rooms)."
 type UnplacedExam {
-  "Absolute start time of the exam (source of truth; day/slot are derived)."
+  "Absolute start time of the exam."
   starttime: Time
   ancode: Int!
-  day: Int!
-  slot: Int!
   mtknrs: [String!]!
   "set if these are NTA students (then mtknrs has exactly one entry)."
   ntaMtknr: String
@@ -11420,13 +11331,11 @@ type PrePlannedRoom {
   seats: Int
 }
 
-"A room blocked for one slot (not usable for planning there)."
+"A room blocked at one exam time (not usable for planning there)."
 type BlockedRoom {
-  "Absolute start time of the blocked slot (source of truth; day/slot are derived)."
+  "Absolute start time of the blocked slot."
   starttime: Time
   room: String!
-  day: Int!
-  slot: Int!
   reason: String
 }
 
@@ -21771,94 +21680,6 @@ func (ec *executionContext) fieldContext_BlockedRoom_room(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _BlockedRoom_day(ctx context.Context, field graphql.CollectedField, obj *model.BlockedRoom) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BlockedRoom_day(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Day, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BlockedRoom_day(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BlockedRoom",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _BlockedRoom_slot(ctx context.Context, field graphql.CollectedField, obj *model.BlockedRoom) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BlockedRoom_slot(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Slot, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_BlockedRoom_slot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "BlockedRoom",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _BlockedRoom_reason(ctx context.Context, field graphql.CollectedField, obj *model.BlockedRoom) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_BlockedRoom_reason(ctx, field)
 	if err != nil {
@@ -29418,10 +29239,6 @@ func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_rooms(_ context.Co
 			switch field.Name {
 			case "starttime":
 				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
-			case "day":
-				return ec.fieldContext_PlannedRoom_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_PlannedRoom_slot(ctx, field)
 			case "room":
 				return ec.fieldContext_PlannedRoom_room(ctx, field)
 			case "ancode":
@@ -35131,10 +34948,6 @@ func (ec *executionContext) fieldContext_MucDaiExam_planEntry(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_PlanEntry_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
 			case "ancode":
@@ -39065,10 +38878,6 @@ func (ec *executionContext) fieldContext_Mutation_blockRoomForSlot(ctx context.C
 				return ec.fieldContext_BlockedRoom_starttime(ctx, field)
 			case "room":
 				return ec.fieldContext_BlockedRoom_room(ctx, field)
-			case "day":
-				return ec.fieldContext_BlockedRoom_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_BlockedRoom_slot(ctx, field)
 			case "reason":
 				return ec.fieldContext_BlockedRoom_reason(ctx, field)
 			}
@@ -39187,10 +38996,6 @@ func (ec *executionContext) fieldContext_Mutation_blockRoomForSlots(ctx context.
 				return ec.fieldContext_BlockedRoom_starttime(ctx, field)
 			case "room":
 				return ec.fieldContext_BlockedRoom_room(ctx, field)
-			case "day":
-				return ec.fieldContext_BlockedRoom_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_BlockedRoom_slot(ctx, field)
 			case "reason":
 				return ec.fieldContext_BlockedRoom_reason(ctx, field)
 			}
@@ -42689,94 +42494,6 @@ func (ec *executionContext) fieldContext_PermanentNonInvigilator_reason(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _PlanEntry_dayNumber(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PlanEntry_dayNumber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DayNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PlanEntry_dayNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PlanEntry",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PlanEntry_slotNumber(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PlanEntry_slotNumber(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.SlotNumber, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PlanEntry_slotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PlanEntry",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _PlanEntry_starttime(ctx context.Context, field graphql.CollectedField, obj *model.PlanEntry) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PlanEntry_starttime(ctx, field)
 	if err != nil {
@@ -43636,10 +43353,6 @@ func (ec *executionContext) fieldContext_PlannedExam_planEntry(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_PlanEntry_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
 			case "ancode":
@@ -43695,10 +43408,6 @@ func (ec *executionContext) fieldContext_PlannedExam_plannedRooms(_ context.Cont
 			switch field.Name {
 			case "starttime":
 				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
-			case "day":
-				return ec.fieldContext_PlannedRoom_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_PlannedRoom_slot(ctx, field)
 			case "room":
 				return ec.fieldContext_PlannedRoom_room(ctx, field)
 			case "ancode":
@@ -43760,94 +43469,6 @@ func (ec *executionContext) fieldContext_PlannedRoom_starttime(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PlannedRoom_day(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PlannedRoom_day(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Day, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PlannedRoom_day(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PlannedRoom",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PlannedRoom_slot(ctx context.Context, field graphql.CollectedField, obj *model.PlannedRoom) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PlannedRoom_slot(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Slot, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PlannedRoom_slot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PlannedRoom",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -44906,10 +44527,6 @@ func (ec *executionContext) fieldContext_PreExam_planEntry(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_PlanEntry_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
 			case "ancode":
@@ -45000,94 +44617,6 @@ func (ec *executionContext) _PrePlannedInvigilation_invigilatorID(ctx context.Co
 }
 
 func (ec *executionContext) fieldContext_PrePlannedInvigilation_invigilatorID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PrePlannedInvigilation",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PrePlannedInvigilation_day(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedInvigilation) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PrePlannedInvigilation_day(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Day, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PrePlannedInvigilation_day(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PrePlannedInvigilation",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PrePlannedInvigilation_slot(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedInvigilation) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PrePlannedInvigilation_slot(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Slot, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_PrePlannedInvigilation_slot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PrePlannedInvigilation",
 		Field:      field,
@@ -50872,10 +50401,6 @@ func (ec *executionContext) fieldContext_Query_prePlannedInvigilations(_ context
 				return ec.fieldContext_PrePlannedInvigilation_starttime(ctx, field)
 			case "invigilatorID":
 				return ec.fieldContext_PrePlannedInvigilation_invigilatorID(ctx, field)
-			case "day":
-				return ec.fieldContext_PrePlannedInvigilation_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_PrePlannedInvigilation_slot(ctx, field)
 			case "roomName":
 				return ec.fieldContext_PrePlannedInvigilation_roomName(ctx, field)
 			case "isReserve":
@@ -53117,10 +52642,6 @@ func (ec *executionContext) fieldContext_Query_plannedRooms(_ context.Context, f
 			switch field.Name {
 			case "starttime":
 				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
-			case "day":
-				return ec.fieldContext_PlannedRoom_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_PlannedRoom_slot(ctx, field)
 			case "room":
 				return ec.fieldContext_PlannedRoom_room(ctx, field)
 			case "ancode":
@@ -53277,10 +52798,6 @@ func (ec *executionContext) fieldContext_Query_plannedRoomsInSlot(ctx context.Co
 			switch field.Name {
 			case "starttime":
 				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
-			case "day":
-				return ec.fieldContext_PlannedRoom_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_PlannedRoom_slot(ctx, field)
 			case "room":
 				return ec.fieldContext_PlannedRoom_room(ctx, field)
 			case "ancode":
@@ -53355,10 +52872,6 @@ func (ec *executionContext) fieldContext_Query_plannedRoomForStudent(ctx context
 			switch field.Name {
 			case "starttime":
 				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
-			case "day":
-				return ec.fieldContext_PlannedRoom_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_PlannedRoom_slot(ctx, field)
 			case "room":
 				return ec.fieldContext_PlannedRoom_room(ctx, field)
 			case "ancode":
@@ -53438,10 +52951,6 @@ func (ec *executionContext) fieldContext_Query_blockedRooms(_ context.Context, f
 				return ec.fieldContext_BlockedRoom_starttime(ctx, field)
 			case "room":
 				return ec.fieldContext_BlockedRoom_room(ctx, field)
-			case "day":
-				return ec.fieldContext_BlockedRoom_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_BlockedRoom_slot(ctx, field)
 			case "reason":
 				return ec.fieldContext_BlockedRoom_reason(ctx, field)
 			}
@@ -53569,10 +53078,6 @@ func (ec *executionContext) fieldContext_Query_unplacedExams(_ context.Context, 
 				return ec.fieldContext_UnplacedExam_starttime(ctx, field)
 			case "ancode":
 				return ec.fieldContext_UnplacedExam_ancode(ctx, field)
-			case "day":
-				return ec.fieldContext_UnplacedExam_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_UnplacedExam_slot(ctx, field)
 			case "mtknrs":
 				return ec.fieldContext_UnplacedExam_mtknrs(ctx, field)
 			case "ntaMtknr":
@@ -55855,10 +55360,6 @@ func (ec *executionContext) fieldContext_RoomAndExam_room(_ context.Context, fie
 			switch field.Name {
 			case "starttime":
 				return ec.fieldContext_PlannedRoom_starttime(ctx, field)
-			case "day":
-				return ec.fieldContext_PlannedRoom_day(ctx, field)
-			case "slot":
-				return ec.fieldContext_PlannedRoom_slot(ctx, field)
 			case "room":
 				return ec.fieldContext_PlannedRoom_room(ctx, field)
 			case "ancode":
@@ -67519,94 +67020,6 @@ func (ec *executionContext) fieldContext_UnplacedExam_ancode(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _UnplacedExam_day(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_UnplacedExam_day(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Day, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_UnplacedExam_day(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UnplacedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UnplacedExam_slot(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_UnplacedExam_slot(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Slot, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_UnplacedExam_slot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UnplacedExam",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _UnplacedExam_mtknrs(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UnplacedExam_mtknrs(ctx, field)
 	if err != nil {
@@ -69329,10 +68742,6 @@ func (ec *executionContext) fieldContext_ZPAExamWithConstraints_planEntry(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "dayNumber":
-				return ec.fieldContext_PlanEntry_dayNumber(ctx, field)
-			case "slotNumber":
-				return ec.fieldContext_PlanEntry_slotNumber(ctx, field)
 			case "starttime":
 				return ec.fieldContext_PlanEntry_starttime(ctx, field)
 			case "ancode":
@@ -74036,16 +73445,6 @@ func (ec *executionContext) _BlockedRoom(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "day":
-			out.Values[i] = ec._BlockedRoom_day(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "slot":
-			out.Values[i] = ec._BlockedRoom_slot(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "reason":
 			out.Values[i] = ec._BlockedRoom_reason(ctx, field, obj)
 		default:
@@ -78321,16 +77720,6 @@ func (ec *executionContext) _PlanEntry(ctx context.Context, sel ast.SelectionSet
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("PlanEntry")
-		case "dayNumber":
-			out.Values[i] = ec._PlanEntry_dayNumber(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "slotNumber":
-			out.Values[i] = ec._PlanEntry_slotNumber(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "starttime":
 			out.Values[i] = ec._PlanEntry_starttime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -78547,16 +77936,6 @@ func (ec *executionContext) _PlannedRoom(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = graphql.MarshalString("PlannedRoom")
 		case "starttime":
 			out.Values[i] = ec._PlannedRoom_starttime(ctx, field, obj)
-		case "day":
-			out.Values[i] = ec._PlannedRoom_day(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "slot":
-			out.Values[i] = ec._PlannedRoom_slot(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "room":
 			field := field
 
@@ -78860,16 +78239,6 @@ func (ec *executionContext) _PrePlannedInvigilation(ctx context.Context, sel ast
 			out.Values[i] = ec._PrePlannedInvigilation_starttime(ctx, field, obj)
 		case "invigilatorID":
 			out.Values[i] = ec._PrePlannedInvigilation_invigilatorID(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "day":
-			out.Values[i] = ec._PrePlannedInvigilation_day(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "slot":
-			out.Values[i] = ec._PrePlannedInvigilation_slot(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -84036,16 +83405,6 @@ func (ec *executionContext) _UnplacedExam(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._UnplacedExam_starttime(ctx, field, obj)
 		case "ancode":
 			out.Values[i] = ec._UnplacedExam_ancode(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "day":
-			out.Values[i] = ec._UnplacedExam_day(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "slot":
-			out.Values[i] = ec._UnplacedExam_slot(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

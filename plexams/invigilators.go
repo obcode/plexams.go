@@ -513,6 +513,7 @@ func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilat
 					invigilationsForKey = make([]*model.Invigilation, 0, 1)
 				}
 				invigilationsMap[key] = append(invigilationsForKey, &model.Invigilation{
+					Starttime:          &slot.Starttime, // source of truth; day/slot derived on read
 					RoomName:           &roomNames.ToSlice()[0],
 					Duration:           0, // FIXME: ?? self-invigilation does not count
 					InvigilatorID:      examer,

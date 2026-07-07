@@ -110,6 +110,38 @@ func TestRoomStorageStarttimeDecoration(t *testing.T) {
 	}
 }
 
+// TestInvigilationStarttimeDecoration verifies that (pre-planned) invigilations persist
+// Starttime as the source of truth and derive Day/Slot (and the Invigilation.Slot) on
+// read, and that the room/slot lookup resolves through the start time.
+func TestInvigilationStarttimeDecoration(t *testing.T) {
+	d := mongotest.NewDB(t)
+	d.SetSlotResolver(fakeSlotResolver{})
+	ctx := context.Background()
+
+	// pre-planned invigilation: given day/slot, stores starttime, derives back
+	if _, err := d.AddPrePlannedInvigilation(ctx, &model.PrePlannedInvigilation{
+		InvigilatorID: 42, Day: 1, Slot: 1, RoomName: ptr("R1.234"),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ppis, err := d.PrePlannedInvigilations(ctx)
+	if err != nil || len(ppis) != 1 {
+		t.Fatalf("PrePlannedInvigilations = %d (err %v), want 1", len(ppis), err)
+	}
+	if ppis[0].Day != 1 || ppis[0].Slot != 1 {
+		t.Errorf("derived day/slot = (%d,%d), want (1,1)", ppis[0].Day, ppis[0].Slot)
+	}
+	if ppis[0].Starttime == nil {
+		t.Error("pre-planned invigilation lost its starttime")
+	}
+	removed, err := d.RemovePrePlannedInvigilation(ctx, 1, 1, ptr("R1.234"))
+	if err != nil || !removed {
+		t.Errorf("RemovePrePlannedInvigilation = %v (err %v), want true", removed, err)
+	}
+}
+
+func ptr(s string) *string { return &s }
+
 // TestResetGeneratedPlanEntries locks the reset semantics: only generated placements are
 // removed; manual locks, external / not-planned-by-me and phase-fixed entries survive.
 func TestResetGeneratedPlanEntries(t *testing.T) {

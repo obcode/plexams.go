@@ -529,16 +529,6 @@ type ImportMucDaiResult struct {
 	ExamsRemoved int `json:"examsRemoved"`
 }
 
-type Invigilation struct {
-	RoomName           *string `json:"roomName,omitempty"`
-	Duration           int     `json:"duration"`
-	InvigilatorID      int     `json:"invigilatorID"`
-	Slot               *Slot   `json:"slot"`
-	IsReserve          bool    `json:"isReserve"`
-	IsSelfInvigilation bool    `json:"isSelfInvigilation"`
-	PrePlanned         bool    `json:"prePlanned"`
-}
-
 // InvigilationReport is the structured outcome of an invigilation generation run,
 // mirroring the textual report. It is delivered once on the final RESULT line of
 // the assignInvigilations subscription (also for dryRun, where nothing is
@@ -803,17 +793,6 @@ type PreExam struct {
 	ZpaExam     *ZPAExam     `json:"zpaExam"`
 	Constraints *Constraints `json:"constraints,omitempty"`
 	PlanEntry   *PlanEntry   `json:"planEntry,omitempty"`
-}
-
-// PrePlannedInvigilation fixes an invigilator for a room (or the reserve) in a
-// slot before the automatic invigilation planning runs. roomName is null for a
-// reserve invigilation.
-type PrePlannedInvigilation struct {
-	InvigilatorID int     `json:"invigilatorID"`
-	Day           int     `json:"day"`
-	Slot          int     `json:"slot"`
-	RoomName      *string `json:"roomName,omitempty"`
-	IsReserve     bool    `json:"isReserve"`
 }
 
 type PrePlannedRoom struct {

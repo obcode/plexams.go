@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -51,14 +50,18 @@ func (db *DB) GetInvigilationInSlot(ctx context.Context, roomname string, day, s
 func (db *DB) getInvigilationInSlot(ctx context.Context, collectionName, roomname string, day, slot int) ([]*model.Invigilation, error) {
 	collection := db.getCollectionSemester(collectionName)
 
+	starttime, ok := db.timeForSlot(day, slot)
+	if !ok {
+		return make([]*model.Invigilation, 0), nil
+	}
+
 	var filter primitive.M
 	if roomname == "reserve" {
 		filter = bson.M{
 			"$and": []bson.M{
 				{"roomname": nil},
 				{"isreserve": true},
-				{"slot.daynumber": day},
-				{"slot.slotnumber": slot},
+				{"starttime": starttime},
 			},
 		}
 	} else {
@@ -66,8 +69,7 @@ func (db *DB) getInvigilationInSlot(ctx context.Context, collectionName, roomnam
 			"$and": []bson.M{
 				{"roomname": roomname},
 				{"isreserve": false},
-				{"slot.daynumber": day},
-				{"slot.slotnumber": slot},
+				{"starttime": starttime},
 			},
 		}
 	}
@@ -84,6 +86,9 @@ func (db *DB) getInvigilationInSlot(ctx context.Context, collectionName, roomnam
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionName).Msg("Cannot decode to invigilations")
 		return nil, err
+	}
+	for _, inv := range invigilations {
+		db.decorateInvigilation(inv)
 	}
 
 	return invigilations, nil
@@ -116,6 +121,9 @@ func (db *DB) invigilationsForInvigilator(ctx context.Context, collectionName st
 	if err != nil {
 		log.Error().Err(err).Str("collection", collectionSelfInvigilations).Msg("Cannot decode to rooms")
 		return nil, err
+	}
+	for _, inv := range invigilations {
+		db.decorateInvigilation(inv)
 	}
 
 	return invigilations, nil
@@ -152,6 +160,9 @@ func (db *DB) GetSelfInvigilations(ctx context.Context) ([]*model.Invigilation, 
 		log.Error().Err(err).Msg("cannot get decode invgilations")
 		return nil, err
 	}
+	for _, inv := range invigilations {
+		db.decorateInvigilation(inv)
+	}
 
 	return invigilations, nil
 }
@@ -172,12 +183,20 @@ func (db *DB) GetOtherInvigilations(ctx context.Context) ([]*model.Invigilation,
 		log.Error().Err(err).Msg("cannot get decode invgilations")
 		return nil, err
 	}
+	for _, inv := range invigilations {
+		db.decorateInvigilation(inv)
+	}
 
 	return invigilations, nil
 }
 
 func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invigilatorID int) error {
 	collection := db.getCollectionSemester(collectionOtherInvigilations)
+
+	starttime, ok := db.timeForSlot(day, slot)
+	if !ok {
+		return fmt.Errorf("slot (%d,%d) does not exist", day, slot)
+	}
 
 	var filter primitive.M
 	// default is reserve: its duration is the slot's longest invigilation (not
@@ -190,8 +209,7 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 			"$and": []bson.M{
 				{"roomname": nil},
 				{"isreserve": true},
-				{"slot.daynumber": day},
-				{"slot.slotnumber": slot},
+				{"starttime": starttime},
 			},
 		}
 	} else {
@@ -199,8 +217,7 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 			"$and": []bson.M{
 				{"roomname": room},
 				{"isreserve": false},
-				{"slot.daynumber": day},
-				{"slot.slotnumber": slot},
+				{"starttime": starttime},
 			},
 		}
 		duration = db.getMaxDurationForRoomInSlot(ctx, room, day, slot)
@@ -212,14 +229,10 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 
 	_, err := collection.ReplaceOne(ctx, filter,
 		model.Invigilation{
-			RoomName:      roomname,
-			Duration:      duration,
-			InvigilatorID: invigilatorID,
-			Slot: &model.Slot{
-				DayNumber:  day,
-				SlotNumber: slot,
-				Starttime:  time.Time{},
-			},
+			Starttime:          &starttime,
+			RoomName:           roomname,
+			Duration:           duration,
+			InvigilatorID:      invigilatorID,
 			IsReserve:          isReserve,
 			IsSelfInvigilation: false,
 		},
@@ -239,11 +252,14 @@ func (db *DB) AddInvigilation(ctx context.Context, room string, day, slot, invig
 // invigilations_other collection.
 func (db *DB) SetInvigilationPrePlanned(ctx context.Context, day, slot int, roomName *string, prePlanned bool) error {
 	collection := db.getCollectionSemester(collectionOtherInvigilations)
+	starttime, ok := db.timeForSlot(day, slot)
+	if !ok {
+		return fmt.Errorf("slot (%d,%d) does not exist", day, slot)
+	}
 	filter := bson.M{
-		"roomname":        roomName,
-		"isreserve":       roomName == nil,
-		"slot.daynumber":  day,
-		"slot.slotnumber": slot,
+		"roomname":  roomName,
+		"isreserve": roomName == nil,
+		"starttime": starttime,
 	}
 	res, err := collection.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"preplanned": prePlanned}})
 	if err != nil {
@@ -304,6 +320,9 @@ func (db *DB) PrePlannedInvigilations(ctx context.Context) ([]*model.PrePlannedI
 		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).Msg("Cannot decode to pre planned invigilations")
 		return nil, err
 	}
+	for _, ppi := range invigilations {
+		db.decoratePrePlannedInvigilation(ppi)
+	}
 
 	return invigilations, nil
 }
@@ -324,18 +343,26 @@ func (db *DB) PrePlannedInvigilationsForInvigilator(ctx context.Context, invigil
 		log.Error().Err(err).Str("collection", collectionInvigilationsPrePlanned).Msg("Cannot decode to pre planned invigilations")
 		return nil, err
 	}
+	for _, ppi := range invigilations {
+		db.decoratePrePlannedInvigilation(ppi)
+	}
 
 	return invigilations, nil
 }
 
 func (db *DB) AddPrePlannedInvigilation(ctx context.Context, prePlannedInvigilation *model.PrePlannedInvigilation) (bool, error) {
 	collection := db.getCollectionSemester(collectionInvigilationsPrePlanned)
-	// Only one invigilator per room (or reserve) in a slot: delete any existing
-	// document with the same day, slot, and room before inserting the new one.
+	// The absolute start time is the source of truth; day/slot are derived on read.
+	starttime, ok := db.timeForSlot(prePlannedInvigilation.Day, prePlannedInvigilation.Slot)
+	if !ok {
+		return false, fmt.Errorf("slot (%d,%d) does not exist", prePlannedInvigilation.Day, prePlannedInvigilation.Slot)
+	}
+	prePlannedInvigilation.Starttime = &starttime
+	// Only one invigilator per room (or reserve) at a time: delete any existing
+	// document with the same start time and room before inserting the new one.
 	filter := bson.M{
-		"day":      prePlannedInvigilation.Day,
-		"slot":     prePlannedInvigilation.Slot,
-		"roomname": prePlannedInvigilation.RoomName,
+		"starttime": starttime,
+		"roomname":  prePlannedInvigilation.RoomName,
 	}
 	_, err := collection.DeleteOne(ctx, filter)
 	if err != nil {
@@ -373,10 +400,13 @@ func (db *DB) ResetGeneratedInvigilations(ctx context.Context) error {
 // was actually removed.
 func (db *DB) RemovePrePlannedInvigilation(ctx context.Context, day, slot int, roomName *string) (bool, error) {
 	collection := db.getCollectionSemester(collectionInvigilationsPrePlanned)
+	starttime, ok := db.timeForSlot(day, slot)
+	if !ok {
+		return false, fmt.Errorf("slot (%d,%d) does not exist", day, slot)
+	}
 	filter := bson.M{
-		"day":      day,
-		"slot":     slot,
-		"roomname": roomName,
+		"starttime": starttime,
+		"roomname":  roomName,
 	}
 	res, err := collection.DeleteOne(ctx, filter)
 	if err != nil {

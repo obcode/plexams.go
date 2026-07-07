@@ -821,6 +821,7 @@ type ComplexityRoot struct {
 		IsReserve     func(childComplexity int) int
 		RoomName      func(childComplexity int) int
 		Slot          func(childComplexity int) int
+		Starttime     func(childComplexity int) int
 	}
 
 	PrePlannedRoom struct {
@@ -5836,6 +5837,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PrePlannedInvigilation.Slot(childComplexity), true
 
+	case "PrePlannedInvigilation.starttime":
+		if e.complexity.PrePlannedInvigilation.Starttime == nil {
+			break
+		}
+
+		return e.complexity.PrePlannedInvigilation.Starttime(childComplexity), true
+
 	case "PrePlannedRoom.ancode":
 		if e.complexity.PrePlannedRoom.Ancode == nil {
 			break
@@ -10463,6 +10471,8 @@ slot before the automatic invigilation planning runs. roomName is null for a
 reserve invigilation.
 """
 type PrePlannedInvigilation {
+  "Absolute start time (source of truth; day/slot are derived)."
+  starttime: Time
   invigilatorID: Int!
   day: Int!
   slot: Int!
@@ -44917,6 +44927,47 @@ func (ec *executionContext) fieldContext_PreExam_planEntry(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _PrePlannedInvigilation_starttime(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedInvigilation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PrePlannedInvigilation_starttime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Starttime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PrePlannedInvigilation_starttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PrePlannedInvigilation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PrePlannedInvigilation_invigilatorID(ctx context.Context, field graphql.CollectedField, obj *model.PrePlannedInvigilation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PrePlannedInvigilation_invigilatorID(ctx, field)
 	if err != nil {
@@ -50817,6 +50868,8 @@ func (ec *executionContext) fieldContext_Query_prePlannedInvigilations(_ context
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_PrePlannedInvigilation_starttime(ctx, field)
 			case "invigilatorID":
 				return ec.fieldContext_PrePlannedInvigilation_invigilatorID(ctx, field)
 			case "day":
@@ -78803,6 +78856,8 @@ func (ec *executionContext) _PrePlannedInvigilation(ctx context.Context, sel ast
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("PrePlannedInvigilation")
+		case "starttime":
+			out.Values[i] = ec._PrePlannedInvigilation_starttime(ctx, field, obj)
 		case "invigilatorID":
 			out.Values[i] = ec._PrePlannedInvigilation_invigilatorID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

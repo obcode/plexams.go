@@ -47,6 +47,14 @@ func (db *DB) SetSlotResolver(r SlotResolver) {
 	db.slotResolver = r
 }
 
+// timeForSlot resolves a (day, slot) to its start time via the slot resolver.
+func (db *DB) timeForSlot(day, slot int) (time.Time, bool) {
+	if db.slotResolver == nil {
+		return time.Time{}, false
+	}
+	return db.slotResolver.TimeForSlot(day, slot)
+}
+
 // decoratePlanEntry fills the derived DayNumber/SlotNumber from the persisted
 // Starttime using the slot resolver (no-op when unset or unplanned).
 func (db *DB) decoratePlanEntry(pe *model.PlanEntry) {
@@ -78,6 +86,24 @@ func (db *DB) decorateBlockedRoom(br *model.BlockedRoom) {
 		return
 	}
 	br.Day, br.Slot = db.slotResolver.SlotForTime(*br.Starttime)
+}
+
+// decorateInvigilation rebuilds the derived Slot (day/slot + start time) from the
+// persisted Starttime.
+func (db *DB) decorateInvigilation(inv *model.Invigilation) {
+	if inv == nil || inv.Starttime == nil || db.slotResolver == nil {
+		return
+	}
+	d, s := db.slotResolver.SlotForTime(*inv.Starttime)
+	inv.Slot = &model.Slot{DayNumber: d, SlotNumber: s, Starttime: *inv.Starttime}
+}
+
+// decoratePrePlannedInvigilation fills the derived Day/Slot from the persisted Starttime.
+func (db *DB) decoratePrePlannedInvigilation(ppi *model.PrePlannedInvigilation) {
+	if ppi == nil || ppi.Starttime == nil || db.slotResolver == nil {
+		return
+	}
+	ppi.Day, ppi.Slot = db.slotResolver.SlotForTime(*ppi.Starttime)
 }
 
 func NewDB(uri, semester string, dbName *string) (*DB, error) {

@@ -54,6 +54,8 @@ slot before the automatic invigilation planning runs. roomName is null for a
 reserve invigilation.
 """
 type PrePlannedInvigilation {
+  "Absolute start time (source of truth; day/slot are derived)."
+  starttime: Time
   invigilatorID: Int!
   day: Int!
   slot: Int!

@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -557,81 +558,53 @@ func (p *Plexams) ValidateRoomsTimeDistance(reporter Reporter) (*model.Validatio
 		return v.skip(skipNoRooms), nil
 	}
 
-	for _, day := range p.semesterConfig.Days {
-		v.step("checking day %d (%s)", day.Number, day.Date.Format("02.01.06"))
+	plannedRooms, err := p.dbClient.PlannedRooms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get planned rooms")
+		return nil, err
+	}
 
-		for i := range p.semesterConfig.Starttimes {
-			if i == len(p.semesterConfig.Days)-1 {
-				continue
-			}
-			slot1, slot2 := i+1, i+2
-			log.Debug().Int("slot 1", slot1).Int("slot 2", slot2).Msg("checking slot")
+	// Collect, per room, the end time of each distinct start it is used at (the longest
+	// duration among the rows sharing that start). This is granularity-independent: it
+	// works for any start times, not just consecutive grid slots.
+	endByStart := make(map[string]map[time.Time]time.Time) // room -> start -> end
+	for _, pr := range plannedRooms {
+		if pr.Starttime == nil {
+			continue
+		}
+		start := *pr.Starttime
+		end := start.Add(time.Duration(pr.Duration) * time.Minute)
+		if endByStart[pr.RoomName] == nil {
+			endByStart[pr.RoomName] = make(map[time.Time]time.Time)
+		}
+		if cur, ok := endByStart[pr.RoomName][start]; !ok || end.After(cur) {
+			endByStart[pr.RoomName][start] = end
+		}
+	}
 
-			plannedRoomsSlot1, err := p.dbClient.PlannedRoomsInSlot(ctx, day.Number, slot1)
-			if err != nil {
-				log.Error().Err(err).
-					Int("day", day.Number).
-					Int("time", slot1).
-					Msg("error while getting rooms planned in slot")
-				return nil, err
-			}
+	roomNames := make([]string, 0, len(endByStart))
+	for name := range endByStart {
+		roomNames = append(roomNames, name)
+	}
+	sort.Strings(roomNames)
 
-			rooms1 := make(map[string]int)
-			for _, room := range plannedRoomsSlot1 {
-				duration, ok := rooms1[room.RoomName]
-				if !ok {
-					rooms1[room.RoomName] = room.Duration
-				} else {
-					if duration < room.Duration {
-						rooms1[room.RoomName] = room.Duration
-					}
-				}
-			}
-
-			plannedRoomsSlot2, err := p.dbClient.PlannedRoomsInSlot(ctx, day.Number, slot2)
-			if err != nil {
-				log.Error().Err(err).
-					Int("day", day.Number).
-					Int("time", slot2).
-					Msg("error while getting rooms planned in slot")
-				return nil, err
-			}
-
-			rooms2 := set.NewSet[string]()
-			for _, room := range plannedRoomsSlot2 {
-				rooms2.Add(room.RoomName)
-			}
-
-			for roomName, maxDuration := range rooms1 {
-				if rooms2.Contains(roomName) {
-					start, err := time.Parse("15:04", p.semesterConfig.Starttimes[i].Start)
-					if err != nil {
-						log.Error().Err(err).Str("starttime", p.semesterConfig.Starttimes[i].Start).Msg("cannot parse starttime")
-						return nil, err
-					}
-					endSlot1 := start.Add(time.Duration(maxDuration) * time.Minute)
-
-					startSlot2, err := time.Parse("15:04", p.semesterConfig.Starttimes[i+1].Start)
-					if err != nil {
-						log.Error().Err(err).Str("starttime", p.semesterConfig.Starttimes[i].Start).Msg("cannot parse starttime")
-						return nil, err
-					}
-					log.Debug().Str("room", roomName).Int("max duration", maxDuration).
-						Str("starttime slot 1", p.semesterConfig.Starttimes[i].Start).
-						Str("endtime slot 1", endSlot1.Format("15:04")).
-						Str("starttime slot 2", startSlot2.Format("15:04")).
-						Msg("checking")
-
-					diff := time.Duration(timelag) * time.Minute
-
-					if startSlot2.Before(endSlot1.Add(diff)) {
-						v.errorf(ref{Room: ptr(roomName), Day: ptr(day.Number), Slot: ptr(slot2)},
-							"Not enough time in room %s between slot (%d/%d) ends %s and slot (%d/%d) begins %s: %g minutes between",
-							roomName, day.Number, slot1, endSlot1.Format("15:04"),
-							day.Number, slot2, startSlot2.Format("15:04"),
-							startSlot2.Sub(endSlot1).Minutes())
-					}
-				}
+	v.step("checking %d room(s) for enough turnaround time", len(roomNames))
+	lag := time.Duration(timelag) * time.Minute
+	for _, name := range roomNames {
+		type use struct{ start, end time.Time }
+		uses := make([]use, 0, len(endByStart[name]))
+		for s, e := range endByStart[name] {
+			uses = append(uses, use{s, e})
+		}
+		sort.Slice(uses, func(i, j int) bool { return uses[i].start.Before(uses[j].start) })
+		for i := 1; i < len(uses); i++ {
+			prev, cur := uses[i-1], uses[i]
+			if cur.start.Before(prev.end.Add(lag)) {
+				day, slot := p.SlotForTime(cur.start)
+				v.errorf(ref{Room: ptr(name), Day: ptr(day), Slot: ptr(slot)},
+					"Zu wenig Zeit in Raum %s: vorige Prüfung endet %s, nächste beginnt %s (%g Min dazwischen, benötigt %d)",
+					name, prev.end.Format("02.01. 15:04"), cur.start.Format("02.01. 15:04"),
+					cur.start.Sub(prev.end).Minutes(), timelag)
 			}
 		}
 	}

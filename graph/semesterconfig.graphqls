@@ -73,6 +73,8 @@ type SemesterConfigInput {
   timelagMin: Int
   "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
   notTooCloseMinutes: Int
+  "Max students examined at the same start time (configurable per-time capacity for the Terminplan solver; null/0 = no limit)."
+  maxSeatsPerSlot: Int
 }
 
 input SemesterConfigInputData {
@@ -89,6 +91,8 @@ input SemesterConfigInputData {
   timelagMin: Int
   "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
   notTooCloseMinutes: Int
+  "Max students examined at the same start time (configurable per-time capacity for the Terminplan solver; null/0 = no limit)."
+  maxSeatsPerSlot: Int
 }
 
 input EmailsInput {
@@ -143,4 +147,6 @@ type SemesterConfig {
   timelagMin: Int!
   "Effective \"too close\" threshold (minutes, same day) for a student's two exams."
   notTooCloseMinutes: Int!
+  "Effective max students examined at the same start time (0 = no limit)."
+  maxSeatsPerSlot: Int!
 }

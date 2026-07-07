@@ -162,6 +162,7 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 		ExamGapMinutes:     data.ExamGapMinutes,
 		TimelagMin:         data.TimelagMin,
 		NotTooCloseMinutes: data.NotTooCloseMinutes,
+		MaxSeatsPerSlot:    data.MaxSeatsPerSlot,
 	}
 	if err := validateSemesterConfigInput(input); err != nil {
 		return nil, err
@@ -194,6 +195,15 @@ func notTooCloseMinutesOf(input *model.SemesterConfigInput) int {
 		return *input.NotTooCloseMinutes
 	}
 	return defaultNotTooCloseMinutes
+}
+
+// maxSeatsPerSlotOf returns the effective per-time seat cap for the Terminplan solver:
+// the configured value, or 0 (no limit) when unset/invalid.
+func maxSeatsPerSlotOf(input *model.SemesterConfigInput) int {
+	if input != nil && input.MaxSeatsPerSlot != nil && *input.MaxSeatsPerSlot > 0 {
+		return *input.MaxSeatsPerSlot
+	}
+	return 0
 }
 
 // validateSemesterConfigInput checks date ordering and slot start-time format.
@@ -425,6 +435,7 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 		ExamGapMinutes:     examGapMinutesOf(input),
 		TimelagMin:         timelagMinOf(input),
 		NotTooCloseMinutes: notTooCloseMinutesOf(input),
+		MaxSeatsPerSlot:    maxSeatsPerSlotOf(input),
 	}
 
 	p.deriveMucDaiSlots(input.MucDaiAllowedTimes)

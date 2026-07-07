@@ -1051,6 +1051,8 @@ type SemesterConfig struct {
 	TimelagMin int `json:"timelagMin"`
 	// Effective "too close" threshold (minutes, same day) for a student's two exams.
 	NotTooCloseMinutes int `json:"notTooCloseMinutes"`
+	// Effective max students examined at the same start time (0 = no limit).
+	MaxSeatsPerSlot int `json:"maxSeatsPerSlot"`
 }
 
 type SemesterConfigInputData struct {
@@ -1067,6 +1069,8 @@ type SemesterConfigInputData struct {
 	TimelagMin *int `json:"timelagMin,omitempty"`
 	// Two exams of a student closer than this (minutes, same day) are flagged as "too close" (null = default 120).
 	NotTooCloseMinutes *int `json:"notTooCloseMinutes,omitempty"`
+	// Max students examined at the same start time (configurable per-time capacity for the Terminplan solver; null/0 = no limit).
+	MaxSeatsPerSlot *int `json:"maxSeatsPerSlot,omitempty"`
 }
 
 type ServerInfo struct {

@@ -62,7 +62,9 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		slotKeys = append(slotKeys, key)
 		slots = append(slots, examplan.Slot{
 			SlotRef: examplan.SlotRef{Day: s.DayNumber, Slot: s.SlotNumber, Start: s.Starttime},
-			// Seats (total room capacity per slot) is left 0 = unlimited for now; TODO.
+			// Seats caps how many students may be examined at this start time. The
+			// configurable per-time capacity (SemesterConfig.MaxSeatsPerSlot); 0 = unlimited.
+			Seats: sc.MaxSeatsPerSlot,
 		})
 	}
 	if booked, err := p.annyBookedBySlot(ctx, slotKeys); err == nil {

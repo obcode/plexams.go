@@ -1156,6 +1156,7 @@ type ComplexityRoot struct {
 		ExamGapMinutes     func(childComplexity int) int
 		ForbiddenSlots     func(childComplexity int) int
 		From               func(childComplexity int) int
+		MaxSeatsPerSlot    func(childComplexity int) int
 		MucDaiAllowedTimes func(childComplexity int) int
 		MucDaiSlots        func(childComplexity int) int
 		NotTooCloseMinutes func(childComplexity int) int
@@ -1170,6 +1171,7 @@ type ComplexityRoot struct {
 		ExamGapMinutes     func(childComplexity int) int
 		ForbiddenDays      func(childComplexity int) int
 		From               func(childComplexity int) int
+		MaxSeatsPerSlot    func(childComplexity int) int
 		MucDaiAllowedTimes func(childComplexity int) int
 		NotTooCloseMinutes func(childComplexity int) int
 		StartTimes         func(childComplexity int) int
@@ -7726,6 +7728,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SemesterConfig.From(childComplexity), true
 
+	case "SemesterConfig.maxSeatsPerSlot":
+		if e.complexity.SemesterConfig.MaxSeatsPerSlot == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.MaxSeatsPerSlot(childComplexity), true
+
 	case "SemesterConfig.mucDaiAllowedTimes":
 		if e.complexity.SemesterConfig.MucDaiAllowedTimes == nil {
 			break
@@ -7802,6 +7811,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SemesterConfigInput.From(childComplexity), true
+
+	case "SemesterConfigInput.maxSeatsPerSlot":
+		if e.complexity.SemesterConfigInput.MaxSeatsPerSlot == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.MaxSeatsPerSlot(childComplexity), true
 
 	case "SemesterConfigInput.mucDaiAllowedTimes":
 		if e.complexity.SemesterConfigInput.MucDaiAllowedTimes == nil {
@@ -11489,6 +11505,8 @@ type SemesterConfigInput {
   timelagMin: Int
   "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
   notTooCloseMinutes: Int
+  "Max students examined at the same start time (configurable per-time capacity for the Terminplan solver; null/0 = no limit)."
+  maxSeatsPerSlot: Int
 }
 
 input SemesterConfigInputData {
@@ -11505,6 +11523,8 @@ input SemesterConfigInputData {
   timelagMin: Int
   "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
   notTooCloseMinutes: Int
+  "Max students examined at the same start time (configurable per-time capacity for the Terminplan solver; null/0 = no limit)."
+  maxSeatsPerSlot: Int
 }
 
 input EmailsInput {
@@ -11559,6 +11579,8 @@ type SemesterConfig {
   timelagMin: Int!
   "Effective \"too close\" threshold (minutes, same day) for a student's two exams."
   notTooCloseMinutes: Int!
+  "Effective max students examined at the same start time (0 = no limit)."
+  maxSeatsPerSlot: Int!
 }
 `, BuiltIn: false},
 	{Name: "../server_info.graphqls", Input: `extend type Query {
@@ -47637,6 +47659,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_timelagMin(ctx, field)
 			case "notTooCloseMinutes":
 				return ec.fieldContext_SemesterConfig_notTooCloseMinutes(ctx, field)
+			case "maxSeatsPerSlot":
+				return ec.fieldContext_SemesterConfig_maxSeatsPerSlot(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfig", field.Name)
 		},
@@ -47698,6 +47722,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfigInput(_ context.Con
 				return ec.fieldContext_SemesterConfigInput_timelagMin(ctx, field)
 			case "notTooCloseMinutes":
 				return ec.fieldContext_SemesterConfigInput_notTooCloseMinutes(ctx, field)
+			case "maxSeatsPerSlot":
+				return ec.fieldContext_SemesterConfigInput_maxSeatsPerSlot(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfigInput", field.Name)
 		},
@@ -47762,6 +47788,8 @@ func (ec *executionContext) fieldContext_Query_newSemesterConfigDefaults(_ conte
 				return ec.fieldContext_SemesterConfigInput_timelagMin(ctx, field)
 			case "notTooCloseMinutes":
 				return ec.fieldContext_SemesterConfigInput_notTooCloseMinutes(ctx, field)
+			case "maxSeatsPerSlot":
+				return ec.fieldContext_SemesterConfigInput_maxSeatsPerSlot(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SemesterConfigInput", field.Name)
 		},
@@ -57928,6 +57956,50 @@ func (ec *executionContext) fieldContext_SemesterConfig_notTooCloseMinutes(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _SemesterConfig_maxSeatsPerSlot(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_maxSeatsPerSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxSeatsPerSlot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_maxSeatsPerSlot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SemesterConfigInput_from(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SemesterConfigInput_from(ctx, field)
 	if err != nil {
@@ -58317,6 +58389,47 @@ func (ec *executionContext) _SemesterConfigInput_notTooCloseMinutes(ctx context.
 }
 
 func (ec *executionContext) fieldContext_SemesterConfigInput_notTooCloseMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_maxSeatsPerSlot(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_maxSeatsPerSlot(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxSeatsPerSlot, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_maxSeatsPerSlot(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SemesterConfigInput",
 		Field:      field,
@@ -71896,7 +72009,7 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"from", "until", "startTimes", "forbiddenDays", "mucDaiAllowedTimes", "emails", "examGapMinutes", "timelagMin", "notTooCloseMinutes"}
+	fieldsInOrder := [...]string{"from", "until", "startTimes", "forbiddenDays", "mucDaiAllowedTimes", "emails", "examGapMinutes", "timelagMin", "notTooCloseMinutes", "maxSeatsPerSlot"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71966,6 +72079,13 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 				return it, err
 			}
 			it.NotTooCloseMinutes = data
+		case "maxSeatsPerSlot":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxSeatsPerSlot"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxSeatsPerSlot = data
 		}
 	}
 
@@ -81542,6 +81662,11 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "maxSeatsPerSlot":
+			out.Values[i] = ec._SemesterConfig_maxSeatsPerSlot(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -81606,6 +81731,8 @@ func (ec *executionContext) _SemesterConfigInput(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._SemesterConfigInput_timelagMin(ctx, field, obj)
 		case "notTooCloseMinutes":
 			out.Values[i] = ec._SemesterConfigInput_notTooCloseMinutes(ctx, field, obj)
+		case "maxSeatsPerSlot":
+			out.Values[i] = ec._SemesterConfigInput_maxSeatsPerSlot(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -439,14 +439,15 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	attract := examplan.AttractPairs(units, smallExamThreshold)
 
 	// --- consecutive-exam gap (hard): a student needs a travel/break buffer between two
-	// of their exams; an NTA time extension eats into it. If a student's occupied time
-	// for exam A (its duration, extended for that student's NTA) plus the buffer reaches
-	// into the next slot, they may not take another of their exams in the following slot.
+	// of their exams; an NTA time extension eats into it. Two conflicting exams of a
+	// student must not overlap in time — the later may only start once the earlier one's
+	// occupied time (its duration, extended for that student's NTA) plus the buffer has
+	// passed. hardSep[{a,b}] is that minimum separation (minutes) from a's start to b's,
+	// aggregated over the students sharing the pair.
 	gapMin := sc.ExamGapMinutes
 	if gapMin <= 0 {
 		gapMin = defaultExamGapMinutes
 	}
-	blockMin := int(slotBlockDuration(sc.Starttimes).Minutes())
 	unitBaseDur := make(map[int]int)       // unit -> exam duration
 	ntaExt := make(map[int]map[string]int) // unit -> mtknr -> NTA-extended duration
 	for _, e := range assembled {
@@ -467,53 +468,34 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			}
 		}
 	}
-	// overrunsFor: does exam `unit` leave the student too little time before the next
-	// slot (duration + buffer reaches into it)?
-	overrunsFor := func(unit int, mtknr string) bool {
+	// occFor: the student's occupied minutes for an exam (its duration, extended for that
+	// student's NTA).
+	occFor := func(unit int, mtknr string) int {
 		dur := unitBaseDur[unit]
 		if m := ntaExt[unit]; m != nil {
 			if ext, ok := m[mtknr]; ok && ext > dur {
 				dur = ext
 			}
 		}
-		return blockMin > 0 && dur+gapMin > blockMin
+		return dur
 	}
-	gapForbiddenSet := make(map[[2]int]bool)
-	for _, s := range studentsRaw {
-		uset := make(map[int]bool)
-		for _, ancode := range s.Regs {
-			if ui, ok := unitOf[ancode]; ok {
-				uset[ui] = true
+	// build the per-pair minimum separations from the (already conflict-filtered) student
+	// pairs, so hardSep covers exactly the same pairs as the solver's hard conflicts.
+	hardSep := make(map[[2]int]int)
+	for _, s := range students {
+		for _, pr := range s.Pairs {
+			if sep := occFor(pr.A, s.ID) + gapMin; sep > hardSep[[2]int{pr.A, pr.B}] {
+				hardSep[[2]int{pr.A, pr.B}] = sep
 			}
-		}
-		if len(uset) < 2 {
-			continue
-		}
-		for a := range uset {
-			if !overrunsFor(a, s.Mtknr) {
-				continue
-			}
-			for b := range uset { // a overruns → b must not sit in the slot right after a
-				if a != b {
-					gapForbiddenSet[[2]int{a, b}] = true
-				}
+			if sep := occFor(pr.B, s.ID) + gapMin; sep > hardSep[[2]int{pr.B, pr.A}] {
+				hardSep[[2]int{pr.B, pr.A}] = sep
 			}
 		}
 	}
-	gapForbidden := make([][2]int, 0, len(gapForbiddenSet))
-	for k := range gapForbiddenSet {
-		gapForbidden = append(gapForbidden, k)
-	}
-	sort.Slice(gapForbidden, func(i, j int) bool {
-		if gapForbidden[i][0] != gapForbidden[j][0] {
-			return gapForbidden[i][0] < gapForbidden[j][0]
-		}
-		return gapForbidden[i][1] < gapForbidden[j][1]
-	})
 
 	prob := examplan.NewProblem(slots, units, students, attract, w)
 	prob.SetTimeSeverity(timeSeverity)
-	prob.SetNTAOverruns(gapForbidden)
+	prob.SetHardSeparations(hardSep)
 	return prob, nil
 }
 
@@ -561,8 +543,8 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	}
 	reporter.Println(fmt.Sprintf("%d %s, %d fest, %d Slots, %d Studierende mit Konflikten",
 		movable, what, len(prob.Units)-movable, len(prob.Slots), len(prob.Students)))
-	if n := prob.NumNTAOverruns(); n > 0 {
-		reporter.Println(fmt.Sprintf("%d Zwischenzeit-Sperren berücksichtigt (Folgeslot, inkl. NTA)", n))
+	if n := prob.NumHardSeparations(); n > 0 {
+		reporter.Println(fmt.Sprintf("%d Zwischenzeit-Sperren berücksichtigt (Zeit-Überlappung, inkl. NTA)", n))
 	}
 
 	opts := optimize.DefaultOptions()

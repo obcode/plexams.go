@@ -186,19 +186,19 @@ type Problem struct {
 
 	// derived
 	movable        []int
-	hardConf       []map[int]bool // unit -> units that must not share its slot
+	hardConf       []map[int]bool // unit -> units that must not overlap it in time
 	hardConfSorted [][]int        // deterministic (sorted) view of hardConf for float sums
-	unitStudents   [][]int        // unit -> student indices that have a pair with it
-	unitAttract    [][]attractRef // unit -> its attract partners
-	targetLoad     float64        // ideal seats per slot = total seats / number of slots
-	// NTA time-overrun (hard): nextSlot/prevSlot map a slot to its same-day neighbour
-	// (-1 if none); overrunNext[a] = units that must not sit in the slot right after a,
-	// overrunPrev[b] = units a such that b must not sit right after a. Always allocated
-	// (len == #units); empty unless SetNTAOverruns installed pairs.
-	nextSlot    []int
-	prevSlot    []int
-	overrunNext [][]int
-	overrunPrev [][]int
+	// hardSep[u][v] = minimum minutes from u's start until v may start, i.e. u's occupied
+	// time (its duration, extended for the worst shared student's NTA) plus the travel/
+	// break buffer. Two conflicting exams must not overlap: v is only allowed at or after
+	// u.start+hardSep[u][v], or u at or after v.start+hardSep[v][u]. Missing entry ⇒ the
+	// minimal separation (same start time forbidden, any different time allowed). Set via
+	// SetHardSeparations; on the fixed grid this reproduces the old same-slot + NTA-overrun
+	// behaviour, but it is correct at any start-time granularity.
+	hardSep      []map[int]int
+	unitStudents [][]int        // unit -> student indices that have a pair with it
+	unitAttract  [][]attractRef // unit -> its attract partners
+	targetLoad   float64        // ideal seats per slot = total seats / number of slots
 	// day grouping for the interior-hole penalty: days[d] is the slot indices of one
 	// exam day, sorted by slot number; dayOfSlot maps a slot index back to its day group.
 	days      [][]int
@@ -264,23 +264,6 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 		p.unitAttract[ap.B] = append(p.unitAttract[ap.B], attractRef{ap.A, ap.Weight})
 	}
 
-	// same-day slot neighbours (for the NTA time-overrun constraint)
-	byDaySlot := make(map[[2]int]int, len(p.Slots))
-	for i := range p.Slots {
-		byDaySlot[[2]int{p.Slots[i].Day, p.Slots[i].Slot}] = i
-	}
-	p.nextSlot = make([]int, len(p.Slots))
-	p.prevSlot = make([]int, len(p.Slots))
-	for i := range p.Slots {
-		d, s := p.Slots[i].Day, p.Slots[i].Slot
-		p.nextSlot[i], p.prevSlot[i] = -1, -1
-		if j, ok := byDaySlot[[2]int{d, s + 1}]; ok {
-			p.nextSlot[i] = j
-		}
-		if j, ok := byDaySlot[[2]int{d, s - 1}]; ok {
-			p.prevSlot[i] = j
-		}
-	}
 	// day grouping (for the interior-hole penalty): collect slot indices per exam day,
 	// each sorted by slot number, days themselves in ascending day order.
 	byDay := make(map[int][]int)
@@ -304,10 +287,6 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 		p.days = append(p.days, slots)
 	}
 
-	// allocated but empty until SetNTAOverruns is called (feasible() ranges over them)
-	p.overrunNext = make([][]int, len(p.Units))
-	p.overrunPrev = make([][]int, len(p.Units))
-
 	// deterministic (sorted) view of hardConf: iterating a Go map has random order, so
 	// summing floats over it (constructive addedCost) would make runs non-reproducible.
 	p.hardConfSorted = make([][]int, len(p.Units))
@@ -325,60 +304,58 @@ func NewProblem(slots []Slot, units []Unit, students []Student, attract []Attrac
 	return p
 }
 
-// SetNTAOverruns installs the consecutive-exam-gap constraints: for each ordered pair
-// (a, b), unit b must not be placed in the slot immediately following a on the same day,
-// because a student sharing both is still occupied with a (its duration — extended for
-// that student's NTA — plus the travel buffer) when that next slot starts. Both-fixed
-// pairs are ignored (neither can be moved to satisfy it). Idempotent; replaces any
-// previously installed pairs.
-func (p *Problem) SetNTAOverruns(pairs [][2]int) {
-	nextSet := make([]map[int]bool, len(p.Units))
-	prevSet := make([]map[int]bool, len(p.Units))
-	for _, pr := range pairs {
-		a, b := pr[0], pr[1]
-		if a < 0 || b < 0 || a >= len(p.Units) || b >= len(p.Units) || a == b {
+// SetHardSeparations installs the per-pair minimum time separations used by the
+// time-overlap hard constraint. sep[[2]int{u,v}] is the number of minutes from u's start
+// until v may start (u's occupied time — its duration, extended for the worst shared
+// student's NTA — plus the travel/break buffer). Only entries whose units are conflict
+// partners (present in hardConf) take effect; a both-fixed pair is ignored (neither can
+// move to satisfy it). Idempotent; replaces any previously installed separations.
+func (p *Problem) SetHardSeparations(sep map[[2]int]int) {
+	p.hardSep = make([]map[int]int, len(p.Units))
+	for key, minutes := range sep {
+		u, v := key[0], key[1]
+		if u < 0 || v < 0 || u >= len(p.Units) || v >= len(p.Units) || u == v {
 			continue
 		}
-		if p.Units[a].Fixed && p.Units[b].Fixed {
+		if p.Units[u].Fixed && p.Units[v].Fixed {
 			continue
 		}
-		if nextSet[a] == nil {
-			nextSet[a] = make(map[int]bool)
+		if p.hardSep[u] == nil {
+			p.hardSep[u] = make(map[int]int)
 		}
-		nextSet[a][b] = true
-		if prevSet[b] == nil {
-			prevSet[b] = make(map[int]bool)
-		}
-		prevSet[b][a] = true
+		p.hardSep[u][v] = minutes
 	}
-	p.overrunNext = sortedSets(nextSet)
-	p.overrunPrev = sortedSets(prevSet)
 }
 
-// NumNTAOverruns returns the number of installed NTA time-overrun adjacency pairs.
-func (p *Problem) NumNTAOverruns() int {
+// sepMinutes returns the required minutes from u's start until v may start: the installed
+// separation, or 1 (only the same start time is forbidden) when none is set.
+func (p *Problem) sepMinutes(u, v int) int {
+	if p.hardSep != nil && p.hardSep[u] != nil {
+		if m, ok := p.hardSep[u][v]; ok {
+			return m
+		}
+	}
+	return 1
+}
+
+// NumHardSeparations returns the number of installed pair separations (both directions).
+func (p *Problem) NumHardSeparations() int {
 	n := 0
-	for _, l := range p.overrunNext {
-		n += len(l)
+	for _, m := range p.hardSep {
+		n += len(m)
 	}
 	return n
 }
 
-// sortedSets converts a per-unit set of unit indices into a deterministic sorted slice.
-func sortedSets(sets []map[int]bool) [][]int {
-	out := make([][]int, len(sets))
-	for i, m := range sets {
-		if len(m) == 0 {
-			continue
-		}
-		lst := make([]int, 0, len(m))
-		for v := range m {
-			lst = append(lst, v)
-		}
-		sort.Ints(lst)
-		out[i] = lst
+// overlaps reports whether units u and v, placed in slots su and sv, would overlap in
+// time — i.e. leave less than the required separation between them (same start time, or
+// the earlier exam's occupied time + buffer reaching into the later one). Symmetric.
+func (p *Problem) overlaps(u, su, v, sv int) bool {
+	d := int(p.Slots[sv].Start.Sub(p.Slots[su].Start).Minutes()) // minutes v starts after u
+	if d >= 0 {
+		return d < p.sepMinutes(u, v)
 	}
-	return out
+	return -d < p.sepMinutes(v, u)
 }
 
 // loadPenalty is the even-distribution penalty for a slot holding `seats` seats: the

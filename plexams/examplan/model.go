@@ -308,8 +308,10 @@ func (st *State) feasible(u, s int) bool {
 	if !p.allows(u, s) {
 		return false
 	}
+	// no conflict partner may overlap u in time (same start, or too little gap between
+	// them incl. NTA) — subsumes the former same-slot and NTA-overrun constraints.
 	for v := range p.hardConf[u] {
-		if st.SlotOf[v] == s {
+		if sv := st.SlotOf[v]; sv >= 0 && p.overlaps(u, s, v, sv) {
 			return false
 		}
 	}
@@ -321,37 +323,6 @@ func (st *State) feasible(u, s int) bool {
 	// "not an EXaHM slot" (forbidden), unlike the global seat cap where 0 = unknown.
 	if p.Units[u].Exahm && st.slotExahm[s]+seats > p.Slots[s].ExahmSeats {
 		return false
-	}
-	if !st.ntaAdjOK(u, s, -1, -1) {
-		return false
-	}
-	return true
-}
-
-// ntaAdjOK reports whether placing unit u in slot s satisfies the NTA time-overrun
-// adjacency constraints. Unit `moved` (if >= 0) is treated as sitting in `movedSlot`
-// instead of its current slot — used by swaps, where the partner also changes slot.
-func (st *State) ntaAdjOK(u, s, moved, movedSlot int) bool {
-	p := st.P
-	slotOf := func(w int) int {
-		if w == moved {
-			return movedSlot
-		}
-		return st.SlotOf[w]
-	}
-	if ns := p.nextSlot[s]; ns >= 0 {
-		for _, b := range p.overrunNext[u] { // u overruns: no forbidden successor right after u
-			if slotOf(b) == ns {
-				return false
-			}
-		}
-	}
-	if ps := p.prevSlot[s]; ps >= 0 {
-		for _, a := range p.overrunPrev[u] { // u sits right after an overrunning a
-			if slotOf(a) == ps {
-				return false
-			}
-		}
 	}
 	return true
 }
@@ -367,14 +338,20 @@ func (st *State) canSwap(u, v int) bool {
 	if !p.allows(u, sv) || !p.allows(v, su) {
 		return false
 	}
+	// after the swap u sits in sv and v in su: no conflict partner may overlap them in
+	// time (subsumes the former same-slot and NTA-overrun swap checks).
 	for w := range p.hardConf[u] {
-		if w != v && st.SlotOf[w] == sv {
-			return false
+		if w != v {
+			if sw := st.SlotOf[w]; sw >= 0 && p.overlaps(u, sv, w, sw) {
+				return false
+			}
 		}
 	}
 	for w := range p.hardConf[v] {
-		if w != u && st.SlotOf[w] == su {
-			return false
+		if w != u {
+			if sw := st.SlotOf[w]; sw >= 0 && p.overlaps(v, su, w, sw) {
+				return false
+			}
 		}
 	}
 	su2 := st.slotSeats[sv] - p.Units[v].Seats + p.Units[u].Seats
@@ -389,11 +366,6 @@ func (st *State) canSwap(u, v int) bool {
 		return false
 	}
 	if p.Units[v].Exahm && st.slotExahm[su]-boolSeats(p, u)+p.Units[v].Seats > p.Slots[su].ExahmSeats {
-		return false
-	}
-	// NTA overrun: check each unit at its post-swap slot, treating the partner as
-	// already moved (so a swap that makes them adjacent is caught).
-	if !st.ntaAdjOK(u, sv, v, su) || !st.ntaAdjOK(v, su, u, sv) {
 		return false
 	}
 	return true

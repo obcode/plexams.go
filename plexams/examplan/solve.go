@@ -169,7 +169,7 @@ func addedCost(st *State, u, s int) float64 {
 func (p *Problem) Registry() optimize.Registry[*State] {
 	return optimize.Registry[*State]{
 		Hard: []optimize.HardConstraint[*State]{
-			fixedC{}, allowedC{}, sameStudentC{}, capacityC{}, ntaOverrunC{},
+			fixedC{}, allowedC{}, sameStudentC{}, capacityC{},
 		},
 		Soft: []optimize.SoftConstraint[*State]{
 			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, holeC{p.W}, tbauFillC{p.W}, timeOfDayC{p.W}, placementC{p.W},
@@ -213,15 +213,15 @@ type sameStudentC struct{}
 
 func (sameStudentC) Info() optimize.Info {
 	return optimize.Info{Name: "student-clash", Title: "Kein Studierender doppelt", Kind: optimize.KindHard, Tier: 3,
-		Description: "Kein Studierender hat zwei seiner Prüfungen im selben Slot (außer das Paar ist als gleichzeitig erlaubt markiert)."}
+		Description: "Zwei Prüfungen eines/einer Studierenden dürfen sich zeitlich nicht überlappen — inkl. der (ggf. per NTA verlängerten) Prüfungsdauer plus Puffer für Wechsel/Weg (außer das Paar ist als gleichzeitig erlaubt markiert)."}
 }
 func (sameStudentC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
 	for si := range st.P.Students {
 		for _, pr := range st.P.Students[si].Pairs {
 			a, b := st.SlotOf[pr.A], st.SlotOf[pr.B]
-			if a >= 0 && a == b {
-				vs = append(vs, optimize.Violation{Constraint: "student-clash", Message: "zwei Prüfungen gleichzeitig", Refs: []int{st.P.Units[pr.A].ID, st.P.Units[pr.B].ID}})
+			if a >= 0 && b >= 0 && st.P.overlaps(pr.A, a, pr.B, b) {
+				vs = append(vs, optimize.Violation{Constraint: "student-clash", Message: "zwei Prüfungen überlappen zeitlich (zu wenig Zwischenzeit)", Refs: []int{st.P.Units[pr.A].ID, st.P.Units[pr.B].ID}})
 			}
 		}
 	}
@@ -242,35 +242,6 @@ func (capacityC) Check(st *State) []optimize.Violation {
 		}
 		if st.slotExahm[s] > st.P.Slots[s].ExahmSeats {
 			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über EXaHM-Kapazität", Refs: []int{st.P.Slots[s].Day, st.P.Slots[s].Slot}})
-		}
-	}
-	return vs
-}
-
-type ntaOverrunC struct{}
-
-func (ntaOverrunC) Info() optimize.Info {
-	return optimize.Info{Name: "exam-gap", Title: "Zwischenzeit zwischen Prüfungen", Kind: optimize.KindHard, Tier: 5,
-		Description: "Zwischen zwei Prüfungen eines/einer Studierenden muss genug Zeit für Wechsel/Weg bleiben. Reicht die (ggf. per NTA verlängerte) Prüfungsdauer plus Puffer in den nächsten Slot, ist dieser für den/die Studierende/n gesperrt."}
-}
-func (ntaOverrunC) Check(st *State) []optimize.Violation {
-	var vs []optimize.Violation
-	p := st.P
-	for a := range p.overrunNext {
-		sa := st.SlotOf[a]
-		if sa < 0 {
-			continue
-		}
-		ns := p.nextSlot[sa]
-		if ns < 0 {
-			continue
-		}
-		for _, b := range p.overrunNext[a] {
-			if st.SlotOf[b] == ns {
-				vs = append(vs, optimize.Violation{Constraint: "exam-gap",
-					Message: "zu wenig Zwischenzeit: Prüfung reicht in den Folgeslot mit weiterer Prüfung des/der Studierenden",
-					Refs:    []int{p.Units[a].ID, p.Units[b].ID}})
-			}
 		}
 	}
 	return vs

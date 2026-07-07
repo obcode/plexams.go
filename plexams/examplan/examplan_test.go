@@ -68,49 +68,54 @@ func TestSolveSpreadsConflictingExams(t *testing.T) {
 	}
 }
 
-func TestNTAOverrunBlocksAdjacentSlot(t *testing.T) {
+func TestTimeOverlapBlocksTooCloseSlot(t *testing.T) {
+	// A and B conflict (shared student); A occupies 181 min incl. buffer, so a B start
+	// less than 181 min after A overlaps it.
 	units := []Unit{{ID: 1, Ancodes: []int{1}, Seats: 1}, {ID: 2, Ancodes: []int{2}, Seats: 1}}
-	p := NewProblem(testSlots(), units, nil, nil, DefaultWeights())
-	p.SetNTAOverruns([][2]int{{0, 1}}) // unit 1 must not sit right after unit 0
+	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1}}}}
+	p := NewProblem(testSlots(), units, students, nil, DefaultWeights())
+	p.SetHardSeparations(map[[2]int]int{{0, 1}: 181, {1, 0}: 181})
 
-	// A (unit 0) in Mon slot 1 (idx0): B (unit 1) may not go into Mon slot 2 (idx1),
-	// but may go to the next day (idx2/idx3).
+	// A (unit 0) in Mon 08:30 (idx0): B (unit 1) may not go into Mon 11:30 (idx1, 180 min
+	// later — overlaps) but may go to the next day (idx2/idx3).
 	st := newState(p)
 	st.setPhysical(0, 0)
 	if st.feasible(1, 1) {
-		t.Errorf("B must not be feasible in the slot right after A")
+		t.Errorf("B must not be feasible in a slot that overlaps A (180 < 181 min)")
 	}
 	if !st.feasible(1, 2) || !st.feasible(1, 3) {
-		t.Errorf("B must be feasible in non-adjacent slots")
+		t.Errorf("B must be feasible in non-overlapping slots")
 	}
 
-	// reverse direction: A overruns, so A may not sit right before an already-placed B.
+	// reverse direction: A may not sit so close before an already-placed B.
 	st2 := newState(p)
-	st2.setPhysical(1, 1) // B in Mon slot 2 (idx1)
+	st2.setPhysical(1, 1) // B in Mon 11:30 (idx1)
 	if st2.feasible(0, 0) {
-		t.Errorf("A must not be feasible right before B (its overrun reaches B's slot)")
+		t.Errorf("A must not be feasible right before B (it overlaps B)")
 	}
 }
 
-func TestSolveRespectsNTAOverrun(t *testing.T) {
+func TestSolveRespectsTimeOverlap(t *testing.T) {
 	t0 := time.Date(2026, 7, 6, 8, 30, 0, 0, time.UTC)
 	mk := func(slot, addH int) Slot {
 		return Slot{SlotRef: SlotRef{Day: 1, Slot: slot, Start: t0.Add(time.Duration(addH) * time.Hour)}, Seats: 1000}
 	}
-	slots := []Slot{mk(1, 0), mk(2, 2), mk(3, 4)} // three consecutive same-day slots
+	slots := []Slot{mk(1, 0), mk(2, 2), mk(3, 4)} // 08:30, 10:30, 12:30 same day
 	units := []Unit{
 		{ID: 1, Ancodes: []int{1}, Seats: 1, Allowed: []int{0}},    // A pinned to slot 1 by domain
 		{ID: 2, Ancodes: []int{2}, Seats: 1, Allowed: []int{1, 2}}, // B may take slot 2 or 3
 	}
-	p := NewProblem(slots, units, nil, nil, DefaultWeights())
-	p.SetNTAOverruns([][2]int{{0, 1}})
+	students := []Student{{ID: "a", Pairs: []Pair{{A: 0, B: 1, Weight: 1}}}}
+	p := NewProblem(slots, units, students, nil, DefaultWeights())
+	// A occupies 121 min incl. buffer: B at +120 min (idx1) overlaps, at +240 min (idx2) is fine.
+	p.SetHardSeparations(map[[2]int]int{{0, 1}: 121, {1, 0}: 121})
 
 	st, _ := Solve(p, fastOpts(), false)
 	if st.SlotOf[0] != 0 {
 		t.Fatalf("A expected in slot idx0, got %d", st.SlotOf[0])
 	}
 	if st.SlotOf[1] != 2 {
-		t.Errorf("B must skip the slot right after A (idx1) and land in idx2, got %d", st.SlotOf[1])
+		t.Errorf("B must skip the overlapping slot (idx1) and land in idx2, got %d", st.SlotOf[1])
 	}
 	if vs := p.Registry().HardViolations(st); len(vs) != 0 {
 		t.Errorf("unexpected hard violations: %+v", vs)

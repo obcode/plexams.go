@@ -3,9 +3,10 @@ package model
 import "time"
 
 type RoomsForSlot struct {
-	Day       int      `json:"day"`
-	Slot      int      `json:"slot"`
-	RoomNames []string `json:"roomNames"`
+	Starttime time.Time `json:"starttime"`
+	Day       int       `json:"-"`
+	Slot      int       `json:"-"`
+	RoomNames []string  `json:"roomNames"`
 }
 
 // PlannedRoom is one room's use by one exam. The absolute Starttime (the exam's slot

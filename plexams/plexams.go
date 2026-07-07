@@ -240,6 +240,19 @@ func (p *Plexams) SlotForTime(t time.Time) (int, int) {
 	return slot.DayNumber, slot.SlotNumber
 }
 
+// DayNumberForDate returns the 1-based exam-day number of the given calendar date (0
+// when it is not an exam day). Used to translate a date from the API into the internal
+// day number.
+func (p *Plexams) DayNumberForDate(date time.Time) int {
+	d := date.Local()
+	for _, day := range p.allDays {
+		if day.Date.Year() == d.Year() && day.Date.Month() == d.Month() && day.Date.Day() == d.Day() {
+			return day.Number
+		}
+	}
+	return 0
+}
+
 // TimeForSlot returns the start time of the given (dayNumber, slotNumber), and false
 // when there is no such slot. It implements db.SlotResolver.
 func (p *Plexams) TimeForSlot(dayNumber, slotNumber int) (time.Time, bool) {

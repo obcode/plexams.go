@@ -44,5 +44,55 @@ Progress (backend, step-by-step then GUI catches up):
   + Starttime (time). New `setExamTime` GraphQL mutation. cmd/plan.go deleted.
   Tests: plexams SlotForTime round-trip + db decoration (verified vs real mongod via
   downloaded standalone mongod, see [[mongotest-without-docker]]).
-- Next: step 3 time-based conflict rule (conflictcalc/validate/solver), then rooms,
-  then invigilation, then cleanup.
+- **Step 3 DONE** (on main): conflicts classified by TIME/DURATION/NTA via shared
+  conflictcalc.TimeProximity (OVERLAP/TOO_CLOSE/SAME_DAY/NEXT_DAY), used in the
+  conflict list (ExamScheduleConflicts) and the ValidateConflicts scan, each with the
+  PER-STUDENT duration (their own NTA, not the exam's global MaxDuration — planner's
+  correction). Thresholds ExamGapMinutes/NotTooCloseMinutes from SemesterConfig.
+  DELIBERATELY did NOT touch the tuned solver cost (examplan closeness/hardConf) —
+  that drives plan quality and is correct on the grid; pure-time solver cost is
+  stage 2. Existing examplan tests = "plans unchanged" golden. GraphQL proximity
+  values SAME_SLOT/ADJACENT → OVERLAP/TOO_CLOSE (GUI must map).
+- **Step 4 DONE** (on main): PlannedRoom/UnplacedExam/BlockedRoom persist Starttime
+  (source of truth), derive Day/Slot on read via the same db SlotResolver decoration.
+  BlockedRoom moved to a hand-written model (graph/model/blocked_room.go). Starttime
+  stamped centrally in PrepareRoomForExams (per-slot). Blocks keyed room+starttime.
+  GraphQL room types gained `starttime`; (day,time) signatures kept (translate
+  internally). Room turnaround (ValidateRoomsTimeDistance) + per-slot assignment
+  UNCHANGED (already grid-correct — planner confirmed the turnaround they wanted
+  already existed interval-based). db room-decoration test vs real mongod.
+- **Step 5 DONE** (on main): Invigilation + PrePlannedInvigilation are hand-written
+  models persisting Starttime (truth); Invigilation.Slot / PrePlanned Day/Slot derived
+  on read via db decoration. In-slot filters + pre-planned keys resolve via starttime.
+  Fixed the zero-Starttime bug in db.AddInvigilation. invigplan solver unchanged
+  (already time-native). GraphQL PrePlannedInvigilation gained starttime.
+
+**Stufe 1 COMPLETE** (steps 1–5 on main). All persisted planning data (config, exam
+placement, rooms, blocked rooms, unplaced, invigilations, pre-planned invigilations) is
+now absolute-time-based with day/slot derived on read; conflicts are time/duration/NTA
+based. No data migration (clean cut, new semesters). GUI must be caught up per the
+per-step instructions. **Stufe 2 (in progress):** solver cost pure-time + finer/free start-time granularity +
+capacity; eventual full removal of day/slot from GraphQL/GUI.
+- **A1 DONE** (on main, feat(examplan)): the solver's HARD student constraint is now
+  time-overlap based (Problem.overlaps + per-pair hardSep = occ incl NTA + gap), replacing
+  same-slot veto + NTA-overrun-next-slot (removed nextSlot/prevSlot/overrun*/ntaAdjOK/
+  SetNTAOverruns). Grid-equivalent (existing examplan tests unchanged = golden). This
+  unblocks finer/shorter StartTimes producing CORRECT (overlap-free) plans — the planner
+  can experiment now by editing StartTimes.
+- **Room window DONE** (on main, feat(rooms)): booked rooms (anny/GM) must be available
+  [start-15, start+BASE+15]; a single NTA runs into the 15-min post-buffer (larger NTAs →
+  separate rooms later, not a scheduling showstopper). GM request window uses base+buffer
+  (dropped examMaxDuration); anny CoversSlot → Covers(from,until,winStart,winEnd), offered
+  only if the booking covers [start-15, start+block+15]. (block=slot spacing as exam-length
+  proxy on the grid; per-exam-duration precision is a finer-grid follow-up.)
+- **Room turnaround DONE** (on main, feat(rooms)): ValidateRoomsTimeDistance rewritten
+  to a true interval check per room over ALL its uses (PlannedRoom.Starttime + Duration,
+  sorted, consecutive gap ≥ TimelagMin), replacing the consecutive-grid-slots loop (+ its
+  buggy len(Days)-1 guard). Granularity-independent → shortening start times stays correct
+  on the room side. Remaining finer-grid caveat: anny coverage still uses the slot block
+  as exam-length proxy (needs per-exam duration when granularity < exam length).
+- Remaining Stufe 2: **A2** soft closeness → pure time-distance (recalibration of tuned
+  Weights Adjacent/SameDay/DayFactor; judgment + real-data) + diagnostics bucket time-based;
+  **C** capacity per time window in the solver (Slot.Seats currently 0=unlimited) so
+  morning-packing stays roomable; **B** finer/free start times (config or snap :00/:30);
+  **D** remove day/slot from GraphQL/GUI.

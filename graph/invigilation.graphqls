@@ -8,9 +8,9 @@ extend type Query {
   listed. (The field name is kept for backwards compatibility.)
   """
   invigilatorsExcludedByConfig: [Invigilator!]!
-  roomsWithInvigilationsForSlot(day: Int!, time: Int!): InvigilationSlot
-  invigilatorsForDay(day: Int!): InvigilatorsForDay
-  invigilator(room: String!, day: Int!, time: Int!): Teacher
+  roomsWithInvigilationsAt(starttime: Time!): InvigilationSlot
+  invigilatorsForDay(date: Time!): InvigilatorsForDay
+  invigilator(room: String!, starttime: Time!): Teacher
   prePlannedInvigilations: [PrePlannedInvigilation!]!
   "Per-invigilator constraints stored in the DB (managed via the GUI): whether they do no invigilation at all, additional excluded whole days and time windows when they cannot invigilate. These are merged on top of the ZPA requirements."
   invigilatorConstraints: [InvigilatorConstraints!]!
@@ -21,21 +21,20 @@ extend type Query {
 }
 
 extend type Mutation {
-  "Pre-plan (fix) an invigilator for a room (roomName) or the reserve (roomName == null) in a slot."
+  "Pre-plan (fix) an invigilator for a room (roomName) or the reserve (roomName == null) at an exam time."
   prePlanInvigilation(
     invigilatorID: Int!
-    day: Int!
-    slot: Int!
+    starttime: Time!
     roomName: String
   ): Boolean!
-  "Remove a pre-planned invigilation (key: day/slot/roomName; roomName null = the reserve)."
-  removePrePlannedInvigilation(day: Int!, slot: Int!, roomName: String): Boolean!
+  "Remove a pre-planned invigilation (key: starttime/roomName; roomName null = the reserve)."
+  removePrePlannedInvigilation(starttime: Time!, roomName: String): Boolean!
   """
-  prePlanInvigilationInSlot promotes the invigilation currently planned for a
-  room (roomName) or the reserve (roomName == null) in a slot to a pre-planned,
+  prePlanInvigilationAt promotes the invigilation currently planned for a room
+  (roomName) or the reserve (roomName == null) at an exam time to a pre-planned,
   fixed assignment, so it survives a re-run of the automatic planning.
   """
-  prePlanInvigilationInSlot(day: Int!, slot: Int!, roomName: String): Boolean!
+  prePlanInvigilationAt(starttime: Time!, roomName: String): Boolean!
   "Reset the assigned invigilations (invigilations_other) so only the pre-planning remains; self-invigilations are refreshed on the next generation. Blocked while the invigilation plan is published."
   resetInvigilations: Boolean!
   "Create or replace the whole constraints record of one invigilator (key: teacherID)."

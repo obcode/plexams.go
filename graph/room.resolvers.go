@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
@@ -22,24 +23,50 @@ func (r *mutationResolver) RemovePrePlannedRoom(ctx context.Context, ancode int,
 	return r.plexams.RemovePrePlannedRoom(ctx, ancode, roomName, mtknr)
 }
 
-// BlockRoomForSlot is the resolver for the blockRoomForSlot field.
-func (r *mutationResolver) BlockRoomForSlot(ctx context.Context, room string, day int, slot int, reason *string) (*model.BlockedRoom, error) {
+// BlockRoomAt is the resolver for the blockRoomAt field.
+func (r *mutationResolver) BlockRoomAt(ctx context.Context, room string, starttime time.Time, reason *string) (*model.BlockedRoom, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
 	return r.plexams.BlockRoomForSlot(ctx, room, day, slot, reason)
 }
 
-// UnblockRoomForSlot is the resolver for the unblockRoomForSlot field.
-func (r *mutationResolver) UnblockRoomForSlot(ctx context.Context, room string, day int, slot int) (bool, error) {
+// UnblockRoomAt is the resolver for the unblockRoomAt field.
+func (r *mutationResolver) UnblockRoomAt(ctx context.Context, room string, starttime time.Time) (bool, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
 	return r.plexams.UnblockRoomForSlot(ctx, room, day, slot)
 }
 
-// BlockRoomForSlots is the resolver for the blockRoomForSlots field.
-func (r *mutationResolver) BlockRoomForSlots(ctx context.Context, room string, slots []*model.SlotInput, reason *string) ([]*model.BlockedRoom, error) {
-	return r.plexams.BlockRoomForSlots(ctx, room, slots, reason)
+// BlockRoomAtTimes is the resolver for the blockRoomAtTimes field.
+func (r *mutationResolver) BlockRoomAtTimes(ctx context.Context, room string, starttimes []*time.Time, reason *string) ([]*model.BlockedRoom, error) {
+	blocks := make([]*model.BlockedRoom, 0, len(starttimes))
+	for _, st := range starttimes {
+		if st == nil {
+			continue
+		}
+		day, slot := r.plexams.SlotForTime(*st)
+		block, err := r.plexams.BlockRoomForSlot(ctx, room, day, slot, reason)
+		if err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, block)
+	}
+	return blocks, nil
 }
 
-// UnblockRoomForSlots is the resolver for the unblockRoomForSlots field.
-func (r *mutationResolver) UnblockRoomForSlots(ctx context.Context, room string, slots []*model.SlotInput) (int, error) {
-	return r.plexams.UnblockRoomForSlots(ctx, room, slots)
+// UnblockRoomAtTimes is the resolver for the unblockRoomAtTimes field.
+func (r *mutationResolver) UnblockRoomAtTimes(ctx context.Context, room string, starttimes []*time.Time) (int, error) {
+	removed := 0
+	for _, st := range starttimes {
+		if st == nil {
+			continue
+		}
+		day, slot := r.plexams.SlotForTime(*st)
+		if ok, err := r.plexams.UnblockRoomForSlot(ctx, room, day, slot); err != nil {
+			return removed, err
+		} else if ok {
+			removed++
+		}
+	}
+	return removed, nil
 }
 
 // SetRoomActive is the resolver for the setRoomActive field.
@@ -80,9 +107,10 @@ func (r *queryResolver) PrePlannedRooms(ctx context.Context) ([]*model.PrePlanne
 	return r.plexams.PrePlannedRooms(ctx)
 }
 
-// RoomsForSlot is the resolver for the roomsForSlot field.
-func (r *queryResolver) RoomsForSlot(ctx context.Context, day int, time int) (*model.RoomsForSlot, error) {
-	return r.plexams.RoomsForSlot(ctx, day, time)
+// RoomsAt is the resolver for the roomsAt field.
+func (r *queryResolver) RoomsAt(ctx context.Context, starttime time.Time) (*model.RoomsForSlot, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
+	return r.plexams.RoomsForSlot(ctx, day, slot)
 }
 
 // RoomsForSlots is the resolver for the roomsForSlots field.
@@ -100,14 +128,16 @@ func (r *queryResolver) PlannedRoomNames(ctx context.Context) ([]string, error) 
 	return r.plexams.PlannedRoomNames(ctx)
 }
 
-// PlannedRoomNamesInSlot is the resolver for the plannedRoomNamesInSlot field.
-func (r *queryResolver) PlannedRoomNamesInSlot(ctx context.Context, day int, time int) ([]string, error) {
-	return r.plexams.PlannedRoomNamesInSlot(ctx, day, time)
+// PlannedRoomNamesAt is the resolver for the plannedRoomNamesAt field.
+func (r *queryResolver) PlannedRoomNamesAt(ctx context.Context, starttime time.Time) ([]string, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
+	return r.plexams.PlannedRoomNamesInSlot(ctx, day, slot)
 }
 
-// PlannedRoomsInSlot is the resolver for the plannedRoomsInSlot field.
-func (r *queryResolver) PlannedRoomsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedRoom, error) {
-	return r.plexams.PlannedRoomsInSlot(ctx, day, time)
+// PlannedRoomsAt is the resolver for the plannedRoomsAt field.
+func (r *queryResolver) PlannedRoomsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedRoom, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
+	return r.plexams.PlannedRoomsInSlot(ctx, day, slot)
 }
 
 // PlannedRoomForNta is the resolver for the plannedRoomForNTA field.
@@ -120,9 +150,10 @@ func (r *queryResolver) BlockedRooms(ctx context.Context) ([]*model.BlockedRoom,
 	return r.plexams.BlockedRooms(ctx)
 }
 
-// RoomsWithFreeSeatsForSlot is the resolver for the roomsWithFreeSeatsForSlot field.
-func (r *queryResolver) RoomsWithFreeSeatsForSlot(ctx context.Context, day int, time int) ([]*model.RoomWithFreeSeats, error) {
-	return r.plexams.RoomsWithFreeSeatsForSlot(ctx, day, time)
+// RoomsWithFreeSeatsAt is the resolver for the roomsWithFreeSeatsAt field.
+func (r *queryResolver) RoomsWithFreeSeatsAt(ctx context.Context, starttime time.Time) ([]*model.RoomWithFreeSeats, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
+	return r.plexams.RoomsWithFreeSeatsForSlot(ctx, day, slot)
 }
 
 // UnplacedExams is the resolver for the unplacedExams field.
@@ -157,3 +188,15 @@ func (r *Resolver) RoomsForSlot() generated.RoomsForSlotResolver { return &rooms
 
 type plannedRoomResolver struct{ *Resolver }
 type roomsForSlotResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *roomsForSlotResolver) Starttime(ctx context.Context, obj *model.RoomsForSlot) (*time.Time, error) {
+	panic(fmt.Errorf("not implemented: Starttime - starttime"))
+}
+*/

@@ -98,7 +98,9 @@ func (p *Plexams) computeRoomsForSlots(ctx context.Context, reporter Reporter) (
 	for slot, roomNames := range slotsWithRoomNames {
 		roomNames := roomNames.ToSlice()
 		sort.Strings(roomNames)
+		starttime, _ := p.TimeForSlot(slot.day, slot.slot)
 		roomsForSlots = append(roomsForSlots, &model.RoomsForSlot{
+			Starttime: starttime,
 			Day:       slot.day,
 			Slot:      slot.slot,
 			RoomNames: roomNames,

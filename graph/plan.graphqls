@@ -8,9 +8,9 @@ extend type Query {
   """
   examersWithExamsPlannedByMe: [Teacher!]!
 
-  preExamsInSlot(day: Int!, time: Int!): [PreExam!]
+  preExamsAt(starttime: Time!): [PreExam!]
 
-  examsInSlot(day: Int!, time: Int!): [PlannedExam!]
+  examsAt(starttime: Time!): [PlannedExam!]
   examsWithoutSlot: [PlannedExam!]!
 
   allowedSlots(ancode: Int!): [Slot!]

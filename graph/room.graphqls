@@ -1,17 +1,17 @@
 extend type Query {
   rooms: [Room!]!
   prePlannedRooms: [PrePlannedRoom!]!
-  roomsForSlot(day: Int!, time: Int!): RoomsForSlot
+  roomsAt(starttime: Time!): RoomsForSlot
   roomsForSlots: [RoomsForSlot!]!
   plannedRooms: [PlannedRoom!]!
   plannedRoomNames: [String!]
-  plannedRoomNamesInSlot(day: Int!, time: Int!): [String!]
-  plannedRoomsInSlot(day: Int!, time: Int!): [PlannedRoom!]
+  plannedRoomNamesAt(starttime: Time!): [String!]
+  plannedRoomsAt(starttime: Time!): [PlannedRoom!]
   plannedRoomForStudent(ancode: Int!, mtknr: String!): PlannedRoom
   "All rooms blocked for a specific slot (not usable there, e.g. otherwise occupied)."
   blockedRooms: [BlockedRoom!]!
-  "All rooms allowed in a slot with their free seats and which exams already use them — for sharing a room (e.g. as a reserve)."
-  roomsWithFreeSeatsForSlot(day: Int!, time: Int!): [RoomWithFreeSeats!]!
+  "All rooms allowed at a time with their free seats and which exams already use them — for sharing a room (e.g. as a reserve)."
+  roomsWithFreeSeatsAt(starttime: Time!): [RoomWithFreeSeats!]!
   "Students that could not be assigned a real room in their slot during the last room generation (the replacement for the old 'No Room' placeholder)."
   unplacedExams: [UnplacedExam!]!
 }
@@ -27,14 +27,14 @@ extend type Mutation {
   ): Boolean!
   "Remove a pre-planned room from an exam (key: ancode/roomName/mtknr). mtknr null = the room for normal students."
   removePrePlannedRoom(ancode: Int!, roomName: String!, mtknr: String): Boolean!
-  "Block a room for a slot so it is not used for planning there (e.g. otherwise occupied). reason is an optional note."
-  blockRoomForSlot(room: String!, day: Int!, slot: Int!, reason: String): BlockedRoom!
-  "Remove a room block for a slot (key: room/day/slot)."
-  unblockRoomForSlot(room: String!, day: Int!, slot: Int!): Boolean!
-  "Block a room for several slots at once (e.g. a whole day or a time range). Returns the stored blocks."
-  blockRoomForSlots(room: String!, slots: [SlotInput!]!, reason: String): [BlockedRoom!]!
-  "Remove the room blocks for several slots at once. Returns how many blocks were removed."
-  unblockRoomForSlots(room: String!, slots: [SlotInput!]!): Int!
+  "Block a room at an exam time so it is not used for planning there (e.g. otherwise occupied). reason is an optional note."
+  blockRoomAt(room: String!, starttime: Time!, reason: String): BlockedRoom!
+  "Remove a room block (key: room + starttime)."
+  unblockRoomAt(room: String!, starttime: Time!): Boolean!
+  "Block a room at several times at once (e.g. a whole day or a time range). Returns the stored blocks."
+  blockRoomAtTimes(room: String!, starttimes: [Time!]!, reason: String): [BlockedRoom!]!
+  "Remove the room blocks at several times at once. Returns how many blocks were removed."
+  unblockRoomAtTimes(room: String!, starttimes: [Time!]!): Int!
   "Activate/deactivate a room (key: name). A deactivated room is not used for planning."
   setRoomActive(name: String!, active: Boolean!): Room!
   "Create a new room (key: name). Errors if a room with that name already exists."
@@ -56,11 +56,6 @@ extend type Subscription {
   importAnnyBookings: LogLine!
 }
 
-"A day/slot pair, used to block a room for several slots at once."
-input SlotInput {
-  day: Int!
-  slot: Int!
-}
 
 input RoomInput {
   name: String!
@@ -107,8 +102,7 @@ type Room {
 }
 
 type RoomsForSlot {
-  day: Int!
-  slot: Int!
+  starttime: Time!
   rooms: [Room!]!
 }
 

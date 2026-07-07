@@ -36,14 +36,16 @@ func (r *queryResolver) ExamersWithExamsPlannedByMe(ctx context.Context) ([]*mod
 	return r.plexams.ExamersWithExamsPlannedByMe(ctx)
 }
 
-// PreExamsInSlot is the resolver for the preExamsInSlot field.
-func (r *queryResolver) PreExamsInSlot(ctx context.Context, day int, time int) ([]*model.PreExam, error) {
-	return r.plexams.PreExamsInSlot(ctx, day, time)
+// PreExamsAt is the resolver for the preExamsAt field.
+func (r *queryResolver) PreExamsAt(ctx context.Context, starttime time.Time) ([]*model.PreExam, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
+	return r.plexams.PreExamsInSlot(ctx, day, slot)
 }
 
-// ExamGroupsInSlot is the resolver for the examGroupsInSlot field.
-func (r *queryResolver) ExamsInSlot(ctx context.Context, day int, time int) ([]*model.PlannedExam, error) {
-	return r.plexams.ExamsInSlot(ctx, day, time)
+// ExamsAt is the resolver for the examsAt field.
+func (r *queryResolver) ExamsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedExam, error) {
+	day, slot := r.plexams.SlotForTime(starttime)
+	return r.plexams.ExamsInSlot(ctx, day, slot)
 }
 
 // ExamsWithoutSlot is the resolver for the examsWithoutSlot field.

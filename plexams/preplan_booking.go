@@ -36,9 +36,9 @@ func slotBlockDuration(starttimes []*model.Starttime) time.Duration {
 	return block
 }
 
-func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[[2]int]*slotBooking, error) {
-	result := make(map[[2]int]*slotBooking, len(slotKeys))
-	if len(slotKeys) == 0 {
+func (p *Plexams) annyBookedByTime(ctx context.Context, starts []time.Time) (map[time.Time]*slotBooking, error) {
+	result := make(map[time.Time]*slotBooking, len(starts))
+	if len(starts) == 0 {
 		return result, nil
 	}
 
@@ -65,13 +65,9 @@ func (p *Plexams) annyBookedBySlot(ctx context.Context, slotKeys [][2]int) (map[
 		}
 	}
 
-	for _, key := range slotKeys {
+	for _, start := range starts {
 		sb := &slotBooking{rooms: map[string]bool{}}
-		result[key] = sb
-		start, err := p.GetStarttime(key[0], key[1])
-		if err != nil || start == nil {
-			continue
-		}
+		result[start] = sb
 		for _, b := range bookings {
 			if b.Room == "" {
 				continue

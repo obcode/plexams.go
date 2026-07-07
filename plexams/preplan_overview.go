@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/preplancalc"
@@ -22,17 +23,17 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 		return nil, err
 	}
 
-	// group pre-exams by slot key; "" = unslotted
+	// group pre-exams by start time; zero time = unslotted
 	type slotKey struct {
-		day, slot int
-		slotted   bool
+		start   time.Time
+		slotted bool
 	}
 	groups := make(map[slotKey][]*model.PreplanExam)
 	keys := make([]slotKey, 0)
 	for _, pe := range preExams {
 		var key slotKey
-		if pe.PlannedDayNumber != nil && pe.PlannedSlotNumber != nil {
-			key = slotKey{day: *pe.PlannedDayNumber, slot: *pe.PlannedSlotNumber, slotted: true}
+		if pe.PlannedStarttime != nil {
+			key = slotKey{start: *pe.PlannedStarttime, slotted: true}
 		}
 		if _, ok := groups[key]; !ok {
 			keys = append(keys, key)
@@ -40,26 +41,23 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 		groups[key] = append(groups[key], pe)
 	}
 
-	// stable order: slotted by day/slot ascending, unslotted bucket last
+	// stable order: slotted by start time ascending, unslotted bucket last
 	sort.Slice(keys, func(i, j int) bool {
 		if keys[i].slotted != keys[j].slotted {
 			return keys[i].slotted // slotted first
 		}
-		if keys[i].day != keys[j].day {
-			return keys[i].day < keys[j].day
-		}
-		return keys[i].slot < keys[j].slot
+		return keys[i].start.Before(keys[j].start)
 	})
 
 	// Anny bookings already made for the slotted slots, so we can show what is
 	// still missing.
-	slotKeys := make([][2]int, 0)
+	starts := make([]time.Time, 0)
 	for _, key := range keys {
 		if key.slotted {
-			slotKeys = append(slotKeys, [2]int{key.day, key.slot})
+			starts = append(starts, key.start)
 		}
 	}
-	booked, err := p.annyBookedBySlot(ctx, slotKeys)
+	booked, err := p.annyBookedByTime(ctx, starts)
 	if err != nil {
 		return nil, err
 	}
@@ -74,11 +72,9 @@ func (p *Plexams) PreplanOverview(ctx context.Context) (*model.PreplanOverview, 
 			Conflicts: preplancalc.ProgramConflicts(exams),
 		}
 		if key.slotted {
-			day, slot := key.day, key.slot
-			if start, err := p.GetStarttime(day, slot); err == nil {
-				need.Starttime = start
-			}
-			if sb := booked[[2]int{day, slot}]; sb != nil {
+			start := key.start
+			need.Starttime = &start
+			if sb := booked[key.start]; sb != nil {
 				preplancalc.ApplyBooking(need.Exahm, sb.exahmSeats, preplancalc.RoomsForKind(exams, "EXaHM", exahmRooms), sb.rooms)
 				preplancalc.ApplyBooking(need.Seb, sb.sebSeats, preplancalc.RoomsForKind(exams, "SEB", sebRooms), sb.rooms)
 			}

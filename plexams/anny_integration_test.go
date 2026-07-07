@@ -81,14 +81,13 @@ func TestAnnyBookedBySlot(t *testing.T) {
 		t.Fatalf("SaveAnnyBookings: %v", err)
 	}
 
-	key := [2]int{1, 1}
-	got, err := p.annyBookedBySlot(ctx, []([2]int){key})
+	got, err := p.annyBookedByTime(ctx, []time.Time{slotStart})
 	if err != nil {
-		t.Fatalf("annyBookedBySlot: %v", err)
+		t.Fatalf("annyBookedByTime: %v", err)
 	}
-	sb := got[key]
+	sb := got[slotStart]
 	if sb == nil {
-		t.Fatal("no slotBooking for slot (1/1)")
+		t.Fatal("no slotBooking for the 08:30 slot")
 	}
 	if sb.exahmSeats != 30 {
 		t.Errorf("exahmSeats = %d, want 30 (only T3.014)", sb.exahmSeats)
@@ -109,9 +108,9 @@ func TestAnnyBookedBySlot(t *testing.T) {
 
 func TestAnnyBookedBySlotEmptyKeys(t *testing.T) {
 	p, ctx, _ := annyTestPlexams(t)
-	got, err := p.annyBookedBySlot(ctx, nil)
+	got, err := p.annyBookedByTime(ctx, nil)
 	if err != nil {
-		t.Fatalf("annyBookedBySlot(nil): %v", err)
+		t.Fatalf("annyBookedByTime(nil): %v", err)
 	}
 	if len(got) != 0 {
 		t.Errorf("got %d entries for no keys, want 0", len(got))

@@ -54,19 +54,14 @@ func (p *Plexams) ConnectPreplanExamToAncode(ctx context.Context, id, ancode int
 	// a FIXED pre-exam has a definitive slot, so the linked ZPA exam is pre-planned into
 	// that slot as a LOCKED plan entry — the contract the future Terminplan generator
 	// uses: locked entries stay fixed, everything else is optimized.
-	if preExam.IsFixed && preExam.PlannedDayNumber != nil && preExam.PlannedSlotNumber != nil {
-		starttime, err := p.GetStarttime(*preExam.PlannedDayNumber, *preExam.PlannedSlotNumber)
-		if err != nil {
-			return nil, fmt.Errorf("cannot resolve start time for ancode %d slot %d/%d: %w",
-				ancode, *preExam.PlannedDayNumber, *preExam.PlannedSlotNumber, err)
-		}
+	if preExam.IsFixed && preExam.PlannedStarttime != nil {
 		if _, err := p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
-			Starttime: starttime,
+			Starttime: preExam.PlannedStarttime,
 			Ancode:    ancode,
 			Locked:    true,
 		}); err != nil {
-			return nil, fmt.Errorf("cannot pre-plan ancode %d into slot %d/%d: %w",
-				ancode, *preExam.PlannedDayNumber, *preExam.PlannedSlotNumber, err)
+			return nil, fmt.Errorf("cannot pre-plan ancode %d into slot %s: %w",
+				ancode, preExam.PlannedStarttime.Format("02.01. 15:04"), err)
 		}
 	}
 

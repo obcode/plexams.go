@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/preplancalc"
@@ -30,13 +31,13 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 		return nil, err
 	}
 
-	slotKeys := make([][2]int, 0)
+	starts := make([]time.Time, 0)
 	for _, pe := range preExams {
-		if pe.PlannedDayNumber != nil && pe.PlannedSlotNumber != nil {
-			slotKeys = append(slotKeys, [2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber})
+		if pe.PlannedStarttime != nil {
+			starts = append(starts, *pe.PlannedStarttime)
 		}
 	}
-	booked, err := p.annyBookedBySlot(ctx, slotKeys)
+	booked, err := p.annyBookedByTime(ctx, starts)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +50,7 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 // reported so the planner can book step by step. SEB exams that fit a single R-building
 // lab (seats <= rBauSebThreshold) are reported as "plan in the R-building" instead of
 // being counted as genuinely unplaced.
-func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []preplancalc.RoomCapacity, booked map[[2]int]*slotBooking, rBauSebThreshold int) *model.PreplanValidation {
+func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []preplancalc.RoomCapacity, booked map[time.Time]*slotBooking, rBauSebThreshold int) *model.PreplanValidation {
 	findings := make([]*model.PreplanFinding, 0)
 	addFinding := func(level model.ValidationLevel, format string, a ...any) {
 		findings = append(findings, &model.PreplanFinding{Level: level, Message: fmt.Sprintf(format, a...)})
@@ -60,10 +61,10 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 	// small SEB exams fit a single R-building lab, so they need no Anny booking at all:
 	// leaving them unassigned is by design, not a failure — grade them as warnings.
 	smallSebNotes := make([]*model.PreplanFinding, 0)
-	bySlot := make(map[[2]int][]*model.PreplanExam)
-	slotOrder := make([][2]int, 0)
+	bySlot := make(map[time.Time][]*model.PreplanExam)
+	slotOrder := make([]time.Time, 0)
 	for _, pe := range preExams {
-		if pe.PlannedDayNumber == nil || pe.PlannedSlotNumber == nil {
+		if pe.PlannedStarttime == nil {
 			unassigned = append(unassigned, pe.ID)
 			if pe.ExamKind == "SEB" && pe.ExpectedStudents <= rBauSebThreshold {
 				smallSebNotes = append(smallSebNotes, &model.PreplanFinding{
@@ -77,18 +78,13 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 			}
 			continue
 		}
-		key := [2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber}
+		key := *pe.PlannedStarttime
 		if _, ok := bySlot[key]; !ok {
 			slotOrder = append(slotOrder, key)
 		}
 		bySlot[key] = append(bySlot[key], pe)
 	}
-	sort.Slice(slotOrder, func(i, j int) bool {
-		if slotOrder[i][0] != slotOrder[j][0] {
-			return slotOrder[i][0] < slotOrder[j][0]
-		}
-		return slotOrder[i][1] < slotOrder[j][1]
-	})
+	sort.Slice(slotOrder, func(i, j int) bool { return slotOrder[i].Before(slotOrder[j]) })
 
 	if genuineUnassigned > 0 {
 		addFinding(model.ValidationLevelError, "%s ohne Slot — gebuchte Anny-Plätze reichen nicht, bitte mehr Anny-Slots buchen",
@@ -143,15 +139,16 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 // (can't fit even fully booked) or — when within capacity — the Anny bookings still
 // missing to cover the demand. Both are errors: the slot cannot host the exams as
 // booked.
-func kindBookingFindings(key [2]int, kind string, needed, available int, rooms []preplancalc.RoomCapacity, sb *slotBooking) []*model.PreplanFinding {
+func kindBookingFindings(key time.Time, kind string, needed, available int, rooms []preplancalc.RoomCapacity, sb *slotBooking) []*model.PreplanFinding {
 	if needed == 0 {
 		return nil
 	}
+	slotLabel := key.Format("Mo 02.01. 15:04")
 	if needed > available {
 		return []*model.PreplanFinding{{
 			Level: model.ValidationLevelError,
-			Message: fmt.Sprintf("Slot %d/%d: %s %d Plätze nötig, nur %d verfügbar (Kapazität reicht nicht)",
-				key[0], key[1], kind, needed, available),
+			Message: fmt.Sprintf("Slot %s: %s %d Plätze nötig, nur %d verfügbar (Kapazität reicht nicht)",
+				slotLabel, kind, needed, available),
 		}}
 	}
 
@@ -170,8 +167,8 @@ func kindBookingFindings(key [2]int, kind string, needed, available int, rooms [
 	}
 
 	toBook := preplancalc.RoomsToBook(rooms, needed-bookedSeats, bookedRooms)
-	msg := fmt.Sprintf("Slot %d/%d: %s noch %d Plätze zu buchen (gebucht %d von %d nötig)",
-		key[0], key[1], kind, needed-bookedSeats, bookedSeats, needed)
+	msg := fmt.Sprintf("Slot %s: %s noch %d Plätze zu buchen (gebucht %d von %d nötig)",
+		slotLabel, kind, needed-bookedSeats, bookedSeats, needed)
 	if len(toBook) > 0 {
 		msg += " — z. B. " + joinStrings(toBook)
 	}
@@ -214,20 +211,20 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	}
 
 	// booked Anny capacity per regular slot
-	allKeys := make([][2]int, 0, len(regularSlots))
+	allStarts := make([]time.Time, 0, len(regularSlots))
 	for _, s := range regularSlots {
-		allKeys = append(allKeys, [2]int{s.DayNumber, s.SlotNumber})
+		allStarts = append(allStarts, s.Starttime)
 	}
-	booked, err := p.annyBookedBySlot(ctx, allKeys)
+	booked, err := p.annyBookedByTime(ctx, allStarts)
 	if err != nil {
 		return nil, err
 	}
 
 	// candidate slots: only those with booked Anny rooms; usable capacity = 90%
 	slots := make([]*preplanSlot, 0)
-	slotIdxByKey := make(map[[2]int]int)
+	slotIdxByStart := make(map[time.Time]int)
 	for _, s := range regularSlots {
-		sb := booked[[2]int{s.DayNumber, s.SlotNumber}]
+		sb := booked[s.Starttime]
 		if sb == nil {
 			continue
 		}
@@ -235,8 +232,8 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		if capacity <= 0 {
 			continue
 		}
-		slotIdxByKey[[2]int{s.DayNumber, s.SlotNumber}] = len(slots)
-		slots = append(slots, &preplanSlot{day: s.DayNumber, slotNo: s.SlotNumber, capacity: capacity})
+		slotIdxByStart[s.Starttime] = len(slots)
+		slots = append(slots, &preplanSlot{start: s.Starttime, capacity: capacity})
 	}
 
 	// MUC.DAI slots are reserved: an exam with a MUC.DAI program (DE/GS/ID) may ONLY be
@@ -247,7 +244,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	}
 	mucdaiSlotIdx := make(map[int]bool)
 	for _, s := range p.semesterConfig.MucDaiSlots {
-		if idx, ok := slotIdxByKey[[2]int{s.DayNumber, s.SlotNumber}]; ok {
+		if idx, ok := slotIdxByStart[s.Starttime]; ok {
 			mucdaiSlotIdx[idx] = true
 		}
 	}
@@ -307,7 +304,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		seats, hasExahm, minID := 0, false, preExams[members[0]].ID
 		programs := map[string]bool{}
 		anyFixed := false
-		var fixedKey *[2]int
+		var fixedKey *time.Time
 		for _, i := range members {
 			pe := preExams[i]
 			seats += pe.ExpectedStudents
@@ -320,30 +317,30 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 			if pe.ID < minID {
 				minID = pe.ID
 			}
-			if pe.IsFixed && pe.PlannedDayNumber != nil && pe.PlannedSlotNumber != nil {
+			if pe.IsFixed && pe.PlannedStarttime != nil {
 				anyFixed = true
-				k := [2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber}
+				k := *pe.PlannedStarttime
 				fixedKey = &k
 			}
 		}
 
 		// pin key: a fixed member's slot, or (keepAssigned) the common current slot
-		var pinKey *[2]int
+		var pinKey *time.Time
 		fixed := false
 		switch {
 		case anyFixed:
 			pinKey, fixed = fixedKey, true
 		case keepAssigned:
 			if k := commonSlotKey(preExams, members); k != nil {
-				if _, ok := slotIdxByKey[*k]; ok {
+				if _, ok := slotIdxByStart[*k]; ok {
 					pinKey = k
 				}
 			}
 		}
 
 		if pinKey != nil {
-			ps := &preplanSlot{day: pinKey[0], slotNo: pinKey[1]}
-			if idx, ok := slotIdxByKey[*pinKey]; ok {
+			ps := &preplanSlot{start: *pinKey}
+			if idx, ok := slotIdxByStart[*pinKey]; ok {
 				ps = slots[idx]
 				fixedUsed[idx] += seats
 				for prog := range programs {
@@ -452,12 +449,10 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	// persist
 	for i, pe := range preExams {
 		if ps := finalSlot[i]; ps != nil {
-			day, slot := ps.day, ps.slotNo
-			pe.PlannedDayNumber = &day
-			pe.PlannedSlotNumber = &slot
+			start := ps.start
+			pe.PlannedStarttime = &start
 		} else {
-			pe.PlannedDayNumber = nil
-			pe.PlannedSlotNumber = nil
+			pe.PlannedStarttime = nil
 		}
 		pe.IsFixed = finalFixed[i]
 		if _, err := p.dbClient.ReplacePreplanExam(ctx, pe); err != nil {
@@ -465,13 +460,13 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 	}
 
-	slotKeys := make([][2]int, 0)
+	starts := make([]time.Time, 0)
 	for _, pe := range preExams {
-		if pe.PlannedDayNumber != nil && pe.PlannedSlotNumber != nil {
-			slotKeys = append(slotKeys, [2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber})
+		if pe.PlannedStarttime != nil {
+			starts = append(starts, *pe.PlannedStarttime)
 		}
 	}
-	bookedAfter, err := p.annyBookedBySlot(ctx, slotKeys)
+	bookedAfter, err := p.annyBookedByTime(ctx, starts)
 	if err != nil {
 		return nil, err
 	}
@@ -487,19 +482,19 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	return result, nil
 }
 
-// commonSlotKey returns the slot key shared by all members, or nil when they are not
-// all in the same slot.
-func commonSlotKey(preExams []*model.PreplanExam, members []int) *[2]int {
-	var key *[2]int
+// commonSlotKey returns the start time shared by all members, or nil when they are not
+// all at the same start time.
+func commonSlotKey(preExams []*model.PreplanExam, members []int) *time.Time {
+	var key *time.Time
 	for _, i := range members {
 		pe := preExams[i]
-		if pe.PlannedDayNumber == nil || pe.PlannedSlotNumber == nil {
+		if pe.PlannedStarttime == nil {
 			return nil
 		}
-		k := [2]int{*pe.PlannedDayNumber, *pe.PlannedSlotNumber}
+		k := *pe.PlannedStarttime
 		if key == nil {
 			key = &k
-		} else if *key != k {
+		} else if !key.Equal(k) {
 			return nil
 		}
 	}

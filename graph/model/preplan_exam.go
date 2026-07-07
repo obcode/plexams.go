@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 // PreplanExam is a manually entered pseudo-exam for the SEB/EXaHM pre-planning of the
 // (next) semester, captured before the ZPA exam list and Primuss data exist. It
 // lives in the semester's own database (collection preplan_exams). Once the real ZPA
@@ -15,10 +17,10 @@ type PreplanExam struct {
 	Programs         []string `json:"programs" bson:"programs"` // StudyProgram shortnames
 	ExpectedStudents int      `json:"expectedStudents" bson:"expectedstudents"`
 	Duration         *int     `json:"duration,omitempty" bson:"duration,omitempty"`
-	// PlannedDayNumber / PlannedSlotNumber assign the pre-exam to a slot (both nil
-	// = not yet slotted).
-	PlannedDayNumber  *int `json:"plannedDayNumber,omitempty" bson:"planneddaynumber,omitempty"`
-	PlannedSlotNumber *int `json:"plannedSlotNumber,omitempty" bson:"plannedslotnumber,omitempty"`
+	// PlannedStarttime is the absolute start time the pre-exam is assigned to (nil = not
+	// yet placed). This is the source of truth — there are no day/slot ordinals; a time
+	// outside the (next) semester's period simply has no matching booked slot.
+	PlannedStarttime *time.Time `json:"plannedStarttime,omitempty" bson:"plannedstarttime,omitempty"`
 	// IsFixed pins the current slot: it survives a re-run of the automatic
 	// assignment (which otherwise re-plans all non-fixed pre-exams).
 	IsFixed bool `json:"isFixed" bson:"isfixed"`

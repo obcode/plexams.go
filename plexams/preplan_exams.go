@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -50,8 +51,7 @@ func (p *Plexams) UpdatePreplanExam(ctx context.Context, id int, input *model.Pr
 	}
 	// preserve fields not part of the input
 	preplanExam.ID = existing.ID
-	preplanExam.PlannedDayNumber = existing.PlannedDayNumber
-	preplanExam.PlannedSlotNumber = existing.PlannedSlotNumber
+	preplanExam.PlannedStarttime = existing.PlannedStarttime
 	preplanExam.Ancode = existing.Ancode
 
 	if _, err := p.dbClient.ReplacePreplanExam(ctx, preplanExam); err != nil {
@@ -65,9 +65,10 @@ func (p *Plexams) DeletePreplanExam(ctx context.Context, id int) (bool, error) {
 	return p.dbClient.DeletePreplanExam(ctx, id)
 }
 
-// SetPreplanExamSlot assigns (or, with nil day/slot, clears) the slot of a pre-exam.
-// A given slot must be a real slot of the semester.
-func (p *Plexams) SetPreplanExamSlot(ctx context.Context, id int, dayNumber, slotNumber *int) (*model.PreplanExam, error) {
+// SetPreplanExamTime assigns (or, with nil, clears) the absolute start time of a
+// pre-exam. Any time is accepted (the source of truth); a time that matches no booked
+// slot simply leaves the exam effectively unplaced for capacity purposes.
+func (p *Plexams) SetPreplanExamTime(ctx context.Context, id int, starttime *time.Time) (*model.PreplanExam, error) {
 	preplanExam, err := p.dbClient.PreplanExam(ctx, id)
 	if err != nil {
 		return nil, err
@@ -76,18 +77,11 @@ func (p *Plexams) SetPreplanExamSlot(ctx context.Context, id int, dayNumber, slo
 		return nil, fmt.Errorf("pre-exam %d not found", id)
 	}
 
-	switch {
-	case dayNumber == nil && slotNumber == nil:
-		preplanExam.PlannedDayNumber = nil
-		preplanExam.PlannedSlotNumber = nil
-	case dayNumber != nil && slotNumber != nil:
-		if _, err := p.GetStarttime(*dayNumber, *slotNumber); err != nil {
-			return nil, fmt.Errorf("invalid slot (%d/%d): %w", *dayNumber, *slotNumber, err)
-		}
-		preplanExam.PlannedDayNumber = dayNumber
-		preplanExam.PlannedSlotNumber = slotNumber
-	default:
-		return nil, fmt.Errorf("dayNumber and slotNumber must both be set or both be empty")
+	if starttime == nil {
+		preplanExam.PlannedStarttime = nil
+	} else {
+		t := *starttime
+		preplanExam.PlannedStarttime = &t
 	}
 
 	if _, err := p.dbClient.ReplacePreplanExam(ctx, preplanExam); err != nil {
@@ -107,7 +101,7 @@ func (p *Plexams) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (
 	if preplanExam == nil {
 		return nil, fmt.Errorf("pre-exam %d not found", id)
 	}
-	if fixed && (preplanExam.PlannedDayNumber == nil || preplanExam.PlannedSlotNumber == nil) {
+	if fixed && preplanExam.PlannedStarttime == nil {
 		return nil, fmt.Errorf("cannot fix pre-exam %d: it has no slot yet", id)
 	}
 
@@ -122,18 +116,13 @@ func (p *Plexams) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (
 	// Without this the fix would stay dangling on the ZPA exam after un-fixing.
 	if preplanExam.Ancode != nil {
 		if fixed {
-			starttime, err := p.GetStarttime(*preplanExam.PlannedDayNumber, *preplanExam.PlannedSlotNumber)
-			if err != nil {
-				return nil, fmt.Errorf("cannot resolve start time for ancode %d slot %d/%d: %w",
-					*preplanExam.Ancode, *preplanExam.PlannedDayNumber, *preplanExam.PlannedSlotNumber, err)
-			}
 			if _, err := p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
-				Starttime: starttime,
+				Starttime: preplanExam.PlannedStarttime,
 				Ancode:    *preplanExam.Ancode,
 				Locked:    true,
 			}); err != nil {
-				return nil, fmt.Errorf("cannot pin ancode %d into slot %d/%d: %w",
-					*preplanExam.Ancode, *preplanExam.PlannedDayNumber, *preplanExam.PlannedSlotNumber, err)
+				return nil, fmt.Errorf("cannot pin ancode %d into slot %s: %w",
+					*preplanExam.Ancode, preplanExam.PlannedStarttime.Format("02.01. 15:04"), err)
 			}
 		} else {
 			if err := p.dbClient.RemovePlanEntry(ctx, *preplanExam.Ancode); err != nil {

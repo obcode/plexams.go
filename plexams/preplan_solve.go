@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/plexams/optimize"
 )
@@ -38,10 +39,11 @@ const (
 	preplanEjectDepth   = 3 // max units kicked out of a slot to free capacity
 )
 
-// preplanSlot is a candidate MUC.DAI slot that already has Anny rooms booked.
+// preplanSlot is a candidate MUC.DAI slot that already has Anny rooms booked,
+// identified by its absolute start time (no day/slot ordinals).
 type preplanSlot struct {
-	day, slotNo int
-	capacity    int // usable seats (~90% of the booked physical seats)
+	start    time.Time
+	capacity int // usable seats (~90% of the booked physical seats)
 }
 
 // preplanUnit is a set of pre-exams that must share a slot (same-slot), treated as one
@@ -65,22 +67,25 @@ type preplanUnit struct {
 }
 
 // proximityPenalty is the soft cost of placing two conflicting units in slots a and b:
-// p0 when in the same slot, scaled down with temporal distance, and 0 once they are on
-// different days (different days are always "far enough"). Within a day it rewards the
-// maximum slot distance.
+// p0 when at the same start time, scaled down with the time gap on the same calendar
+// day, and 0 once they are on different days (different days are always "far enough").
+// Within a day it rewards the maximum time distance (a full working day ~8h apart is
+// treated as far enough).
 func proximityPenalty(a, b *preplanSlot, p0 int) int {
-	dist := absInt(a.day-b.day)*10 + absInt(a.slotNo-b.slotNo)
-	if dist >= 10 {
-		return 0
+	ay, am, ad := a.start.Date()
+	by, bm, bd := b.start.Date()
+	if ay != by || am != bm || ad != bd {
+		return 0 // different calendar day is always "far enough"
 	}
-	return p0 * (10 - dist) / 10
-}
-
-func absInt(x int) int {
-	if x < 0 {
-		return -x
+	// same calendar day: full at the same start time, decreasing with the time gap, but
+	// never zero (a same-day pair must always cost more than a different-day one, so the
+	// solver keeps preferring different days).
+	gapH := math.Abs(a.start.Sub(b.start).Hours())
+	p := int(float64(p0) * (8 - gapH) / 8)
+	if p < 1 {
+		p = 1
 	}
-	return x
+	return p
 }
 
 // solvePreplan distributes the units over the candidate slots. fixedUsed/fixedProgs

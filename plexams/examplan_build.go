@@ -55,12 +55,13 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 
 	// --- slots ---
 	slotIdx := make(map[[2]int]int, len(sc.Slots))
-	slotKeys := make([][2]int, 0, len(sc.Slots))
+	slotStarts := make([]time.Time, 0, len(sc.Slots))
+	idxByStart := make(map[time.Time]int, len(sc.Slots))
 	slots := make([]examplan.Slot, 0, len(sc.Slots))
 	for _, s := range sc.Slots {
-		key := [2]int{s.DayNumber, s.SlotNumber}
-		slotIdx[key] = len(slots)
-		slotKeys = append(slotKeys, key)
+		slotIdx[[2]int{s.DayNumber, s.SlotNumber}] = len(slots)
+		idxByStart[s.Starttime] = len(slots)
+		slotStarts = append(slotStarts, s.Starttime)
 		slots = append(slots, examplan.Slot{
 			SlotRef: examplan.SlotRef{Start: s.Starttime},
 			// Seats caps how many students may be examined at this start time. The
@@ -68,9 +69,9 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			Seats: sc.MaxSeatsPerSlot,
 		})
 	}
-	if booked, err := p.annyBookedBySlot(ctx, slotKeys); err == nil {
-		for key, sb := range booked {
-			if idx, ok := slotIdx[key]; ok && sb != nil {
+	if booked, err := p.annyBookedByTime(ctx, slotStarts); err == nil {
+		for start, sb := range booked {
+			if idx, ok := idxByStart[start]; ok && sb != nil {
 				slots[idx].ExahmSeats = sb.exahmSeats
 				slots[idx].SebSeats = sb.sebSeats
 			}

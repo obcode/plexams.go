@@ -1,6 +1,15 @@
 package plexams
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+// at maps a (day, slotNo) grid position to a distinct absolute start time: a distinct
+// calendar day per day, 2h-spaced start times (08:30, 10:30, ...) per slot within the day.
+func at(day, slotNo int) time.Time {
+	return time.Date(2026, 2, day, 6+2*slotNo, 30, 0, 0, time.Local)
+}
 
 func progSet(ps ...string) map[string]bool {
 	m := make(map[string]bool, len(ps))
@@ -56,9 +65,9 @@ func TestSolvePreplanPlacesAllWhenCapacityAllows(t *testing.T) {
 		unit(6, 20, true, "IF"),
 	}
 	slots := []*preplanSlot{
-		{day: 1, slotNo: 1, capacity: 108},
-		{day: 2, slotNo: 1, capacity: 108},
-		{day: 3, slotNo: 1, capacity: 108},
+		{start: at(1, 1), capacity: 108},
+		{start: at(2, 1), capacity: 108},
+		{start: at(3, 1), capacity: 108},
 	}
 	fu, fp := emptyFixed(len(slots))
 
@@ -78,7 +87,7 @@ func TestSolvePreplanDropsSmallestWhenTight(t *testing.T) {
 		unit(2, 40, false, "P2"),
 		unit(3, 10, false, "P3"),
 	}
-	slots := []*preplanSlot{{day: 1, slotNo: 1, capacity: 100}}
+	slots := []*preplanSlot{{start: at(1, 1), capacity: 100}}
 	fu, fp := emptyFixed(len(slots))
 
 	assign := solvePreplan(units, slots, fu, fp)
@@ -98,8 +107,8 @@ func TestSolvePreplanDropsSmallestWhenTight(t *testing.T) {
 func TestSolvePreplanSeparatesSameProgramBySlot(t *testing.T) {
 	units := []*preplanUnit{unit(1, 10, false, "IF"), unit(2, 10, false, "IF")}
 	slots := []*preplanSlot{
-		{day: 1, slotNo: 1, capacity: 100},
-		{day: 1, slotNo: 2, capacity: 100},
+		{start: at(1, 1), capacity: 100},
+		{start: at(1, 2), capacity: 100},
 	}
 	fu, fp := emptyFixed(len(slots))
 
@@ -124,9 +133,9 @@ func TestSolvePreplanRespectsAllowedSlots(t *testing.T) {
 		mucdai,
 	}
 	slots := []*preplanSlot{
-		{day: 1, slotNo: 1, capacity: 108},
-		{day: 2, slotNo: 1, capacity: 108},
-		{day: 3, slotNo: 1, capacity: 108}, // the only allowed slot for the MUC.DAI unit
+		{start: at(1, 1), capacity: 108},
+		{start: at(2, 1), capacity: 108},
+		{start: at(3, 1), capacity: 108}, // the only allowed slot for the MUC.DAI unit
 	}
 	fu, fp := emptyFixed(len(slots))
 
@@ -149,9 +158,9 @@ func TestSolvePreplanExplicitConflictSpreads(t *testing.T) {
 	b.conflicts = map[int]int{0: preplanExplicitConflictWeight}
 	units := []*preplanUnit{a, b}
 	slots := []*preplanSlot{
-		{day: 1, slotNo: 1, capacity: 100},
-		{day: 1, slotNo: 2, capacity: 100},
-		{day: 2, slotNo: 1, capacity: 100},
+		{start: at(1, 1), capacity: 100},
+		{start: at(1, 2), capacity: 100},
+		{start: at(2, 1), capacity: 100},
 	}
 	fu, fp := emptyFixed(len(slots))
 
@@ -159,7 +168,7 @@ func TestSolvePreplanExplicitConflictSpreads(t *testing.T) {
 	if countUnplaced(assign) != 0 {
 		t.Fatalf("both should be placed: %v", assign)
 	}
-	if slots[assign[0]].day == slots[assign[1]].day {
+	if sameCalendarDay(slots[assign[0]].start, slots[assign[1]].start) {
 		t.Errorf("explicit-conflict units should be on different days: %v", assign)
 	}
 }
@@ -175,8 +184,8 @@ func TestSolvePreplanCompatibleMayShareSlot(t *testing.T) {
 	// one roomy slot + one tiny slot: without the exemption the solver would push b into
 	// the tiny slot (and fail capacity); the exemption lets both share the roomy one.
 	slots := []*preplanSlot{
-		{day: 1, slotNo: 1, capacity: 100},
-		{day: 1, slotNo: 2, capacity: 10},
+		{start: at(1, 1), capacity: 100},
+		{start: at(1, 2), capacity: 10},
 	}
 	fu, fp := emptyFixed(len(slots))
 
@@ -191,14 +200,14 @@ func TestSolvePreplanCompatibleMayShareSlot(t *testing.T) {
 }
 
 func TestProximityPenalty(t *testing.T) {
-	s := func(d, n int) *preplanSlot { return &preplanSlot{day: d, slotNo: n} }
+	s := func(d, n int) *preplanSlot { return &preplanSlot{start: at(d, n)} }
 	cases := []struct {
 		a, b *preplanSlot
 		want int
 	}{
-		{s(1, 1), s(1, 1), 100}, // same slot → full
-		{s(1, 1), s(1, 2), 90},  // same day, 1 apart
-		{s(1, 1), s(1, 5), 60},  // same day, 4 apart
+		{s(1, 1), s(1, 1), 100}, // same start time → full
+		{s(1, 1), s(1, 2), 75},  // same day, 2h apart → p0*(8-2)/8
+		{s(1, 1), s(1, 5), 1},   // same day, 8h apart → floored to 1 (never free)
 		{s(1, 1), s(2, 1), 0},   // different day → 0
 		{s(1, 1), s(3, 3), 0},   // far → 0
 	}
@@ -214,9 +223,9 @@ func TestSolvePreplanSpreadsAcrossDays(t *testing.T) {
 	units := []*preplanUnit{unit(1, 10, false, "IF"), unit(2, 10, false, "IF")}
 	// two slots on day 1, one on day 2; the two IF units should land on different days.
 	slots := []*preplanSlot{
-		{day: 1, slotNo: 1, capacity: 100},
-		{day: 1, slotNo: 2, capacity: 100},
-		{day: 2, slotNo: 1, capacity: 100},
+		{start: at(1, 1), capacity: 100},
+		{start: at(1, 2), capacity: 100},
+		{start: at(2, 1), capacity: 100},
 	}
 	fu, fp := emptyFixed(len(slots))
 
@@ -225,7 +234,7 @@ func TestSolvePreplanSpreadsAcrossDays(t *testing.T) {
 	if countUnplaced(assign) != 0 {
 		t.Fatalf("both units should be placed: %v", assign)
 	}
-	if slots[assign[0]].day == slots[assign[1]].day {
+	if sameCalendarDay(slots[assign[0]].start, slots[assign[1]].start) {
 		t.Errorf("the two same-program units should be on different days: %v", assign)
 	}
 }

@@ -135,7 +135,26 @@ capacity; eventual full removal of day/slot from GraphQL/GUI.
   plexams build GLUE still forms [2]int{day,slot} keys from model.Slot for the SHARED
   annyBookedBySlot helper (6 callers incl. preplan) — that signature de-keying is deliberately
   left as a separate low-value step.
-- Remaining Stufe 2 (branch feature/slotless-stufe2): **B** finer/free start times just need
+- **Diagnostics rename DONE** (branch, refactor(graphql)): ExamScheduleDiagnostics GUI fields
+  renamed to time meaning (sameSlot→overlaps, adjacent→tooClose, studentsWithAdjacent→
+  studentsWithTooClose, maxSlotSeats→maxSeatsAt, slotsUsed→starttimesUsed, maxExamsPerSlot→
+  maxExamsAt; sameDay/nextDay/within3/further kept). Internal examplan.Diagnostics buckets
+  unchanged; only the GraphQL names + exam_schedule_map.go mapping moved. gqlgen regenerated.
+- **PROJECT CORE GOAL MET.** All exam PLACEMENT storage is absolute-time, conflicts/rooms/invig
+  interval-based, GraphQL time-based, solver objective granularity-correct + per-time cap. The
+  branch feature/slotless-stufe2 has 6 green commits (A2a, C, writeback, SlotRef removal,
+  diagnostics rename). Two LARGE internal-only refactors remain, both scoped:
+  1. **PreplanExam storage → time** — the LAST slot-based STORAGE (bson planneddaynumber/
+     plannedslotnumber; GraphQL already exposes plannedStarttime via a converting resolver).
+     ~51 day/slot uses across preplan_assign.go (30 — a MUC.DAI slot-assignment solver keyed on
+     [2]int + anny per-slot capacity), preplan_exams/connect/overview, csv_export. The only
+     remaining period-shift bug, but a narrow pre-planning feature, hard to test w/o anny+MUC.DAI
+     data. Own focused unit.
+  2. **Derived display ordinals** (PlanEntry/Slot/rooms DayNumber, bson:"-") + SlotResolver +
+     GetStarttime/SlotForTime + rooms_for_slots.go + ExamDay.Number — ~30 files (exports/PDF/CSV/
+     email/ICS/invig). Config-DERIVED each read → NO storage bug; pure churn. Recommendation:
+     keep as harmless internal helpers unless a full mechanical pass is wanted.
+- Superseded detail: **B** finer/free start times just need
   the planner to add StartTimes to config — candidates already flow through per-(day,slot); the
   cleanup is de-keying buildExamPlanProblem/AllowedSlots/MucDaiSlots + writeback to time and
   removing SlotRef.Day/.Slot; **A2b** OPTIONAL further recalibration of closeness to a

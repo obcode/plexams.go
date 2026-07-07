@@ -605,10 +605,8 @@ func (p *Plexams) csvPreplan() csvDataset {
 			rows := make([][]string, 0, len(exams))
 			for _, e := range exams {
 				plannedDate, plannedTime := "", ""
-				if e.PlannedDayNumber != nil && e.PlannedSlotNumber != nil {
-					if t := p.getSlotTime(*e.PlannedDayNumber, *e.PlannedSlotNumber); !t.IsZero() {
-						plannedDate, plannedTime = t.Format(csvDateLayout), t.Format("15:04")
-					}
+				if e.PlannedStarttime != nil {
+					plannedDate, plannedTime = e.PlannedStarttime.Format(csvDateLayout), e.PlannedStarttime.Format("15:04")
 				}
 				rows = append(rows, []string{
 					strconv.Itoa(e.ID), e.ExamKind, strconv.Itoa(e.ExamerID), e.ExamerName, e.Module,
@@ -638,29 +636,20 @@ func (p *Plexams) csvPreplan() csvDataset {
 					continue
 				}
 
-				var plannedDay, plannedSlot *int
+				var plannedStarttime *time.Time
 				if date, t := cell(row, 8), cell(row, 9); date != "" && t != "" {
 					when, err := time.ParseInLocation(csvDateTimeLayout, date+" "+t, time.Local)
 					if err != nil {
 						res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d (id %d): plannedDate/Time: %v", i+2, id, err))
 						continue
 					}
-					dur := 90
-					if duration != nil {
-						dur = *duration
-					}
-					if slot, err := p.getSlotForTime(when, dur); err == nil && slot != nil {
-						d, s := slot.DayNumber, slot.SlotNumber
-						plannedDay, plannedSlot = &d, &s
-					} else {
-						res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d (id %d): kein Slot für %s (außerhalb des Zeitraums)", i+2, id, when.Format(csvDateTimeLayout)))
-					}
+					plannedStarttime = &when
 				}
 
 				exam := &model.PreplanExam{
 					ID: id, ExamKind: cell(row, 1), ExamerID: examerID, ExamerName: cell(row, 3),
 					Module: cell(row, 4), Programs: s2strs(cell(row, 5)), ExpectedStudents: expected,
-					Duration: duration, PlannedDayNumber: plannedDay, PlannedSlotNumber: plannedSlot,
+					Duration: duration, PlannedStarttime: plannedStarttime,
 					IsFixed: s2b(cell(row, 10)), NotSameSlot: notSame, CanShareSlot: canShare,
 					Ancode: ancode, Notes: cell(row, 14),
 				}

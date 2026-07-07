@@ -29,11 +29,7 @@ func (r *mutationResolver) DeletePreplanExam(ctx context.Context, id int) (bool,
 
 // SetPreplanExamTime is the resolver for the setPreplanExamTime field.
 func (r *mutationResolver) SetPreplanExamTime(ctx context.Context, id int, starttime *time.Time) (*model.PreplanExam, error) {
-	if starttime == nil {
-		return r.plexams.SetPreplanExamSlot(ctx, id, nil, nil)
-	}
-	day, slot := r.plexams.SlotForTime(*starttime)
-	return r.plexams.SetPreplanExamSlot(ctx, id, &day, &slot)
+	return r.plexams.SetPreplanExamTime(ctx, id, starttime)
 }
 
 // ConnectPreplanExamToAncode is the resolver for the connectPreplanExamToAncode field.
@@ -68,13 +64,7 @@ func (r *mutationResolver) SetPreplanExamConstraints(ctx context.Context, id int
 
 // PlannedStarttime is the resolver for the plannedStarttime field.
 func (r *preplanExamResolver) PlannedStarttime(ctx context.Context, obj *model.PreplanExam) (*time.Time, error) {
-	if obj.PlannedDayNumber == nil || obj.PlannedSlotNumber == nil {
-		return nil, nil
-	}
-	if st, err := r.plexams.GetStarttime(*obj.PlannedDayNumber, *obj.PlannedSlotNumber); err == nil {
-		return st, nil
-	}
-	return nil, nil
+	return obj.PlannedStarttime, nil
 }
 
 // PreplanExams is the resolver for the preplanExams field.

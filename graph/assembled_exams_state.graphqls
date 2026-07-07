@@ -15,6 +15,13 @@ extend type Mutation {
   previously cached assembled exams.
   """
   generateAssembledExams: GenerateAssembledExamsResult!
+
+  """
+  Delete the cached assembled exams and their state, undoing a generation; they can be
+  rebuilt with generateAssembledExams. Returns how many assembled exams were removed.
+  Blocked while a validation or transfer/email is running.
+  """
+  resetAssembledExams: Int!
 }
 
 type AssembledExamsState {

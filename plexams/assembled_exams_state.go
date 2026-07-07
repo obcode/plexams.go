@@ -43,6 +43,22 @@ func (p *Plexams) AssembledExamsState(ctx context.Context) (*model.AssembledExam
 	return state, nil
 }
 
+// ResetAssembledExams deletes the cached assembled exams and their state, undoing a
+// generation; they can be rebuilt with GenerateAssembledExams. Returns how many
+// assembled exams were removed. Blocked while a validation or transfer/email is
+// running.
+func (p *Plexams) ResetAssembledExams(ctx context.Context) (int, error) {
+	if !p.WritesAllowed() {
+		return 0, fmt.Errorf("a validation or transfer/email is running, cannot reset now")
+	}
+	n, err := p.dbClient.DropAssembledExams(ctx)
+	if err != nil {
+		return 0, err
+	}
+	p.unmarkCondition(ctx, condAssembledExams)
+	return int(n), nil
+}
+
 // GenerateAssembledExams regenerates the cached assembled exams and returns the new
 // (no longer dirty) state together with the changes vs the previous cache.
 func (p *Plexams) GenerateAssembledExams(ctx context.Context) (*model.GenerateAssembledExamsResult, error) {

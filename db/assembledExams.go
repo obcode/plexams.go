@@ -38,6 +38,22 @@ func (db *DB) CountAssembledExams(ctx context.Context) (int64, error) {
 	return db.Client.Database(db.databaseName).Collection(collectionAssembledExams).CountDocuments(ctx, bson.M{})
 }
 
+// DropAssembledExams removes the cached assembled exams and their state document,
+// undoing a generation. Returns how many assembled exams were removed.
+func (db *DB) DropAssembledExams(ctx context.Context) (int64, error) {
+	n, err := db.CountAssembledExams(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, name := range []string{collectionAssembledExams, collectionAssembledExamsState} {
+		if err := db.Client.Database(db.databaseName).Collection(name).Drop(ctx); err != nil {
+			log.Error().Err(err).Str("collection", name).Msg("cannot drop collection")
+			return 0, err
+		}
+	}
+	return n, nil
+}
+
 func (db *DB) GetAssembledExams(ctx context.Context) ([]*model.AssembledExam, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionAssembledExams)
 

@@ -15,6 +15,11 @@ func (r *mutationResolver) GenerateAssembledExams(ctx context.Context) (*model.G
 	return r.plexams.GenerateAssembledExams(ctx)
 }
 
+// ResetAssembledExams is the resolver for the resetAssembledExams field.
+func (r *mutationResolver) ResetAssembledExams(ctx context.Context) (int, error) {
+	return r.plexams.ResetAssembledExams(ctx)
+}
+
 // AssembledExamsState is the resolver for the assembledExamsState field.
 func (r *queryResolver) AssembledExamsState(ctx context.Context) (*model.AssembledExamsState, error) {
 	return r.plexams.AssembledExamsState(ctx)

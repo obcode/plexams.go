@@ -629,6 +629,7 @@ type ComplexityRoot struct {
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
 		RemovePrimussAncode           func(childComplexity int, zpaAncode int, program string) int
 		RemoveStudentConflictDecision func(childComplexity int, ancode1 int, ancode2 int, mtknr string) int
+		ResetAssembledExams           func(childComplexity int) int
 		ResetEmailTemplate            func(childComplexity int, name string) int
 		ResetExamSchedule             func(childComplexity int) int
 		ResetInvigilations            func(childComplexity int) int
@@ -1474,6 +1475,7 @@ type MutationResolver interface {
 	DeleteAdditionalExam(ctx context.Context, ancode int) (bool, error)
 	SetAnnyPersonalizationNames(ctx context.Context, names []string) (*model.AnnyConfig, error)
 	GenerateAssembledExams(ctx context.Context) (*model.GenerateAssembledExamsResult, error)
+	ResetAssembledExams(ctx context.Context) (int, error)
 	NotPlannedByMe(ctx context.Context, ancode int, inFk *string) (bool, error)
 	Lab(ctx context.Context, ancode int) (bool, error)
 	Exahm(ctx context.Context, ancode int) (bool, error)
@@ -4682,6 +4684,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemoveStudentConflictDecision(childComplexity, args["ancode1"].(int), args["ancode2"].(int), args["mtknr"].(string)), true
+
+	case "Mutation.resetAssembledExams":
+		if e.complexity.Mutation.ResetAssembledExams == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ResetAssembledExams(childComplexity), true
 
 	case "Mutation.resetEmailTemplate":
 		if e.complexity.Mutation.ResetEmailTemplate == nil {
@@ -9588,6 +9597,13 @@ extend type Mutation {
   previously cached assembled exams.
   """
   generateAssembledExams: GenerateAssembledExamsResult!
+
+  """
+  Delete the cached assembled exams and their state, undoing a generation; they can be
+  rebuilt with generateAssembledExams. Returns how many assembled exams were removed.
+  Blocked while a validation or transfer/email is running.
+  """
+  resetAssembledExams: Int!
 }
 
 type AssembledExamsState {
@@ -34745,6 +34761,50 @@ func (ec *executionContext) fieldContext_Mutation_generateAssembledExams(_ conte
 				return ec.fieldContext_GenerateAssembledExamsResult_changes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GenerateAssembledExamsResult", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetAssembledExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetAssembledExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetAssembledExams(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetAssembledExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -75780,6 +75840,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "generateAssembledExams":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_generateAssembledExams(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetAssembledExams":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetAssembledExams(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

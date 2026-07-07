@@ -21,12 +21,13 @@ var (
 	add-mucdai-exam program primuss-ancode --- add an external mucdai-exam exam
 	add-mucdai-exams                       --- add all mucdai-exams
 	generated-exams                        --- generate exams from connected-exams and primuss-data
+	reset-generated-exams                  --- delete the cached assembled exams (undo generated-exams)
 	studentregs                            --- regs per exam & regs per student (needs connected-exams)
 	rooms-for-exams                        --- rooms for exams
 	self-invigilations                     --- set main examer as invigilator if possible
 	invigilator-todos                      --- cache snapshot
 	`,
-		ValidArgs: []string{"connect-exam", "add-mucdai-exam", "generated-exams", "studentregs", "rooms-for-exams", "self-invigilations", "invigilator-todos"},
+		ValidArgs: []string{"connect-exam", "add-mucdai-exam", "generated-exams", "reset-generated-exams", "studentregs", "rooms-for-exams", "self-invigilations", "invigilator-todos"},
 		Args:      cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			plexams := initPlexamsConfig()
@@ -123,6 +124,16 @@ var (
 				if err != nil {
 					os.Exit(1)
 				}
+
+			case "reset-generated-exams":
+				if !confirm("delete the cached assembled exams?", 10) {
+					os.Exit(0)
+				}
+				n, err := plexams.ResetAssembledExams(context.Background())
+				if err != nil {
+					log.Fatalf("cannot reset assembled exams: %v", err)
+				}
+				fmt.Printf(">>> removed %d assembled exam(s)\n", n)
 
 			case "studentregs":
 				err := plexams.PrepareStudentRegs()

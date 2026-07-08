@@ -117,3 +117,31 @@ func TestExahmWindowCovered(t *testing.T) {
 		})
 	}
 }
+
+func TestExahmWindowSeats(t *testing.T) {
+	mins := func(m int) time.Duration { return time.Duration(m) * time.Minute }
+
+	// A small EXaHM room booked long enough to cover the window (10:00–12:30) with only 5
+	// seats, plus two big rooms booked too short (10:30–11:30, 20 seats each). Only the
+	// covering small room counts: a 40-student exam cannot be seated even though the block-
+	// based seat total (45) looks sufficient — this is the Softwareentwicklung I case.
+	mixed := []bookedRoomInterval{
+		{from: day(10, 0), until: day(12, 30), exahm: true, seats: 5},
+		{from: day(10, 30), until: day(11, 30), exahm: true, seats: 20},
+		{from: day(10, 30), until: day(11, 30), exahm: true, seats: 20},
+	}
+	// exam 90 min at 10:30, default 30/30 → window [10:00, 12:30].
+	if got := exahmWindowSeats(mixed, true, day(10, 30), mins(90), mins(30), mins(30)); got != 5 {
+		t.Errorf("mixed window seats = %d, want 5 (only the fully-covering room counts)", got)
+	}
+
+	// all three booked to cover the window → all seats count.
+	full := []bookedRoomInterval{
+		{from: day(10, 0), until: day(12, 30), exahm: true, seats: 5},
+		{from: day(10, 0), until: day(12, 30), exahm: true, seats: 20},
+		{from: day(10, 0), until: day(12, 30), exahm: true, seats: 20},
+	}
+	if got := exahmWindowSeats(full, true, day(10, 30), mins(90), mins(30), mins(30)); got != 45 {
+		t.Errorf("full window seats = %d, want 45", got)
+	}
+}

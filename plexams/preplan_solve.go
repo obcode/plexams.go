@@ -25,6 +25,12 @@ const (
 	// preplanExahmKeep is added to an EXaHM unit's drop cost so EXaHM (and, via the
 	// seat term, large SEB) are never dropped while anything smaller could be.
 	preplanExahmKeep = 1000000
+	// preplanSmallSebDrop is the drop cost of a small SEB that fits a single R-building lab:
+	// low enough that the solver yields its slot to any must-place exam (which have a drop
+	// cost ≥ preplanDropBase) and prefers leaving it for the R-building over displacing
+	// others, yet well above the soft proximity penalties so it IS placed into genuinely
+	// free booked capacity when available.
+	preplanSmallSebDrop = 2000
 	// preplanProgramConflictWeight is the base penalty for two exams that share a study
 	// program; preplanExplicitConflictWeight for an explicit "nicht gleichzeitig" pair.
 	// Both are soft (well below preplanDropBase) and scaled by temporal proximity, so

@@ -568,7 +568,9 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			if idx < 0 || idx >= len(slots) {
 				continue
 			}
-			if exahmWindowCovered(exahmIntervals, true, slots[idx].Start, dur, pre, post) {
+			// enough booked EXaHM seats from rooms that actually cover this exam's window
+			// (rooms booked too short don't count), not merely "some room covers it".
+			if exahmWindowSeats(exahmIntervals, true, slots[idx].Start, dur, pre, post) >= units[u].Seats {
 				covered = append(covered, idx)
 			}
 		}

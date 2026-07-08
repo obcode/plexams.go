@@ -134,23 +134,32 @@ func intersectSlotSet(a, b map[int]bool) map[int]bool {
 	return out
 }
 
-// exahmWindowCovered reports whether some booked room of the required kind fully covers the
-// exam window [start-pre, start+dur+post] — i.e. the booking is long enough to run the exam
-// (its real duration) plus the setup/teardown buffer at that start time. exahm selects the
-// kind: EXaHM exams need an EXaHM-capable booked room; SEB exams accept an EXaHM or SEB one
-// (SEB may also overflow into non-booked R-rooms, so SEB is only gated where a booking is
-// required by the caller).
-func exahmWindowCovered(intervals []bookedRoomInterval, exahm bool, start time.Time, dur, pre, post time.Duration) bool {
+// exahmWindowSeats returns how many booked seats are usable for an exam placed at start:
+// the sum of seats of booked rooms of the required kind whose Anny window fully covers the
+// exam window [start-pre, start+dur+post]. Rooms booked too short (not covering the whole
+// window) contribute nothing — so an exam can only be seated by rooms that are actually
+// available for its full run plus setup/teardown. exahm selects the kind: EXaHM exams need
+// EXaHM-capable rooms; SEB exams accept EXaHM or SEB rooms (SEB may also overflow into
+// non-booked R-rooms, so SEB is only gated where a booking is required by the caller).
+func exahmWindowSeats(intervals []bookedRoomInterval, exahm bool, start time.Time, dur, pre, post time.Duration) int {
 	winStart := start.Add(-pre)
 	winEnd := start.Add(dur + post)
+	seats := 0
 	for _, iv := range intervals {
 		ok := iv.exahm
 		if !exahm {
 			ok = iv.exahm || iv.seb
 		}
 		if ok && anny.Covers(iv.from, iv.until, winStart, winEnd) {
-			return true
+			seats += iv.seats
 		}
 	}
-	return false
+	return seats
+}
+
+// exahmWindowCovered reports whether some booked room of the required kind fully covers the
+// exam window (a placement is possible at all). exahmWindowSeats additionally tells how many
+// seats that covering booking provides.
+func exahmWindowCovered(intervals []bookedRoomInterval, exahm bool, start time.Time, dur, pre, post time.Duration) bool {
+	return exahmWindowSeats(intervals, exahm, start, dur, pre, post) > 0
 }

@@ -134,12 +134,12 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 			if pe.ExamKind == "EXaHM" {
 				dur := preplanExamDuration(pe, blockDur)
 				pre, post := exahmRoomBuffers(pe.Constraints)
-				if !exahmWindowCovered(exahmIntervals, true, key, dur, pre, post) {
+				if seats := exahmWindowSeats(exahmIntervals, true, key, dur, pre, post); seats < pe.ExpectedStudents {
 					addFinding(model.ValidationLevelError,
-						"Slot %s: EXaHM %s braucht den Raum %s–%s (%d min + %d/%d min Puffer), aber keine Anny-Buchung deckt dieses Fenster ab",
+						"Slot %s: EXaHM %s braucht die Räume %s–%s für %d Plätze (%d min + %d/%d min Puffer), aber gebuchte EXaHM-Räume, die dieses Fenster abdecken, bieten nur %d Plätze",
 						key.Format("Mo 02.01. 15:04"), pe.Module,
 						key.Add(-pre).Format("15:04"), key.Add(dur+post).Format("15:04"),
-						int(dur.Minutes()), int(pre.Minutes()), int(post.Minutes()))
+						pe.ExpectedStudents, int(dur.Minutes()), int(pre.Minutes()), int(post.Minutes()), seats)
 				}
 			}
 		}
@@ -407,19 +407,19 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 			continue
 		}
 
-		// small SEB (fits a single R-building lab) → plan in the R-building, not Anny
-		// (validatePreplan re-derives these from the threshold and emits the note)
-		if !hasExahm && seats <= rBauSebThreshold {
-			for _, i := range members {
-				finalSlot[i] = nil
-				finalFixed[i] = false
-			}
-			continue
-		}
+		// small SEB (fit a single R-building lab) don't NEED an Anny slot, but should still
+		// fill leftover booked capacity when some is free (rather than always going to the
+		// R-building). A low drop cost lets the solver place them only into spare capacity and
+		// never displace a must-place exam; if still dropped, validatePreplan re-derives them
+		// from the threshold and emits the R-building note (a warning, not a failure).
+		smallSeb := !hasExahm && seats <= rBauSebThreshold
 
 		dropCost := preplanDropBase + seats
-		if hasExahm {
+		switch {
+		case hasExahm:
 			dropCost += preplanExahmKeep
+		case smallSeb:
+			dropCost = preplanSmallSebDrop
 		}
 		var allowedSlots map[int]bool
 		for prog := range programs {
@@ -452,7 +452,9 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 			}
 			windowOK := make(map[int]bool)
 			for idx, ps := range slots {
-				if exahmWindowCovered(exahmIntervals, true, ps.start, dur, pre, post) {
+				// enough booked EXaHM seats from rooms that actually cover the exam's window
+				// (rooms booked too short don't count) — not just "some room covers it".
+				if exahmWindowSeats(exahmIntervals, true, ps.start, dur, pre, post) >= seats {
 					windowOK[idx] = true
 				}
 			}

@@ -8,6 +8,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/jira"
 	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/obcode/plexams.go/plexams/email"
 	"github.com/obcode/plexams.go/plexams/planstate"
@@ -21,6 +22,7 @@ type Plexams struct {
 	semester       string
 	dbClient       *db.DB
 	zpa            *ZPA
+	jira           *Jira
 	planer         *Planer
 	operator       *Operator
 	email          *Email
@@ -51,6 +53,18 @@ type ZPA struct {
 	token        string
 	fk07programs []string
 	oldprograms  []string
+}
+
+// Jira wraps the on-prem Jira (jira.cc.hm.edu) client together with the config it
+// is built from. The client is created lazily on first use via SetJira, so a
+// missing/incomplete jira.* config never blocks startup — only actual Jira calls
+// fail then. baseurl/token/project come from the local config (jira.*); the PAT
+// is a secret and stays in the config file, never in the DB.
+type Jira struct {
+	client  *jira.Jira
+	baseurl string
+	token   string
+	project string
 }
 
 type Planer struct {
@@ -121,6 +135,12 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			token:        zpaToken,
 			fk07programs: fk07programs,
 			oldprograms:  oldprograms,
+		},
+		jira: &Jira{
+			client:  nil,
+			baseurl: viper.GetString("jira.baseurl"),
+			token:   viper.GetString("jira.token"),
+			project: viper.GetString("jira.project"),
 		},
 		planer: &Planer{
 			Name:  viper.GetString("planer.name"),
@@ -214,6 +234,33 @@ func (p *Plexams) SetZPA() error {
 		p.zpa.client = zpaClient
 	}
 	return nil
+}
+
+// SetJira lazily builds the Jira client from the local jira.* config. Unlike
+// SetZPA it performs no network call, so it only fails when the config is
+// missing; use TestJira to actually verify baseurl and PAT against the server.
+func (p *Plexams) SetJira() error {
+	if p.jira.client == nil {
+		if p.jira.baseurl == "" || p.jira.token == "" {
+			return fmt.Errorf("jira not configured: set jira.baseurl and jira.token in .plexams.yaml")
+		}
+		p.jira.client = jira.New(p.jira.baseurl, p.jira.token, p.jira.project)
+	}
+	return nil
+}
+
+// TestJira verifies the configured Jira connection (GET /rest/api/2/myself) and
+// returns the authenticated user's display name.
+func (p *Plexams) TestJira() (string, error) {
+	if err := p.SetJira(); err != nil {
+		return "", err
+	}
+	me, err := p.jira.client.Myself()
+	if err != nil {
+		return "", err
+	}
+	log.Info().Str("user", me.Name).Str("displayName", me.DisplayName).Msg("connected to Jira")
+	return me.DisplayName, nil
 }
 
 func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, error) {

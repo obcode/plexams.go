@@ -1,0 +1,46 @@
+# On-prem Jira (jira.cc.hm.edu) integration. Manual, GUI-driven: create/read
+# issues, add comments, and move an issue through its workflow. Attachments
+# (PDFs/CSVs/…) are binary and go through the REST route
+# POST /upload/jira-attachment (multipart), not through GraphQL.
+
+"Authenticated Jira user — returned by jiraConnection to verify the configured PAT."
+type JiraUser {
+  name: String!
+  displayName: String!
+  emailAddress: String!
+}
+
+"A Jira issue (the subset plexams reads/writes)."
+type JiraIssue {
+  key: String!
+  summary: String!
+  description: String
+  status: String
+  issueType: String
+  "Browse URL, e.g. https://jira.cc.hm.edu/browse/PLEX-42."
+  url: String!
+}
+
+"A workflow transition currently available on an issue; ids are workflow- and status-specific."
+type JiraTransition {
+  id: String!
+  name: String!
+}
+
+extend type Query {
+  "Verify the configured Jira connection (GET /rest/api/2/myself)."
+  jiraConnection: JiraUser!
+  "Fetch a single Jira issue by key (e.g. \"PLEX-42\")."
+  jiraIssue(key: String!): JiraIssue!
+  "List the workflow transitions currently available for an issue in its current status."
+  jiraTransitions(key: String!): [JiraTransition!]!
+}
+
+extend type Mutation {
+  "Create a Jira issue. project/issueType fall back to the jira.project config / \"Task\" when omitted. Returns the created issue."
+  createJiraIssue(project: String, issueType: String, summary: String!, description: String): JiraIssue!
+  "Add a plain-text comment to an issue. Returns true on success."
+  addJiraComment(key: String!, body: String!): Boolean!
+  "Move an issue through a workflow transition (id from jiraTransitions). Returns true on success."
+  transitionJiraIssue(key: String!, transitionId: String!): Boolean!
+}

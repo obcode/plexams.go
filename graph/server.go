@@ -112,6 +112,8 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	router.Post("/upload/email-attachment", plexams.HTTPUploadEmailAttachment)
 	router.Post("/upload/email-attachments-zip", plexams.HTTPUploadEmailAttachmentsZip)
 	router.Post("/upload/primuss-zip", plexams.HTTPUploadPrimussZip)
+	// Attach an uploaded file (PDF/CSV/…) to a Jira issue (multipart: key, file).
+	router.Post("/upload/jira-attachment", plexams.HTTPUploadJiraAttachment)
 	router.Get("/download/planned-rooms.json", plexams.HTTPDownloadPlannedRooms)
 
 	// Generated documents (formerly the pdf/csv/ics CLI commands): draft plans and

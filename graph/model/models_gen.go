@@ -688,6 +688,30 @@ type InvigilatorsForDay struct {
 	Can  []*Invigilator `json:"can"`
 }
 
+// A Jira issue (the subset plexams reads/writes).
+type JiraIssue struct {
+	Key         string  `json:"key"`
+	Summary     string  `json:"summary"`
+	Description *string `json:"description,omitempty"`
+	Status      *string `json:"status,omitempty"`
+	IssueType   *string `json:"issueType,omitempty"`
+	// Browse URL, e.g. https://jira.cc.hm.edu/browse/PLEX-42.
+	URL string `json:"url"`
+}
+
+// A workflow transition currently available on an issue; ids are workflow- and status-specific.
+type JiraTransition struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// Authenticated Jira user — returned by jiraConnection to verify the configured PAT.
+type JiraUser struct {
+	Name         string `json:"name"`
+	DisplayName  string `json:"displayName"`
+	EmailAddress string `json:"emailAddress"`
+}
+
 // LogLine is one streamed line of output. text carries the rendered line including
 // ANSI color codes, so a terminal-like frontend can display it verbatim. progress
 // is only set when level is PROGRESS; report is only set on the final RESULT line

@@ -699,6 +699,12 @@ type JiraIssue struct {
 	URL string `json:"url"`
 }
 
+// Open issues of one issue type — the grouping returned by jiraOpenIssuesByType.
+type JiraIssueGroup struct {
+	IssueType string       `json:"issueType"`
+	Issues    []*JiraIssue `json:"issues"`
+}
+
 // A workflow transition currently available on an issue; ids are workflow- and status-specific.
 type JiraTransition struct {
 	ID   string `json:"id"`

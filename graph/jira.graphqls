@@ -27,6 +27,12 @@ type JiraTransition {
   name: String!
 }
 
+"Open issues of one issue type — the grouping returned by jiraOpenIssuesByType."
+type JiraIssueGroup {
+  issueType: String!
+  issues: [JiraIssue!]!
+}
+
 extend type Query {
   "Verify the configured Jira connection (GET /rest/api/2/myself)."
   jiraConnection: JiraUser!
@@ -34,6 +40,10 @@ extend type Query {
   jiraIssue(key: String!): JiraIssue!
   "List the workflow transitions currently available for an issue in its current status."
   jiraTransitions(key: String!): [JiraTransition!]!
+  "All open (not-done) issues, newest first. project falls back to the jira.project config; omit both to span all visible projects."
+  jiraOpenIssues(project: String): [JiraIssue!]!
+  "The open issues grouped by issue type (groups sorted by type, empty groups omitted)."
+  jiraOpenIssuesByType(project: String): [JiraIssueGroup!]!
 }
 
 extend type Mutation {

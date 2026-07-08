@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/jira"
@@ -92,6 +93,54 @@ func (p *Plexams) JiraTransitions(ctx context.Context, key string) ([]*model.Jir
 		out = append(out, &model.JiraTransition{ID: t.ID, Name: t.Name})
 	}
 	return out, nil
+}
+
+// JiraOpenIssues returns the open (not-done) issues, newest first.
+func (p *Plexams) JiraOpenIssues(ctx context.Context, project *string) ([]*model.JiraIssue, error) {
+	client, err := p.jiraClient()
+	if err != nil {
+		return nil, err
+	}
+	projectKey := ""
+	if project != nil {
+		projectKey = *project
+	}
+	issues, err := client.OpenIssues(projectKey)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.JiraIssue, 0, len(issues))
+	for i := range issues {
+		out = append(out, p.toModelIssue(&issues[i]))
+	}
+	return out, nil
+}
+
+// JiraOpenIssuesByType returns the open issues grouped by issue type. Groups are
+// sorted by type name; the issue order within a group is preserved (newest first).
+func (p *Plexams) JiraOpenIssuesByType(ctx context.Context, project *string) ([]*model.JiraIssueGroup, error) {
+	issues, err := p.JiraOpenIssues(ctx, project)
+	if err != nil {
+		return nil, err
+	}
+	byType := make(map[string][]*model.JiraIssue)
+	for _, issue := range issues {
+		t := "(ohne Typ)"
+		if issue.IssueType != nil && *issue.IssueType != "" {
+			t = *issue.IssueType
+		}
+		byType[t] = append(byType[t], issue)
+	}
+	types := make([]string, 0, len(byType))
+	for t := range byType {
+		types = append(types, t)
+	}
+	sort.Strings(types)
+	groups := make([]*model.JiraIssueGroup, 0, len(types))
+	for _, t := range types {
+		groups = append(groups, &model.JiraIssueGroup{IssueType: t, Issues: byType[t]})
+	}
+	return groups, nil
 }
 
 // CreateJiraIssue creates an issue; project/issueType/description are optional.

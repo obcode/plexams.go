@@ -123,6 +123,30 @@ func TestAddAttachmentSendsMultipartWithNoCheckHeader(t *testing.T) {
 	}
 }
 
+func TestOpenIssuesBuildsJQLWithDefaultProject(t *testing.T) {
+	var gotJQL string
+	j, srv := testJira(func(w http.ResponseWriter, r *http.Request) {
+		var req searchRequest
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &req)
+		gotJQL = req.JQL
+		_, _ = w.Write([]byte(`{"startAt":0,"maxResults":100,"total":1,"issues":[{"key":"FK07PP-1","fields":{"summary":"x","issuetype":{"name":"Task"}}}]}`))
+	})
+	defer srv.Close()
+
+	// client default project is "PLEX" (from testJira); empty arg must use it.
+	issues, err := j.OpenIssues("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(gotJQL, `project = "PLEX"`) || !strings.Contains(gotJQL, "statusCategory != Done") {
+		t.Errorf("JQL should filter by default project and open status, got: %q", gotJQL)
+	}
+	if len(issues) != 1 || issues[0].Key != "FK07PP-1" {
+		t.Errorf("unexpected issues: %+v", issues)
+	}
+}
+
 func TestTransitionByNameLooksUpID(t *testing.T) {
 	var transitionedTo string
 	j, srv := testJira(func(w http.ResponseWriter, r *http.Request) {

@@ -39,3 +39,13 @@ func (r *queryResolver) JiraIssue(ctx context.Context, key string) (*model.JiraI
 func (r *queryResolver) JiraTransitions(ctx context.Context, key string) ([]*model.JiraTransition, error) {
 	return r.plexams.JiraTransitions(ctx, key)
 }
+
+// JiraOpenIssues is the resolver for the jiraOpenIssues field.
+func (r *queryResolver) JiraOpenIssues(ctx context.Context, project *string) ([]*model.JiraIssue, error) {
+	return r.plexams.JiraOpenIssues(ctx, project)
+}
+
+// JiraOpenIssuesByType is the resolver for the jiraOpenIssuesByType field.
+func (r *queryResolver) JiraOpenIssuesByType(ctx context.Context, project *string) ([]*model.JiraIssueGroup, error) {
+	return r.plexams.JiraOpenIssuesByType(ctx, project)
+}

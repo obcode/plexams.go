@@ -458,7 +458,8 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	}
 	unitBaseDur := make(map[int]int)       // unit -> exam duration
 	ntaExt := make(map[int]map[string]int) // unit -> mtknr -> NTA-extended duration
-	unitPostMin := make(map[int]int)       // unit -> Nachlauf minutes (default 15, larger if extended)
+	unitPreMin := make(map[int]int)        // unit -> Vorlauf minutes (EXaHM/SEB default 30)
+	unitPostMin := make(map[int]int)       // unit -> Nachlauf minutes (EXaHM/SEB default 30, larger if extended)
 	for _, e := range assembled {
 		ui, ok := unitOf[e.Ancode]
 		if !ok || e.ZpaExam == nil {
@@ -467,7 +468,19 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		if e.ZpaExam.Duration > unitBaseDur[ui] {
 			unitBaseDur[ui] = e.ZpaExam.Duration
 		}
-		if _, post := roomBuffers(e.Constraints); int(post.Minutes()) > unitPostMin[ui] {
+		// EXaHM/SEB exams run in booked T-building rooms and need the larger 30-min default
+		// setup/teardown (overridable per exam); regular rooms keep the 15-min turnaround.
+		c := constraints[e.Ancode]
+		var pre, post time.Duration
+		if c != nil && c.RoomConstraints != nil && (c.RoomConstraints.Exahm || c.RoomConstraints.Seb) {
+			pre, post = exahmRoomBuffers(c)
+		} else {
+			pre, post = roomBuffers(c)
+		}
+		if int(pre.Minutes()) > unitPreMin[ui] {
+			unitPreMin[ui] = int(pre.Minutes())
+		}
+		if int(post.Minutes()) > unitPostMin[ui] {
 			unitPostMin[ui] = int(post.Minutes())
 		}
 		for _, nta := range e.Ntas {
@@ -505,13 +518,81 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		}
 	}
 
+	// EXaHM room-window restriction: an EXaHM exam may only occupy a slot where a booked
+	// EXaHM room's Anny window actually covers its real exam window (duration — extended for
+	// the worst NTA — plus the setup/teardown buffer). This is the schedule-generator
+	// counterpart of the Vorplanung gate, so phase A (and any movable EXaHM in phase B)
+	// never places an exam into a booking too small for it (e.g. Embedded Computing, 120 min
+	// + 60/60, into a room booked only 16:00–18:30). A unit no booking can host gets the
+	// unplaceable sentinel and is reported as unplaced.
+	exahmIntervals, err := p.bookedExahmIntervals(ctx)
+	if err != nil {
+		log.Warn().Err(err).Msg("cannot read anny bookings for EXaHM window restriction; EXaHM exams left ungated")
+		exahmIntervals = nil
+	}
+	blockDur := slotBlockDuration(sc.Starttimes)
+	allSlotIdx := make([]int, len(slots))
+	for i := range slots {
+		allSlotIdx[i] = i
+	}
+	restrictedUnplaceable := make([]int, 0)
+	for u := range units {
+		if !units[u].Exahm || units[u].Fixed {
+			continue
+		}
+		maxDur := unitBaseDur[u]
+		for _, ext := range ntaExt[u] {
+			if ext > maxDur {
+				maxDur = ext
+			}
+		}
+		dur := time.Duration(maxDur) * time.Minute
+		if dur == 0 {
+			dur = blockDur
+		}
+		preMin, postMin := unitPreMin[u], unitPostMin[u]
+		if preMin == 0 {
+			preMin = int(exahmDefaultBuffer.Minutes())
+		}
+		if postMin == 0 {
+			postMin = int(exahmDefaultBuffer.Minutes())
+		}
+		pre := time.Duration(preMin) * time.Minute
+		post := time.Duration(postMin) * time.Minute
+		base := units[u].Allowed
+		if len(base) == 0 {
+			base = allSlotIdx // empty Allowed means "all slots"; make it explicit before filtering
+		}
+		covered := make([]int, 0, len(base))
+		for _, idx := range base {
+			if idx < 0 || idx >= len(slots) {
+				continue
+			}
+			if exahmWindowCovered(exahmIntervals, true, slots[idx].Start, dur, pre, post) {
+				covered = append(covered, idx)
+			}
+		}
+		if len(covered) == 0 {
+			covered = []int{-1} // no booking covers the window → unplaceable (reported as unplaced)
+			restrictedUnplaceable = append(restrictedUnplaceable, units[u].ID)
+		}
+		units[u].Allowed = covered
+	}
+	if len(restrictedUnplaceable) > 0 {
+		sort.Ints(restrictedUnplaceable)
+		log.Warn().Ints("ancodes", restrictedUnplaceable).Int("count", len(restrictedUnplaceable)).
+			Msg("EXaHM exams have no Anny booking large enough for their window — left unplaced")
+	}
+
 	// Room overrun (time-based): an EXaHM exam with an extended Nachlauf keeps its booked
 	// T-building rooms occupied past its own start time; the later slots whose exam window
 	// it reaches must count it against their booked EXaHM seats too. Compute, per such unit
 	// and candidate slot, the later same-day slots it overruns into, from the absolute slot
 	// start times (no slot-number arithmetic). Empty for every exam on the ordinary
-	// turnaround, so the solver's capacity check is unchanged for them.
-	turnaround := int(roomRequestBuffer.Minutes())
+	// turnaround, so the solver's capacity check is unchanged for them. The turnaround is the
+	// shared EXaHM buffer (30 min = 15 each side), so a default EXaHM exam does NOT overrun;
+	// only a widened Nachlauf (e.g. 60) does.
+	turnaround := int(exahmDefaultBuffer.Minutes())
 	overrun := make(map[[2]int][]int)
 	for u := range units {
 		if !units[u].Exahm || unitPostMin[u] <= turnaround {

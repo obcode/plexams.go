@@ -46,8 +46,13 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 	if err != nil {
 		return nil, err
 	}
+	exahmIntervals, err := p.bookedExahmIntervals(ctx)
+	if err != nil {
+		return nil, err
+	}
+	blockDur := slotBlockDuration(p.semesterConfig.Starttimes)
 
-	return validatePreplan(preExams, exahmRooms, sebRooms, booked, rBauSebThreshold), nil
+	return validatePreplan(preExams, exahmRooms, sebRooms, booked, rBauSebThreshold, exahmIntervals, blockDur), nil
 }
 
 // skippedPreplanValidation is the neutral result returned when there are no SEB/EXaHM
@@ -70,7 +75,7 @@ func skippedPreplanValidation() *model.PreplanValidation {
 // reported so the planner can book step by step. SEB exams that fit a single R-building
 // lab (seats <= rBauSebThreshold) are reported as "plan in the R-building" instead of
 // being counted as genuinely unplaced.
-func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []preplancalc.RoomCapacity, booked map[time.Time]*slotBooking, rBauSebThreshold int) *model.PreplanValidation {
+func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []preplancalc.RoomCapacity, booked map[time.Time]*slotBooking, rBauSebThreshold int, exahmIntervals []bookedRoomInterval, blockDur time.Duration) *model.PreplanValidation {
 	findings := make([]*model.PreplanFinding, 0)
 	addFinding := func(level model.ValidationLevel, format string, a ...any) {
 		findings = append(findings, &model.PreplanFinding{Level: level, Message: fmt.Sprintf(format, a...)})
@@ -121,6 +126,21 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 				exahm += pe.ExpectedStudents
 			case "SEB":
 				seb += pe.ExpectedStudents
+			}
+			// an EXaHM exam placed here needs a booked EXaHM room whose Anny window is long
+			// enough for its real exam window (duration + setup/teardown buffer). Flag a
+			// placement no booking can cover (e.g. Embedded Computing at 16:30 with a 60/60
+			// buffer while the room is only booked 16:00–18:30).
+			if pe.ExamKind == "EXaHM" {
+				dur := preplanExamDuration(pe, blockDur)
+				pre, post := exahmRoomBuffers(pe.Constraints)
+				if !exahmWindowCovered(exahmIntervals, true, key, dur, pre, post) {
+					addFinding(model.ValidationLevelError,
+						"Slot %s: EXaHM %s braucht den Raum %s–%s (%d min + %d/%d min Puffer), aber keine Anny-Buchung deckt dieses Fenster ab",
+						key.Format("Mo 02.01. 15:04"), pe.Module,
+						key.Add(-pre).Format("15:04"), key.Add(dur+post).Format("15:04"),
+						int(dur.Minutes()), int(pre.Minutes()), int(post.Minutes()))
+				}
 			}
 		}
 
@@ -239,6 +259,14 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	if err != nil {
 		return nil, err
 	}
+	// booked T-building rooms as time intervals, to gate each EXaHM exam to slots where a
+	// booked EXaHM room actually covers its real window (duration + setup/teardown buffer),
+	// not merely to slots that have some booked seats.
+	exahmIntervals, err := p.bookedExahmIntervals(ctx)
+	if err != nil {
+		return nil, err
+	}
+	blockDur := slotBlockDuration(p.semesterConfig.Starttimes)
 
 	// candidate slots: only those with booked Anny rooms; usable capacity = 90%
 	slots := make([]*preplanSlot, 0)
@@ -400,6 +428,36 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 				break
 			}
 		}
+		if hasExahm {
+			// EXaHM exams must run in a booked EXaHM room whose Anny booking is long enough
+			// for the exam's real window (duration + setup/teardown buffer). Restrict the
+			// unit to exactly those candidate slots; an empty set leaves it unplaced (then
+			// reported by validatePreplan as a booking too small for the window).
+			var dur, pre, post time.Duration
+			for _, i := range members {
+				pe := preExams[i]
+				if pe.ExamKind != "EXaHM" {
+					continue
+				}
+				if d := preplanExamDuration(pe, blockDur); d > dur {
+					dur = d
+				}
+				pr, po := exahmRoomBuffers(pe.Constraints)
+				if pr > pre {
+					pre = pr
+				}
+				if po > post {
+					post = po
+				}
+			}
+			windowOK := make(map[int]bool)
+			for idx, ps := range slots {
+				if exahmWindowCovered(exahmIntervals, true, ps.start, dur, pre, post) {
+					windowOK[idx] = true
+				}
+			}
+			allowedSlots = intersectSlotSet(allowedSlots, windowOK)
+		}
 		solveUnits = append(solveUnits, &preplanUnit{
 			members: members, seats: seats, programs: programs,
 			hasExahm: hasExahm, dropCost: dropCost, minID: minID,
@@ -497,7 +555,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	}
 	// validatePreplan reports the small-SEB R-building notes and the genuinely-unplaced
 	// must-place exams (threshold-aware), so no extra messages are added here.
-	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter, rBauSebThreshold)
+	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter, rBauSebThreshold, exahmIntervals, blockDur)
 	if len(slots) == 0 {
 		msg := "keine Anny-Räume gebucht — nichts zugeordnet (zuerst Anny-Räume buchen und importieren)"
 		result.Findings = append([]*model.PreplanFinding{{Level: model.ValidationLevelError, Message: msg}}, result.Findings...)

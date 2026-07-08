@@ -46,6 +46,15 @@ type Sender struct {
 // NewSender builds a Sender for the given SMTP configuration.
 func NewSender(cfg SMTPConfig) *Sender { return &Sender{cfg: cfg} }
 
+// SetPlaner updates the From identity (and the fallback recipient/Reply-To). The
+// Sender caches its own copy of the planner from construction time, so callers
+// must call this whenever the running planner changes (e.g. after it is read from
+// the DB or edited in the GUI) — otherwise the From address stays stale/empty.
+func (s *Sender) SetPlaner(name, email string) {
+	s.cfg.PlanerName = name
+	s.cfg.PlanerEmail = email
+}
+
 // newClient builds an SMTP client. STARTTLS is mandatory; the server certificate is not
 // verified (internal/self-signed cert).
 func (s *Sender) newClient() (*mail.Client, error) {
@@ -65,8 +74,12 @@ func (s *Sender) newClient() (*mail.Client, error) {
 // buildMsg assembles a go-mail message (From = authenticated planner, Reply-To per jira).
 func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool) (*mail.Msg, error) {
 	msg := mail.NewMsg()
+	if strings.TrimSpace(s.cfg.PlanerEmail) == "" {
+		return nil, fmt.Errorf("no planner set: From address is empty — set the planner (name + email) " +
+			"via the GUI (setPlaner) or planer.name/planer.email in config")
+	}
 	if err := msg.FromFormat(s.cfg.PlanerName, s.cfg.PlanerEmail); err != nil {
-		return nil, fmt.Errorf("invalid From address: %w", err)
+		return nil, fmt.Errorf("invalid From address %q <%s>: %w", s.cfg.PlanerName, s.cfg.PlanerEmail, err)
 	}
 	if err := msg.To(to...); err != nil {
 		return nil, fmt.Errorf("invalid To address(es) %v: %w", to, err)

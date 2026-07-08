@@ -170,7 +170,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		if planer, err := plexams.dbClient.GetPlaner(ctx); err != nil {
 			log.Error().Err(err).Msg("cannot read planer from db")
 		} else if planer != nil {
-			plexams.planer = &Planer{Name: planer.Name, Email: planer.Email}
+			plexams.applyPlaner(planer.Name, planer.Email)
 		}
 	}
 

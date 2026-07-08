@@ -48,3 +48,24 @@ STILL ON YAML (next candidates, same pattern): `rooms.timelag`, `roomconstraints
 `specialInterests`, `mucdaiprograms`, `coverPages.*`, `invigilationStats.*`, `duration`.
 Decided workflow change: now committing this work directly on `main` (user opted in 2026-06-25);
 feature branches not required for these increments.
+
+CLI SHUTDOWN COMPLETE (2026-07-08): the Cobra `cmd/` package and the separate `zpa/cli`
+debug main were **deleted**; `plexams.go` is now a server-only GraphQL/REST binary. New
+`bootstrap/` package (`bootstrap.Serve()`) holds what was in `cmd/root.go` — config load +
+`newPlexams` (was `initPlexamsConfig`) + `graph.StartServer`; only flags left are
+`-v`/`--db-uri`/`--semester`, parsed with stdlib `flag` (cobra dropped from go.mod). Last
+CLI-only gaps filled: Phase-3 file exports are now REST downloads on the chi router —
+`GET /download/pdf/{kind}` (handler `HTTPDownloadPDF` + `pdfExports()` registry; `draft-si`
+returns a ZIP), `GET /download/csv/{kind}` (`HTTPDownloadCSVDraft`, `draft?program=`),
+`GET /download/ics/{program}` (`HTTPDownloadICS`); generators refactored to share a `*Maroto`
+builder / `*Bytes` producer, no more file writers (all `Export*`/`Draft*PDF`/`CsvFor*` file
+helpers removed). New mutations `addStudentReg`/`removeStudentReg` (primuss.graphqls). Dropped
+without replacement: all `info …` diagnostics, `invigilation problem`, `ics import-mucdai`
+(`ReadMucdaiICS`). This resolves the old CLI-fate divergence — CLI does NOT survive. See
+[[gui-and-cli-sync]] (now GUI-only) and [[cli-to-gui-migration]].
+
+Also (2026-07-08): the per-semester `<semester>.yaml` merge is **fully removed** from the
+bootstrap (`loadPerSemesterYAML` + `semester-path` + the fsnotify watch are gone). Only the
+single global `.plexams.yaml` is read now; all per-semester config is in the DB
+(`semester_config_input`, GUI-edited). Config split is authoritatively documented in
+docs/configuration.md (§6 base-YAML operational keys, §7 moved-to-DB, §8 removed).

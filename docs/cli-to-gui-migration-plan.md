@@ -1,9 +1,18 @@
 # Migrationsplan: CLI → GUI (GraphQL + plexams.gui)
 
+> **Status 2026-07-08: ABGESCHLOSSEN.** Das Cobra-`cmd/` wurde entfernt; `plexams.go`
+> ist ein reiner GraphQL/REST-Server (Bootstrap in `bootstrap/`, gestartet aus
+> `main.go`, nur noch die Flags `-v`/`--db-uri`/`--semester`). Die letzten CLI-only
+> Funktionen wurden ersetzt: Datei-Exporte laufen als REST-Downloads
+> (`/download/pdf/{kind}`, `/download/csv/{kind}`, `/download/ics/{program}`), einzelne
+> Primuss-Feindaten als Mutations (`addStudentReg`/`removeStudentReg`).
+> Diagnose/Debug-Kommandos (`info …`, `invigilation problem`, das separate `zpa/cli`)
+> und `ics import-mucdai` sind ersatzlos entfallen. Damit ist die frühere Divergenz zu
+> `plan-slotless-timebased.md` aufgelöst: **das CLI bleibt NICHT** — es ist weg.
+>
 > Persistierter Plan aus der Konzeptanalyse vom 2026-06-17.
-> Ziel: alles, was heute per `cmd/` CLI läuft, über die bestehende GraphQL-API
-> ins Svelte-Frontend (plexams.gui) holen; Per-Semester-Konfiguration aus
-> YAML in die DB verlagern, editierbar im GUI.
+> Ziel: alles, was per `cmd/` CLI lief, über die GraphQL-API/REST ins Svelte-Frontend
+> (plexams.gui) holen; Per-Semester-Konfiguration aus YAML in die DB verlagern.
 
 ## Eckentscheidungen
 

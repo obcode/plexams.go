@@ -1,11 +1,10 @@
 # Konfiguration (`.plexams.yaml`)
 
-`plexams.go` lädt beim Start eine globale Konfigurationsdatei **`.plexams.yaml`**
-(gesucht im aktuellen Verzeichnis `.` und im `$HOME`). Optional wird zusätzlich
-eine per-Semester-Datei `<semester>.yaml` aus `semester-path` gemerged — die ist
-inzwischen aber **optional**, weil die per-Semester-Konfiguration in der Datenbank
-liegt (Collection `semester_config_input`, beim ersten Start automatisch aus der
-YAML migriert) und über das GUI gepflegt wird.
+`plexams.go` lädt beim Start eine einzige globale Konfigurationsdatei
+**`.plexams.yaml`** (gesucht im aktuellen Verzeichnis `.` und im `$HOME`). Eine
+per-Semester-Datei `<semester>.yaml` wird **nicht mehr** gelesen — die
+per-Semester-Konfiguration liegt vollständig in der Datenbank (Collection
+`semester_config_input`) und wird über das GUI gepflegt.
 
 Kurz: In die `.plexams.yaml` gehören **Bootstrap + Secrets + betriebliche Keys,
 die (noch) nicht in der DB liegen**. Die eigentliche Semester-Planung (`from`,
@@ -18,7 +17,6 @@ die (noch) nicht in der DB liegen**. Die eigentliche Semester-Planung (`from`,
 ```yaml
 semester: 2026-SS              # optional (Pin); ohne Angabe wird beim Start das
                                # zuletzt aktive bzw. neueste kompatible Semester gewählt
-semester-path: ~/semester      # optional: nur nötig, wenn noch per-Semester-YAMLs benutzt werden
 
 db:
   uri: mongodb://localhost:27013   # Pflicht
@@ -152,9 +150,8 @@ knownConflicts:
 ## 7. In die DB gewandert — **nicht mehr** nötig in der YAML
 
 Diese per-Semester-Werte kommen aus der DB (`semester_config_input`) und werden
-über das GUI (bzw. `plexams.go init`) gepflegt. Beim ersten Start werden sie
-einmalig aus einer vorhandenen `<semester>.yaml` migriert; danach ist der
-YAML-Block überflüssig:
+über das GUI gepflegt (`createSemester` / `setSemesterConfigInput`). Eine
+`<semester>.yaml` wird nicht mehr gelesen:
 
 - `semesterConfig.from`, `semesterConfig.until`
 - `semesterConfig.slots`

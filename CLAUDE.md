@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-`plexams.go` is a CLI tool and GraphQL server for planning university exams (Prüfungsplanung) at HM (Hochschule München, FK07). It imports exam and teacher data from the **ZPA** system and student registration/conflict data from **Primuss**, connects them, and helps schedule exams into slots, assign rooms, and plan invigilations (Aufsichten). It is the backend for `plexams.gui`. Much domain terminology and most comments/log messages are in German.
+`plexams.go` is a GraphQL/REST server for planning university exams (Prüfungsplanung) at HM (Hochschule München, FK07). It imports exam and teacher data from the **ZPA** system and student registration/conflict data from **Primuss**, connects them, and helps schedule exams, assign rooms, and plan invigilations (Aufsichten). It is the backend for `plexams.gui` and is driven entirely through that GUI — there is no CLI anymore (the former Cobra `cmd/` was removed; the binary only starts the server). Much domain terminology and most comments/log messages are in German.
 
 ## Build, Test, Lint
 
@@ -21,20 +21,20 @@ Pre-commit hooks (`.pre-commit-config.yaml`) run `gofmt -w`, `go vet`, `golangci
 
 ## Running
 
-`plexams.go <command>` — with no command, it starts the GraphQL server (playground at `/`, queries at `/query`, default CORS allows localhost:5173/8080/3000). Top-level commands: `zpa`, `primuss`, `prepare`, `plan`, `rooms`, `invigilation`, `validate`, `email`, `export`, `csv`, `pdf`, `ics`, `info`, `init`, `server`, `version`. Global flags: `-v/--verbose`, `--db-uri`, `--semester`.
+`plexams.go` (no subcommands) starts the GraphQL/REST server: GraphQL playground at `/`, queries/mutations at `POST /query`, subscriptions over websocket, plus REST up/download routes on the same chi router (`/upload/...`, `/download/...`; default CORS/origin allows localhost:5173/8080/3000). Only three flags remain, parsed by the `bootstrap` package with the standard `flag` package: `-v/--verbose`, `--db-uri`, `--semester`.
 
-A typical run requires MongoDB and config (see below). `plexams.go init <semester>` interactively creates a new semester's config and stores it in that semester's database (it no longer writes a YAML file; it needs `.plexams.yaml` with `db.uri`). The overall planning workflow is documented step-by-step in [README.md](README.md) (`zpa exams` → `zpa teacher` → select exams in GUI → constraints → import Primuss → `prepare connected-exams` → ... → publish plan → invigilation planning).
+A typical run requires MongoDB and config (see below). Everything that used to be a CLI command is now a GraphQL query/mutation/subscription or a REST endpoint, driven from `plexams.gui` — e.g. creating a semester (`createSemester` mutation), imports/uploads (ZPA/Primuss subscriptions + `/upload/...`), generation and validation (subscriptions), emails (send* subscriptions), and document downloads (`/download/pdf/{kind}`, `/download/csv/{kind}`, `/download/ics/{program}`, semester dump/dataset ZIP/CSV). The end-to-end planning workflow is documented in [README.md](README.md).
 
 ## Configuration
 
-Config is loaded via **viper** (`.plexams.yaml` in `.` or `$HOME`) which names the `semester` (e.g. `2026-SS`) and a `semester-path`. A second per-semester file `<semester>.yaml` may be read from `semester-path` and **merged** on top, but is now **optional**: the per-semester config (`semesterConfig.*`/`mucdaislots`) is stored in and loaded from the database (collection `semester_config_input`), auto-migrated from the YAML on first start. The `version` command skips config loading. Required key: `semester`. Key config sections consumed in code: `db.uri`/`db.database`, `zpa.*` (baseurl, username, password, fk07programs, oldprograms), `smtp.*`, `planer.*`; the per-semester `semesterConfig.*` (from/until/slots/forbiddenDays/emails) and `mucdaislots` (MUC.DAI slots as absolute [day, slot] pairs) come from the DB (YAML still works as a fallback/seed).
+Config is loaded via **viper** from a single file `.plexams.yaml` (in `.` or `$HOME`) by the `bootstrap` package (`initConfig`); it may optionally pin a `semester` (e.g. `2026-SS`). There is **no** per-semester `<semester>.yaml` merge anymore — the per-semester config (`semesterConfig.*`/`mucdaislots`) lives in and is loaded from the database (collection `semester_config_input`), edited through the GUI. Without a pinned semester the active workspace is auto-selected from the DB (switchable at runtime via the `setSemester` GUI mutation). Key config sections consumed in code: `db.uri`/`db.database`, `zpa.*` (baseurl, username, password, fk07programs, oldprograms), `smtp.*`, `planer.*`, `server.port`/`server.allowedorigins`; the per-semester `semesterConfig.*` (from/until/slots/forbiddenDays/emails) and `mucdaislots` come from the DB (YAML still works as a fallback/seed). Secrets stay in the file, never in the DB.
 
 ## Architecture
 
-Four layers, each its own package, wired together in `cmd/`:
+Layers, each its own package, wired together in `bootstrap/` + `main.go`:
 
-- **`cmd/`** — Cobra CLI. One file per top-level command. `root.go` handles config loading (`initConfig`) and constructs the `*plexams.Plexams` instance (`initPlexamsConfig`). Commands call methods on `Plexams`.
-- **`plexams/`** — Business logic. The central `Plexams` struct ([plexams/plexams.go](plexams/plexams.go)) holds the semester string, a `*db.DB`, ZPA/email/planer config, the computed `*model.SemesterConfig`, and a room-info map. Almost all domain operations are methods on `*Plexams`, grouped by concern across many files (`exam.go`, `plan.go`, `rooms*.go`, `invigilation*.go`, `nta.go`, `constraints.go`, `email_*.go`, `validate_*.go`, `pdf*.go`, `primuss*.go`, `zpa*.go`). The slot/day model is derived from config in `setSemesterConfig`/`setGoSlots` — note the GoDay0 offset logic that maps "Go slots" onto real calendar slots.
+- **`bootstrap/`** — server entrypoint. `main.go` sets version/timezone and calls `bootstrap.Serve()`, which parses the three flags, loads config (`initConfig`), constructs the `*plexams.Plexams` instance (`newPlexams`) and starts the server. This replaced the former Cobra `cmd/` package (removed). Documents/exports that used to be CLI file writers are now REST download handlers; there is no code path that writes generated files to disk.
+- **`plexams/`** — Business logic. The central `Plexams` struct ([plexams/plexams.go](plexams/plexams.go)) holds the semester string, a `*db.DB`, ZPA/email/planer config, the computed `*model.SemesterConfig`, and a room-info map. Almost all domain operations are methods on `*Plexams`, grouped by concern across many files (`exam.go`, `plan.go`, `rooms*.go`, `invigilation*.go`, `nta.go`, `constraints.go`, `email_*.go`, `validate_*.go`, `pdf*.go`, `csv.go`, `ics.go`, `primuss*.go`, `zpa*.go`). Exams are stored as absolute times (the slot/day ordinals were removed in the slotless refactor).
 - **`db/`** — MongoDB persistence (mongo-driver). `DB` struct in [db/mongo.go](db/mongo.go). **Each semester is its own MongoDB database** (named like `2026-SS`); collections per concern. One file per data type mirroring the plexams files.
 - **`zpa/`** — HTTP client for the external ZPA REST API (teachers, exams, invigilator requirements, student regs, plan upload). The `Plexams.zpa.client` is created lazily via `SetZPA()`.
 - **`graph/`** — GraphQL API (gqlgen). Resolvers delegate to `*Plexams`. Server bootstrap in [graph/server.go](graph/server.go).
@@ -50,7 +50,7 @@ Hand-written model types live alongside generated ones in `graph/model/` (e.g. `
 
 ## Conventions
 
-- **Logging:** `zerolog` (`github.com/rs/zerolog/log`) everywhere — `log.Error().Err(err).Msg(...)`. CLI commands often `log.Fatal()` on error.
+- **Logging:** `zerolog` (`github.com/rs/zerolog/log`) everywhere — `log.Error().Err(err).Msg(...)`. Only the server bootstrap (`bootstrap/`) uses `log.Fatal()` on unrecoverable startup errors.
 - **Timezone:** `main.go` forces `time.Local = Europe/Berlin`. Slot/day calculations depend on this; preserve it.
 - **Data direction:** `teachers` and `zpaexams` are imported from ZPA and must **not** be modified locally (see README). `zpaexamsToPlan`, `constraints`, connected/external exams are the locally-planned overlay.
 - Versioning is injected via ldflags into `main.version/commit/date/builtBy` (see Dockerfile / `.goreleaser.yml`).

@@ -3,26 +3,28 @@
 
 # plexams.go
 
-`plexams.go` is a CLI tool and GraphQL server for planning university exams
+`plexams.go` is a GraphQL/REST server for planning university exams
 (Prüfungsplanung) at HM (Hochschule München, FK07). It imports exam and teacher
 data from the **ZPA** system and student registration/conflict data from
-**Primuss**, connects them, and helps schedule exams into slots, assign rooms and
-plan invigilations (Aufsichten).
+**Primuss**, connects them, and helps schedule exams, assign rooms and plan
+invigilations (Aufsichten).
 
-It is the backend for [`plexams.gui`](https://github.com/obcode/plexams.gui).
-Most domain terminology and log messages are in German.
+It is the backend for [`plexams.gui`](https://github.com/obcode/plexams.gui) and
+is driven entirely through that GUI. Most domain terminology and log messages are
+in German.
 
-> The work is gradually moving out of the CLI into the GraphQL API consumed by the
-> GUI. New functionality (e.g. invigilation generation, email sending, room
-> requests) is added as GraphQL queries/subscriptions; the CLI is kept in sync but
-> is no longer the primary interface. It remains a single-user, local tool.
+> The former Cobra CLI has been removed: all functionality is now exposed as
+> GraphQL queries/mutations/subscriptions or REST endpoints and driven from the
+> GUI. It remains a single-user, local tool (no auth, localhost-only CORS).
 
 ## Architecture
 
-Four layers, each its own package, wired together in `cmd/`:
+Layers, each its own package, wired together in `bootstrap/` + `main.go`:
 
-- **`cmd/`** — Cobra CLI, one file per top-level command. `root.go` loads config
-  and constructs the central `*plexams.Plexams` instance.
+- **`bootstrap/`** — server entrypoint. `main.go` calls `bootstrap.Serve()`, which
+  parses the three flags, loads config and constructs the central
+  `*plexams.Plexams` instance, then starts the server. (Replaced the former Cobra
+  `cmd/` package.)
 - **`plexams/`** — business logic. Almost all domain operations are methods on
   `*Plexams`, grouped by concern across many files.
 - **`db/`** — MongoDB persistence (`mongo-driver`). **Each semester is its own
@@ -58,66 +60,71 @@ pre-commit install
 
 ## Configuration
 
-Config is loaded via [viper](https://github.com/spf13/viper). A base file
-`.plexams.yaml` (in `.` or `$HOME`) names the current `semester` (e.g. `2026-SS`)
-and a `semester-path`. A second per-semester file `<semester>.yaml` is read from
-that path and **merged** on top.
+Config is loaded via [viper](https://github.com/spf13/viper) from a single file
+`.plexams.yaml` (in `.` or `$HOME`), which may optionally pin the `semester`
+(e.g. `2026-SS`). There is no per-semester `<semester>.yaml` anymore — the
+per-semester config lives in the database and is edited through the GUI.
 
 Key sections consumed by the code:
 
 | Section | Purpose |
 |---------|---------|
-| `semester` | the active semester, e.g. `2026-SS` (required) |
+| `semester` | optional pin of the active semester, e.g. `2026-SS` (else auto-selected from the DB) |
 | `db.uri`, `db.database` | MongoDB connection |
 | `zpa.*` | `baseurl`, `username`, `password`/`token`, `fk07programs`, `oldprograms` |
 | `smtp.*` | mail server + `testmail` (dry-run recipient) |
-| `planer.*` | name/email of the planner |
-| `semesterConfig.*` | `from`/`until`, `slots`, `forbiddenDays`, `goDay0`, `emails` |
-| `goslots` | GO/GN slot configuration |
+| `planer.*` | name/email of the planner (bootstrap/fallback; lives in DB) |
+| `server.*` | `port`, `allowedorigins` |
 
-Global flags: `-v/--verbose`, `--db-uri`, `--semester`.
+The per-semester planning config (`from`/`until`, `slots`, `forbiddenDays`,
+`emails`, MUC.DAI slots) is not in the YAML — it lives in the DB
+(`semester_config_input`) and is edited through the GUI.
 
-`plexams.go init <semester>` interactively creates a semester config file.
-`init` and `version` skip config loading.
+The only command-line surface is three flags: `-v/--verbose`, `--db-uri`,
+`--semester`. `--semester` optionally pins a workspace; without it the active
+workspace is auto-selected from the DB (and can be switched at runtime from the
+GUI via the `setSemester` mutation).
 
 > Secrets (ZPA token/password, SMTP password) live in the config file, not in the
 > DB. Keep the file out of version control.
 
 ## Running
 
-Run without a subcommand to start the **GraphQL server** (playground at `/`,
-queries at `/query`; default CORS allows `localhost:5173/8080/3000`):
+`plexams.go` is a **server only** — it has no subcommands anymore. Running it
+starts the GraphQL/REST server that `plexams.gui` talks to (GraphQL playground at
+`/`, queries/mutations at `POST /query`, subscriptions over websocket, and REST
+up/download routes on the same router; default CORS/origin allows
+`localhost:5173/8080/3000`):
 
 ```bash
-plexams.go            # or: plexams.go server
+plexams.go
 ```
 
-Otherwise invoke a subcommand:
-
-```bash
-plexams.go <command> [subcommand] [args] [--run]
-```
+Everything the old CLI did is now a GraphQL query/mutation/subscription or a REST
+endpoint, driven from the GUI.
 
 ## Planning workflow
 
-A typical semester runs roughly in this order. Many of the later steps now also
-have an equivalent in the GUI.
+A typical semester runs roughly in this order, all from the GUI:
 
-1. **Init** — `plexams.go init 2026-SS`, fill in the per-semester config.
-2. **Import from ZPA** — `zpa exams`, `zpa teacher`, `zpa invigs`.
-3. **Select exams** to plan and add constraints (in the GUI).
-4. **Import from Primuss** and connect — `prepare connected-exams`
-   (`prepare connect-exam <ancode> <program>` for leftovers), then
-   `prepare generated-exams` and `prepare studentregs`.
-5. **Schedule** — place exams into slots (`plan move-to`, `plan pre-plan-exam`,
-   …), check with `validate conflicts` / `validate constraints`.
-6. **Rooms** — `prepare rooms-for-exams` (it recomputes the allowed rooms per
-   slot first, so `prepare rooms-for-slots` is only needed to preview that
-   slot→rooms map on its own); request building-management rooms (see below).
-7. **Validate & upload** — `validate all`, then `zpa upload-plan`; publish the
-   plan and send the announcement emails.
-8. **Invigilations** — collect requirements, generate the invigilation plan,
-   validate, and send the published-invigilations emails.
+1. **Create the semester** (`createSemester` mutation) and fill in the
+   per-semester config.
+2. **Import from ZPA** — the `importExamsFromZPA` / `importTeachersFromZPA` /
+   `importInvigilatorRequirementsFromZPA` subscriptions.
+3. **Select exams** to plan and add constraints.
+4. **Import from Primuss** (upload the Sammellisten ZIP to `/upload/primuss-zip`)
+   and connect the exams, then generate the assembled exams and student regs
+   (`generatePreparation` / `generateAssembledExams` / `generateStudentRegs`).
+5. **Schedule** — place exams (`setExamTime`), check with the `validateConflicts`
+   / `validateConstraints` subscriptions.
+6. **Rooms** — assign rooms (`assignRoomsForExams` subscription); request
+   building-management rooms (see below).
+7. **Validate & upload** — run the `validate*` subscriptions, then upload with
+   `uploadExamsToZPA` (…`WithRooms`/`WithInvigilators`); publish the plan and send
+   the announcement emails.
+8. **Invigilations** — collect requirements, generate the invigilation plan
+   (`assignInvigilations` subscription), validate, and send the
+   published-invigilations emails.
 
 ### Building-management room requests
 
@@ -125,43 +132,39 @@ Some rooms must be requested externally: T-building rooms via **Anny**, the
 others via the **Gebäudemanagement** (building management). The management
 requests are managed in the DB (collection `room_requests`, per semester):
 
-1. Dry run: `info request-rooms` (CLI) or the `roomRequestsPreview` query (GUI)
-   shows which rooms would be requested for which exams — read-only, changes
-   nothing.
-2. Apply once (GUI, `applyRoomRequestsPreview`): writes the requests; it refuses
-   to overwrite existing ones unless forced, so an already-approved set is not
-   lost. Add extras with `addRoomRequest`, extend a request (e.g. for an NTA)
+1. Dry run: the `roomRequestsPreview` query shows which rooms would be requested
+   for which exams — read-only, changes nothing.
+2. Apply once (`applyRoomRequestsPreview` mutation): writes the requests; it
+   refuses to overwrite existing ones unless forced, so an already-approved set is
+   not lost. Add extras with `addRoomRequest`, extend a request (e.g. for an NTA)
    with `updateRoomRequestTime`.
 3. Approve / deactivate individual requests as the management responds.
-4. Send the request email: `email room-requests` (CLI) or the
-   `sendEmailRoomRequests` subscription (GUI). Requires
+4. Send the request email: the `sendEmailRoomRequests` subscription (with
+   `run: false` for a dry run to `smtp.testmail`). Requires
    `semesterConfig.emails.roomManagement`.
 
 Stored time ranges include a 15-minute buffer before and after the exam for
 setup and teardown.
 
-## Command reference
+## API surface
 
-Top-level commands (run `plexams.go <command> --help` for subcommands):
+The full surface is the GraphQL schema in `graph/*.graphqls` (queries, mutations,
+and `LogLine`-streaming subscriptions for imports, generation, validation, emails
+and ZPA upload) plus the REST routes registered in
+[graph/server.go](graph/server.go):
 
-| Command | Purpose |
-|---------|---------|
-| `zpa` | fetch teacher/exams/invigs/students from ZPA, post studentregs, upload plan |
-| `primuss` | handle Primuss data (add/fix ancodes, add/remove student regs) |
-| `prepare` | connect exams, generate exams, prepare rooms/studentregs/invigilations |
-| `plan` | manipulate the plan (move, pre-plan rooms, lock/unlock) |
-| `rooms` | fetch room bookings (e.g. `rooms anny`) |
-| `invigilation` | add invigilators / reserves to slots and rooms |
-| `validate` | validate the plan (conflicts, constraints, rooms, ZPA, invigilations, …) |
-| `email` | send the various planning emails (`--run` to really send) |
-| `export`, `csv`, `pdf`, `ics` | generate exports in the respective formats |
-| `info` | print info about the semester, exams, rooms, stats, students |
-| `init` | interactively create a semester config |
-| `server` | start the GraphQL server (also the default with no command) |
-| `version` | print version info |
+| Route | Purpose |
+|-------|---------|
+| `POST /upload/primuss-zip`, `/upload/email-attachment(s-zip)` | Primuss Sammellisten ZIP, email-attachment uploads |
+| `GET /download/planned-rooms.json` | planned rooms export (for external cover-page generation) |
+| `GET /download/pdf/{kind}` | draft/plan PDFs (`exams-to-plan`, `constraints`, `draft-fk08/fk10/exahm/muc.dai/fs/lba-rep`, `same-module-name`; `draft-si` returns a ZIP) |
+| `GET /download/csv/{kind}` | draft CSVs (`draft?program=…`, `exahm`, `lba-repeater`) |
+| `GET /download/ics/{program}` | per-program exam calendar (ICS) |
+| `GET/POST /download|upload/semester-dump.zip`, `/dataset`, `/dataset-csv`, `/my-inputs-csv.zip` | backup/restore of a whole semester or a single dataset |
 
-Email subcommands take a `--run` flag; without it they are a **dry run** that
-only mails the `smtp.testmail` recipient.
+Emails and ZPA upload run as subscriptions with a `run`/`dryRun` argument; with
+`run: false`/`dryRun: true` they only mail the `smtp.testmail` recipient / do not
+upload.
 
 ## Optimization algorithms
 

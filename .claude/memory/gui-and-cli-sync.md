@@ -7,19 +7,19 @@ metadata:
   originSessionId: 6285039b-3933-4bb1-a8f3-24a7355c4a1d
 ---
 
-Two standing rules for every change to plexams.go (Oliver, 2026-06-21):
+Standing rule for every change to plexams.go (Oliver, 2026-06-21):
 
 1. **Always output plexams.gui-agent instructions together with the change** — not only when
-   asked. Whenever a GraphQL schema/field/mutation/subscription changes (or a backend change can
-   break an existing GUI query, e.g. a removed field), include the concrete GUI adjustment in the
-   same answer. Oliver drives a separate agent in the plexams.gui repo and pastes these.
+   asked. Whenever a GraphQL schema/field/mutation/subscription (or a REST route) changes, or a
+   backend change can break an existing GUI query (e.g. a removed field), include the concrete GUI
+   adjustment in the same answer. Oliver drives a separate agent in the plexams.gui repo and pastes
+   these.
 
-2. **Keep the CLI (`cmd/`) in sync — adjust or remove affected commands.** When the data model or
-   logic changes, update the matching CLI command or delete it if obsolete. The goal: Oliver must
-   not be able to break/corrupt data later by running a CLI command that no longer matches the new
-   model. Treat the CLI as a first-class consumer, like the GUI.
+**UPDATE 2026-07-08:** rule 2 ("keep the CLI in sync") is obsolete — the CLI (`cmd/`) was removed;
+plexams.go is now server-only (see [[cli-to-gui-migration]]). The GUI is the single facade, so rule
+1 is the whole rule now: there is no CLI left to adjust/remove.
 
-**Why:** GUI and CLI are both facades over the same Plexams logic; a backend change that updates
-only one leaves the other broken or dangerous.
+**Why:** the GUI is the only facade over the Plexams logic; a backend change that doesn't update the
+GUI leaves it broken.
 
 See [[git-workflow]] and [[emails-over-graphql]].

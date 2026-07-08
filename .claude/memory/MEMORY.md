@@ -2,9 +2,9 @@
 
 - [slotless time-based redesign](slotless-timebased-redesign.md) — planned big refactor: drop slot/day numbers, store exams as absolute times; conflicts/rooms/invig become interval-based; no migration, clean cut; plan in docs/plan-slotless-timebased.md.
 - [slot time avoidance](slot-time-avoidance.md) — Terminplan soft constraint on start times: WS avoid early (threshold), SS prefer early (monotonic, size-weighted); AUTO-by-semester toggle in GenerationConfig; T-Bau phase-A exception; hard-violation logging.
-- [CLI→GUI migration](cli-to-gui-migration.md) — plan to move all CLI into the GraphQL/Svelte GUI; config to DB; stays local single-user; secrets stay in file.
+- [CLI→GUI migration](cli-to-gui-migration.md) — DONE 2026-07-08: cmd/ + zpa/cli deleted, server-only via bootstrap/; final gaps = REST pdf/csv/ics downloads + add/removeStudentReg mutations; CLI gone for good.
 - [git workflow](git-workflow.md) — semantic-release + feature branches; commit in steps with Conventional Commits; don't commit .claude/settings.json.
-- [GUI & CLI sync](gui-and-cli-sync.md) — every backend change: always emit plexams.gui-agent instructions AND adjust/remove the matching CLI command.
+- [GUI & CLI sync](gui-and-cli-sync.md) — GUI-only now (CLI removed 2026-07-08): every backend change still emits plexams.gui-agent instructions; there is no CLI left to keep in sync.
 - [emails over GraphQL](emails-over-graphql.md) — email send = streaming subscriptions; attachments via REST; dry-run to smtp.testmail.
 - [room requests](room-requests.md) — Gebäudemanagement room requests: requestWith/priority, DB collection, generate-once→apply→email workflow.
 - [build binary cleanup](build-binary-cleanup.md) — always rm the ./plexams.go binary after testing (breaks gowatch); prefer `go run .`.

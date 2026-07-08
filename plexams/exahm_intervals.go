@@ -1,0 +1,156 @@
+package plexams
+
+import (
+	"context"
+	"time"
+
+	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/anny"
+	"github.com/obcode/plexams.go/plexams/preplancalc"
+)
+
+// exahmDefaultBuffer is the default setup (Vorlauf) / teardown (Nachlauf) time an
+// EXaHM/SEB exam needs its booked T-building room free around it — against a booking edge
+// or another (foreign) exam. Between two of OUR OWN consecutive exams in the same room the
+// same 30 min is SHARED (each side contributes half, i.e. 15), so a room booked 14:00–18:30
+// fits two 90-min exams at 14:30 and 16:30 (30 to each edge, 30 gap between them).
+//
+// Overridable per exam via RoomConstraints.PreExamMinutes / PostExamMinutes: a lab exam
+// with heavy setup may require e.g. a real 60 min each side (then NOT shared), and a light
+// exam may shorten it (e.g. 15). See exahmRoomBuffers.
+const exahmDefaultBuffer = 30 * time.Minute
+
+// exahmRoomBuffers returns the setup (pre) / teardown (post) time an EXaHM/SEB exam needs
+// its booked room free around it: exahmDefaultBuffer (30 min) unless the exam's
+// RoomConstraints override it via PreExamMinutes / PostExamMinutes. Unlike roomBuffers
+// (regular Gebäudemanagement rooms, widen-only), an EXaHM override REPLACES the default and
+// may also shorten it — but never below 1 min (a 0/negative value is ignored).
+func exahmRoomBuffers(constraints *model.Constraints) (pre, post time.Duration) {
+	pre, post = exahmDefaultBuffer, exahmDefaultBuffer
+	if constraints == nil || constraints.RoomConstraints == nil {
+		return pre, post
+	}
+	rc := constraints.RoomConstraints
+	if rc.PreExamMinutes != nil && *rc.PreExamMinutes > 0 {
+		pre = time.Duration(*rc.PreExamMinutes) * time.Minute
+	}
+	if rc.PostExamMinutes != nil && *rc.PostExamMinutes > 0 {
+		post = time.Duration(*rc.PostExamMinutes) * time.Minute
+	}
+	return pre, post
+}
+
+// bookedRoomInterval is one of our booked T-building rooms as a time interval, together
+// with the room's EXaHM/SEB capability and physical seats. Overlapping/adjacent bookings of
+// the same room are merged (see bookedExahmIntervals).
+type bookedRoomInterval struct {
+	from, until time.Time
+	exahm, seb  bool
+	seats       int
+}
+
+// bookedExahmIntervals returns our booked T-building room time intervals (merged per room)
+// with each room's EXaHM/SEB capability. Only our own bookings count (matched by the
+// configured personalization names) in rooms flagged RequestWith == ANNY. It is the
+// time-interval view of the same bookings annyBookedByTime turns into per-slot seat counts,
+// used to check a placement against the REAL booking window (not just a fixed slot block).
+func (p *Plexams) bookedExahmIntervals(ctx context.Context) ([]bookedRoomInterval, error) {
+	bookings, err := p.dbClient.AllAnnyBookings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	names := p.anny.PersonalizationNames(ctx)
+
+	rooms, err := p.dbClient.Rooms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	annyRoom := make(map[string]*model.Room, len(rooms))
+	for _, r := range rooms {
+		if !r.Deactivated && r.RequestWith == model.RoomRequestTypeAnny {
+			annyRoom[preplancalc.NormRoomName(r.Name)] = r
+		}
+	}
+
+	entries := make([]anny.RoomBooking, 0, len(bookings))
+	for _, b := range bookings {
+		if b.Room == "" || !anny.MatchesAnyPersonalization(b.PersonalizationName, names) {
+			continue
+		}
+		if _, ok := annyRoom[preplancalc.NormRoomName(b.Room)]; !ok {
+			continue
+		}
+		entries = append(entries, anny.RoomBooking{
+			From:     b.StartDate,
+			Until:    b.EndDate,
+			Rooms:    []string{b.Room},
+			Approved: anny.IsApprovedStatus(b.Status),
+		})
+	}
+
+	merged := anny.MergeRoomBookings(entries)
+	result := make([]bookedRoomInterval, 0, len(merged))
+	for _, m := range merged {
+		if len(m.Rooms) != 1 {
+			continue
+		}
+		room := annyRoom[preplancalc.NormRoomName(m.Rooms[0])]
+		if room == nil {
+			continue
+		}
+		result = append(result, bookedRoomInterval{
+			from: m.From, until: m.Until,
+			exahm: room.Exahm, seb: room.Seb, seats: room.Seats,
+		})
+	}
+	return result, nil
+}
+
+// preplanExamDuration returns a pre-exam's exam duration, falling back to a full slot
+// block when none has been entered yet (so an un-sized pre-exam is gated conservatively).
+func preplanExamDuration(pe *model.PreplanExam, fallback time.Duration) time.Duration {
+	if pe.Duration != nil && *pe.Duration > 0 {
+		return time.Duration(*pe.Duration) * time.Minute
+	}
+	return fallback
+}
+
+// intersectSlotSet intersects two slot-index allow-sets, treating nil as "no restriction"
+// (any slot). The result is a fresh map (never one of the inputs), so callers may safely
+// share the inputs (e.g. the reused MUC.DAI slot set).
+func intersectSlotSet(a, b map[int]bool) map[int]bool {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	out := make(map[int]bool, len(a))
+	for k := range a {
+		if b[k] {
+			out[k] = true
+		}
+	}
+	return out
+}
+
+// exahmWindowCovered reports whether some booked room of the required kind fully covers the
+// exam window [start-pre, start+dur+post] — i.e. the booking is long enough to run the exam
+// (its real duration) plus the setup/teardown buffer at that start time. exahm selects the
+// kind: EXaHM exams need an EXaHM-capable booked room; SEB exams accept an EXaHM or SEB one
+// (SEB may also overflow into non-booked R-rooms, so SEB is only gated where a booking is
+// required by the caller).
+func exahmWindowCovered(intervals []bookedRoomInterval, exahm bool, start time.Time, dur, pre, post time.Duration) bool {
+	winStart := start.Add(-pre)
+	winEnd := start.Add(dur + post)
+	for _, iv := range intervals {
+		ok := iv.exahm
+		if !exahm {
+			ok = iv.exahm || iv.seb
+		}
+		if ok && anny.Covers(iv.from, iv.until, winStart, winEnd) {
+			return true
+		}
+	}
+	return false
+}

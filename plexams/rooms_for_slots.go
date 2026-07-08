@@ -71,8 +71,14 @@ func (p *Plexams) computeRoomsForSlots(ctx context.Context, reporter Reporter) (
 				slotsWithRoomNames[slot].Add(room.Name)
 			}
 		} else {
-			if room.NeedsRequest {
-				reporter.Warnf(aurora.Sprintf(aurora.Red("room %s needs request, but no restrictions found -> %s"),
+			// A room that needs a request (Gebäudemanagement) or is booked via Anny
+			// (T-building EXaHM/SEB) is only usable in the slots it was actually
+			// requested/booked for. If none registered (e.g. a booking too small to
+			// cover any exam window), it must be IGNORED — never silently offered in
+			// every slot, which would show T-building rooms as free at times they are
+			// not booked.
+			if room.NeedsRequest || room.RequestWith == model.RoomRequestTypeAnny {
+				reporter.Warnf(aurora.Sprintf(aurora.Red("room %s needs request/booking, but no slot covered -> %s"),
 					aurora.Yellow(room.Name),
 					aurora.Green("room ignored")))
 				continue
@@ -150,14 +156,17 @@ func (p *Plexams) restrictedSlotsForEXaHMRooms(reporter Reporter) (map[string]se
 			aurora.Magenta(entry.From.Format("02.01.06 15:04")),
 			aurora.Magenta(entry.Until.Format("02.01.06 15:04")),
 		))
-		// a booked room is usable in a slot only if the booking covers the whole exam
-		// window [start - buffer, start + block + buffer]; the slot block bounds the exam
-		// length on the grid (single NTAs run into the post-buffer).
+		// a booked room is usable in a slot only if the booking covers the whole slot
+		// block [start, start+block] — the same coverage rule as the per-slot booked
+		// capacity (annyBookedByTime), so the room display and the schedule generator
+		// agree. Whether a *specific* exam also fits (its real duration plus the
+		// setup/teardown buffer) is enforced per exam at placement (exahmWindowCovered),
+		// not in this generic per-slot view.
 		block := slotBlockDuration(p.semesterConfig.Starttimes)
 		var sb strings.Builder
 		for _, slot := range p.semesterConfig.Slots {
-			winStart := slot.Starttime.Add(-roomRequestBuffer)
-			winEnd := slot.Starttime.Add(block + roomRequestBuffer)
+			winStart := slot.Starttime
+			winEnd := slot.Starttime.Add(block)
 			if anny.Covers(entry.From, entry.Until, winStart, winEnd) {
 				fmt.Fprintf(&sb, "%s, rooms: ", slot.Starttime.Format("02.01. 15:04"))
 				for _, roomName := range entry.Rooms {

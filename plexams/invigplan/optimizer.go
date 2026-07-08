@@ -284,7 +284,7 @@ func staticEligibleCount(p *Problem, posIdx int) int {
 	n := 0
 	for i := range p.Invigilators {
 		in := &p.Invigilators[i]
-		if in.Available(pos.Day, pos.Slot) && !in.OwnExamSlots[pos.SlotKey()] {
+		if in.Available(pos) && !in.OwnExamSlots[pos.SlotKey()] {
 			n++
 		}
 	}

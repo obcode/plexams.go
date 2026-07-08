@@ -17,7 +17,7 @@ func (availabilityHard) Allows(p *Problem, plan *Plan, posIdx, invigID int) bool
 		return false
 	}
 	pos := p.Positions[posIdx]
-	return in.Available(pos.Day, pos.Slot)
+	return in.Available(pos)
 }
 
 func (c availabilityHard) Check(p *Problem, plan *Plan) []Violation {
@@ -28,13 +28,12 @@ func (c availabilityHard) Check(p *Problem, plan *Plan) []Violation {
 		}
 		in := p.Invigilator(invigID)
 		pos := p.Positions[posIdx]
-		if in == nil || !in.Available(pos.Day, pos.Slot) {
+		if in == nil || !in.Available(pos) {
 			vs = append(vs, Violation{
 				Constraint:    c.Name(),
 				InvigilatorID: invigID,
-				Day:           pos.Day,
-				Slot:          pos.Slot,
-				Message:       fmt.Sprintf("invigilator %d assigned to unavailable slot (%d,%d)", invigID, pos.Day, pos.Slot),
+				Start:         pos.Start,
+				Message:       fmt.Sprintf("invigilator %d assigned to unavailable slot %s", invigID, pos.Start.Format("02.01. 15:04")),
 			})
 		}
 	}
@@ -76,10 +75,9 @@ func (c timeWindowHard) Check(p *Problem, plan *Plan) []Violation {
 		vs = append(vs, Violation{
 			Constraint:    c.Name(),
 			InvigilatorID: invigID,
-			Day:           pos.Day,
-			Slot:          pos.Slot,
-			Message: fmt.Sprintf("invigilator %d assigned to %s in slot (%d,%d) running %s-%s, outside their allowed time window",
-				invigID, room, pos.Day, pos.Slot,
+			Start:         pos.Start,
+			Message: fmt.Sprintf("invigilator %d assigned to %s at %s running %s-%s, outside their allowed time window",
+				invigID, room, pos.Start.Format("02.01. 15:04"),
 				pos.Start.Format("15:04"), pos.End().Format("15:04")),
 		})
 	}
@@ -116,9 +114,8 @@ func (c ownExamHard) Check(p *Problem, plan *Plan) []Violation {
 			vs = append(vs, Violation{
 				Constraint:    c.Name(),
 				InvigilatorID: invigID,
-				Day:           pos.Day,
-				Slot:          pos.Slot,
-				Message:       fmt.Sprintf("invigilator %d has own exam in slot (%d,%d)", invigID, pos.Day, pos.Slot),
+				Start:         pos.Start,
+				Message:       fmt.Sprintf("invigilator %d has own exam at %s", invigID, pos.Start.Format("02.01. 15:04")),
 			})
 		}
 	}
@@ -132,13 +129,14 @@ func (oneInvigilationPerSlotHard) Name() string { return "one-per-slot" }
 
 func (oneInvigilationPerSlotHard) Allows(p *Problem, plan *Plan, posIdx, invigID int) bool {
 	pos := p.Positions[posIdx]
-	return !plan.HasInSlot(invigID, pos.Day, pos.Slot, posIdx)
+	return !plan.HasAtTime(invigID, pos.Start.Unix(), posIdx)
 }
 
 func (c oneInvigilationPerSlotHard) Check(p *Problem, plan *Plan) []Violation {
 	var vs []Violation
 	type key struct {
-		invigID, day, slot int
+		invigID int
+		start   int64
 	}
 	seen := make(map[key]bool)
 	for posIdx, invigID := range plan.Assign {
@@ -146,14 +144,13 @@ func (c oneInvigilationPerSlotHard) Check(p *Problem, plan *Plan) []Violation {
 			continue
 		}
 		pos := p.Positions[posIdx]
-		k := key{invigID, pos.Day, pos.Slot}
+		k := key{invigID, pos.Start.Unix()}
 		if seen[k] {
 			vs = append(vs, Violation{
 				Constraint:    c.Name(),
 				InvigilatorID: invigID,
-				Day:           pos.Day,
-				Slot:          pos.Slot,
-				Message:       fmt.Sprintf("invigilator %d has more than one invigilation in slot (%d,%d)", invigID, pos.Day, pos.Slot),
+				Start:         pos.Start,
+				Message:       fmt.Sprintf("invigilator %d has more than one invigilation at %s", invigID, pos.Start.Format("02.01. 15:04")),
 			})
 		}
 		seen[k] = true
@@ -193,9 +190,9 @@ func (c timeGapHard) Check(p *Problem, plan *Plan) []Violation {
 					vs = append(vs, Violation{
 						Constraint:    c.Name(),
 						InvigilatorID: invigID,
-						Day:           a.Day,
-						Message: fmt.Sprintf("invigilator %d: less than %d min between (%d,%d) and (%d,%d)",
-							invigID, p.TimelagMin, a.Day, a.Slot, b.Day, b.Slot),
+						Start:         a.Start,
+						Message: fmt.Sprintf("invigilator %d: less than %d min between %s and %s",
+							invigID, p.TimelagMin, a.Start.Format("02.01. 15:04"), b.Start.Format("02.01. 15:04")),
 					})
 				}
 			}
@@ -205,9 +202,9 @@ func (c timeGapHard) Check(p *Problem, plan *Plan) []Violation {
 }
 
 // gapOK reports whether two positions are far enough apart in time. Positions on
-// different days never conflict.
+// different calendar days never conflict.
 func gapOK(a, b Position, lag time.Duration) bool {
-	if a.Day != b.Day {
+	if dateKey(a.Start) != dateKey(b.Start) {
 		return true
 	}
 	earlier, later := a, b

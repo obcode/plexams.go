@@ -38,7 +38,6 @@ func (k Kind) String() string {
 // reserve of a slot. Self-invigilations are modelled as positions too, but are
 // always part of Problem.Fixed and therefore never moved by the optimizer.
 type Position struct {
-	Day, Slot int
 	Room      string // "" for the reserve
 	IsReserve bool
 	IsNTA     bool
@@ -62,8 +61,18 @@ func (p Position) End() time.Time {
 	return p.Start.Add(time.Duration(p.Block) * time.Minute)
 }
 
-// SlotKey identifies the (day, slot) a position lives in.
-func (p Position) SlotKey() [2]int { return [2]int{p.Day, p.Slot} }
+// SlotKey identifies the slot a position lives in by its absolute start time
+// (Unix seconds). Absolute time is the source of truth – there are no day/slot
+// ordinals.
+func (p Position) SlotKey() int64 { return p.Start.Unix() }
+
+// dateKey maps a time to a calendar-date ordinal (y*10000 + month*100 + day),
+// so two times on the same calendar day share a key regardless of the time of
+// day. It is used for all "day" keyed maps (ExcludedDays, OwnExamDays).
+func dateKey(t time.Time) int {
+	y, m, d := t.Date()
+	return y*10000 + int(m)*100 + d
+}
 
 // Kind classifies the position for distribution balancing.
 func (p Position) Kind() Kind {
@@ -78,19 +87,21 @@ func (p Position) Kind() Kind {
 }
 
 // Invigilator holds everything about a person needed to decide and score
-// assignments. All slot keys are [2]int{day, slot}.
+// assignments. Slot keys are position start times (Unix seconds); day keys are
+// calendar-date ordinals (see dateKey).
 type Invigilator struct {
 	ID            int
 	TargetMinutes int // = InvigilatorTodos.TotalMinutes
 
-	ExcludedDays  map[int]bool
-	ExcludedSlots map[[2]int]bool
+	ExcludedDays  map[int]bool   // calendar-date ordinals (see dateKey)
+	ExcludedSlots map[int64]bool // position start times (Unix seconds)
 
 	// OwnExamSlots are slots in which this person has an own exam and therefore
 	// must not take a (non-self) invigilation. For NTA exams running into the
-	// following slot the builder also adds that following slot.
-	OwnExamSlots map[[2]int]bool
-	OwnExamDays  map[int]bool
+	// following slot the builder also adds that following slot. Keyed by the
+	// slot's start time (Unix seconds).
+	OwnExamSlots map[int64]bool
+	OwnExamDays  map[int]bool // calendar-date ordinals (see dateKey)
 
 	// OwnExams are the time windows the person is present for their own exams –
 	// including multi-room exams they do *not* invigilate themselves. They count
@@ -155,18 +166,19 @@ func sameDate(a, b time.Time) bool {
 
 // TimeSpan is a presence interval on a given day.
 type TimeSpan struct {
-	Day   int
 	Start time.Time
 	End   time.Time
 }
 
-// Available reports whether the person may in principle invigilate in the slot
-// regarding their stated availability (excluded day/slot). Time-of-day
-// restrictions are handled by timeWindowHard, the own-exam restriction by
-// ownExamHard.
-func (in *Invigilator) Available(day, slot int) bool {
-	key := [2]int{day, slot}
-	return !in.ExcludedDays[day] && !in.ExcludedSlots[key]
+// Date returns the calendar-date ordinal of the span's start (see dateKey).
+func (ts TimeSpan) Date() int { return dateKey(ts.Start) }
+
+// Available reports whether the person may in principle invigilate at the
+// position's time regarding their stated availability (excluded day/slot).
+// Time-of-day restrictions are handled by timeWindowHard, the own-exam
+// restriction by ownExamHard.
+func (in *Invigilator) Available(pos Position) bool {
+	return !in.ExcludedDays[dateKey(pos.Start)] && !in.ExcludedSlots[pos.Start.Unix()]
 }
 
 // Problem is the immutable snapshot the planner works on.

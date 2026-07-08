@@ -72,10 +72,9 @@ func (c coverageSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 		}
 		vs = append(vs, Violation{
 			Constraint: c.Name(),
-			Day:        pos.Day,
-			Slot:       pos.Slot,
+			Start:      pos.Start,
 			Penalty:    p.Weights.Coverage,
-			Message:    fmt.Sprintf("no invigilator for %s in slot (%d,%d)", room, pos.Day, pos.Slot),
+			Message:    fmt.Sprintf("no invigilator for %s at %s", room, pos.Start.Format("02.01. 15:04")),
 		})
 	}
 	return p.Weights.Coverage * float64(len(open)), vs
@@ -220,18 +219,18 @@ func (c daySpanSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 		// presence from assigned invigilations
 		for _, posIdx := range plan.Positions(in.ID) {
 			pos := p.Positions[posIdx]
-			fold(pos.Day, pos.Start, pos.End())
+			fold(dateKey(pos.Start), pos.Start, pos.End())
 		}
 		// presence from own exams, but only on days the person actually
 		// invigilates – on a pure exam day the span is fixed and cannot be
 		// reduced by the planner, so penalising it would be noise.
 		for _, ex := range in.OwnExams {
-			if _, invigilates := byDay[ex.Day]; invigilates {
-				fold(ex.Day, ex.Start, ex.End)
+			if _, invigilates := byDay[ex.Date()]; invigilates {
+				fold(ex.Date(), ex.Start, ex.End)
 			}
 		}
 
-		for day, sp := range byDay {
+		for _, sp := range byDay {
 			hours := sp.last.Sub(sp.first).Hours()
 			if hours > p.MaxSpanHours {
 				over := hours - p.MaxSpanHours
@@ -240,9 +239,9 @@ func (c daySpanSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 				vs = append(vs, Violation{
 					Constraint:    c.Name(),
 					InvigilatorID: in.ID,
-					Day:           day,
+					Start:         sp.first,
 					Penalty:       pen,
-					Message:       fmt.Sprintf("invigilator %d spans %.1fh on day %d (max %.0fh)", in.ID, hours, day, p.MaxSpanHours),
+					Message:       fmt.Sprintf("invigilator %d spans %.1fh on %s (max %.0fh)", in.ID, hours, sp.first.Format("02.01."), p.MaxSpanHours),
 				})
 			}
 		}

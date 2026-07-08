@@ -355,34 +355,20 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		log.Error().Err(err).Msg("cannot get self invigilations")
 		return nil, err
 	}
-	// Day/slot ordinals are derived purely from the sorted config start times
-	// (time-based, never persisted): dayIndexOf gives a stable 1-based calendar-day
-	// index (matching semesterConfig.Days order), slotIndexOf a 1-based position within
-	// the day, and nextStartOf the following start time on the same day. They replace
-	// the former model.Slot.DayNumber/SlotNumber.
+	// Absolute time is the source of truth: nothing is keyed by a day/slot
+	// ordinal anymore. nextStartOf returns the following slot start on the same
+	// calendar day (used for the NTA overrun that blocks the next slot); it is
+	// derived purely from the sorted config start times, never persisted.
 	starts := make([]time.Time, 0, len(p.semesterConfig.Slots))
 	for _, slot := range p.semesterConfig.Slots {
 		starts = append(starts, slot.Starttime)
 	}
 	sort.Slice(starts, func(i, j int) bool { return starts[i].Before(starts[j]) })
 
-	dayIndexByDate := make(map[string]int)
 	slotsByDay := make(map[string][]time.Time)
 	for _, t := range starts {
 		key := t.Format("2006-01-02")
-		if _, ok := dayIndexByDate[key]; !ok {
-			dayIndexByDate[key] = len(dayIndexByDate) + 1
-		}
 		slotsByDay[key] = append(slotsByDay[key], t)
-	}
-	dayIndexOf := func(t time.Time) int { return dayIndexByDate[t.Format("2006-01-02")] }
-	slotIndexOf := func(t time.Time) int {
-		for i, s := range slotsByDay[t.Format("2006-01-02")] {
-			if s.Equal(t) {
-				return i + 1
-			}
-		}
-		return 0
 	}
 	nextStartOf := func(t time.Time) (time.Time, bool) {
 		day := slotsByDay[t.Format("2006-01-02")]
@@ -414,16 +400,18 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		return nil, err
 	}
 
-	ownExamSlots := make(map[int]map[[2]int]bool)
+	// ownExamSlots is keyed by the slot's start time (Unix seconds), ownExamDays
+	// by the calendar-date ordinal – both derived directly from the exam's time.
+	ownExamSlots := make(map[int]map[int64]bool)
 	ownExamDays := make(map[int]map[int]bool)
 	ownExamTimes := make(map[int][]invigplan.TimeSpan)
-	addOwnExam := func(examerID, day, slot int) {
+	addOwnExam := func(examerID int, start time.Time) {
 		if ownExamSlots[examerID] == nil {
-			ownExamSlots[examerID] = make(map[[2]int]bool)
+			ownExamSlots[examerID] = make(map[int64]bool)
 			ownExamDays[examerID] = make(map[int]bool)
 		}
-		ownExamSlots[examerID][[2]int{day, slot}] = true
-		ownExamDays[examerID][day] = true
+		ownExamSlots[examerID][start.Unix()] = true
+		ownExamDays[examerID][dateOrdinal(start)] = true
 	}
 
 	positions := make([]invigplan.Position, 0)
@@ -436,7 +424,6 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 
 	for _, slot := range p.semesterConfig.Slots {
 		start := slot.Starttime
-		day, sn := dayIndexOf(start), slotIndexOf(start)
 		rooms, err := p.PlannedRoomsInSlot(ctx, start)
 		if err != nil {
 			log.Error().Err(err).Time("starttime", start).Msg("cannot get rooms in slot")
@@ -458,7 +445,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 				continue
 			}
 			examerID := exam.ZpaExam.MainExamerID
-			addOwnExam(examerID, day, sn)
+			addOwnExam(examerID, start)
 
 			maxDur := 0
 			for _, room := range exam.PlannedRooms {
@@ -469,10 +456,10 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 			if maxDur > 0 {
 				examEnd := start.Add(time.Duration(maxDur) * time.Minute)
 				ownExamTimes[examerID] = append(ownExamTimes[examerID],
-					invigplan.TimeSpan{Day: day, Start: start, End: examEnd})
+					invigplan.TimeSpan{Start: start, End: examEnd})
 				// NTA exams running into the following slot block it too.
 				if hasNext && examEnd.After(nextStart) {
-					addOwnExam(examerID, dayIndexOf(nextStart), slotIndexOf(nextStart))
+					addOwnExam(examerID, nextStart)
 				}
 			}
 		}
@@ -510,8 +497,6 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		for _, name := range roomNames {
 			info := roomMap[name]
 			pos := invigplan.Position{
-				Day:     day,
-				Slot:    sn,
 				Room:    name,
 				IsNTA:   info.isNTA,
 				Minutes: info.maxDuration,
@@ -530,8 +515,6 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		// one reserve per slot with exams.
 		reserveAt[start.Unix()] = len(positions)
 		positions = append(positions, invigplan.Position{
-			Day:       day,
-			Slot:      sn,
 			IsReserve: true,
 			Minutes:   60, // matches SumReserve in PrepareInvigilationTodos
 			Block:     slotMaxDuration,
@@ -592,13 +575,13 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		gi := invigplan.Invigilator{
 			ID:            id,
 			ExcludedDays:  make(map[int]bool),
-			ExcludedSlots: make(map[[2]int]bool),
+			ExcludedSlots: make(map[int64]bool),
 			OwnExamSlots:  ownExamSlots[id],
 			OwnExamDays:   ownExamDays[id],
 			OwnExams:      ownExamTimes[id],
 		}
 		if gi.OwnExamSlots == nil {
-			gi.OwnExamSlots = make(map[[2]int]bool)
+			gi.OwnExamSlots = make(map[int64]bool)
 		}
 		if gi.OwnExamDays == nil {
 			gi.OwnExamDays = make(map[int]bool)
@@ -607,8 +590,13 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 			gi.TargetMinutes = inv.Todos.TotalMinutes
 		}
 		if inv.Requirements != nil {
-			for _, day := range inv.Requirements.ExcludedDays {
-				gi.ExcludedDays[day] = true
+			// ExcludedDays are 1-based exam-day numbers; map each to its calendar
+			// date (semesterConfig.Days[n-1]) and then to a date ordinal, so the
+			// invigplan layer keys them the same way as the position dates.
+			for _, dayNum := range inv.Requirements.ExcludedDays {
+				if dayNum >= 1 && dayNum <= len(p.semesterConfig.Days) {
+					gi.ExcludedDays[dateOrdinal(p.semesterConfig.Days[dayNum-1].Date)] = true
+				}
 			}
 			for _, w := range inv.Requirements.TimeWindows {
 				if w == nil {
@@ -651,4 +639,12 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		Msg("built invigilation problem")
 
 	return problem, nil
+}
+
+// dateOrdinal maps a time to a calendar-date ordinal (y*10000 + month*100 +
+// day), matching invigplan's internal date keying so day-scoped inputs
+// (ExcludedDays, own-exam days) line up with the position start dates.
+func dateOrdinal(t time.Time) int {
+	y, m, d := t.Date()
+	return y*10000 + int(m)*100 + d
 }

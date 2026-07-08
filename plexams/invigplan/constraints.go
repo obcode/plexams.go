@@ -1,13 +1,15 @@
 package invigplan
 
+import "time"
+
 // Violation describes a single broken constraint. For hard constraints the mere
 // presence of a violation means the plan is infeasible; for soft constraints
 // Penalty carries the (already weighted) cost contribution.
 type Violation struct {
 	Constraint    string
 	Message       string
-	InvigilatorID int // 0 for a global / position-level violation
-	Day, Slot     int
+	InvigilatorID int       // 0 for a global / position-level violation
+	Start         time.Time // the involved position's / day's start time (zero if none)
 	Penalty       float64
 }
 

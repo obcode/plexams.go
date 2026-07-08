@@ -11,6 +11,16 @@ func start(hour, min int) time.Time {
 	return time.Date(2026, time.July, 6, hour, min, 0, 0, time.UTC)
 }
 
+// startOn builds a start time on the given July day (2026) for hour:minute, so
+// tests can put positions on distinct calendar dates.
+func startOn(day, hour, min int) time.Time {
+	return time.Date(2026, time.July, day, hour, min, 0, 0, time.UTC)
+}
+
+// dateOrd returns the calendar-date ordinal of a time (matching dateKey), for
+// keying ExcludedDays/OwnExamDays in tests.
+func dateOrd(t time.Time) int { return dateKey(t) }
+
 func newRand() *rand.Rand { return rand.New(rand.NewSource(1)) }
 
 // newTestProblem builds a tiny but realistic problem:
@@ -18,12 +28,14 @@ func newRand() *rand.Rand { return rand.New(rand.NewSource(1)) }
 //	day 1, slot 1 (08:00) and slot 2 (09:45), each with rooms R1, R2 and a reserve.
 //	two invigilators (1, 2) with no restrictions and a 300 min target.
 func newTestProblem() *Problem {
+	// slot 1 at 08:00 and slot 2 at 09:45 on the same calendar day; the start
+	// times are the only slot identity.
 	pos := []Position{
-		{Day: 1, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
-		{Day: 1, Slot: 1, Room: "R2", Minutes: 90, Block: 90, Start: start(8, 0), IsNTA: true},
-		{Day: 1, Slot: 1, IsReserve: true, Minutes: 60, Block: 90, Start: start(8, 0)},
-		{Day: 1, Slot: 2, Room: "R1", Minutes: 90, Block: 90, Start: start(9, 45)},
-		{Day: 1, Slot: 2, IsReserve: true, Minutes: 60, Block: 90, Start: start(9, 45)},
+		{Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
+		{Room: "R2", Minutes: 90, Block: 90, Start: start(8, 0), IsNTA: true},
+		{IsReserve: true, Minutes: 60, Block: 90, Start: start(8, 0)},
+		{Room: "R1", Minutes: 90, Block: 90, Start: start(9, 45)},
+		{IsReserve: true, Minutes: 60, Block: 90, Start: start(9, 45)},
 	}
 	p := &Problem{
 		Positions: pos,
@@ -84,8 +96,8 @@ func TestFixedPositionsAreImmutable(t *testing.T) {
 
 func TestAvailabilityHard(t *testing.T) {
 	p := newTestProblem()
-	p.Invigilators[0].ExcludedDays = map[int]bool{1: true}
-	p.Invigilators[1].ExcludedSlots = map[[2]int]bool{{1, 1}: true}
+	p.Invigilators[0].ExcludedDays = map[int]bool{dateOrd(start(0, 0)): true}
+	p.Invigilators[1].ExcludedSlots = map[int64]bool{start(8, 0).Unix(): true}
 	p.Prepare()
 	plan := NewPlan(p)
 
@@ -106,9 +118,9 @@ func TestTimeWindowHard(t *testing.T) {
 	// runs long (99 min -> ends 09:39). The reserve (Block 99) covers the longest
 	// exam and therefore also ends 09:39.
 	pos := []Position{
-		{Day: 1, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
-		{Day: 1, Slot: 1, Room: "R2", Minutes: 99, Block: 99, Start: start(8, 0), IsNTA: true},
-		{Day: 1, Slot: 1, IsReserve: true, Minutes: 60, Block: 99, Start: start(8, 0)},
+		{Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
+		{Room: "R2", Minutes: 99, Block: 99, Start: start(8, 0), IsNTA: true},
+		{IsReserve: true, Minutes: 60, Block: 99, Start: start(8, 0)},
 	}
 	p := &Problem{
 		Positions:    pos,
@@ -156,8 +168,8 @@ func TestTimeWindowHard(t *testing.T) {
 	// Two windows on the same date are OR-combined: 08:00–09:00 and 12:00–open
 	// keep 09:00–12:00 free. A 08:00 invigilation ending 09:30 fits neither the
 	// first (ends after 09:00) nor the second (starts before 12:00) -> forbidden.
-	morningPos := Position{Day: 1, Slot: 1, Room: "R1", Minutes: 60, Block: 60, Start: start(8, 0)} // 08:00-09:00
-	afternoonPos := Position{Day: 1, Slot: 3, Room: "R1", Minutes: 90, Block: 90, Start: start(13, 0)}
+	morningPos := Position{Room: "R1", Minutes: 60, Block: 60, Start: start(8, 0)} // 08:00-09:00
+	afternoonPos := Position{Room: "R1", Minutes: 90, Block: 90, Start: start(13, 0)}
 	p.Positions = []Position{pos[0], morningPos, afternoonPos}
 	p.Invigilators[0].TimeWindows = []DayTimeWindow{
 		{Date: start(0, 0), From: start(8, 0), Until: start(9, 0)},
@@ -190,7 +202,7 @@ func TestTimeWindowHard(t *testing.T) {
 
 func TestOwnExamHard(t *testing.T) {
 	p := newTestProblem()
-	p.Invigilators[0].OwnExamSlots = map[[2]int]bool{{1, 1}: true}
+	p.Invigilators[0].OwnExamSlots = map[int64]bool{start(8, 0).Unix(): true}
 	p.Prepare()
 	plan := NewPlan(p)
 
@@ -272,7 +284,7 @@ func TestMaxDaysSoft(t *testing.T) {
 	// Build a 4-day problem with one invigilator and one room per day.
 	pos := make([]Position, 0, 4)
 	for d := 1; d <= 4; d++ {
-		pos = append(pos, Position{Day: d, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)})
+		pos = append(pos, Position{Room: "R1", Minutes: 90, Block: 90, Start: startOn(d, 8, 0)})
 	}
 	p := &Problem{
 		Positions:    pos,
@@ -315,7 +327,7 @@ func TestDistributionSoftEqualizes(t *testing.T) {
 
 func TestRegistryAllowsCombinesHardConstraints(t *testing.T) {
 	p := newTestProblem()
-	p.Invigilators[0].ExcludedDays = map[int]bool{1: true}
+	p.Invigilators[0].ExcludedDays = map[int]bool{dateOrd(start(0, 0)): true}
 	p.Prepare()
 	plan := NewPlan(p)
 
@@ -332,21 +344,24 @@ func TestRegistryAllowsCombinesHardConstraints(t *testing.T) {
 // each with roomsPerSlot rooms plus a reserve, and enough invigilators to cover
 // every slot one-per-person.
 func buildGridProblem(days, slotsPerDay, roomsPerSlot, invigilators int) *Problem {
-	starts := []time.Time{start(8, 0), start(10, 0), start(12, 0), start(14, 0)}
+	// Each (day, slot) gets its own absolute start time: slot s runs at hour
+	// slotHours[s-1] on calendar day d, so positions on different days/slots never
+	// collide in time.
+	slotHours := []int{8, 10, 12, 14}
 	var pos []Position
 	totalMinutes := 0
 	for d := 1; d <= days; d++ {
 		for s := 1; s <= slotsPerDay; s++ {
 			for r := 1; r <= roomsPerSlot; r++ {
 				pos = append(pos, Position{
-					Day: d, Slot: s, Room: roomName(r),
-					Minutes: 90, Block: 90, Start: starts[s-1],
+					Room:    roomName(r),
+					Minutes: 90, Block: 90, Start: startOn(d, slotHours[s-1], 0),
 				})
 				totalMinutes += 90
 			}
 			pos = append(pos, Position{
-				Day: d, Slot: s, IsReserve: true,
-				Minutes: 60, Block: 90, Start: starts[s-1],
+				IsReserve: true,
+				Minutes:   60, Block: 90, Start: startOn(d, slotHours[s-1], 0),
 			})
 			totalMinutes += 60
 		}
@@ -399,13 +414,13 @@ func TestDaySpanIncludesOwnExams(t *testing.T) {
 	// One invigilator with an own (multi-room) exam 08:00–09:30 they do NOT
 	// invigilate, plus an assigned invigilation 16:30–18:00 on the same day.
 	pos := []Position{
-		{Day: 1, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(16, 30)},
+		{Room: "R1", Minutes: 90, Block: 90, Start: start(16, 30)},
 	}
 	p := &Problem{
 		Positions: pos,
 		Invigilators: []Invigilator{{
 			ID: 1, TargetMinutes: 90,
-			OwnExams: []TimeSpan{{Day: 1, Start: start(8, 0), End: start(9, 30)}},
+			OwnExams: []TimeSpan{{Start: start(8, 0), End: start(9, 30)}},
 		}},
 		Fixed: map[int]int{}, ToleranceMin: 60, MaxSpanHours: 8, Weights: DefaultWeights(),
 	}
@@ -431,15 +446,19 @@ func TestMaxDaysCountsOwnExamDays(t *testing.T) {
 	// invigilations on days 8, 12, 14; own exams on 8, 11, 12 (none excluded)
 	// => present on 4 days {8,11,12,14} > 3 => penalty.
 	pos := []Position{
-		{Day: 8, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
-		{Day: 12, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
-		{Day: 14, Slot: 1, Room: "R1", Minutes: 90, Block: 90, Start: start(8, 0)},
+		{Room: "R1", Minutes: 90, Block: 90, Start: startOn(8, 8, 0)},
+		{Room: "R1", Minutes: 90, Block: 90, Start: startOn(12, 8, 0)},
+		{Room: "R1", Minutes: 90, Block: 90, Start: startOn(14, 8, 0)},
 	}
 	p := &Problem{
 		Positions: pos,
 		Invigilators: []Invigilator{{
 			ID: 1, TargetMinutes: 270,
-			OwnExamDays:  map[int]bool{8: true, 11: true, 12: true},
+			OwnExamDays: map[int]bool{
+				dateOrd(startOn(8, 0, 0)):  true,
+				dateOrd(startOn(11, 0, 0)): true,
+				dateOrd(startOn(12, 0, 0)): true,
+			},
 			ExcludedDays: map[int]bool{},
 		}},
 		Fixed: map[int]int{}, ToleranceMin: 60, MaxSpanHours: 8, Weights: DefaultWeights(),
@@ -457,7 +476,7 @@ func TestMaxDaysCountsOwnExamDays(t *testing.T) {
 
 	// Excluding day 11 means the person is treated as not present there, so the
 	// attendance is {8,12,14} = 3 days => no penalty.
-	p.Invigilators[0].ExcludedDays = map[int]bool{11: true}
+	p.Invigilators[0].ExcludedDays = map[int]bool{dateOrd(startOn(11, 0, 0)): true}
 	alone, _ := maxDaysSoft{}.Cost(p, plan)
 	if alone != 0 {
 		t.Errorf("expected no penalty when exam day 11 is excluded, got %g", alone)
@@ -468,7 +487,7 @@ func TestMaxDaysCountsOwnExamDays(t *testing.T) {
 // assigned minutes equal posMinutes (=> deviation posMinutes-target).
 func balProblem(target, posMinutes int) (*Problem, *Plan) {
 	p := &Problem{
-		Positions:    []Position{{Day: 1, Slot: 1, Room: "R1", Minutes: posMinutes, Block: posMinutes, Start: start(8, 0)}},
+		Positions:    []Position{{Room: "R1", Minutes: posMinutes, Block: posMinutes, Start: start(8, 0)}},
 		Invigilators: []Invigilator{{ID: 1, TargetMinutes: target}},
 		Fixed:        map[int]int{}, ToleranceMin: 60, MaxSpanHours: 8, Weights: DefaultWeights(),
 	}

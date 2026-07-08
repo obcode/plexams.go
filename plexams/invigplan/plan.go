@@ -76,15 +76,15 @@ func (pl *Plan) Positions(invigID int) []int {
 	return pl.byInvig[invigID]
 }
 
-// HasInSlot reports whether the invigilator already has a position in (day,slot),
-// ignoring the position exceptPos (use -1 to ignore none).
-func (pl *Plan) HasInSlot(invigID, day, slot, exceptPos int) bool {
+// HasAtTime reports whether the invigilator already has a position starting at
+// the given time (Unix seconds), ignoring the position exceptPos (use -1 to
+// ignore none).
+func (pl *Plan) HasAtTime(invigID int, start int64, exceptPos int) bool {
 	for _, posIdx := range pl.byInvig[invigID] {
 		if posIdx == exceptPos {
 			continue
 		}
-		pos := pl.prob.Positions[posIdx]
-		if pos.Day == day && pos.Slot == slot {
+		if pl.prob.Positions[posIdx].Start.Unix() == start {
 			return true
 		}
 	}
@@ -113,11 +113,12 @@ func (pl *Plan) CountKind(invigID int, kind Kind) int {
 	return n
 }
 
-// Days returns the distinct day numbers the invigilator is assigned to.
+// Days returns the distinct calendar-date ordinals (see dateKey) the
+// invigilator is assigned to.
 func (pl *Plan) Days(invigID int) []int {
 	seen := make(map[int]bool)
 	for _, posIdx := range pl.byInvig[invigID] {
-		seen[pl.prob.Positions[posIdx].Day] = true
+		seen[dateKey(pl.prob.Positions[posIdx].Start)] = true
 	}
 	days := make([]int, 0, len(seen))
 	for d := range seen {

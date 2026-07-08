@@ -73,6 +73,7 @@ Key sections consumed by the code:
 | `db.uri`, `db.database` | MongoDB connection |
 | `zpa.*` | `baseurl`, `username`, `password`/`token`, `fk07programs`, `oldprograms` |
 | `smtp.*` | mail server + `testmail` (dry-run recipient) |
+| `jira.*` | on-prem Jira (`jira.cc.hm.edu`) integration: `baseurl`, `token` (PAT), `project` (default key `FK07PP`); `url` feeds the `jiraURL` email helper |
 | `planer.*` | name/email of the planner (bootstrap/fallback; lives in DB) |
 | `operator.*` | name/email of the local operator running this instance; stamped onto the `mutation_log` (audit "who did what"). Local per planner, never in DB |
 | `server.*` | `port`, `allowedorigins` |
@@ -86,8 +87,8 @@ The only command-line surface is three flags: `-v/--verbose`, `--db-uri`,
 workspace is auto-selected from the DB (and can be switched at runtime from the
 GUI via the `setSemester` mutation).
 
-> Secrets (ZPA token/password, SMTP password) live in the config file, not in the
-> DB. Keep the file out of version control.
+> Secrets (ZPA token/password, SMTP password, Jira PAT) live in the config file,
+> not in the DB. Keep the file out of version control.
 
 ## Running
 
@@ -157,6 +158,7 @@ and ZPA upload) plus the REST routes registered in
 | Route | Purpose |
 |-------|---------|
 | `POST /upload/primuss-zip`, `/upload/email-attachment(s-zip)` | Primuss Sammellisten ZIP, email-attachment uploads |
+| `POST /upload/jira-attachment` | attach an uploaded file (PDF/CSV) to a Jira issue (multipart: `key`, `file`) |
 | `GET /download/planned-rooms.json` | planned rooms export (for external cover-page generation) |
 | `GET /download/pdf/{kind}` | draft/plan PDFs (`exams-to-plan`, `constraints`, `draft-fk08/fk10/exahm/muc.dai/fs/lba-rep`, `same-module-name`; `draft-si` returns a ZIP) |
 | `GET /download/csv/{kind}` | draft CSVs (`draft?program=…`, `exahm`, `lba-repeater`) |

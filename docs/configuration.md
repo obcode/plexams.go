@@ -114,12 +114,32 @@ anny:
 > - die relevanten Räume sind die Räume mit `requestWith: ANNY` in den globalen
 >   Raum-Stammdaten (DB). Die YAML-Liste entfällt.
 
-## 5. Sonstiges (Bootstrap)
+## 5. Jira (FK07-Prüfungsplanungs-Helpdesk)
+
+Die on-prem-Jira `jira.cc.hm.edu` (Service-Desk-Projekt **FK07PP**) wird per
+**Personal Access Token (PAT)** angebunden — `Authorization: Bearer <PAT>` gegen
+die REST-API v2. Damit liest/erstellt plexams Tickets, kommentiert, ändert den
+Status und hängt Dateien (PDF/CSV) an. Der PAT ist ein **Secret** und bleibt in
+der Datei (nie in der DB).
 
 ```yaml
 jira:
-  url: https://jira.cc.hm.edu/servicedesk/customer/portal/13   # optional (Default gesetzt)
+  baseurl: https://jira.cc.hm.edu     # Instanz-Wurzel (für die REST-Anbindung)
+  token: <jira-pat>                   # Secret — Personal Access Token
+  project: FK07PP                     # Default-Projekt-Key (createJiraIssue, offene Issues)
+  url: https://jira.cc.hm.edu/servicedesk/customer/portal/13   # Kundenportal-Link
+                                      # (nur für den E-Mail-Helper `jiraURL`, optional)
+```
 
+> PAT anlegen: in Jira → Avatar → **Profil** → **Personal Access Tokens** →
+> *Create token*. Ohne `baseurl`/`token` bleibt die Jira-Anbindung inaktiv
+> (der Start schlägt nicht fehl; nur die Jira-Operationen melden dann einen Fehler).
+> `url` (Kundenportal) ist unabhängig davon und speist nur den `jiraURL`-Platzhalter
+> in den E-Mail-Vorlagen.
+
+## 5a. Sonstiges (Bootstrap)
+
+```yaml
 server:
   port: "8080"                 # GraphQL-Server-Port
   allowedorigins:              # zusätzliche CORS-Origins (optional)

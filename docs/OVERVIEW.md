@@ -64,7 +64,7 @@ flowchart TB
     BE ==>|"Raum-Anfragen (E-Mail)"| GM
     BE ==>|"abgestimmte E-Mails"| MAILS
     MAILS -.->|"Antworten & Rückfragen"| JIRA
-    JIRA -.->|"Tickets"| User
+    JIRA <==>|"Tickets lesen · anlegen ·<br/>kommentieren · Status · Anhänge<br/><i>(PAT)</i>"| BE
 ```
 
 Der Clou: **Jedes dieser Systeme kennt nur seinen Ausschnitt.** Das ZPA kennt die
@@ -85,6 +85,7 @@ widerspruchsfreien Plan macht.
 | 🛠️ **Gebäudemanagement** | Hausverwaltung für Standardräume | — | Raum-Anfragen per E-Mail, Genehmigungen werden nachgepflegt |
 | 🌐 **MUC.DAI** | fakultätsübergreifender Studiengang (Munich Data Science) | dessen Prüfungen per CSV, Verknüpfung mit ZPA-Ancodes | — |
 | 💻 **EXaHM / SEB** | E-Prüfungsumgebung (EXaHM) bzw. Safe Exam Browser | Sonderklausuren, die spezielle Software/Räume brauchen | — (Räume laufen über Anny) |
+| 🎫 **Jira Service Desk** | FK07-Prüfungsplanungs-Helpdesk (JSM-Projekt **FK07PP**) — zentrale Sammelstelle für Rückfragen/Anträge | offene Tickets mit **Anfragetyp**, **Autor** und **Kommentaren** (per PAT gelesen) | neue Tickets, Kommentare, Status-Übergänge, Datei-Anhänge (PDF/CSV) |
 
 ---
 
@@ -308,6 +309,30 @@ kommen über den **„FK07 Prüfungsplanungs"-Helpdesk** in
 [Jira](https://jira.cc.hm.edu/servicedesk/customer/portal/13) — nicht als lose
 Antwort-Mails im Postfach, sondern als nachvollziehbare, zuordenbare Tickets an
 einer zentralen Stelle.
+
+**Diese Tickets sind direkt in Plexams sichtbar und bearbeitbar.** Plexams spricht
+den Helpdesk (JSM-Projekt **FK07PP**) über die Jira-REST-API an — angemeldet per
+**Personal Access Token**, sodass jede:r Planer:in mit dem eigenen Jira-Zugang
+arbeitet. Damit muss man für Rückfragen nicht mehr ins Jira-Portal wechseln:
+
+- **Offene Tickets ansehen** — flach, nach Ticket-Typ oder **nach Anfragetyp**
+  gruppiert (der JSM-„Request Type", z. B. *„EXaHM / SEB"* oder
+  *„Wiederholungsprüfung"*). Zu jedem Ticket zeigt Plexams **Autor**, Status und
+  den vollständigen **Kommentar-Verlauf**.
+- **Reagieren** — ein neues Ticket anlegen, kommentieren oder den **Status
+  weiterschalten** (z. B. „in plexams übernommen"), ohne die Anwendung zu verlassen.
+- **Dokumente anhängen** — einen generierten Plan-Auszug (PDF) oder eine CSV direkt
+  an das passende Ticket hängen.
+
+So schließt sich der Kreis: Die abgestimmte Mail geht raus, die Rückfrage kommt als
+Ticket zurück — und wird an genau der Stelle bearbeitet, an der auch der Plan entsteht.
+
+```mermaid
+flowchart LR
+    BE["🧠 Plexams"] ==>|"abgestimmte E-Mail"| M["📧 Empfänger:in"]
+    M -.->|"Rückfrage / Antrag"| J["🎫 Jira-Helpdesk<br/>FK07PP"]
+    J <==>|"lesen · kommentieren ·<br/>Status · Anhänge <i>(PAT)</i>"| BE
+```
 
 **Veröffentlichen an ZPA:** „Aus dem ZPA laden" (Download) und „Ins ZPA
 übertragen" (Upload) — beide mit Live-Terminal, farbig markierten Änderungen

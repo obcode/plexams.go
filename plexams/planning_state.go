@@ -19,9 +19,11 @@ import (
 // planning condition keys (use the constants when marking from operations).
 const (
 	condExahmRequested            = "exahmRequested"
+	condSebExahmDemandEntered     = "sebExahmDemandEntered"
 	condAnnyRoomsBooked           = "annyRoomsBooked"
 	condSebExahmPreplanned        = "sebExahmPreplanned"
 	condZPAImported               = "zpaImported"
+	condSebExahmZpaConnected      = "sebExahmZpaConnected"
 	condZPAExamsSelected          = "zpaExamsSelected"
 	condMucDaiImported            = "mucDaiImported"
 	condPrimussImported           = "primussImported"
@@ -63,9 +65,11 @@ var planningPhaseDefs = []planstate.PhaseDef{
 
 var planningConditionDefs = []planstate.CondDef{
 	{Key: condExahmRequested, Title: "EXaHM/SEB-Abfrage verschickt", Phase: "phaseMinus1"},
+	{Key: condSebExahmDemandEntered, Title: "EXaHM/SEB-Prüfungsbedarf erfasst", Phase: "phaseMinus1"},
 	{Key: condAnnyRoomsBooked, Title: "Anny-Räume gebucht", Phase: "phaseMinus1"},
 	{Key: condSebExahmPreplanned, Title: "SEB/EXaHM-Vorplanung erzeugt", Phase: "phaseMinus1"},
 	{Key: condZPAImported, Title: "Prüfungen & Personen aus ZPA importiert", Phase: "phase0"},
+	{Key: condSebExahmZpaConnected, Title: "EXaHM/SEB-Vorplanung mit ZPA-Prüfungen verknüpft", Phase: "phase0"},
 	{Key: condZPAExamsSelected, Title: "ZPA-Prüfungen für die Planung ausgewählt", Phase: "phase0"},
 	{Key: condExamPlanningInfoSent, Title: "Prüfungsplanungs-Info an Prüfende verschickt", Phase: "phase0"},
 	{Key: condMucDaiImported, Title: "MUC.DAI-Prüfungen importiert & verknüpft", Phase: "phase0"},
@@ -78,8 +82,8 @@ var planningConditionDefs = []planstate.CondDef{
 	{Key: condPrimussDataAllSent, Title: "Primuss-Daten an alle verschickt", Phase: "phase0"},
 	{Key: condNTARoomAloneSent, Title: "Info an NTAs mit eigenem Raum verschickt", Phase: "phase0"},
 	{Key: condExahmSebPlanned, Title: "EXaHM/SEB in T-Bau-Räume geplant", Phase: "phase1"},
-	{Key: condExahmSebFixed, Title: "EXaHM/SEB fixiert (für Phase 2)", Phase: "phase1"},
 	{Key: condExamScheduleGenerated, Title: "Terminplan generiert", Phase: "phase1"},
+	{Key: condExahmSebFixed, Title: "EXaHM/SEB fixiert (für Phase 2)", Phase: "phase1"},
 	{Key: condDraftSent, Title: "Entwurf verschickt", Phase: "phase1", Gate: model.PlanningGateExams},
 	{Key: condExamPlanPublished, Title: "Terminplan veröffentlicht (E-Mail)", Phase: "phase1", Gate: model.PlanningGateExams},
 	{Key: condRoomRequestsSent, Title: "Raum-Anfragen ans Gebäudemanagement verschickt", Phase: "phase2"},

@@ -1,5 +1,7 @@
 # Memory Index
 
+- [Jira integration](jira-integration.md) — on-prem jira.cc.hm.edu via PAT; backend done (jira/ pkg, GraphQL create/read/comment/transition + REST attachment upload) on feat/jira-integration; GUI pending.
+- [auth & roles via Shibboleth](auth-roles-shibboleth.md) — PLANNED (plan file persisted 2026-07-08, not built): Apache mod_shib → X-Remote-User header, DB users collection, audit "who" on mutation_log, two full-access planners now, granular roles later; backend enforces, GUI cosmetic.
 - [slotless time-based redesign](slotless-timebased-redesign.md) — planned big refactor: drop slot/day numbers, store exams as absolute times; conflicts/rooms/invig become interval-based; no migration, clean cut; plan in docs/plan-slotless-timebased.md.
 - [slot time avoidance](slot-time-avoidance.md) — Terminplan soft constraint on start times: WS avoid early (threshold), SS prefer early (monotonic, size-weighted); AUTO-by-semester toggle in GenerationConfig; T-Bau phase-A exception; hard-violation logging.
 - [CLI→GUI migration](cli-to-gui-migration.md) — DONE 2026-07-08: cmd/ + zpa/cli deleted, server-only via bootstrap/; final gaps = REST pdf/csv/ics downloads + add/removeStudentReg mutations; CLI gone for good.

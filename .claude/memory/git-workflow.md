@@ -21,4 +21,5 @@ clean stepwise history matters.
 - Small follow-up fixes to an already-merged feature: committing **directly to main** is fine
   (Oliver confirmed 2026-07-06: "direkt auf main ist wunderbar"). No need to branch for those.
 - Do NOT commit session noise like `.claude/settings.json` permission-allowlist changes.
+- **DO always commit AND push `.claude/memory/`** (Oliver 2026-07-08: "committen und pushen"). The home memory dir symlinks to the repo's tracked `.claude/memory/`, so memory edits are versioned; keep them in sync on the remote. Commit them (own commit is fine) and `git push` whenever memory changes.
 - End commit messages with the Co-Authored-By trailer.

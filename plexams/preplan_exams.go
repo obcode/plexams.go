@@ -90,6 +90,28 @@ func (p *Plexams) SetPreplanExamTime(ctx context.Context, id int, starttime *tim
 	return preplanExam, nil
 }
 
+// ResetPreplanTimes clears the planned start time of every pre-exam that is NOT fixed,
+// so the Vorplanung can be re-run from scratch. Fixed pre-exams and the pre-exams
+// themselves are kept. Returns how many were reset.
+func (p *Plexams) ResetPreplanTimes(ctx context.Context) (int, error) {
+	preplanExams, err := p.dbClient.PreplanExams(ctx)
+	if err != nil {
+		return 0, err
+	}
+	reset := 0
+	for _, pe := range preplanExams {
+		if pe.IsFixed || pe.PlannedStarttime == nil {
+			continue
+		}
+		pe.PlannedStarttime = nil
+		if err := p.dbClient.UpsertPreplanExam(ctx, pe); err != nil {
+			return reset, err
+		}
+		reset++
+	}
+	return reset, nil
+}
+
 // SetPreplanExamFixed pins or unpins the pre-exam's current slot. A fixed pre-exam
 // keeps its slot when the automatic assignment is regenerated. Fixing only makes
 // sense for a slotted exam, so it is rejected when the exam has no slot.

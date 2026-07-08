@@ -34,6 +34,8 @@ extend type Mutation {
   addPreplanExam(input: PreplanExamInput!): PreplanExam!
   updatePreplanExam(id: Int!, input: PreplanExamInput!): PreplanExam!
   deletePreplanExam(id: Int!): Boolean!
+  "Reset the Vorplanung: clear the planned time of every NON-fixed pre-exam (fixed ones and the pre-exams themselves are kept). Returns how many were reset."
+  resetPreplanTimes: Int!
   """
   Assign the pre-exam to a start time, or clear it (pass starttime or null). The time
   must be a real slot start of this semester.

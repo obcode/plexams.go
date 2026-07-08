@@ -26,6 +26,11 @@ func (r *mutationResolver) DeletePreplanExam(ctx context.Context, id int) (bool,
 	return r.plexams.DeletePreplanExam(ctx, id)
 }
 
+// ResetPreplanTimes is the resolver for the resetPreplanTimes field.
+func (r *mutationResolver) ResetPreplanTimes(ctx context.Context) (int, error) {
+	return r.plexams.ResetPreplanTimes(ctx)
+}
+
 // SetPreplanExamTime is the resolver for the setPreplanExamTime field.
 func (r *mutationResolver) SetPreplanExamTime(ctx context.Context, id int, starttime *time.Time) (*model.PreplanExam, error) {
 	return r.plexams.SetPreplanExamTime(ctx, id, starttime)

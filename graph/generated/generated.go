@@ -686,6 +686,7 @@ type ComplexityRoot struct {
 		ResetEmailTemplate            func(childComplexity int, name string) int
 		ResetExamSchedule             func(childComplexity int) int
 		ResetInvigilations            func(childComplexity int) int
+		ResetPreplanTimes             func(childComplexity int) int
 		ResetPrimussData              func(childComplexity int) int
 		ResetRoomsForExams            func(childComplexity int) int
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
@@ -1590,6 +1591,7 @@ type MutationResolver interface {
 	AddPreplanExam(ctx context.Context, input model.PreplanExamInput) (*model.PreplanExam, error)
 	UpdatePreplanExam(ctx context.Context, id int, input model.PreplanExamInput) (*model.PreplanExam, error)
 	DeletePreplanExam(ctx context.Context, id int) (bool, error)
+	ResetPreplanTimes(ctx context.Context) (int, error)
 	SetPreplanExamTime(ctx context.Context, id int, starttime *time.Time) (*model.PreplanExam, error)
 	ConnectPreplanExamToAncode(ctx context.Context, id int, ancode int) (*model.PreplanExam, error)
 	DisconnectPreplanExam(ctx context.Context, id int) (*model.PreplanExam, error)
@@ -5069,6 +5071,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ResetInvigilations(childComplexity), true
+
+	case "Mutation.resetPreplanTimes":
+		if e.complexity.Mutation.ResetPreplanTimes == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ResetPreplanTimes(childComplexity), true
 
 	case "Mutation.resetPrimussData":
 		if e.complexity.Mutation.ResetPrimussData == nil {
@@ -11544,6 +11553,8 @@ extend type Mutation {
   addPreplanExam(input: PreplanExamInput!): PreplanExam!
   updatePreplanExam(id: Int!, input: PreplanExamInput!): PreplanExam!
   deletePreplanExam(id: Int!): Boolean!
+  "Reset the Vorplanung: clear the planned time of every NON-fixed pre-exam (fixed ones and the pre-exams themselves are kept). Returns how many were reset."
+  resetPreplanTimes: Int!
   """
   Assign the pre-exam to a start time, or clear it (pass starttime or null). The time
   must be a real slot start of this semester.
@@ -40592,6 +40603,50 @@ func (ec *executionContext) fieldContext_Mutation_deletePreplanExam(ctx context.
 	if fc.Args, err = ec.field_Mutation_deletePreplanExam_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetPreplanTimes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetPreplanTimes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetPreplanTimes(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetPreplanTimes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -80235,6 +80290,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deletePreplanExam":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deletePreplanExam(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetPreplanTimes":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetPreplanTimes(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

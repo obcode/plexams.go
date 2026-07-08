@@ -688,6 +688,13 @@ type InvigilatorsForDay struct {
 	Can  []*Invigilator `json:"can"`
 }
 
+// A single comment on a Jira issue.
+type JiraComment struct {
+	Author  *JiraUser  `json:"author,omitempty"`
+	Body    string     `json:"body"`
+	Created *time.Time `json:"created,omitempty"`
+}
+
 // A Jira issue (the subset plexams reads/writes).
 type JiraIssue struct {
 	Key         string  `json:"key"`
@@ -695,6 +702,12 @@ type JiraIssue struct {
 	Description *string `json:"description,omitempty"`
 	Status      *string `json:"status,omitempty"`
 	IssueType   *string `json:"issueType,omitempty"`
+	// The reporter/author. Populated in list and detail views.
+	Reporter *JiraUser `json:"reporter,omitempty"`
+	// Creation time, when known.
+	Created *time.Time `json:"created,omitempty"`
+	// The issue's comments, oldest first. Only populated by jiraIssue(key); empty in list views.
+	Comments []*JiraComment `json:"comments"`
 	// Browse URL, e.g. https://jira.cc.hm.edu/browse/PLEX-42.
 	URL string `json:"url"`
 }

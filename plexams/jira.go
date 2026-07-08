@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/jira"
@@ -25,13 +26,45 @@ func (p *Plexams) issueURL(key string) string {
 	return fmt.Sprintf("%s/browse/%s", p.jira.baseurl, key)
 }
 
+// jiraTimeLayout is the timestamp format Jira's REST API v2 returns, e.g.
+// "2026-07-08T12:34:56.000+0200".
+const jiraTimeLayout = "2006-01-02T15:04:05.000-0700"
+
+// parseJiraTime parses a Jira timestamp, returning nil on an empty/unparseable value.
+func parseJiraTime(s string) *time.Time {
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse(jiraTimeLayout, s)
+	if err != nil {
+		return nil
+	}
+	return &t
+}
+
+// mapJiraUser maps a jira.User to the GraphQL model (nil-safe).
+func mapJiraUser(u *jira.User) *model.JiraUser {
+	if u == nil {
+		return nil
+	}
+	return &model.JiraUser{
+		Name:         u.Name,
+		DisplayName:  u.DisplayName,
+		EmailAddress: u.EmailAddress,
+	}
+}
+
 // toModelIssue maps a jira.Issue to the GraphQL model, filling optional fields
-// only when present.
+// only when present. Comments come from the embedded comment page; a caller that
+// wants them fully paginated should set them explicitly (see GetJiraIssue).
 func (p *Plexams) toModelIssue(i *jira.Issue) *model.JiraIssue {
 	out := &model.JiraIssue{
-		Key:     i.Key,
-		Summary: i.Fields.Summary,
-		URL:     p.issueURL(i.Key),
+		Key:      i.Key,
+		Summary:  i.Fields.Summary,
+		Reporter: mapJiraUser(i.Fields.Reporter),
+		Created:  parseJiraTime(i.Fields.Created),
+		Comments: []*model.JiraComment{},
+		URL:      p.issueURL(i.Key),
 	}
 	if i.Fields.Description != "" {
 		d := i.Fields.Description
@@ -44,6 +77,22 @@ func (p *Plexams) toModelIssue(i *jira.Issue) *model.JiraIssue {
 	if i.Fields.IssueType != nil && i.Fields.IssueType.Name != "" {
 		t := i.Fields.IssueType.Name
 		out.IssueType = &t
+	}
+	if i.Fields.Comment != nil {
+		out.Comments = mapJiraComments(i.Fields.Comment.Comments)
+	}
+	return out
+}
+
+// mapJiraComments maps jira comments to the GraphQL model.
+func mapJiraComments(comments []jira.Comment) []*model.JiraComment {
+	out := make([]*model.JiraComment, 0, len(comments))
+	for i := range comments {
+		out = append(out, &model.JiraComment{
+			Author:  mapJiraUser(comments[i].Author),
+			Body:    comments[i].Body,
+			Created: parseJiraTime(comments[i].Created),
+		})
 	}
 	return out
 }
@@ -75,7 +124,15 @@ func (p *Plexams) GetJiraIssue(ctx context.Context, key string) (*model.JiraIssu
 	if err != nil {
 		return nil, err
 	}
-	return p.toModelIssue(issue), nil
+	out := p.toModelIssue(issue)
+	// The embedded comment page can be truncated for issues with many comments;
+	// fetch the full list explicitly so the detail view is complete.
+	comments, err := client.Comments(key)
+	if err != nil {
+		return nil, err
+	}
+	out.Comments = mapJiraComments(comments)
+	return out, nil
 }
 
 // JiraTransitions lists the workflow transitions available for an issue.

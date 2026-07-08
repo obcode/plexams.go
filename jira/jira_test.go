@@ -123,6 +123,38 @@ func TestAddAttachmentSendsMultipartWithNoCheckHeader(t *testing.T) {
 	}
 }
 
+func TestGetIssueParsesReporterAndComments(t *testing.T) {
+	j, srv := testJira(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{
+			"key":"FK07PP-7",
+			"fields":{
+				"summary":"Nachschreibtermin",
+				"reporter":{"name":"stud1","displayName":"Erika Muster","emailAddress":"erika@hm.edu"},
+				"created":"2026-07-01T09:15:00.000+0200",
+				"comment":{"total":2,"comments":[
+					{"id":"1","author":{"displayName":"O. Braun"},"body":"Bitte Attest.","created":"2026-07-02T10:00:00.000+0200"},
+					{"id":"2","author":{"displayName":"Erika Muster"},"body":"Anbei.","created":"2026-07-03T11:00:00.000+0200"}
+				]}
+			}
+		}`))
+	})
+	defer srv.Close()
+
+	issue, err := j.GetIssue("FK07PP-7")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if issue.Fields.Reporter == nil || issue.Fields.Reporter.DisplayName != "Erika Muster" {
+		t.Errorf("expected reporter Erika Muster, got %+v", issue.Fields.Reporter)
+	}
+	if issue.Fields.Comment == nil || len(issue.Fields.Comment.Comments) != 2 {
+		t.Fatalf("expected 2 comments, got %+v", issue.Fields.Comment)
+	}
+	if issue.Fields.Comment.Comments[0].Body != "Bitte Attest." {
+		t.Errorf("unexpected first comment: %+v", issue.Fields.Comment.Comments[0])
+	}
+}
+
 func TestOpenIssuesBuildsJQLWithDefaultProject(t *testing.T) {
 	var gotJQL string
 	j, srv := testJira(func(w http.ResponseWriter, r *http.Request) {

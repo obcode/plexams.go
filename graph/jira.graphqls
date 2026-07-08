@@ -17,8 +17,21 @@ type JiraIssue {
   description: String
   status: String
   issueType: String
+  "The reporter/author. Populated in list and detail views."
+  reporter: JiraUser
+  "Creation time, when known."
+  created: Time
+  "The issue's comments, oldest first. Only populated by jiraIssue(key); empty in list views."
+  comments: [JiraComment!]!
   "Browse URL, e.g. https://jira.cc.hm.edu/browse/PLEX-42."
   url: String!
+}
+
+"A single comment on a Jira issue."
+type JiraComment {
+  author: JiraUser
+  body: String!
+  created: Time
 }
 
 "A workflow transition currently available on an issue; ids are workflow- and status-specific."

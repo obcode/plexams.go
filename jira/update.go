@@ -11,6 +11,15 @@ func (j *Jira) AddComment(key, body string) error {
 	return j.post(fmt.Sprintf("rest/api/2/issue/%s/comment", key), payload, nil)
 }
 
+// Comments returns all comments of an issue, oldest first (Jira's default order).
+func (j *Jira) Comments(key string) ([]Comment, error) {
+	var page CommentPage
+	if err := j.get(fmt.Sprintf("rest/api/2/issue/%s/comment", key), &page); err != nil {
+		return nil, err
+	}
+	return page.Comments, nil
+}
+
 // Transition is one of the workflow transitions currently available on an issue.
 type Transition struct {
 	ID   string   `json:"id"`

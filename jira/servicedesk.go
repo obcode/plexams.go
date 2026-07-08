@@ -89,7 +89,7 @@ func (j *Jira) OpenIssuesWithRequestType(project string) ([]IssueWithRequestType
 			JQL:        jql,
 			StartAt:    startAt,
 			MaxResults: searchPageSize,
-			Fields:     []string{"summary", "status", "issuetype", fieldID},
+			Fields:     []string{"summary", "status", "issuetype", "reporter", fieldID},
 		}
 		if err := j.post("rest/api/2/search", req, &resp); err != nil {
 			return nil, err
@@ -118,6 +118,9 @@ func (ri rawIssue) toIssue() Issue {
 	}
 	if raw, ok := ri.Fields["issuetype"]; ok {
 		_ = json.Unmarshal(raw, &issue.Fields.IssueType)
+	}
+	if raw, ok := ri.Fields["reporter"]; ok {
+		_ = json.Unmarshal(raw, &issue.Fields.Reporter)
 	}
 	return issue
 }

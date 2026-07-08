@@ -34,7 +34,7 @@ func (j *Jira) Search(jql string) ([]Issue, error) {
 			JQL:        jql,
 			StartAt:    startAt,
 			MaxResults: searchPageSize,
-			Fields:     []string{"summary", "status", "issuetype"},
+			Fields:     []string{"summary", "status", "issuetype", "reporter"},
 		}
 		if err := j.post("rest/api/2/search", req, &resp); err != nil {
 			return nil, err

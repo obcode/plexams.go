@@ -11,11 +11,29 @@ type Issue struct {
 }
 
 type IssueFields struct {
-	Summary     string      `json:"summary"`
-	Description string      `json:"description"`
-	Status      *NamedRef   `json:"status,omitempty"`
-	IssueType   *NamedRef   `json:"issuetype,omitempty"`
-	Project     *ProjectRef `json:"project,omitempty"`
+	Summary     string       `json:"summary"`
+	Description string       `json:"description"`
+	Status      *NamedRef    `json:"status,omitempty"`
+	IssueType   *NamedRef    `json:"issuetype,omitempty"`
+	Project     *ProjectRef  `json:"project,omitempty"`
+	Reporter    *User        `json:"reporter,omitempty"`
+	Created     string       `json:"created,omitempty"`
+	Comment     *CommentPage `json:"comment,omitempty"`
+}
+
+// CommentPage is the (paginated) comment container embedded in an issue's fields.
+type CommentPage struct {
+	Comments []Comment `json:"comments"`
+	Total    int       `json:"total"`
+}
+
+// Comment is a single issue comment.
+type Comment struct {
+	ID      string `json:"id"`
+	Author  *User  `json:"author,omitempty"`
+	Body    string `json:"body"`
+	Created string `json:"created"`
+	Updated string `json:"updated"`
 }
 
 type NamedRef struct {

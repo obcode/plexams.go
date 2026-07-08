@@ -148,3 +148,25 @@ func TestProgramConflicts(t *testing.T) {
 		t.Errorf("conflict = %+v, want program IB, ids [1 2]", got[0])
 	}
 }
+
+// TestProgramConflictsCanShareSlot: two parallel sections of the same module in the same
+// program, explicitly allowed to share the slot, must NOT be reported as a conflict.
+func TestProgramConflictsCanShareSlot(t *testing.T) {
+	exams := []*model.PreplanExam{
+		{ID: 1, Module: "Softwareentwicklung II", Programs: []string{"IF"}, CanShareSlot: []int{2}},
+		{ID: 2, Module: "Softwareentwicklung II", Programs: []string{"IF"}, CanShareSlot: []int{1}},
+	}
+	if got := ProgramConflicts(exams); len(got) != 0 {
+		t.Errorf("got %d conflicts, want 0 (pair is canShareSlot): %+v", len(got), got)
+	}
+
+	// a third, non-allowed exam in the same program IS a conflict (clashes with both).
+	exams = append(exams, &model.PreplanExam{ID: 3, Module: "Andere", Programs: []string{"IF"}})
+	got := ProgramConflicts(exams)
+	if len(got) != 1 || got[0].Program != "IF" {
+		t.Fatalf("got %+v, want one IF conflict", got)
+	}
+	if !reflect.DeepEqual(got[0].PreplanExamIDs, []int{1, 2, 3}) {
+		t.Errorf("ids = %v, want [1 2 3] (3 clashes with both 1 and 2)", got[0].PreplanExamIDs)
+	}
+}

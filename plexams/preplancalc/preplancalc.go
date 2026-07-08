@@ -133,38 +133,70 @@ func ApplyBooking(need *model.PreplanKindNeed, bookedSeats int, rooms []RoomCapa
 }
 
 // ProgramConflicts finds study programs that appear in more than one pre-exam of the same
-// slot (a possible student clash, since Primuss conflicts aren't known yet).
+// slot (a possible student clash, since Primuss conflicts aren't known yet). Pairs that
+// are explicitly declared "may run at the same time" (CanShareSlot, e.g. parallel
+// sections of the same module) are NOT counted against each other, so a program is only
+// reported when it has a genuinely un-allowed pair in the slot.
 func ProgramConflicts(exams []*model.PreplanExam) []*model.PreplanProgramConflict {
-	type acc struct {
-		ids     []int
-		modules []string
+	canShare := func(a, b *model.PreplanExam) bool {
+		for _, id := range a.CanShareSlot {
+			if id == b.ID {
+				return true
+			}
+		}
+		for _, id := range b.CanShareSlot {
+			if id == a.ID {
+				return true
+			}
+		}
+		return false
 	}
-	byProgram := make(map[string]*acc)
+
+	byProgram := make(map[string][]*model.PreplanExam)
 	order := make([]string, 0)
 	for _, pe := range exams {
 		for _, prog := range pe.Programs {
-			a, ok := byProgram[prog]
-			if !ok {
-				a = &acc{}
-				byProgram[prog] = a
+			if _, ok := byProgram[prog]; !ok {
 				order = append(order, prog)
 			}
-			a.ids = append(a.ids, pe.ID)
-			a.modules = append(a.modules, pe.Module)
+			byProgram[prog] = append(byProgram[prog], pe)
 		}
 	}
 
 	conflicts := make([]*model.PreplanProgramConflict, 0)
 	sort.Strings(order)
 	for _, prog := range order {
-		a := byProgram[prog]
-		if len(a.ids) > 1 {
-			conflicts = append(conflicts, &model.PreplanProgramConflict{
-				Program:        prog,
-				PreplanExamIDs: a.ids,
-				Modules:        a.modules,
-			})
+		group := byProgram[prog]
+		if len(group) < 2 {
+			continue
 		}
+		// an exam is part of the conflict only if it clashes with at least one other
+		// exam of the program that it is NOT allowed to share a slot with.
+		involved := make(map[int]bool)
+		for i := 0; i < len(group); i++ {
+			for j := i + 1; j < len(group); j++ {
+				if !canShare(group[i], group[j]) {
+					involved[group[i].ID] = true
+					involved[group[j].ID] = true
+				}
+			}
+		}
+		if len(involved) == 0 {
+			continue // all pairs are explicitly allowed to share the slot
+		}
+		ids := make([]int, 0, len(involved))
+		modules := make([]string, 0, len(involved))
+		for _, pe := range group {
+			if involved[pe.ID] {
+				ids = append(ids, pe.ID)
+				modules = append(modules, pe.Module)
+			}
+		}
+		conflicts = append(conflicts, &model.PreplanProgramConflict{
+			Program:        prog,
+			PreplanExamIDs: ids,
+			Modules:        modules,
+		})
 	}
 	return conflicts
 }

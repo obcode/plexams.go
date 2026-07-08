@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -968,35 +967,6 @@ func (p *Plexams) MyInputsCSVZip(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-// ---- CLI file helpers ---------------------------------------------------------
-
-// ExportDatasetCSV writes one dataset CSV to a file (CLI).
-func (p *Plexams) ExportDatasetCSV(name, file string) error {
-	data, _, err := p.DatasetCSV(context.Background(), name)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(file, data, 0644)
-}
-
-// ExportMyInputsCSVZip writes the combined CSV ZIP to a file (CLI).
-func (p *Plexams) ExportMyInputsCSVZip(file string) error {
-	data, err := p.MyInputsCSVZip(context.Background())
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(file, data, 0644)
-}
-
-// ImportDatasetCSVFile restores one dataset CSV file into the current database (CLI).
-func (p *Plexams) ImportDatasetCSVFile(name, file string) (*CSVImportResult, error) {
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-	return p.ImportDatasetCSV(context.Background(), name, data)
 }
 
 // ---- HTTP handlers ------------------------------------------------------------

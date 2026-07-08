@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -450,52 +449,6 @@ func toInt(v any) (int, bool) {
 		return int(n), true
 	}
 	return 0, false
-}
-
-// ---- CLI file helpers ---------------------------------------------------------
-
-// ExportSemesterDump writes the whole-semester ZIP to a file (CLI).
-func (p *Plexams) ExportSemesterDump(zipfile string) error {
-	data, err := p.SemesterDumpZip(context.Background())
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(zipfile, data, 0644); err != nil {
-		log.Error().Err(err).Str("file", zipfile).Msg("cannot write semester dump")
-		return err
-	}
-	return nil
-}
-
-// ImportSemesterDump restores a whole-semester ZIP file into the current database (CLI).
-func (p *Plexams) ImportSemesterDump(zipfile string) (*RestoreResult, error) {
-	data, err := os.ReadFile(zipfile)
-	if err != nil {
-		return nil, err
-	}
-	return p.RestoreSemesterDump(context.Background(), data)
-}
-
-// ExportDataset writes a single per-page dataset to a JSON file (CLI).
-func (p *Plexams) ExportDataset(name, jsonfile string) error {
-	data, _, err := p.DatasetDumpJSON(context.Background(), name)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(jsonfile, data, 0644); err != nil {
-		log.Error().Err(err).Str("file", jsonfile).Msg("cannot write dataset dump")
-		return err
-	}
-	return nil
-}
-
-// ImportDataset restores a single per-page dataset JSON file into the current database (CLI).
-func (p *Plexams) ImportDataset(name, jsonfile string) (*RestoreResult, error) {
-	data, err := os.ReadFile(jsonfile)
-	if err != nil {
-		return nil, err
-	}
-	return p.RestoreDataset(context.Background(), name, data)
 }
 
 // ---- HTTP handlers ------------------------------------------------------------

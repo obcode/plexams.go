@@ -3,26 +3,24 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"os"
+	"net/http"
+	"strings"
 	"time"
 
 	ical "github.com/arran4/golang-ical"
+	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 )
 
-type Event struct {
-	Summary string
-	Start   time.Time
-	// End     time.Time
-}
-
-func (p *Plexams) ExportICS(program string, filename string) error {
+// ExportICSString builds the ICS calendar for a program and returns it as a string.
+func (p *Plexams) ExportICSString(ctx context.Context, program string) (string, error) {
 	cal := ical.NewCalendar()
 	cal.SetMethod(ical.MethodRequest)
 	cal.SetProductId(fmt.Sprintf("-//Plexams ICS Exporter//%s", program))
 
-	exams, err := p.PlannedExamsForProgram(context.Background(), program, true)
+	exams, err := p.PlannedExamsForProgram(ctx, program, true)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	for _, exam := range exams {
@@ -41,54 +39,30 @@ func (p *Plexams) ExportICS(program string, filename string) error {
 		vevent.SetSummary(fmt.Sprintf("FK07/%s: %d. %s (%s)", program, programAncode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer))
 		vevent.SetStartAt(*exam.PlanEntry.Starttime)
 		if err := vevent.SetDuration(time.Duration(exam.ZpaExam.Duration) * time.Minute); err != nil {
-			return err
+			return "", err
 		}
 	}
 
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close() //nolint:errcheck
-
-	_, err = file.WriteString(cal.Serialize())
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return cal.Serialize(), nil
 }
 
-func (p *Plexams) ReadMucdaiICS(filename string) error {
-	file, err := os.Open(filename)
+// HTTPDownloadICS streams the ICS calendar of a program as a download.
+// GET /download/ics/{program}
+func (p *Plexams) HTTPDownloadICS(w http.ResponseWriter, r *http.Request) {
+	program := chi.URLParam(r, "program")
+	if program == "" {
+		http.Error(w, "program is required", http.StatusBadRequest)
+		return
+	}
+	s, err := p.ExportICSString(r.Context(), program)
 	if err != nil {
-		fmt.Printf("Fehler beim Öffnen der Datei: %v\n", err)
-		return err
+		http.Error(w, "cannot generate ics: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
-	defer file.Close() //nolint:errcheck
-
-	// iCal-Datei parsen
-	cal, err := ical.ParseCalendar(file)
-	if err != nil {
-		fmt.Printf("Fehler beim Parsen der iCal-Datei: %v\n", err)
-		return err
+	filename := fmt.Sprintf("%s_%s.ics", strings.ReplaceAll(p.semester, " ", "_"), program)
+	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	if _, err := w.Write([]byte(s)); err != nil {
+		log.Error().Err(err).Str("program", program).Msg("cannot write ics download")
 	}
-
-	// Events durchgehen
-	for _, event := range cal.Events() {
-		start, _ := time.ParseInLocation("20060102T150405", event.GetProperty(ical.ComponentPropertyDtStart).Value, time.Local)
-		e := Event{
-			Summary: event.GetProperty(ical.ComponentPropertySummary).Value,
-			Start:   start,
-		}
-
-		fmt.Printf("Event: %+v\n", e)
-
-		// fmt.Printf("Event: %+v\n", event.GetProperty(ical.ComponentPropertySummary).Value)
-		fmt.Printf("Startzeit: %+v\n", event.GetProperty(ical.ComponentPropertyDtStart).Value)
-		// fmt.Printf("Endzeit: %+v\n", event.GetProperty(ical.ComponentPropertyDtEnd).Value)
-		fmt.Println("---")
-	}
-
-	return nil
 }

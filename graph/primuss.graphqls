@@ -13,6 +13,20 @@ extend type Mutation {
   data was removed. Blocked while a validation or transfer/email is running.
   """
   resetPrimussData: [String!]!
+
+  """
+  addStudentReg manually adds a single student registration (mtknr) to a Primuss exam
+  (program + ancode), e.g. to correct a missing registration. Returns true on success.
+  Blocked while a validation or transfer/email is running.
+  """
+  addStudentReg(program: String!, ancode: Int!, mtknr: String!): Boolean!
+
+  """
+  removeStudentReg manually removes a single student registration (mtknr) from a Primuss
+  exam (program + ancode). Returns the number of registrations removed (0 or 1). Blocked
+  while a validation or transfer/email is running.
+  """
+  removeStudentReg(program: String!, ancode: Int!, mtknr: String!): Int!
 }
 
 type PrimussExam {

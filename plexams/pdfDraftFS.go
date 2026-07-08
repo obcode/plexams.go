@@ -6,27 +6,10 @@ import (
 
 	"github.com/johnfercher/maroto/pkg/pdf"
 	"github.com/obcode/plexams.go/plexams/pdfgen"
-	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) DraftFS(ctx context.Context, outfile string) error {
-	m := p.draftFS(ctx)
-	err := m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
-}
-
 func (p *Plexams) DraftFSBytes(ctx context.Context) ([]byte, error) {
-	m := p.draftFS(ctx)
-	buf, err := m.Output()
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF to bytes")
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return marotoBytes(p.draftFS(ctx))
 }
 
 func (p *Plexams) draftFS(ctx context.Context) pdf.Maroto {

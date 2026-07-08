@@ -602,6 +602,7 @@ type ComplexityRoot struct {
 		AddPrimussAncode              func(childComplexity int, zpaAncode int, program string, primussAncode int) int
 		AddRoom                       func(childComplexity int, input model.RoomInput) int
 		AddRoomRequest                func(childComplexity int, room string, starttime time.Time, from time.Time, until time.Time) int
+		AddStudentReg                 func(childComplexity int, program string, ancode int, mtknr string) int
 		AddZpaExamToPlan              func(childComplexity int, ancode int) int
 		ApplyRoomRequestsPreview      func(childComplexity int, force bool) int
 		BlockRoomAt                   func(childComplexity int, room string, starttime time.Time, reason *string) int
@@ -639,6 +640,7 @@ type ComplexityRoot struct {
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
 		RemovePrimussAncode           func(childComplexity int, zpaAncode int, program string) int
 		RemoveStudentConflictDecision func(childComplexity int, ancode1 int, ancode2 int, mtknr string) int
+		RemoveStudentReg              func(childComplexity int, program string, ancode int, mtknr string) int
 		ResetAssembledExams           func(childComplexity int) int
 		ResetEmailTemplate            func(childComplexity int, name string) int
 		ResetExamSchedule             func(childComplexity int) int
@@ -1542,6 +1544,8 @@ type MutationResolver interface {
 	SetPreplanExamCanShareSlot(ctx context.Context, id int, otherID int, canShare bool) (*model.PreplanExam, error)
 	SetPreplanExamConstraints(ctx context.Context, id int, constraints model.ConstraintsInput) (*model.PreplanExam, error)
 	ResetPrimussData(ctx context.Context) ([]string, error)
+	AddStudentReg(ctx context.Context, program string, ancode int, mtknr string) (bool, error)
+	RemoveStudentReg(ctx context.Context, program string, ancode int, mtknr string) (int, error)
 	PrePlanRoom(ctx context.Context, ancode int, roomName string, reserve bool, mtknr *string, seats *int) (bool, error)
 	RemovePrePlannedRoom(ctx context.Context, ancode int, roomName string, mtknr *string) (bool, error)
 	BlockRoomAt(ctx context.Context, room string, starttime time.Time, reason *string) (*model.BlockedRoom, error)
@@ -4354,6 +4358,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.AddRoomRequest(childComplexity, args["room"].(string), args["starttime"].(time.Time), args["from"].(time.Time), args["until"].(time.Time)), true
 
+	case "Mutation.addStudentReg":
+		if e.complexity.Mutation.AddStudentReg == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addStudentReg_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddStudentReg(childComplexity, args["program"].(string), args["ancode"].(int), args["mtknr"].(string)), true
+
 	case "Mutation.addZpaExamToPlan":
 		if e.complexity.Mutation.AddZpaExamToPlan == nil {
 			break
@@ -4777,6 +4793,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemoveStudentConflictDecision(childComplexity, args["ancode1"].(int), args["ancode2"].(int), args["mtknr"].(string)), true
+
+	case "Mutation.removeStudentReg":
+		if e.complexity.Mutation.RemoveStudentReg == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeStudentReg_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveStudentReg(childComplexity, args["program"].(string), args["ancode"].(int), args["mtknr"].(string)), true
 
 	case "Mutation.resetAssembledExams":
 		if e.complexity.Mutation.ResetAssembledExams == nil {
@@ -11241,6 +11269,20 @@ extend type Mutation {
   data was removed. Blocked while a validation or transfer/email is running.
   """
   resetPrimussData: [String!]!
+
+  """
+  addStudentReg manually adds a single student registration (mtknr) to a Primuss exam
+  (program + ancode), e.g. to correct a missing registration. Returns true on success.
+  Blocked while a validation or transfer/email is running.
+  """
+  addStudentReg(program: String!, ancode: Int!, mtknr: String!): Boolean!
+
+  """
+  removeStudentReg manually removes a single student registration (mtknr) from a Primuss
+  exam (program + ancode). Returns the number of registrations removed (0 or 1). Blocked
+  while a validation or transfer/email is running.
+  """
+  removeStudentReg(program: String!, ancode: Int!, mtknr: String!): Int!
 }
 
 type PrimussExam {
@@ -12649,6 +12691,80 @@ func (ec *executionContext) field_Mutation_addRoom_argsInput(
 	}
 
 	var zeroVal model.RoomInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addStudentReg_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_addStudentReg_argsProgram(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg0
+	arg1, err := ec.field_Mutation_addStudentReg_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg1
+	arg2, err := ec.field_Mutation_addStudentReg_argsMtknr(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mtknr"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_addStudentReg_argsProgram(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["program"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+	if tmp, ok := rawArgs["program"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addStudentReg_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_addStudentReg_argsMtknr(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["mtknr"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -14180,6 +14296,80 @@ func (ec *executionContext) field_Mutation_removeStudentConflictDecision_argsAnc
 }
 
 func (ec *executionContext) field_Mutation_removeStudentConflictDecision_argsMtknr(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["mtknr"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("mtknr"))
+	if tmp, ok := rawArgs["mtknr"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removeStudentReg_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_removeStudentReg_argsProgram(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg0
+	arg1, err := ec.field_Mutation_removeStudentReg_argsAncode(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg1
+	arg2, err := ec.field_Mutation_removeStudentReg_argsMtknr(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["mtknr"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_removeStudentReg_argsProgram(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["program"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("program"))
+	if tmp, ok := rawArgs["program"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removeStudentReg_argsAncode(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (int, error) {
+	if _, ok := rawArgs["ancode"]; !ok {
+		var zeroVal int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ancode"))
+	if tmp, ok := rawArgs["ancode"]; ok {
+		return ec.unmarshalNInt2int(ctx, tmp)
+	}
+
+	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_removeStudentReg_argsMtknr(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (string, error) {
@@ -39116,6 +39306,116 @@ func (ec *executionContext) fieldContext_Mutation_resetPrimussData(_ context.Con
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addStudentReg(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addStudentReg(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddStudentReg(rctx, fc.Args["program"].(string), fc.Args["ancode"].(int), fc.Args["mtknr"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addStudentReg(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addStudentReg_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeStudentReg(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeStudentReg(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveStudentReg(rctx, fc.Args["program"].(string), fc.Args["ancode"].(int), fc.Args["mtknr"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeStudentReg(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeStudentReg_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -77226,6 +77526,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "resetPrimussData":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_resetPrimussData(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addStudentReg":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addStudentReg(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeStudentReg":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeStudentReg(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

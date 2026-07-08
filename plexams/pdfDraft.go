@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) DraftMucDaiPDF(ctx context.Context, outfile string) error {
+func (p *Plexams) draftMucDaiMaroto(ctx context.Context) pdf.Maroto {
 	m := pdfgen.DraftDoc(false,
 		fmt.Sprintf("Vorläufiger Planungsstand MUC.DAI-Prüfungen der FK07 im %s", p.semesterFull()),
 		p.planer.Name, p.planer.Email, "--- zur Abstimmung ---")
@@ -19,15 +19,10 @@ func (p *Plexams) DraftMucDaiPDF(ctx context.Context, outfile string) error {
 	p.tableForProgram(ctx, "ID", "Informatik und Design (ID)", m)
 	p.tableForProgram(ctx, "GS", "Geodata Science (GS)", m)
 
-	err := m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
+	return m
 }
 
-func (p *Plexams) DraftFk08PDF(ctx context.Context, outfile string) error {
+func (p *Plexams) draftFk08Maroto(ctx context.Context) pdf.Maroto {
 	m := pdfgen.DraftDoc(false,
 		fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()),
 		p.planer.Name, p.planer.Email, "--- zur Abstimmung ---")
@@ -36,15 +31,10 @@ func (p *Plexams) DraftFk08PDF(ctx context.Context, outfile string) error {
 	p.tableForProgram(ctx, "GS", "Geodata Science (GS)", m)
 	// p.tableForProgram(ctx, "GD", "Angewandte Geodäsie und Geoinformatik (GD)", m)
 
-	err := m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
+	return m
 }
 
-func (p *Plexams) DraftFk10PDF(ctx context.Context, outfile string) error {
+func (p *Plexams) draftFk10Maroto(ctx context.Context) pdf.Maroto {
 	m := pdfgen.DraftDoc(false,
 		fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()),
 		p.planer.Name, p.planer.Email, "--- zur Abstimmung ---")
@@ -54,12 +44,7 @@ func (p *Plexams) DraftFk10PDF(ctx context.Context, outfile string) error {
 	p.tableForProgram(ctx, "WD", "BA - Wirtschaftsinformatik - Digitales Management (WD)", m)
 	p.tableForProgram(ctx, "WT", "BA - Wirtschaftsinformatik - Informationstechnologie (WT)", m)
 
-	err := m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
+	return m
 }
 
 func (p *Plexams) tableForProgram(ctx context.Context, program, programLong string, m pdf.Maroto) {
@@ -70,7 +55,7 @@ func (p *Plexams) tableForProgram(ctx context.Context, program, programLong stri
 	pdfgen.ProgramTable(m, programLong, pdfgen.ProgramRows(exams, program))
 }
 
-func (p *Plexams) DraftExahmPDF(ctx context.Context, outfile string) error {
+func (p *Plexams) draftExahmMaroto(ctx context.Context) pdf.Maroto {
 	m := pdfgen.DraftDoc(true,
 		fmt.Sprintf("Vorläufiger Planungsstand Prüfungen der FK07 im %s", p.semesterFull()),
 		p.planer.Name, p.planer.Email, "--- zur Abstimmung ---")
@@ -78,12 +63,7 @@ func (p *Plexams) DraftExahmPDF(ctx context.Context, outfile string) error {
 	// p.tableForExahm(ctx, m, false)
 	p.tableForExahm(ctx, m, true)
 
-	err := m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
+	return m
 }
 
 func (p *Plexams) tableForExahm(ctx context.Context, m pdf.Maroto, sortByDate bool) {

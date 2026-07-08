@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -165,19 +164,6 @@ func (p *Plexams) PlannedRoomsJSON(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 	return json.MarshalIndent(data, "", "  ")
-}
-
-// ExportPlannedRooms writes the planned-rooms export to a JSON file (CLI).
-func (p *Plexams) ExportPlannedRooms(jsonfile string) error {
-	b, err := p.PlannedRoomsJSON(context.Background())
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(jsonfile, b, 0644); err != nil {
-		log.Error().Err(err).Msg("cannot write JSON file")
-		return err
-	}
-	return nil
 }
 
 // HTTPDownloadPlannedRooms serves the planned-rooms export JSON as a file

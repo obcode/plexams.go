@@ -15,6 +15,19 @@ func (r *mutationResolver) ResetPrimussData(ctx context.Context) ([]string, erro
 	return r.plexams.ResetPrimussData(ctx)
 }
 
+// AddStudentReg is the resolver for the addStudentReg field.
+func (r *mutationResolver) AddStudentReg(ctx context.Context, program string, ancode int, mtknr string) (bool, error) {
+	if err := r.plexams.AddStudentReg(ctx, program, ancode, mtknr); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// RemoveStudentReg is the resolver for the removeStudentReg field.
+func (r *mutationResolver) RemoveStudentReg(ctx context.Context, program string, ancode int, mtknr string) (int, error) {
+	return r.plexams.RemoveStudentReg(ctx, program, ancode, mtknr)
+}
+
 // PrimussExams is the resolver for the primussExams field.
 func (r *queryResolver) PrimussExams(ctx context.Context) ([]*model.PrimussExamByProgram, error) {
 	return r.plexams.PrimussExams(ctx)

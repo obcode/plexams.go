@@ -2,44 +2,45 @@ package plexams
 
 import (
 	"context"
-	"os"
+	"fmt"
+	"net/http"
+	"strings"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/go-chi/chi/v5"
 	"github.com/jszwec/csvutil"
 	"github.com/obcode/plexams.go/plexams/csvgen"
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) CsvForProgram(program, filename string) error {
-	ctx := context.Background()
+func (p *Plexams) CsvForProgramBytes(ctx context.Context, program string) ([]byte, error) {
 	exams, err := p.PlannedExamsForProgram(ctx, program, true)
 	if err != nil {
 		log.Error().Err(err).Str("program", program).Msg("cannot get planned exams for program")
-		return err
+		return nil, err
 	}
 
 	b, err := csvutil.Marshal(csvgen.ProgramRows(exams, program))
 	if err != nil {
 		log.Error().Err(err).Msg("error when marshaling to csv")
+		return nil, err
 	}
-
-	return os.WriteFile(filename, b, 0644)
+	return b, nil
 }
 
-func (p *Plexams) CsvForEXaHM(filename string) error {
-	ctx := context.Background()
+func (p *Plexams) CsvForEXaHMBytes(ctx context.Context) ([]byte, error) {
 	exams, err := p.PlannedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get planned exams")
-		return err
+		return nil, err
 	}
 
 	b, err := csvutil.Marshal(csvgen.ExahmRows(exams))
 	if err != nil {
 		log.Error().Err(err).Msg("error when marshaling to csv")
+		return nil, err
 	}
-
-	return os.WriteFile(filename, b, 0644)
+	return b, nil
 }
 
 type CsvLBARepeater struct {
@@ -52,12 +53,11 @@ type CsvLBARepeater struct {
 	EmailsInvigilators string `csv:"E-Mails Aufsichten"`
 }
 
-func (p *Plexams) CsvForLBARepeater(filename string) error {
-	ctx := context.Background()
+func (p *Plexams) CsvForLBARepeaterBytes(ctx context.Context) ([]byte, error) {
 	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get planned exams")
-		return err
+		return nil, err
 	}
 
 	var csvEntries []CsvLBARepeater
@@ -73,7 +73,7 @@ func (p *Plexams) CsvForLBARepeater(filename string) error {
 		mainExamer, err := p.GetTeacher(ctx, exam.ZpaExam.MainExamerID)
 		if err != nil {
 			log.Error().Err(err).Msg("cannot get main examiner")
-			return err
+			return nil, err
 		}
 
 		if !mainExamer.IsLBA {
@@ -94,7 +94,7 @@ func (p *Plexams) CsvForLBARepeater(filename string) error {
 				invigilator, err := p.invigilatorForRoomAtTime(ctx, room.RoomName, start)
 				if err != nil {
 					log.Error().Err(err).Msg("cannot get invigilator")
-					return err
+					return nil, err
 				}
 				if invigilator == nil || invigs.Contains(invigilator.ID) {
 					continue
@@ -119,7 +119,50 @@ func (p *Plexams) CsvForLBARepeater(filename string) error {
 	b, err := csvutil.Marshal(csvEntries)
 	if err != nil {
 		log.Error().Err(err).Msg("error when marshaling to csv")
+		return nil, err
 	}
 
-	return os.WriteFile(filename, b, 0644)
+	return b, nil
+}
+
+// HTTPDownloadCSVDraft streams one of the human-readable draft CSVs as a download.
+// GET /download/csv/{kind}   (kind=draft needs ?program=<program>)
+func (p *Plexams) HTTPDownloadCSVDraft(w http.ResponseWriter, r *http.Request) {
+	kind := chi.URLParam(r, "kind")
+
+	var (
+		data     []byte
+		filename string
+		err      error
+	)
+	switch kind {
+	case "draft":
+		program := r.URL.Query().Get("program")
+		if program == "" {
+			http.Error(w, "program query parameter is required for kind=draft", http.StatusBadRequest)
+			return
+		}
+		data, err = p.CsvForProgramBytes(r.Context(), program)
+		filename = fmt.Sprintf("VorläufigePrüfungsplanung_FK07_%s.csv", program)
+	case "exahm":
+		data, err = p.CsvForEXaHMBytes(r.Context())
+		filename = "Prüfungsplanung_EXaHM_SEB_FK07.csv"
+	case "lba-repeater":
+		data, err = p.CsvForLBARepeaterBytes(r.Context())
+		filename = "Prüfungsplanung_LBA_Repeater_FK07.csv"
+	default:
+		http.Error(w, fmt.Sprintf("unknown csv kind %q (known: draft, exahm, lba-repeater)", kind), http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(w, "cannot generate csv: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fullName := fmt.Sprintf("%s_%s", strings.ReplaceAll(p.semester, " ", "_"), filename)
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fullName))
+	if _, err := w.Write(data); err != nil {
+		log.Error().Err(err).Str("kind", kind).Msg("cannot write csv draft download")
+	}
 }

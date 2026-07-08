@@ -28,19 +28,6 @@ func (p *Plexams) semesterFull() string {
 	return full
 }
 
-func (p *Plexams) GenerateExamsToPlanPDF(ctx context.Context, outfile string) error {
-	m, err := p.generateExamsToPlanMaroto(ctx)
-	if err != nil {
-		return err
-	}
-	err = m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
-}
-
 func (p *Plexams) generateExamsToPlanMaroto(ctx context.Context) (pdf.Maroto, error) {
 	exams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
@@ -50,30 +37,12 @@ func (p *Plexams) generateExamsToPlanMaroto(ctx context.Context) (pdf.Maroto, er
 	return pdfgen.ExamsToPlan(p.semesterFull(), jiraURL(), exams), nil
 }
 
-func (p *Plexams) SameModulNames(ctx context.Context, outfile string) error {
+func (p *Plexams) sameModulNamesMaroto(ctx context.Context) pdf.Maroto {
 	exams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get zpa exams to plan")
 	}
-	m := pdfgen.SameModulNames(p.semesterFull(), exams)
-	if err := m.OutputFileAndClose(outfile); err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
-}
-
-func (p *Plexams) ConstraintsPDF(ctx context.Context, outfile string) error {
-	m, err := p.constraintsMaroto(ctx)
-	if err != nil {
-		return err
-	}
-	err = m.OutputFileAndClose(outfile)
-	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	}
-	return nil
+	return pdfgen.SameModulNames(p.semesterFull(), exams)
 }
 
 func (p *Plexams) constraintsMaroto(ctx context.Context) (pdf.Maroto, error) {

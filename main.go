@@ -7,7 +7,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/obcode/plexams.go/cmd"
+	"github.com/obcode/plexams.go/bootstrap"
 	"github.com/spf13/viper"
 )
 
@@ -30,7 +30,7 @@ func main() {
 	viper.Set("Commit", commit)
 	viper.Set("Date", date)
 	viper.Set("BuiltBy", builtBy)
-	err := cmd.Execute()
+	err := bootstrap.Serve()
 	if err != nil {
 		_, err := fmt.Fprintln(os.Stderr, "Error:", err)
 		if err != nil {

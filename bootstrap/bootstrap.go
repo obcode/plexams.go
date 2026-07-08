@@ -1,13 +1,20 @@
-package cmd
+// Package bootstrap wires up the plexams GraphQL server: it loads the lean bootstrap
+// config (.plexams.yaml, credentials, db.uri), resolves/pins the active semester,
+// constructs the *plexams.Plexams instance and starts the HTTP/GraphQL server.
+//
+// This replaces the former Cobra CLI: plexams is now a server-only tool driven entirely
+// through the GraphQL/REST API (consumed by plexams.gui). The only command-line surface
+// left is the three bootstrap flags below.
+package bootstrap
 
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/logrusorgru/aurora"
 	"github.com/mitchellh/go-homedir"
 	"github.com/obcode/plexams.go/db"
@@ -15,63 +22,48 @@ import (
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
 	dbURI    string
 	semester string
-	Verbose  bool
-	rootCmd  = &cobra.Command{
-		Use:   "plexams.go",
-		Short: "Planning exams.",
-		Long:  `Planing exams.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			plexams := initPlexamsConfig()
-			graph.StartServer(plexams, viper.GetString("server.port"))
-		},
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-
-			output := zerolog.ConsoleWriter{Out: os.Stdout}
-			if Verbose {
-				output.FormatLevel = func(i interface{}) string {
-					return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
-				}
-				zerolog.SetGlobalLevel(zerolog.DebugLevel)
-			} else {
-				zerolog.SetGlobalLevel(zerolog.InfoLevel)
-			}
-			log.Logger = zerolog.New(output).With().Caller().Timestamp().Logger()
-
-			if isConfigOptionalCommand(cmd) {
-				return nil
-			}
-
-			if err := initConfig(); err != nil {
-				return err
-			}
-
-			// audit-log mutating CLI invocations (same mutation_log collection as
-			// the GraphQL middleware); read-only commands are skipped.
-			logCLIInvocation(cmd, args)
-			return nil
-		},
-	}
+	verbose  bool
 )
 
-func Execute() error {
-	return rootCmd.Execute()
+// Serve parses the bootstrap flags, loads the config, constructs the Plexams instance
+// and starts the GraphQL server. It blocks until the server is shut down.
+func Serve() error {
+	flag.StringVar(&dbURI, "db-uri", "", "override db.uri from config file")
+	flag.StringVar(&semester, "semester", "", "override semester from config file")
+	flag.BoolVar(&verbose, "verbose", false, "verbose output")
+	flag.BoolVar(&verbose, "v", false, "verbose output (shorthand)")
+	flag.Parse()
+
+	setupLogging()
+
+	if err := initConfig(); err != nil {
+		return err
+	}
+
+	plexams := newPlexams()
+	graph.StartServer(plexams, viper.GetString("server.port"))
+	return nil
 }
 
-func init() {
-	rootCmd.PersistentFlags().StringVar(&dbURI, "db-uri", "",
-		"override db.uri from config file")
-	rootCmd.PersistentFlags().StringVar(&semester, "semester", "",
-		"override semester from config file")
-	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false,
-		"verbose output")
+func setupLogging() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	output := zerolog.ConsoleWriter{Out: os.Stdout}
+	if verbose {
+		output.FormatLevel = func(i interface{}) string {
+			return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+		}
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+	log.Logger = zerolog.New(output).With().Caller().Timestamp().Logger()
 }
 
 func initConfig() error {
@@ -90,15 +82,12 @@ func initConfig() error {
 		if semester == "" {
 			semester = viper.GetString("semester")
 		}
-		// A pinned semester loads its optional per-semester YAML; without a pin the
-		// semester is auto-selected from the database later (initPlexamsConfig).
-		if strings.TrimSpace(semester) != "" {
-			loadPerSemesterYAML(semester, home)
-		}
+		// Per-semester config lives in the database (collection semester_config_input),
+		// edited through the GUI; there is no <semester>.yaml merge anymore.
 	} else {
 		var notFound viper.ConfigFileNotFoundError
 		if errors.As(err, &notFound) {
-			return fmt.Errorf("config '.plexams.yaml' not found (searched in: ., %s). Run 'plexams.go init'", home)
+			return fmt.Errorf("config '.plexams.yaml' not found (searched in: ., %s)", home)
 		}
 		return fmt.Errorf("cannot read config '.plexams.yaml': %w", err)
 	}
@@ -106,60 +95,7 @@ func initConfig() error {
 	return nil
 }
 
-// loadPerSemesterYAML merges the optional <semester>.yaml (from semester-path) into
-// the global viper config and watches it for changes. The file is optional: the
-// semester config is otherwise loaded from the database.
-func loadPerSemesterYAML(semester, home string) {
-	p := viper.GetString("semester-path")
-	p = os.ExpandEnv(p)      // $HOME, $USER, ...
-	p, _ = homedir.Expand(p) // ~ und ~user
-
-	semesterViper := viper.New()
-	semesterViper.SetConfigName(semester)
-	semesterViper.SetConfigType("yaml")
-	semesterViper.AddConfigPath(".")
-	semesterViper.AddConfigPath(home)
-	if p != "" {
-		semesterViper.AddConfigPath(p)
-	}
-
-	if err := semesterViper.ReadInConfig(); err != nil {
-		var notFound viper.ConfigFileNotFoundError
-		if errors.As(err, &notFound) {
-			log.Debug().Str("semester", semester).Msg("no per-semester YAML found, using config from the database")
-		} else {
-			log.Error().Err(err).Str("semester", semester).Msg("cannot read per-semester config")
-		}
-		return
-	}
-
-	if err := viper.MergeConfigMap(semesterViper.AllSettings()); err != nil {
-		log.Error().Err(err).Msg("cannot merge semester config")
-		return
-	}
-
-	// Watch the per-semester config so YAML changes take effect without a restart.
-	// Note: merge does not remove keys deleted in the file – that still needs a restart.
-	semesterViper.OnConfigChange(func(e fsnotify.Event) {
-		log.Info().Str("file", e.Name).Msg("semester config changed, reloading")
-		if err := viper.MergeConfigMap(semesterViper.AllSettings()); err != nil {
-			log.Error().Err(err).Msg("cannot re-merge semester config after change")
-		}
-	})
-	semesterViper.WatchConfig()
-}
-
-func isConfigOptionalCommand(cmd *cobra.Command) bool {
-	for c := cmd; c != nil; c = c.Parent() {
-		switch c.Name() {
-		case "version":
-			return true
-		}
-	}
-	return false
-}
-
-func initPlexamsConfig() *plexams.Plexams {
+func newPlexams() *plexams.Plexams {
 	fmt.Println(aurora.Sprintf(aurora.Cyan("Plexams.go version: %s\n"), viper.GetString("Version")))
 
 	if dbURI == "" {
@@ -185,8 +121,7 @@ func initPlexamsConfig() *plexams.Plexams {
 			if !ok {
 				log.Fatal().Msg("database has no usable (compatible) workspace yet — " +
 					"pin a semester with --semester <YYYY-SS> (e.g. --semester 2026-SS), " +
-					"create one with 'plexams.go init <YYYY-SS>', " +
-					"or restore a dump with 'plexams.go --semester <YYYY-SS> import semester-dump <file.zip>'")
+					"or create/restore one through the GUI (createSemester / semester-dump upload)")
 			}
 			semester = resolved
 			if database != "" {

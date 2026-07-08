@@ -1,44 +1,20 @@
 package plexams
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
 
+	"github.com/johnfercher/maroto/pkg/pdf"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/pdfgen"
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) DraftSI(ctx context.Context) error {
-	sis, err := p.dbClient.SpecialInterests(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot get special interests")
-		return err
-	}
-
-	for _, si := range sis {
-		log.Debug().Str("name", si.Name).Str("filename", si.Filename).
-			Interface("ancodes", si.Ancodes).Msg("found special interest")
-
-		exams := make([]*model.PlannedExam, 0, len(si.Ancodes))
-		for _, ancode := range si.Ancodes {
-			exam, err := p.PlannedExam(ctx, ancode)
-			if err != nil {
-				log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exams with ancode")
-				continue
-			}
-			exams = append(exams, exam)
-		}
-
-		if err := p.draftSI(si.Name, si.Filename, exams); err != nil {
-			log.Error().Err(err).Msg("cannot draft SI")
-		}
-	}
-
-	return nil
-}
-
-func (p *Plexams) DraftLbaRep(ctx context.Context) error {
+// lbaRepExams collects the repeater exams whose main examer is an LBA (excluding
+// exams not planned by me).
+func (p *Plexams) lbaRepExams(ctx context.Context) []*model.PlannedExam {
 	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get planned exams")
@@ -58,22 +34,59 @@ func (p *Plexams) DraftLbaRep(ctx context.Context) error {
 			}
 		}
 	}
-	return p.draftSI("Wiederholungsprüfungen von LBAs", "draft-lba-rep.pdf", exams)
+	return exams
 }
 
-func (p *Plexams) draftSI(name string, outfile string, exams []*model.PlannedExam) error {
+func (p *Plexams) draftSIMaroto(name string, exams []*model.PlannedExam) pdf.Maroto {
 	m := pdfgen.DraftDoc(false,
 		fmt.Sprintf("Vorläufiger Planungsstand der Prüfungen der FK07 im %s", p.semesterFull()),
 		p.planer.Name, p.planer.Email, "--- ENTWURF ---")
 
 	pdfgen.ExamTable(m, name, pdfgen.ExamRows(exams))
 
-	err := m.OutputFileAndClose(outfile)
+	return m
+}
+
+// DraftLbaRepBytes builds the repeater-exams-of-LBAs draft PDF as bytes (REST download).
+func (p *Plexams) DraftLbaRepBytes(ctx context.Context) ([]byte, error) {
+	return marotoBytes(p.draftSIMaroto("Wiederholungsprüfungen von LBAs", p.lbaRepExams(ctx)))
+}
+
+// DraftSIZipBytes builds one draft PDF per special interest and returns them as a ZIP,
+// since the special-interest export produces several files (one per configured group).
+func (p *Plexams) DraftSIZipBytes(ctx context.Context) ([]byte, error) {
+	sis, err := p.dbClient.SpecialInterests(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("Could not save PDF")
-		return err
-	} else {
-		fmt.Printf("generated %s for %s\n", outfile, name)
+		log.Error().Err(err).Msg("cannot get special interests")
+		return nil, err
 	}
-	return nil
+
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, si := range sis {
+		exams := make([]*model.PlannedExam, 0, len(si.Ancodes))
+		for _, ancode := range si.Ancodes {
+			exam, err := p.PlannedExam(ctx, ancode)
+			if err != nil {
+				log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exams with ancode")
+				continue
+			}
+			exams = append(exams, exam)
+		}
+		data, err := marotoBytes(p.draftSIMaroto(si.Name, exams))
+		if err != nil {
+			return nil, fmt.Errorf("special interest %q: %w", si.Name, err)
+		}
+		f, err := zw.Create(si.Filename)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := f.Write(data); err != nil {
+			return nil, err
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

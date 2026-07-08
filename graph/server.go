@@ -114,6 +114,12 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	router.Post("/upload/primuss-zip", plexams.HTTPUploadPrimussZip)
 	router.Get("/download/planned-rooms.json", plexams.HTTPDownloadPlannedRooms)
 
+	// Generated documents (formerly the pdf/csv/ics CLI commands): draft plans and
+	// exports for the faculties/examers. Read-only, so no write gating.
+	router.Get("/download/pdf/{kind}", plexams.HTTPDownloadPDF)
+	router.Get("/download/csv/{kind}", plexams.HTTPDownloadCSVDraft)
+	router.Get("/download/ics/{program}", plexams.HTTPDownloadICS)
+
 	// Backup/restore: whole-semester clone (ZIP) and per-page datasets (JSON), so a
 	// semester can be dumped and re-uploaded into a fresh workspace for testing.
 	router.Get("/download/semester-dump.zip", plexams.HTTPDownloadSemesterDump)

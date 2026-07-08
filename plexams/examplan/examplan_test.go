@@ -1,6 +1,7 @@
 package examplan
 
 import (
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -353,6 +354,35 @@ func TestClosenessUsesRealHoursAcrossDays(t *testing.T) {
 	}
 	if overnightShort >= p.W.SameDay {
 		t.Errorf("across-day should be cheaper than same-day: %.1f >= %.1f", overnightShort, p.W.SameDay)
+	}
+}
+
+func TestClosenessContinuousFalloff(t *testing.T) {
+	base := time.Date(2026, 7, 6, 8, 0, 0, 0, time.UTC)
+	mk := func(hour float64) Slot {
+		return Slot{SlotRef: SlotRef{Start: base.Add(time.Duration(hour * float64(time.Hour)))}, Seats: 100}
+	}
+	// five same-day starts at 0h,1h,2h,4h,8h from 08:00
+	slots := []Slot{mk(0), mk(1), mk(2), mk(4), mk(8)}
+	w := DefaultWeights()
+	w.ClosenessFalloffMin = 120 // 2h time constant
+	p := NewProblem(slots, []Unit{{ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}, {ID: 5}}, nil, nil, w)
+
+	// gap 0 → Adjacent ceiling; grows-smaller with the gap; approaches the SameDay floor.
+	if got := p.closeness(0, 0); math.Abs(got-w.Adjacent) > 1e-9 {
+		t.Errorf("gap 0 should equal Adjacent %.0f, got %.3f", w.Adjacent, got)
+	}
+	c1, c2, c4, c8 := p.closeness(0, 1), p.closeness(0, 2), p.closeness(0, 3), p.closeness(0, 4)
+	if !(c1 > c2 && c2 > c4 && c4 > c8) {
+		t.Errorf("continuous same-day cost must strictly decrease with the gap: %.1f %.1f %.1f %.1f", c1, c2, c4, c8)
+	}
+	if c8 <= w.SameDay || c8 > w.SameDay+0.05*(w.Adjacent-w.SameDay) { // 8h = 4τ → e^-4 ≈ 2% above the floor
+		t.Errorf("large same-day gap should approach the SameDay floor %.0f, got %.3f", w.SameDay, c8)
+	}
+	// with the default (tiered) weights the same slots reproduce the step function
+	pt := NewProblem(slots, []Unit{{ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}, {ID: 5}}, nil, nil, DefaultWeights())
+	if pt.closeness(0, 1) != DefaultWeights().Adjacent || pt.closeness(0, 2) != DefaultWeights().SameDay {
+		t.Errorf("tiered mode must stay the grid step: adj=%.0f nonadj=%.0f", pt.closeness(0, 1), pt.closeness(0, 2))
 	}
 }
 

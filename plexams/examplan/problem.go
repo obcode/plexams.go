@@ -110,6 +110,15 @@ type Weights struct {
 	// is semester-dependent (winter: avoid early starts; summer: avoid late starts) and is
 	// baked into TimeSeverity by the caller, so the solver only needs the scalar weight.
 	TimeOfDay float64
+	// ClosenessFalloffMin selects how the same-day spread penalty depends on the time gap:
+	//   0  = TIERED (default): the grid-equivalent step — Adjacent for a directly-
+	//        consecutive start, SameDay otherwise. Reproduces the tuned behaviour exactly
+	//        on the fixed start-time grid.
+	//   >0 = CONTINUOUS: the penalty decays smoothly from Adjacent (gap → 0) to the SameDay
+	//        floor with this time constant (minutes): SameDay + (Adjacent-SameDay)·e^(-gap/τ).
+	//        Meaningful only with finer/free start times; the value is a calibration knob.
+	// Across-day pairs always fall off with the real time gap (DayFactor·24/h) in both modes.
+	ClosenessFalloffMin float64
 }
 
 // DefaultWeights returns the calibrated weights (tuned against real data, Test26SS,
@@ -132,6 +141,10 @@ func DefaultWeights() Weights {
 		TbauFill:      0,    // off by default (Phase B); the EXaHM/SEB phase A sets it high
 		Hole:          1500, // an empty slot mid-day is bad for invigilation planning; drive it to the day edge (or fill it). Below Adjacent (2500) so it never creates a directly-consecutive pair just to close a hole; above SameDay (900) so it may accept a mild same-day proximity.
 		TimeOfDay:     0,    // off by default; the caller sets it (and TimeSeverity) per semester
+		// ClosenessFalloffMin 0 = tiered/grid-equivalent by default; set >0 (e.g. 120) to
+		// switch the same-day spread cost to a continuous time-gap falloff for finer start
+		// times (a calibration knob, tuned per semester against real data).
+		ClosenessFalloffMin: 0,
 	}
 }
 
@@ -426,6 +439,12 @@ func (p *Problem) allows(u, s int) bool {
 // more than 08:30 → next 16:30 (32 h), and a weekend gap (many hours) is naturally cheap.
 func (p *Problem) closeness(a, b int) float64 {
 	if p.dayOfSlot[a] == p.dayOfSlot[b] {
+		if p.W.ClosenessFalloffMin > 0 {
+			// continuous: decay from Adjacent (gap → 0) to the SameDay floor.
+			gapMin := math.Abs(p.Slots[a].Start.Sub(p.Slots[b].Start).Minutes())
+			return p.W.SameDay + (p.W.Adjacent-p.W.SameDay)*math.Exp(-gapMin/p.W.ClosenessFalloffMin)
+		}
+		// tiered (grid-equivalent): directly-consecutive vs elsewhere-same-day.
 		if abs(p.slotDayPos[a]-p.slotDayPos[b]) == 1 {
 			return p.W.Adjacent
 		}
@@ -445,6 +464,10 @@ func (p *Problem) farness(a, b int) float64 {
 		return 0
 	}
 	if p.dayOfSlot[a] == p.dayOfSlot[b] {
+		if p.W.ClosenessFalloffMin > 0 {
+			// continuous: distance grows with the real time gap (hours).
+			return p.W.Attract * math.Abs(p.Slots[a].Start.Sub(p.Slots[b].Start).Hours())
+		}
 		return p.W.Attract * float64(abs(p.slotDayPos[a]-p.slotDayPos[b]))
 	}
 	return p.W.Attract * float64(calDays(p.Slots[a].Start, p.Slots[b].Start)+5) // different day: at least beyond any intra-day distance

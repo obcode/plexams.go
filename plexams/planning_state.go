@@ -18,6 +18,7 @@ import (
 
 // planning condition keys (use the constants when marking from operations).
 const (
+	condZPAPersonsImported        = "zpaPersonsImported"
 	condExahmRequested            = "exahmRequested"
 	condSebExahmDemandEntered     = "sebExahmDemandEntered"
 	condAnnyRoomsBooked           = "annyRoomsBooked"
@@ -64,11 +65,12 @@ var planningPhaseDefs = []planstate.PhaseDef{
 }
 
 var planningConditionDefs = []planstate.CondDef{
+	{Key: condZPAPersonsImported, Title: "Personen aus ZPA importiert", Phase: "phaseMinus1"},
 	{Key: condExahmRequested, Title: "EXaHM/SEB-Abfrage verschickt", Phase: "phaseMinus1"},
 	{Key: condSebExahmDemandEntered, Title: "EXaHM/SEB-Prüfungsbedarf erfasst", Phase: "phaseMinus1"},
 	{Key: condAnnyRoomsBooked, Title: "Anny-Räume gebucht", Phase: "phaseMinus1"},
 	{Key: condSebExahmPreplanned, Title: "SEB/EXaHM-Vorplanung erzeugt", Phase: "phaseMinus1"},
-	{Key: condZPAImported, Title: "Prüfungen & Personen aus ZPA importiert", Phase: "phase0"},
+	{Key: condZPAImported, Title: "Prüfungen aus ZPA importiert", Phase: "phase0"},
 	{Key: condSebExahmZpaConnected, Title: "EXaHM/SEB-Vorplanung mit ZPA-Prüfungen verknüpft", Phase: "phase0"},
 	{Key: condZPAExamsSelected, Title: "ZPA-Prüfungen für die Planung ausgewählt", Phase: "phase0"},
 	{Key: condExamPlanningInfoSent, Title: "Prüfungsplanungs-Info an Prüfende verschickt", Phase: "phase0"},

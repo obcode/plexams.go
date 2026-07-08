@@ -75,6 +75,9 @@ func (p *Plexams) annyBookedByTime(ctx context.Context, starts []time.Time) (map
 			if !anny.MatchesAnyPersonalization(b.PersonalizationName, names) {
 				continue // only our bookings
 			}
+			if !anny.IsApprovedStatus(b.Status) {
+				continue // only confirmed bookings — a canceled/pending one is not capacity
+			}
 			// the booking must fully cover the slot block [start, start+block]
 			if start.Before(b.StartDate) || start.Add(block).After(b.EndDate) {
 				continue

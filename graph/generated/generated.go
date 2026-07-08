@@ -952,6 +952,8 @@ type ComplexityRoot struct {
 		Findings      func(childComplexity int) int
 		Messages      func(childComplexity int) int
 		Ok            func(childComplexity int) int
+		SkipReason    func(childComplexity int) int
+		Skipped       func(childComplexity int) int
 		UnassignedIDs func(childComplexity int) int
 	}
 
@@ -6506,6 +6508,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreplanValidation.Ok(childComplexity), true
 
+	case "PreplanValidation.skipReason":
+		if e.complexity.PreplanValidation.SkipReason == nil {
+			break
+		}
+
+		return e.complexity.PreplanValidation.SkipReason(childComplexity), true
+
+	case "PreplanValidation.skipped":
+		if e.complexity.PreplanValidation.Skipped == nil {
+			break
+		}
+
+		return e.complexity.PreplanValidation.Skipped(childComplexity), true
+
 	case "PreplanValidation.unassignedIDs":
 		if e.complexity.PreplanValidation.UnassignedIDs == nil {
 			break
@@ -11467,6 +11483,13 @@ extend type Mutation {
 type PreplanValidation {
   "True when there are no error-level findings; warnings and infos do not fail the validation."
   ok: Boolean!
+  """
+  True when the validation did not run because there are no SEB/EXaHM pre-exams yet.
+  Not a failure — render neutrally ("übersprungen"), not as a green pass.
+  """
+  skipped: Boolean!
+  "Why the validation was skipped, if skipped."
+  skipReason: String
   assignedCount: Int!
   "ids of pre-exams without a slot."
   unassignedIDs: [Int!]!
@@ -40314,6 +40337,10 @@ func (ec *executionContext) fieldContext_Mutation_generatePreplanAssignment(ctx 
 			switch field.Name {
 			case "ok":
 				return ec.fieldContext_PreplanValidation_ok(ctx, field)
+			case "skipped":
+				return ec.fieldContext_PreplanValidation_skipped(ctx, field)
+			case "skipReason":
+				return ec.fieldContext_PreplanValidation_skipReason(ctx, field)
 			case "assignedCount":
 				return ec.fieldContext_PreplanValidation_assignedCount(ctx, field)
 			case "unassignedIDs":
@@ -49389,6 +49416,91 @@ func (ec *executionContext) fieldContext_PreplanValidation_ok(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanValidation_skipped(ctx context.Context, field graphql.CollectedField, obj *model.PreplanValidation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanValidation_skipped(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Skipped, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanValidation_skipped(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanValidation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanValidation_skipReason(ctx context.Context, field graphql.CollectedField, obj *model.PreplanValidation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanValidation_skipReason(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SkipReason, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanValidation_skipReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanValidation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreplanValidation_assignedCount(ctx context.Context, field graphql.CollectedField, obj *model.PreplanValidation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreplanValidation_assignedCount(ctx, field)
 	if err != nil {
@@ -54679,6 +54791,10 @@ func (ec *executionContext) fieldContext_Query_validatePreplanAssignment(_ conte
 			switch field.Name {
 			case "ok":
 				return ec.fieldContext_PreplanValidation_ok(ctx, field)
+			case "skipped":
+				return ec.fieldContext_PreplanValidation_skipped(ctx, field)
+			case "skipReason":
+				return ec.fieldContext_PreplanValidation_skipReason(ctx, field)
 			case "assignedCount":
 				return ec.fieldContext_PreplanValidation_assignedCount(ctx, field)
 			case "unassignedIDs":
@@ -82028,6 +82144,13 @@ func (ec *executionContext) _PreplanValidation(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "skipped":
+			out.Values[i] = ec._PreplanValidation_skipped(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "skipReason":
+			out.Values[i] = ec._PreplanValidation_skipReason(ctx, field, obj)
 		case "assignedCount":
 			out.Values[i] = ec._PreplanValidation_assignedCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

@@ -22,6 +22,11 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 	if err != nil {
 		return nil, err
 	}
+	// No SEB/EXaHM pre-exams yet → nothing to validate. Report as skipped (neutral),
+	// not as a green pass, so the GUI shows "übersprungen".
+	if len(preExams) == 0 {
+		return skippedPreplanValidation(), nil
+	}
 	exahmRooms, sebRooms, err := p.preplanRoomCapacities(ctx)
 	if err != nil {
 		return nil, err
@@ -43,6 +48,21 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 	}
 
 	return validatePreplan(preExams, exahmRooms, sebRooms, booked, rBauSebThreshold), nil
+}
+
+// skippedPreplanValidation is the neutral result returned when there are no SEB/EXaHM
+// pre-exams to validate/assign yet. Skipped is true so the GUI renders "übersprungen"
+// instead of a misleading green pass.
+func skippedPreplanValidation() *model.PreplanValidation {
+	reason := skipNoPreExams
+	return &model.PreplanValidation{
+		Ok:            true,
+		Skipped:       true,
+		SkipReason:    &reason,
+		Messages:      []string{},
+		UnassignedIDs: []int{},
+		Findings:      []*model.PreplanFinding{},
+	}
 }
 
 // validatePreplan builds the validation result from an in-memory set of pre-exams.
@@ -190,7 +210,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		return nil, err
 	}
 	if len(preExams) == 0 {
-		return &model.PreplanValidation{Ok: true, Messages: []string{}, UnassignedIDs: []int{}, Findings: []*model.PreplanFinding{}}, nil
+		return skippedPreplanValidation(), nil
 	}
 	// candidate slots = ALL regular exam slots (not only the MUC.DAI slots): the
 	// pre-exams go wherever we have booked Anny rooms, and those bookings sit on the

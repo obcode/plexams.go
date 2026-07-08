@@ -20,6 +20,13 @@ extend type Mutation {
 type PreplanValidation {
   "True when there are no error-level findings; warnings and infos do not fail the validation."
   ok: Boolean!
+  """
+  True when the validation did not run because there are no SEB/EXaHM pre-exams yet.
+  Not a failure — render neutrally ("übersprungen"), not as a green pass.
+  """
+  skipped: Boolean!
+  "Why the validation was skipped, if skipped."
+  skipReason: String
   assignedCount: Int!
   "ids of pre-exams without a slot."
   unassignedIDs: [Int!]!

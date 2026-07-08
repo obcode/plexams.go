@@ -18,6 +18,8 @@ const (
 	skipNoPlan          = "noch kein Terminplan generiert"
 	skipNoRooms         = "noch keine Räume geplant"
 	skipNoInvigilations = "noch keine Aufsichten eingeteilt"
+	skipNoStudentRegs   = "noch keine Primuss-Anmeldedaten importiert"
+	skipNoPreExams      = "noch keine SEB/EXaHM-Prüfungen für die Vorplanung"
 )
 
 // planGenerated reports whether the exam schedule has been generated (the
@@ -57,4 +59,16 @@ func (p *Plexams) hasInvigilations(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	return len(invigilations) > 0, nil
+}
+
+// hasStudentRegs reports whether any (planned) Primuss student registrations exist.
+// The student-reg validator checks purely imported Primuss data, so it makes no sense
+// before Primuss has been imported.
+func (p *Plexams) hasStudentRegs(ctx context.Context) (bool, error) {
+	count, err := p.dbClient.CountStudentRegsPlanned(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot count student regs")
+		return false, err
+	}
+	return count > 0, nil
 }

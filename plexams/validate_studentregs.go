@@ -27,6 +27,12 @@ func (p *Plexams) ValidateStudentRegs(reporter Reporter) (*model.ValidationRepor
 	ctx := context.Background()
 	v := newValidation(reporter, "student-regs", "validating student regs")
 
+	if ok, err := p.hasStudentRegs(ctx); err != nil {
+		return nil, err
+	} else if !ok {
+		return v.skip(skipNoStudentRegs), nil
+	}
+
 	studentRegs, err := p.dbClient.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get student regs")

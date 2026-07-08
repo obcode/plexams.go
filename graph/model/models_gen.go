@@ -973,8 +973,13 @@ type PreplanSlotNeed struct {
 
 type PreplanValidation struct {
 	// True when there are no error-level findings; warnings and infos do not fail the validation.
-	Ok            bool `json:"ok"`
-	AssignedCount int  `json:"assignedCount"`
+	Ok bool `json:"ok"`
+	// True when the validation did not run because there are no SEB/EXaHM pre-exams yet.
+	// Not a failure — render neutrally ("übersprungen"), not as a green pass.
+	Skipped bool `json:"skipped"`
+	// Why the validation was skipped, if skipped.
+	SkipReason    *string `json:"skipReason,omitempty"`
+	AssignedCount int     `json:"assignedCount"`
 	// ids of pre-exams without a slot.
 	UnassignedIDs []int `json:"unassignedIDs"`
 	// Human-readable findings (German), flat text at all levels (kept for backward compatibility; prefer findings).

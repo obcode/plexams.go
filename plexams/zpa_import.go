@@ -76,6 +76,7 @@ func (p *Plexams) ImportTeachersFromZPA(ctx context.Context, reporter Reporter) 
 	rec.Summary = fmt.Sprintf("%d Lehrende geladen (%d neu, %d geändert, %d entfallen)",
 		len(teachers), rec.Added, rec.Changed, rec.Removed)
 	p.logSync(ctx, rec)
+	p.markCondition(ctx, condZPAPersonsImported)
 	reporter.StopProgress(fmt.Sprintf("fetched %d teachers", len(teachers)))
 	return len(teachers), nil
 }

@@ -144,16 +144,45 @@ capacity; eventual full removal of day/slot from GraphQL/GUI.
   interval-based, GraphQL time-based, solver objective granularity-correct + per-time cap. The
   branch feature/slotless-stufe2 has 6 green commits (A2a, C, writeback, SlotRef removal,
   diagnostics rename). Two LARGE internal-only refactors remain, both scoped:
-  1. **PreplanExam storage → time** — the LAST slot-based STORAGE (bson planneddaynumber/
-     plannedslotnumber; GraphQL already exposes plannedStarttime via a converting resolver).
-     ~51 day/slot uses across preplan_assign.go (30 — a MUC.DAI slot-assignment solver keyed on
-     [2]int + anny per-slot capacity), preplan_exams/connect/overview, csv_export. The only
-     remaining period-shift bug, but a narrow pre-planning feature, hard to test w/o anny+MUC.DAI
-     data. Own focused unit.
-  2. **Derived display ordinals** (PlanEntry/Slot/rooms DayNumber, bson:"-") + SlotResolver +
-     GetStarttime/SlotForTime + rooms_for_slots.go + ExamDay.Number — ~30 files (exports/PDF/CSV/
-     email/ICS/invig). Config-DERIVED each read → NO storage bug; pure churn. Recommendation:
-     keep as harmless internal helpers unless a full mechanical pass is wanted.
+  1. **PreplanExam storage → time DONE** (commit 55fcae1): PlannedDayNumber/SlotNumber →
+     PlannedStarttime *time.Time (bson plannedstarttime); annyBookedBySlot([][2]int) →
+     annyBookedByTime([]time.Time); preplanSlot carries Start (no day/slotNo), proximityPenalty
+     spreads by calendar-day+time-gap (same-day always >0); SetPreplanExamTime stores directly;
+     CSV round-trips absolute time. No migration. All slot-based STORAGE is now gone.
+  2. **Block B DONE** (commits e5f444d + 76abd10, authored via a multi-agent Workflow + 2 review
+     agents, all build/test/lint green): removed the ENTIRE day/slot machinery — PlanEntry/Slot/
+     PlannedRoom/UnplacedExam/BlockedRoom/PrePlannedInvigilation ordinal fields; the db SlotResolver
+     decoration; SlotForTime/TimeForSlot/GetStarttime/getSlotTime/getSlotForTime/DayNumberForDate;
+     rooms SlotNumber type + rooms-subpackage SlotKey → Starttime-keyed; invigilation_generate slot
+     maps → Starttime.Unix + nextStartOf; ExamDay.number/Starttime.number out of the schema. DB
+     queries are Starttime-keyed (ExamsAt/PlannedRoomsAt/GetInvigilationsAt/…); RoomRequest persists
+     Starttime; ValidationFinding carries Starttime (51/67 ref sites; 16 structural findings have
+     none). Caught+fixed a regression where every finding.starttime went null.
+     ONLY remaining internal ordinal: plexams/invigplan optimizer keeps internal Day/Slot indices,
+     DERIVED locally from sorted config start times (never persisted, never exported) — a
+     representation-only escape hatch; a full invigplan-native rewrite is a separate optional step.
+  GUI must follow (block B): ExamDay.number/Starttime.number gone → use .date/.start; all
+  …InSlot(day,slot) → …At(starttime); PlannedRoom/BlockedRoom/UnplacedExam/PrePlannedInvigilation
+  expose starttime only; validation findings carry starttime.
+  **ALL SLOTS REMOVED from storage + API + derivation.** Branch feature/slotless-stufe2.
+- **A2b code DONE** (commit e294391): examplan closeness/farness gained a CONTINUOUS same-day
+  falloff gated by Weights.ClosenessFalloffMin (minutes): 0 = tiered/grid-equivalent (default,
+  golden green), >0 = SameDay+(Adjacent-SameDay)·e^(-gap/τ). Dormant until wired to config during
+  calibration. Test: TestClosenessContinuousFalloff.
+- **invigplan time-native DONE** (commit b2cf33c): the LAST internal ordinals gone — Position.Day/
+  Slot removed, SlotKey()→Start.Unix() int64, Excluded/OwnExam-Slots→map[int64], -Days→date-ordinal
+  map, Available(pos), Violation carries Start, gap-rule compares calendar dates; caller feeds Start
+  directly. 23 invigplan tests converted + green.
+- **COMPLETE.** feature/slotless-stufe2 = 11 commits, build/test/lint green. Zero day/slot ordinal
+  machinery anywhere in the backend (only the name `SlotKey()` survives — it returns a Unix time).
+  ONLY remaining work = CALIBRATION: the user plays a full semester from scratch, then we tune the
+  three solvers (examplan Weights incl. ClosenessFalloffMin; preplan; invigplan) against real data.
+  DONE (commit aa75204): examplan weights + preplanCapacityFactor are now in GenerationConfig
+  (DB-persisted, GUI-editable), seeded from tuned DefaultWeights, backfilled for old configs
+  (ExamAdjacent==0 sentinel); buildExamPlanProblem uses examScheduleWeights(cfg). invigplan
+  weights were already there. GUI TODO: add an examplan-weights + preplanCapacityFactor section
+  to the generation-config form (fields exam*/preplanCapacityFactor on GenerationConfig(Input)).
+  Calibration itself (playing a semester, tuning the numbers) is the only remaining user-driven work.
 - Superseded detail: **B** finer/free start times just need
   the planner to add StartTimes to config — candidates already flow through per-(day,slot); the
   cleanup is de-keying buildExamPlanProblem/AllowedSlots/MucDaiSlots + writeback to time and

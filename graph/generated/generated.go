@@ -424,22 +424,36 @@ type ComplexityRoot struct {
 	}
 
 	GenerationConfig struct {
-		EndTemp                func(childComplexity int) int
-		Iterations             func(childComplexity int) int
-		MaxSpanHours           func(childComplexity int) int
-		SlotTimeMode           func(childComplexity int) int
-		SlotTimeWeight         func(childComplexity int) int
-		SlotTimeWinterEarliest func(childComplexity int) int
-		StartTemp              func(childComplexity int) int
-		ToleranceMin           func(childComplexity int) int
-		WeightBeyondTolerance  func(childComplexity int) int
-		WeightCoverage         func(childComplexity int) int
-		WeightDaySpan          func(childComplexity int) int
-		WeightDistribution     func(childComplexity int) int
-		WeightMaxDays          func(childComplexity int) int
-		WeightMinuteBalance    func(childComplexity int) int
-		WeightOverTargetFactor func(childComplexity int) int
-		WeightPreferExamDays   func(childComplexity int) int
+		EndTemp                 func(childComplexity int) int
+		ExamAdjacent            func(childComplexity int) int
+		ExamAttract             func(childComplexity int) int
+		ExamClosenessFalloffMin func(childComplexity int) int
+		ExamCrossCampus         func(childComplexity int) int
+		ExamDayFactor           func(childComplexity int) int
+		ExamHole                func(childComplexity int) int
+		ExamLoadThreshold       func(childComplexity int) int
+		ExamRepeatFactor        func(childComplexity int) int
+		ExamSameDay             func(childComplexity int) int
+		ExamSlotLoad            func(childComplexity int) int
+		ExamTbauFill            func(childComplexity int) int
+		ExamUnplaced            func(childComplexity int) int
+		ExamWorstCase           func(childComplexity int) int
+		Iterations              func(childComplexity int) int
+		MaxSpanHours            func(childComplexity int) int
+		PreplanCapacityFactor   func(childComplexity int) int
+		SlotTimeMode            func(childComplexity int) int
+		SlotTimeWeight          func(childComplexity int) int
+		SlotTimeWinterEarliest  func(childComplexity int) int
+		StartTemp               func(childComplexity int) int
+		ToleranceMin            func(childComplexity int) int
+		WeightBeyondTolerance   func(childComplexity int) int
+		WeightCoverage          func(childComplexity int) int
+		WeightDaySpan           func(childComplexity int) int
+		WeightDistribution      func(childComplexity int) int
+		WeightMaxDays           func(childComplexity int) int
+		WeightMinuteBalance     func(childComplexity int) int
+		WeightOverTargetFactor  func(childComplexity int) int
+		WeightPreferExamDays    func(childComplexity int) int
 	}
 
 	ImportMucDaiResult struct {
@@ -3402,6 +3416,97 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.GenerationConfig.EndTemp(childComplexity), true
 
+	case "GenerationConfig.examAdjacent":
+		if e.complexity.GenerationConfig.ExamAdjacent == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamAdjacent(childComplexity), true
+
+	case "GenerationConfig.examAttract":
+		if e.complexity.GenerationConfig.ExamAttract == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamAttract(childComplexity), true
+
+	case "GenerationConfig.examClosenessFalloffMin":
+		if e.complexity.GenerationConfig.ExamClosenessFalloffMin == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamClosenessFalloffMin(childComplexity), true
+
+	case "GenerationConfig.examCrossCampus":
+		if e.complexity.GenerationConfig.ExamCrossCampus == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamCrossCampus(childComplexity), true
+
+	case "GenerationConfig.examDayFactor":
+		if e.complexity.GenerationConfig.ExamDayFactor == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamDayFactor(childComplexity), true
+
+	case "GenerationConfig.examHole":
+		if e.complexity.GenerationConfig.ExamHole == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamHole(childComplexity), true
+
+	case "GenerationConfig.examLoadThreshold":
+		if e.complexity.GenerationConfig.ExamLoadThreshold == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamLoadThreshold(childComplexity), true
+
+	case "GenerationConfig.examRepeatFactor":
+		if e.complexity.GenerationConfig.ExamRepeatFactor == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamRepeatFactor(childComplexity), true
+
+	case "GenerationConfig.examSameDay":
+		if e.complexity.GenerationConfig.ExamSameDay == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamSameDay(childComplexity), true
+
+	case "GenerationConfig.examSlotLoad":
+		if e.complexity.GenerationConfig.ExamSlotLoad == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamSlotLoad(childComplexity), true
+
+	case "GenerationConfig.examTbauFill":
+		if e.complexity.GenerationConfig.ExamTbauFill == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamTbauFill(childComplexity), true
+
+	case "GenerationConfig.examUnplaced":
+		if e.complexity.GenerationConfig.ExamUnplaced == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamUnplaced(childComplexity), true
+
+	case "GenerationConfig.examWorstCase":
+		if e.complexity.GenerationConfig.ExamWorstCase == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.ExamWorstCase(childComplexity), true
+
 	case "GenerationConfig.iterations":
 		if e.complexity.GenerationConfig.Iterations == nil {
 			break
@@ -3415,6 +3520,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.GenerationConfig.MaxSpanHours(childComplexity), true
+
+	case "GenerationConfig.preplanCapacityFactor":
+		if e.complexity.GenerationConfig.PreplanCapacityFactor == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.PreplanCapacityFactor(childComplexity), true
 
 	case "GenerationConfig.slotTimeMode":
 		if e.complexity.GenerationConfig.SlotTimeMode == nil {
@@ -10302,6 +10414,37 @@ type GenerationConfig {
   slotTimeWeight: Float!
   "Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00. Ignored in summer (there earlier is always better)."
   slotTimeWinterEarliest: String!
+
+  # --- Terminplan (examplan) solver weights: calibration knobs, seeded with the tuned
+  # defaults. Higher = the solver avoids that situation harder. ---
+  "spread: two exams of a student directly consecutive on the same day (very bad)."
+  examAdjacent: Float!
+  "spread: two exams of a student on the same day but not consecutive."
+  examSameDay: Float!
+  "spread across days: DayFactor · 24 / hours between the two exams."
+  examDayFactor: Float!
+  "convex term protecting the least well-spread student (+ WorstCase · P²)."
+  examWorstCase: Float!
+  "down-weight applied to (likely) repeat-exam conflict pairs (0..1)."
+  examRepeatFactor: Float!
+  "attract: pull parallel sections / small same-examer exams close together."
+  examAttract: Float!
+  "even distribution: convex penalty on the seat load per start time."
+  examSlotLoad: Float!
+  "soft seat threshold per start time for the slot-load term."
+  examLoadThreshold: Int!
+  "penalty per unplaced exam (dominant — keep very high so all exams get placed)."
+  examUnplaced: Float!
+  "extra penalty for a same-day student pair across campuses (travel gap)."
+  examCrossCampus: Float!
+  "per unused booked T-building seat in the EXaHM/SEB room phase (phase A only)."
+  examTbauFill: Float!
+  "per empty start time between two occupied ones on the same day (bad for invigilation)."
+  examHole: Float!
+  "0 = tiered/grid-equivalent same-day cost; >0 = continuous falloff time constant (minutes) for finer start times."
+  examClosenessFalloffMin: Float!
+  "Pre-plan (SEB/EXaHM): usable fraction of a slot's booked Anny seats (1.0 = fill completely)."
+  preplanCapacityFactor: Float!
 }
 
 input GenerationConfigInput {
@@ -10321,6 +10464,20 @@ input GenerationConfigInput {
   slotTimeMode: SlotTimeConstraintMode!
   slotTimeWeight: Float!
   slotTimeWinterEarliest: String!
+  examAdjacent: Float!
+  examSameDay: Float!
+  examDayFactor: Float!
+  examWorstCase: Float!
+  examRepeatFactor: Float!
+  examAttract: Float!
+  examSlotLoad: Float!
+  examLoadThreshold: Int!
+  examUnplaced: Float!
+  examCrossCampus: Float!
+  examTbauFill: Float!
+  examHole: Float!
+  examClosenessFalloffMin: Float!
+  preplanCapacityFactor: Float!
 }
 `, BuiltIn: false},
 	{Name: "../invigilation.graphqls", Input: `extend type Query {
@@ -30112,6 +30269,622 @@ func (ec *executionContext) fieldContext_GenerationConfig_slotTimeWinterEarliest
 	return fc, nil
 }
 
+func (ec *executionContext) _GenerationConfig_examAdjacent(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examAdjacent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamAdjacent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examAdjacent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examSameDay(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examSameDay(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamSameDay, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examSameDay(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examDayFactor(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examDayFactor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamDayFactor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examDayFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examWorstCase(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examWorstCase(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamWorstCase, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examWorstCase(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examRepeatFactor(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examRepeatFactor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamRepeatFactor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examRepeatFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examAttract(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examAttract(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamAttract, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examAttract(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examSlotLoad(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examSlotLoad(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamSlotLoad, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examSlotLoad(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examLoadThreshold(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examLoadThreshold(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamLoadThreshold, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examLoadThreshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examUnplaced(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examUnplaced(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamUnplaced, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examUnplaced(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examCrossCampus(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examCrossCampus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamCrossCampus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examCrossCampus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examTbauFill(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examTbauFill(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamTbauFill, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examTbauFill(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examHole(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examHole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamHole, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examHole(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_examClosenessFalloffMin(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_examClosenessFalloffMin(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamClosenessFalloffMin, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_examClosenessFalloffMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_preplanCapacityFactor(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_preplanCapacityFactor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PreplanCapacityFactor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_preplanCapacityFactor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ImportMucDaiResult_programs(ctx context.Context, field graphql.CollectedField, obj *model.ImportMucDaiResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ImportMucDaiResult_programs(ctx, field)
 	if err != nil {
@@ -36031,6 +36804,34 @@ func (ec *executionContext) fieldContext_Mutation_setGenerationConfig(ctx contex
 				return ec.fieldContext_GenerationConfig_slotTimeWeight(ctx, field)
 			case "slotTimeWinterEarliest":
 				return ec.fieldContext_GenerationConfig_slotTimeWinterEarliest(ctx, field)
+			case "examAdjacent":
+				return ec.fieldContext_GenerationConfig_examAdjacent(ctx, field)
+			case "examSameDay":
+				return ec.fieldContext_GenerationConfig_examSameDay(ctx, field)
+			case "examDayFactor":
+				return ec.fieldContext_GenerationConfig_examDayFactor(ctx, field)
+			case "examWorstCase":
+				return ec.fieldContext_GenerationConfig_examWorstCase(ctx, field)
+			case "examRepeatFactor":
+				return ec.fieldContext_GenerationConfig_examRepeatFactor(ctx, field)
+			case "examAttract":
+				return ec.fieldContext_GenerationConfig_examAttract(ctx, field)
+			case "examSlotLoad":
+				return ec.fieldContext_GenerationConfig_examSlotLoad(ctx, field)
+			case "examLoadThreshold":
+				return ec.fieldContext_GenerationConfig_examLoadThreshold(ctx, field)
+			case "examUnplaced":
+				return ec.fieldContext_GenerationConfig_examUnplaced(ctx, field)
+			case "examCrossCampus":
+				return ec.fieldContext_GenerationConfig_examCrossCampus(ctx, field)
+			case "examTbauFill":
+				return ec.fieldContext_GenerationConfig_examTbauFill(ctx, field)
+			case "examHole":
+				return ec.fieldContext_GenerationConfig_examHole(ctx, field)
+			case "examClosenessFalloffMin":
+				return ec.fieldContext_GenerationConfig_examClosenessFalloffMin(ctx, field)
+			case "preplanCapacityFactor":
+				return ec.fieldContext_GenerationConfig_preplanCapacityFactor(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GenerationConfig", field.Name)
 		},
@@ -49459,6 +50260,34 @@ func (ec *executionContext) fieldContext_Query_generationConfig(_ context.Contex
 				return ec.fieldContext_GenerationConfig_slotTimeWeight(ctx, field)
 			case "slotTimeWinterEarliest":
 				return ec.fieldContext_GenerationConfig_slotTimeWinterEarliest(ctx, field)
+			case "examAdjacent":
+				return ec.fieldContext_GenerationConfig_examAdjacent(ctx, field)
+			case "examSameDay":
+				return ec.fieldContext_GenerationConfig_examSameDay(ctx, field)
+			case "examDayFactor":
+				return ec.fieldContext_GenerationConfig_examDayFactor(ctx, field)
+			case "examWorstCase":
+				return ec.fieldContext_GenerationConfig_examWorstCase(ctx, field)
+			case "examRepeatFactor":
+				return ec.fieldContext_GenerationConfig_examRepeatFactor(ctx, field)
+			case "examAttract":
+				return ec.fieldContext_GenerationConfig_examAttract(ctx, field)
+			case "examSlotLoad":
+				return ec.fieldContext_GenerationConfig_examSlotLoad(ctx, field)
+			case "examLoadThreshold":
+				return ec.fieldContext_GenerationConfig_examLoadThreshold(ctx, field)
+			case "examUnplaced":
+				return ec.fieldContext_GenerationConfig_examUnplaced(ctx, field)
+			case "examCrossCampus":
+				return ec.fieldContext_GenerationConfig_examCrossCampus(ctx, field)
+			case "examTbauFill":
+				return ec.fieldContext_GenerationConfig_examTbauFill(ctx, field)
+			case "examHole":
+				return ec.fieldContext_GenerationConfig_examHole(ctx, field)
+			case "examClosenessFalloffMin":
+				return ec.fieldContext_GenerationConfig_examClosenessFalloffMin(ctx, field)
+			case "preplanCapacityFactor":
+				return ec.fieldContext_GenerationConfig_preplanCapacityFactor(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GenerationConfig", field.Name)
 		},
@@ -71376,7 +72205,7 @@ func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"iterations", "startTemp", "endTemp", "toleranceMin", "maxSpanHours", "weightMinuteBalance", "weightBeyondTolerance", "weightOverTargetFactor", "weightCoverage", "weightMaxDays", "weightPreferExamDays", "weightDistribution", "weightDaySpan", "slotTimeMode", "slotTimeWeight", "slotTimeWinterEarliest"}
+	fieldsInOrder := [...]string{"iterations", "startTemp", "endTemp", "toleranceMin", "maxSpanHours", "weightMinuteBalance", "weightBeyondTolerance", "weightOverTargetFactor", "weightCoverage", "weightMaxDays", "weightPreferExamDays", "weightDistribution", "weightDaySpan", "slotTimeMode", "slotTimeWeight", "slotTimeWinterEarliest", "examAdjacent", "examSameDay", "examDayFactor", "examWorstCase", "examRepeatFactor", "examAttract", "examSlotLoad", "examLoadThreshold", "examUnplaced", "examCrossCampus", "examTbauFill", "examHole", "examClosenessFalloffMin", "preplanCapacityFactor"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71495,6 +72324,104 @@ func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Cont
 				return it, err
 			}
 			it.SlotTimeWinterEarliest = data
+		case "examAdjacent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examAdjacent"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamAdjacent = data
+		case "examSameDay":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examSameDay"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamSameDay = data
+		case "examDayFactor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examDayFactor"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamDayFactor = data
+		case "examWorstCase":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examWorstCase"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamWorstCase = data
+		case "examRepeatFactor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examRepeatFactor"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamRepeatFactor = data
+		case "examAttract":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examAttract"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamAttract = data
+		case "examSlotLoad":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examSlotLoad"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamSlotLoad = data
+		case "examLoadThreshold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examLoadThreshold"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamLoadThreshold = data
+		case "examUnplaced":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examUnplaced"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamUnplaced = data
+		case "examCrossCampus":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examCrossCampus"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamCrossCampus = data
+		case "examTbauFill":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examTbauFill"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamTbauFill = data
+		case "examHole":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examHole"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamHole = data
+		case "examClosenessFalloffMin":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examClosenessFalloffMin"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExamClosenessFalloffMin = data
+		case "preplanCapacityFactor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("preplanCapacityFactor"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PreplanCapacityFactor = data
 		}
 	}
 
@@ -74838,6 +75765,76 @@ func (ec *executionContext) _GenerationConfig(ctx context.Context, sel ast.Selec
 			}
 		case "slotTimeWinterEarliest":
 			out.Values[i] = ec._GenerationConfig_slotTimeWinterEarliest(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examAdjacent":
+			out.Values[i] = ec._GenerationConfig_examAdjacent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examSameDay":
+			out.Values[i] = ec._GenerationConfig_examSameDay(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examDayFactor":
+			out.Values[i] = ec._GenerationConfig_examDayFactor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examWorstCase":
+			out.Values[i] = ec._GenerationConfig_examWorstCase(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examRepeatFactor":
+			out.Values[i] = ec._GenerationConfig_examRepeatFactor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examAttract":
+			out.Values[i] = ec._GenerationConfig_examAttract(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examSlotLoad":
+			out.Values[i] = ec._GenerationConfig_examSlotLoad(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examLoadThreshold":
+			out.Values[i] = ec._GenerationConfig_examLoadThreshold(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examUnplaced":
+			out.Values[i] = ec._GenerationConfig_examUnplaced(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examCrossCampus":
+			out.Values[i] = ec._GenerationConfig_examCrossCampus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examTbauFill":
+			out.Values[i] = ec._GenerationConfig_examTbauFill(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examHole":
+			out.Values[i] = ec._GenerationConfig_examHole(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examClosenessFalloffMin":
+			out.Values[i] = ec._GenerationConfig_examClosenessFalloffMin(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "preplanCapacityFactor":
+			out.Values[i] = ec._GenerationConfig_preplanCapacityFactor(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

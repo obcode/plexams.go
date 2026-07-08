@@ -501,25 +501,67 @@ type GenerationConfig struct {
 	SlotTimeWeight float64 `json:"slotTimeWeight"`
 	// Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00. Ignored in summer (there earlier is always better).
 	SlotTimeWinterEarliest string `json:"slotTimeWinterEarliest"`
+	// spread: two exams of a student directly consecutive on the same day (very bad).
+	ExamAdjacent float64 `json:"examAdjacent"`
+	// spread: two exams of a student on the same day but not consecutive.
+	ExamSameDay float64 `json:"examSameDay"`
+	// spread across days: DayFactor · 24 / hours between the two exams.
+	ExamDayFactor float64 `json:"examDayFactor"`
+	// convex term protecting the least well-spread student (+ WorstCase · P²).
+	ExamWorstCase float64 `json:"examWorstCase"`
+	// down-weight applied to (likely) repeat-exam conflict pairs (0..1).
+	ExamRepeatFactor float64 `json:"examRepeatFactor"`
+	// attract: pull parallel sections / small same-examer exams close together.
+	ExamAttract float64 `json:"examAttract"`
+	// even distribution: convex penalty on the seat load per start time.
+	ExamSlotLoad float64 `json:"examSlotLoad"`
+	// soft seat threshold per start time for the slot-load term.
+	ExamLoadThreshold int `json:"examLoadThreshold"`
+	// penalty per unplaced exam (dominant — keep very high so all exams get placed).
+	ExamUnplaced float64 `json:"examUnplaced"`
+	// extra penalty for a same-day student pair across campuses (travel gap).
+	ExamCrossCampus float64 `json:"examCrossCampus"`
+	// per unused booked T-building seat in the EXaHM/SEB room phase (phase A only).
+	ExamTbauFill float64 `json:"examTbauFill"`
+	// per empty start time between two occupied ones on the same day (bad for invigilation).
+	ExamHole float64 `json:"examHole"`
+	// 0 = tiered/grid-equivalent same-day cost; >0 = continuous falloff time constant (minutes) for finer start times.
+	ExamClosenessFalloffMin float64 `json:"examClosenessFalloffMin"`
+	// Pre-plan (SEB/EXaHM): usable fraction of a slot's booked Anny seats (1.0 = fill completely).
+	PreplanCapacityFactor float64 `json:"preplanCapacityFactor"`
 }
 
 type GenerationConfigInput struct {
-	Iterations             int                    `json:"iterations"`
-	StartTemp              float64                `json:"startTemp"`
-	EndTemp                float64                `json:"endTemp"`
-	ToleranceMin           int                    `json:"toleranceMin"`
-	MaxSpanHours           float64                `json:"maxSpanHours"`
-	WeightMinuteBalance    float64                `json:"weightMinuteBalance"`
-	WeightBeyondTolerance  float64                `json:"weightBeyondTolerance"`
-	WeightOverTargetFactor float64                `json:"weightOverTargetFactor"`
-	WeightCoverage         float64                `json:"weightCoverage"`
-	WeightMaxDays          float64                `json:"weightMaxDays"`
-	WeightPreferExamDays   float64                `json:"weightPreferExamDays"`
-	WeightDistribution     float64                `json:"weightDistribution"`
-	WeightDaySpan          float64                `json:"weightDaySpan"`
-	SlotTimeMode           SlotTimeConstraintMode `json:"slotTimeMode"`
-	SlotTimeWeight         float64                `json:"slotTimeWeight"`
-	SlotTimeWinterEarliest string                 `json:"slotTimeWinterEarliest"`
+	Iterations              int                    `json:"iterations"`
+	StartTemp               float64                `json:"startTemp"`
+	EndTemp                 float64                `json:"endTemp"`
+	ToleranceMin            int                    `json:"toleranceMin"`
+	MaxSpanHours            float64                `json:"maxSpanHours"`
+	WeightMinuteBalance     float64                `json:"weightMinuteBalance"`
+	WeightBeyondTolerance   float64                `json:"weightBeyondTolerance"`
+	WeightOverTargetFactor  float64                `json:"weightOverTargetFactor"`
+	WeightCoverage          float64                `json:"weightCoverage"`
+	WeightMaxDays           float64                `json:"weightMaxDays"`
+	WeightPreferExamDays    float64                `json:"weightPreferExamDays"`
+	WeightDistribution      float64                `json:"weightDistribution"`
+	WeightDaySpan           float64                `json:"weightDaySpan"`
+	SlotTimeMode            SlotTimeConstraintMode `json:"slotTimeMode"`
+	SlotTimeWeight          float64                `json:"slotTimeWeight"`
+	SlotTimeWinterEarliest  string                 `json:"slotTimeWinterEarliest"`
+	ExamAdjacent            float64                `json:"examAdjacent"`
+	ExamSameDay             float64                `json:"examSameDay"`
+	ExamDayFactor           float64                `json:"examDayFactor"`
+	ExamWorstCase           float64                `json:"examWorstCase"`
+	ExamRepeatFactor        float64                `json:"examRepeatFactor"`
+	ExamAttract             float64                `json:"examAttract"`
+	ExamSlotLoad            float64                `json:"examSlotLoad"`
+	ExamLoadThreshold       int                    `json:"examLoadThreshold"`
+	ExamUnplaced            float64                `json:"examUnplaced"`
+	ExamCrossCampus         float64                `json:"examCrossCampus"`
+	ExamTbauFill            float64                `json:"examTbauFill"`
+	ExamHole                float64                `json:"examHole"`
+	ExamClosenessFalloffMin float64                `json:"examClosenessFalloffMin"`
+	PreplanCapacityFactor   float64                `json:"preplanCapacityFactor"`
 }
 
 type ImportMucDaiResult struct {

@@ -376,7 +376,13 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		}
 	}
 
-	w := examplan.DefaultWeights()
+	// solver weights from the (GUI-editable) generation config, seeded with the tuned
+	// defaults; TimeOfDay is set below from the per-semester start-time severity.
+	genCfg, err := p.GenerationConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	w := examScheduleWeights(genCfg)
 	if roomPhase {
 		// Phase A: main goal is to fill the booked T-building rooms with EXaHM/SEB;
 		// even distribution over all slots is off (we want concentration in T-Bau), and

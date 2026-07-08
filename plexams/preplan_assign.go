@@ -223,12 +223,17 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	// candidate slots: only those with booked Anny rooms; usable capacity = 90%
 	slots := make([]*preplanSlot, 0)
 	slotIdxByStart := make(map[time.Time]int)
+	// usable fraction of each slot's booked Anny seats (GUI-editable, default 1.0)
+	capacityFactor := preplanCapacityFactor
+	if cfg, err := p.GenerationConfig(ctx); err == nil && cfg.PreplanCapacityFactor > 0 {
+		capacityFactor = cfg.PreplanCapacityFactor
+	}
 	for _, s := range regularSlots {
 		sb := booked[s.Starttime]
 		if sb == nil {
 			continue
 		}
-		capacity := int(float64(sb.seats) * preplanCapacityFactor)
+		capacity := int(float64(sb.seats) * capacityFactor)
 		if capacity <= 0 {
 			continue
 		}

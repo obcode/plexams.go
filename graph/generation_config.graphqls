@@ -47,6 +47,37 @@ type GenerationConfig {
   slotTimeWeight: Float!
   "Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00. Ignored in summer (there earlier is always better)."
   slotTimeWinterEarliest: String!
+
+  # --- Terminplan (examplan) solver weights: calibration knobs, seeded with the tuned
+  # defaults. Higher = the solver avoids that situation harder. ---
+  "spread: two exams of a student directly consecutive on the same day (very bad)."
+  examAdjacent: Float!
+  "spread: two exams of a student on the same day but not consecutive."
+  examSameDay: Float!
+  "spread across days: DayFactor · 24 / hours between the two exams."
+  examDayFactor: Float!
+  "convex term protecting the least well-spread student (+ WorstCase · P²)."
+  examWorstCase: Float!
+  "down-weight applied to (likely) repeat-exam conflict pairs (0..1)."
+  examRepeatFactor: Float!
+  "attract: pull parallel sections / small same-examer exams close together."
+  examAttract: Float!
+  "even distribution: convex penalty on the seat load per start time."
+  examSlotLoad: Float!
+  "soft seat threshold per start time for the slot-load term."
+  examLoadThreshold: Int!
+  "penalty per unplaced exam (dominant — keep very high so all exams get placed)."
+  examUnplaced: Float!
+  "extra penalty for a same-day student pair across campuses (travel gap)."
+  examCrossCampus: Float!
+  "per unused booked T-building seat in the EXaHM/SEB room phase (phase A only)."
+  examTbauFill: Float!
+  "per empty start time between two occupied ones on the same day (bad for invigilation)."
+  examHole: Float!
+  "0 = tiered/grid-equivalent same-day cost; >0 = continuous falloff time constant (minutes) for finer start times."
+  examClosenessFalloffMin: Float!
+  "Pre-plan (SEB/EXaHM): usable fraction of a slot's booked Anny seats (1.0 = fill completely)."
+  preplanCapacityFactor: Float!
 }
 
 input GenerationConfigInput {
@@ -66,4 +97,18 @@ input GenerationConfigInput {
   slotTimeMode: SlotTimeConstraintMode!
   slotTimeWeight: Float!
   slotTimeWinterEarliest: String!
+  examAdjacent: Float!
+  examSameDay: Float!
+  examDayFactor: Float!
+  examWorstCase: Float!
+  examRepeatFactor: Float!
+  examAttract: Float!
+  examSlotLoad: Float!
+  examLoadThreshold: Int!
+  examUnplaced: Float!
+  examCrossCampus: Float!
+  examTbauFill: Float!
+  examHole: Float!
+  examClosenessFalloffMin: Float!
+  preplanCapacityFactor: Float!
 }

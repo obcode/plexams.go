@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/examplan"
 	"github.com/obcode/plexams.go/plexams/invigplan"
 	"github.com/spf13/viper"
 )
@@ -17,10 +18,60 @@ func (p *Plexams) GenerationConfig(ctx context.Context) (*model.GenerationConfig
 		return nil, err
 	}
 	if cfg != nil {
-		fillSlotTimeDefaults(cfg) // backfill fields absent from an older stored config
+		fillSlotTimeDefaults(cfg)   // backfill fields absent from an older stored config
+		fillExamWeightDefaults(cfg) // backfill the examplan/preplan solver weights
 		return cfg, nil
 	}
 	return defaultGenerationConfig(), nil
+}
+
+// fillExamWeightDefaults seeds the Terminplan (examplan) solver weights and the pre-plan
+// capacity factor for a stored config that predates them (all zero → treated as "unset").
+// ExamAdjacent is the sentinel: its tuned default is far from 0, so a stored 0 means the
+// whole exam-weight group is missing and gets backfilled from the tuned defaults.
+func fillExamWeightDefaults(cfg *model.GenerationConfig) {
+	if cfg.ExamAdjacent == 0 {
+		w := examplan.DefaultWeights()
+		cfg.ExamAdjacent = w.Adjacent
+		cfg.ExamSameDay = w.SameDay
+		cfg.ExamDayFactor = w.DayFactor
+		cfg.ExamWorstCase = w.WorstCase
+		cfg.ExamRepeatFactor = w.RepeatFactor
+		cfg.ExamAttract = w.Attract
+		cfg.ExamSlotLoad = w.SlotLoad
+		cfg.ExamLoadThreshold = w.LoadThreshold
+		cfg.ExamUnplaced = w.Unplaced
+		cfg.ExamCrossCampus = w.CrossCampus
+		cfg.ExamTbauFill = w.TbauFill
+		cfg.ExamHole = w.Hole
+		cfg.ExamClosenessFalloffMin = w.ClosenessFalloffMin
+	}
+	if cfg.PreplanCapacityFactor == 0 {
+		cfg.PreplanCapacityFactor = preplanCapacityFactor
+	}
+}
+
+// examScheduleWeights builds the examplan solver weights from the generation config
+// (TimeOfDay is set separately by the caller from the per-semester start-time severity).
+func examScheduleWeights(cfg *model.GenerationConfig) examplan.Weights {
+	w := examplan.DefaultWeights()
+	if cfg == nil {
+		return w
+	}
+	w.Adjacent = cfg.ExamAdjacent
+	w.SameDay = cfg.ExamSameDay
+	w.DayFactor = cfg.ExamDayFactor
+	w.WorstCase = cfg.ExamWorstCase
+	w.RepeatFactor = cfg.ExamRepeatFactor
+	w.Attract = cfg.ExamAttract
+	w.SlotLoad = cfg.ExamSlotLoad
+	w.LoadThreshold = cfg.ExamLoadThreshold
+	w.Unplaced = cfg.ExamUnplaced
+	w.CrossCampus = cfg.ExamCrossCampus
+	w.TbauFill = cfg.ExamTbauFill
+	w.Hole = cfg.ExamHole
+	w.ClosenessFalloffMin = cfg.ExamClosenessFalloffMin
+	return w
 }
 
 // fillSlotTimeDefaults sets sensible defaults for the start-time-avoidance fields when a
@@ -70,6 +121,7 @@ func defaultGenerationConfig() *model.GenerationConfig {
 		SlotTimeWeight:         defaultSlotTimeWeight,
 		SlotTimeWinterEarliest: defaultSlotTimeWinterEarliest,
 	}
+	fillExamWeightDefaults(cfg) // seed the examplan/preplan solver weights from the tuned defaults
 
 	// legacy seed from the config file
 	if viper.IsSet("invigilation.optimizer.iterations") {

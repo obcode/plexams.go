@@ -74,6 +74,7 @@ Key sections consumed by the code:
 | `zpa.*` | `baseurl`, `username`, `password`/`token`, `fk07programs`, `oldprograms` |
 | `smtp.*` | mail server + `testmail` (dry-run recipient) |
 | `planer.*` | name/email of the planner (bootstrap/fallback; lives in DB) |
+| `operator.*` | name/email of the local operator running this instance; stamped onto the `mutation_log` (audit "who did what"). Local per planner, never in DB |
 | `server.*` | `port`, `allowedorigins` |
 
 The per-semester planning config (`from`/`until`, `slots`, `forbiddenDays`,

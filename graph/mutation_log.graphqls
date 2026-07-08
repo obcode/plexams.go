@@ -5,11 +5,13 @@ extend type Query {
   arguments, by arbitrary argument key/value pairs, and/or a time range.
   """
   mutationLog(
-    "filter by operation type: mutation | subscription | cli"
+    "filter by operation type: mutation | subscription | upload"
     type: String
     name: String
     ancode: Int
     args: [ArgFilterInput!]
+    "filter by the operator (Prüfungsplaner) who triggered the operation."
+    user: String
     since: Time
     until: Time
     limit: Int
@@ -22,8 +24,10 @@ type MutationLogEntry {
   time: Time!
   "GraphQL operation/field name, e.g. addPreplanExam."
   name: String!
-  "mutation | subscription"
+  "mutation | subscription | upload"
   type: String!
+  "The operator (Prüfungsplaner) who triggered the operation; from the local operator.* config (empty for entries written before this was configured)."
+  user: String
   "The call arguments, flattened to key/value pairs (nested input objects included)."
   args: [MutationLogArg!]!
   "Ancodes referenced by the arguments (ancode / zpaAncode / primussAncode / …)."

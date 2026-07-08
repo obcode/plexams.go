@@ -1039,5 +1039,6 @@ func (p *Plexams) HTTPUploadDatasetCSV(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "import failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+	p.LogUpload(r.Context(), "uploadDatasetCSV", "dataset", name)
 	writeJSON(w, result)
 }

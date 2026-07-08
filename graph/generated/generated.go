@@ -700,6 +700,7 @@ type ComplexityRoot struct {
 		Name       func(childComplexity int) int
 		Time       func(childComplexity int) int
 		Type       func(childComplexity int) int
+		User       func(childComplexity int) int
 	}
 
 	NTA struct {
@@ -988,7 +989,7 @@ type ComplexityRoot struct {
 		InvigilatorsWithReq           func(childComplexity int) int
 		MucDaiZpaCandidates           func(childComplexity int, program string, primussAncode int) int
 		MucdaiExams                   func(childComplexity int) int
-		MutationLog                   func(childComplexity int, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) int
+		MutationLog                   func(childComplexity int, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, user *string, since *time.Time, until *time.Time, limit *int) int
 		MutationLogNames              func(childComplexity int) int
 		NewSemesterConfigDefaults     func(childComplexity int) int
 		Nta                           func(childComplexity int, mtknr string) int
@@ -1625,7 +1626,7 @@ type QueryResolver interface {
 	PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error)
 	InvigilatorCandidates(ctx context.Context) ([]*model.Teacher, error)
 	MucDaiZpaCandidates(ctx context.Context, program string, primussAncode int) ([]*model.ZPAExam, error)
-	MutationLog(ctx context.Context, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, since *time.Time, until *time.Time, limit *int) ([]*model.MutationLogEntry, error)
+	MutationLog(ctx context.Context, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, user *string, since *time.Time, until *time.Time, limit *int) ([]*model.MutationLogEntry, error)
 	MutationLogNames(ctx context.Context) ([]string, error)
 	Ntas(ctx context.Context) ([]*model.NTA, error)
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
@@ -5362,6 +5363,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.MutationLogEntry.Type(childComplexity), true
 
+	case "MutationLogEntry.user":
+		if e.complexity.MutationLogEntry.User == nil {
+			break
+		}
+
+		return e.complexity.MutationLogEntry.User(childComplexity), true
+
 	case "NTA.compensation":
 		if e.complexity.NTA.Compensation == nil {
 			break
@@ -6776,7 +6784,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.MutationLog(childComplexity, args["type"].(*string), args["name"].(*string), args["ancode"].(*int), args["args"].([]*model.ArgFilterInput), args["since"].(*time.Time), args["until"].(*time.Time), args["limit"].(*int)), true
+		return e.complexity.Query.MutationLog(childComplexity, args["type"].(*string), args["name"].(*string), args["ancode"].(*int), args["args"].([]*model.ArgFilterInput), args["user"].(*string), args["since"].(*time.Time), args["until"].(*time.Time), args["limit"].(*int)), true
 
 	case "Query.mutationLogNames":
 		if e.complexity.Query.MutationLogNames == nil {
@@ -10776,11 +10784,13 @@ type ImportMucDaiResult {
   arguments, by arbitrary argument key/value pairs, and/or a time range.
   """
   mutationLog(
-    "filter by operation type: mutation | subscription | cli"
+    "filter by operation type: mutation | subscription | upload"
     type: String
     name: String
     ancode: Int
     args: [ArgFilterInput!]
+    "filter by the operator (Prüfungsplaner) who triggered the operation."
+    user: String
     since: Time
     until: Time
     limit: Int
@@ -10793,8 +10803,10 @@ type MutationLogEntry {
   time: Time!
   "GraphQL operation/field name, e.g. addPreplanExam."
   name: String!
-  "mutation | subscription"
+  "mutation | subscription | upload"
   type: String!
+  "The operator (Prüfungsplaner) who triggered the operation; from the local operator.* config (empty for entries written before this was configured)."
+  user: String
   "The call arguments, flattened to key/value pairs (nested input objects included)."
   args: [MutationLogArg!]!
   "Ancodes referenced by the arguments (ancode / zpaAncode / primussAncode / …)."
@@ -16661,21 +16673,26 @@ func (ec *executionContext) field_Query_mutationLog_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["args"] = arg3
-	arg4, err := ec.field_Query_mutationLog_argsSince(ctx, rawArgs)
+	arg4, err := ec.field_Query_mutationLog_argsUser(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["since"] = arg4
-	arg5, err := ec.field_Query_mutationLog_argsUntil(ctx, rawArgs)
+	args["user"] = arg4
+	arg5, err := ec.field_Query_mutationLog_argsSince(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["until"] = arg5
-	arg6, err := ec.field_Query_mutationLog_argsLimit(ctx, rawArgs)
+	args["since"] = arg5
+	arg6, err := ec.field_Query_mutationLog_argsUntil(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["limit"] = arg6
+	args["until"] = arg6
+	arg7, err := ec.field_Query_mutationLog_argsLimit(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg7
 	return args, nil
 }
 func (ec *executionContext) field_Query_mutationLog_argsType(
@@ -16747,6 +16764,24 @@ func (ec *executionContext) field_Query_mutationLog_argsArgs(
 	}
 
 	var zeroVal []*model.ArgFilterInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_mutationLog_argsUser(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["user"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("user"))
+	if tmp, ok := rawArgs["user"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -41381,6 +41416,47 @@ func (ec *executionContext) fieldContext_MutationLogEntry_type(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _MutationLogEntry_user(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogEntry) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MutationLogEntry_user(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.User, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MutationLogEntry_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MutationLogEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MutationLogEntry_args(ctx context.Context, field graphql.CollectedField, obj *model.MutationLogEntry) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_MutationLogEntry_args(ctx, field)
 	if err != nil {
@@ -51277,7 +51353,7 @@ func (ec *executionContext) _Query_mutationLog(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().MutationLog(rctx, fc.Args["type"].(*string), fc.Args["name"].(*string), fc.Args["ancode"].(*int), fc.Args["args"].([]*model.ArgFilterInput), fc.Args["since"].(*time.Time), fc.Args["until"].(*time.Time), fc.Args["limit"].(*int))
+		return ec.resolvers.Query().MutationLog(rctx, fc.Args["type"].(*string), fc.Args["name"].(*string), fc.Args["ancode"].(*int), fc.Args["args"].([]*model.ArgFilterInput), fc.Args["user"].(*string), fc.Args["since"].(*time.Time), fc.Args["until"].(*time.Time), fc.Args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -51308,6 +51384,8 @@ func (ec *executionContext) fieldContext_Query_mutationLog(ctx context.Context, 
 				return ec.fieldContext_MutationLogEntry_name(ctx, field)
 			case "type":
 				return ec.fieldContext_MutationLogEntry_type(ctx, field)
+			case "user":
+				return ec.fieldContext_MutationLogEntry_user(ctx, field)
 			case "args":
 				return ec.fieldContext_MutationLogEntry_args(ctx, field)
 			case "ancodes":
@@ -77833,6 +77911,8 @@ func (ec *executionContext) _MutationLogEntry(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "user":
+			out.Values[i] = ec._MutationLogEntry_user(ctx, field, obj)
 		case "args":
 			out.Values[i] = ec._MutationLogEntry_args(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

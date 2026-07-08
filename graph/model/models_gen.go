@@ -744,8 +744,10 @@ type MutationLogEntry struct {
 	Time time.Time `json:"time"`
 	// GraphQL operation/field name, e.g. addPreplanExam.
 	Name string `json:"name"`
-	// mutation | subscription
+	// mutation | subscription | upload
 	Type string `json:"type"`
+	// The operator (Prüfungsplaner) who triggered the operation; from the local operator.* config (empty for entries written before this was configured).
+	User *string `json:"user,omitempty"`
 	// The call arguments, flattened to key/value pairs (nested input objects included).
 	Args []*MutationLogArg `json:"args"`
 	// Ancodes referenced by the arguments (ancode / zpaAncode / primussAncode / …).

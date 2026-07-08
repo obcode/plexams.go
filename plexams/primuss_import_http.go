@@ -24,7 +24,7 @@ func (p *Plexams) HTTPUploadPrimussZip(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "cannot parse upload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	file, _, err := r.FormFile("file")
+	file, header, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, "missing file: "+err.Error(), http.StatusBadRequest)
 		return
@@ -45,6 +45,7 @@ func (p *Plexams) HTTPUploadPrimussZip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.markCondition(ctx, condPrimussImported)
+	p.LogUpload(ctx, "uploadPrimussZip", "file", header.Filename)
 
 	programs := make([]map[string]any, 0, len(result.Programs))
 	for _, pr := range result.Programs {

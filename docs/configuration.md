@@ -39,6 +39,20 @@ planer:                        # optional, sobald in der DB gesetzt
   email: planer@hm.edu
 ```
 
+Der **Operator** (`operator.name`/`operator.email`) ist die *lokale* Identität der
+Person, die diese plexams.go-Instanz betreibt (einer der Prüfungsplaner). Anders als
+`planer.*` — die geteilte, für alle identische Absenderidentität aus der globalen DB —
+kommt der Operator **nur aus dieser lokalen Config** und wird auf jeden Eintrag im
+`mutation_log` (inkl. File-Uploads) gestempelt, damit im gemeinsamen Log erkennbar ist,
+**wer was gemacht hat**. Jeder Planer trägt in seiner eigenen `.plexams.yaml` seine
+eigene Identität ein. Ist nichts gesetzt, bleibt das `user`-Feld leer.
+
+```yaml
+operator:                      # lokal pro Planer/Instanz; nicht in der DB
+  name: Vorname Nachname
+  email: vorname.nachname@hm.edu
+```
+
 ## 2. ZPA (Import/Upload)
 
 Authentifizierung: **entweder** `token` **oder** `username`+`password`. Ist ein

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -145,6 +146,7 @@ func (p *Plexams) HTTPUploadEmailAttachment(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	p.LogUpload(r.Context(), "uploadEmailAttachment", "kind", kind, "key", key, "file", header.Filename)
 	writeJSON(w, map[string]any{"stored": 1, "kind": kind, "key": key, "filename": header.Filename, "size": len(data)})
 }
 
@@ -221,6 +223,7 @@ func (p *Plexams) HTTPUploadEmailAttachmentsZip(w http.ResponseWriter, r *http.R
 		stored++
 	}
 
+	p.LogUpload(r.Context(), "uploadEmailAttachmentsZip", "kind", kind, "stored", strconv.Itoa(stored))
 	writeJSON(w, map[string]any{"stored": stored, "skipped": skipped, "kind": kind})
 }
 

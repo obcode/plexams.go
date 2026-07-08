@@ -508,6 +508,7 @@ func (p *Plexams) HTTPUploadSemesterDump(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "restore failed: "+err.Error(), status)
 		return
 	}
+	p.LogUpload(r.Context(), "uploadSemesterDump")
 	writeJSON(w, result)
 }
 
@@ -565,5 +566,6 @@ func (p *Plexams) HTTPUploadDataset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "restore failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+	p.LogUpload(r.Context(), "uploadDataset", "dataset", name)
 	writeJSON(w, result)
 }

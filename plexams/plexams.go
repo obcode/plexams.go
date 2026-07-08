@@ -22,6 +22,7 @@ type Plexams struct {
 	dbClient       *db.DB
 	zpa            *ZPA
 	planer         *Planer
+	operator       *Operator
 	email          *Email
 	sender         *email.Sender
 	anny           *anny.Service
@@ -53,6 +54,18 @@ type ZPA struct {
 }
 
 type Planer struct {
+	Name  string
+	Email string
+}
+
+// Operator is the local person running this plexams.go instance (one of the
+// Prüfungsplaner). Unlike Planer — the shared email-sender identity that lives in
+// the global plexams DB and is identical for everyone — the operator comes solely
+// from this instance's local config (operator.name/operator.email), so each planner
+// stamps their own identity onto the audit log ("who did what"). This is the
+// forward-compatible seam: once the server runs behind Shibboleth, the auth
+// middleware fills the same identity from the request instead of the config.
+type Operator struct {
 	Name  string
 	Email string
 }
@@ -112,6 +125,10 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		planer: &Planer{
 			Name:  viper.GetString("planer.name"),
 			Email: viper.GetString("planer.email"),
+		},
+		operator: &Operator{
+			Name:  viper.GetString("operator.name"),
+			Email: viper.GetString("operator.email"),
 		},
 		email: &Email{
 			server:      viper.GetString("smtp.server.name"),

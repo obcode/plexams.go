@@ -71,7 +71,7 @@ func TestSolvePreplanPlacesAllWhenCapacityAllows(t *testing.T) {
 	}
 	fu, fp := emptyFixed(len(slots))
 
-	assign := solvePreplan(units, slots, fu, fp)
+	assign := solvePreplan(units, slots, fu, fp, nil)
 	if n := countUnplaced(assign); n != 0 {
 		t.Fatalf("expected all units placed (capacity allows), %d unplaced: %v", n, assign)
 	}
@@ -90,7 +90,7 @@ func TestSolvePreplanDropsSmallestWhenTight(t *testing.T) {
 	slots := []*preplanSlot{{start: at(1, 1), capacity: 100}}
 	fu, fp := emptyFixed(len(slots))
 
-	assign := solvePreplan(units, slots, fu, fp)
+	assign := solvePreplan(units, slots, fu, fp, nil)
 	checkCapacity(t, units, slots, assign)
 	if assign[0] < 0 {
 		t.Errorf("EXaHM unit must not be dropped: %v", assign)
@@ -112,7 +112,7 @@ func TestSolvePreplanSeparatesSameProgramBySlot(t *testing.T) {
 	}
 	fu, fp := emptyFixed(len(slots))
 
-	assign := solvePreplan(units, slots, fu, fp)
+	assign := solvePreplan(units, slots, fu, fp, nil)
 	checkCapacity(t, units, slots, assign)
 	if countUnplaced(assign) != 0 {
 		t.Fatalf("both units should be placed: %v", assign)
@@ -139,7 +139,7 @@ func TestSolvePreplanRespectsAllowedSlots(t *testing.T) {
 	}
 	fu, fp := emptyFixed(len(slots))
 
-	assign := solvePreplan(units, slots, fu, fp)
+	assign := solvePreplan(units, slots, fu, fp, nil)
 	checkCapacity(t, units, slots, assign)
 	if assign[2] != 2 {
 		t.Errorf("MUC.DAI unit must be in its only allowed slot (2), got %d", assign[2])
@@ -164,7 +164,7 @@ func TestSolvePreplanExplicitConflictSpreads(t *testing.T) {
 	}
 	fu, fp := emptyFixed(len(slots))
 
-	assign := solvePreplan(units, slots, fu, fp)
+	assign := solvePreplan(units, slots, fu, fp, nil)
 	if countUnplaced(assign) != 0 {
 		t.Fatalf("both should be placed: %v", assign)
 	}
@@ -189,7 +189,7 @@ func TestSolvePreplanCompatibleMayShareSlot(t *testing.T) {
 	}
 	fu, fp := emptyFixed(len(slots))
 
-	assign := solvePreplan(units, slots, fu, fp)
+	assign := solvePreplan(units, slots, fu, fp, nil)
 	checkCapacity(t, units, slots, assign)
 	if countUnplaced(assign) != 0 {
 		t.Fatalf("both should be placed: %v", assign)
@@ -229,7 +229,7 @@ func TestSolvePreplanSpreadsAcrossDays(t *testing.T) {
 	}
 	fu, fp := emptyFixed(len(slots))
 
-	assign := solvePreplan(units, slots, fu, fp)
+	assign := solvePreplan(units, slots, fu, fp, nil)
 	checkCapacity(t, units, slots, assign)
 	if countUnplaced(assign) != 0 {
 		t.Fatalf("both units should be placed: %v", assign)

@@ -127,19 +127,22 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 			case "SEB":
 				seb += pe.ExpectedStudents
 			}
-			// an EXaHM exam placed here needs a booked EXaHM room whose Anny window is long
-			// enough for its real exam window (duration + setup/teardown buffer). Flag a
-			// placement no booking can cover (e.g. Embedded Computing at 16:30 with a 60/60
-			// buffer while the room is only booked 16:00–18:30).
-			if pe.ExamKind == "EXaHM" {
+			// an EXaHM/SEB exam placed here needs booked rooms whose Anny window is long
+			// enough for its real exam window (duration + setup/teardown buffer) and provide
+			// enough seats. Flag a placement no booking can cover (e.g. Embedded Computing at
+			// 16:30 with a 60/60 buffer while the room is only booked 16:00–18:30, or a SEB in
+			// a 10:30 slot whose rooms are booked only until 11:30). EXaHM needs EXaHM rooms;
+			// SEB accepts EXaHM or SEB rooms.
+			if pe.ExamKind == "EXaHM" || pe.ExamKind == "SEB" {
+				isExahm := pe.ExamKind == "EXaHM"
 				dur := preplanExamDuration(pe, blockDur)
 				pre, post := exahmRoomBuffers(pe.Constraints)
-				if seats := exahmWindowSeats(exahmIntervals, true, key, dur, pre, post); seats < pe.ExpectedStudents {
+				if seats := exahmWindowSeats(exahmIntervals, isExahm, key, dur, pre, post); seats < pe.ExpectedStudents {
 					addFinding(model.ValidationLevelError,
-						"Slot %s: EXaHM %s braucht die Räume %s–%s für %d Plätze (%d min + %d/%d min Puffer), aber gebuchte EXaHM-Räume, die dieses Fenster abdecken, bieten nur %d Plätze",
-						key.Format("Mo 02.01. 15:04"), pe.Module,
+						"Slot %s: %s %s braucht die Räume %s–%s für %d Plätze (%d min + %d/%d min Puffer), aber gebuchte %s-Räume, die dieses Fenster abdecken, bieten nur %d Plätze",
+						key.Format("Mo 02.01. 15:04"), pe.ExamKind, pe.Module,
 						key.Add(-pre).Format("15:04"), key.Add(dur+post).Format("15:04"),
-						pe.ExpectedStudents, int(dur.Minutes()), int(pre.Minutes()), int(post.Minutes()), seats)
+						pe.ExpectedStudents, int(dur.Minutes()), int(pre.Minutes()), int(post.Minutes()), pe.ExamKind, seats)
 				}
 			}
 		}
@@ -155,6 +158,34 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 		findings = append(findings, kindBookingFindings(key, "SEB", seb, preplancalc.TotalSeats(sebPool), sebPool, sb)...)
 		// note: same study program in one slot is allowed (soft spreading only), so it
 		// is no longer reported as a finding here.
+	}
+
+	// Room-packing check across the whole plan: every placed EXaHM/SEB exam must fit into
+	// DISTINCT booked rooms covering its window (a room hosts one exam at a time). This
+	// catches over-subscription the per-slot seat sums miss — e.g. two exams in one slot
+	// that each need whole rooms, or a long exam overrunning into the next slot's rooms —
+	// so a plan with overlapping Vor-/Nachläufe is no longer reported as ok.
+	{
+		packExams := make([]packExam, 0, len(preExams))
+		examByID := make(map[int]*model.PreplanExam, len(preExams))
+		for _, pe := range preExams {
+			if pe.PlannedStarttime == nil {
+				continue
+			}
+			examByID[pe.ID] = pe
+			pre, post := exahmRoomBuffers(pe.Constraints)
+			packExams = append(packExams, packExam{
+				id: pe.ID, seats: pe.ExpectedStudents, exahm: pe.ExamKind == "EXaHM",
+				start: *pe.PlannedStarttime, dur: preplanExamDuration(pe, blockDur), pre: pre, post: post,
+			})
+		}
+		for _, id := range packExamsIntoRooms(packExams, exahmIntervals) {
+			if pe := examByID[id]; pe != nil {
+				addFinding(model.ValidationLevelError,
+					"Slot %s: %s %s passt nicht mehr in die gebuchten Räume — zu viele Prüfungen mit überlappenden Vor-/Nachläufen (ganze Räume je Prüfung)",
+					pe.PlannedStarttime.Format("Mo 02.01. 15:04"), pe.ExamKind, pe.Module)
+			}
+		}
 	}
 
 	assignedCount := len(preExams) - len(unassigned)
@@ -428,42 +459,39 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 				break
 			}
 		}
-		if hasExahm {
-			// EXaHM exams must run in a booked EXaHM room whose Anny booking is long enough
-			// for the exam's real window (duration + setup/teardown buffer). Restrict the
-			// unit to exactly those candidate slots; an empty set leaves it unplaced (then
-			// reported by validatePreplan as a booking too small for the window).
-			var dur, pre, post time.Duration
-			for _, i := range members {
-				pe := preExams[i]
-				if pe.ExamKind != "EXaHM" {
-					continue
-				}
-				if d := preplanExamDuration(pe, blockDur); d > dur {
-					dur = d
-				}
-				pr, po := exahmRoomBuffers(pe.Constraints)
-				if pr > pre {
-					pre = pr
-				}
-				if po > post {
-					post = po
-				}
+		// EXaHM and SEB pre-exams run in booked T-building rooms. Compute the unit's window
+		// (max exam duration + setup/teardown buffer over its members) and restrict it to
+		// candidate slots where booked rooms of the right kind cover that window with enough
+		// seats — rooms booked too short do not count. EXaHM needs EXaHM rooms; SEB accepts
+		// EXaHM or SEB rooms. An empty set leaves the unit unplaced (small SEB then fall back
+		// to the R-building, others are reported by validatePreplan).
+		var uDur, uPre, uPost time.Duration
+		for _, i := range members {
+			pe := preExams[i]
+			if d := preplanExamDuration(pe, blockDur); d > uDur {
+				uDur = d
 			}
-			windowOK := make(map[int]bool)
-			for idx, ps := range slots {
-				// enough booked EXaHM seats from rooms that actually cover the exam's window
-				// (rooms booked too short don't count) — not just "some room covers it".
-				if exahmWindowSeats(exahmIntervals, true, ps.start, dur, pre, post) >= seats {
-					windowOK[idx] = true
-				}
+			pr, po := exahmRoomBuffers(pe.Constraints)
+			if pr > uPre {
+				uPre = pr
 			}
-			allowedSlots = intersectSlotSet(allowedSlots, windowOK)
+			if po > uPost {
+				uPost = po
+			}
 		}
+		windowOK := make(map[int]bool)
+		for idx, ps := range slots {
+			if exahmWindowSeats(exahmIntervals, hasExahm, ps.start, uDur, uPre, uPost) >= seats {
+				windowOK[idx] = true
+			}
+		}
+		allowedSlots = intersectSlotSet(allowedSlots, windowOK)
+
 		solveUnits = append(solveUnits, &preplanUnit{
 			members: members, seats: seats, programs: programs,
 			hasExahm: hasExahm, dropCost: dropCost, minID: minID,
 			allowedSlots: allowedSlots,
+			dur:          uDur, pre: uPre, post: uPost,
 		})
 		solveMembers = append(solveMembers, members)
 	}
@@ -519,7 +547,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 	}
 
-	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs)
+	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs, exahmIntervals)
 	for u, members := range solveMembers {
 		var ps *preplanSlot
 		if assign[u] >= 0 {

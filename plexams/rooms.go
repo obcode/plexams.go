@@ -37,6 +37,9 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]anny.RoomBo
 		if !anny.MatchesAnyPersonalization(booking.PersonalizationName, names) {
 			continue
 		}
+		if !anny.IsApprovedStatus(booking.Status) {
+			continue // a canceled/pending booking is not confirmed room capacity
+		}
 		normalizedRoom := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(booking.Room), " ", ""))
 		if _, ok := allowedRooms[normalizedRoom]; !ok {
 			continue

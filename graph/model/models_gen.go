@@ -705,6 +705,13 @@ type JiraIssueGroup struct {
 	Issues    []*JiraIssue `json:"issues"`
 }
 
+// Open issues of one JSM customer request type — returned by jiraOpenIssuesByRequestType (FK07PP is a service desk project).
+type JiraRequestTypeGroup struct {
+	// Customer request type name, or "(kein Anfragetyp)" for issues raised without one.
+	RequestType string       `json:"requestType"`
+	Issues      []*JiraIssue `json:"issues"`
+}
+
 // A workflow transition currently available on an issue; ids are workflow- and status-specific.
 type JiraTransition struct {
 	ID   string `json:"id"`

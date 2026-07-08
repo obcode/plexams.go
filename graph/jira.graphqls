@@ -33,6 +33,13 @@ type JiraIssueGroup {
   issues: [JiraIssue!]!
 }
 
+"Open issues of one JSM customer request type — returned by jiraOpenIssuesByRequestType (FK07PP is a service desk project)."
+type JiraRequestTypeGroup {
+  "Customer request type name, or \"(kein Anfragetyp)\" for issues raised without one."
+  requestType: String!
+  issues: [JiraIssue!]!
+}
+
 extend type Query {
   "Verify the configured Jira connection (GET /rest/api/2/myself)."
   jiraConnection: JiraUser!
@@ -44,6 +51,8 @@ extend type Query {
   jiraOpenIssues(project: String): [JiraIssue!]!
   "The open issues grouped by issue type (groups sorted by type, empty groups omitted)."
   jiraOpenIssuesByType(project: String): [JiraIssueGroup!]!
+  "The open issues grouped by JSM customer request type (Anfragetyp), groups sorted by name. Only for service desk projects like FK07PP."
+  jiraOpenIssuesByRequestType(project: String): [JiraRequestTypeGroup!]!
 }
 
 extend type Mutation {

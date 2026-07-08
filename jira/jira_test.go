@@ -147,6 +147,59 @@ func TestOpenIssuesBuildsJQLWithDefaultProject(t *testing.T) {
 	}
 }
 
+func TestOpenIssuesWithRequestTypeDiscoversFieldAndParses(t *testing.T) {
+	var searchFields []string
+	j, srv := testJira(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/rest/api/2/field"):
+			_, _ = w.Write([]byte(`[
+				{"id":"summary","name":"Summary","schema":{"custom":""}},
+				{"id":"customfield_10101","name":"Customer Request Type","schema":{"custom":"com.atlassian.servicedesk:vp-origin"}}
+			]`))
+		case strings.HasSuffix(r.URL.Path, "/rest/api/2/search"):
+			var req searchRequest
+			raw, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(raw, &req)
+			searchFields = req.Fields
+			_, _ = w.Write([]byte(`{"startAt":0,"total":2,"issues":[
+				{"key":"FK07PP-1","fields":{"summary":"A","issuetype":{"name":"Anfrage"},"customfield_10101":{"requestType":{"name":"Prüfung nachschreiben"}}}},
+				{"key":"FK07PP-2","fields":{"summary":"B","issuetype":{"name":"Anfrage"},"customfield_10101":null}}
+			]}`))
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+	})
+	defer srv.Close()
+
+	issues, err := j.OpenIssuesWithRequestType("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// the discovered customfield must be requested in the search
+	found := false
+	for _, f := range searchFields {
+		if f == "customfield_10101" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("search should request the discovered request-type field, got fields %v", searchFields)
+	}
+	if len(issues) != 2 {
+		t.Fatalf("expected 2 issues, got %d", len(issues))
+	}
+	if issues[0].RequestType != "Prüfung nachschreiben" {
+		t.Errorf("expected parsed request type, got %q", issues[0].RequestType)
+	}
+	if issues[1].RequestType != "" {
+		t.Errorf("null request type should parse to empty, got %q", issues[1].RequestType)
+	}
+	// the cached field id avoids a second /field lookup
+	if j.requestTypeField != "customfield_10101" {
+		t.Errorf("request-type field id should be cached, got %q", j.requestTypeField)
+	}
+}
+
 func TestTransitionByNameLooksUpID(t *testing.T) {
 	var transitionedTo string
 	j, srv := testJira(func(w http.ResponseWriter, r *http.Request) {

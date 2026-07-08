@@ -17,6 +17,9 @@ type Jira struct {
 	// does not pass one (from config jira.project). May be empty.
 	project string
 	client  *http.Client
+	// requestTypeField caches the discovered customfield id of the JSM
+	// "Customer Request Type" field (see servicedesk.go); "" until looked up.
+	requestTypeField string
 }
 
 // New builds a Jira client. baseurl is the instance root (e.g.

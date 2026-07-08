@@ -143,6 +143,44 @@ func (p *Plexams) JiraOpenIssuesByType(ctx context.Context, project *string) ([]
 	return groups, nil
 }
 
+// JiraOpenIssuesByRequestType returns the open issues grouped by their JSM
+// customer request type (Anfragetyp). Groups are sorted by request type name;
+// issues without one land in a "(kein Anfragetyp)" group. Only meaningful for
+// service desk projects (e.g. FK07PP).
+func (p *Plexams) JiraOpenIssuesByRequestType(ctx context.Context, project *string) ([]*model.JiraRequestTypeGroup, error) {
+	client, err := p.jiraClient()
+	if err != nil {
+		return nil, err
+	}
+	projectKey := ""
+	if project != nil {
+		projectKey = *project
+	}
+	issues, err := client.OpenIssuesWithRequestType(projectKey)
+	if err != nil {
+		return nil, err
+	}
+	const noType = "(kein Anfragetyp)"
+	byType := make(map[string][]*model.JiraIssue)
+	for i := range issues {
+		rt := issues[i].RequestType
+		if rt == "" {
+			rt = noType
+		}
+		byType[rt] = append(byType[rt], p.toModelIssue(&issues[i].Issue))
+	}
+	types := make([]string, 0, len(byType))
+	for t := range byType {
+		types = append(types, t)
+	}
+	sort.Strings(types)
+	groups := make([]*model.JiraRequestTypeGroup, 0, len(types))
+	for _, t := range types {
+		groups = append(groups, &model.JiraRequestTypeGroup{RequestType: t, Issues: byType[t]})
+	}
+	return groups, nil
+}
+
 // CreateJiraIssue creates an issue; project/issueType/description are optional.
 func (p *Plexams) CreateJiraIssue(ctx context.Context, project, issueType *string, summary string, description *string) (*model.JiraIssue, error) {
 	client, err := p.jiraClient()

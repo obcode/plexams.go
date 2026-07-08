@@ -49,3 +49,8 @@ func (r *queryResolver) JiraOpenIssues(ctx context.Context, project *string) ([]
 func (r *queryResolver) JiraOpenIssuesByType(ctx context.Context, project *string) ([]*model.JiraIssueGroup, error) {
 	return r.plexams.JiraOpenIssuesByType(ctx, project)
 }
+
+// JiraOpenIssuesByRequestType is the resolver for the jiraOpenIssuesByRequestType field.
+func (r *queryResolver) JiraOpenIssuesByRequestType(ctx context.Context, project *string) ([]*model.JiraRequestTypeGroup, error) {
+	return r.plexams.JiraOpenIssuesByRequestType(ctx, project)
+}

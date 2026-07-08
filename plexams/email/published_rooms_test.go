@@ -78,6 +78,7 @@ func TestBuildPublishedRoomsExam(t *testing.T) {
 	got := BuildPublishedRoomsExam(main, examsInSlot, examerShort)
 	if got == nil {
 		t.Fatal("BuildPublishedRoomsExam returned nil")
+		return // unreachable, but pins got as non-nil for degraded-typecheck static analysis
 	}
 	if got.Ancode != 111 || got.Module != "Mathe" || got.Date != "Mo, 06.07.2026" || got.Time != "08:30" {
 		t.Errorf("header = %+v", got)

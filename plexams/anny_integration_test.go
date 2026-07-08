@@ -88,6 +88,7 @@ func TestAnnyBookedBySlot(t *testing.T) {
 	sb := got[slotStart]
 	if sb == nil {
 		t.Fatal("no slotBooking for the 08:30 slot")
+		return // unreachable, but pins sb as non-nil for degraded-typecheck static analysis
 	}
 	if sb.exahmSeats != 30 {
 		t.Errorf("exahmSeats = %d, want 30 (only T3.014)", sb.exahmSeats)

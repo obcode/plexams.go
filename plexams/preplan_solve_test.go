@@ -199,6 +199,71 @@ func TestSolvePreplanCompatibleMayShareSlot(t *testing.T) {
 	}
 }
 
+// distinctSlots counts how many slots hold at least one placed unit.
+func distinctSlots(assign []int) int {
+	seen := map[int]bool{}
+	for _, s := range assign {
+		if s >= 0 {
+			seen[s] = true
+		}
+	}
+	return len(seen)
+}
+
+// Exams with DISJOINT study programs should be consolidated into the fewest slots (so the
+// unused booked slots can be cancelled), even when many empty slots are available.
+func TestSolvePreplanPacksDisjointPrograms(t *testing.T) {
+	units := []*preplanUnit{
+		unit(1, 20, false, "AA"),
+		unit(2, 20, false, "BB"),
+		unit(3, 20, false, "CC"),
+	}
+	// three roomy slots on three different days — spreading would use all three, packing one.
+	slots := []*preplanSlot{
+		{start: at(1, 1), capacity: 100},
+		{start: at(2, 1), capacity: 100},
+		{start: at(3, 1), capacity: 100},
+	}
+	fu, fp := emptyFixed(len(slots))
+
+	assign := solvePreplan(units, slots, fu, fp, nil)
+	checkCapacity(t, units, slots, assign)
+	if countUnplaced(assign) != 0 {
+		t.Fatalf("all disjoint units should be placed: %v", assign)
+	}
+	if n := distinctSlots(assign); n != 1 {
+		t.Errorf("disjoint-program units should share ONE slot, used %d: %v", n, assign)
+	}
+}
+
+// Compaction must not override same-program spreading: two IF exams stay in separate slots
+// while a disjoint WD exam is packed alongside one of them → two slots total, not three.
+func TestSolvePreplanPacksButKeepsConflictsApart(t *testing.T) {
+	units := []*preplanUnit{
+		unit(1, 20, false, "IF"),
+		unit(2, 20, false, "IF"),
+		unit(3, 20, false, "WD"),
+	}
+	slots := []*preplanSlot{
+		{start: at(1, 1), capacity: 100},
+		{start: at(2, 1), capacity: 100},
+		{start: at(3, 1), capacity: 100},
+	}
+	fu, fp := emptyFixed(len(slots))
+
+	assign := solvePreplan(units, slots, fu, fp, nil)
+	checkCapacity(t, units, slots, assign)
+	if countUnplaced(assign) != 0 {
+		t.Fatalf("all units should be placed: %v", assign)
+	}
+	if assign[0] == assign[1] {
+		t.Errorf("the two IF units must stay in different slots: %v", assign)
+	}
+	if n := distinctSlots(assign); n != 2 {
+		t.Errorf("WD should pack with an IF slot → 2 slots, used %d: %v", n, assign)
+	}
+}
+
 func TestProximityPenalty(t *testing.T) {
 	s := func(d, n int) *preplanSlot { return &preplanSlot{start: at(d, n)} }
 	cases := []struct {

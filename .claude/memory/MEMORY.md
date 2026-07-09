@@ -32,3 +32,4 @@
 - [fresh DB bootstrap](fresh-db-bootstrap.md) — empty Mongo can't auto-resolve a workspace; pin a semester (yaml/init auto-pins arg/import) to bootstrap; connect-vs-empty FATAL messages.
 - [CSV datasets export/import](csv-datasets-export-import.md) — human-readable CSV of entered data with ABSOLUTE times (period-shift robust); per-dataset + my-inputs ZIP; header-guarded upsert import; separate from JSON dump.
 - [EXaHM time-window coverage](exahm-time-window-coverage.md) — EXaHM placement gated by REAL Anny booking window (dur + 30/30 buffer, per-exam override); Vorplanung + Terminplanung Phase 1 + display; on main @ cb9476b.
+- [preplan compaction + SEB overflow](preplan-compaction-overflow.md) — solver packs disjoint-program exams into fewest slots (→ cancel bookings, INFO list) + oversized SEB placed with R-Bau overflow warning; slotOpenCost<25.

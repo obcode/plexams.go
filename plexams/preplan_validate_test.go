@@ -69,3 +69,42 @@ func TestValidatePreplanExahmWindowSeats(t *testing.T) {
 		}
 	})
 }
+
+// An oversized SEB (larger than any single booked Anny slot) whose overflow fits the
+// R-building is a WARNING, not an error: it is planned into its full Anny slot and the rest
+// is flagged for the R-building. Reproduces Datenbanksysteme (160) in a 120-seat slot.
+func TestValidatePreplanOversizedSebOverflow(t *testing.T) {
+	block := 120 * time.Minute
+	start := vday(10, 30)
+	exam := &model.PreplanExam{
+		ID: 1, Module: "Datenbanksysteme", ExamKind: "SEB",
+		ExpectedStudents: 160, Duration: iptr(120), PlannedStarttime: &start,
+	}
+	sebRooms := []preplancalc.RoomCapacity{
+		{Name: "T3.015", Seats: 30}, {Name: "T3.016", Seats: 30},
+		{Name: "T3.017", Seats: 30}, {Name: "T3.023", Seats: 30},
+	}
+	// four SEB rooms booked wide enough to cover the 10:00–13:00 window (120 min + 30/30
+	// buffer) → 120 Anny seats; the 160-seat exam overflows by 40.
+	intervals := make([]bookedRoomInterval, 0, 4)
+	for i := 0; i < 4; i++ {
+		intervals = append(intervals, bookedRoomInterval{from: vday(10, 0), until: vday(13, 0), seb: true, sebSeats: 30})
+	}
+	booked := map[time.Time]*slotBooking{
+		start: {sebSeats: 120, seats: 120, rooms: map[string]bool{"T3.015": true, "T3.016": true, "T3.017": true, "T3.023": true}},
+	}
+	// R-building can absorb the 40-seat overflow (threshold ≥ 40).
+	res := validatePreplan([]*model.PreplanExam{exam}, nil, sebRooms, booked, 121, intervals, block)
+	if !res.Ok {
+		t.Fatalf("oversized SEB with R-building overflow must NOT be an error: %v", res.Messages)
+	}
+	found := false
+	for _, f := range res.Findings {
+		if f.Level == model.ValidationLevelWarning && strings.Contains(f.Message, "R-Bau") && strings.Contains(f.Message, "40") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a WARNING about 40 R-building seats, got: %v", res.Messages)
+	}
+}

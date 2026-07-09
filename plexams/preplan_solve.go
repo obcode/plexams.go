@@ -42,6 +42,18 @@ const (
 	preplanProgramConflictWeight  = 100
 	preplanExplicitConflictWeight = 1000
 
+	// preplanSlotOpenCost is charged once for every booked slot that ends up holding at
+	// least one exam. It makes the solver PACK exams with disjoint study programs into the
+	// FEWEST slots — so the remaining (unused) slots' Anny bookings can be cancelled, which
+	// is a goal of the pre-planning. Disjoint-program exams carry no conflict penalty, so any
+	// positive value consolidates them; the size only matters against the same-program
+	// spreading, which it must never override. Merging two same-program exams into one slot
+	// turns their spreading penalty from at most preplanProgramConflictWeight*(8-2)/8 = 75
+	// (adjacent 2 h slots, same day) into preplanProgramConflictWeight = 100 at the same
+	// start time — a +25 swing — so keeping it below 25 guarantees same-program exams are
+	// never merged just to save a slot (they still spread, ideally across days).
+	preplanSlotOpenCost = 15
+
 	preplanSAIterations = 20000
 	preplanSAStartTemp  = 20000.0
 	preplanSAEndTemp    = 1.0
@@ -78,6 +90,12 @@ type preplanUnit struct {
 	// compatible holds unit indices that are exempt from the program-based spreading
 	// (an explicit "darf zusammen / direkt nacheinander" pair).
 	compatible map[int]bool
+	// rBauOverflow is the seats of an oversized SEB that do NOT fit its Anny slot and must
+	// be planned in the R-building instead (seats beyond the unit's Anny footprint). It is
+	// reporting-only: `seats` already holds the Anny footprint the solver places, so the
+	// unit fills one slot and the overflow is flagged as an R-building requirement, not a
+	// drop. 0 for exams that fit entirely into Anny.
+	rBauOverflow int
 }
 
 // proximityPenalty is the soft cost of placing two conflicting units in slots a and b:
@@ -225,6 +243,15 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 	// proximity cost (spread conflicting exams across days / max slot distance) ---
 	cost := func(a []int) float64 {
 		total := 0.0
+		// compaction: charge preplanSlotOpenCost for every slot we occupy (fixed occupants
+		// count too, so reusing an already-open slot is free), so disjoint-program exams are
+		// packed into the fewest slots and the rest can be cancelled.
+		used, _ := occupancy(a)
+		for s := range slots {
+			if used[s] > 0 {
+				total += preplanSlotOpenCost
+			}
+		}
 		for u, s := range a {
 			if s < 0 {
 				total += float64(units[u].dropCost)
@@ -305,15 +332,30 @@ func dsaturBefore(u *preplanUnit, fu int, v *preplanUnit, fv int) bool {
 
 // chooseSlot picks, among the feasible slots, the one that adds the least conflict
 // proximity cost (conflicting units / shared-program fixed occupants placed close in
-// time), tie-broken by most free capacity.
+// time). Ties are broken to COMPACT: an already-occupied slot before an empty one, then
+// best-fit (least leftover capacity) — so disjoint-program exams share slots and the rest
+// stay free for cancellation. A conflict always outweighs compaction, so exams sharing a
+// study program still land in separate (ideally empty) slots.
 func chooseSlot(u int, feasibleSlots []int, assign []int, units []*preplanUnit, slots []*preplanSlot,
 	used []int, fixedProgs []map[string]bool) int {
-	best, bestPenalty, bestFree := -1, math.MaxInt, -1
+	best, bestPenalty, bestOpen, bestFree := -1, math.MaxInt, false, math.MaxInt
 	for _, s := range feasibleSlots {
 		penalty := conflictCostAt(u, s, assign, units, slots, fixedProgs)
+		open := used[s] > 0
 		free := slots[s].capacity - used[s]
-		if best == -1 || penalty < bestPenalty || (penalty == bestPenalty && free > bestFree) {
-			best, bestPenalty, bestFree = s, penalty, free
+		better := false
+		switch {
+		case best == -1:
+			better = true
+		case penalty != bestPenalty:
+			better = penalty < bestPenalty
+		case open != bestOpen:
+			better = open // prefer an already-open slot (fill it up before opening another)
+		default:
+			better = free < bestFree // best-fit: least leftover capacity
+		}
+		if better {
+			best, bestPenalty, bestOpen, bestFree = s, penalty, open, free
 		}
 	}
 	return best

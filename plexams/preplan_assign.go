@@ -131,23 +131,33 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 		exams := bySlot[key]
 		exahm, seb := 0, 0
 		for _, pe := range exams {
+			// an oversized SEB only occupies the covering window's seats in Anny; its overflow
+			// is planned in the R-building and must not count against the slot's Anny capacity.
+			demand, overflow := preplanAnnyDemand(pe, key, exahmIntervals, blockDur, rBauSebThreshold)
 			switch pe.ExamKind {
 			case "EXaHM":
-				exahm += pe.ExpectedStudents
+				exahm += demand
 			case "SEB":
-				seb += pe.ExpectedStudents
+				seb += demand
 			}
 			// an EXaHM/SEB exam placed here needs booked rooms whose Anny window is long
 			// enough for its real exam window (duration + setup/teardown buffer) and provide
 			// enough seats. Flag a placement no booking can cover (e.g. Embedded Computing at
 			// 16:30 with a 60/60 buffer while the room is only booked 16:00–18:30, or a SEB in
 			// a 10:30 slot whose rooms are booked only until 11:30). EXaHM needs EXaHM rooms;
-			// SEB accepts EXaHM or SEB rooms.
+			// SEB accepts EXaHM or SEB rooms. An oversized SEB that overflows into the
+			// R-building is a WARNING (it is planned, just partly outside Anny), not an error.
 			if pe.ExamKind == "EXaHM" || pe.ExamKind == "SEB" {
 				isExahm := pe.ExamKind == "EXaHM"
 				dur := preplanExamDuration(pe, blockDur)
 				pre, post := exahmRoomBuffers(pe.Constraints)
-				if seats := exahmWindowSeats(exahmIntervals, isExahm, key, dur, pre, post); seats < pe.ExpectedStudents {
+				seats := exahmWindowSeats(exahmIntervals, isExahm, key, dur, pre, post)
+				switch {
+				case overflow > 0:
+					addFinding(model.ValidationLevelWarning,
+						"Slot %s: SEB %s hat %d Plätze, davon %d im gebuchten Anny-Slot — zusätzlich %d Plätze im R-Bau einplanen",
+						slotLabelDE(key), pe.Module, pe.ExpectedStudents, seats, overflow)
+				case seats < demand:
 					addFinding(model.ValidationLevelError,
 						"Slot %s: %s %s braucht die Räume %s–%s für %d Plätze (%d min + %d/%d min Puffer), aber gebuchte %s-Räume, die dieses Fenster abdecken, bieten nur %d Plätze",
 						slotLabelDE(key), pe.ExamKind, pe.Module,
@@ -185,8 +195,11 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 			moduleByID[pe.ID] = pe.Module
 			occPre, occPost := exahmOccBuffers(pe.Constraints)
 			st := *pe.PlannedStarttime
+			// an oversized SEB only holds its Anny footprint here; the R-building overflow is
+			// not part of the booked-room occupancy.
+			demand, _ := preplanAnnyDemand(pe, st, exahmIntervals, blockDur, rBauSebThreshold)
 			cumExams = append(cumExams, cumExam{
-				id: pe.ID, seats: pe.ExpectedStudents, exahm: pe.ExamKind == "EXaHM",
+				id: pe.ID, seats: demand, exahm: pe.ExamKind == "EXaHM",
 				from: st.Add(-occPre), to: st.Add(preplanExamDuration(pe, blockDur) + occPost),
 			})
 		}
@@ -249,6 +262,58 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 		Messages:      messages,
 		Findings:      findings,
 	}
+}
+
+// cancellableSlotsFinding reports, as info, the booked Anny slots the current assignment
+// leaves unused — those bookings can be cancelled (a goal of the pre-planning: pack exams
+// into as few slots as possible and free the rest). regularSlots are all candidate slots,
+// booked their Anny bookings, usedStarts the start times holding at least one placed exam.
+// Returns nil when every booked slot is used.
+func cancellableSlotsFinding(regularSlots []*model.Slot, booked map[time.Time]*slotBooking, usedStarts map[time.Time]bool) *model.PreplanFinding {
+	total := 0
+	free := make([]time.Time, 0)
+	for _, s := range regularSlots {
+		sb := booked[s.Starttime]
+		if sb == nil || sb.seats == 0 {
+			continue
+		}
+		total++
+		if !usedStarts[s.Starttime] {
+			free = append(free, s.Starttime)
+		}
+	}
+	if len(free) == 0 {
+		return nil
+	}
+	sort.Slice(free, func(i, j int) bool { return free[i].Before(free[j]) })
+	labels := make([]string, len(free))
+	for i, t := range free {
+		labels[i] = slotLabelDE(t)
+	}
+	return &model.PreplanFinding{
+		Level: model.ValidationLevelInfo,
+		Message: fmt.Sprintf("%d von %d gebuchten Anny-Slots werden nicht genutzt und können storniert werden: %s",
+			len(free), total, joinStrings(labels)),
+	}
+}
+
+// preplanAnnyDemand returns how many seats an exam actually places on the booked Anny
+// rooms in its slot, and the overflow planned in the R-building. Normally that is its full
+// size (overflow 0). An oversized SEB — larger than the booked window covering its slot but
+// whose overflow fits the R-building labs — only occupies the covering window's seats in
+// Anny; the rest is planned in the R-building (reported as a warning, not a capacity error).
+// EXaHM never overflows (it needs EXaHM rooms), so it always demands its full size.
+func preplanAnnyDemand(pe *model.PreplanExam, key time.Time, exahmIntervals []bookedRoomInterval, blockDur time.Duration, rBauSebThreshold int) (demand, overflow int) {
+	if pe.ExamKind != "SEB" {
+		return pe.ExpectedStudents, 0
+	}
+	dur := preplanExamDuration(pe, blockDur)
+	pre, post := exahmRoomBuffers(pe.Constraints)
+	ws := exahmWindowSeats(exahmIntervals, false, key, dur, pre, post)
+	if pe.ExpectedStudents > ws && ws > 0 && pe.ExpectedStudents-ws <= rBauSebThreshold {
+		return ws, pe.ExpectedStudents - ws
+	}
+	return pe.ExpectedStudents, 0
 }
 
 // kindBookingFindings reports, for one slot and kind, a physical-capacity overflow
@@ -536,19 +601,40 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 				uOccPost = opo
 			}
 		}
+		// Oversized SEB: an SEB larger than any single slot's covering booked window cannot
+		// be seated fully in Anny, but SEB may be split into the R-building. If the overflow
+		// (beyond the fullest coverable slot) fits the R-building labs, we still place the
+		// exam — it fills its Anny slot and the rest is planned in the R-building (a warning,
+		// not a drop). The Anny FOOTPRINT the solver books is then the fullest slot's window;
+		// the remainder is recorded as rBauOverflow. EXaHM cannot overflow (needs EXaHM
+		// rooms), so this applies to SEB only.
+		footprint := seats
+		rBauOverflow := 0
+		if !hasExahm {
+			maxWin := 0
+			for _, ps := range slots {
+				if w := exahmWindowSeats(exahmIntervals, false, ps.start, uDur, uPre, uPost); w > maxWin {
+					maxWin = w
+				}
+			}
+			if seats > maxWin && maxWin > 0 && seats-maxWin <= rBauSebThreshold {
+				footprint = maxWin
+				rBauOverflow = seats - maxWin
+			}
+		}
 		windowOK := make(map[int]bool)
 		for idx, ps := range slots {
-			if exahmWindowSeats(exahmIntervals, hasExahm, ps.start, uDur, uPre, uPost) >= seats {
+			if exahmWindowSeats(exahmIntervals, hasExahm, ps.start, uDur, uPre, uPost) >= footprint {
 				windowOK[idx] = true
 			}
 		}
 		allowedSlots = intersectSlotSet(allowedSlots, windowOK)
 
 		solveUnits = append(solveUnits, &preplanUnit{
-			members: members, seats: seats, programs: programs,
+			members: members, seats: footprint, programs: programs,
 			hasExahm: hasExahm, dropCost: dropCost, minID: minID,
-			allowedSlots: allowedSlots,
-			dur:          uDur, occPre: uOccPre, occPost: uOccPost,
+			allowedSlots: allowedSlots, rBauOverflow: rBauOverflow,
+			dur: uDur, occPre: uOccPre, occPost: uOccPost,
 		})
 		solveMembers = append(solveMembers, members)
 	}
@@ -643,6 +729,17 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	// validatePreplan reports the small-SEB R-building notes and the genuinely-unplaced
 	// must-place exams (threshold-aware), so no extra messages are added here.
 	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter, rBauSebThreshold, exahmIntervals, blockDur)
+	// pre-planning goal: surface which booked Anny slots are now unused and can be cancelled.
+	usedStarts := make(map[time.Time]bool)
+	for _, pe := range preExams {
+		if pe.PlannedStarttime != nil {
+			usedStarts[*pe.PlannedStarttime] = true
+		}
+	}
+	if f := cancellableSlotsFinding(regularSlots, booked, usedStarts); f != nil {
+		result.Findings = append(result.Findings, f)
+		result.Messages = append(result.Messages, f.Message)
+	}
 	if len(slots) == 0 {
 		msg := "keine Anny-Räume gebucht — nichts zugeordnet (zuerst Anny-Räume buchen und importieren)"
 		result.Findings = append([]*model.PreplanFinding{{Level: model.ValidationLevelError, Message: msg}}, result.Findings...)

@@ -1,6 +1,36 @@
 package email
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestBuildMsgSetsFQDNMessageID(t *testing.T) {
+	// Default hostname: Message-ID must use the FQDN, never os.Hostname() (e.g. docker-desktop).
+	s := NewSender(SMTPConfig{PlanerEmail: "oliver.braun@hm.edu"})
+	s.SetPlaner("Oliver Braun", "oliver.braun@hm.edu", "", "", "", "")
+	msg, err := s.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false)
+	if err != nil {
+		t.Fatalf("buildMsg: %v", err)
+	}
+	id := msg.GetMessageID()
+	if !strings.HasSuffix(strings.TrimSuffix(id, ">"), "@"+defaultMailHostname) {
+		t.Errorf("Message-ID = %q, want @%s domain", id, defaultMailHostname)
+	}
+	if strings.Contains(id, "docker") {
+		t.Errorf("Message-ID = %q leaks the local hostname", id)
+	}
+
+	// Configured hostname overrides the default.
+	s2 := NewSender(SMTPConfig{PlanerEmail: "x@hm.edu", Hostname: "custom.example.edu"})
+	msg2, err := s2.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false)
+	if err != nil {
+		t.Fatalf("buildMsg: %v", err)
+	}
+	if !strings.Contains(msg2.GetMessageID(), "@custom.example.edu>") {
+		t.Errorf("Message-ID = %q, want @custom.example.edu", msg2.GetMessageID())
+	}
+}
 
 func TestPlusPlexams(t *testing.T) {
 	cases := map[string]string{

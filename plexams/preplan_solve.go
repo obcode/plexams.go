@@ -111,20 +111,31 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 		return assign
 	}
 
-	// packable reports whether the given units, all placed in slot s, can be assigned to
-	// DISTINCT booked rooms covering each one's window (whole rooms per exam). This is the
-	// hard room-capacity constraint: aggregate seats overcount because a 20-student exam
-	// still consumes a whole 30-seat room and a room hosts one exam at a time.
-	packable := func(unitIdxs []int, s int) bool {
+	packExamFor := func(u, s int) packExam {
+		return packExam{
+			id: u, seats: units[u].seats, exahm: units[u].hasExahm,
+			start: slots[s].start, dur: units[u].dur, pre: units[u].pre, post: units[u].post,
+		}
+	}
+	// packableGlobal reports whether the WHOLE assignment (optionally with unit extraU
+	// tentatively at slot extraS) can be assigned to DISTINCT booked rooms covering each
+	// exam's window over the entire period — the same room-capacity check the validation
+	// runs, so the solver never produces a plan the validation would flag. It is global (not
+	// per-slot) because a long exam (e.g. Embedded Computing, 4h window) keeps its rooms
+	// occupied into later slots; aggregate seats overcount because a 20-student exam still
+	// consumes a whole 30-seat room and a room hosts one exam at a time.
+	packableGlobal := func(a []int, extraU, extraS int) bool {
 		if len(intervals) == 0 {
 			return true // no bookings loaded → fall back to the seat bound only
 		}
-		exams := make([]packExam, 0, len(unitIdxs))
-		for _, u := range unitIdxs {
-			exams = append(exams, packExam{
-				id: u, seats: units[u].seats, exahm: units[u].hasExahm,
-				start: slots[s].start, dur: units[u].dur, pre: units[u].pre, post: units[u].post,
-			})
+		exams := make([]packExam, 0, len(a)+1)
+		for v, sv := range a {
+			if sv >= 0 {
+				exams = append(exams, packExamFor(v, sv))
+			}
+		}
+		if extraU >= 0 {
+			exams = append(exams, packExamFor(extraU, extraS))
 		}
 		return len(packExamsIntoRooms(exams, intervals)) == 0
 	}
@@ -163,20 +174,20 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 		return
 	}
 
-	fits := func(u, s int, used []int, occ [][]int) bool {
+	fits := func(u, s int, used []int) bool {
 		if units[u].allowedSlots != nil && !units[u].allowedSlots[s] {
 			return false
 		}
 		if used[s]+units[u].seats > slots[s].capacity {
 			return false // quick aggregate-seat upper bound
 		}
-		return packable(append(append([]int{}, occ[s]...), u), s)
+		return packableGlobal(assign, u, s)
 	}
 
 	// --- DSATUR constructive pass: most constrained / most important unit first ---
 	done := make([]bool, n)
 	for remaining := n; remaining > 0; remaining-- {
-		used, occ := occupancy(assign)
+		used, _ := occupancy(assign)
 
 		best := -1
 		var bestFeasible []int
@@ -186,7 +197,7 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 			}
 			fs := make([]int, 0, len(slots))
 			for s := range slots {
-				if fits(u, s, used, occ) {
+				if fits(u, s, used) {
 					fs = append(fs, s)
 				}
 			}
@@ -231,7 +242,7 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 	// is refined by ejecting/relocating units to free capacity and spread conflicting
 	// exams. Cost, moves and construction stay pre-plan specific; only the annealing
 	// loop is the generic one.
-	model := &preplanModel{units: units, slots: slots, assign: assign, cost: cost, occupancy: occupancy, packable: packable}
+	model := &preplanModel{units: units, slots: slots, assign: assign, cost: cost, occupancy: occupancy, packable: packableGlobal}
 	opts := optimize.DefaultOptions()
 	opts.Iterations = preplanSAIterations
 	opts.StartTemp = preplanSAStartTemp
@@ -252,7 +263,7 @@ type preplanModel struct {
 	assign    []int
 	cost      func([]int) float64
 	occupancy func([]int) ([]int, [][]int)
-	packable  func([]int, int) bool
+	packable  func([]int, int, int) bool
 }
 
 func (m *preplanModel) Cost() float64 { return m.cost(m.assign) }
@@ -263,25 +274,11 @@ func (m *preplanModel) Propose(rng *rand.Rand) func() {
 	if !proposeMove(m.assign, rng, m.units, m.slots, m.occupancy) {
 		return nil
 	}
-	// reject moves that leave any changed slot unpackable into distinct booked rooms
-	// (the seat-based ejection frees seats, but whole-room packing may still fail).
-	changed := map[int]bool{}
-	for u := range m.assign {
-		if m.assign[u] != before[u] {
-			if before[u] >= 0 {
-				changed[before[u]] = true
-			}
-			if m.assign[u] >= 0 {
-				changed[m.assign[u]] = true
-			}
-		}
-	}
-	_, occ := m.occupancy(m.assign)
-	for s := range changed {
-		if !m.packable(occ[s], s) {
-			copy(m.assign, before)
-			return nil
-		}
+	// reject moves that make the whole plan unpackable into distinct booked rooms (the
+	// seat-based ejection frees seats, but whole-room packing across the period may fail).
+	if !m.packable(m.assign, -1, -1) {
+		copy(m.assign, before)
+		return nil
 	}
 	return func() { copy(m.assign, before) }
 }

@@ -89,6 +89,9 @@ smtp:
     port: 587
   username: <smtp-user>
   password: <smtp-passwort>    # Secret
+  hostname: plexams.cs.hm.edu  # FQDN für HELO/EHLO + Message-ID-Domain (optional; Default
+                               # plexams.cs.hm.edu). Verhindert 554-Ablehnung durch eine
+                               # Message-ID mit Container-Hostname (z.B. @docker-desktop).
   testmail: planer@hm.edu      # Ziel für Probeläufe (run=false)
   cc: smtp.cc@hm.edu           # filterbare Selbstkopie (Cc) bei echten Sends
   replymail: planer@hm.edu     # Reply-To für beantwortbare Mails (optional)

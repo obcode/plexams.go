@@ -485,9 +485,11 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 
 		// A SEB that fits the R-building labs (can be split across them) does not NEED an Anny
 		// slot: it fills leftover Anny capacity if some is free, otherwise it is left for the
-		// R-building (only a warning). Give these a low drop cost that GROWS with size, so when
-		// Anny is tight the SMALLER SEB are dropped first (a 90-seat SEB is kept over a 50-seat
-		// one — the 50 goes to the R-building) and none ever displaces a must-place exam.
+		// R-building (only a warning). Its drop cost grows with the SQUARE of its size, so when
+		// Anny is tight the solver keeps the LARGE (and same-slot-coupled, hence large) exams
+		// placed and instead drops several SMALLER independent ones — dropping one big coupled
+		// unit is dearer than dropping a few small ones that can each sit alone in the R-building.
+		// Capped below preplanDropBase so an R-building SEB never outranks a must-place exam.
 		rBauSeb := !hasExahm && seats <= rBauSebThreshold
 
 		dropCost := preplanDropBase + seats
@@ -495,7 +497,10 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		case hasExahm:
 			dropCost += preplanExahmKeep
 		case rBauSeb:
-			dropCost = preplanSmallSebDrop + seats
+			dropCost = preplanSmallSebDrop + seats*seats
+			if dropCost >= preplanDropBase {
+				dropCost = preplanDropBase - 1
+			}
 		}
 		var allowedSlots map[int]bool
 		for prog := range programs {

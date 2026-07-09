@@ -1,0 +1,22 @@
+extend type Query {
+  """
+  The hard and soft rules the SEB/EXaHM pre-planning uses, as a human-readable list
+  for a read-only display in the GUI. Derived from the solver so it stays in sync.
+  """
+  preplanConstraints: [PreplanRule!]!
+}
+
+enum PreplanRuleKind {
+  "Must always hold; a plan violating it is invalid."
+  HARD
+  "Optimization goal; the solver trades these off (weighted)."
+  SOFT
+}
+
+type PreplanRule {
+  kind: PreplanRuleKind!
+  "Short German title."
+  title: String!
+  "One- or two-sentence German explanation, including the relevant values."
+  description: String!
+}

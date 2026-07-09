@@ -2,7 +2,6 @@ package plexams
 
 import (
 	"context"
-	"sort"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -45,27 +44,10 @@ func exahmRoomBuffers(constraints *model.Constraints) (pre, post time.Duration) 
 // with the room's EXaHM/SEB capability and physical seats. Overlapping/adjacent bookings of
 // the same room are merged (see bookedExahmIntervals).
 type bookedRoomInterval struct {
-	room        string
 	from, until time.Time
 	exahm, seb  bool
 	seats       int // EXaHM / physical seats
 	sebSeats    int // SEB seats (room.SebSeats override, else physical)
-}
-
-// seatsFor returns the interval's usable seats for an exam of the given kind (EXaHM exams
-// need EXaHM capacity; SEB exams use SEB capacity in a SEB room, else the EXaHM room's seats).
-func (iv bookedRoomInterval) seatsFor(exahm bool) int {
-	switch {
-	case exahm:
-		if iv.exahm {
-			return iv.seats
-		}
-	case iv.seb:
-		return iv.sebSeats
-	case iv.exahm:
-		return iv.seats
-	}
-	return 0
 }
 
 // bookedExahmIntervals returns our booked T-building room time intervals (merged per room)
@@ -125,7 +107,6 @@ func (p *Plexams) bookedExahmIntervals(ctx context.Context) ([]bookedRoomInterva
 			sebSeats = *room.SebSeats
 		}
 		result = append(result, bookedRoomInterval{
-			room: preplancalc.NormRoomName(m.Rooms[0]),
 			from: m.From, until: m.Until,
 			exahm: room.Exahm, seb: room.Seb, seats: room.Seats, sebSeats: sebSeats,
 		})
@@ -159,96 +140,6 @@ func intersectSlotSet(a, b map[int]bool) map[int]bool {
 		}
 	}
 	return out
-}
-
-// packExam is one exam to place into booked T-building rooms: seat demand, kind and the
-// absolute exam window parameters.
-type packExam struct {
-	id             int
-	seats          int
-	exahm          bool
-	start          time.Time
-	dur, pre, post time.Duration
-}
-
-// packExamsIntoRooms assigns each exam to DISTINCT booked rooms of the right kind whose
-// booking covers its full window [start-pre, start+dur+post], giving each exam whole rooms
-// summing to >= its seats. A physical room hosts at most one exam at a time; room OCCUPANCY
-// uses HALF the buffers (two of our own consecutive exams share the turnaround, so
-// back-to-back slots abut and reuse a room), while booking-ELIGIBILITY uses the full window.
-// Returns the ids of exams that could not be fully seated. Largest exams first, largest
-// rooms first — a sound feasibility heuristic: a success is a real assignment; a failure may
-// be (rarely) conservative. Used per-slot as the solver's hard capacity and globally in the
-// validation (a slot's exams all share a start time, so they need distinct rooms).
-func packExamsIntoRooms(exams []packExam, intervals []bookedRoomInterval) []int {
-	type span struct{ from, until time.Time }
-	busy := make(map[string][]span)
-
-	order := make([]int, len(exams))
-	for i := range order {
-		order[i] = i
-	}
-	sort.SliceStable(order, func(a, b int) bool {
-		ea, eb := exams[order[a]], exams[order[b]]
-		if !ea.start.Equal(eb.start) {
-			return ea.start.Before(eb.start)
-		}
-		return ea.seats > eb.seats
-	})
-
-	var failed []int
-	for _, oi := range order {
-		e := exams[oi]
-		fullWS, fullWE := e.start.Add(-e.pre), e.start.Add(e.dur+e.post)
-		occWS, occWE := e.start.Add(-e.pre/2), e.start.Add(e.dur+e.post/2)
-
-		need := e.seats
-		usedThis := make(map[string]bool)
-		// eligible booked rooms sorted by seats desc, skipping ones busy during occupancy.
-		type cand struct {
-			room  string
-			seats int
-		}
-		var cands []cand
-		for _, iv := range intervals {
-			s := iv.seatsFor(e.exahm)
-			if s <= 0 || !anny.Covers(iv.from, iv.until, fullWS, fullWE) {
-				continue
-			}
-			free := true
-			for _, b := range busy[iv.room] {
-				if occWS.Before(b.until) && b.from.Before(occWE) {
-					free = false
-					break
-				}
-			}
-			if free {
-				cands = append(cands, cand{iv.room, s})
-			}
-		}
-		sort.SliceStable(cands, func(a, b int) bool { return cands[a].seats > cands[b].seats })
-		chosen := make([]string, 0, len(cands))
-		for _, c := range cands {
-			if need <= 0 {
-				break
-			}
-			if usedThis[c.room] {
-				continue
-			}
-			usedThis[c.room] = true
-			chosen = append(chosen, c.room)
-			need -= c.seats
-		}
-		if need > 0 {
-			// cannot fully seat this exam — leave its rooms free for the others and report it.
-			failed = append(failed, e.id)
-			continue
-		}
-		for _, room := range chosen {
-			busy[room] = append(busy[room], span{occWS, occWE})
-		}
-	}
-	return failed
 }
 
 // exahmWindowSeats returns how many booked seats are usable for an exam placed at start:

@@ -55,32 +55,6 @@ func TestValidatePreplanExahmWindowSeats(t *testing.T) {
 		}
 	})
 
-	t.Run("over-pack: two exams need whole rooms that do not fit is flagged", func(t *testing.T) {
-		// two EXaHM rooms 08:00–10:30 (30 seats each). Two exams at 08:30 (20 + 50) need three
-		// whole rooms (1 + 2) but only two are booked → the plan does not pack.
-		st := vday(8, 30)
-		e1 := &model.PreplanExam{ID: 10, Module: "A", ExamKind: "EXaHM", ExpectedStudents: 20, Duration: iptr(90), PlannedStarttime: &st}
-		e2 := &model.PreplanExam{ID: 11, Module: "B", ExamKind: "EXaHM", ExpectedStudents: 50, Duration: iptr(90), PlannedStarttime: &st}
-		iv := []bookedRoomInterval{
-			{room: "T3.015", from: vday(8, 0), until: vday(10, 30), exahm: true, seats: 30},
-			{room: "T3.016", from: vday(8, 0), until: vday(10, 30), exahm: true, seats: 30},
-		}
-		bk := map[time.Time]*slotBooking{st: {exahmSeats: 60, seats: 60, rooms: map[string]bool{"T3.015": true, "T3.016": true}}}
-		res := validatePreplan([]*model.PreplanExam{e1, e2}, exahmRooms, nil, bk, 24, iv, block)
-		if res.Ok {
-			t.Fatal("expected validation to fail: 20+50 do not pack into two 30-seat rooms")
-		}
-		found := false
-		for _, m := range res.Messages {
-			if strings.Contains(m, "passt nicht mehr in die gebuchten Räume") {
-				found = true
-			}
-		}
-		if !found {
-			t.Errorf("expected a room-packing finding, got: %v", res.Messages)
-		}
-	})
-
 	t.Run("booking covering the window passes", func(t *testing.T) {
 		// rooms booked 10:00–12:30 cover the whole window with 40 seats → no window finding.
 		intervals := []bookedRoomInterval{

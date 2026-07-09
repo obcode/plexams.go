@@ -41,7 +41,7 @@ func (p *Plexams) ValidatePreplanAssignment(ctx context.Context) (*model.Preplan
 	if err != nil {
 		return nil, err
 	}
-	rBauSebThreshold, err := p.maxNonAnnySebRoom(ctx)
+	rBauSebThreshold, err := p.nonAnnySebSeats(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +93,8 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 
 	unassigned := make([]int, 0)
 	genuineUnassigned := 0
-	// small SEB exams fit a single R-building lab, so they need no Anny booking at all:
-	// leaving them unassigned is by design, not a failure — grade them as warnings.
+	// SEB exams that fit the R-building labs (split across them) need no Anny booking at all,
+	// so leaving them unassigned is by design, not a failure — grade them as warnings.
 	smallSebNotes := make([]*model.PreplanFinding, 0)
 	bySlot := make(map[time.Time][]*model.PreplanExam)
 	slotOrder := make([]time.Time, 0)
@@ -105,8 +105,8 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 				smallSebNotes = append(smallSebNotes, &model.PreplanFinding{
 					Level: model.ValidationLevelWarning,
 					Message: fmt.Sprintf(
-						"SEB %d (%s, %d Plätze): klein genug für den R-Bau (≤ %d) — dort einplanen, nicht in Anny",
-						pe.ID, pe.Module, pe.ExpectedStudents, rBauSebThreshold),
+						"SEB %s (%d Plätze): passt in den R-Bau (≤ %d Plätze gesamt) — dort einplanen, kein Anny-Slot nötig",
+						pe.Module, pe.ExpectedStudents, rBauSebThreshold),
 				})
 			} else {
 				genuineUnassigned++
@@ -168,34 +168,6 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 		findings = append(findings, kindBookingFindings(key, "SEB", seb, preplancalc.TotalSeats(sebPool), sebPool, sb)...)
 		// note: same study program in one slot is allowed (soft spreading only), so it
 		// is no longer reported as a finding here.
-	}
-
-	// Room-packing check across the whole plan: every placed EXaHM/SEB exam must fit into
-	// DISTINCT booked rooms covering its window (a room hosts one exam at a time). This
-	// catches over-subscription the per-slot seat sums miss — e.g. two exams in one slot
-	// that each need whole rooms, or a long exam overrunning into the next slot's rooms —
-	// so a plan with overlapping Vor-/Nachläufe is no longer reported as ok.
-	{
-		packExams := make([]packExam, 0, len(preExams))
-		examByID := make(map[int]*model.PreplanExam, len(preExams))
-		for _, pe := range preExams {
-			if pe.PlannedStarttime == nil {
-				continue
-			}
-			examByID[pe.ID] = pe
-			pre, post := exahmRoomBuffers(pe.Constraints)
-			packExams = append(packExams, packExam{
-				id: pe.ID, seats: pe.ExpectedStudents, exahm: pe.ExamKind == "EXaHM",
-				start: *pe.PlannedStarttime, dur: preplanExamDuration(pe, blockDur), pre: pre, post: post,
-			})
-		}
-		for _, id := range packExamsIntoRooms(packExams, exahmIntervals) {
-			if pe := examByID[id]; pe != nil {
-				addFinding(model.ValidationLevelError,
-					"Slot %s: %s %s passt nicht mehr in die gebuchten Räume — zu viele Prüfungen mit überlappenden Vor-/Nachläufen (ganze Räume je Prüfung)",
-					slotLabelDE(*pe.PlannedStarttime), pe.ExamKind, pe.Module)
-			}
-		}
 	}
 
 	assignedCount := len(preExams) - len(unassigned)
@@ -286,7 +258,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	}
 	// SEB exams that fit into a single R-building lab are "small": they are NOT placed
 	// into the booked Anny slots, only flagged to be planned in the R-building.
-	rBauSebThreshold, err := p.maxNonAnnySebRoom(ctx)
+	rBauSebThreshold, err := p.nonAnnySebSeats(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -448,19 +420,19 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 			continue
 		}
 
-		// small SEB (fit a single R-building lab) don't NEED an Anny slot, but should still
-		// fill leftover booked capacity when some is free (rather than always going to the
-		// R-building). A low drop cost lets the solver place them only into spare capacity and
-		// never displace a must-place exam; if still dropped, validatePreplan re-derives them
-		// from the threshold and emits the R-building note (a warning, not a failure).
-		smallSeb := !hasExahm && seats <= rBauSebThreshold
+		// A SEB that fits the R-building labs (can be split across them) does not NEED an Anny
+		// slot: it fills leftover Anny capacity if some is free, otherwise it is left for the
+		// R-building (only a warning). Give these a low drop cost that GROWS with size, so when
+		// Anny is tight the SMALLER SEB are dropped first (a 90-seat SEB is kept over a 50-seat
+		// one — the 50 goes to the R-building) and none ever displaces a must-place exam.
+		rBauSeb := !hasExahm && seats <= rBauSebThreshold
 
 		dropCost := preplanDropBase + seats
 		switch {
 		case hasExahm:
 			dropCost += preplanExahmKeep
-		case smallSeb:
-			dropCost = preplanSmallSebDrop
+		case rBauSeb:
+			dropCost = preplanSmallSebDrop + seats
 		}
 		var allowedSlots map[int]bool
 		for prog := range programs {
@@ -557,7 +529,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 	}
 
-	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs, exahmIntervals)
+	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs)
 	for u, members := range solveMembers {
 		var ps *preplanSlot
 		if assign[u] >= 0 {

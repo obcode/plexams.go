@@ -238,3 +238,25 @@ func TestSolvePreplanSpreadsAcrossDays(t *testing.T) {
 		t.Errorf("the two same-program units should be on different days: %v", assign)
 	}
 }
+
+// A large (e.g. same-slot-coupled) unit is kept placed while several smaller units are
+// dropped when capacity is tight — the convex drop cost (used by GeneratePreplanAssignment
+// for R-building-eligible SEB) makes dropping one big unit dearer than a few small ones.
+func TestSolvePreplanKeepsLargeUnitDropsSmall(t *testing.T) {
+	convex := func(id, seats int) *preplanUnit {
+		return &preplanUnit{members: []int{id}, seats: seats, dropCost: preplanSmallSebDrop + seats*seats, minID: id, programs: map[string]bool{}}
+	}
+	// one slot, room for ~70. big=70 (coupled), plus a 40 and a 30 → only the 70 OR the 40+30.
+	units := []*preplanUnit{convex(1, 70), convex(2, 40), convex(3, 30)}
+	slots := []*preplanSlot{{start: at(1, 1), capacity: 70}}
+	fu, fp := emptyFixed(len(slots))
+
+	assign := solvePreplan(units, slots, fu, fp, nil)
+	checkCapacity(t, units, slots, assign)
+	if assign[0] < 0 {
+		t.Errorf("the large coupled unit should be kept (highest convex drop cost), got %v", assign)
+	}
+	if assign[1] >= 0 || assign[2] >= 0 {
+		t.Errorf("the two smaller units should be dropped to make room for the large one, got %v", assign)
+	}
+}

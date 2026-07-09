@@ -100,13 +100,23 @@ smtp:
                                # GUI überschreibbar)
   noreplyname: "Prüfungsplanung FK07 (NOREPLY)" # Anzeigename der noreply-Reply-To (optional;
                                # Default s.o., pro Planer in der GUI überschreibbar)
-  envelopefrom: noreply@hm.edu # SMTP-Envelope-Absender (MAIL FROM / Return-Path), vom
-                               # sichtbaren From entkoppelt (optional). Erlaubt Versand
-                               # über einen geteilten Account (muss zum SMTP-Login passen),
-                               # während der From die Planer-Adresse bleibt. Bounces gehen
-                               # hierhin, SPF prüft diese Domain. Leer = From wird als
-                               # Envelope-Absender verwendet.
+  fromaddress: noreply@hm.edu  # Adresse, ALS die gesendet wird (From-Header), optional.
+                               # Für Server, die nur Versand als authentifizierter Account
+                               # erlauben (z.B. noreply@hm.edu ohne „Send-As" für den Planer):
+                               # From wird diese Adresse, der Planer-NAME bleibt Anzeigename,
+                               # die Planer-Adresse wird Reply-To. Leer = From = Planer.
+  envelopefrom: noreply@hm.edu # SMTP-Envelope-Absender (MAIL FROM / Return-Path), optional.
+                               # Meist derselbe Account wie fromaddress. Bounces gehen hierhin,
+                               # SPF prüft diese Domain. Leer = fällt auf fromaddress zurück
+                               # (bzw. From).
 ```
+
+> **Hinweis (Versand über einen geteilten Account, z.B. `noreply@hm.edu`):** Viele Server
+> (Exchange u.ä.) lehnen Mails mit `554 5.7.1 … does not meet our delivery requirements` ab,
+> wenn der `From`-Header nicht zum authentifizierten `username` passt. Setze dann
+> `fromaddress` (und i.d.R. `envelopefrom`) auf den Login-Account. Ergebnis:
+> `From: "Planer Name" <noreply@hm.edu>`, `Reply-To: planer@hm.edu` — Empfänger sehen den
+> Namen, Antworten erreichen den Planer.
 
 ## 4. Anny (Raumbuchungen, nur lesend)
 

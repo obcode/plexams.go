@@ -22,10 +22,22 @@ type SMTPConfig struct {
 	CC string
 	// ReplyMail is the Reply-To for mails answerable by email; falls back to PlanerEmail.
 	ReplyMail string
-	// NoreplyMail is the Reply-To for JIRA-only mails; falls back to a noreply alias.
+	// NoreplyMail is the config-level Reply-To address for JIRA-only mails; when both it
+	// and the planner override are empty, effectiveNoreplyMail falls back to
+	// defaultNoreplyMail.
 	NoreplyMail string
-	PlanerName  string
-	PlanerEmail string
+	// NoreplyName is the config-level display name for the JIRA-only Reply-To; when both it
+	// and the planner override are empty, effectiveNoreplyName falls back to
+	// defaultNoreplyName.
+	NoreplyName string
+	// EnvelopeFrom, when set, is the SMTP envelope sender (MAIL FROM / Return-Path),
+	// decoupled from the visible From header. Use it to send through a shared account
+	// (e.g. noreply@hm.edu, which must match the SMTP-authenticated user) while keeping
+	// the planner's address as From. Bounces then go to this address; SPF checks the
+	// domain here. Empty means go-mail uses the From header as the envelope sender.
+	EnvelopeFrom string
+	PlanerName   string
+	PlanerEmail  string
 }
 
 // Attachment is a library-neutral mail attachment, so callers do not depend on the
@@ -36,23 +48,82 @@ type Attachment struct {
 	Content     []byte
 }
 
+// Hard-coded fallbacks for the JIRA-only Reply-To when neither a planner override nor a
+// config value is set.
+const (
+	defaultNoreplyMail = "noreply+plexams@hm.edu"
+	defaultNoreplyName = "Prüfungsplanung FK07 (NOREPLY)"
+)
+
 // Sender sends mails over SMTP and supports a dry-run collector that bundles a whole batch
 // into one summary mail of .eml attachments.
 type Sender struct {
 	cfg       SMTPConfig
 	collector *mailCollector
+	// Planner-level overrides for the sender identity (set via SetPlaner, empty = use the
+	// config value / derived default). Kept separate from cfg so the config values remain
+	// the middle fallback tier below the planner override.
+	planerTestMail    string
+	planerCC          string
+	planerNoreplyMail string
+	planerNoreplyName string
+	// dryRunOverride, when set, redirects dry-run sends for this session only (not
+	// persisted); set/cleared from the Probeläufe page via SetDryRunOverride/ResetDryRunOverride.
+	dryRunOverride string
 }
 
 // NewSender builds a Sender for the given SMTP configuration.
 func NewSender(cfg SMTPConfig) *Sender { return &Sender{cfg: cfg} }
 
-// SetPlaner updates the From identity (and the fallback recipient/Reply-To). The
-// Sender caches its own copy of the planner from construction time, so callers
-// must call this whenever the running planner changes (e.g. after it is read from
-// the DB or edited in the GUI) — otherwise the From address stays stale/empty.
-func (s *Sender) SetPlaner(name, email string) {
+// SetPlaner updates the From identity and the planner-level sender overrides (dry-run
+// recipient, Cc, noreply address/name). The Sender caches its own copy of the planner, so
+// callers must call this whenever the running planner changes (read from the DB, edited in
+// the GUI) — otherwise the From address stays stale/empty. Empty override values fall back
+// to the config value and then the derived default (see the Effective* methods).
+func (s *Sender) SetPlaner(name, email, testMail, cc, noreplyMail, noreplyName string) {
 	s.cfg.PlanerName = name
 	s.cfg.PlanerEmail = email
+	s.planerTestMail = strings.TrimSpace(testMail)
+	s.planerCC = strings.TrimSpace(cc)
+	s.planerNoreplyMail = strings.TrimSpace(noreplyMail)
+	s.planerNoreplyName = strings.TrimSpace(noreplyName)
+}
+
+// DefaultMail is the derived default for the dry-run recipient and Cc: the planner email
+// with a +plexams tag (oliver.braun@hm.edu → oliver.braun+plexams@hm.edu). Empty when no
+// valid planner email is set.
+func (s *Sender) DefaultMail() string { return plusPlexams(s.cfg.PlanerEmail) }
+
+// EffectiveTestMail is the address dry-run sends go to: planner override → config → DefaultMail.
+func (s *Sender) EffectiveTestMail() string {
+	return firstNonEmpty(s.planerTestMail, s.cfg.TestMail, s.DefaultMail())
+}
+
+// EffectiveCc is the Cc added to every real send: planner override → config → DefaultMail.
+func (s *Sender) EffectiveCc() string {
+	return firstNonEmpty(s.planerCC, s.cfg.CC, s.DefaultMail())
+}
+
+// EffectiveNoreplyMail is the JIRA-only Reply-To address: planner override → config → default.
+func (s *Sender) EffectiveNoreplyMail() string {
+	return firstNonEmpty(s.planerNoreplyMail, s.cfg.NoreplyMail, defaultNoreplyMail)
+}
+
+// EffectiveNoreplyName is the JIRA-only Reply-To display name: planner override → config → default.
+func (s *Sender) EffectiveNoreplyName() string {
+	return firstNonEmpty(s.planerNoreplyName, s.cfg.NoreplyName, defaultNoreplyName)
+}
+
+// SetDryRunOverride redirects dry-run sends to email for this session only; an empty/blank
+// email clears the override (same as ResetDryRunOverride).
+func (s *Sender) SetDryRunOverride(email string) { s.dryRunOverride = strings.TrimSpace(email) }
+
+// ResetDryRunOverride clears the session dry-run override, restoring the configured default.
+func (s *Sender) ResetDryRunOverride() { s.dryRunOverride = "" }
+
+// DryRunOverride returns the active session override and whether one is set.
+func (s *Sender) DryRunOverride() (string, bool) {
+	return s.dryRunOverride, s.dryRunOverride != ""
 }
 
 // newClient builds an SMTP client. STARTTLS is mandatory; the server certificate is not
@@ -71,7 +142,8 @@ func (s *Sender) newClient() (*mail.Client, error) {
 	)
 }
 
-// buildMsg assembles a go-mail message (From = authenticated planner, Reply-To per jira).
+// buildMsg assembles a go-mail message (From = planner, optional Envelope-From per config,
+// Reply-To per jira).
 func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool) (*mail.Msg, error) {
 	msg := mail.NewMsg()
 	if strings.TrimSpace(s.cfg.PlanerEmail) == "" {
@@ -81,6 +153,13 @@ func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, at
 	if err := msg.FromFormat(s.cfg.PlanerName, s.cfg.PlanerEmail); err != nil {
 		return nil, fmt.Errorf("invalid From address %q <%s>: %w", s.cfg.PlanerName, s.cfg.PlanerEmail, err)
 	}
+	// An explicit envelope sender (MAIL FROM) decoupled from the visible From: go-mail's
+	// GetSender prefers HeaderEnvelopeFrom and only falls back to From when it is unset.
+	if strings.TrimSpace(s.cfg.EnvelopeFrom) != "" {
+		if err := msg.EnvelopeFrom(s.cfg.EnvelopeFrom); err != nil {
+			return nil, fmt.Errorf("invalid Envelope-From address %q: %w", s.cfg.EnvelopeFrom, err)
+		}
+	}
 	if err := msg.To(to...); err != nil {
 		return nil, fmt.Errorf("invalid To address(es) %v: %w", to, err)
 	}
@@ -89,7 +168,13 @@ func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, at
 			return nil, fmt.Errorf("invalid Cc address(es) %v: %w", cc, err)
 		}
 	}
-	if err := msg.ReplyTo(s.replyToAddress(jira)); err != nil {
+	// JIRA-answered mails get the noreply address with its display name; other mails a
+	// plain Reply-To (planner/reply address, no name).
+	if jira {
+		if err := msg.ReplyToFormat(s.EffectiveNoreplyName(), s.EffectiveNoreplyMail()); err != nil {
+			return nil, fmt.Errorf("invalid noreply Reply-To %q <%s>: %w", s.EffectiveNoreplyName(), s.EffectiveNoreplyMail(), err)
+		}
+	} else if err := msg.ReplyTo(s.nonJiraReplyTo()); err != nil {
 		return nil, fmt.Errorf("invalid Reply-To address: %w", err)
 	}
 	msg.Subject(subject)
@@ -130,12 +215,10 @@ func (s *Sender) SendTest() error {
 	return client.DialAndSend(msg)
 }
 
-// dryRunRecipient is the address all dry-run mails go to: TestMail, or the planner.
-func (s *Sender) dryRunRecipient() string {
-	if s.cfg.TestMail != "" {
-		return s.cfg.TestMail
-	}
-	return s.cfg.PlanerEmail
+// DryRunRecipient is the address all dry-run mails go to: the session override (if set),
+// otherwise the effective test mail (planner override → config → derived default).
+func (s *Sender) DryRunRecipient() string {
+	return firstNonEmpty(s.dryRunOverride, s.EffectiveTestMail())
 }
 
 // RecipientInfo describes a send for progress/log output; on a dry run it makes explicit
@@ -144,25 +227,13 @@ func (s *Sender) RecipientInfo(run bool, recipients ...string) string {
 	if run {
 		return fmt.Sprintf("%v", recipients)
 	}
-	return fmt.Sprintf("PROBEVERSAND an %s (echte Empfänger wären: %v)", s.dryRunRecipient(), recipients)
+	return fmt.Sprintf("PROBEVERSAND an %s (echte Empfänger wären: %v)", s.DryRunRecipient(), recipients)
 }
 
-// replyToAddress returns the Reply-To: for JIRA-only mails a noreply address, otherwise
-// the reply address; both fall back to the planner.
-func (s *Sender) replyToAddress(jira bool) string {
-	if jira {
-		if s.cfg.NoreplyMail != "" {
-			return s.cfg.NoreplyMail
-		}
-		if localPart, domain, ok := strings.Cut(s.cfg.PlanerEmail, "@"); ok && localPart != "" && domain != "" {
-			return fmt.Sprintf("%s+pruefungsplanung_noreply@%s", localPart, domain)
-		}
-		return "noreply@hm.edu"
-	}
-	if s.cfg.ReplyMail != "" {
-		return s.cfg.ReplyMail
-	}
-	return s.cfg.PlanerEmail
+// nonJiraReplyTo is the Reply-To for mails answerable by email: the reply address, falling
+// back to the planner.
+func (s *Sender) nonJiraReplyTo() string {
+	return firstNonEmpty(s.cfg.ReplyMail, s.cfg.PlanerEmail)
 }
 
 // Send sends one mail. jira == true marks a mail answered via JIRA (Reply-To = noreply).
@@ -171,8 +242,8 @@ func (s *Sender) replyToAddress(jira bool) string {
 // real recipients prefixed into the subject.
 func (s *Sender) Send(run bool, to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool) error {
 	realCc := append([]string{}, cc...)
-	if s.cfg.CC != "" {
-		realCc = append(realCc, s.cfg.CC)
+	if effCc := s.EffectiveCc(); effCc != "" {
+		realCc = append(realCc, effCc)
 	}
 
 	if !run && s.collector != nil {
@@ -202,7 +273,7 @@ func (s *Sender) Send(run bool, to, cc []string, subject string, text, html []by
 		} else {
 			subject = fmt.Sprintf("[Probeversand] %s", subject)
 		}
-		actualTo = []string{s.dryRunRecipient()}
+		actualTo = []string{s.DryRunRecipient()}
 		actualCc = nil
 	}
 
@@ -262,7 +333,7 @@ func (s *Sender) FlushCollection() (int, string, error) {
 		})
 	}
 
-	recipient := s.dryRunRecipient()
+	recipient := s.DryRunRecipient()
 	subject := fmt.Sprintf("[Probeversand] %d E-Mails als .eml-Anhänge", len(collector.mails))
 	text := fmt.Sprintf("Gebündelter Probeversand: %d E-Mails sind als .eml angehängt "+
 		"(je Anhang öffnet sich als echte E-Mail mit den tatsächlichen Empfängern).\n\n%s",
@@ -280,6 +351,32 @@ func (s *Sender) FlushCollection() (int, string, error) {
 		return 0, "", fmt.Errorf("cannot send bundled dry-run mail: %w", err)
 	}
 	return len(collector.mails), recipient, nil
+}
+
+// firstNonEmpty returns the first argument that is non-empty after trimming, trimmed; or ""
+// when all are blank. Used for the override → config → default fallback chains.
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if t := strings.TrimSpace(v); t != "" {
+			return t
+		}
+	}
+	return ""
+}
+
+// plusPlexams inserts a +plexams tag into the local part of an email address
+// (oliver.braun@hm.edu → oliver.braun+plexams@hm.edu). Any existing +tag is replaced. It
+// returns the input unchanged when it is not a plausible addr (empty local part or domain).
+func plusPlexams(email string) string {
+	email = strings.TrimSpace(email)
+	local, domain, ok := strings.Cut(email, "@")
+	if !ok || local == "" || domain == "" {
+		return email
+	}
+	if base, _, has := strings.Cut(local, "+"); has {
+		local = base
+	}
+	return local + "+plexams@" + domain
 }
 
 // firstOr returns the first non-empty element of s, or def when there is none.

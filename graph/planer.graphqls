@@ -1,14 +1,63 @@
 extend type Query {
-  "The planner (name + email). Stored globally in the DB; the config is only a fallback."
+  "The planner (name + email + sender-identity overrides). Stored globally in the DB; the config is only a fallback."
   planer: Planer!
+  "The current dry-run recipient status (session override vs. configured default) for the Probeläufe page."
+  dryRunTestMail: DryRunTestMailStatus!
 }
 
 extend type Mutation {
-  "Set the planner (name + email), stored in the global DB."
-  setPlaner(name: String!, email: String!): Planer!
+  """
+  Set the planner, stored in the global DB. name + email are required; the remaining
+  fields are optional sender-identity overrides — pass null/empty to fall back to the
+  derived default (testMail/cc = email with +plexams, noreplyMail = noreply+plexams@hm.edu,
+  noreplyName = "Prüfungsplanung FK07 (NOREPLY)").
+  """
+  setPlaner(
+    name: String!
+    email: String!
+    testMail: String
+    cc: String
+    noreplyMail: String
+    noreplyName: String
+  ): Planer!
+
+  "Override the dry-run recipient for this session only (Probeläufe page). Empty string resets to the default."
+  setDryRunTestMail(email: String!): DryRunTestMailStatus!
+  "Reset the session dry-run recipient override back to the configured default."
+  resetDryRunTestMail: DryRunTestMailStatus!
 }
 
 type Planer {
   name: String!
   email: String!
+  "Override for the dry-run recipient; null/empty => defaultMail."
+  testMail: String
+  "Override for the Cc added to every real send; null/empty => defaultMail."
+  cc: String
+  "Override for the noreply From/Reply-To address of JIRA-answered mails; null/empty => noreply+plexams@hm.edu."
+  noreplyMail: String
+  "Override for the noreply display name; null/empty => \"Prüfungsplanung FK07 (NOREPLY)\"."
+  noreplyName: String
+  "Derived default for testMail/cc: the planner email with +plexams (e.g. x+plexams@hm.edu)."
+  defaultMail: String!
+  "The address dry-run mails actually go to (override → config → defaultMail)."
+  effectiveTestMail: String!
+  "The Cc actually added to real sends (override → config → defaultMail)."
+  effectiveCc: String!
+  "The noreply address actually used (override → config → noreply+plexams@hm.edu)."
+  effectiveNoreplyMail: String!
+  "The noreply display name actually used (override → config → default)."
+  effectiveNoreplyName: String!
+}
+
+"Status of the per-session dry-run recipient override shown on the Probeläufe page."
+type DryRunTestMailStatus {
+  "The active session override, or null when none is set (the configured default is used)."
+  override: String
+  "The address dry-run mails currently go to (override, or the configured default)."
+  current: String!
+  "The configured default (effective testMail) that a reset falls back to."
+  default: String!
+  "True when an override is active and deviates from the default — the GUI should show a warning banner."
+  overridden: Boolean!
 }

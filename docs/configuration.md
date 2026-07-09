@@ -92,7 +92,17 @@ smtp:
   testmail: planer@hm.edu      # Ziel für Probeläufe (run=false)
   cc: smtp.cc@hm.edu           # filterbare Selbstkopie (Cc) bei echten Sends
   replymail: planer@hm.edu     # Reply-To für beantwortbare Mails (optional)
-  noreplymail: noreply@hm.edu  # Reply-To für „bitte über JIRA antworten“-Mails (optional)
+  noreplymail: noreply@hm.edu  # Reply-To-Adresse für „bitte über JIRA antworten“-Mails
+                               # (optional; Default noreply+plexams@hm.edu, pro Planer in der
+                               # GUI überschreibbar)
+  noreplyname: "Prüfungsplanung FK07 (NOREPLY)" # Anzeigename der noreply-Reply-To (optional;
+                               # Default s.o., pro Planer in der GUI überschreibbar)
+  envelopefrom: noreply@hm.edu # SMTP-Envelope-Absender (MAIL FROM / Return-Path), vom
+                               # sichtbaren From entkoppelt (optional). Erlaubt Versand
+                               # über einen geteilten Account (muss zum SMTP-Login passen),
+                               # während der From die Planer-Adresse bleibt. Bounces gehen
+                               # hierhin, SPF prüft diese Domain. Leer = From wird als
+                               # Envelope-Absender verwendet.
 ```
 
 ## 4. Anny (Raumbuchungen, nur lesend)

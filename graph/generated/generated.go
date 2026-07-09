@@ -224,6 +224,13 @@ type ComplexityRoot struct {
 		Invigilators func(childComplexity int) int
 	}
 
+	DryRunTestMailStatus struct {
+		Current    func(childComplexity int) int
+		Default    func(childComplexity int) int
+		Overridden func(childComplexity int) int
+		Override   func(childComplexity int) int
+	}
+
 	EmailAttachmentInfo struct {
 		ContentType func(childComplexity int) int
 		Filename    func(childComplexity int) int
@@ -683,6 +690,7 @@ type ComplexityRoot struct {
 		RemoveStudentConflictDecision func(childComplexity int, ancode1 int, ancode2 int, mtknr string) int
 		RemoveStudentReg              func(childComplexity int, program string, ancode int, mtknr string) int
 		ResetAssembledExams           func(childComplexity int) int
+		ResetDryRunTestMail           func(childComplexity int) int
 		ResetEmailTemplate            func(childComplexity int, name string) int
 		ResetExamSchedule             func(childComplexity int) int
 		ResetInvigilations            func(childComplexity int) int
@@ -693,6 +701,7 @@ type ComplexityRoot struct {
 		Seb                           func(childComplexity int, ancode int) int
 		SeedStudyProgramsFromConfig   func(childComplexity int) int
 		SetAnnyPersonalizationNames   func(childComplexity int, names []string) int
+		SetDryRunTestMail             func(childComplexity int, email string) int
 		SetEmailTemplate              func(childComplexity int, name string, markdown string) int
 		SetExamDuration               func(childComplexity int, ancode int, duration int) int
 		SetExamTime                   func(childComplexity int, ancode int, starttime time.Time) int
@@ -703,7 +712,7 @@ type ComplexityRoot struct {
 		SetMucDaiZpaLink              func(childComplexity int, program string, primussAncode int, zpaAncode int) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
-		SetPlaner                     func(childComplexity int, name string, email string) int
+		SetPlaner                     func(childComplexity int, name string, email string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) int
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
 		SetPreplanExamCanShareSlot    func(childComplexity int, id int, otherID int, canShare bool) int
 		SetPreplanExamConstraints     func(childComplexity int, id int, constraints model.ConstraintsInput) int
@@ -814,8 +823,17 @@ type ComplexityRoot struct {
 	}
 
 	Planer struct {
-		Email func(childComplexity int) int
-		Name  func(childComplexity int) int
+		Cc                   func(childComplexity int) int
+		DefaultMail          func(childComplexity int) int
+		EffectiveCc          func(childComplexity int) int
+		EffectiveNoreplyMail func(childComplexity int) int
+		EffectiveNoreplyName func(childComplexity int) int
+		EffectiveTestMail    func(childComplexity int) int
+		Email                func(childComplexity int) int
+		Name                 func(childComplexity int) int
+		NoreplyMail          func(childComplexity int) int
+		NoreplyName          func(childComplexity int) int
+		TestMail             func(childComplexity int) int
 	}
 
 	PlannedExam struct {
@@ -1015,6 +1033,7 @@ type ComplexityRoot struct {
 		ConnectedExam                 func(childComplexity int, ancode int) int
 		ConnectedExams                func(childComplexity int) int
 		ConstraintForAncode           func(childComplexity int, ancode int) int
+		DryRunTestMail                func(childComplexity int) int
 		EmailAttachments              func(childComplexity int, kind string) int
 		EmailTemplateFunctions        func(childComplexity int) int
 		EmailTemplates                func(childComplexity int) int
@@ -1591,7 +1610,9 @@ type MutationResolver interface {
 	AddNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int, reason string) (*model.NtaRoomAloneWaiver, error)
 	RemoveNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int) (bool, error)
 	SetExamTime(ctx context.Context, ancode int, starttime time.Time) (bool, error)
-	SetPlaner(ctx context.Context, name string, email string) (*model.Planer, error)
+	SetPlaner(ctx context.Context, name string, email string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) (*model.Planer, error)
+	SetDryRunTestMail(ctx context.Context, email string) (*model.DryRunTestMailStatus, error)
+	ResetDryRunTestMail(ctx context.Context) (*model.DryRunTestMailStatus, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
 	GeneratePreparation(ctx context.Context) (*model.GeneratePreparationResult, error)
 	GeneratePreplanAssignment(ctx context.Context, keepAssigned *bool) (*model.PreplanValidation, error)
@@ -1711,6 +1732,7 @@ type QueryResolver interface {
 	AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
 	AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error)
 	Planer(ctx context.Context) (*model.Planer, error)
+	DryRunTestMail(ctx context.Context) (*model.DryRunTestMailStatus, error)
 	PlanningState(ctx context.Context) (*model.PlanningState, error)
 	ValidatePreplanAssignment(ctx context.Context) (*model.PreplanValidation, error)
 	PreplanConstraints(ctx context.Context) ([]*model.PreplanRule, error)
@@ -2593,6 +2615,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DistributionBucket.Invigilators(childComplexity), true
+
+	case "DryRunTestMailStatus.current":
+		if e.complexity.DryRunTestMailStatus.Current == nil {
+			break
+		}
+
+		return e.complexity.DryRunTestMailStatus.Current(childComplexity), true
+
+	case "DryRunTestMailStatus.default":
+		if e.complexity.DryRunTestMailStatus.Default == nil {
+			break
+		}
+
+		return e.complexity.DryRunTestMailStatus.Default(childComplexity), true
+
+	case "DryRunTestMailStatus.overridden":
+		if e.complexity.DryRunTestMailStatus.Overridden == nil {
+			break
+		}
+
+		return e.complexity.DryRunTestMailStatus.Overridden(childComplexity), true
+
+	case "DryRunTestMailStatus.override":
+		if e.complexity.DryRunTestMailStatus.Override == nil {
+			break
+		}
+
+		return e.complexity.DryRunTestMailStatus.Override(childComplexity), true
 
 	case "EmailAttachmentInfo.contentType":
 		if e.complexity.EmailAttachmentInfo.ContentType == nil {
@@ -5054,6 +5104,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ResetAssembledExams(childComplexity), true
 
+	case "Mutation.resetDryRunTestMail":
+		if e.complexity.Mutation.ResetDryRunTestMail == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ResetDryRunTestMail(childComplexity), true
+
 	case "Mutation.resetEmailTemplate":
 		if e.complexity.Mutation.ResetEmailTemplate == nil {
 			break
@@ -5143,6 +5200,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetAnnyPersonalizationNames(childComplexity, args["names"].([]string)), true
+
+	case "Mutation.setDryRunTestMail":
+		if e.complexity.Mutation.SetDryRunTestMail == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setDryRunTestMail_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetDryRunTestMail(childComplexity, args["email"].(string)), true
 
 	case "Mutation.setEmailTemplate":
 		if e.complexity.Mutation.SetEmailTemplate == nil {
@@ -5274,7 +5343,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetPlaner(childComplexity, args["name"].(string), args["email"].(string)), true
+		return e.complexity.Mutation.SetPlaner(childComplexity, args["name"].(string), args["email"].(string), args["testMail"].(*string), args["cc"].(*string), args["noreplyMail"].(*string), args["noreplyName"].(*string)), true
 
 	case "Mutation.setPlanningCondition":
 		if e.complexity.Mutation.SetPlanningCondition == nil {
@@ -5909,6 +5978,48 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PlanEntry.Starttime(childComplexity), true
 
+	case "Planer.cc":
+		if e.complexity.Planer.Cc == nil {
+			break
+		}
+
+		return e.complexity.Planer.Cc(childComplexity), true
+
+	case "Planer.defaultMail":
+		if e.complexity.Planer.DefaultMail == nil {
+			break
+		}
+
+		return e.complexity.Planer.DefaultMail(childComplexity), true
+
+	case "Planer.effectiveCc":
+		if e.complexity.Planer.EffectiveCc == nil {
+			break
+		}
+
+		return e.complexity.Planer.EffectiveCc(childComplexity), true
+
+	case "Planer.effectiveNoreplyMail":
+		if e.complexity.Planer.EffectiveNoreplyMail == nil {
+			break
+		}
+
+		return e.complexity.Planer.EffectiveNoreplyMail(childComplexity), true
+
+	case "Planer.effectiveNoreplyName":
+		if e.complexity.Planer.EffectiveNoreplyName == nil {
+			break
+		}
+
+		return e.complexity.Planer.EffectiveNoreplyName(childComplexity), true
+
+	case "Planer.effectiveTestMail":
+		if e.complexity.Planer.EffectiveTestMail == nil {
+			break
+		}
+
+		return e.complexity.Planer.EffectiveTestMail(childComplexity), true
+
 	case "Planer.email":
 		if e.complexity.Planer.Email == nil {
 			break
@@ -5922,6 +6033,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Planer.Name(childComplexity), true
+
+	case "Planer.noreplyMail":
+		if e.complexity.Planer.NoreplyMail == nil {
+			break
+		}
+
+		return e.complexity.Planer.NoreplyMail(childComplexity), true
+
+	case "Planer.noreplyName":
+		if e.complexity.Planer.NoreplyName == nil {
+			break
+		}
+
+		return e.complexity.Planer.NoreplyName(childComplexity), true
+
+	case "Planer.testMail":
+		if e.complexity.Planer.TestMail == nil {
+			break
+		}
+
+		return e.complexity.Planer.TestMail(childComplexity), true
 
 	case "PlannedExam.ancode":
 		if e.complexity.PlannedExam.Ancode == nil {
@@ -6867,6 +6999,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.ConstraintForAncode(childComplexity, args["ancode"].(int)), true
+
+	case "Query.dryRunTestMail":
+		if e.complexity.Query.DryRunTestMail == nil {
+			break
+		}
+
+		return e.complexity.Query.DryRunTestMail(childComplexity), true
 
 	case "Query.emailAttachments":
 		if e.complexity.Query.EmailAttachments == nil {
@@ -11432,18 +11571,67 @@ type PlanEntry {
 }
 `, BuiltIn: false},
 	{Name: "../planer.graphqls", Input: `extend type Query {
-  "The planner (name + email). Stored globally in the DB; the config is only a fallback."
+  "The planner (name + email + sender-identity overrides). Stored globally in the DB; the config is only a fallback."
   planer: Planer!
+  "The current dry-run recipient status (session override vs. configured default) for the Probeläufe page."
+  dryRunTestMail: DryRunTestMailStatus!
 }
 
 extend type Mutation {
-  "Set the planner (name + email), stored in the global DB."
-  setPlaner(name: String!, email: String!): Planer!
+  """
+  Set the planner, stored in the global DB. name + email are required; the remaining
+  fields are optional sender-identity overrides — pass null/empty to fall back to the
+  derived default (testMail/cc = email with +plexams, noreplyMail = noreply+plexams@hm.edu,
+  noreplyName = "Prüfungsplanung FK07 (NOREPLY)").
+  """
+  setPlaner(
+    name: String!
+    email: String!
+    testMail: String
+    cc: String
+    noreplyMail: String
+    noreplyName: String
+  ): Planer!
+
+  "Override the dry-run recipient for this session only (Probeläufe page). Empty string resets to the default."
+  setDryRunTestMail(email: String!): DryRunTestMailStatus!
+  "Reset the session dry-run recipient override back to the configured default."
+  resetDryRunTestMail: DryRunTestMailStatus!
 }
 
 type Planer {
   name: String!
   email: String!
+  "Override for the dry-run recipient; null/empty => defaultMail."
+  testMail: String
+  "Override for the Cc added to every real send; null/empty => defaultMail."
+  cc: String
+  "Override for the noreply From/Reply-To address of JIRA-answered mails; null/empty => noreply+plexams@hm.edu."
+  noreplyMail: String
+  "Override for the noreply display name; null/empty => \"Prüfungsplanung FK07 (NOREPLY)\"."
+  noreplyName: String
+  "Derived default for testMail/cc: the planner email with +plexams (e.g. x+plexams@hm.edu)."
+  defaultMail: String!
+  "The address dry-run mails actually go to (override → config → defaultMail)."
+  effectiveTestMail: String!
+  "The Cc actually added to real sends (override → config → defaultMail)."
+  effectiveCc: String!
+  "The noreply address actually used (override → config → noreply+plexams@hm.edu)."
+  effectiveNoreplyMail: String!
+  "The noreply display name actually used (override → config → default)."
+  effectiveNoreplyName: String!
+}
+
+"Status of the per-session dry-run recipient override shown on the Probeläufe page."
+type DryRunTestMailStatus {
+  "The active session override, or null when none is set (the configured default is used)."
+  override: String
+  "The address dry-run mails currently go to (override, or the configured default)."
+  current: String!
+  "The configured default (effective testMail) that a reset falls back to."
+  default: String!
+  "True when an override is active and deviates from the default — the GUI should show a warning banner."
+  overridden: Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../planning_state.graphqls", Input: `# The planning state is a condition/event model of the planning workflow: per
@@ -15138,6 +15326,34 @@ func (ec *executionContext) field_Mutation_setAnnyPersonalizationNames_argsNames
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_setDryRunTestMail_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setDryRunTestMail_argsEmail(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setDryRunTestMail_argsEmail(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["email"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+	if tmp, ok := rawArgs["email"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_setEmailTemplate_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15684,6 +15900,26 @@ func (ec *executionContext) field_Mutation_setPlaner_args(ctx context.Context, r
 		return nil, err
 	}
 	args["email"] = arg1
+	arg2, err := ec.field_Mutation_setPlaner_argsTestMail(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["testMail"] = arg2
+	arg3, err := ec.field_Mutation_setPlaner_argsCc(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["cc"] = arg3
+	arg4, err := ec.field_Mutation_setPlaner_argsNoreplyMail(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["noreplyMail"] = arg4
+	arg5, err := ec.field_Mutation_setPlaner_argsNoreplyName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["noreplyName"] = arg5
 	return args, nil
 }
 func (ec *executionContext) field_Mutation_setPlaner_argsName(
@@ -15719,6 +15955,78 @@ func (ec *executionContext) field_Mutation_setPlaner_argsEmail(
 	}
 
 	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPlaner_argsTestMail(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["testMail"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("testMail"))
+	if tmp, ok := rawArgs["testMail"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPlaner_argsCc(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["cc"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("cc"))
+	if tmp, ok := rawArgs["cc"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPlaner_argsNoreplyMail(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["noreplyMail"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("noreplyMail"))
+	if tmp, ok := rawArgs["noreplyMail"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setPlaner_argsNoreplyName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["noreplyName"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("noreplyName"))
+	if tmp, ok := rawArgs["noreplyName"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -24590,6 +24898,179 @@ func (ec *executionContext) fieldContext_DistributionBucket_invigilators(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DryRunTestMailStatus_override(ctx context.Context, field graphql.CollectedField, obj *model.DryRunTestMailStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DryRunTestMailStatus_override(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Override, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DryRunTestMailStatus_override(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DryRunTestMailStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DryRunTestMailStatus_current(ctx context.Context, field graphql.CollectedField, obj *model.DryRunTestMailStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DryRunTestMailStatus_current(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Current, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DryRunTestMailStatus_current(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DryRunTestMailStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DryRunTestMailStatus_default(ctx context.Context, field graphql.CollectedField, obj *model.DryRunTestMailStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DryRunTestMailStatus_default(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Default, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DryRunTestMailStatus_default(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DryRunTestMailStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DryRunTestMailStatus_overridden(ctx context.Context, field graphql.CollectedField, obj *model.DryRunTestMailStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DryRunTestMailStatus_overridden(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Overridden, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DryRunTestMailStatus_overridden(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DryRunTestMailStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -40208,7 +40689,7 @@ func (ec *executionContext) _Mutation_setPlaner(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetPlaner(rctx, fc.Args["name"].(string), fc.Args["email"].(string))
+		return ec.resolvers.Mutation().SetPlaner(rctx, fc.Args["name"].(string), fc.Args["email"].(string), fc.Args["testMail"].(*string), fc.Args["cc"].(*string), fc.Args["noreplyMail"].(*string), fc.Args["noreplyName"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -40237,6 +40718,24 @@ func (ec *executionContext) fieldContext_Mutation_setPlaner(ctx context.Context,
 				return ec.fieldContext_Planer_name(ctx, field)
 			case "email":
 				return ec.fieldContext_Planer_email(ctx, field)
+			case "testMail":
+				return ec.fieldContext_Planer_testMail(ctx, field)
+			case "cc":
+				return ec.fieldContext_Planer_cc(ctx, field)
+			case "noreplyMail":
+				return ec.fieldContext_Planer_noreplyMail(ctx, field)
+			case "noreplyName":
+				return ec.fieldContext_Planer_noreplyName(ctx, field)
+			case "defaultMail":
+				return ec.fieldContext_Planer_defaultMail(ctx, field)
+			case "effectiveTestMail":
+				return ec.fieldContext_Planer_effectiveTestMail(ctx, field)
+			case "effectiveCc":
+				return ec.fieldContext_Planer_effectiveCc(ctx, field)
+			case "effectiveNoreplyMail":
+				return ec.fieldContext_Planer_effectiveNoreplyMail(ctx, field)
+			case "effectiveNoreplyName":
+				return ec.fieldContext_Planer_effectiveNoreplyName(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Planer", field.Name)
 		},
@@ -40251,6 +40750,125 @@ func (ec *executionContext) fieldContext_Mutation_setPlaner(ctx context.Context,
 	if fc.Args, err = ec.field_Mutation_setPlaner_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setDryRunTestMail(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setDryRunTestMail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetDryRunTestMail(rctx, fc.Args["email"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.DryRunTestMailStatus)
+	fc.Result = res
+	return ec.marshalNDryRunTestMailStatus2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDryRunTestMailStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setDryRunTestMail(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "override":
+				return ec.fieldContext_DryRunTestMailStatus_override(ctx, field)
+			case "current":
+				return ec.fieldContext_DryRunTestMailStatus_current(ctx, field)
+			case "default":
+				return ec.fieldContext_DryRunTestMailStatus_default(ctx, field)
+			case "overridden":
+				return ec.fieldContext_DryRunTestMailStatus_overridden(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DryRunTestMailStatus", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setDryRunTestMail_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetDryRunTestMail(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetDryRunTestMail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetDryRunTestMail(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.DryRunTestMailStatus)
+	fc.Result = res
+	return ec.marshalNDryRunTestMailStatus2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDryRunTestMailStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetDryRunTestMail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "override":
+				return ec.fieldContext_DryRunTestMailStatus_override(ctx, field)
+			case "current":
+				return ec.fieldContext_DryRunTestMailStatus_current(ctx, field)
+			case "default":
+				return ec.fieldContext_DryRunTestMailStatus_default(ctx, field)
+			case "overridden":
+				return ec.fieldContext_DryRunTestMailStatus_overridden(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DryRunTestMailStatus", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -45571,6 +46189,390 @@ func (ec *executionContext) _Planer_email(ctx context.Context, field graphql.Col
 }
 
 func (ec *executionContext) fieldContext_Planer_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_testMail(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_testMail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TestMail, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_testMail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_cc(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_cc(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cc, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_cc(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_noreplyMail(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_noreplyMail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NoreplyMail, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_noreplyMail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_noreplyName(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_noreplyName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NoreplyName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_noreplyName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_defaultMail(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_defaultMail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefaultMail, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_defaultMail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_effectiveTestMail(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_effectiveTestMail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EffectiveTestMail, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_effectiveTestMail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_effectiveCc(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_effectiveCc(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EffectiveCc, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_effectiveCc(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_effectiveNoreplyMail(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_effectiveNoreplyMail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EffectiveNoreplyMail, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_effectiveNoreplyMail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_effectiveNoreplyName(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_effectiveNoreplyName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EffectiveNoreplyName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_effectiveNoreplyName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Planer",
 		Field:      field,
@@ -54939,8 +55941,80 @@ func (ec *executionContext) fieldContext_Query_planer(_ context.Context, field g
 				return ec.fieldContext_Planer_name(ctx, field)
 			case "email":
 				return ec.fieldContext_Planer_email(ctx, field)
+			case "testMail":
+				return ec.fieldContext_Planer_testMail(ctx, field)
+			case "cc":
+				return ec.fieldContext_Planer_cc(ctx, field)
+			case "noreplyMail":
+				return ec.fieldContext_Planer_noreplyMail(ctx, field)
+			case "noreplyName":
+				return ec.fieldContext_Planer_noreplyName(ctx, field)
+			case "defaultMail":
+				return ec.fieldContext_Planer_defaultMail(ctx, field)
+			case "effectiveTestMail":
+				return ec.fieldContext_Planer_effectiveTestMail(ctx, field)
+			case "effectiveCc":
+				return ec.fieldContext_Planer_effectiveCc(ctx, field)
+			case "effectiveNoreplyMail":
+				return ec.fieldContext_Planer_effectiveNoreplyMail(ctx, field)
+			case "effectiveNoreplyName":
+				return ec.fieldContext_Planer_effectiveNoreplyName(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Planer", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_dryRunTestMail(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_dryRunTestMail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().DryRunTestMail(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.DryRunTestMailStatus)
+	fc.Result = res
+	return ec.marshalNDryRunTestMailStatus2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDryRunTestMailStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_dryRunTestMail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "override":
+				return ec.fieldContext_DryRunTestMailStatus_override(ctx, field)
+			case "current":
+				return ec.fieldContext_DryRunTestMailStatus_current(ctx, field)
+			case "default":
+				return ec.fieldContext_DryRunTestMailStatus_default(ctx, field)
+			case "overridden":
+				return ec.fieldContext_DryRunTestMailStatus_overridden(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DryRunTestMailStatus", field.Name)
 		},
 	}
 	return fc, nil
@@ -77289,6 +78363,57 @@ func (ec *executionContext) _DistributionBucket(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var dryRunTestMailStatusImplementors = []string{"DryRunTestMailStatus"}
+
+func (ec *executionContext) _DryRunTestMailStatus(ctx context.Context, sel ast.SelectionSet, obj *model.DryRunTestMailStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dryRunTestMailStatusImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DryRunTestMailStatus")
+		case "override":
+			out.Values[i] = ec._DryRunTestMailStatus_override(ctx, field, obj)
+		case "current":
+			out.Values[i] = ec._DryRunTestMailStatus_current(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "default":
+			out.Values[i] = ec._DryRunTestMailStatus_default(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "overridden":
+			out.Values[i] = ec._DryRunTestMailStatus_overridden(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var emailAttachmentInfoImplementors = []string{"EmailAttachmentInfo"}
 
 func (ec *executionContext) _EmailAttachmentInfo(ctx context.Context, sel ast.SelectionSet, obj *model.EmailAttachmentInfo) graphql.Marshaler {
@@ -80495,6 +81620,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setDryRunTestMail":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setDryRunTestMail(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetDryRunTestMail":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetDryRunTestMail(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setPlanningCondition":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPlanningCondition(ctx, field)
@@ -81454,6 +82593,39 @@ func (ec *executionContext) _Planer(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "email":
 			out.Values[i] = ec._Planer_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "testMail":
+			out.Values[i] = ec._Planer_testMail(ctx, field, obj)
+		case "cc":
+			out.Values[i] = ec._Planer_cc(ctx, field, obj)
+		case "noreplyMail":
+			out.Values[i] = ec._Planer_noreplyMail(ctx, field, obj)
+		case "noreplyName":
+			out.Values[i] = ec._Planer_noreplyName(ctx, field, obj)
+		case "defaultMail":
+			out.Values[i] = ec._Planer_defaultMail(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveTestMail":
+			out.Values[i] = ec._Planer_effectiveTestMail(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveCc":
+			out.Values[i] = ec._Planer_effectiveCc(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveNoreplyMail":
+			out.Values[i] = ec._Planer_effectiveNoreplyMail(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveNoreplyName":
+			out.Values[i] = ec._Planer_effectiveNoreplyName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -84183,6 +85355,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_planer(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "dryRunTestMail":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_dryRunTestMail(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -89034,6 +90228,20 @@ func (ec *executionContext) marshalNDistributionBucket2ᚖgithubᚗcomᚋobcode�
 		return graphql.Null
 	}
 	return ec._DistributionBucket(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDryRunTestMailStatus2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDryRunTestMailStatus(ctx context.Context, sel ast.SelectionSet, v model.DryRunTestMailStatus) graphql.Marshaler {
+	return ec._DryRunTestMailStatus(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDryRunTestMailStatus2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDryRunTestMailStatus(ctx context.Context, sel ast.SelectionSet, v *model.DryRunTestMailStatus) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DryRunTestMailStatus(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNEmailAttachmentInfo2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐEmailAttachmentInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EmailAttachmentInfo) graphql.Marshaler {

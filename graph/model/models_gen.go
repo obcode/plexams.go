@@ -198,6 +198,18 @@ type DistributionBucket struct {
 	Invigilators int `json:"invigilators"`
 }
 
+// Status of the per-session dry-run recipient override shown on the Probeläufe page.
+type DryRunTestMailStatus struct {
+	// The active session override, or null when none is set (the configured default is used).
+	Override *string `json:"override,omitempty"`
+	// The address dry-run mails currently go to (override, or the configured default).
+	Current string `json:"current"`
+	// The configured default (effective testMail) that a reset falls back to.
+	Default string `json:"default"`
+	// True when an override is active and deviates from the default — the GUI should show a warning banner.
+	Overridden bool `json:"overridden"`
+}
+
 // EmailAttachmentInfo describes one uploaded attachment (without its binary data).
 // kind is e.g. "cover-page" or "invigilation-image"; key is the teacher /
 // invigilator id the attachment belongs to. The binaries themselves are uploaded
@@ -867,6 +879,24 @@ type OptimizerProgress struct {
 type Planer struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
+	// Override for the dry-run recipient; null/empty => defaultMail.
+	TestMail *string `json:"testMail,omitempty"`
+	// Override for the Cc added to every real send; null/empty => defaultMail.
+	Cc *string `json:"cc,omitempty"`
+	// Override for the noreply From/Reply-To address of JIRA-answered mails; null/empty => noreply+plexams@hm.edu.
+	NoreplyMail *string `json:"noreplyMail,omitempty"`
+	// Override for the noreply display name; null/empty => "Prüfungsplanung FK07 (NOREPLY)".
+	NoreplyName *string `json:"noreplyName,omitempty"`
+	// Derived default for testMail/cc: the planner email with +plexams (e.g. x+plexams@hm.edu).
+	DefaultMail string `json:"defaultMail"`
+	// The address dry-run mails actually go to (override → config → defaultMail).
+	EffectiveTestMail string `json:"effectiveTestMail"`
+	// The Cc actually added to real sends (override → config → defaultMail).
+	EffectiveCc string `json:"effectiveCc"`
+	// The noreply address actually used (override → config → noreply+plexams@hm.edu).
+	EffectiveNoreplyMail string `json:"effectiveNoreplyMail"`
+	// The noreply display name actually used (override → config → default).
+	EffectiveNoreplyName string `json:"effectiveNoreplyName"`
 }
 
 type PlanningCondition struct {

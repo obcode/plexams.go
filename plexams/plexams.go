@@ -70,6 +70,12 @@ type Jira struct {
 type Planer struct {
 	Name  string
 	Email string
+	// Sender-identity overrides (empty = fall back to config value / derived default).
+	// See plexams/email.Sender for the resolution and defaults.
+	TestMail    string
+	Cc          string
+	NoreplyMail string
+	NoreplyName string
 }
 
 // Operator is the local person running this plexams.go instance (one of the
@@ -100,6 +106,14 @@ type Email struct {
 	// noreplyMail is the Reply-To for mails that should be answered via JIRA, not
 	// by email (smtp.noreplymail); falls back to a noreply alias when empty.
 	noreplyMail string
+	// noreplyName is the display name for the JIRA-answered Reply-To (smtp.noreplyname);
+	// falls back to a default name when empty.
+	noreplyName string
+	// envelopeFrom, when set, is the SMTP envelope sender (MAIL FROM / Return-Path),
+	// decoupled from the visible From (smtp.envelopefrom). Lets us send through a shared
+	// account (e.g. noreply@hm.edu, matching the SMTP-authenticated user) while keeping
+	// the planner as From. Empty means the From header is used as the envelope sender.
+	envelopeFrom string
 }
 
 func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken string, fk07programs, oldprograms []string) (*Plexams, error) {
@@ -151,28 +165,32 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			Email: viper.GetString("operator.email"),
 		},
 		email: &Email{
-			server:      viper.GetString("smtp.server.name"),
-			port:        viper.GetInt("smtp.server.port"),
-			username:    viper.GetString("smtp.username"),
-			password:    viper.GetString("smtp.password"),
-			testMail:    viper.GetString("smtp.testmail"),
-			cc:          viper.GetString("smtp.cc"),
-			replyMail:   viper.GetString("smtp.replymail"),
-			noreplyMail: viper.GetString("smtp.noreplymail"),
+			server:       viper.GetString("smtp.server.name"),
+			port:         viper.GetInt("smtp.server.port"),
+			username:     viper.GetString("smtp.username"),
+			password:     viper.GetString("smtp.password"),
+			testMail:     viper.GetString("smtp.testmail"),
+			cc:           viper.GetString("smtp.cc"),
+			replyMail:    viper.GetString("smtp.replymail"),
+			noreplyMail:  viper.GetString("smtp.noreplymail"),
+			noreplyName:  viper.GetString("smtp.noreplyname"),
+			envelopeFrom: viper.GetString("smtp.envelopefrom"),
 		},
 		guard: &opGuard{},
 	}
 	plexams.sender = email.NewSender(email.SMTPConfig{
-		Server:      plexams.email.server,
-		Port:        plexams.email.port,
-		Username:    plexams.email.username,
-		Password:    plexams.email.password,
-		TestMail:    plexams.email.testMail,
-		CC:          plexams.email.cc,
-		ReplyMail:   plexams.email.replyMail,
-		NoreplyMail: plexams.email.noreplyMail,
-		PlanerName:  plexams.planer.Name,
-		PlanerEmail: plexams.planer.Email,
+		Server:       plexams.email.server,
+		Port:         plexams.email.port,
+		Username:     plexams.email.username,
+		Password:     plexams.email.password,
+		TestMail:     plexams.email.testMail,
+		CC:           plexams.email.cc,
+		ReplyMail:    plexams.email.replyMail,
+		NoreplyMail:  plexams.email.noreplyMail,
+		NoreplyName:  plexams.email.noreplyName,
+		EnvelopeFrom: plexams.email.envelopeFrom,
+		PlanerName:   plexams.planer.Name,
+		PlanerEmail:  plexams.planer.Email,
 	})
 
 	var annyDB anny.DB
@@ -207,7 +225,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		if planer, err := plexams.dbClient.GetPlaner(ctx); err != nil {
 			log.Error().Err(err).Msg("cannot read planer from db")
 		} else if planer != nil {
-			plexams.applyPlaner(planer.Name, planer.Email)
+			plexams.applyPlaner(planer)
 		}
 	}
 

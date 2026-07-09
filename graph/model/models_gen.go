@@ -947,6 +947,14 @@ type PreplanProgramConflict struct {
 	Modules        []string `json:"modules"`
 }
 
+type PreplanRule struct {
+	Kind PreplanRuleKind `json:"kind"`
+	// Short German title.
+	Title string `json:"title"`
+	// One- or two-sentence German explanation, including the relevant values.
+	Description string `json:"description"`
+}
+
 type PreplanSameSlotGroup struct {
 	Members []*PreplanSameSlotMember `json:"members"`
 	// true when every member is connected (the same-slot is fully carried over to the ZPA exams).
@@ -1510,6 +1518,63 @@ func (e *PlanningGate) UnmarshalJSON(b []byte) error {
 }
 
 func (e PlanningGate) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type PreplanRuleKind string
+
+const (
+	// Must always hold; a plan violating it is invalid.
+	PreplanRuleKindHard PreplanRuleKind = "HARD"
+	// Optimization goal; the solver trades these off (weighted).
+	PreplanRuleKindSoft PreplanRuleKind = "SOFT"
+)
+
+var AllPreplanRuleKind = []PreplanRuleKind{
+	PreplanRuleKindHard,
+	PreplanRuleKindSoft,
+}
+
+func (e PreplanRuleKind) IsValid() bool {
+	switch e {
+	case PreplanRuleKindHard, PreplanRuleKindSoft:
+		return true
+	}
+	return false
+}
+
+func (e PreplanRuleKind) String() string {
+	return string(e)
+}
+
+func (e *PreplanRuleKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = PreplanRuleKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid PreplanRuleKind", str)
+	}
+	return nil
+}
+
+func (e PreplanRuleKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *PreplanRuleKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e PreplanRuleKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

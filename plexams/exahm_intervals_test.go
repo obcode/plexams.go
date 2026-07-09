@@ -1,7 +1,6 @@
 package plexams
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -144,64 +143,5 @@ func TestExahmWindowSeats(t *testing.T) {
 	}
 	if got := exahmWindowSeats(full, true, day(10, 30), mins(90), mins(30), mins(30)); got != 45 {
 		t.Errorf("full window seats = %d, want 45", got)
-	}
-}
-
-func TestPackExamsIntoRooms(t *testing.T) {
-	mins := func(m int) time.Duration { return time.Duration(m) * time.Minute }
-	oneRoom := []bookedRoomInterval{{room: "T3.023", from: day(14, 0), until: day(18, 30), exahm: true, seats: 30}}
-	// three 30-seat EXaHM rooms booked 08:00–10:30 (covering the 08:30 slot window).
-	threeRooms := []bookedRoomInterval{
-		{room: "T3.015", from: day(8, 0), until: day(10, 30), exahm: true, seats: 30},
-		{room: "T3.016", from: day(8, 0), until: day(10, 30), exahm: true, seats: 30},
-		{room: "T3.017", from: day(8, 0), until: day(10, 30), exahm: true, seats: 30},
-	}
-
-	tests := []struct {
-		name       string
-		exams      []packExam
-		intervals  []bookedRoomInterval
-		wantFailed []int
-	}{
-		{
-			"two 90-min exams share one room back-to-back (14:30 & 16:30)",
-			[]packExam{
-				{id: 1, seats: 30, exahm: true, start: day(14, 30), dur: mins(90), pre: mins(30), post: mins(30)},
-				{id: 2, seats: 30, exahm: true, start: day(16, 30), dur: mins(90), pre: mins(30), post: mins(30)},
-			},
-			oneRoom, nil,
-		},
-		{
-			"two exams at the SAME time need two rooms — only one booked → one fails",
-			[]packExam{
-				{id: 1, seats: 30, exahm: true, start: day(14, 30), dur: mins(90), pre: mins(30), post: mins(30)},
-				{id: 2, seats: 30, exahm: true, start: day(14, 30), dur: mins(90), pre: mins(30), post: mins(30)},
-			},
-			oneRoom, []int{2},
-		},
-		{
-			"over-pack: 20 + 100 students in three 30-seat rooms → the 100 cannot fit",
-			[]packExam{
-				{id: 1, seats: 20, exahm: true, start: day(8, 30), dur: mins(90), pre: mins(30), post: mins(30)},
-				{id: 2, seats: 100, exahm: true, start: day(8, 30), dur: mins(90), pre: mins(30), post: mins(30)},
-			},
-			threeRooms, []int{2},
-		},
-		{
-			"fits: 20 + 60 in three rooms (one + two rooms)",
-			[]packExam{
-				{id: 1, seats: 20, exahm: true, start: day(8, 30), dur: mins(90), pre: mins(30), post: mins(30)},
-				{id: 2, seats: 60, exahm: true, start: day(8, 30), dur: mins(90), pre: mins(30), post: mins(30)},
-			},
-			threeRooms, nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := packExamsIntoRooms(tt.exams, tt.intervals)
-			if fmt.Sprint(got) != fmt.Sprint(tt.wantFailed) {
-				t.Errorf("packExamsIntoRooms() failed = %v, want %v", got, tt.wantFailed)
-			}
-		})
 	}
 }

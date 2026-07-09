@@ -170,6 +170,69 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 		// is no longer reported as a finding here.
 	}
 
+	// Capacity over time: the simultaneously-occupied EXaHM/total booked seats (exam time
+	// plus setup/teardown) must stay within the booking at every instant. Catches a long or
+	// override exam whose setup reaches back into the previous slot (Embedded Computing needs
+	// its rooms from 09:30 while the 08:30 exams still hold them until 10:15) — which the
+	// per-slot seat sums miss. Rooms may be shared, so this is an aggregate seat count.
+	{
+		cumExams := make([]cumExam, 0, len(preExams))
+		moduleByID := make(map[int]string, len(preExams))
+		for _, pe := range preExams {
+			if pe.PlannedStarttime == nil {
+				continue
+			}
+			moduleByID[pe.ID] = pe.Module
+			occPre, occPost := exahmOccBuffers(pe.Constraints)
+			st := *pe.PlannedStarttime
+			cumExams = append(cumExams, cumExam{
+				id: pe.ID, seats: pe.ExpectedStudents, exahm: pe.ExamKind == "EXaHM",
+				from: st.Add(-occPre), to: st.Add(preplanExamDuration(pe, blockDur) + occPost),
+			})
+		}
+		// merge contiguous overload intervals for readable messages
+		merged := make([]cumOverload, 0)
+		for _, ov := range cumulativeOverloads(cumExams, exahmIntervals, false) {
+			if k := len(merged) - 1; k >= 0 && merged[k].exahm == ov.exahm && !ov.from.After(merged[k].to) {
+				if ov.to.After(merged[k].to) {
+					merged[k].to = ov.to
+				}
+				if ov.demand > merged[k].demand {
+					merged[k].demand = ov.demand
+				}
+				seen := make(map[int]bool)
+				for _, id := range merged[k].examIDs {
+					seen[id] = true
+				}
+				for _, id := range ov.examIDs {
+					if !seen[id] {
+						merged[k].examIDs = append(merged[k].examIDs, id)
+					}
+				}
+				continue
+			}
+			merged = append(merged, ov)
+		}
+		for _, ov := range merged {
+			kind := "EXaHM"
+			if !ov.exahm {
+				kind = "EXaHM+SEB"
+			}
+			mods := make([]string, 0, len(ov.examIDs))
+			seen := make(map[string]bool)
+			for _, id := range ov.examIDs {
+				if m := moduleByID[id]; m != "" && !seen[m] {
+					mods = append(mods, m)
+					seen[m] = true
+				}
+			}
+			addFinding(model.ValidationLevelError,
+				"%s %s–%s: %s %d Plätze gleichzeitig belegt, nur %d gebucht — überlappende Vor-/Nachläufe (%s)",
+				weekdaysDE[int(ov.from.Weekday())], ov.from.Format("02.01. 15:04"), ov.to.Format("15:04"),
+				kind, ov.demand, ov.seats, joinStrings(mods))
+		}
+	}
+
 	assignedCount := len(preExams) - len(unassigned)
 	messages := make([]string, len(findings))
 	ok := true
@@ -447,7 +510,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		// seats — rooms booked too short do not count. EXaHM needs EXaHM rooms; SEB accepts
 		// EXaHM or SEB rooms. An empty set leaves the unit unplaced (small SEB then fall back
 		// to the R-building, others are reported by validatePreplan).
-		var uDur, uPre, uPost time.Duration
+		var uDur, uPre, uPost, uOccPre, uOccPost time.Duration
 		for _, i := range members {
 			pe := preExams[i]
 			if d := preplanExamDuration(pe, blockDur); d > uDur {
@@ -459,6 +522,13 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 			}
 			if po > uPost {
 				uPost = po
+			}
+			opr, opo := exahmOccBuffers(pe.Constraints)
+			if opr > uOccPre {
+				uOccPre = opr
+			}
+			if opo > uOccPost {
+				uOccPost = opo
 			}
 		}
 		windowOK := make(map[int]bool)
@@ -473,7 +543,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 			members: members, seats: seats, programs: programs,
 			hasExahm: hasExahm, dropCost: dropCost, minID: minID,
 			allowedSlots: allowedSlots,
-			dur:          uDur, pre: uPre, post: uPost,
+			dur:          uDur, occPre: uOccPre, occPost: uOccPost,
 		})
 		solveMembers = append(solveMembers, members)
 	}
@@ -529,7 +599,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 	}
 
-	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs)
+	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs, exahmIntervals)
 	for u, members := range solveMembers {
 		var ps *preplanSlot
 		if assign[u] >= 0 {

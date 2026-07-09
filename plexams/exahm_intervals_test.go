@@ -145,3 +145,30 @@ func TestExahmWindowSeats(t *testing.T) {
 		t.Errorf("full window seats = %d, want 45", got)
 	}
 }
+
+func TestCumulativeOverloads(t *testing.T) {
+	// exam A (default 30/30, shared → 15 occupancy) at 08:30, 90 min → occ [08:15, 10:15].
+	a := cumExam{id: 1, seats: 30, exahm: true, from: day(8, 15), to: day(10, 15)}
+	// exam B (Embedded-like, override 60/60 → full occupancy) at 10:30, 120 min → occ
+	// [09:30, 13:30]; its setup reaches back into A's teardown (overlap [09:30, 10:15]).
+	b := cumExam{id: 2, seats: 30, exahm: true, from: day(9, 30), to: day(13, 30)}
+
+	oneRoom := []bookedRoomInterval{{from: day(8, 0), until: day(14, 0), exahm: true, seats: 30}}
+	twoRooms := []bookedRoomInterval{
+		{from: day(8, 0), until: day(14, 0), exahm: true, seats: 30},
+		{from: day(8, 0), until: day(14, 0), exahm: true, seats: 30},
+	}
+
+	// one 30-seat room: during [09:30,10:15] both need it (60 > 30) → overload.
+	if ov := cumulativeOverloads([]cumExam{a, b}, oneRoom, true); len(ov) == 0 {
+		t.Error("expected a cumulative overload when a long exam overlaps the previous slot in one room")
+	}
+	// two rooms (60 seats): 30+30 fit simultaneously → no overload.
+	if ov := cumulativeOverloads([]cumExam{a, b}, twoRooms, false); len(ov) != 0 {
+		t.Errorf("did not expect an overload with two rooms, got %+v", ov)
+	}
+	// A alone in one room → no overload.
+	if ov := cumulativeOverloads([]cumExam{a}, oneRoom, false); len(ov) != 0 {
+		t.Errorf("did not expect an overload for a single exam, got %+v", ov)
+	}
+}

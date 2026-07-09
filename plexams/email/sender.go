@@ -37,11 +37,16 @@ type SMTPConfig struct {
 	// and the planner override are empty, effectiveNoreplyName falls back to
 	// defaultNoreplyName.
 	NoreplyName string
-	// EnvelopeFrom, when set, is the SMTP envelope sender (MAIL FROM / Return-Path),
-	// decoupled from the visible From header. Use it to send through a shared account
-	// (e.g. noreply@hm.edu, which must match the SMTP-authenticated user) while keeping
-	// the planner's address as From. Bounces then go to this address; SPF checks the
-	// domain here. Empty means go-mail uses the From header as the envelope sender.
+	// FromAddress, when set, is the address used in the From header — the account mails are
+	// sent AS. Use it when the SMTP server only allows sending as the authenticated account
+	// (e.g. a shared noreply@hm.edu that lacks "Send-As" for the planner): the From address
+	// becomes this account while the planner's NAME stays the From display name and the
+	// planner's address becomes the Reply-To. Empty falls back to EnvelopeFrom, then the
+	// planner email (legacy: From = planner).
+	FromAddress string
+	// EnvelopeFrom, when set, is the SMTP envelope sender (MAIL FROM / Return-Path). It is
+	// usually the same shared account as FromAddress. Empty falls back to FromAddress; if
+	// both are empty go-mail uses the From header as the envelope sender.
 	EnvelopeFrom string
 	PlanerName   string
 	PlanerEmail  string
@@ -105,6 +110,18 @@ func (s *Sender) mailHostname() string {
 	return firstNonEmpty(s.cfg.Hostname, defaultMailHostname)
 }
 
+// fromAddress is the address in the From header: the configured send-as account, else the
+// envelope sender, else the planner email (legacy From = planner).
+func (s *Sender) fromAddress() string {
+	return firstNonEmpty(s.cfg.FromAddress, s.cfg.EnvelopeFrom, s.cfg.PlanerEmail)
+}
+
+// envelopeSender is the SMTP envelope sender (MAIL FROM): the configured EnvelopeFrom, else
+// the send-as account. Empty means let go-mail use the From header.
+func (s *Sender) envelopeSender() string {
+	return firstNonEmpty(s.cfg.EnvelopeFrom, s.cfg.FromAddress)
+}
+
 // DefaultMail is the derived default for the dry-run recipient and Cc: the planner email
 // with a +plexams tag (oliver.braun@hm.edu → oliver.braun+plexams@hm.edu). Empty when no
 // valid planner email is set.
@@ -159,22 +176,26 @@ func (s *Sender) newClient() (*mail.Client, error) {
 	)
 }
 
-// buildMsg assembles a go-mail message (From = planner, optional Envelope-From per config,
-// Reply-To per jira).
+// buildMsg assembles a go-mail message. From = the send-as account (FromAddress →
+// EnvelopeFrom → planner) with the planner's NAME as display name; the planner's address is
+// the non-JIRA Reply-To. Envelope-From and Reply-To (JIRA vs. not) follow the config.
 func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool) (*mail.Msg, error) {
 	msg := mail.NewMsg()
 	if strings.TrimSpace(s.cfg.PlanerEmail) == "" {
 		return nil, fmt.Errorf("no planner set: From address is empty — set the planner (name + email) " +
 			"via the GUI (setPlaner) or planer.name/planer.email in config")
 	}
-	if err := msg.FromFormat(s.cfg.PlanerName, s.cfg.PlanerEmail); err != nil {
-		return nil, fmt.Errorf("invalid From address %q <%s>: %w", s.cfg.PlanerName, s.cfg.PlanerEmail, err)
+	// From is the send-as account with the planner's name; sending as a shared account (e.g.
+	// noreply@hm.edu) is required by servers that forbid From ≠ authenticated user. The
+	// planner stays reachable via Reply-To (set below).
+	if err := msg.FromFormat(s.cfg.PlanerName, s.fromAddress()); err != nil {
+		return nil, fmt.Errorf("invalid From address %q <%s>: %w", s.cfg.PlanerName, s.fromAddress(), err)
 	}
-	// An explicit envelope sender (MAIL FROM) decoupled from the visible From: go-mail's
-	// GetSender prefers HeaderEnvelopeFrom and only falls back to From when it is unset.
-	if strings.TrimSpace(s.cfg.EnvelopeFrom) != "" {
-		if err := msg.EnvelopeFrom(s.cfg.EnvelopeFrom); err != nil {
-			return nil, fmt.Errorf("invalid Envelope-From address %q: %w", s.cfg.EnvelopeFrom, err)
+	// Explicit envelope sender (MAIL FROM / Return-Path). go-mail's GetSender prefers
+	// HeaderEnvelopeFrom and only falls back to From when it is unset.
+	if env := s.envelopeSender(); env != "" {
+		if err := msg.EnvelopeFrom(env); err != nil {
+			return nil, fmt.Errorf("invalid Envelope-From address %q: %w", env, err)
 		}
 	}
 	// Set the Message-ID with a real FQDN domain. Otherwise go-mail derives it from

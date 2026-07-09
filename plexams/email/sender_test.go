@@ -48,6 +48,47 @@ func TestPlusPlexams(t *testing.T) {
 	}
 }
 
+func TestBuildMsgSendAsAccount(t *testing.T) {
+	// Legacy: no send-as account -> From is the planner.
+	s := NewSender(SMTPConfig{PlanerName: "Oliver Braun", PlanerEmail: "oliver.braun@hm.edu"})
+	if got, want := s.fromAddress(), "oliver.braun@hm.edu"; got != want {
+		t.Errorf("legacy fromAddress = %q, want %q", got, want)
+	}
+	if s.envelopeSender() != "" {
+		t.Errorf("legacy envelopeSender = %q, want empty", s.envelopeSender())
+	}
+
+	// Envelope account configured -> From address becomes the account, envelope matches,
+	// while the planner name (From display) and Reply-To carry the planner identity.
+	s2 := NewSender(SMTPConfig{PlanerName: "Oliver Braun", PlanerEmail: "oliver.braun@hm.edu", EnvelopeFrom: "noreply@hm.edu"})
+	if got, want := s2.fromAddress(), "noreply@hm.edu"; got != want {
+		t.Errorf("fromAddress = %q, want %q", got, want)
+	}
+	if got, want := s2.envelopeSender(), "noreply@hm.edu"; got != want {
+		t.Errorf("envelopeSender = %q, want %q", got, want)
+	}
+	if got, want := s2.nonJiraReplyTo(), "oliver.braun@hm.edu"; got != want {
+		t.Errorf("nonJiraReplyTo = %q, want %q", got, want)
+	}
+	msg, err := s2.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false)
+	if err != nil {
+		t.Fatalf("buildMsg: %v", err)
+	}
+	from := msg.GetFromString()
+	if len(from) != 1 || !strings.Contains(from[0], "<noreply@hm.edu>") || !strings.Contains(from[0], "Oliver Braun") {
+		t.Errorf("From = %v, want \"Oliver Braun\" <noreply@hm.edu>", from)
+	}
+
+	// Explicit FromAddress overrides; EnvelopeFrom can still differ (escape hatch).
+	s3 := NewSender(SMTPConfig{PlanerEmail: "oliver.braun@hm.edu", FromAddress: "planner@hm.edu", EnvelopeFrom: "bounce@hm.edu"})
+	if got, want := s3.fromAddress(), "planner@hm.edu"; got != want {
+		t.Errorf("explicit fromAddress = %q, want %q", got, want)
+	}
+	if got, want := s3.envelopeSender(), "bounce@hm.edu"; got != want {
+		t.Errorf("explicit envelopeSender = %q, want %q", got, want)
+	}
+}
+
 func TestEffectiveResolution_DefaultsFromPlanerEmail(t *testing.T) {
 	s := NewSender(SMTPConfig{PlanerEmail: "oliver.braun@hm.edu"})
 	s.SetPlaner("Oliver Braun", "oliver.braun@hm.edu", "", "", "", "")

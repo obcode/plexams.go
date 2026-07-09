@@ -112,6 +112,11 @@ type Email struct {
 	// noreplyName is the display name for the JIRA-answered Reply-To (smtp.noreplyname);
 	// falls back to a default name when empty.
 	noreplyName string
+	// fromAddress, when set, is the address mails are sent AS in the From header
+	// (smtp.fromaddress) — for servers that only allow sending as the authenticated
+	// account. The planner's name stays the From display name, the planner's address the
+	// Reply-To. Empty falls back to envelopeFrom, then the planner email.
+	fromAddress string
 	// envelopeFrom, when set, is the SMTP envelope sender (MAIL FROM / Return-Path),
 	// decoupled from the visible From (smtp.envelopefrom). Lets us send through a shared
 	// account (e.g. noreply@hm.edu, matching the SMTP-authenticated user) while keeping
@@ -178,6 +183,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			replyMail:    viper.GetString("smtp.replymail"),
 			noreplyMail:  viper.GetString("smtp.noreplymail"),
 			noreplyName:  viper.GetString("smtp.noreplyname"),
+			fromAddress:  viper.GetString("smtp.fromaddress"),
 			envelopeFrom: viper.GetString("smtp.envelopefrom"),
 		},
 		guard: &opGuard{},
@@ -193,6 +199,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		ReplyMail:    plexams.email.replyMail,
 		NoreplyMail:  plexams.email.noreplyMail,
 		NoreplyName:  plexams.email.noreplyName,
+		FromAddress:  plexams.email.fromAddress,
 		EnvelopeFrom: plexams.email.envelopeFrom,
 		PlanerName:   plexams.planer.Name,
 		PlanerEmail:  plexams.planer.Email,

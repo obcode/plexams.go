@@ -14,6 +14,16 @@ import (
 // fill the booked rooms completely (no reserve).
 const preplanCapacityFactor = 1.0
 
+// weekdaysDE maps time.Weekday (Sunday=0) to the German two-letter abbreviation.
+var weekdaysDE = [...]string{"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"}
+
+// slotLabelDE renders a slot start time as e.g. "Do 16.07. 10:30" with the correct German
+// weekday. (Go's reference layout uses "Mon"/"Monday"; a literal "Mo" would print every day
+// as Monday.)
+func slotLabelDE(t time.Time) string {
+	return weekdaysDE[int(t.Weekday())] + " " + t.Format("02.01. 15:04")
+}
+
 // ValidatePreplanAssignment checks the current slot assignment of the pre-exams:
 // unassigned exams, per-slot/kind capacity overflow, and study programs shared by
 // more than one exam in the same slot. ok is true when there are no findings.
@@ -140,7 +150,7 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 				if seats := exahmWindowSeats(exahmIntervals, isExahm, key, dur, pre, post); seats < pe.ExpectedStudents {
 					addFinding(model.ValidationLevelError,
 						"Slot %s: %s %s braucht die Räume %s–%s für %d Plätze (%d min + %d/%d min Puffer), aber gebuchte %s-Räume, die dieses Fenster abdecken, bieten nur %d Plätze",
-						key.Format("Mo 02.01. 15:04"), pe.ExamKind, pe.Module,
+						slotLabelDE(key), pe.ExamKind, pe.Module,
 						key.Add(-pre).Format("15:04"), key.Add(dur+post).Format("15:04"),
 						pe.ExpectedStudents, int(dur.Minutes()), int(pre.Minutes()), int(post.Minutes()), pe.ExamKind, seats)
 				}
@@ -183,7 +193,7 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 			if pe := examByID[id]; pe != nil {
 				addFinding(model.ValidationLevelError,
 					"Slot %s: %s %s passt nicht mehr in die gebuchten Räume — zu viele Prüfungen mit überlappenden Vor-/Nachläufen (ganze Räume je Prüfung)",
-					pe.PlannedStarttime.Format("Mo 02.01. 15:04"), pe.ExamKind, pe.Module)
+					slotLabelDE(*pe.PlannedStarttime), pe.ExamKind, pe.Module)
 			}
 		}
 	}
@@ -214,7 +224,7 @@ func kindBookingFindings(key time.Time, kind string, needed, available int, room
 	if needed == 0 {
 		return nil
 	}
-	slotLabel := key.Format("Mo 02.01. 15:04")
+	slotLabel := slotLabelDE(key)
 	if needed > available {
 		return []*model.PreplanFinding{{
 			Level: model.ValidationLevelError,

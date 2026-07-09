@@ -2,7 +2,9 @@ package email
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -16,6 +18,11 @@ type SMTPConfig struct {
 	Port     int
 	Username string
 	Password string
+	// Hostname is the fully-qualified name of the sending host, used for the SMTP HELO/EHLO
+	// greeting and as the Message-ID domain. Without it go-mail derives both from
+	// os.Hostname() (e.g. "docker-desktop" in a container), which strict mail servers reject
+	// (554 5.7.1). Empty falls back to defaultMailHostname.
+	Hostname string
 	// TestMail receives all dry-run sends (run == false); falls back to PlanerEmail.
 	TestMail string
 	// CC is added to the Cc of every real send (a shared/filterable mailbox).
@@ -53,6 +60,9 @@ type Attachment struct {
 const (
 	defaultNoreplyMail = "noreply+plexams@hm.edu"
 	defaultNoreplyName = "Prüfungsplanung FK07 (NOREPLY)"
+	// defaultMailHostname is the FQDN used for the HELO/EHLO greeting and the Message-ID
+	// domain when SMTPConfig.Hostname is empty (this is the host plexams runs on).
+	defaultMailHostname = "plexams.cs.hm.edu"
 )
 
 // Sender sends mails over SMTP and supports a dry-run collector that bundles a whole batch
@@ -87,6 +97,12 @@ func (s *Sender) SetPlaner(name, email, testMail, cc, noreplyMail, noreplyName s
 	s.planerCC = strings.TrimSpace(cc)
 	s.planerNoreplyMail = strings.TrimSpace(noreplyMail)
 	s.planerNoreplyName = strings.TrimSpace(noreplyName)
+}
+
+// mailHostname is the FQDN used for the HELO/EHLO greeting and the Message-ID domain:
+// the configured hostname, or defaultMailHostname.
+func (s *Sender) mailHostname() string {
+	return firstNonEmpty(s.cfg.Hostname, defaultMailHostname)
 }
 
 // DefaultMail is the derived default for the dry-run recipient and Cc: the planner email
@@ -131,6 +147,7 @@ func (s *Sender) DryRunOverride() (string, bool) {
 func (s *Sender) newClient() (*mail.Client, error) {
 	return mail.NewClient(s.cfg.Server,
 		mail.WithPort(s.cfg.Port),
+		mail.WithHELO(s.mailHostname()),
 		mail.WithSMTPAuth(mail.SMTPAuthPlain),
 		mail.WithUsername(s.cfg.Username),
 		mail.WithPassword(s.cfg.Password),
@@ -160,6 +177,10 @@ func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, at
 			return nil, fmt.Errorf("invalid Envelope-From address %q: %w", s.cfg.EnvelopeFrom, err)
 		}
 	}
+	// Set the Message-ID with a real FQDN domain. Otherwise go-mail derives it from
+	// os.Hostname() (e.g. "docker-desktop" in a container), which strict mail servers reject
+	// with 554 5.7.1 ("does not meet our delivery requirements").
+	msg.SetMessageIDWithValue(newMessageID(s.mailHostname()))
 	if err := msg.To(to...); err != nil {
 		return nil, fmt.Errorf("invalid To address(es) %v: %w", to, err)
 	}
@@ -362,6 +383,14 @@ func firstNonEmpty(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+// newMessageID builds an RFC 5322 Message-ID value ("<random@host>", without the angle
+// brackets go-mail adds) using a cryptographically random local part and the given host.
+func newMessageID(host string) string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b) // crypto/rand.Read effectively never fails
+	return hex.EncodeToString(b) + "@" + host
 }
 
 // plusPlexams inserts a +plexams tag into the local part of an email address

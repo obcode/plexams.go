@@ -95,6 +95,9 @@ type Email struct {
 	port     int
 	username string
 	password string
+	// hostname is the FQDN used for the SMTP HELO/EHLO and the Message-ID domain
+	// (smtp.hostname); falls back to a default host when empty.
+	hostname string
 	// testMail is the recipient used for dry-run sends (run == false). Configured
 	// via smtp.testmail; falls back to the planner's address when empty.
 	testMail string
@@ -169,6 +172,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			port:         viper.GetInt("smtp.server.port"),
 			username:     viper.GetString("smtp.username"),
 			password:     viper.GetString("smtp.password"),
+			hostname:     viper.GetString("smtp.hostname"),
 			testMail:     viper.GetString("smtp.testmail"),
 			cc:           viper.GetString("smtp.cc"),
 			replyMail:    viper.GetString("smtp.replymail"),
@@ -183,6 +187,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		Port:         plexams.email.port,
 		Username:     plexams.email.username,
 		Password:     plexams.email.password,
+		Hostname:     plexams.email.hostname,
 		TestMail:     plexams.email.testMail,
 		CC:           plexams.email.cc,
 		ReplyMail:    plexams.email.replyMail,

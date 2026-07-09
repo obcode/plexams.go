@@ -110,7 +110,7 @@ func (p *Plexams) SwitchSemester(ctx context.Context, name, semesterOverride str
 	if planer, err := p.dbClient.GetPlaner(ctx); err != nil {
 		log.Error().Err(err).Msg("cannot reload planer after switch")
 	} else if planer != nil {
-		p.applyPlaner(planer.Name, planer.Email)
+		p.applyPlaner(planer)
 	}
 
 	p.RememberActiveSemester(ctx)

@@ -11,11 +11,26 @@ import (
 )
 
 // SetPlaner is the resolver for the setPlaner field.
-func (r *mutationResolver) SetPlaner(ctx context.Context, name string, email string) (*model.Planer, error) {
-	return r.plexams.SetPlaner(ctx, name, email)
+func (r *mutationResolver) SetPlaner(ctx context.Context, name string, email string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) (*model.Planer, error) {
+	return r.plexams.SetPlaner(ctx, name, email, testMail, cc, noreplyMail, noreplyName)
+}
+
+// SetDryRunTestMail is the resolver for the setDryRunTestMail field.
+func (r *mutationResolver) SetDryRunTestMail(ctx context.Context, email string) (*model.DryRunTestMailStatus, error) {
+	return r.plexams.SetDryRunTestMail(ctx, email)
+}
+
+// ResetDryRunTestMail is the resolver for the resetDryRunTestMail field.
+func (r *mutationResolver) ResetDryRunTestMail(ctx context.Context) (*model.DryRunTestMailStatus, error) {
+	return r.plexams.ResetDryRunTestMail(ctx)
 }
 
 // Planer is the resolver for the planer field.
 func (r *queryResolver) Planer(ctx context.Context) (*model.Planer, error) {
 	return r.plexams.GetPlaner(ctx)
+}
+
+// DryRunTestMail is the resolver for the dryRunTestMail field.
+func (r *queryResolver) DryRunTestMail(ctx context.Context) (*model.DryRunTestMailStatus, error) {
+	return r.plexams.DryRunTestMailStatus(), nil
 }

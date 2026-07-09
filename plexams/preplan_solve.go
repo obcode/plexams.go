@@ -61,10 +61,11 @@ type preplanUnit struct {
 	hasExahm bool
 	dropCost int
 	minID    int
-	// window parameters (max over members) for room packing: exam duration and the
-	// setup/teardown buffer. A unit's exams must fit into DISTINCT booked rooms covering
-	// [start-pre, start+dur+post]; see packExamsIntoRooms.
-	dur, pre, post time.Duration
+	// occupancy window (max over members) for the capacity-over-time check: the exam
+	// duration and the OCCUPANCY buffers (shared half for default, full for an override).
+	// The unit keeps its rooms busy during [start-occPre, start+dur+occPost]; see
+	// cumulativeOverloads.
+	dur, occPre, occPost time.Duration
 	// allowedSlots restricts the unit to a subset of slot indices (nil = any slot).
 	// Used so MUC.DAI exams (programs DE/GS/ID) only land in MUC.DAI slots.
 	allowedSlots map[int]bool
@@ -101,7 +102,7 @@ func proximityPenalty(a, b *preplanSlot, p0 int) int {
 // solvePreplan distributes the units over the candidate slots. fixedUsed/fixedProgs
 // hold the seats and programs of pinned exams already occupying each slot. It returns,
 // per unit, the slot index it was assigned to, or -1 when it could not be placed.
-func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, fixedProgs []map[string]bool) []int {
+func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, fixedProgs []map[string]bool, intervals []bookedRoomInterval) []int {
 	n := len(units)
 	assign := make([]int, n)
 	for i := range assign {
@@ -109,6 +110,34 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 	}
 	if n == 0 || len(slots) == 0 {
 		return assign
+	}
+
+	// cumFeasible reports whether the whole assignment (optionally with unit extraU tentatively
+	// at slot extraS) keeps the simultaneously-occupied EXaHM/total booked seats within the
+	// booking at every instant. Rooms may be shared (aggregate seats), but a long exam whose
+	// setup/teardown reaches into a neighbouring slot competes for seats there — this is the
+	// hard cross-slot capacity constraint (see cumulativeOverloads).
+	cumExamOf := func(u, s int) cumExam {
+		st := slots[s].start
+		return cumExam{
+			id: u, seats: units[u].seats, exahm: units[u].hasExahm,
+			from: st.Add(-units[u].occPre), to: st.Add(units[u].dur + units[u].occPost),
+		}
+	}
+	cumFeasible := func(a []int, extraU, extraS int) bool {
+		if len(intervals) == 0 {
+			return true // no bookings loaded → fall back to the aggregate seat bound only
+		}
+		exams := make([]cumExam, 0, len(a)+1)
+		for v, sv := range a {
+			if sv >= 0 {
+				exams = append(exams, cumExamOf(v, sv))
+			}
+		}
+		if extraU >= 0 {
+			exams = append(exams, cumExamOf(extraU, extraS))
+		}
+		return len(cumulativeOverloads(exams, intervals, true)) == 0
 	}
 
 	// units sharing a study program conflict softly; merge with any explicit conflicts
@@ -152,7 +181,12 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 		// Rooms may be shared between exams, so capacity is the aggregate booked seats of the
 		// slot (a 10-student exam does not block a whole 30-seat room). Each exam's window is
 		// covered per unit via allowedSlots (exahmWindowSeats), so booking length is honoured.
-		return used[s]+units[u].seats <= slots[s].capacity
+		if used[s]+units[u].seats > slots[s].capacity {
+			return false
+		}
+		// cross-slot: the exam's occupancy (incl. buffers) must not overload the booked seats
+		// at any instant — a long/override exam competes with the neighbouring slots too.
+		return cumFeasible(assign, u, s)
 	}
 
 	// --- DSATUR constructive pass: most constrained / most important unit first ---
@@ -213,7 +247,7 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 	// is refined by ejecting/relocating units to free capacity and spread conflicting
 	// exams. Cost, moves and construction stay pre-plan specific; only the annealing
 	// loop is the generic one.
-	model := &preplanModel{units: units, slots: slots, assign: assign, cost: cost, occupancy: occupancy}
+	model := &preplanModel{units: units, slots: slots, assign: assign, cost: cost, occupancy: occupancy, feasible: cumFeasible}
 	opts := optimize.DefaultOptions()
 	opts.Iterations = preplanSAIterations
 	opts.StartTemp = preplanSAStartTemp
@@ -234,6 +268,7 @@ type preplanModel struct {
 	assign    []int
 	cost      func([]int) float64
 	occupancy func([]int) ([]int, [][]int)
+	feasible  func([]int, int, int) bool
 }
 
 func (m *preplanModel) Cost() float64 { return m.cost(m.assign) }
@@ -242,6 +277,11 @@ func (m *preplanModel) Restore(s any) { copy(m.assign, s.([]int)) }
 func (m *preplanModel) Propose(rng *rand.Rand) func() {
 	before := append([]int(nil), m.assign...)
 	if !proposeMove(m.assign, rng, m.units, m.slots, m.occupancy) {
+		return nil
+	}
+	// reject moves that overload the booked seats at any instant (cross-slot buffer overlap).
+	if m.feasible != nil && !m.feasible(m.assign, -1, -1) {
+		copy(m.assign, before)
 		return nil
 	}
 	return func() { copy(m.assign, before) }

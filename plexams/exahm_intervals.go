@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -137,6 +138,114 @@ func intersectSlotSet(a, b map[int]bool) map[int]bool {
 	for k := range a {
 		if b[k] {
 			out[k] = true
+		}
+	}
+	return out
+}
+
+// exahmOccBuffers returns the room-OCCUPANCY buffers used for the capacity-over-time check
+// (how long an exam keeps its rooms busy for setup/teardown). A DEFAULT buffer is SHARED
+// between two of our own consecutive exams, so only half of it (15 min) counts as occupancy
+// and back-to-back slots abut; an OVERRIDDEN buffer (e.g. Embedded Computing's 60 min) is a
+// real, exclusive requirement and counts in full — its setup then reaches back into the
+// previous slot. Booking-coverage still uses the full buffers (exahmRoomBuffers).
+func exahmOccBuffers(constraints *model.Constraints) (pre, post time.Duration) {
+	pre, post = exahmDefaultBuffer/2, exahmDefaultBuffer/2
+	if constraints == nil || constraints.RoomConstraints == nil {
+		return pre, post
+	}
+	rc := constraints.RoomConstraints
+	if rc.PreExamMinutes != nil && *rc.PreExamMinutes > 0 {
+		pre = time.Duration(*rc.PreExamMinutes) * time.Minute
+	}
+	if rc.PostExamMinutes != nil && *rc.PostExamMinutes > 0 {
+		post = time.Duration(*rc.PostExamMinutes) * time.Minute
+	}
+	return pre, post
+}
+
+// cumExam is one placed exam for the capacity-over-time check: its seat demand, kind and the
+// absolute occupancy window [from, to] (exam time plus the occupancy buffers).
+type cumExam struct {
+	id       int
+	seats    int
+	exahm    bool
+	from, to time.Time
+}
+
+// cumOverload records that, during [from, to), the simultaneous demand of a kind exceeded the
+// booked seats available then. examIDs are the exams occupying rooms in that interval.
+type cumOverload struct {
+	exahm         bool
+	from, to      time.Time
+	demand, seats int
+	examIDs       []int
+}
+
+// cumulativeOverloads reports every time interval where the simultaneously-occupied EXaHM (or
+// total) seats exceed the booked seats available then — even across slots, so a long exam
+// whose setup reaches back into the previous slot (Embedded Computing needs its rooms from
+// 09:30 while the 08:30 exams still hold them until 10:15) is caught. Rooms may be shared, so
+// this is an aggregate seat count over time, not one exam per room. stopAtFirst returns after
+// the first overload (for the solver's yes/no feasibility). Raw per-interval records; the
+// caller may group them for reporting.
+func cumulativeOverloads(exams []cumExam, intervals []bookedRoomInterval, stopAtFirst bool) []cumOverload {
+	if len(exams) == 0 || len(intervals) == 0 {
+		return nil
+	}
+	seen := make(map[int64]time.Time)
+	add := func(t time.Time) { seen[t.UnixNano()] = t }
+	for _, e := range exams {
+		add(e.from)
+		add(e.to)
+	}
+	for _, iv := range intervals {
+		add(iv.from)
+		add(iv.until)
+	}
+	times := make([]time.Time, 0, len(seen))
+	for _, t := range seen {
+		times = append(times, t)
+	}
+	sort.Slice(times, func(i, j int) bool { return times[i].Before(times[j]) })
+
+	var out []cumOverload
+	for i := 0; i+1 < len(times); i++ {
+		mid := times[i].Add(times[i+1].Sub(times[i]) / 2)
+		exahmSeats, totalSeats := 0, 0
+		for _, iv := range intervals {
+			if iv.from.After(mid) || !iv.until.After(mid) {
+				continue
+			}
+			if iv.exahm {
+				exahmSeats += iv.seats
+				totalSeats += iv.seats
+			} else if iv.seb {
+				totalSeats += iv.sebSeats
+			}
+		}
+		exahmDem, totalDem := 0, 0
+		var ids []int
+		for _, e := range exams {
+			if e.from.After(mid) || !e.to.After(mid) {
+				continue
+			}
+			ids = append(ids, e.id)
+			if e.exahm {
+				exahmDem += e.seats
+			}
+			totalDem += e.seats
+		}
+		switch {
+		case exahmDem > exahmSeats:
+			out = append(out, cumOverload{true, times[i], times[i+1], exahmDem, exahmSeats, ids})
+		case totalDem > totalSeats:
+			out = append(out, cumOverload{false, times[i], times[i+1], totalDem, totalSeats, ids})
+		default:
+			continue
+		}
+		if stopAtFirst {
+			return out
 		}
 	}
 	return out

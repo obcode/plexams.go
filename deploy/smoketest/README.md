@@ -24,15 +24,24 @@ cp .env.example .env            # SERVER_NAME eintragen
 cp acme.env.example acme.env    # ACME-Directory-URL + EAB kid/hmac (von der IT)
 ```
 
+**Wichtig: `tls/` und `acme-webroot/` VOR `docker compose up` anlegen** — sonst legt
+Docker die Bind-Mount-Verzeichnisse als `root` an und acme.sh (als dein User) kann den
+Challenge-Token nicht hineinschreiben (`Permission denied`):
+```bash
+mkdir -p tls acme-webroot
+```
+
 **Henne-Ei:** nginx braucht beim Start ein Zertifikat, das es noch nicht gibt. Zuerst
 ein selbstsigniertes Platzhalter-Zertifikat anlegen (Browser zeigt dann kurz eine
 Warnung — das ersetzt Schritt 4):
 ```bash
-mkdir -p tls
 openssl req -x509 -newkey rsa:2048 -nodes -days 3 \
   -keyout tls/privkey.pem -out tls/fullchain.pem \
   -subj "/CN=$(grep '^SERVER_NAME=' .env | cut -d= -f2)"
 ```
+
+> Ist es schon zu spät und `acme-webroot/` gehört root? Dann einmalig
+> `sudo chown -R "$(id -un):$(id -gn)" tls acme-webroot`.
 
 Starten und echtes Zertifikat holen:
 ```bash
@@ -59,10 +68,12 @@ cd smoketest/2-login
 cp .env.example .env            # SERVER_NAME + OIDC-Client + Cookie-Secret (openssl rand -base64 32)
 cp acme.env.example acme.env
 ```
-Zertifikat: entweder das aus Schritt 1 nach `2-login/tls/` kopieren, oder den
-Henne-Ei-Bootstrap + `./acme-setup.sh` hier wiederholen.
+Verzeichnisse anlegen (wie in Schritt 1, vor `docker compose up`), dann Zertifikat:
+entweder das aus Schritt 1 nach `2-login/tls/` kopieren, oder den Henne-Ei-Bootstrap
++ `./acme-setup.sh` hier wiederholen.
 
 ```bash
+mkdir -p tls acme-webroot
 docker compose up -d
 ./acme-setup.sh                 # falls hier ein frisches Zertifikat nötig ist
 ```

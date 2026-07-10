@@ -67,14 +67,18 @@ Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** un
    ```
 
 3. **Erststart (Henne-Ei beim Zertifikat):** nginx lädt beim Start ein Zertifikat,
-   das es noch nicht gibt. Zuerst ein selbstsigniertes Platzhalter-Zertifikat anlegen,
-   damit nginx hochkommt und die HTTP-01-Challenge ausliefern kann:
+   das es noch nicht gibt. **`tls/` und `acme-webroot/` VOR `docker compose up`
+   anlegen** — sonst legt Docker die Bind-Mount-Verzeichnisse als `root` an und acme.sh
+   kann den Challenge-Token nicht hineinschreiben. Dann ein selbstsigniertes
+   Platzhalter-Zertifikat, damit nginx hochkommt und die HTTP-01-Challenge ausliefert:
    ```bash
-   mkdir -p tls
+   mkdir -p tls acme-webroot
    openssl req -x509 -newkey rsa:2048 -nodes -days 3 \
      -keyout tls/privkey.pem -out tls/fullchain.pem \
      -subj "/CN=$(grep '^SERVER_NAME=' .env | cut -d= -f2)"
    ```
+   > Schon zu spät und `acme-webroot/` gehört root?
+   > `sudo chown -R "$(id -un):$(id -gn)" tls acme-webroot`.
 
 4. **Stack starten**:
    ```bash

@@ -173,10 +173,10 @@ server:
 
 ## 5b. Auth / Rollen (Server-Deployment)
 
-Beim Betrieb hinter einem Auth-Proxy (Apache mit `mod_shib` **oder**
-`mod_auth_openidc`/OIDC gegen `sso.hm.edu`) authentifiziert das Backend **nicht**
-selbst — es vertraut der Identität, die der Proxy als Header setzt, und erzwingt die
-**Autorisierung** (Rollen) selbst. Details + fertige Vorlagen: [`../deploy/`](../deploy/).
+Beim Betrieb hinter einem Auth-Proxy (nginx + `oauth2-proxy`, OIDC gegen
+`sso.hm.edu`) authentifiziert das Backend **nicht** selbst — es vertraut der
+Identität, die der Proxy als Header setzt, und erzwingt die **Autorisierung** (Rollen)
+selbst. Details + fertige Vorlagen: [`../deploy/`](../deploy/).
 
 ```yaml
 auth:

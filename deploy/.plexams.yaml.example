@@ -16,9 +16,9 @@ db:
 server:
   port: "8080"
   # Production hardening: turns OFF the GraphQL playground and introspection, and
-  # makes "/" serve nothing (the GUI is served by apache). Keep true on the server.
+  # makes "/" serve nothing (the GUI is served by nginx). Keep true on the server.
   production: true
-  # The real HTTPS origin of the GUI (same host as apache). Used for CORS + websocket
+  # The real HTTPS origin of the GUI (same host as nginx). Used for CORS + websocket
   # origin checks. Must be the exact scheme+host the browser uses.
   allowedorigins:
     - https://plexams.example.hm.edu
@@ -26,7 +26,7 @@ server:
 # ============================================================
 # Authentication / authorization
 # ============================================================
-# The backend trusts the identity header the apache/OIDC proxy injects. It does NOT
+# The backend trusts the identity header the nginx/oauth2-proxy (OIDC) proxy injects. It does NOT
 # authenticate itself — so it must be reachable only via the proxy (compose: no
 # published port). Authorization (roles) IS enforced here.
 auth:
@@ -35,7 +35,7 @@ auth:
   enabled: true
 
   # Header the proxy sets with the verified identity (the OIDC "email" claim).
-  # Must match the apache RequestHeader directive. Default: X-Remote-User.
+  # Must match the nginx `proxy_set_header X-Remote-User` directive. Default: X-Remote-User.
   header: X-Remote-User
   displaynameHeader: X-Remote-Displayname
 

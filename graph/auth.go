@@ -36,7 +36,7 @@ type authProvider interface {
 
 // authMiddleware authenticates every HTTP request (GraphQL /query, the websocket
 // upgrade, and all REST upload/download routes) by trusting the identity the auth
-// proxy (Apache mod_shib or mod_auth_openidc) injects as a header, and authorizes it
+// proxy (nginx + oauth2-proxy, OIDC) injects as a header, and authorizes it
 // against the users allow-list. It injects the resolved *model.User into the request
 // context (propagated to resolvers, incl. subscriptions via the websocket base ctx).
 //

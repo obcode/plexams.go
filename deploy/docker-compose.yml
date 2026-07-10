@@ -1,17 +1,19 @@
-# plexams.go server deployment.
+# plexams.go server deployment — nginx + oauth2-proxy (OIDC against sso.hm.edu).
 #
 # Topology:
-#   internet ──443/TLS──> apache (OIDC via mod_auth_openidc + reverse proxy)
+#   internet ──443/TLS──> nginx
+#                           ├── auth_request → oauth2-proxy (OIDC handshake w/ sso.hm.edu)
+#                           ├── /oauth2/*    → oauth2-proxy (login/callback)
+#                           ├── sets X-Remote-User from the verified email claim
 #                           ├── /            → GUI static files (plexams.gui dist)
 #                           └── /query,/upload,/download → plexams.go:8080
-#   plexams  ── internal only (never published)
-#   mongo    ── internal only (never published), data on a named volume
+#   plexams / mongo / oauth2-proxy ── internal only (never published)
 #
-# Only the apache service publishes ports. plexams.go trusts the X-Remote-User header
-# apache sets, so it MUST NOT be reachable except through apache — hence no `ports:`.
+# Only nginx publishes ports. plexams.go trusts the X-Remote-User header nginx sets,
+# so it MUST NOT be reachable except through nginx — hence no `ports:`.
 #
-# Copy .env.example -> .env and .plexams.yaml.example -> .plexams.yaml, fill both, then:
-#   docker compose up -d --build
+# Setup: copy .env.example -> .env and .plexams.yaml.example -> .plexams.yaml, fill
+# both, provide tls/ + gui-dist/ (see README.md), then: docker compose up -d --build
 
 services:
   mongo:
@@ -22,7 +24,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     volumes:
       - mongo-data:/data/db
-    # No ports: — the database is only reachable inside the compose network.
+    # No ports: — reachable only inside the compose network.
 
   plexams:
     build:
@@ -31,34 +33,58 @@ services:
     restart: unless-stopped
     depends_on:
       - mongo
-    # The config carries db.uri (mongodb://user:pass@mongo:27017), auth.*, smtp.*,
-    # zpa.* and the secrets. Mounted read-only; never baked into the image.
     volumes:
       - ./.plexams.yaml:/app/.plexams.yaml:ro
-    # No ports: — only apache reaches it (http://plexams:8080) over the internal network.
+    # No ports: — only nginx reaches it (http://plexams:8080) over the internal network.
     expose:
       - "8080"
 
-  apache:
-    build:
-      context: ./apache
-      dockerfile: Dockerfile
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    restart: unless-stopped
+    environment:
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_OIDC_ISSUER_URL: https://sso.hm.edu
+      OAUTH2_PROXY_CLIENT_ID: ${OAUTH2_PROXY_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OAUTH2_PROXY_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET}
+      # MUST match the redirect URI registered with the HM IdP team.
+      OAUTH2_PROXY_REDIRECT_URL: https://${SERVER_NAME}/oauth2/callback
+      OAUTH2_PROXY_SCOPE: "openid email profile"
+      # Extra layer on top of the DB allow-list (the backend is authoritative).
+      OAUTH2_PROXY_EMAIL_DOMAINS: hm.edu
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      # Expose X-Auth-Request-Email/-User on the /oauth2/auth response for nginx.
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_COOKIE_SECURE: "true"
+      OAUTH2_PROXY_WHITELIST_DOMAINS: ${SERVER_NAME}
+      # oauth2-proxy is used only for auth (via nginx auth_request) + the login flow,
+      # not as a real upstream — so a static 200 upstream is enough.
+      OAUTH2_PROXY_UPSTREAMS: static://200
+      # Shibboleth OPs often omit email_verified; tighten to "false" if the IdP sets it.
+      OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"
+    expose:
+      - "4180"
+
+  nginx:
+    image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
       - plexams
+      - oauth2-proxy
     ports:
       - "80:80"
       - "443:443"
     environment:
+      # Substituted into templates/*.template by the nginx image (envsubst).
       SERVER_NAME: ${SERVER_NAME}
-      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
-      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
-      OIDC_CRYPTO_PASSPHRASE: ${OIDC_CRYPTO_PASSPHRASE}
     volumes:
-      # TLS cert + key (e.g. from certbot). Expected: fullchain.pem + privkey.pem.
-      - ./tls:/etc/ssl/plexams:ro
-      # The built plexams.gui (npm run build -> dist). Served at / by apache.
-      - ./gui-dist:/var/www/plexams:ro
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./tls:/etc/ssl/plexams:ro         # fullchain.pem + privkey.pem (acme.sh)
+      - ./gui-dist:/var/www/plexams:ro    # built plexams.gui (npm run build -> dist)
+      - ./acme-webroot:/var/www/acme:ro   # ACME HTTP-01 challenge files (acme.sh writes)
 
 volumes:
   mongo-data:

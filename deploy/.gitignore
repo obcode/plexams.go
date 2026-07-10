@@ -1,5 +1,7 @@
 # Secrets and deployment-local artifacts — never commit these.
 .env
+acme.env
 .plexams.yaml
 tls/
 gui-dist/
+acme-webroot/

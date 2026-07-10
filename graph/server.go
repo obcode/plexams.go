@@ -64,7 +64,12 @@ func StartServer(plexams *plexams.Plexams, port string) {
 			},
 		},
 	})
-	srv.Use(extension.Introspection{})
+	// In production the GraphQL introspection is turned off (server.production=true);
+	// locally it stays on for the playground and tooling.
+	production := viper.GetBool("server.production")
+	if !production {
+		srv.Use(extension.Introspection{})
+	}
 
 	// Block write mutations while any validation subscription is running, so the
 	// GUI cannot mutate the plan underneath a running check.
@@ -72,6 +77,12 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		oc := graphql.GetOperationContext(ctx)
 		if oc.Operation != nil {
 			op := oc.Operation.Operation
+			// Authorization: a read-only role (VIEWER) may query and run validations
+			// but must not perform any data-changing operation. Enforced in the backend
+			// — the GUI is never the security boundary.
+			if user := UserFromContext(ctx); user != nil && !roleCanWrite(user.Role) && isDataChangingOperation(oc) {
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "forbidden: your role is read-only"))
+			}
 			if op == ast.Mutation && !plexams.WritesAllowed() {
 				return graphql.OneShot(graphql.ErrorResponse(ctx, "writes are blocked while a validation is running"))
 			}
@@ -104,7 +115,16 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		Debug:            false,
 	}).Handler)
 
-	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	// Authenticate/authorize every request (GraphQL, websocket upgrade, REST routes)
+	// from the auth-proxy header, or inject a local dev user when auth is disabled.
+	// Runs after CORS so preflight OPTIONS are short-circuited before reaching it.
+	router.Use(authMiddleware(plexams))
+
+	// The GraphQL playground is a dev convenience; disabled in production (the GUI is
+	// served by the reverse proxy there, not by this backend).
+	if !production {
+		router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	}
 	router.Handle("/query", srv)
 
 	// Binary uploads (browser-generated PNGs, cover-page PDF ZIPs) for email

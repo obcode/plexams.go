@@ -47,7 +47,7 @@ func mutationLogMiddleware(p *plexams.Plexams) graphql.FieldMiddleware {
 			Time:       start,
 			Name:       fc.Field.Name,
 			Type:       opType,
-			User:       p.OperatorID(),
+			User:       auditUser(ctx, p),
 			Args:       args,
 			Ancodes:    ancodes,
 			DurationMs: int(time.Since(start).Milliseconds()),

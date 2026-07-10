@@ -21,12 +21,33 @@ func (f *fakeAuthProvider) GetUserByEmail(_ context.Context, email string) (*mod
 	return f.users[email], nil
 }
 
-func TestRoleCanWrite(t *testing.T) {
-	if !roleCanWrite(model.RolePlaner) {
-		t.Error("PLANER must be allowed to write")
+func TestRoleHierarchy(t *testing.T) {
+	// ADMIN ⊇ PLANER ⊇ VIEWER
+	if !roleCanWrite(model.RolePlaner) || !roleCanWrite(model.RoleAdmin) {
+		t.Error("PLANER and ADMIN must be allowed to write")
 	}
 	if roleCanWrite(model.RoleViewer) {
 		t.Error("VIEWER must be read-only")
+	}
+	if !roleCanAdmin(model.RoleAdmin) {
+		t.Error("ADMIN must be allowed to administer users")
+	}
+	if roleCanAdmin(model.RolePlaner) || roleCanAdmin(model.RoleViewer) {
+		t.Error("only ADMIN may administer users")
+	}
+}
+
+func TestRequireAdmin(t *testing.T) {
+	admin := context.WithValue(context.Background(), userContextKey, &model.User{Email: "a@hm.edu", Role: model.RoleAdmin})
+	if err := requireAdmin(admin); err != nil {
+		t.Errorf("admin must pass: %v", err)
+	}
+	planer := context.WithValue(context.Background(), userContextKey, &model.User{Email: "p@hm.edu", Role: model.RolePlaner})
+	if err := requireAdmin(planer); err == nil {
+		t.Error("planer must be rejected by requireAdmin")
+	}
+	if err := requireAdmin(context.Background()); err == nil {
+		t.Error("no principal must be rejected by requireAdmin")
 	}
 }
 

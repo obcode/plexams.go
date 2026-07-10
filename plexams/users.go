@@ -105,8 +105,9 @@ func (p *Plexams) SeedUsers(ctx context.Context) {
 }
 
 // LocalDevUser is the identity used when auth is disabled (local development), so
-// local operation is unchanged: a full-access PLANER derived from auth.devuser, else
-// the operator.* config, else a generic local identity. Never used when auth is on.
+// local operation is unchanged: a full-access ADMIN (top of the role hierarchy, so
+// nothing — incl. user administration — is blocked locally) derived from auth.devuser,
+// else the operator.* config, else a generic local identity. Never used when auth is on.
 func (p *Plexams) LocalDevUser() *model.User {
 	email := strings.ToLower(strings.TrimSpace(viper.GetString("auth.devuser")))
 	name := ""
@@ -120,5 +121,5 @@ func (p *Plexams) LocalDevUser() *model.User {
 	if name == "" {
 		name = email
 	}
-	return &model.User{Email: email, Name: name, Role: model.RolePlaner}
+	return &model.User{Email: email, Name: name, Role: model.RoleAdmin}
 }

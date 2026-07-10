@@ -1629,25 +1629,29 @@ func (e PreplanRuleKind) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// A role governs what a logged-in user may do. PLANER = full access; VIEWER =
-// read-only (queries + validations, no mutations/data-changing subscriptions). The
-// enum is intentionally extensible so finer-grained roles can be added later without
-// a structural change.
+// A role governs what a logged-in user may do. A user has exactly one role; the roles
+// form a hierarchy ADMIN ⊇ PLANER ⊇ VIEWER:
+// - VIEWER: read-only (queries + validations, no mutations/data-changing subscriptions).
+// - PLANER: full planning access (everything VIEWER can, plus all data-changing ops).
+// - ADMIN:  everything PLANER can, plus user administration (setUser/removeUser).
+// The enum is intentionally extensible for finer-grained roles later.
 type Role string
 
 const (
+	RoleAdmin  Role = "ADMIN"
 	RolePlaner Role = "PLANER"
 	RoleViewer Role = "VIEWER"
 )
 
 var AllRole = []Role{
+	RoleAdmin,
 	RolePlaner,
 	RoleViewer,
 }
 
 func (e Role) IsValid() bool {
 	switch e {
-	case RolePlaner, RoleViewer:
+	case RoleAdmin, RolePlaner, RoleViewer:
 		return true
 	}
 	return false

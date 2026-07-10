@@ -1,10 +1,13 @@
 """
-A role governs what a logged-in user may do. PLANER = full access; VIEWER =
-read-only (queries + validations, no mutations/data-changing subscriptions). The
-enum is intentionally extensible so finer-grained roles can be added later without
-a structural change.
+A role governs what a logged-in user may do. A user has exactly one role; the roles
+form a hierarchy ADMIN ⊇ PLANER ⊇ VIEWER:
+- VIEWER: read-only (queries + validations, no mutations/data-changing subscriptions).
+- PLANER: full planning access (everything VIEWER can, plus all data-changing ops).
+- ADMIN:  everything PLANER can, plus user administration (setUser/removeUser).
+The enum is intentionally extensible for finer-grained roles later.
 """
 enum Role {
+  ADMIN
   PLANER
   VIEWER
 }
@@ -35,9 +38,9 @@ extend type Query {
 extend type Mutation {
   """
   Create or update a user (upsert by email). Admin surface for opening access to a
-  wider circle with restricted rights (seed VIEWER users here). Requires a writing role.
+  wider circle with restricted rights (seed VIEWER users here). Requires role ADMIN.
   """
   setUser(email: String!, name: String!, role: Role!): User!
-  "Remove a user from the allow-list, so they can no longer log in. Requires a writing role."
+  "Remove a user from the allow-list, so they can no longer log in. Requires role ADMIN."
   removeUser(email: String!): Boolean!
 }

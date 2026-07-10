@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -97,10 +98,27 @@ func authMiddleware(p authProvider) func(http.Handler) http.Handler {
 	}
 }
 
-// roleCanWrite reports whether a role may perform data-changing operations. Today
-// only PLANER writes; VIEWER is read-only. Extend here as finer-grained roles arrive.
+// Roles form a hierarchy ADMIN ⊇ PLANER ⊇ VIEWER (a user has exactly one role).
+
+// roleCanWrite reports whether a role may perform data-changing operations: PLANER
+// and ADMIN (which includes all PLANER rights); VIEWER is read-only.
 func roleCanWrite(role model.Role) bool {
-	return role == model.RolePlaner
+	return role == model.RolePlaner || role == model.RoleAdmin
+}
+
+// roleCanAdmin reports whether a role may administer users (setUser/removeUser).
+func roleCanAdmin(role model.Role) bool {
+	return role == model.RoleAdmin
+}
+
+// requireAdmin returns an error unless the request's principal is an ADMIN. Used to
+// gate the user-administration mutations in the backend (the security boundary).
+func requireAdmin(ctx context.Context) error {
+	user := UserFromContext(ctx)
+	if user == nil || !roleCanAdmin(user.Role) {
+		return fmt.Errorf("forbidden: user administration requires role ADMIN")
+	}
+	return nil
 }
 
 // auditUser is the identity stamped onto the mutation_log: the authenticated user

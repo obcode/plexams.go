@@ -13,11 +13,17 @@ import (
 
 // SetUser is the resolver for the setUser field.
 func (r *mutationResolver) SetUser(ctx context.Context, email string, name string, role model.Role) (*model.User, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
 	return r.plexams.SetUser(ctx, email, name, role)
 }
 
 // RemoveUser is the resolver for the removeUser field.
 func (r *mutationResolver) RemoveUser(ctx context.Context, email string) (bool, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return false, err
+	}
 	return r.plexams.RemoveUser(ctx, email)
 }
 

@@ -1,0 +1,71 @@
+# Server .plexams.yaml — copy to .plexams.yaml, fill in, mount into the plexams
+# container (see docker-compose.yml). Secrets stay in THIS file, never in the DB or git.
+#
+# Only the deployment-relevant keys are shown here. The full reference (zpa, smtp,
+# anny, jira, operational keys) is in ../docs/configuration.md — add what you use.
+
+# Pin the semester on a fresh/empty database so the workspace can bootstrap; once a
+# workspace exists you can drop this and switch semesters through the GUI (setSemester).
+semester: 2026-SS
+
+db:
+  # Points at the mongo service in the compose network, with the root credentials
+  # from .env (MONGO_USER / MONGO_PASSWORD). authSource=admin for the root user.
+  uri: mongodb://plexams:change-me-strong-password@mongo:27017/?authSource=admin
+
+server:
+  port: "8080"
+  # Production hardening: turns OFF the GraphQL playground and introspection, and
+  # makes "/" serve nothing (the GUI is served by apache). Keep true on the server.
+  production: true
+  # The real HTTPS origin of the GUI (same host as apache). Used for CORS + websocket
+  # origin checks. Must be the exact scheme+host the browser uses.
+  allowedorigins:
+    - https://plexams.example.hm.edu
+
+# ============================================================
+# Authentication / authorization
+# ============================================================
+# The backend trusts the identity header the apache/OIDC proxy injects. It does NOT
+# authenticate itself — so it must be reachable only via the proxy (compose: no
+# published port). Authorization (roles) IS enforced here.
+auth:
+  # true on the server. false (or omitted) = local development: a full-access dev
+  # user is injected and nothing is ever rejected (local operation stays unchanged).
+  enabled: true
+
+  # Header the proxy sets with the verified identity (the OIDC "email" claim).
+  # Must match the apache RequestHeader directive. Default: X-Remote-User.
+  header: X-Remote-User
+  displaynameHeader: X-Remote-Displayname
+
+  # Local-dev only: the email used when auth.enabled=false. Ignored on the server.
+  # devuser: vorname.nachname@hm.edu
+
+  # Seed the authorization allow-list on FIRST boot only (when the users collection is
+  # still empty). Afterwards manage users through the GUI (setUser/removeUser); this
+  # list is ignored once the collection is non-empty. Roles: PLANER (full) | VIEWER
+  # (read-only). Start with the two planners; add VIEWER users later to open access.
+  seedusers:
+    - email: planer1@hm.edu
+      name: Planer Eins
+      role: PLANER
+    - email: planer2@hm.edu
+      name: Planer Zwei
+      role: PLANER
+
+# The planner (shared email sender identity) — separate from auth users above. Kept
+# for the first boot; afterwards editable in the GUI (setPlaner). See configuration.md.
+planer:
+  name: Prüfungsplanung FK07
+  email: planer1@hm.edu
+
+# operator.* is the LOCAL audit identity for the multi-instance local setup. On the
+# server the audit "who" comes from the OIDC principal instead, so operator.* is not
+# needed here.
+
+# --- Add the sections you actually use (secrets stay here) ---
+# zpa: { ... }
+# smtp: { ... }
+# anny: { token: ... }
+# jira: { baseurl: ..., token: ... }

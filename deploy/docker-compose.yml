@@ -1,0 +1,64 @@
+# plexams.go server deployment.
+#
+# Topology:
+#   internet ──443/TLS──> apache (OIDC via mod_auth_openidc + reverse proxy)
+#                           ├── /            → GUI static files (plexams.gui dist)
+#                           └── /query,/upload,/download → plexams.go:8080
+#   plexams  ── internal only (never published)
+#   mongo    ── internal only (never published), data on a named volume
+#
+# Only the apache service publishes ports. plexams.go trusts the X-Remote-User header
+# apache sets, so it MUST NOT be reachable except through apache — hence no `ports:`.
+#
+# Copy .env.example -> .env and .plexams.yaml.example -> .plexams.yaml, fill both, then:
+#   docker compose up -d --build
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongo-data:/data/db
+    # No ports: — the database is only reachable inside the compose network.
+
+  plexams:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    # The config carries db.uri (mongodb://user:pass@mongo:27017), auth.*, smtp.*,
+    # zpa.* and the secrets. Mounted read-only; never baked into the image.
+    volumes:
+      - ./.plexams.yaml:/app/.plexams.yaml:ro
+    # No ports: — only apache reaches it (http://plexams:8080) over the internal network.
+    expose:
+      - "8080"
+
+  apache:
+    build:
+      context: ./apache
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - plexams
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SERVER_NAME: ${SERVER_NAME}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_CRYPTO_PASSPHRASE: ${OIDC_CRYPTO_PASSPHRASE}
+    volumes:
+      # TLS cert + key (e.g. from certbot). Expected: fullchain.pem + privkey.pem.
+      - ./tls:/etc/ssl/plexams:ro
+      # The built plexams.gui (npm run build -> dist). Served at / by apache.
+      - ./gui-dist:/var/www/plexams:ro
+
+volumes:
+  mongo-data:

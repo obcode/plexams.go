@@ -35,6 +35,11 @@ Zurück bekommst du **Client-ID** + **Client-Secret** → in `.env`.
 Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** und die
 **EAB-Zugangsdaten** (`kid` + `hmac-key`) — die HM-CA nutzt External Account Binding.
 
+> **Tipp:** Erst das Fundament einzeln testen — [`smoketest/`](smoketest/) bringt in
+> zwei Mini-Stacks nacheinander (1) TLS/ACME mit „Hello World" und (2) den
+> OIDC-Login mit „Hallo + Attribute" zum Laufen, **ohne** plexams dahinter. Wenn beide
+> grün sind, ist dieser echte Stack fast nur noch Config.
+
 ## Voraussetzungen
 
 - Docker + Docker Compose auf dem (Alpine-)Server; `acme.sh` auf dem Host.

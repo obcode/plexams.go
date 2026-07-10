@@ -1,0 +1,41 @@
+# Step 1: TLS + static Hello World. Rendered by the nginx image (envsubst substitutes
+# ${SERVER_NAME}; nginx runtime vars like $host are left untouched).
+
+# --- HTTP: ACME HTTP-01 challenge + redirect everything else to HTTPS ---
+server {
+    listen 80;
+    server_name ${SERVER_NAME};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# --- HTTPS: static Hello World ---
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${SERVER_NAME};
+
+    ssl_certificate     /etc/ssl/plexams/fullchain.pem;
+    ssl_certificate_key /etc/ssl/plexams/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    location / {
+        default_type "text/html; charset=utf-8";
+        return 200 '<!doctype html>
+<meta charset="utf-8">
+<title>plexams — TLS-Test</title>
+<h1>Hello World &#128274;</h1>
+<p>HTTPS l&auml;uft auf <strong>${SERVER_NAME}</strong>.</p>
+<p>Das Zertifikat kommt von der HM-ACME-CA (via acme.sh/EAB). Wenn der Browser hier
+kein Warnschild zeigt, ist TLS korrekt aufgesetzt.</p>
+<p>N&auml;chster Schritt: Login-Test mit Shibboleth/OIDC (siehe smoketest/2-login).</p>
+';
+    }
+}

@@ -1,0 +1,84 @@
+# Step 2: TLS + OIDC login. nginx authenticates every request against oauth2-proxy and
+# then renders a greeting from the attributes oauth2-proxy exposes (no backend needed).
+# Rendered by the nginx image (envsubst substitutes ${SERVER_NAME}; nginx runtime vars
+# like $host / $oidc_* are NOT env vars and are left untouched).
+
+upstream oauth2_proxy { server oauth2-proxy:4180; }
+
+# --- HTTP: ACME challenge + redirect to HTTPS ---
+server {
+    listen 80;
+    server_name ${SERVER_NAME};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# --- HTTPS: OIDC via oauth2-proxy + greeting ---
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${SERVER_NAME};
+
+    ssl_certificate     /etc/ssl/plexams/fullchain.pem;
+    ssl_certificate_key /etc/ssl/plexams/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    # Authenticate every request; the /oauth2/* locations opt out.
+    auth_request   /oauth2/auth;
+    error_page 401 = @oauth2_signin;
+    auth_request_set $oidc_email  $upstream_http_x_auth_request_email;
+    auth_request_set $oidc_user   $upstream_http_x_auth_request_user;
+    auth_request_set $oidc_pref   $upstream_http_x_auth_request_preferred_username;
+    auth_request_set $oidc_groups $upstream_http_x_auth_request_groups;
+
+    location /oauth2/ {
+        auth_request off;
+        proxy_pass       http://oauth2_proxy;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Uri   $request_uri;
+    }
+
+    location = /oauth2/auth {
+        auth_request off;
+        proxy_pass       http://oauth2_proxy;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+    }
+
+    location @oauth2_signin {
+        auth_request off;
+        return 302 /oauth2/start?rd=$scheme://$host$request_uri;
+    }
+
+    # Greeting rendered directly from the auth attributes — no backend.
+    location / {
+        default_type "text/html; charset=utf-8";
+        return 200 '<!doctype html>
+<meta charset="utf-8">
+<title>plexams — Login-Test</title>
+<h1>Hallo $oidc_email &#128075;</h1>
+<p>Login &uuml;ber sso.hm.edu hat funktioniert. &Uuml;bertragen wurde:</p>
+<ul>
+<li>email: $oidc_email</li>
+<li>user (sub): $oidc_user</li>
+<li>preferred_username: $oidc_pref</li>
+<li>groups: $oidc_groups</li>
+</ul>
+<p>Vollst&auml;ndige Session-Claims als JSON: <a href="/oauth2/userinfo">/oauth2/userinfo</a></p>
+<p><a href="/oauth2/sign_out">Abmelden</a></p>
+';
+    }
+}

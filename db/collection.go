@@ -56,6 +56,7 @@ const (
 	collectionStudyPrograms            = "study_programs"
 	collectionEmailTemplates           = "email_templates"
 	collectionPlaner                   = "planer"
+	collectionUsers                    = "users"
 	collectionInvigilatorTodos         = "invigilator_todos"
 	collectionOtherInvigilations       = "invigilations_other"
 	collectionSelfInvigilations        = "invigilations_self"

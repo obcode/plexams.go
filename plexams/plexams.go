@@ -239,6 +239,9 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		} else if planer != nil {
 			plexams.applyPlaner(planer)
 		}
+		// Seed the auth allow-list from config (auth.seedusers) when still empty — the
+		// planners for the first deployment. No-op locally without that config.
+		plexams.SeedUsers(ctx)
 	}
 
 	plexams.loadSemesterConfig(context.Background())

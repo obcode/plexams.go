@@ -1,0 +1,43 @@
+"""
+A role governs what a logged-in user may do. PLANER = full access; VIEWER =
+read-only (queries + validations, no mutations/data-changing subscriptions). The
+enum is intentionally extensible so finer-grained roles can be added later without
+a structural change.
+"""
+enum Role {
+  PLANER
+  VIEWER
+}
+
+"""
+A user is a login identity supplied by the auth proxy (Shibboleth/OIDC, matched by
+email) together with a role. Users live in the global plexams DB and are the
+authorization allow-list. Kept strictly separate from the planer (the shared email
+sender identity).
+"""
+type User {
+  email: String!
+  name: String!
+  role: Role!
+}
+
+extend type Query {
+  """
+  The currently authenticated user — from the auth-proxy header, or the local dev
+  fallback when auth is disabled. The GUI uses it to show identity/role and adapt
+  the UI cosmetically; it is NEVER a security boundary (enforcement is in the backend).
+  """
+  me: User!
+  "All known users (the authorization allow-list). Admin view for managing who may log in."
+  users: [User!]!
+}
+
+extend type Mutation {
+  """
+  Create or update a user (upsert by email). Admin surface for opening access to a
+  wider circle with restricted rights (seed VIEWER users here). Requires a writing role.
+  """
+  setUser(email: String!, name: String!, role: Role!): User!
+  "Remove a user from the allow-list, so they can no longer log in. Requires a writing role."
+  removeUser(email: String!): Boolean!
+}

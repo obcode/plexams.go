@@ -1325,6 +1325,16 @@ type StudyProgramInput struct {
 type Subscription struct {
 }
 
+// A user is a login identity supplied by the auth proxy (Shibboleth/OIDC, matched by
+// email) together with a role. Users live in the global plexams DB and are the
+// authorization allow-list. Kept strictly separate from the planer (the shared email
+// sender identity).
+type User struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
+	Role  Role   `json:"role"`
+}
+
 // ValidationFinding is one problem (or note) found by a validator. message is clean
 // text (no ANSI); the optional reference fields let the GUI link a finding to the
 // affected exam / room / slot / invigilator / student and render it as a row.
@@ -1614,6 +1624,65 @@ func (e *PreplanRuleKind) UnmarshalJSON(b []byte) error {
 }
 
 func (e PreplanRuleKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// A role governs what a logged-in user may do. PLANER = full access; VIEWER =
+// read-only (queries + validations, no mutations/data-changing subscriptions). The
+// enum is intentionally extensible so finer-grained roles can be added later without
+// a structural change.
+type Role string
+
+const (
+	RolePlaner Role = "PLANER"
+	RoleViewer Role = "VIEWER"
+)
+
+var AllRole = []Role{
+	RolePlaner,
+	RoleViewer,
+}
+
+func (e Role) IsValid() bool {
+	switch e {
+	case RolePlaner, RoleViewer:
+		return true
+	}
+	return false
+}
+
+func (e Role) String() string {
+	return string(e)
+}
+
+func (e *Role) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Role(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Role", str)
+	}
+	return nil
+}
+
+func (e Role) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Role) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Role) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

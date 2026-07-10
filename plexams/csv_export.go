@@ -525,7 +525,10 @@ func s2primussAncodes(s string) ([]model.ZPAPrimussAncodes, error) {
 // ---- exam times (absolute date/time; external + notPlannedByMe MUC.DAI) --------
 
 func (p *Plexams) csvExamTimes() csvDataset {
-	header := []string{"ancode", "module", "date", "time"}
+	// ancode is the internal ZPA/external ancode (the round-trip key for the import).
+	// program + primussAncode are read-only clarity columns: the external (Primuss/MUC.DAI)
+	// identity a human/MUC.DAI reader expects (e.g. DE/202); the import ignores them.
+	header := []string{"ancode", "module", "program", "primussAncode", "date", "time"}
 	return csvDataset{
 		Title:  "Prüfungszeiten (extern/MUC.DAI, absolut)",
 		File:   "exam-times.csv",
@@ -540,8 +543,14 @@ func (p *Plexams) csvExamTimes() csvDataset {
 				if !e.External || e.Starttime == nil {
 					continue
 				}
+				program, primussAncode := p.externalPrimussIdentity(ctx, e.Ancode)
+				primussStr := ""
+				if primussAncode > 0 {
+					primussStr = strconv.Itoa(primussAncode)
+				}
 				rows = append(rows, []string{
 					strconv.Itoa(e.Ancode), p.moduleForAncode(ctx, e.Ancode),
+					program, primussStr,
 					e.Starttime.Format(csvDateLayout), e.Starttime.Format("15:04"),
 				})
 			}
@@ -556,7 +565,9 @@ func (p *Plexams) csvExamTimes() csvDataset {
 					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d: ungültiger ancode %q", i+2, cell(row, 0)))
 					continue
 				}
-				date, t := cell(row, 2), cell(row, 3)
+				// program (col 2) + primussAncode (col 3) are read-only clarity columns and
+				// are intentionally ignored on import — the ancode column is the key.
+				date, t := cell(row, 4), cell(row, 5)
 				if date == "" || t == "" {
 					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d (ancode %d): Datum/Uhrzeit fehlt", i+2, ancode))
 					continue
@@ -583,6 +594,18 @@ func (p *Plexams) moduleForAncode(ctx context.Context, ancode int) string {
 		return zpa.Module
 	}
 	return ""
+}
+
+// externalPrimussIdentity returns the external (Primuss/MUC.DAI) identity — program and
+// Primuss ancode — of an external exam given its internal ancode. It reads the exam's first
+// PrimussAncodes entry; returns ("", 0) if the exam or the entry is missing.
+func (p *Plexams) externalPrimussIdentity(ctx context.Context, ancode int) (string, int) {
+	ext, err := p.dbClient.ExternalExam(ctx, ancode)
+	if err != nil || ext == nil || len(ext.PrimussAncodes) == 0 {
+		return "", 0
+	}
+	pa := ext.PrimussAncodes[0]
+	return pa.Program, pa.Ancode
 }
 
 // ---- preplan ------------------------------------------------------------------

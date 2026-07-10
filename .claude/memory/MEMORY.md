@@ -17,6 +17,7 @@
 - [ZPA import behaviors](zpa-import-behaviors.md) — import auto-presets to-plan (schriftlich/praktisch→plan, rest→not); stale banners only after first generation.
 - [exam-planning info email](exam-planning-info-email.md) — consolidated per-examer mail replacing constraints+prepared; examPlanningMailRecipients + sendEmailExamPlanningInfo.
 - [MUC.DAI import linking](mucdai-import-linking.md) — import builds explicit mucdai_links (external/zpa/unresolved); candidates + manual set/remove; mucDaiImported state point.
+- [StudentReg dual ancodes](studentreg-dual-ancodes.md) — StudentRegs carry Primuss+ZPA ancode explicitly (intern=ZPA/extern=Primuss); new Ancodes value type; prepare no longer overwrites; +2 MUC.DAI bug fixes; on main (30524ab, 7fbbee7); GUI-sync pending.
 - [Primuss XLSX import](primuss-xlsx-import.md) — GUI ZIP upload (/upload/primuss-zip) replaces ssconvert+mongoimport; group from filename; change detection → update emails.
 - [Terminplan generator design](terminplan-generator-design.md) — next big feature: generic SA core for all 3 solvers; spread objective; canShareSlot vs per-student conflict rating loop.
 - [two-phase EXaHM/SEB](two-phase-exahm-seb.md) — Terminplan gen splits: phase A EXaHM/SEB into booked T-Bau slots (maximize util), freeze via PhaseFixed, then phase B for the rest.

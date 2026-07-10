@@ -189,15 +189,21 @@ auth:
   devuser: vorname.nachname@hm.edu          # nur lokal (auth.enabled=false): Audit-Identität
   seedusers:                   # Allow-Liste, nur beim ERSTEN Boot geseedet (solange die
                                # users-Collection leer ist); danach GUI-verwaltet (setUser).
-    - { email: planer1@hm.edu, name: Planer Eins, role: PLANER }
-    - { email: planer2@hm.edu, name: Planer Zwei, role: PLANER }
+                               # Mindestens EIN ADMIN nötig, sonst kann später niemand
+                               # neue User über die GUI anlegen.
+    - { email: planer1@hm.edu, name: Planer Eins, role: ADMIN }
+    - { email: planer2@hm.edu, name: Planer Zwei, role: ADMIN }
 ```
 
-> Rollen: **`PLANER`** (Vollzugriff) | **`VIEWER`** (nur lesen + Validierungen, keine
-> datenändernden Operationen — im Backend erzwungen). Die Autorisierung ist die
-> Sicherheitsgrenze; die GUI passt sich nur kosmetisch an. `auth.*` ist strikt getrennt
-> vom `planer`-Doc (geteilte E-Mail-Absenderidentität). Auf dem Server kommt die
-> Audit-Identität (`mutation_log.user`) aus dem Proxy-Principal statt aus `operator.*`.
+> Rollen (ein User hat genau **eine**; Hierarchie **`ADMIN` ⊇ `PLANER` ⊇ `VIEWER`**):
+> **`VIEWER`** = nur lesen + Validierungen (keine datenändernden Operationen);
+> **`PLANER`** = volle Planung; **`ADMIN`** = alles wie PLANER **plus**
+> Benutzerverwaltung (`setUser`/`removeUser`). ADMIN ist höherwertig — man ist nicht
+> „PLANER *und* ADMIN", ADMIN schließt die PLANER-Rechte ein. Die Autorisierung wird im
+> Backend erzwungen (Sicherheitsgrenze); die GUI passt sich nur kosmetisch an. `auth.*`
+> ist strikt getrennt vom `planer`-Doc (geteilte E-Mail-Absenderidentität). Auf dem
+> Server kommt die Audit-Identität (`mutation_log.user`) aus dem Proxy-Principal statt
+> aus `operator.*`. Lokal (ohne `auth.enabled`) ist der Dev-User **ADMIN**.
 
 ---
 

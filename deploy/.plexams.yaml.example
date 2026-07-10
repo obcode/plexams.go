@@ -44,15 +44,17 @@ auth:
 
   # Seed the authorization allow-list on FIRST boot only (when the users collection is
   # still empty). Afterwards manage users through the GUI (setUser/removeUser); this
-  # list is ignored once the collection is non-empty. Roles: PLANER (full) | VIEWER
-  # (read-only). Start with the two planners; add VIEWER users later to open access.
+  # list is ignored once the collection is non-empty. Roles (hierarchy ADMIN ⊇ PLANER
+  # ⊇ VIEWER): VIEWER (read-only) | PLANER (full planning) | ADMIN (planning + user
+  # management). Seed the two planners as ADMIN so they can open access to a wider
+  # circle (add VIEWER users) later — at least one ADMIN is required for that.
   seedusers:
     - email: planer1@hm.edu
       name: Planer Eins
-      role: PLANER
+      role: ADMIN
     - email: planer2@hm.edu
       name: Planer Zwei
-      role: PLANER
+      role: ADMIN
 
 # The planner (shared email sender identity) — separate from auth users above. Kept
 # for the first boot; afterwards editable in the GUI (setPlaner). See configuration.md.

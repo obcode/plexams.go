@@ -78,13 +78,18 @@ Zurück bekommst du **Client-ID** und **Client-Secret** → in `.env`
 
 ## Zugriff für einen erweiterten Kreis (eingeschränkte Rechte)
 
-Alles ist dafür schon vorbereitet:
-- Neuen User mit Rolle **`VIEWER`** anlegen (GUI `setUser`, oder in `auth.seedusers`
-  vor dem allerersten Boot). `VIEWER` darf **lesen und Validierungen laufen lassen**,
-  aber **keine** datenändernden Operationen — erzwungen im Backend.
-- `PLANER` = Vollzugriff.
-- Feinere Rollen später über eine `@requires`-Directive pro Feld (Enum ist bewusst
-  erweiterbar).
+Alles ist dafür schon vorbereitet. Ein User hat genau **eine** Rolle; Hierarchie
+**`ADMIN` ⊇ `PLANER` ⊇ `VIEWER`**:
+- **`VIEWER`** darf **lesen und Validierungen laufen lassen**, aber **keine**
+  datenändernden Operationen — erzwungen im Backend.
+- **`PLANER`** = volle Planung.
+- **`ADMIN`** = alles wie PLANER **plus** Benutzerverwaltung (`setUser`/`removeUser`).
+  ADMIN schließt die PLANER-Rechte ein — man braucht nicht „PLANER + ADMIN".
+
+Neuen User mit `VIEWER` anlegen (GUI `setUser`, oder in `auth.seedusers` vor dem
+allerersten Boot). Zum Verwalten von Usern über die GUI muss **mindestens ein
+geseedeter User `ADMIN`** sein (s. `.plexams.yaml.example`). Feinere Rollen später
+über eine `@requires`-Directive pro Feld (Enum ist bewusst erweiterbar).
 
 ## Sicherheits-Kernregeln
 

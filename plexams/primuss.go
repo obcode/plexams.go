@@ -112,13 +112,13 @@ func (p *Plexams) GetEnhancedStudentRegs(ctx context.Context, program string, an
 			log.Debug().Err(err).Str("mtknr", studentReg.Mtknr).Msg("cannot find zpa student for student reg")
 		}
 		enhancedStudentRegs = append(enhancedStudentRegs, &model.EnhancedStudentReg{
-			ZpaStudent: zpaStudent,
-			Mtknr:      studentReg.Mtknr,
-			Ancode:     studentReg.AnCode,
-			Program:    studentReg.Program,
-			Group:      studentReg.Group,
-			Name:       studentReg.Name,
-			Presence:   studentReg.Presence,
+			ZpaStudent:    zpaStudent,
+			Mtknr:         studentReg.Mtknr,
+			PrimussAncode: studentReg.PrimussAncode,
+			Program:       studentReg.Program,
+			Group:         studentReg.Group,
+			Name:          studentReg.Name,
+			Presence:      studentReg.Presence,
 		})
 	}
 	return enhancedStudentRegs, nil

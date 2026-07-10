@@ -282,14 +282,6 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 	}
 
 	if len(validationMessages) > 0 {
-		mucdaiPrograms := p.mucdaiProgramNames(ctx)
-		mucdaiprogram := make(map[int]string)
-		for _, prog := range mucdaiPrograms {
-			if base, ok := p.externalExamsBaseForProgram(ctx, prog); ok {
-				mucdaiprogram[base] = prog
-			}
-		}
-
 		errs, warns, infos := v.counts()
 		summary := aurora.Sprintf(aurora.Yellow("%d accepted conflicts; %d error(s), %d warning(s), %d info(s)"),
 			knownConflictsCount, errs, warns, infos)
@@ -344,10 +336,13 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 					zpaAncode = "           "
 
 					if ancode > 999 {
-						primussAncode := ancode % 1000
-						base := ancode - primussAncode
-						program := mucdaiprogram[base]
-						ancodeStr = fmt.Sprintf("%s/%d", program, primussAncode)
+						// External (MUC.DAI) exam: render its Primuss identity from the exam's
+						// own PrimussAncodes, not from ancode arithmetic (the old ancode%1000
+						// decode assumed a base+primussAncode scheme that the import never uses).
+						if pas := exam.ZpaExam.PrimussAncodes; len(pas) > 0 {
+							ancodeStr = fmt.Sprintf("%s/%d", pas[0].Program, pas[0].Ancode)
+							zpaAncode = fmt.Sprintf(" (ZPA: %d)", exam.Ancode)
+						}
 					} else {
 						for _, primussExam := range exam.PrimussExams {
 							if primussExam.Exam.AnCode != exam.Ancode {
@@ -472,7 +467,7 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("checking regs for student")
 
 	planAncodeEntriesForStudent := make([]*model.PlanEntry, 0)
-	for _, ancode := range student.Regs {
+	for _, ancode := range student.ZpaAncodes {
 		for _, planEntry := range planAncodeEntries {
 			if ancode == planEntry.Ancode {
 				planAncodeEntriesForStudent = append(planAncodeEntriesForStudent, planEntry)

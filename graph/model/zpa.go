@@ -40,6 +40,36 @@ type ZPAPrimussAncodes struct {
 	Ancode  int    `json:"ancode"`
 }
 
+// Ancodes bundles an exam's internal (ZPA) ancode with its external Primuss
+// identities. Internal use → ZpaAncode; external communication (Primuss/MUC.DAI) →
+// PrimussAncodes. For an FK07 exam ZpaAncode is normally equal to the single
+// PrimussAncodes entry's Ancode, but that is NOT guaranteed (human error in the
+// Prüfungsamt); for MUC.DAI/external exams they differ by design. An exam may carry
+// several Primuss identities, one per study program (e.g. a shared exam).
+type Ancodes struct {
+	ZpaAncode      int                 `json:"zpaAncode"`
+	PrimussAncodes []ZPAPrimussAncodes `json:"primussAncodes"`
+}
+
+// Ancodes returns the exam's internal/external ancode bundle. The internal
+// ZpaAncode is authoritative; the PrimussAncodes carry the external (program-scoped)
+// identities used for Primuss/MUC.DAI communication.
+func (e *ZPAExam) Ancodes() Ancodes {
+	return Ancodes{ZpaAncode: e.AnCode, PrimussAncodes: e.PrimussAncodes}
+}
+
+// PrimussAncodeForProgram returns the Primuss ancode of this exam for the given
+// study program (and whether it was found). This is the ZPA→Primuss translation for
+// a specific program, e.g. to look up the raw student registrations.
+func (e *ZPAExam) PrimussAncodeForProgram(program string) (int, bool) {
+	for _, pa := range e.PrimussAncodes {
+		if pa.Program == program {
+			return pa.Ancode, true
+		}
+	}
+	return 0, false
+}
+
 type AddedPrimussAncode struct {
 	Ancode        int               `json:"ancode"`
 	PrimussAncode ZPAPrimussAncodes `json:"primuss_ancodes"`

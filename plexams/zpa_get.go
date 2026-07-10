@@ -126,7 +126,7 @@ func (p *Plexams) GetZpaAnCodes(ctx context.Context) ([]*model.AnCode, error) {
 
 	ancodes := make([]*model.AnCode, 0)
 	for _, exam := range exams {
-		ancodes = append(ancodes, &model.AnCode{Ancode: exam.AnCode})
+		ancodes = append(ancodes, &model.AnCode{ZpaAncode: exam.AnCode})
 	}
 
 	return ancodes, nil
@@ -140,7 +140,7 @@ func (p *Plexams) GetZpaAnCodesToPlan(ctx context.Context) ([]*model.AnCode, err
 
 	ancodes := make([]*model.AnCode, 0)
 	for _, exam := range exams {
-		ancodes = append(ancodes, &model.AnCode{Ancode: exam.AnCode})
+		ancodes = append(ancodes, &model.AnCode{ZpaAncode: exam.AnCode})
 	}
 
 	return ancodes, nil

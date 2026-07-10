@@ -315,7 +315,7 @@ func (p *Plexams) regsPerAncode(ctx context.Context) (map[int]map[string]bool, e
 	}
 	regs := make(map[int]map[string]bool)
 	for _, s := range students {
-		for _, ancode := range s.Regs {
+		for _, ancode := range s.ZpaAncodes {
 			m := regs[ancode]
 			if m == nil {
 				m = make(map[string]bool)

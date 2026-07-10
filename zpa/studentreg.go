@@ -9,7 +9,7 @@ import (
 func (zpa *ZPA) StudentReg2ZPAStudentReg(studreg *model.StudentReg) *model.ZPAStudentReg {
 	return &model.ZPAStudentReg{
 		Semester: zpa.semester,
-		AnCode:   studreg.AnCode,
+		AnCode:   studreg.PrimussAncode,
 		Mtknr:    studreg.Mtknr,
 		Program:  studreg.Program,
 	}

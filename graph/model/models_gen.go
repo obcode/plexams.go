@@ -45,7 +45,7 @@ type AdditionalExamRoomInput struct {
 }
 
 type AnCode struct {
-	Ancode int `json:"ancode"`
+	ZpaAncode int `json:"zpaAncode"`
 }
 
 type AnnyConfig struct {
@@ -311,13 +311,14 @@ type EnhancedPrimussExam struct {
 }
 
 type EnhancedStudentReg struct {
-	Mtknr      string      `json:"mtknr"`
-	Ancode     int         `json:"ancode"`
-	Program    string      `json:"program"`
-	Group      string      `json:"group"`
-	Name       string      `json:"name"`
-	Presence   string      `json:"presence"`
-	ZpaStudent *ZPAStudent `json:"zpaStudent,omitempty"`
+	Mtknr string `json:"mtknr"`
+	// Primuss ancode (per-program namespace); == the ZPA ancode only for FK07 exams
+	PrimussAncode int         `json:"primussAncode"`
+	Program       string      `json:"program"`
+	Group         string      `json:"group"`
+	Name          string      `json:"name"`
+	Presence      string      `json:"presence"`
+	ZpaStudent    *ZPAStudent `json:"zpaStudent,omitempty"`
 }
 
 type ExamDay struct {
@@ -1060,9 +1061,13 @@ type PrimussExamWithCount struct {
 type Query struct {
 }
 
+// RegWithProgram is one student's registration for one exam in one study program — the
+// per-program projection of an exam's Ancodes: the external primussAncode plus the
+// internal zpaAncode (equal for FK07, different for MUC.DAI/external exams).
 type RegWithProgram struct {
-	Program string `json:"program"`
-	Reg     int    `json:"reg"`
+	Program       string `json:"program"`
+	PrimussAncode int    `json:"primussAncode"`
+	ZpaAncode     int    `json:"zpaAncode"`
 }
 
 type Room struct {
@@ -1261,11 +1266,12 @@ type Starttime struct {
 }
 
 type Student struct {
-	Mtknr           string            `json:"mtknr"`
-	Program         string            `json:"program"`
-	Group           string            `json:"group"`
-	Name            string            `json:"name"`
-	Regs            []int             `json:"regs"`
+	Mtknr   string `json:"mtknr"`
+	Program string `json:"program"`
+	Group   string `json:"group"`
+	Name    string `json:"name"`
+	// internal ZPA ancodes the student is registered for (the conflict/plan key)
+	ZpaAncodes      []int             `json:"zpaAncodes"`
 	RegsWithProgram []*RegWithProgram `json:"regsWithProgram"`
 	ZpaStudent      *ZPAStudent       `json:"zpaStudent,omitempty"`
 	Nta             *NTA              `json:"nta,omitempty"`
@@ -1285,9 +1291,12 @@ type StudentRegsPerAncode struct {
 }
 
 type StudentRegsPerAncodeAndProgram struct {
-	Program     string        `json:"program"`
-	Ancode      int           `json:"ancode"`
-	StudentRegs []*StudentReg `json:"studentRegs"`
+	Program string `json:"program"`
+	// internal ZPA ancode of the exam
+	ZpaAncode int `json:"zpaAncode"`
+	// external (Primuss/MUC.DAI) ancode of the exam in this program; == zpaAncode for FK07
+	PrimussAncode int           `json:"primussAncode"`
+	StudentRegs   []*StudentReg `json:"studentRegs"`
 }
 
 type StudentRegsPerStudent struct {

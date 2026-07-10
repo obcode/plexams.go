@@ -16,13 +16,22 @@ type StudentRegsPerAncode {
 
 type StudentRegsPerAncodeAndProgram {
   program: String!
-  ancode: Int!
+  "internal ZPA ancode of the exam"
+  zpaAncode: Int!
+  "external (Primuss/MUC.DAI) ancode of the exam in this program; == zpaAncode for FK07"
+  primussAncode: Int!
   studentRegs: [StudentReg!]!
 }
 
+"""
+RegWithProgram is one student's registration for one exam in one study program — the
+per-program projection of an exam's Ancodes: the external primussAncode plus the
+internal zpaAncode (equal for FK07, different for MUC.DAI/external exams).
+"""
 type RegWithProgram {
   program: String!
-  reg: Int!
+  primussAncode: Int!
+  zpaAncode: Int!
 }
 
 type Student {
@@ -30,7 +39,8 @@ type Student {
   program: String!
   group: String!
   name: String!
-  regs: [Int!]!
+  "internal ZPA ancodes the student is registered for (the conflict/plan key)"
+  zpaAncodes: [Int!]!
   regsWithProgram: [RegWithProgram!]!
   zpaStudent: ZPAStudent
   nta: NTA

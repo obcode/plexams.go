@@ -47,16 +47,18 @@ func (p *Plexams) ValidateStudentRegs(reporter Reporter) (*model.ValidationRepor
 		if programs.Cardinality() > 1 {
 			var sb strings.Builder
 			for _, reg := range studentReg.RegsWithProgram {
-				exam, err := p.examByAncode(ctx, reg.Reg)
+				// exam lookup uses the internal ZPA ancode; the human-facing text shows the
+				// external Primuss ancode (program-scoped, what the student registered on).
+				exam, err := p.examByAncode(ctx, reg.ZpaAncode)
 				if err != nil {
 					// exam not found even in the right collection — show the bare ancode
 					// instead of dropping it, and don't spam the log.
-					log.Debug().Err(err).Int("ancode", reg.Reg).
+					log.Debug().Err(err).Int("zpaAncode", reg.ZpaAncode).
 						Msg("cannot get exam for student reg")
-					fmt.Fprintf(&sb, "%s/%d; ", reg.Program, reg.Reg)
+					fmt.Fprintf(&sb, "%s/%d; ", reg.Program, reg.PrimussAncode)
 					continue
 				}
-				fmt.Fprintf(&sb, "%s/%d: %s (%s); ", reg.Program, exam.AnCode, exam.Module, exam.MainExamer)
+				fmt.Fprintf(&sb, "%s/%d: %s (%s); ", reg.Program, reg.PrimussAncode, exam.Module, exam.MainExamer)
 			}
 
 			v.infof(ref{StudentMtknr: ptr(studentReg.Mtknr)},

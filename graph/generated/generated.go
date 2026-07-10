@@ -70,7 +70,12 @@ type ComplexityRoot struct {
 	}
 
 	AnCode struct {
-		Ancode func(childComplexity int) int
+		ZpaAncode func(childComplexity int) int
+	}
+
+	Ancodes struct {
+		PrimussAncodes func(childComplexity int) int
+		ZpaAncode      func(childComplexity int) int
 	}
 
 	AnnyBooking struct {
@@ -105,6 +110,7 @@ type ComplexityRoot struct {
 
 	AssembledExam struct {
 		Ancode           func(childComplexity int) int
+		Ancodes          func(childComplexity int) int
 		Conflicts        func(childComplexity int) int
 		Constraints      func(childComplexity int) int
 		MainExamer       func(childComplexity int) int
@@ -287,13 +293,13 @@ type ComplexityRoot struct {
 	}
 
 	EnhancedStudentReg struct {
-		Ancode     func(childComplexity int) int
-		Group      func(childComplexity int) int
-		Mtknr      func(childComplexity int) int
-		Name       func(childComplexity int) int
-		Presence   func(childComplexity int) int
-		Program    func(childComplexity int) int
-		ZpaStudent func(childComplexity int) int
+		Group         func(childComplexity int) int
+		Mtknr         func(childComplexity int) int
+		Name          func(childComplexity int) int
+		Presence      func(childComplexity int) int
+		PrimussAncode func(childComplexity int) int
+		Program       func(childComplexity int) int
+		ZpaStudent    func(childComplexity int) int
 	}
 
 	ExamDay struct {
@@ -838,6 +844,7 @@ type ComplexityRoot struct {
 
 	PlannedExam struct {
 		Ancode           func(childComplexity int) int
+		Ancodes          func(childComplexity int) int
 		Conflicts        func(childComplexity int) int
 		Constraints      func(childComplexity int) int
 		MainExamer       func(childComplexity int) int
@@ -1135,8 +1142,9 @@ type ComplexityRoot struct {
 	}
 
 	RegWithProgram struct {
-		Program func(childComplexity int) int
-		Reg     func(childComplexity int) int
+		PrimussAncode func(childComplexity int) int
+		Program       func(childComplexity int) int
+		ZpaAncode     func(childComplexity int) int
 	}
 
 	Room struct {
@@ -1309,8 +1317,8 @@ type ComplexityRoot struct {
 		Name            func(childComplexity int) int
 		Nta             func(childComplexity int) int
 		Program         func(childComplexity int) int
-		Regs            func(childComplexity int) int
 		RegsWithProgram func(childComplexity int) int
+		ZpaAncodes      func(childComplexity int) int
 		ZpaStudent      func(childComplexity int) int
 	}
 
@@ -1322,12 +1330,12 @@ type ComplexityRoot struct {
 	}
 
 	StudentReg struct {
-		AnCode   func(childComplexity int) int
-		Group    func(childComplexity int) int
-		Mtknr    func(childComplexity int) int
-		Name     func(childComplexity int) int
-		Presence func(childComplexity int) int
-		Program  func(childComplexity int) int
+		Group         func(childComplexity int) int
+		Mtknr         func(childComplexity int) int
+		Name          func(childComplexity int) int
+		Presence      func(childComplexity int) int
+		PrimussAncode func(childComplexity int) int
+		Program       func(childComplexity int) int
 	}
 
 	StudentRegsPerAncode struct {
@@ -1336,9 +1344,10 @@ type ComplexityRoot struct {
 	}
 
 	StudentRegsPerAncodeAndProgram struct {
-		Ancode      func(childComplexity int) int
-		Program     func(childComplexity int) int
-		StudentRegs func(childComplexity int) int
+		PrimussAncode func(childComplexity int) int
+		Program       func(childComplexity int) int
+		StudentRegs   func(childComplexity int) int
+		ZpaAncode     func(childComplexity int) int
 	}
 
 	StudentRegsPerStudent struct {
@@ -1930,12 +1939,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdditionalExamRoom.StudentCount(childComplexity), true
 
-	case "AnCode.ancode":
-		if e.complexity.AnCode.Ancode == nil {
+	case "AnCode.zpaAncode":
+		if e.complexity.AnCode.ZpaAncode == nil {
 			break
 		}
 
-		return e.complexity.AnCode.Ancode(childComplexity), true
+		return e.complexity.AnCode.ZpaAncode(childComplexity), true
+
+	case "Ancodes.primussAncodes":
+		if e.complexity.Ancodes.PrimussAncodes == nil {
+			break
+		}
+
+		return e.complexity.Ancodes.PrimussAncodes(childComplexity), true
+
+	case "Ancodes.zpaAncode":
+		if e.complexity.Ancodes.ZpaAncode == nil {
+			break
+		}
+
+		return e.complexity.Ancodes.ZpaAncode(childComplexity), true
 
 	case "AnnyBooking.blockerEndDate":
 		if e.complexity.AnnyBooking.BlockerEndDate == nil {
@@ -2111,6 +2134,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AssembledExam.Ancode(childComplexity), true
+
+	case "AssembledExam.ancodes":
+		if e.complexity.AssembledExam.Ancodes == nil {
+			break
+		}
+
+		return e.complexity.AssembledExam.Ancodes(childComplexity), true
 
 	case "AssembledExam.conflicts":
 		if e.complexity.AssembledExam.Conflicts == nil {
@@ -2882,13 +2912,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.EnhancedPrimussExam.StudentRegs(childComplexity), true
 
-	case "EnhancedStudentReg.ancode":
-		if e.complexity.EnhancedStudentReg.Ancode == nil {
-			break
-		}
-
-		return e.complexity.EnhancedStudentReg.Ancode(childComplexity), true
-
 	case "EnhancedStudentReg.group":
 		if e.complexity.EnhancedStudentReg.Group == nil {
 			break
@@ -2916,6 +2939,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.EnhancedStudentReg.Presence(childComplexity), true
+
+	case "EnhancedStudentReg.primussAncode":
+		if e.complexity.EnhancedStudentReg.PrimussAncode == nil {
+			break
+		}
+
+		return e.complexity.EnhancedStudentReg.PrimussAncode(childComplexity), true
 
 	case "EnhancedStudentReg.program":
 		if e.complexity.EnhancedStudentReg.Program == nil {
@@ -6062,6 +6092,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PlannedExam.Ancode(childComplexity), true
 
+	case "PlannedExam.ancodes":
+		if e.complexity.PlannedExam.Ancodes == nil {
+			break
+		}
+
+		return e.complexity.PlannedExam.Ancodes(childComplexity), true
+
 	case "PlannedExam.conflicts":
 		if e.complexity.PlannedExam.Conflicts == nil {
 			break
@@ -7837,6 +7874,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RegWithError.Registration(childComplexity), true
 
+	case "RegWithProgram.primussAncode":
+		if e.complexity.RegWithProgram.PrimussAncode == nil {
+			break
+		}
+
+		return e.complexity.RegWithProgram.PrimussAncode(childComplexity), true
+
 	case "RegWithProgram.program":
 		if e.complexity.RegWithProgram.Program == nil {
 			break
@@ -7844,12 +7888,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RegWithProgram.Program(childComplexity), true
 
-	case "RegWithProgram.reg":
-		if e.complexity.RegWithProgram.Reg == nil {
+	case "RegWithProgram.zpaAncode":
+		if e.complexity.RegWithProgram.ZpaAncode == nil {
 			break
 		}
 
-		return e.complexity.RegWithProgram.Reg(childComplexity), true
+		return e.complexity.RegWithProgram.ZpaAncode(childComplexity), true
 
 	case "Room.deactivated":
 		if e.complexity.Room.Deactivated == nil {
@@ -8635,19 +8679,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Student.Program(childComplexity), true
 
-	case "Student.regs":
-		if e.complexity.Student.Regs == nil {
-			break
-		}
-
-		return e.complexity.Student.Regs(childComplexity), true
-
 	case "Student.regsWithProgram":
 		if e.complexity.Student.RegsWithProgram == nil {
 			break
 		}
 
 		return e.complexity.Student.RegsWithProgram(childComplexity), true
+
+	case "Student.zpaAncodes":
+		if e.complexity.Student.ZpaAncodes == nil {
+			break
+		}
+
+		return e.complexity.Student.ZpaAncodes(childComplexity), true
 
 	case "Student.zpaStudent":
 		if e.complexity.Student.ZpaStudent == nil {
@@ -8684,13 +8728,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StudentConflictDecision.Mtknr(childComplexity), true
 
-	case "StudentReg.ancode":
-		if e.complexity.StudentReg.AnCode == nil {
-			break
-		}
-
-		return e.complexity.StudentReg.AnCode(childComplexity), true
-
 	case "StudentReg.group":
 		if e.complexity.StudentReg.Group == nil {
 			break
@@ -8719,6 +8756,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StudentReg.Presence(childComplexity), true
 
+	case "StudentReg.primussAncode":
+		if e.complexity.StudentReg.PrimussAncode == nil {
+			break
+		}
+
+		return e.complexity.StudentReg.PrimussAncode(childComplexity), true
+
 	case "StudentReg.program":
 		if e.complexity.StudentReg.Program == nil {
 			break
@@ -8740,12 +8784,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StudentRegsPerAncode.PerProgram(childComplexity), true
 
-	case "StudentRegsPerAncodeAndProgram.ancode":
-		if e.complexity.StudentRegsPerAncodeAndProgram.Ancode == nil {
+	case "StudentRegsPerAncodeAndProgram.primussAncode":
+		if e.complexity.StudentRegsPerAncodeAndProgram.PrimussAncode == nil {
 			break
 		}
 
-		return e.complexity.StudentRegsPerAncodeAndProgram.Ancode(childComplexity), true
+		return e.complexity.StudentRegsPerAncodeAndProgram.PrimussAncode(childComplexity), true
 
 	case "StudentRegsPerAncodeAndProgram.program":
 		if e.complexity.StudentRegsPerAncodeAndProgram.Program == nil {
@@ -8760,6 +8804,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.StudentRegsPerAncodeAndProgram.StudentRegs(childComplexity), true
+
+	case "StudentRegsPerAncodeAndProgram.zpaAncode":
+		if e.complexity.StudentRegsPerAncodeAndProgram.ZpaAncode == nil {
+			break
+		}
+
+		return e.complexity.StudentRegsPerAncodeAndProgram.ZpaAncode(childComplexity), true
 
 	case "StudentRegsPerStudent.ancodes":
 		if e.complexity.StudentRegsPerStudent.Ancodes == nil {
@@ -10615,8 +10666,20 @@ type ConnectedExamWarning {
   examer: String
 }
 
+"""
+Ancodes bundles an exam's internal (ZPA) ancode with its external Primuss identities.
+Internal use → zpaAncode; external communication (Primuss/MUC.DAI) → primussAncodes.
+For FK07 exams they are normally equal; for MUC.DAI/external exams they differ.
+"""
+type Ancodes {
+  zpaAncode: Int!
+  primussAncodes: [ZPAPrimussAncodes!]!
+}
+
 type AssembledExam {
   ancode: Int!
+  "internal/external ancode identity of the exam (zpaAncode + program-scoped primussAncodes)"
+  ancodes: Ancodes!
   zpaExam: ZPAExam!
   mainExamer: Teacher!
   primussExams: [EnhancedPrimussExam!]!
@@ -10635,6 +10698,8 @@ type ZPAConflict {
 
 type PlannedExam {
   ancode: Int!
+  "internal/external ancode identity of the exam (zpaAncode + program-scoped primussAncodes)"
+  ancodes: Ancodes!
   zpaExam: ZPAExam!
   mainExamer: Teacher!
   primussExams: [EnhancedPrimussExam!]!
@@ -12012,7 +12077,8 @@ input PrimussExamInput {
 
 type StudentReg {
   mtknr: String!
-  ancode: Int!
+  "Primuss ancode (per-program namespace); == the ZPA ancode only for FK07 exams"
+  primussAncode: Int!
   program: String!
   group: String!
   name: String!
@@ -12021,7 +12087,8 @@ type StudentReg {
 
 type EnhancedStudentReg {
   mtknr: String!
-  ancode: Int!
+  "Primuss ancode (per-program namespace); == the ZPA ancode only for FK07 exams"
+  primussAncode: Int!
   program: String!
   group: String!
   name: String!
@@ -12411,7 +12478,7 @@ type Semester {
 }
 
 type AnCode {
-  ancode: Int!
+  zpaAncode: Int!
 }
 
 type SemesterConfig {
@@ -12670,13 +12737,22 @@ type StudentRegsPerAncode {
 
 type StudentRegsPerAncodeAndProgram {
   program: String!
-  ancode: Int!
+  "internal ZPA ancode of the exam"
+  zpaAncode: Int!
+  "external (Primuss/MUC.DAI) ancode of the exam in this program; == zpaAncode for FK07"
+  primussAncode: Int!
   studentRegs: [StudentReg!]!
 }
 
+"""
+RegWithProgram is one student's registration for one exam in one study program — the
+per-program projection of an exam's Ancodes: the external primussAncode plus the
+internal zpaAncode (equal for FK07, different for MUC.DAI/external exams).
+"""
 type RegWithProgram {
   program: String!
-  reg: Int!
+  primussAncode: Int!
+  zpaAncode: Int!
 }
 
 type Student {
@@ -12684,7 +12760,8 @@ type Student {
   program: String!
   group: String!
   name: String!
-  regs: [Int!]!
+  "internal ZPA ancodes the student is registered for (the conflict/plan key)"
+  zpaAncodes: [Int!]!
   regsWithProgram: [RegWithProgram!]!
   zpaStudent: ZPAStudent
   nta: NTA
@@ -20422,8 +20499,8 @@ func (ec *executionContext) fieldContext_AdditionalExamRoom_isHandicap(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _AnCode_ancode(ctx context.Context, field graphql.CollectedField, obj *model.AnCode) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AnCode_ancode(ctx, field)
+func (ec *executionContext) _AnCode_zpaAncode(ctx context.Context, field graphql.CollectedField, obj *model.AnCode) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AnCode_zpaAncode(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -20436,7 +20513,7 @@ func (ec *executionContext) _AnCode_ancode(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ancode, nil
+		return obj.ZpaAncode, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -20453,7 +20530,7 @@ func (ec *executionContext) _AnCode_ancode(ctx context.Context, field graphql.Co
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_AnCode_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AnCode_zpaAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AnCode",
 		Field:      field,
@@ -20461,6 +20538,100 @@ func (ec *executionContext) fieldContext_AnCode_ancode(_ context.Context, field 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Ancodes_zpaAncode(ctx context.Context, field graphql.CollectedField, obj *model.Ancodes) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Ancodes_zpaAncode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ZpaAncode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Ancodes_zpaAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Ancodes",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Ancodes_primussAncodes(ctx context.Context, field graphql.CollectedField, obj *model.Ancodes) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Ancodes_primussAncodes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrimussAncodes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.ZPAPrimussAncodes)
+	fc.Result = res
+	return ec.marshalNZPAPrimussAncodes2ᚕgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAPrimussAncodesᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Ancodes_primussAncodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Ancodes",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "program":
+				return ec.fieldContext_ZPAPrimussAncodes_program(ctx, field)
+			case "ancode":
+				return ec.fieldContext_ZPAPrimussAncodes_ancode(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ZPAPrimussAncodes", field.Name)
 		},
 	}
 	return fc, nil
@@ -21549,6 +21720,56 @@ func (ec *executionContext) fieldContext_AssembledExam_ancode(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssembledExam_ancodes(ctx context.Context, field graphql.CollectedField, obj *model.AssembledExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssembledExam_ancodes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancodes(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.Ancodes)
+	fc.Result = res
+	return ec.marshalNAncodes2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAncodes(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssembledExam_ancodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssembledExam",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaAncode":
+				return ec.fieldContext_Ancodes_zpaAncode(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_Ancodes_primussAncodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Ancodes", field.Name)
 		},
 	}
 	return fc, nil
@@ -26500,8 +26721,8 @@ func (ec *executionContext) fieldContext_EnhancedPrimussExam_studentRegs(_ conte
 			switch field.Name {
 			case "mtknr":
 				return ec.fieldContext_EnhancedStudentReg_mtknr(ctx, field)
-			case "ancode":
-				return ec.fieldContext_EnhancedStudentReg_ancode(ctx, field)
+			case "primussAncode":
+				return ec.fieldContext_EnhancedStudentReg_primussAncode(ctx, field)
 			case "program":
 				return ec.fieldContext_EnhancedStudentReg_program(ctx, field)
 			case "group":
@@ -26683,8 +26904,8 @@ func (ec *executionContext) fieldContext_EnhancedStudentReg_mtknr(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _EnhancedStudentReg_ancode(ctx context.Context, field graphql.CollectedField, obj *model.EnhancedStudentReg) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EnhancedStudentReg_ancode(ctx, field)
+func (ec *executionContext) _EnhancedStudentReg_primussAncode(ctx context.Context, field graphql.CollectedField, obj *model.EnhancedStudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EnhancedStudentReg_primussAncode(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -26697,7 +26918,7 @@ func (ec *executionContext) _EnhancedStudentReg_ancode(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ancode, nil
+		return obj.PrimussAncode, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -26714,7 +26935,7 @@ func (ec *executionContext) _EnhancedStudentReg_ancode(ctx context.Context, fiel
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_EnhancedStudentReg_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_EnhancedStudentReg_primussAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "EnhancedStudentReg",
 		Field:      field,
@@ -30196,6 +30417,8 @@ func (ec *executionContext) fieldContext_ExamWithRegsAndRooms_exam(_ context.Con
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_PlannedExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -46629,6 +46852,56 @@ func (ec *executionContext) fieldContext_PlannedExam_ancode(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _PlannedExam_ancodes(ctx context.Context, field graphql.CollectedField, obj *model.PlannedExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlannedExam_ancodes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancodes(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.Ancodes)
+	fc.Result = res
+	return ec.marshalNAncodes2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAncodes(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlannedExam_ancodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlannedExam",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "zpaAncode":
+				return ec.fieldContext_Ancodes_zpaAncode(ctx, field)
+			case "primussAncodes":
+				return ec.fieldContext_Ancodes_primussAncodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Ancodes", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PlannedExam_zpaExam(ctx context.Context, field graphql.CollectedField, obj *model.PlannedExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PlannedExam_zpaExam(ctx, field)
 	if err != nil {
@@ -53071,6 +53344,8 @@ func (ec *executionContext) fieldContext_Query_assembledExams(_ context.Context,
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_AssembledExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_AssembledExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_AssembledExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -53132,6 +53407,8 @@ func (ec *executionContext) fieldContext_Query_assembledExam(ctx context.Context
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_AssembledExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_AssembledExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_AssembledExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -53207,6 +53484,8 @@ func (ec *executionContext) fieldContext_Query_plannedExams(_ context.Context, f
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_PlannedExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -53272,6 +53551,8 @@ func (ec *executionContext) fieldContext_Query_plannedExam(ctx context.Context, 
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_PlannedExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -55189,8 +55470,8 @@ func (ec *executionContext) fieldContext_Query_ntasWithRegs(_ context.Context, f
 				return ec.fieldContext_Student_group(ctx, field)
 			case "name":
 				return ec.fieldContext_Student_name(ctx, field)
-			case "regs":
-				return ec.fieldContext_Student_regs(ctx, field)
+			case "zpaAncodes":
+				return ec.fieldContext_Student_zpaAncodes(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
 			case "zpaStudent":
@@ -55303,6 +55584,8 @@ func (ec *executionContext) fieldContext_Query_examsWithNtas(_ context.Context, 
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_PlannedExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -55677,6 +55960,8 @@ func (ec *executionContext) fieldContext_Query_examsAt(ctx context.Context, fiel
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_PlannedExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -55756,6 +56041,8 @@ func (ec *executionContext) fieldContext_Query_examsWithoutSlot(_ context.Contex
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_PlannedExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -56743,8 +57030,8 @@ func (ec *executionContext) fieldContext_Query_studentRegsForProgram(ctx context
 			switch field.Name {
 			case "mtknr":
 				return ec.fieldContext_StudentReg_mtknr(ctx, field)
-			case "ancode":
-				return ec.fieldContext_StudentReg_ancode(ctx, field)
+			case "primussAncode":
+				return ec.fieldContext_StudentReg_primussAncode(ctx, field)
 			case "program":
 				return ec.fieldContext_StudentReg_program(ctx, field)
 			case "group":
@@ -57823,8 +58110,8 @@ func (ec *executionContext) fieldContext_Query_studentByMtknr(ctx context.Contex
 				return ec.fieldContext_Student_group(ctx, field)
 			case "name":
 				return ec.fieldContext_Student_name(ctx, field)
-			case "regs":
-				return ec.fieldContext_Student_regs(ctx, field)
+			case "zpaAncodes":
+				return ec.fieldContext_Student_zpaAncodes(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
 			case "zpaStudent":
@@ -57896,8 +58183,8 @@ func (ec *executionContext) fieldContext_Query_studentsByName(ctx context.Contex
 				return ec.fieldContext_Student_group(ctx, field)
 			case "name":
 				return ec.fieldContext_Student_name(ctx, field)
-			case "regs":
-				return ec.fieldContext_Student_regs(ctx, field)
+			case "zpaAncodes":
+				return ec.fieldContext_Student_zpaAncodes(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
 			case "zpaStudent":
@@ -57969,8 +58256,8 @@ func (ec *executionContext) fieldContext_Query_students(_ context.Context, field
 				return ec.fieldContext_Student_group(ctx, field)
 			case "name":
 				return ec.fieldContext_Student_name(ctx, field)
-			case "regs":
-				return ec.fieldContext_Student_regs(ctx, field)
+			case "zpaAncodes":
+				return ec.fieldContext_Student_zpaAncodes(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
 			case "zpaStudent":
@@ -58690,8 +58977,8 @@ func (ec *executionContext) fieldContext_Query_zpaAnCodes(_ context.Context, fie
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "ancode":
-				return ec.fieldContext_AnCode_ancode(ctx, field)
+			case "zpaAncode":
+				return ec.fieldContext_AnCode_zpaAncode(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AnCode", field.Name)
 		},
@@ -59111,8 +59398,8 @@ func (ec *executionContext) fieldContext_RegWithProgram_program(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _RegWithProgram_reg(ctx context.Context, field graphql.CollectedField, obj *model.RegWithProgram) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RegWithProgram_reg(ctx, field)
+func (ec *executionContext) _RegWithProgram_primussAncode(ctx context.Context, field graphql.CollectedField, obj *model.RegWithProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegWithProgram_primussAncode(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -59125,7 +59412,7 @@ func (ec *executionContext) _RegWithProgram_reg(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Reg, nil
+		return obj.PrimussAncode, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -59142,7 +59429,51 @@ func (ec *executionContext) _RegWithProgram_reg(ctx context.Context, field graph
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RegWithProgram_reg(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RegWithProgram_primussAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegWithProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegWithProgram_zpaAncode(ctx context.Context, field graphql.CollectedField, obj *model.RegWithProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegWithProgram_zpaAncode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ZpaAncode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegWithProgram_zpaAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RegWithProgram",
 		Field:      field,
@@ -61067,6 +61398,8 @@ func (ec *executionContext) fieldContext_RoomRequestPreview_exam(_ context.Conte
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_PlannedExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -61135,6 +61468,8 @@ func (ec *executionContext) fieldContext_RoomRequestPreview_simultaneousExams(_ 
 			switch field.Name {
 			case "ancode":
 				return ec.fieldContext_PlannedExam_ancode(ctx, field)
+			case "ancodes":
+				return ec.fieldContext_PlannedExam_ancodes(ctx, field)
 			case "zpaExam":
 				return ec.fieldContext_PlannedExam_zpaExam(ctx, field)
 			case "mainExamer":
@@ -64208,8 +64543,8 @@ func (ec *executionContext) fieldContext_Student_name(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Student_regs(ctx context.Context, field graphql.CollectedField, obj *model.Student) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Student_regs(ctx, field)
+func (ec *executionContext) _Student_zpaAncodes(ctx context.Context, field graphql.CollectedField, obj *model.Student) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Student_zpaAncodes(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -64222,7 +64557,7 @@ func (ec *executionContext) _Student_regs(ctx context.Context, field graphql.Col
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Regs, nil
+		return obj.ZpaAncodes, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -64239,7 +64574,7 @@ func (ec *executionContext) _Student_regs(ctx context.Context, field graphql.Col
 	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Student_regs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Student_zpaAncodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Student",
 		Field:      field,
@@ -64293,8 +64628,10 @@ func (ec *executionContext) fieldContext_Student_regsWithProgram(_ context.Conte
 			switch field.Name {
 			case "program":
 				return ec.fieldContext_RegWithProgram_program(ctx, field)
-			case "reg":
-				return ec.fieldContext_RegWithProgram_reg(ctx, field)
+			case "primussAncode":
+				return ec.fieldContext_RegWithProgram_primussAncode(ctx, field)
+			case "zpaAncode":
+				return ec.fieldContext_RegWithProgram_zpaAncode(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RegWithProgram", field.Name)
 		},
@@ -64646,8 +64983,8 @@ func (ec *executionContext) fieldContext_StudentReg_mtknr(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _StudentReg_ancode(ctx context.Context, field graphql.CollectedField, obj *model.StudentReg) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_StudentReg_ancode(ctx, field)
+func (ec *executionContext) _StudentReg_primussAncode(ctx context.Context, field graphql.CollectedField, obj *model.StudentReg) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentReg_primussAncode(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -64660,7 +64997,7 @@ func (ec *executionContext) _StudentReg_ancode(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.AnCode, nil
+		return obj.PrimussAncode, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -64677,7 +65014,7 @@ func (ec *executionContext) _StudentReg_ancode(ctx context.Context, field graphq
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_StudentReg_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_StudentReg_primussAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StudentReg",
 		Field:      field,
@@ -64951,8 +65288,10 @@ func (ec *executionContext) fieldContext_StudentRegsPerAncode_perProgram(_ conte
 			switch field.Name {
 			case "program":
 				return ec.fieldContext_StudentRegsPerAncodeAndProgram_program(ctx, field)
-			case "ancode":
-				return ec.fieldContext_StudentRegsPerAncodeAndProgram_ancode(ctx, field)
+			case "zpaAncode":
+				return ec.fieldContext_StudentRegsPerAncodeAndProgram_zpaAncode(ctx, field)
+			case "primussAncode":
+				return ec.fieldContext_StudentRegsPerAncodeAndProgram_primussAncode(ctx, field)
 			case "studentRegs":
 				return ec.fieldContext_StudentRegsPerAncodeAndProgram_studentRegs(ctx, field)
 			}
@@ -65006,8 +65345,8 @@ func (ec *executionContext) fieldContext_StudentRegsPerAncodeAndProgram_program(
 	return fc, nil
 }
 
-func (ec *executionContext) _StudentRegsPerAncodeAndProgram_ancode(ctx context.Context, field graphql.CollectedField, obj *model.StudentRegsPerAncodeAndProgram) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_StudentRegsPerAncodeAndProgram_ancode(ctx, field)
+func (ec *executionContext) _StudentRegsPerAncodeAndProgram_zpaAncode(ctx context.Context, field graphql.CollectedField, obj *model.StudentRegsPerAncodeAndProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentRegsPerAncodeAndProgram_zpaAncode(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -65020,7 +65359,7 @@ func (ec *executionContext) _StudentRegsPerAncodeAndProgram_ancode(ctx context.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Ancode, nil
+		return obj.ZpaAncode, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -65037,7 +65376,51 @@ func (ec *executionContext) _StudentRegsPerAncodeAndProgram_ancode(ctx context.C
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_StudentRegsPerAncodeAndProgram_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_StudentRegsPerAncodeAndProgram_zpaAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudentRegsPerAncodeAndProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudentRegsPerAncodeAndProgram_primussAncode(ctx context.Context, field graphql.CollectedField, obj *model.StudentRegsPerAncodeAndProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudentRegsPerAncodeAndProgram_primussAncode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PrimussAncode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudentRegsPerAncodeAndProgram_primussAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StudentRegsPerAncodeAndProgram",
 		Field:      field,
@@ -65091,8 +65474,8 @@ func (ec *executionContext) fieldContext_StudentRegsPerAncodeAndProgram_studentR
 			switch field.Name {
 			case "mtknr":
 				return ec.fieldContext_StudentReg_mtknr(ctx, field)
-			case "ancode":
-				return ec.fieldContext_StudentReg_ancode(ctx, field)
+			case "primussAncode":
+				return ec.fieldContext_StudentReg_primussAncode(ctx, field)
 			case "program":
 				return ec.fieldContext_StudentReg_program(ctx, field)
 			case "group":
@@ -65155,8 +65538,8 @@ func (ec *executionContext) fieldContext_StudentRegsPerStudent_student(_ context
 				return ec.fieldContext_Student_group(ctx, field)
 			case "name":
 				return ec.fieldContext_Student_name(ctx, field)
-			case "regs":
-				return ec.fieldContext_Student_regs(ctx, field)
+			case "zpaAncodes":
+				return ec.fieldContext_Student_zpaAncodes(ctx, field)
 			case "regsWithProgram":
 				return ec.fieldContext_Student_regsWithProgram(ctx, field)
 			case "zpaStudent":
@@ -77276,8 +77659,52 @@ func (ec *executionContext) _AnCode(ctx context.Context, sel ast.SelectionSet, o
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("AnCode")
-		case "ancode":
-			out.Values[i] = ec._AnCode_ancode(ctx, field, obj)
+		case "zpaAncode":
+			out.Values[i] = ec._AnCode_zpaAncode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var ancodesImplementors = []string{"Ancodes"}
+
+func (ec *executionContext) _Ancodes(ctx context.Context, sel ast.SelectionSet, obj *model.Ancodes) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, ancodesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Ancodes")
+		case "zpaAncode":
+			out.Values[i] = ec._Ancodes_zpaAncode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "primussAncodes":
+			out.Values[i] = ec._Ancodes_primussAncodes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -77493,6 +77920,11 @@ func (ec *executionContext) _AssembledExam(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("AssembledExam")
 		case "ancode":
 			out.Values[i] = ec._AssembledExam_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "ancodes":
+			out.Values[i] = ec._AssembledExam_ancodes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -78835,8 +79267,8 @@ func (ec *executionContext) _EnhancedStudentReg(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "ancode":
-			out.Values[i] = ec._EnhancedStudentReg_ancode(ctx, field, obj)
+		case "primussAncode":
+			out.Values[i] = ec._EnhancedStudentReg_primussAncode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -82668,6 +83100,11 @@ func (ec *executionContext) _PlannedExam(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "ancodes":
+			out.Values[i] = ec._PlannedExam_ancodes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "zpaExam":
 			out.Values[i] = ec._PlannedExam_zpaExam(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -86431,8 +86868,13 @@ func (ec *executionContext) _RegWithProgram(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "reg":
-			out.Values[i] = ec._RegWithProgram_reg(ctx, field, obj)
+		case "primussAncode":
+			out.Values[i] = ec._RegWithProgram_primussAncode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "zpaAncode":
+			out.Values[i] = ec._RegWithProgram_zpaAncode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -87639,8 +88081,8 @@ func (ec *executionContext) _Student(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "regs":
-			out.Values[i] = ec._Student_regs(ctx, field, obj)
+		case "zpaAncodes":
+			out.Values[i] = ec._Student_zpaAncodes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -87746,8 +88188,8 @@ func (ec *executionContext) _StudentReg(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "ancode":
-			out.Values[i] = ec._StudentReg_ancode(ctx, field, obj)
+		case "primussAncode":
+			out.Values[i] = ec._StudentReg_primussAncode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -87854,8 +88296,13 @@ func (ec *executionContext) _StudentRegsPerAncodeAndProgram(ctx context.Context,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "ancode":
-			out.Values[i] = ec._StudentRegsPerAncodeAndProgram_ancode(ctx, field, obj)
+		case "zpaAncode":
+			out.Values[i] = ec._StudentRegsPerAncodeAndProgram_zpaAncode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "primussAncode":
+			out.Values[i] = ec._StudentRegsPerAncodeAndProgram_primussAncode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -89582,6 +90029,10 @@ func (ec *executionContext) unmarshalNAdditionalExamRoomInput2ᚕᚖgithubᚗcom
 func (ec *executionContext) unmarshalNAdditionalExamRoomInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAdditionalExamRoomInput(ctx context.Context, v any) (*model.AdditionalExamRoomInput, error) {
 	res, err := ec.unmarshalInputAdditionalExamRoomInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAncodes2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAncodes(ctx context.Context, sel ast.SelectionSet, v model.Ancodes) graphql.Marshaler {
+	return ec._Ancodes(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNAnnyBooking2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐAnnyBookingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AnnyBooking) graphql.Marshaler {

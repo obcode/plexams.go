@@ -16,7 +16,7 @@ func (p *Plexams) PrintStudentInfo(name string, long, zpa bool) error {
 	}
 	for _, student := range students {
 		if !long {
-			fmt.Printf("%s (%s, %s%s): regs %v", student.Name, student.Mtknr, student.Program, student.Group, student.Regs)
+			fmt.Printf("%s (%s, %s%s): regs %v", student.Name, student.Mtknr, student.Program, student.Group, student.ZpaAncodes)
 			if student.Nta != nil {
 				fmt.Printf(", NTA: %s\n", student.Nta.Compensation)
 			} else {
@@ -29,7 +29,7 @@ func (p *Plexams) PrintStudentInfo(name string, long, zpa bool) error {
 			} else {
 				fmt.Println()
 			}
-			for _, ancode := range student.Regs {
+			for _, ancode := range student.ZpaAncodes {
 				examsToPlan, err := p.GetZpaExamsToPlan(ctx)
 				if err != nil {
 					log.Error().Err(err).Msg("cannot get exams to plan")

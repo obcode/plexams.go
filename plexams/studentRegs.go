@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
@@ -30,27 +29,29 @@ func (p *Plexams) GetStudentRegsForAncode(ancode int) (*model.StudentRegsForAnco
 	}
 	log.Debug().Interface("exam", zpaExam).Msg("found ZPA exam")
 
-	groups := set.NewSet[string]()
-	for _, group := range zpaExam.Groups {
-		groups.Add(group[:2])
-	}
+	// The passed ancode is the internal ZPA ancode. Student registrations are stored per
+	// program under the PRIMUSS ancode, which differs from the ZPA ancode for MUC.DAI /
+	// external exams. So resolve the Primuss ancode per program from the exam's
+	// PrimussAncodes (iterating those, not Groups, so external programs are hit too).
+	studentRegs := make([]*model.StudentRegsPerAncodeAndProgram, 0, len(zpaExam.PrimussAncodes))
+	for _, pa := range zpaExam.PrimussAncodes {
+		if pa.Ancode <= 0 {
+			continue // placeholder for a missing Primuss number — no regs to look up
+		}
+		program, primussAncode := pa.Program, pa.Ancode
+		log.Debug().Str("program", program).Int("primussAncode", primussAncode).Int("zpaAncode", ancode).
+			Msg("getting student regs for program")
 
-	log.Debug().Interface("groups", groups).Msg("found the following groups")
-
-	studentRegs := make([]*model.StudentRegsPerAncodeAndProgram, 0, groups.Cardinality())
-	for _, program := range groups.ToSlice() {
-		log.Debug().Str("program", program).Msg("getting student regs for program")
-
-		studentRegsForProgram, err := p.dbClient.GetPrimussStudentRegsForProgrammAncode(ctx, program, ancode)
+		studentRegsForProgram, err := p.dbClient.GetPrimussStudentRegsForProgrammAncode(ctx, program, primussAncode)
 		if err != nil {
-			log.Error().Err(err).Str("program", program).Int("ancode", ancode).Msg("cannot get studentregs")
+			log.Error().Err(err).Str("program", program).Int("primussAncode", primussAncode).Msg("cannot get studentregs")
 			return nil, err
 		}
-		log.Debug().Str("program", program).Int("ancode", ancode).Interface("regs", studentRegsForProgram).Msg("found studentregs")
 		studentRegs = append(studentRegs, &model.StudentRegsPerAncodeAndProgram{
-			Program:     program,
-			StudentRegs: studentRegsForProgram,
-			Ancode:      ancode,
+			Program:       program,
+			ZpaAncode:     ancode,
+			PrimussAncode: primussAncode,
+			StudentRegs:   studentRegsForProgram,
 		})
 	}
 

@@ -361,7 +361,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		for _, s := range studentsRaw {
 			for _, rwp := range s.RegsWithProgram {
 				if mucDaiProg[rwp.Program] {
-					if u, ok := unitOf[rwp.Reg]; ok && !units[u].Fixed {
+					if u, ok := unitOf[rwp.ZpaAncode]; ok && !units[u].Fixed {
 						mucDaiUnit[u] = true
 					}
 				}
@@ -398,8 +398,8 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	students := make([]examplan.Student, 0, len(studentsRaw))
 	for _, s := range studentsRaw {
 		seen := make(map[int]bool)
-		list := make([]int, 0, len(s.Regs))
-		for _, ancode := range s.Regs {
+		list := make([]int, 0, len(s.ZpaAncodes))
+		for _, ancode := range s.ZpaAncodes {
 			if ui, ok := unitOf[ancode]; ok && !seen[ui] {
 				seen[ui] = true
 				list = append(list, ui)

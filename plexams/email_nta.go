@@ -42,8 +42,8 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 			continue
 		}
 
-		exams := make([]*model.PlannedExam, 0, len(nta.Regs))
-		for _, ancode := range nta.Regs {
+		exams := make([]*model.PlannedExam, 0, len(nta.ZpaAncodes))
+		for _, ancode := range nta.ZpaAncodes {
 			exam, err := p.PlannedExam(ctx, ancode)
 			if err != nil {
 				log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam")
@@ -151,8 +151,8 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 	}
 
 	for _, nta := range ntas {
-		exams := make([]*model.PlannedExam, 0, len(nta.Regs))
-		for _, ancode := range nta.Regs {
+		exams := make([]*model.PlannedExam, 0, len(nta.ZpaAncodes))
+		for _, ancode := range nta.ZpaAncodes {
 			exam, err := p.PlannedExam(ctx, ancode)
 			if err != nil {
 				log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam")
@@ -266,8 +266,8 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 		return fmt.Errorf("student is not an nta")
 	}
 	examerIDsSet := set.NewSet[int]()
-	exams := make([]*model.PlannedExam, 0, len(student.Regs))
-	for _, ancode := range student.Regs {
+	exams := make([]*model.PlannedExam, 0, len(student.ZpaAncodes))
+	for _, ancode := range student.ZpaAncodes {
 		exam, err := p.PlannedExam(ctx, ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam")

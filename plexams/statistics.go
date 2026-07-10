@@ -19,7 +19,7 @@ func (p *Plexams) PrintStatistics() error {
 
 	regs := 0
 	for _, studentReg := range studentRegs {
-		regs += len(studentReg.Regs)
+		regs += len(studentReg.ZpaAncodes)
 	}
 
 	fmt.Printf("- %s mit insgesamt %s auf unsere Prüfungen\n",
@@ -32,7 +32,7 @@ STUDENTREG:
 		for _, program := range p.zpa.fk07programs {
 			if program == studentReg.Program {
 				studentRegsFK07++
-				regsFK07 += len(studentReg.Regs)
+				regsFK07 += len(studentReg.ZpaAncodes)
 				continue STUDENTREG
 			}
 		}

@@ -77,7 +77,8 @@ input PrimussExamInput {
 
 type StudentReg {
   mtknr: String!
-  ancode: Int!
+  "Primuss ancode (per-program namespace); == the ZPA ancode only for FK07 exams"
+  primussAncode: Int!
   program: String!
   group: String!
   name: String!
@@ -86,7 +87,8 @@ type StudentReg {
 
 type EnhancedStudentReg {
   mtknr: String!
-  ancode: Int!
+  "Primuss ancode (per-program namespace); == the ZPA ancode only for FK07 exams"
+  primussAncode: Int!
   program: String!
   group: String!
   name: String!

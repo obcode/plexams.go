@@ -25,11 +25,6 @@ func (p *Plexams) PrepareStudentRegs() error {
 		return err
 	}
 
-	type programmAndAncode struct {
-		Program string `json:"program,omitempty"`
-		Ancode  int    `json:"ancode,omitempty"`
-	}
-
 	plannedZpaAncodes := make(map[string]set.Set[int]) // program -> set of ancodes
 	primussAncodesToZpaAncodes := make(map[programmAndAncode]int)
 
@@ -54,9 +49,14 @@ func (p *Plexams) PrepareStudentRegs() error {
 		log.Debug().Interface("primussAncode", k).Int("zpa ancode", v).Msg("primuss ancodes with different zpa ancodes")
 	}
 
+	// A student registration carries both ancodes explicitly: primussAncode (external,
+	// what the student registered on) and zpaAncode (internal, resolved via the connected
+	// exams). The Primuss ancode is NO LONGER overwritten — both are kept side by side.
 	type studentRegFromProgram struct {
-		program    string
-		studentReg *model.StudentReg
+		program       string
+		primussAncode int
+		zpaAncode     int
+		studentReg    *model.StudentReg
 	}
 
 	// mtknr -> studentreg
@@ -70,23 +70,14 @@ func (p *Plexams) PrepareStudentRegs() error {
 		}
 
 		for _, studentReg := range studentRegs {
-			zpaAncode, ok := primussAncodesToZpaAncodes[programmAndAncode{program, studentReg.AnCode}]
-			if ok {
-				log.Debug().Str("program", program).Int("primussAncode", studentReg.AnCode).Int("zpaAncode", zpaAncode).
-					Str("name", studentReg.Name).Msg("fixing ancode")
-				studentReg.AnCode = zpaAncode
-			}
+			primussAncode, zpaAncode := resolveAncodes(program, studentReg.PrimussAncode, primussAncodesToZpaAncodes)
 
-			if !plannedZpaAncodes[program].Contains(studentReg.AnCode) {
+			if !plannedZpaAncodes[program].Contains(zpaAncode) {
 				continue
 			}
 
-			otherRegs, ok := studentRegsPerStudent[studentReg.Mtknr]
-			if ok {
-				studentRegsPerStudent[studentReg.Mtknr] = append(otherRegs, studentRegFromProgram{program, studentReg})
-			} else {
-				studentRegsPerStudent[studentReg.Mtknr] = []studentRegFromProgram{{program, studentReg}}
-			}
+			reg := studentRegFromProgram{program, primussAncode, zpaAncode, studentReg}
+			studentRegsPerStudent[studentReg.Mtknr] = append(studentRegsPerStudent[studentReg.Mtknr], reg)
 		}
 	}
 
@@ -110,19 +101,24 @@ func (p *Plexams) PrepareStudentRegs() error {
 
 	for mtknr, regs := range studentRegsPerStudent {
 		if len(regs) > 0 {
+			// zpaAncodes is the internal (deduplicated) list — the conflict/plan key. Two
+			// Primuss ancodes of different programs may map to the same ZPA ancode (a MUC.DAI
+			// aggregate exam): the set collapses them to one internal exam here, while
+			// regsWithProgram below keeps both per-program entries.
 			ancodeSet := set.NewSet[int]()
 			for _, reg := range regs {
-				ancodeSet.Add(reg.studentReg.AnCode)
+				ancodeSet.Add(reg.zpaAncode)
 			}
 
-			ancodes := ancodeSet.ToSlice()
-			sort.Ints(ancodes)
+			zpaAncodes := ancodeSet.ToSlice()
+			sort.Ints(zpaAncodes)
 
 			regsWithProgram := make([]*model.RegWithProgram, 0, len(regs))
 			for _, reg := range regs {
 				regsWithProgram = append(regsWithProgram, &model.RegWithProgram{
-					Program: reg.program,
-					Reg:     reg.studentReg.AnCode,
+					Program:       reg.program,
+					PrimussAncode: reg.primussAncode,
+					ZpaAncode:     reg.zpaAncode,
 				})
 			}
 
@@ -148,7 +144,7 @@ func (p *Plexams) PrepareStudentRegs() error {
 				Program:         regs[0].studentReg.Program,
 				Group:           regs[0].studentReg.Group,
 				Name:            regs[0].studentReg.Name,
-				Regs:            ancodes,
+				ZpaAncodes:      zpaAncodes,
 				RegsWithProgram: regsWithProgram,
 				Nta:             nta,
 				ZpaStudent:      zpaStudent,

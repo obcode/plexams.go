@@ -57,12 +57,12 @@ func (db *DB) GetPrimussStudentRegsPerAncode(ctx context.Context, program string
 			return studentRegs, err
 		}
 
-		regs, ok := studentRegs[studentReg.AnCode]
+		regs, ok := studentRegs[studentReg.PrimussAncode]
 		if !ok {
 			regs = make([]*model.StudentReg, 0)
 		}
 
-		studentRegs[studentReg.AnCode] = append(regs, &studentReg)
+		studentRegs[studentReg.PrimussAncode] = append(regs, &studentReg)
 
 	}
 

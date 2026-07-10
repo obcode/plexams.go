@@ -143,7 +143,7 @@ func (p *Plexams) PrepareAssembledExams() error {
 				if primussConflict.AnCode == enhanced.Exam.AnCode {
 					continue
 				}
-				zpaAncode, ok := ancodesMap[PrimussAncode{
+				zpaAncode, ok := ancodesMap[model.ZPAPrimussAncodes{
 					Program: enhanced.Exam.Program,
 					Ancode:  primussConflict.AnCode,
 				}]
@@ -350,13 +350,13 @@ func enhancePrimussExam(exam *model.PrimussExam, ntaMap map[string]*model.NTA, z
 			ntas = append(ntas, nta)
 		}
 		enhancedStudentRegs = append(enhancedStudentRegs, &model.EnhancedStudentReg{
-			Mtknr:      studentReg.Mtknr,
-			Ancode:     studentReg.AnCode,
-			Program:    studentReg.Program,
-			Group:      studentReg.Group,
-			Name:       studentReg.Name,
-			Presence:   studentReg.Presence,
-			ZpaStudent: zpaStudents[studentReg.Mtknr],
+			Mtknr:         studentReg.Mtknr,
+			PrimussAncode: studentReg.PrimussAncode,
+			Program:       studentReg.Program,
+			Group:         studentReg.Group,
+			Name:          studentReg.Name,
+			Presence:      studentReg.Presence,
+			ZpaStudent:    zpaStudents[studentReg.Mtknr],
 		})
 	}
 
@@ -368,17 +368,15 @@ func enhancePrimussExam(exam *model.PrimussExam, ntaMap map[string]*model.NTA, z
 	}
 }
 
-type PrimussAncode struct {
-	Program string
-	Ancode  int
-}
-
-func primussAncodesToZpaAncodes(exams []*model.ConnectedExam) map[PrimussAncode]int {
-	ancodesMap := make(map[PrimussAncode]int)
+// primussAncodesToZpaAncodes maps each Primuss identity (program, primussAncode) of the
+// connected exams to its internal ZPA ancode. The key is model.ZPAPrimussAncodes, the same
+// type used inside model.Ancodes.
+func primussAncodesToZpaAncodes(exams []*model.ConnectedExam) map[model.ZPAPrimussAncodes]int {
+	ancodesMap := make(map[model.ZPAPrimussAncodes]int)
 	for _, exam := range exams {
 		zpaAncode := exam.ZpaExam.AnCode
 		for _, primussExam := range exam.PrimussExams {
-			ancodesMap[PrimussAncode{
+			ancodesMap[model.ZPAPrimussAncodes{
 				Program: primussExam.Program,
 				Ancode:  primussExam.AnCode,
 			}] = zpaAncode

@@ -302,8 +302,8 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 	}
 	byPair := make(map[[2]int]*agg)
 	for _, s := range students {
-		placed := make([]int, 0, len(s.Regs))
-		for _, ancode := range s.Regs {
+		placed := make([]int, 0, len(s.ZpaAncodes))
+		for _, ancode := range s.ZpaAncodes {
 			if _, ok := slotByAncode[ancode]; ok {
 				placed = append(placed, ancode)
 			}

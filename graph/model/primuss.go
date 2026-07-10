@@ -10,12 +10,16 @@ type PrimussExam struct {
 }
 
 type StudentReg struct {
-	Mtknr    string `bson:"MTKNR"`
-	AnCode   int    `bson:"AnCode"`
-	Program  string `bson:"Stg"`
-	Group    string `bson:"Stgru"`
-	Name     string `bson:"name"`
-	Presence string `bson:"praesenz_fern"`
+	Mtknr string `bson:"MTKNR"`
+	// PrimussAncode is the Primuss ancode (per-program namespace), imported verbatim
+	// from the Primuss XLSX "AnCode" column. It equals the ZPA ancode only for FK07
+	// exams; for MUC.DAI/external exams it differs. The bson tag stays "AnCode" so the
+	// stored studentregs_<program> collections keep decoding unchanged.
+	PrimussAncode int    `bson:"AnCode"`
+	Program       string `bson:"Stg"`
+	Group         string `bson:"Stgru"`
+	Name          string `bson:"name"`
+	Presence      string `bson:"praesenz_fern"`
 }
 
 type Conflicts struct {

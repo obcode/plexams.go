@@ -165,9 +165,39 @@ jira:
 ```yaml
 server:
   port: "8080"                 # GraphQL-Server-Port
+  production: false            # true: schaltet Playground + GraphQL-Introspection ab
+                               # (für den Server-Betrieb). Default false (lokal an).
   allowedorigins:              # zusätzliche CORS-Origins (optional)
     - http://localhost:5173
 ```
+
+## 5b. Auth / Rollen (Server-Deployment)
+
+Beim Betrieb hinter einem Auth-Proxy (Apache mit `mod_shib` **oder**
+`mod_auth_openidc`/OIDC gegen `sso.hm.edu`) authentifiziert das Backend **nicht**
+selbst — es vertraut der Identität, die der Proxy als Header setzt, und erzwingt die
+**Autorisierung** (Rollen) selbst. Details + fertige Vorlagen: [`../deploy/`](../deploy/).
+
+```yaml
+auth:
+  enabled: false               # false/leer = lokale Entwicklung: ein voll berechtigter
+                               # Dev-User wird injiziert, nichts wird abgewiesen (lokaler
+                               # Betrieb unverändert). true = Server: Header wird erzwungen.
+  header: X-Remote-User        # Header mit der verifizierten Identität (E-Mail);
+                               # muss zur Proxy-Konfig passen. Default X-Remote-User.
+  displaynameHeader: X-Remote-Displayname   # optionaler Anzeigename-Header
+  devuser: vorname.nachname@hm.edu          # nur lokal (auth.enabled=false): Audit-Identität
+  seedusers:                   # Allow-Liste, nur beim ERSTEN Boot geseedet (solange die
+                               # users-Collection leer ist); danach GUI-verwaltet (setUser).
+    - { email: planer1@hm.edu, name: Planer Eins, role: PLANER }
+    - { email: planer2@hm.edu, name: Planer Zwei, role: PLANER }
+```
+
+> Rollen: **`PLANER`** (Vollzugriff) | **`VIEWER`** (nur lesen + Validierungen, keine
+> datenändernden Operationen — im Backend erzwungen). Die Autorisierung ist die
+> Sicherheitsgrenze; die GUI passt sich nur kosmetisch an. `auth.*` ist strikt getrennt
+> vom `planer`-Doc (geteilte E-Mail-Absenderidentität). Auf dem Server kommt die
+> Audit-Identität (`mutation_log.user`) aus dem Proxy-Principal statt aus `operator.*`.
 
 ---
 

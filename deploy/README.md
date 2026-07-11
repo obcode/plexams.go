@@ -124,6 +124,28 @@ kann. Feinere Rechte später über eine `@requires`-Directive pro Feld.
 Ohne `auth.enabled: true` läuft plexams.go wie bisher: ein voll berechtigter (ADMIN)
 Dev-User wird injiziert, nichts wird abgewiesen. Kein nginx, kein OIDC nötig.
 
+## Firewall (awall) + Docker
+
+Auf Alpine teilen sich **awall** und Docker die iptables. Jedes `awall activate` baut
+die Tabellen neu auf und entfernt dabei **Dockers eigene Ketten** (`DOCKER-FORWARD`,
+`DOCKER-USER`, …). Symptom beim nächsten `docker compose up`:
+
+```
+Failed to Setup IP tables: ... iptables ... -A DOCKER-FORWARD ...:
+iptables: No chain/target/match by that name.
+```
+
+Fix: den Docker-Daemon neu starten, damit er seine Ketten neu anlegt:
+```sh
+sudo rc-service docker restart
+docker compose up -d
+```
+
+**Merksatz:** Reihenfolge immer `awall activate` → `rc-service docker restart` →
+`docker compose up -d`. Deine awall-INPUT-Regeln (22/80/443) bleiben dabei erhalten;
+der Docker-Restart legt nur die Docker-Ketten wieder obendrauf. Beim Booten unkritisch
+(Docker startet nach der Firewall), nur bei manueller Neu-Aktivierung nötig.
+
 ## Betrieb
 
 - Logs: `docker compose logs -f nginx` / `... oauth2-proxy` / `... plexams`.

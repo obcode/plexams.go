@@ -49,6 +49,12 @@ docker compose up -d
 ./acme-setup.sh                 # acme.sh: EAB-Account + HTTP-01 + install + nginx-reload
 ```
 
+> Scheitert `docker compose up` mit `Failed to Setup IP tables … DOCKER-FORWARD …
+> No chain/target/match`? Dann hat ein vorheriges `awall activate` Dockers iptables-
+> Ketten entfernt. Fix: `sudo rc-service docker restart`, dann erneut hochfahren.
+> Reihenfolge merken: `awall activate` → `rc-service docker restart` → `compose up`.
+> (Details in [../README.md](../README.md#firewall-awall--docker).)
+
 Jetzt `https://<dein-host>/` im Browser öffnen → **„Hello World 🔒"** ohne
 Zertifikatswarnung. Damit steht TLS.
 

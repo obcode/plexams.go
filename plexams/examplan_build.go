@@ -41,16 +41,21 @@ type ExamScheduleResult struct {
 	Diagnostics       examplan.Diagnostics
 	Conflicts         []*model.ExamScheduleConflict
 	ResolvedConflicts []*model.ExamScheduleConflict
+	// ExahmNtaAncodes are the EXaHM/SEB exams that carry an NTA. Their NTA time extension is
+	// deliberately not gated against the Anny booking window (the NTA student is seated in a
+	// separate NTA room booked later, at room planning); this list is the reminder to book
+	// that room. See buildExamPlanProblem.
+	ExahmNtaAncodes []int
 }
 
 // buildExamPlanProblem assembles the exam-schedule optimization problem from the
 // current data: assembled exams to plan (movable), fixed obstacles (locked / external
 // / not-planned-by-me), per-student conflict pairs, EXaHM slot capacities and the
 // attract pairs (parallel sections / small same-examer exams).
-func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPhase bool) (*examplan.Problem, error) {
+func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPhase bool) (*examplan.Problem, []int, error) {
 	sc := p.semesterConfig
 	if sc == nil {
-		return nil, fmt.Errorf("no semester config loaded")
+		return nil, nil, fmt.Errorf("no semester config loaded")
 	}
 
 	// --- slots ---
@@ -81,11 +86,11 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	// --- assembled exams, plan entries, constraints ---
 	assembled, err := p.dbClient.GetAssembledExams(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	planEntries, err := p.PlanEntries(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	peByAncode := make(map[int]*model.PlanEntry, len(planEntries))
 	for _, pe := range planEntries {
@@ -93,7 +98,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	}
 	constraints, err := p.ConstraintsMap(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	type exRec struct {
@@ -141,7 +146,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		}
 		allowedSlots, err := p.AllowedSlots(ctx, e.Ancode)
 		if err != nil {
-			return nil, fmt.Errorf("allowed slots for %d: %w", e.Ancode, err)
+			return nil, nil, fmt.Errorf("allowed slots for %d: %w", e.Ancode, err)
 		}
 		idxs := make([]int, 0, len(allowedSlots))
 		for _, s := range allowedSlots {
@@ -340,7 +345,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	// --- students / conflict pairs ---
 	studentsRaw, err := p.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// MUC.DAI restriction: any exam a MUC.DAI-program student (DE/GS/ID) is registered
@@ -380,7 +385,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	// defaults; TimeOfDay is set below from the per-semester start-time severity.
 	genCfg, err := p.GenerationConfig(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	w := examScheduleWeights(genCfg)
 	if roomPhase {
@@ -519,12 +524,20 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	}
 
 	// EXaHM room-window restriction: an EXaHM exam may only occupy a slot where a booked
-	// EXaHM room's Anny window actually covers its real exam window (duration — extended for
-	// the worst NTA — plus the setup/teardown buffer). This is the schedule-generator
-	// counterpart of the Vorplanung gate, so phase A (and any movable EXaHM in phase B)
-	// never places an exam into a booking too small for it (e.g. Embedded Computing, 120 min
-	// + 60/60, into a room booked only 16:00–18:30). A unit no booking can host gets the
-	// unplaceable sentinel and is reported as unplaced.
+	// EXaHM room's Anny window actually covers its exam window (the BASE exam duration plus
+	// the setup/teardown buffer). This is the schedule-generator counterpart of the
+	// Vorplanung gate, so phase A (and any movable EXaHM in phase B) never places an exam
+	// into a booking too small for it (e.g. Embedded Computing, 120 min + 60/60, into a room
+	// booked only 16:00–18:30). A unit no booking can host gets the unplaceable sentinel and
+	// is reported as unplaced.
+	//
+	// NTA time extensions are deliberately NOT counted against this window: at Terminplanung
+	// time the NTA rooms (e.g. T3.021) are not booked yet — an NTA student is seated in a
+	// separate NTA room during room planning, not in the shared EXaHM booking — and the
+	// modest extension is anyway absorbed by the teardown buffer (a 90-min exam + 10 % NTA
+	// = 99 min still fits an 08:00–10:30 booking, leaving 21 of the 30 min Nachlauf). Adding
+	// the NTA on top would drop otherwise-fine slots. EXaHM exams that carry an NTA are
+	// collected instead so the operator is reminded to book an NTA room.
 	exahmIntervals, err := p.bookedExahmIntervals(ctx)
 	if err != nil {
 		log.Warn().Err(err).Msg("cannot read anny bookings for EXaHM window restriction; EXaHM exams left ungated")
@@ -536,17 +549,15 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		allSlotIdx[i] = i
 	}
 	restrictedUnplaceable := make([]int, 0)
+	exahmWithNTA := make([]int, 0)
 	for u := range units {
 		if !units[u].Exahm || units[u].Fixed {
 			continue
 		}
-		maxDur := unitBaseDur[u]
-		for _, ext := range ntaExt[u] {
-			if ext > maxDur {
-				maxDur = ext
-			}
+		if len(ntaExt[u]) > 0 {
+			exahmWithNTA = append(exahmWithNTA, units[u].ID)
 		}
-		dur := time.Duration(maxDur) * time.Minute
+		dur := time.Duration(unitBaseDur[u]) * time.Minute
 		if dur == 0 {
 			dur = blockDur
 		}
@@ -584,6 +595,11 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		sort.Ints(restrictedUnplaceable)
 		log.Warn().Ints("ancodes", restrictedUnplaceable).Int("count", len(restrictedUnplaceable)).
 			Msg("EXaHM exams have no Anny booking large enough for their window — left unplaced")
+	}
+	if len(exahmWithNTA) > 0 {
+		sort.Ints(exahmWithNTA)
+		log.Info().Ints("ancodes", exahmWithNTA).Int("count", len(exahmWithNTA)).
+			Msg("EXaHM exams with NTA students — book an NTA room at room planning (not gated here)")
 	}
 
 	// Room overrun (time-based): an EXaHM exam with an extended Nachlauf keeps its booked
@@ -624,7 +640,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	prob.SetTimeSeverity(timeSeverity)
 	prob.SetHardSeparations(hardSep)
 	prob.SetOverrunTargets(overrun)
-	return prob, nil
+	return prob, exahmWithNTA, nil
 }
 
 // GenerateExamSchedule builds and solves the exam schedule, streaming progress to the
@@ -654,7 +670,7 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	} else {
 		reporter.Step("Terminplan-Problem wird aufgebaut …")
 	}
-	prob, err := p.buildExamPlanProblem(ctx, !ignoreRatings, roomPhase)
+	prob, exahmNtaAncodes, err := p.buildExamPlanProblem(ctx, !ignoreRatings, roomPhase)
 	if err != nil {
 		reporter.StopProgressFail("Aufbau fehlgeschlagen: " + err.Error())
 		return nil, err
@@ -673,6 +689,13 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 		movable, what, len(prob.Units)-movable, len(prob.Slots), len(prob.Students)))
 	if n := prob.NumHardSeparations(); n > 0 {
 		reporter.Println(fmt.Sprintf("%d Zwischenzeit-Sperren berücksichtigt (Zeit-Überlappung, inkl. NTA)", n))
+	}
+	// EXaHM/SEB exams with an NTA are placed on their base exam duration (the NTA is not
+	// gated against the Anny booking window — see buildExamPlanProblem). Remind the operator
+	// to book a separate NTA room for them during room planning.
+	if len(exahmNtaAncodes) > 0 {
+		reporter.Println(fmt.Sprintf("Hinweis: %d EXaHM/SEB-Prüfung(en) mit NTA — bei der Raumplanung NTA-Raum buchen: %v",
+			len(exahmNtaAncodes), exahmNtaAncodes))
 	}
 
 	opts := optimize.DefaultOptions()
@@ -700,6 +723,7 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 		Units: len(prob.Units), Unplaced: len(unplaced), UnplacedAncodes: unplaced,
 		HardViolations: hard, Cost: total, CostByConstraint: byC,
 		Iterations: res.Iterations, StoppedEarly: res.StoppedEarly, Seed: int(seed), Diagnostics: st.Diagnostics(),
+		ExahmNtaAncodes: exahmNtaAncodes,
 	}
 	for i := range prob.Units {
 		if prob.Units[i].Fixed {

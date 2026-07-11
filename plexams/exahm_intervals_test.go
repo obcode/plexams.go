@@ -146,6 +146,37 @@ func TestExahmWindowSeats(t *testing.T) {
 	}
 }
 
+// TestExahmWindowGateNTAAbsorbedByBuffer pins the phase-A gate contract (buildExamPlanProblem):
+// the EXaHM booking-window coverage is checked against the exam's BASE duration, NOT the
+// NTA-extended one. An NTA student is seated in a separate NTA room booked later at room
+// planning, and the modest extension is absorbed by the teardown buffer — so an NTA must not
+// disqualify a slot whose booking already fits the base exam. Regression for exam 539 (90 min,
+// 67 regs, +10 % NTA → 99 min): it was dropped from the only morning MUC.DAI slot on 23.7
+// because its NTA window ran 9 min past the 08:00–10:30 booking. The gate must query
+// exahmWindowSeats with the base duration (covered), never the NTA-extended one (uncovered).
+func TestExahmWindowGateNTAAbsorbedByBuffer(t *testing.T) {
+	mins := func(m int) time.Duration { return time.Duration(m) * time.Minute }
+	// morning booking exactly covering a 90-min exam + 30/30 buffer at 08:30: 08:00–10:30,
+	// three EXaHM rooms of 30 seats (90 seats, enough for the 67-student exam).
+	booking := []bookedRoomInterval{
+		{from: day(8, 0), until: day(10, 30), exahm: true, seats: 30},
+		{from: day(8, 0), until: day(10, 30), exahm: true, seats: 30},
+		{from: day(8, 0), until: day(10, 30), exahm: true, seats: 30},
+	}
+	const seatsNeeded = 67
+
+	// base duration (90 min) → window [08:00, 10:30] exactly covered → all 90 seats count,
+	// so the slot stays available. This is what the gate now uses.
+	if got := exahmWindowSeats(booking, true, day(8, 30), mins(90), mins(30), mins(30)); got < seatsNeeded {
+		t.Errorf("base-duration window seats = %d, want >= %d (slot must stay available)", got, seatsNeeded)
+	}
+	// NTA-extended duration (99 min) → window [08:00, 10:39] runs past the booking → 0 seats.
+	// Using this for the gate would wrongly drop the slot — the bug being guarded against.
+	if got := exahmWindowSeats(booking, true, day(8, 30), mins(99), mins(30), mins(30)); got != 0 {
+		t.Errorf("NTA-extended window seats = %d, want 0 (documents why the gate must use base duration)", got)
+	}
+}
+
 func TestCumulativeOverloads(t *testing.T) {
 	// exam A (default 30/30, shared → 15 occupancy) at 08:30, 90 min → occ [08:15, 10:15].
 	a := cumExam{id: 1, seats: 30, exahm: true, from: day(8, 15), to: day(10, 15)}

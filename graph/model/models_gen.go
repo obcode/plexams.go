@@ -439,6 +439,8 @@ type ExamScheduleReport struct {
 	Conflicts []*ExamScheduleConflict `json:"conflicts"`
 	// conflicts that were in the saved plan but are gone in the generated one (diffStatus "resolved").
 	ResolvedConflicts []*ExamScheduleConflict `json:"resolvedConflicts"`
+	// EXaHM/SEB exams (ancodes) that carry an NTA. Their NTA time extension is not gated against the Anny booking window (the NTA student is seated in a separate NTA room booked later at room planning) — this is the reminder to book that room.
+	ExahmNtaAncodes []int `json:"exahmNtaAncodes"`
 }
 
 // ExamTime is the time span of one exam an invigilator is the main examer of:

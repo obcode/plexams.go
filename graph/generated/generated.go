@@ -379,6 +379,7 @@ type ComplexityRoot struct {
 		Cost              func(childComplexity int) int
 		CostByConstraint  func(childComplexity int) int
 		Diagnostics       func(childComplexity int) int
+		ExahmNtaAncodes   func(childComplexity int) int
 		Fixed             func(childComplexity int) int
 		HardViolations    func(childComplexity int) int
 		Iterations        func(childComplexity int) int
@@ -3359,6 +3360,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleReport.Diagnostics(childComplexity), true
+
+	case "ExamScheduleReport.exahmNtaAncodes":
+		if e.complexity.ExamScheduleReport.ExahmNtaAncodes == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.ExahmNtaAncodes(childComplexity), true
 
 	case "ExamScheduleReport.fixed":
 		if e.complexity.ExamScheduleReport.Fixed == nil {
@@ -11091,6 +11099,8 @@ type ExamScheduleReport {
   conflicts: [ExamScheduleConflict!]!
   "conflicts that were in the saved plan but are gone in the generated one (diffStatus \"resolved\")."
   resolvedConflicts: [ExamScheduleConflict!]!
+  "EXaHM/SEB exams (ancodes) that carry an NTA. Their NTA time extension is not gated against the Anny booking window (the NTA student is seated in a separate NTA room booked later at room planning) — this is the reminder to book that room."
+  exahmNtaAncodes: [Int!]!
 }
 `, BuiltIn: false},
 	{Name: "../generation_config.graphqls", Input: `extend type Query {
@@ -30510,6 +30520,50 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_resolvedConflicts(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _ExamScheduleReport_exahmNtaAncodes(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_exahmNtaAncodes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExahmNtaAncodes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_exahmNtaAncodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ExamTime_from(ctx context.Context, field graphql.CollectedField, obj *model.ExamTime) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ExamTime_from(ctx, field)
 	if err != nil {
@@ -37484,6 +37538,8 @@ func (ec *executionContext) fieldContext_LogLine_examReport(_ context.Context, f
 				return ec.fieldContext_ExamScheduleReport_conflicts(ctx, field)
 			case "resolvedConflicts":
 				return ec.fieldContext_ExamScheduleReport_resolvedConflicts(ctx, field)
+			case "exahmNtaAncodes":
+				return ec.fieldContext_ExamScheduleReport_exahmNtaAncodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleReport", field.Name)
 		},
@@ -80466,6 +80522,11 @@ func (ec *executionContext) _ExamScheduleReport(ctx context.Context, sel ast.Sel
 			}
 		case "resolvedConflicts":
 			out.Values[i] = ec._ExamScheduleReport_resolvedConflicts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "exahmNtaAncodes":
+			out.Values[i] = ec._ExamScheduleReport_exahmNtaAncodes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

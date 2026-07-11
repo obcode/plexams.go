@@ -103,4 +103,6 @@ type ExamScheduleReport {
   conflicts: [ExamScheduleConflict!]!
   "conflicts that were in the saved plan but are gone in the generated one (diffStatus \"resolved\")."
   resolvedConflicts: [ExamScheduleConflict!]!
+  "EXaHM/SEB exams (ancodes) that carry an NTA. Their NTA time extension is not gated against the Anny booking window (the NTA student is seated in a separate NTA room booked later at room planning) — this is the reminder to book that room."
+  exahmNtaAncodes: [Int!]!
 }

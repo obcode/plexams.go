@@ -48,5 +48,6 @@ func examScheduleReport(r *plexams.ExamScheduleResult) *model.ExamScheduleReport
 		},
 		Conflicts:         r.Conflicts,
 		ResolvedConflicts: r.ResolvedConflicts,
+		ExahmNtaAncodes:   r.ExahmNtaAncodes,
 	}
 }

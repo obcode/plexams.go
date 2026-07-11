@@ -164,14 +164,14 @@ func (p *Plexams) enrichedMucDaiExam(ctx context.Context, program string, primus
 
 // MucDaiZpaCandidates suggests ZPA exams for linking an (unresolved) MUC.DAI exam,
 // ranked: the program carried with a missing number (0/-1) first, then same examer +
-// similar module, then either.
+// similar module, then either. Only exams marked "to plan" are offered — linking to
+// an exam that isn't being planned makes no sense.
 func (p *Plexams) MucDaiZpaCandidates(ctx context.Context, program string, primussAncode int) ([]*model.ZPAExam, error) {
 	muc, err := p.dbClient.MucDaiExam(ctx, program, primussAncode)
 	if err != nil {
 		return nil, err
 	}
-	fromZPA := false
-	zpaExams, err := p.GetZPAExams(ctx, &fromZPA)
+	zpaExams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -263,7 +263,9 @@ func (p *Plexams) PreplanSameSlotGroups(ctx context.Context) ([]*model.PreplanSa
 
 // PreplanExamAncodeSuggestions returns ZPA exams that are good candidates for
 // linking the given pre-exam, ranked by examer (same teacher) and module-name
-// similarity. Returns an empty list before the ZPA exams are imported.
+// similarity. Only exams marked "to plan" are suggested — linking a pre-exam to
+// an exam that isn't being planned makes no sense. Returns an empty list before
+// the ZPA exams are imported (and preselected).
 func (p *Plexams) PreplanExamAncodeSuggestions(ctx context.Context, id int) ([]*model.ZPAExam, error) {
 	preExam, err := p.dbClient.PreplanExam(ctx, id)
 	if err != nil {
@@ -273,8 +275,7 @@ func (p *Plexams) PreplanExamAncodeSuggestions(ctx context.Context, id int) ([]*
 		return nil, fmt.Errorf("pre-exam %d not found", id)
 	}
 
-	fromZpa := false
-	zpaExams, err := p.GetZPAExams(ctx, &fromZpa)
+	zpaExams, err := p.GetZpaExamsToPlan(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -46,13 +46,40 @@ type ExamScheduleResult struct {
 	// separate NTA room booked later, at room planning); this list is the reminder to book
 	// that room. See buildExamPlanProblem.
 	ExahmNtaAncodes []int
+	// UnplacedReasons explains, per unplaced exam, why it could not be scheduled — a
+	// structural reason (no allowed MUC.DAI time, no EXaHM/SEB booking covers its window) or,
+	// when it did have candidate slots, that none stayed free in this run.
+	UnplacedReasons []*UnplacedExamReason
+}
+
+// UnplacedExamReason is the human-readable reason a single exam ended up unplaced.
+type UnplacedExamReason struct {
+	Ancode int
+	Reason string
+}
+
+// reasons an exam can never be placed, decided during problem construction (before solving).
+const (
+	unplaceableNoMucDaiSlot   = "keine passende MUC.DAI-Zeit (Fachtermine ∩ MUC.DAI-Zeiten leer)"
+	unplaceableNoExahmBooking = "keine EXaHM/SEB-Buchung deckt das Prüfungsfenster (Prüfungsdauer + Puffer)"
+)
+
+// examPlanBuildInfo carries diagnostics from problem construction that the caller surfaces in
+// the run report; they are not inputs to the solver and so are kept off the examplan.Problem.
+type examPlanBuildInfo struct {
+	// exahmNtaAncodes: EXaHM/SEB exams with an NTA (reminder to book an NTA room).
+	exahmNtaAncodes []int
+	// unplaceableReason maps an ancode that can NEVER be placed (its allowed set is the
+	// unplaceable sentinel) to why. Exams unplaced only because no candidate slot stayed free
+	// are not in here — the caller reports those with a capacity/conflict fallback.
+	unplaceableReason map[int]string
 }
 
 // buildExamPlanProblem assembles the exam-schedule optimization problem from the
 // current data: assembled exams to plan (movable), fixed obstacles (locked / external
 // / not-planned-by-me), per-student conflict pairs, EXaHM slot capacities and the
 // attract pairs (parallel sections / small same-examer exams).
-func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPhase bool) (*examplan.Problem, []int, error) {
+func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPhase bool) (*examplan.Problem, *examPlanBuildInfo, error) {
 	sc := p.semesterConfig
 	if sc == nil {
 		return nil, nil, fmt.Errorf("no semester config loaded")
@@ -361,6 +388,9 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			mucDaiSlotIdx = append(mucDaiSlotIdx, idx)
 		}
 	}
+	// unplaceableReason collects, per ancode, why it can never be placed (its allowed set
+	// becomes the -1 sentinel). Reported by the caller for the unplaced exams.
+	unplaceableReason := make(map[int]string)
 	if len(mucDaiProg) > 0 && len(mucDaiSlotIdx) > 0 {
 		mucDaiUnit := make(map[int]bool)
 		for _, s := range studentsRaw {
@@ -376,6 +406,9 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			inter := examplan.IntersectSlots(units[u].Allowed, mucDaiSlotIdx)
 			if len(inter) == 0 {
 				inter = []int{-1} // no MUC.DAI slot fits its other constraints → unplaceable (reported)
+				for _, a := range units[u].Ancodes {
+					unplaceableReason[a] = unplaceableNoMucDaiSlot
+				}
 			}
 			units[u].Allowed = inter
 		}
@@ -574,11 +607,13 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		if len(base) == 0 {
 			base = allSlotIdx // empty Allowed means "all slots"; make it explicit before filtering
 		}
+		hadRealSlots := false
 		covered := make([]int, 0, len(base))
 		for _, idx := range base {
 			if idx < 0 || idx >= len(slots) {
 				continue
 			}
+			hadRealSlots = true
 			// enough booked EXaHM seats from rooms that actually cover this exam's window
 			// (rooms booked too short don't count), not merely "some room covers it".
 			if exahmWindowSeats(exahmIntervals, true, slots[idx].Start, dur, pre, post) >= units[u].Seats {
@@ -587,7 +622,14 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		}
 		if len(covered) == 0 {
 			covered = []int{-1} // no booking covers the window → unplaceable (reported as unplaced)
-			restrictedUnplaceable = append(restrictedUnplaceable, units[u].ID)
+			// Only blame the booking window when the unit still had real candidate slots here;
+			// if it was already the -1 sentinel (e.g. no MUC.DAI time), keep that upstream reason.
+			if hadRealSlots {
+				restrictedUnplaceable = append(restrictedUnplaceable, units[u].ID)
+				for _, a := range units[u].Ancodes {
+					unplaceableReason[a] = unplaceableNoExahmBooking
+				}
+			}
 		}
 		units[u].Allowed = covered
 	}
@@ -640,7 +682,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	prob.SetTimeSeverity(timeSeverity)
 	prob.SetHardSeparations(hardSep)
 	prob.SetOverrunTargets(overrun)
-	return prob, exahmWithNTA, nil
+	return prob, &examPlanBuildInfo{exahmNtaAncodes: exahmWithNTA, unplaceableReason: unplaceableReason}, nil
 }
 
 // GenerateExamSchedule builds and solves the exam schedule, streaming progress to the
@@ -670,7 +712,7 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	} else {
 		reporter.Step("Terminplan-Problem wird aufgebaut …")
 	}
-	prob, exahmNtaAncodes, err := p.buildExamPlanProblem(ctx, !ignoreRatings, roomPhase)
+	prob, buildInfo, err := p.buildExamPlanProblem(ctx, !ignoreRatings, roomPhase)
 	if err != nil {
 		reporter.StopProgressFail("Aufbau fehlgeschlagen: " + err.Error())
 		return nil, err
@@ -693,9 +735,9 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	// EXaHM/SEB exams with an NTA are placed on their base exam duration (the NTA is not
 	// gated against the Anny booking window — see buildExamPlanProblem). Remind the operator
 	// to book a separate NTA room for them during room planning.
-	if len(exahmNtaAncodes) > 0 {
+	if len(buildInfo.exahmNtaAncodes) > 0 {
 		reporter.Println(fmt.Sprintf("Hinweis: %d EXaHM/SEB-Prüfung(en) mit NTA — bei der Raumplanung NTA-Raum buchen: %v",
-			len(exahmNtaAncodes), exahmNtaAncodes))
+			len(buildInfo.exahmNtaAncodes), buildInfo.exahmNtaAncodes))
 	}
 
 	opts := optimize.DefaultOptions()
@@ -719,11 +761,39 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	}
 	unplaced := st.UnplacedAncodes()
 
+	// per-exam reason why it stayed unplaced: a structural reason decided at problem
+	// construction (no MUC.DAI time / no EXaHM booking covers the window), else it had
+	// candidate slots but none stayed free in this run (capacity / conflicts).
+	var unplacedReasons []*UnplacedExamReason
+	if len(unplaced) > 0 {
+		unitOfAncode := make(map[int]int, len(prob.Units))
+		for i := range prob.Units {
+			for _, a := range prob.Units[i].Ancodes {
+				unitOfAncode[a] = i
+			}
+		}
+		for _, a := range unplaced {
+			reason := buildInfo.unplaceableReason[a]
+			if reason == "" {
+				n := -1
+				if i, ok := unitOfAncode[a]; ok {
+					n = len(prob.Units[i].Allowed)
+				}
+				if n == 0 { // empty Allowed = all slots were allowed
+					reason = "alle Slots zulässig, aber im Lauf keiner frei (Kapazität/Konflikte)"
+				} else {
+					reason = fmt.Sprintf("%d zulässige(r) Slot(s), aber im Lauf keiner frei (Kapazität/Konflikte)", n)
+				}
+			}
+			unplacedReasons = append(unplacedReasons, &UnplacedExamReason{Ancode: a, Reason: reason})
+		}
+	}
+
 	result := &ExamScheduleResult{
 		Units: len(prob.Units), Unplaced: len(unplaced), UnplacedAncodes: unplaced,
 		HardViolations: hard, Cost: total, CostByConstraint: byC,
 		Iterations: res.Iterations, StoppedEarly: res.StoppedEarly, Seed: int(seed), Diagnostics: st.Diagnostics(),
-		ExahmNtaAncodes: exahmNtaAncodes,
+		ExahmNtaAncodes: buildInfo.exahmNtaAncodes, UnplacedReasons: unplacedReasons,
 	}
 	for i := range prob.Units {
 		if prob.Units[i].Fixed {
@@ -769,6 +839,11 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	for _, h := range hard {
 		reporter.Println("  harte Verletzung: " + h)
 		log.Warn().Bool("roomPhase", roomPhase).Str("violation", h).Msg("exam schedule hard violation")
+	}
+	// per-exam reason for every unplaced exam, so it is clear why the solver left it out.
+	for _, ur := range result.UnplacedReasons {
+		reporter.Println(fmt.Sprintf("  %d nicht geplant: %s", ur.Ancode, ur.Reason))
+		log.Warn().Int("ancode", ur.Ancode).Str("reason", ur.Reason).Msg("exam left unplaced")
 	}
 	if roomPhase {
 		be, ue, bs, us := st.TbauUsage()

@@ -49,5 +49,15 @@ func examScheduleReport(r *plexams.ExamScheduleResult) *model.ExamScheduleReport
 		Conflicts:         r.Conflicts,
 		ResolvedConflicts: r.ResolvedConflicts,
 		ExahmNtaAncodes:   r.ExahmNtaAncodes,
+		UnplacedReasons:   unplacedReasons(r.UnplacedReasons),
 	}
+}
+
+// unplacedReasons maps the plexams per-exam unplaced reasons to the GraphQL type.
+func unplacedReasons(rs []*plexams.UnplacedExamReason) []*model.UnplacedExamReason {
+	out := make([]*model.UnplacedExamReason, 0, len(rs))
+	for _, r := range rs {
+		out = append(out, &model.UnplacedExamReason{Ancode: r.Ancode, Reason: r.Reason})
+	}
+	return out
 }

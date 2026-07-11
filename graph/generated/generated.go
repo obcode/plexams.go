@@ -390,6 +390,7 @@ type ComplexityRoot struct {
 		Units             func(childComplexity int) int
 		Unplaced          func(childComplexity int) int
 		UnplacedAncodes   func(childComplexity int) int
+		UnplacedReasons   func(childComplexity int) int
 		Written           func(childComplexity int) int
 	}
 
@@ -1480,6 +1481,11 @@ type ComplexityRoot struct {
 		Mtknrs    func(childComplexity int) int
 		NtaMtknr  func(childComplexity int) int
 		Starttime func(childComplexity int) int
+	}
+
+	UnplacedExamReason struct {
+		Ancode func(childComplexity int) int
+		Reason func(childComplexity int) int
 	}
 
 	User struct {
@@ -3437,6 +3443,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleReport.UnplacedAncodes(childComplexity), true
+
+	case "ExamScheduleReport.unplacedReasons":
+		if e.complexity.ExamScheduleReport.UnplacedReasons == nil {
+			break
+		}
+
+		return e.complexity.ExamScheduleReport.UnplacedReasons(childComplexity), true
 
 	case "ExamScheduleReport.written":
 		if e.complexity.ExamScheduleReport.Written == nil {
@@ -9712,6 +9725,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UnplacedExam.Starttime(childComplexity), true
 
+	case "UnplacedExamReason.ancode":
+		if e.complexity.UnplacedExamReason.Ancode == nil {
+			break
+		}
+
+		return e.complexity.UnplacedExamReason.Ancode(childComplexity), true
+
+	case "UnplacedExamReason.reason":
+		if e.complexity.UnplacedExamReason.Reason == nil {
+			break
+		}
+
+		return e.complexity.UnplacedExamReason.Reason(childComplexity), true
+
 	case "User.email":
 		if e.complexity.User.Email == nil {
 			break
@@ -11101,6 +11128,14 @@ type ExamScheduleReport {
   resolvedConflicts: [ExamScheduleConflict!]!
   "EXaHM/SEB exams (ancodes) that carry an NTA. Their NTA time extension is not gated against the Anny booking window (the NTA student is seated in a separate NTA room booked later at room planning) — this is the reminder to book that room."
   exahmNtaAncodes: [Int!]!
+  "why each unplaced exam could not be scheduled (empty when everything was placed)."
+  unplacedReasons: [UnplacedExamReason!]!
+}
+
+"UnplacedExamReason is the reason a single exam ended up unplaced in a generation run."
+type UnplacedExamReason {
+  ancode: Int!
+  reason: String!
 }
 `, BuiltIn: false},
 	{Name: "../generation_config.graphqls", Input: `extend type Query {
@@ -30564,6 +30599,56 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_exahmNtaAncodes(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _ExamScheduleReport_unplacedReasons(ctx context.Context, field graphql.CollectedField, obj *model.ExamScheduleReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamScheduleReport_unplacedReasons(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnplacedReasons, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.UnplacedExamReason)
+	fc.Result = res
+	return ec.marshalNUnplacedExamReason2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExamReasonᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamScheduleReport_unplacedReasons(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamScheduleReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_UnplacedExamReason_ancode(ctx, field)
+			case "reason":
+				return ec.fieldContext_UnplacedExamReason_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UnplacedExamReason", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ExamTime_from(ctx context.Context, field graphql.CollectedField, obj *model.ExamTime) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ExamTime_from(ctx, field)
 	if err != nil {
@@ -37540,6 +37625,8 @@ func (ec *executionContext) fieldContext_LogLine_examReport(_ context.Context, f
 				return ec.fieldContext_ExamScheduleReport_resolvedConflicts(ctx, field)
 			case "exahmNtaAncodes":
 				return ec.fieldContext_ExamScheduleReport_exahmNtaAncodes(ctx, field)
+			case "unplacedReasons":
+				return ec.fieldContext_ExamScheduleReport_unplacedReasons(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamScheduleReport", field.Name)
 		},
@@ -72277,6 +72364,94 @@ func (ec *executionContext) fieldContext_UnplacedExam_ntaMtknr(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _UnplacedExamReason_ancode(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExamReason) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UnplacedExamReason_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UnplacedExamReason_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnplacedExamReason",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UnplacedExamReason_reason(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExamReason) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UnplacedExamReason_reason(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Reason, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UnplacedExamReason_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnplacedExamReason",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _User_email(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_User_email(ctx, field)
 	if err != nil {
@@ -80527,6 +80702,11 @@ func (ec *executionContext) _ExamScheduleReport(ctx context.Context, sel ast.Sel
 			}
 		case "exahmNtaAncodes":
 			out.Values[i] = ec._ExamScheduleReport_exahmNtaAncodes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unplacedReasons":
+			out.Values[i] = ec._ExamScheduleReport_unplacedReasons(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -89627,6 +89807,50 @@ func (ec *executionContext) _UnplacedExam(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var unplacedExamReasonImplementors = []string{"UnplacedExamReason"}
+
+func (ec *executionContext) _UnplacedExamReason(ctx context.Context, sel ast.SelectionSet, obj *model.UnplacedExamReason) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, unplacedExamReasonImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UnplacedExamReason")
+		case "ancode":
+			out.Values[i] = ec._UnplacedExamReason_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._UnplacedExamReason_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var userImplementors = []string{"User"}
 
 func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model.User) graphql.Marshaler {
@@ -96015,6 +96239,60 @@ func (ec *executionContext) marshalNUnplacedExam2ᚖgithubᚗcomᚋobcodeᚋplex
 		return graphql.Null
 	}
 	return ec._UnplacedExam(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNUnplacedExamReason2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExamReasonᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.UnplacedExamReason) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNUnplacedExamReason2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExamReason(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNUnplacedExamReason2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExamReason(ctx context.Context, sel ast.SelectionSet, v *model.UnplacedExamReason) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UnplacedExamReason(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNUser2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {

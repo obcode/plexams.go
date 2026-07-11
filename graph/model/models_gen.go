@@ -441,6 +441,8 @@ type ExamScheduleReport struct {
 	ResolvedConflicts []*ExamScheduleConflict `json:"resolvedConflicts"`
 	// EXaHM/SEB exams (ancodes) that carry an NTA. Their NTA time extension is not gated against the Anny booking window (the NTA student is seated in a separate NTA room booked later at room planning) — this is the reminder to book that room.
 	ExahmNtaAncodes []int `json:"exahmNtaAncodes"`
+	// why each unplaced exam could not be scheduled (empty when everything was placed).
+	UnplacedReasons []*UnplacedExamReason `json:"unplacedReasons"`
 }
 
 // ExamTime is the time span of one exam an invigilator is the main examer of:
@@ -1325,6 +1327,12 @@ type StudyProgramInput struct {
 }
 
 type Subscription struct {
+}
+
+// UnplacedExamReason is the reason a single exam ended up unplaced in a generation run.
+type UnplacedExamReason struct {
+	Ancode int    `json:"ancode"`
+	Reason string `json:"reason"`
 }
 
 // A user is a login identity supplied by the auth proxy (Shibboleth/OIDC, matched by

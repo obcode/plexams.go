@@ -105,4 +105,12 @@ type ExamScheduleReport {
   resolvedConflicts: [ExamScheduleConflict!]!
   "EXaHM/SEB exams (ancodes) that carry an NTA. Their NTA time extension is not gated against the Anny booking window (the NTA student is seated in a separate NTA room booked later at room planning) — this is the reminder to book that room."
   exahmNtaAncodes: [Int!]!
+  "why each unplaced exam could not be scheduled (empty when everything was placed)."
+  unplacedReasons: [UnplacedExamReason!]!
+}
+
+"UnplacedExamReason is the reason a single exam ended up unplaced in a generation run."
+type UnplacedExamReason {
+  ancode: Int!
+  reason: String!
 }

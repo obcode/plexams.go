@@ -66,15 +66,21 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 	inPeriod := periodFilter(p.semesterConfig.From, p.semesterConfig.Until)
 	startByAncode := make(map[int]time.Time, len(planEntries))
 	plannedSomewhere := make(map[int]bool, len(planEntries))
+	externalByAncode := make(map[int]bool)
 	for _, pe := range planEntries {
 		if pe.Starttime == nil {
 			continue
 		}
 		plannedSomewhere[pe.Ancode] = true
+		if pe.External {
+			externalByAncode[pe.Ancode] = true
+		}
 		if inPeriod(*pe.Starttime) {
 			startByAncode[pe.Ancode] = *pe.Starttime
 		}
 	}
+
+	excludePair := p.spreadPairExcluder(ctx, externalByAncode)
 
 	stat := &model.ExamSpreadStatistics{
 		ExamGapMinutes:     examGap,
@@ -103,7 +109,7 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 		for _, ancode := range s.ZpaAncodes {
 			if start, ok := startByAncode[ancode]; ok {
 				dur := durByAncode[ancode].forStudent(s.Mtknr)
-				times = append(times, spreadcalc.ExamTime{Start: start, End: start.Add(time.Duration(dur) * time.Minute)})
+				times = append(times, spreadcalc.ExamTime{Ancode: ancode, Start: start, End: start.Add(time.Duration(dur) * time.Minute)})
 				examAncodes = append(examAncodes, ancode)
 				continue
 			}
@@ -144,13 +150,16 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 			continue // single exam: no gap to rate
 		}
 
-		sp := spreadcalc.ComputeStudent(times, examGap, notTooClose)
-		stat.MultiExamStudentCount++
-		proximitySum += sp.ProximityCost
-		mins = append(mins, int(sp.MinGap))
+		sp := spreadcalc.ComputeStudent(times, examGap, notTooClose, excludePair)
 		if sp.MaxExamsPerDay >= 3 {
 			stat.ThreeExamsOneDayCount++
 		}
+		if len(sp.Pairs) == 0 {
+			continue // all pairs were spurious (foreign-foreign / same-slot) — no ratable gap
+		}
+		stat.MultiExamStudentCount++
+		proximitySum += sp.ProximityCost
+		mins = append(mins, int(sp.MinGap))
 
 		worstKey := spreadcalc.BucketKey(sp.MinGap)
 		studentBucket[worstKey]++
@@ -209,6 +218,46 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 	stat.WorstStudents = worst
 
 	return stat, nil
+}
+
+// spreadPairExcluder builds the predicate that drops a student's exam pair from the
+// gap statistics when it is not a real scheduling problem: two exams of other faculties
+// (neither ours to resolve — mirrors ValidateConflicts, which drops foreign-foreign
+// pairs), or two exams declared same-slot / can-share-slot (a student may not sit both,
+// so the registration is spurious). externalByAncode marks ancodes whose time was set
+// externally (PlanEntry.External).
+func (p *Plexams) spreadPairExcluder(ctx context.Context, externalByAncode map[int]bool) func(a, b int) bool {
+	constraints, _ := p.ConstraintsMap(ctx)
+	foreign := func(ancode int) bool {
+		if ancode >= externalAncodeBase || externalByAncode[ancode] {
+			return true
+		}
+		c := constraints[ancode]
+		return c != nil && c.NotPlannedByMe
+	}
+	canShare := make(map[[2]int]bool)
+	if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err == nil {
+		for _, pr := range pairs {
+			canShare[[2]int{pr[0], pr[1]}] = true
+		}
+	}
+	ssRoot := p.sameSlotGroups(ctx)
+	return func(a, b int) bool {
+		if foreign(a) && foreign(b) {
+			return true // two exams of other faculties — not ours to resolve
+		}
+		x, y := a, b
+		if x > y {
+			x, y = y, x
+		}
+		if canShare[[2]int{x, y}] {
+			return true // declared "may share a slot" — a student can't legitimately have both
+		}
+		if r, ok := ssRoot[a]; ok && r == ssRoot[b] {
+			return true // same-slot group — the two exams run simultaneously
+		}
+		return false
+	}
 }
 
 // periodFilter reports whether an absolute time falls within the exam period

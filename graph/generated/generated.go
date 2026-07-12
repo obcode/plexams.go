@@ -13269,6 +13269,10 @@ input SpecialInterestInput {
   all their exams"), a distribution histogram, a per-program breakdown and a Carter-style
   proximity index. Same data feeds the GUI and the printable PDF
   (/download/pdf/spread-statistics).
+
+  Spurious pairs are dropped from the gap statistics (as ValidateConflicts does):
+  two exams of other faculties (not ours to resolve) and two exams declared same-slot
+  or can-share-slot (a student may not sit both, so the registration is invalid).
   """
   examSpreadStatistics: ExamSpreadStatistics!
 }
@@ -13276,7 +13280,7 @@ input SpecialInterestInput {
 type ExamSpreadStatistics {
   "Our (FK07/MUC.DAI) students with at least one exam placed within the exam period."
   studentCount: Int!
-  "Students with at least two placed exams (only these can have a gap)."
+  "Students with at least one ratable gap (>= 2 exams, after dropping spurious foreign-foreign / same-slot pairs); denominator of the shares."
   multiExamStudentCount: Int!
   "Total placed exam registrations counted across all students."
   totalPlannedExams: Int!

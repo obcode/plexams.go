@@ -466,7 +466,7 @@ type ExamScheduleReport struct {
 type ExamSpreadStatistics struct {
 	// Our (FK07/MUC.DAI) students with at least one exam placed within the exam period.
 	StudentCount int `json:"studentCount"`
-	// Students with at least two placed exams (only these can have a gap).
+	// Students with at least one ratable gap (>= 2 exams, after dropping spurious foreign-foreign / same-slot pairs); denominator of the shares.
 	MultiExamStudentCount int `json:"multiExamStudentCount"`
 	// Total placed exam registrations counted across all students.
 	TotalPlannedExams int `json:"totalPlannedExams"`

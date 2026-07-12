@@ -45,7 +45,7 @@ func TestComputeStudent(t *testing.T) {
 		{Start: at(8, 10, 0), End: at(8, 11, 0)},
 		{Start: at(5, 14, 0), End: at(5, 15, 0)},
 	}
-	sp := ComputeStudent(exams, testGap, testNotClose)
+	sp := ComputeStudent(exams, testGap, testNotClose, nil)
 
 	if len(sp.Pairs) != 2 {
 		t.Fatalf("Pairs len = %d, want 2", len(sp.Pairs))
@@ -66,8 +66,48 @@ func TestComputeStudent(t *testing.T) {
 	}
 }
 
+func TestComputeStudentExcludesSpuriousPairs(t *testing.T) {
+	// ancode 10 & 20 are two exams of another faculty on the same day (both foreign);
+	// ancode 30 is our exam two days later. The foreign-foreign same-day pair must be
+	// dropped, leaving only the real gap between the last foreign exam and our exam.
+	exams := []ExamTime{
+		{Ancode: 10, Start: at(5, 8, 0), End: at(5, 9, 0)},
+		{Ancode: 20, Start: at(5, 12, 0), End: at(5, 13, 0)},
+		{Ancode: 30, Start: at(8, 10, 0), End: at(8, 11, 0)},
+	}
+	// exclude the (10,20) pair only
+	exclude := func(a, b int) bool { return (a == 10 && b == 20) || (a == 20 && b == 10) }
+
+	sp := ComputeStudent(exams, testGap, testNotClose, exclude)
+	if len(sp.Pairs) != 1 {
+		t.Fatalf("Pairs len = %d, want 1 (foreign-foreign pair dropped)", len(sp.Pairs))
+	}
+	if sp.Pairs[0] != 2 { // day5 -> day8 = 2 free days
+		t.Errorf("remaining gap = %d, want 2 free days", sp.Pairs[0])
+	}
+	if sp.MinGap != 2 {
+		t.Errorf("MinGap = %d, want 2 (same-day foreign clash excluded)", sp.MinGap)
+	}
+}
+
+func TestComputeStudentAllPairsExcluded(t *testing.T) {
+	// two same-slot exams (same start time) a student wrongly registered for: the only
+	// pair is excluded, so there is no ratable gap left.
+	exams := []ExamTime{
+		{Ancode: 10, Start: at(5, 10, 0), End: at(5, 11, 0)},
+		{Ancode: 20, Start: at(5, 10, 0), End: at(5, 11, 0)},
+	}
+	sp := ComputeStudent(exams, testGap, testNotClose, func(a, b int) bool { return true })
+	if len(sp.Pairs) != 0 {
+		t.Errorf("Pairs len = %d, want 0 (all pairs excluded)", len(sp.Pairs))
+	}
+	if sp.MaxExamsPerDay != 1 {
+		t.Errorf("MaxExamsPerDay = %d, want 1 (same start time = one sitting)", sp.MaxExamsPerDay)
+	}
+}
+
 func TestComputeStudentSingleExam(t *testing.T) {
-	sp := ComputeStudent([]ExamTime{{Start: at(5, 8, 0), End: at(5, 9, 0)}}, testGap, testNotClose)
+	sp := ComputeStudent([]ExamTime{{Start: at(5, 8, 0), End: at(5, 9, 0)}}, testGap, testNotClose, nil)
 	if len(sp.Pairs) != 0 {
 		t.Errorf("single exam should have no pairs, got %d", len(sp.Pairs))
 	}

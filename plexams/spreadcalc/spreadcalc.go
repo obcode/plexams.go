@@ -44,11 +44,12 @@ const (
 // BucketOrder is the stable worst-first display order of the buckets.
 var BucketOrder = []string{KeyOverlap, KeySameDay, KeyAdjacent, KeyOneFree, KeyTwoFree, KeyThreePlus}
 
-// ExamTime is one placed exam of a student: its absolute start and (student-specific,
-// NTA-aware) end time.
+// ExamTime is one placed exam of a student: its ancode and its absolute start and
+// (student-specific, NTA-aware) end time.
 type ExamTime struct {
-	Start time.Time
-	End   time.Time
+	Ancode int
+	Start  time.Time
+	End    time.Time
 }
 
 // StudentSpread is the computed spread outcome for one student (>= 2 exams).
@@ -120,18 +121,29 @@ func BucketKey(g PairGap) string {
 }
 
 // ComputeStudent computes the spread outcome for one student's placed exams. The
-// input need not be sorted. With fewer than two exams it returns the zero value with
-// an empty Pairs slice (the caller treats such students as having no gap).
-func ComputeStudent(exams []ExamTime, examGapMin, notTooCloseMin int) StudentSpread {
+// input need not be sorted.
+//
+// exclude, if non-nil, drops a consecutive-exam pair from the gap statistics
+// entirely (as if the conflict did not exist): used for pairs that are not a real
+// scheduling problem — two exams of other faculties (not ours to resolve) or two exams
+// declared same-slot / can-share-slot (a student may not sit both, so the registration
+// is spurious). A student left with no countable pair has an empty Pairs slice and is
+// treated by the caller as having no ratable gap.
+func ComputeStudent(exams []ExamTime, examGapMin, notTooCloseMin int, exclude func(ancodeA, ancodeB int) bool) StudentSpread {
+	res := StudentSpread{MaxExamsPerDay: maxExamsPerDay(exams)}
 	if len(exams) < 2 {
-		return StudentSpread{MaxExamsPerDay: len(exams)}
+		return res
 	}
 	sorted := make([]ExamTime, len(exams))
 	copy(sorted, exams)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Start.Before(sorted[j].Start) })
 
-	res := StudentSpread{Pairs: make([]PairGap, 0, len(sorted)-1), MinGap: PairGap(math.MaxInt32)}
+	res.Pairs = make([]PairGap, 0, len(sorted)-1)
+	res.MinGap = PairGap(math.MaxInt32)
 	for i := 0; i+1 < len(sorted); i++ {
+		if exclude != nil && exclude(sorted[i].Ancode, sorted[i+1].Ancode) {
+			continue // not a real conflict — drop it entirely
+		}
 		g := ClassifyPair(sorted[i].Start, sorted[i].End, sorted[i+1].Start, sorted[i+1].End, examGapMin, notTooCloseMin)
 		res.Pairs = append(res.Pairs, g)
 		res.ProximityCost += PairCost(g)
@@ -139,20 +151,24 @@ func ComputeStudent(exams []ExamTime, examGapMin, notTooCloseMin int) StudentSpr
 			res.MinGap = g
 		}
 	}
-	res.MaxExamsPerDay = maxExamsPerDay(sorted)
 	return res
 }
 
-// maxExamsPerDay returns the most exams falling on a single calendar day.
+// maxExamsPerDay returns the most exam SITTINGS a student has on a single calendar day.
+// Exams at the same start time count once (a student can only attend one) — this
+// collapses same-slot registrations, which are not two real sittings.
 func maxExamsPerDay(exams []ExamTime) int {
-	perDay := make(map[[3]int]int, len(exams))
+	perDay := make(map[[3]int]map[int]bool, len(exams))
 	best := 0
 	for _, e := range exams {
 		y, m, d := e.Start.Date()
-		key := [3]int{y, int(m), d}
-		perDay[key]++
-		if perDay[key] > best {
-			best = perDay[key]
+		day := [3]int{y, int(m), d}
+		if perDay[day] == nil {
+			perDay[day] = make(map[int]bool)
+		}
+		perDay[day][e.Start.Hour()*60+e.Start.Minute()] = true
+		if len(perDay[day]) > best {
+			best = len(perDay[day])
 		}
 	}
 	return best

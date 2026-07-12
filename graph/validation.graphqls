@@ -69,6 +69,14 @@ extend type Subscription {
   validateConflicts(onlyPlannedByMe: Boolean!, ancode: Int!): LogLine!
   validateConstraints: LogLine!
   validateStudentRegs: LogLine!
+  """
+  validateSemesterTimes checks the generated Terminplan against the semester start-time
+  window (winter: not before slotTimeWinterEarliest; summer: not after slotTimeSummerLatest).
+  Our own non-exempt exams outside the window are graded by the configured enforcement
+  (HARD → error, SOFT → warning); EXaHM/SEB (climate-controlled T-Bau) placements outside
+  the window are reported as INFO only.
+  """
+  validateSemesterTimes: LogLine!
 
   # database integrity (referential/structural consistency, complements the
   # planning-quality validators above).

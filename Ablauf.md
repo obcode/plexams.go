@@ -167,6 +167,10 @@ Nachdem die Sammellisten aller Studiengänge vom Prüfungsamt da sind.
   (CLI: `make validate-exams-planning`; GUI: die `validate*`-Subscriptions).
   - MUC.DAI-Slots visuell prüfen.
   - Akzeptable Konflikte in `<Semester>.yaml` unter `knownConflicts`.
+  - **Semester-Zeiten** (`validateSemesterTimes`): prüft die Startzeiten gegen das
+    Tageszeit-Fenster (Winter: nicht zu früh; Sommer: nicht zu spät). Eigene Prüfungen
+    außerhalb → Fehler (HARD) bzw. Warnung (SOFT); abweichende EXaHM/SEB-Einplanungen
+    (klimatisierter T-Bau) nur als Info.
 - EXaHM/SEB-Vorplanung gegen Anmeldungen/Konflikte prüfen. „Prüfung planen" im GUI
   zeigt geeignete Slots farblich an.
 - Prüfungen einzeln verplanen (Best Practice: nach Studiengängen verteilen, mit den

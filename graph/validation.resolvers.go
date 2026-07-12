@@ -98,6 +98,11 @@ func (r *subscriptionResolver) ValidateStudentRegs(ctx context.Context) (<-chan 
 	return r.runValidation(ctx, "student-regs", r.plexams.ValidateStudentRegs), nil
 }
 
+// ValidateSemesterTimes is the resolver for the validateSemesterTimes field.
+func (r *subscriptionResolver) ValidateSemesterTimes(ctx context.Context) (<-chan *model.LogLine, error) {
+	return r.runValidation(ctx, "semester-times", r.plexams.ValidateSemesterTimes), nil
+}
+
 // ValidateDBPlanEntries is the resolver for the validateDBPlanEntries field.
 func (r *subscriptionResolver) ValidateDBPlanEntries(ctx context.Context) (<-chan *model.LogLine, error) {
 	return r.runValidation(ctx, "db-plan-entries", r.plexams.ValidateDBPlanEntries), nil

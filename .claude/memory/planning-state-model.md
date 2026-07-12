@@ -16,6 +16,15 @@ The planning workflow (phases -1..3, see [[Ablauf.md in repo root]]) is modelled
 - GraphQL: query `planningState` (phases→conditions, `blockedAreas`), mutation
   `setPlanningCondition(key, done)`. GUI shows it on the start page; conditions can be
   toggled by hand, some are set automatically.
+- **Auto-computed conditions** (2026-07-12): `planstate.CondDef.Compute func(ctx)(bool,error)`
+  makes a condition *derived* — Done recomputed live on every `State()` read, DB value
+  ignored, `setPlanningCondition` refuses it, GraphQL field `PlanningCondition.auto=true`
+  (GUI renders read-only). Predicates bound per-instance in `p.planningConditions()`
+  (called from NewPlexams), since the static `planningConditionDefs` can't close over `p`.
+  First one: `otherFKExamsScheduled` ("Alle Prüfungen anderer FKs eingepflegt", first item
+  of phase1) = true iff every external + NotPlannedByMe exam has a plan-entry Starttime
+  (empty set ⇒ vacuously true, else it'd be unsatisfiable). Phase1 order also fixed so
+  "EXaHM/SEB fixiert" precedes "Terminplan generiert".
 - **Gates** (inhibitor): `roomPlanPublished` locks generateRoomsForSlots/Exams +
   applyRoomRequestsPreview; `invigilationPlanPublished` locks generateInvigilations
   (via `generationAllowed(area)` in the plexams methods → works for CLI + GUI).

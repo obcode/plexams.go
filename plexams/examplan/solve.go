@@ -75,7 +75,7 @@ func fillRemaining(st *State, done []bool) {
 				continue
 			}
 			feas := feasibleSlots(st, u)
-			if best == -1 || moreConstrained(p, u, len(feas), best, len(bestFeas)) {
+			if best == -1 || moreConstrainedForPhase(st, u, feas, best, bestFeas) {
 				best, bestFeas = u, feas
 			}
 		}
@@ -101,6 +101,46 @@ func feasibleSlots(st *State, u int) []int {
 		}
 	}
 	return feas
+}
+
+// moreConstrainedForPhase decides the greedy placement order. In the EXaHM/SEB room phase
+// (OverflowSeat > 0) the scarce resource is the booked T-building capacity, so units with
+// the FEWEST booked-slot options go first (and, tied, the larger one) — big EXaHM/SEB exams
+// claim the bookings before small ones spill to R-rooms. Otherwise it falls back to the
+// generic "fewest feasible slots, then larger" order.
+func moreConstrainedForPhase(st *State, u int, feasU []int, best int, feasBest []int) bool {
+	p := st.P
+	if p.W.OverflowSeat > 0 {
+		bu, bb := bookedFeasCount(st, u, feasU), bookedFeasCount(st, best, feasBest)
+		if bu != bb {
+			return bu < bb
+		}
+		if p.Units[u].Seats != p.Units[best].Seats {
+			return p.Units[u].Seats > p.Units[best].Seats
+		}
+		return p.Units[u].ID < p.Units[best].ID
+	}
+	return moreConstrained(p, u, len(feasU), best, len(feasBest))
+}
+
+// bookedFeasCount counts the unit's currently-feasible slots that have a matching booked
+// T-building capacity (EXaHM/SEB) — i.e. how many bookings it could still go into.
+func bookedFeasCount(st *State, u int, feas []int) int {
+	p := st.P
+	n := 0
+	for _, s := range feas {
+		booked := 0
+		if p.Units[u].Exahm && p.Slots[s].ExahmSeats > booked {
+			booked = p.Slots[s].ExahmSeats
+		}
+		if p.Units[u].Seb && p.Slots[s].SebSeats > booked {
+			booked = p.Slots[s].SebSeats
+		}
+		if booked > 0 {
+			n++
+		}
+	}
+	return n
 }
 
 // moreConstrained reports whether unit u (with fu feasible slots) should be placed
@@ -160,8 +200,33 @@ func addedCost(st *State, u, s int) float64 {
 	if over > 0 {
 		c += p.W.SlotLoad * float64(over) * float64(over)
 	}
+	// marginal R-building overflow of putting this EXaHM/SEB exam here, so the greedy
+	// constructor already prefers the bookings and does not dump a big exam into a
+	// no-booking slot (which the SA would then have to repair).
+	if p.W.OverflowSeat > 0 {
+		if p.Units[u].Seb {
+			c += p.W.OverflowSeat * float64(marginalOverflow(st.slotSeb[s], seats, p.Slots[s].SebSeats))
+		}
+		if p.Units[u].Exahm {
+			c += p.W.OverflowSeat * float64(marginalOverflow(st.slotExahm[s], seats, p.Slots[s].ExahmSeats))
+		}
+	}
 	c += p.timePenalty(u, s)
 	return c
+}
+
+// marginalOverflow is the extra seats-over-booked-capacity that adding `add` seats to a slot
+// already holding `before` seats (booked capacity `cap`) introduces.
+func marginalOverflow(before, add, cap int) int {
+	newOver := before + add - cap
+	if newOver < 0 {
+		newOver = 0
+	}
+	oldOver := before - cap
+	if oldOver < 0 {
+		oldOver = 0
+	}
+	return newOver - oldOver
 }
 
 // Registry returns the self-describing hard/soft constraints for reporting and the
@@ -172,7 +237,7 @@ func (p *Problem) Registry() optimize.Registry[*State] {
 			fixedC{}, allowedC{}, sameStudentC{}, capacityC{},
 		},
 		Soft: []optimize.SoftConstraint[*State]{
-			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, holeC{p.W}, tbauFillC{p.W}, timeOfDayC{p.W}, placementC{p.W},
+			spreadC{p.W}, attractC{p.W}, slotLoadC{p.W}, holeC{p.W}, tbauFillC{p.W}, overflowC{p.W}, timeOfDayC{p.W}, placementC{p.W},
 		},
 	}
 }
@@ -289,6 +354,14 @@ func (c tbauFillC) Info() optimize.Info {
 		Description: "Phase EXaHM/SEB: die gebuchten T-Bau-Räume möglichst voll mit EXaHM/SEB-Prüfungen belegen (ungenutzte gebuchte Sitze werden bestraft)."}
 }
 func (tbauFillC) Cost(st *State) (float64, []optimize.Violation) { return tbauFillCost(st) }
+
+type overflowC struct{ w Weights }
+
+func (c overflowC) Info() optimize.Info {
+	return optimize.Info{Name: "tbau-overflow", Title: "R-Bau-Überlauf vermeiden (EXaHM/SEB)", Kind: optimize.KindSoft, Weight: c.w.OverflowSeat, Tier: 16,
+		Description: "Phase EXaHM/SEB: EXaHM/SEB-Prüfungen möglichst in die gebuchten T-Bau-Räume legen; jeder Sitz, der über die gebuchte Kapazität hinaus (in R-Bau-Räume) überläuft, wird bestraft. Pro Sitz, damit große Prüfungen in den Buchungen bleiben und nur kleine überlaufen."}
+}
+func (overflowC) Cost(st *State) (float64, []optimize.Violation) { return overflowCost(st) }
 
 type timeOfDayC struct{ w Weights }
 

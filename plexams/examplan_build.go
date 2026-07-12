@@ -489,6 +489,11 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		w.TbauFill = 10000
 		w.SlotLoad = 0
 		w.Hole = 0
+		// Penalize R-building overflow per seat (kept off in phase B). This keeps LARGE
+		// EXaHM/SEB exams inside the bookings and spills only small ones — and gives an
+		// otherwise unanchored (overflow) exam a gradient back to the bookings, so its
+		// placement is no longer arbitrary/seed-dependent. Same magnitude as the fill term.
+		w.OverflowSeat = 10000
 	}
 	// start-time window (semester-dependent): resolve the per-slot soft severity, the weight
 	// and — for HARD enforcement — the per-slot "outside the window" flags. EXaHM/SEB exams

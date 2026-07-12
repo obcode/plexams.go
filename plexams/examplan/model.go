@@ -602,6 +602,22 @@ func tbauFillCost(st *State) (float64, []optimize.Violation) {
 	return total, nil
 }
 
+// overflowCost sums the R-building overflow penalty over all slots (EXaHM/SEB seats placed
+// beyond the slot's booked T-building capacity) and reports each offending slot.
+func overflowCost(st *State) (float64, []optimize.Violation) {
+	p := st.P
+	var total float64
+	var vs []optimize.Violation
+	for s := range p.Slots {
+		c := p.overflowPenalty(s, st.slotExahm[s], st.slotSeb[s])
+		if c > 0 {
+			total += c
+			vs = append(vs, optimize.Violation{Constraint: "tbau-overflow", Message: "EXaHM/SEB-Prüfung außerhalb der gebuchten T-Bau-Kapazität (R-Bau-Überlauf)", Refs: p.slotDayRef(s)})
+		}
+	}
+	return total, vs
+}
+
 // holeCost sums the interior-hole penalty over all days and reports each offending slot
 // (an empty slot with occupied slots both before and after it on the same day).
 func holeCost(st *State) (float64, []optimize.Violation) {

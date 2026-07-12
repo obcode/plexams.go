@@ -105,7 +105,13 @@ type Weights struct {
 	Unplaced      float64 // penalty per unplaced unit (dominant)
 	CrossCampus   float64 // extra penalty for a same-day student pair across campuses (travel gap)
 	TbauFill      float64 // per unused booked T-building seat (EXaHM/SEB phase A: fill the rooms)
-	Hole          float64 // per empty slot that lies between two occupied slots on the same day
+	// OverflowSeat penalizes, per seat, an EXaHM/SEB exam placed BEYOND the booked T-building
+	// capacity of its slot (an R-building overflow). Being per-seat, it keeps large EXaHM/SEB
+	// exams inside the bookings and lets only small ones overflow — and gives an otherwise
+	// overflow-prone exam a gradient back toward the bookings (without it, an overflow costs
+	// nothing, so its placement is arbitrary/seed-dependent). EXaHM/SEB phase A only; 0 = off.
+	OverflowSeat float64
+	Hole         float64 // per empty slot that lies between two occupied slots on the same day
 	// TimeOfDay scales the start-time avoidance penalty: per seat, per hour a slot's start
 	// time lies outside the wanted window (see Problem.TimeSeverity). 0 = off. The window
 	// is semester-dependent (winter: avoid early starts; summer: avoid late starts) and is
@@ -140,6 +146,7 @@ func DefaultWeights() Weights {
 		Unplaced:      1_000_000,
 		CrossCampus:   3000,
 		TbauFill:      0,    // off by default (Phase B); the EXaHM/SEB phase A sets it high
+		OverflowSeat:  0,    // off by default (Phase B); the EXaHM/SEB phase A sets it high
 		Hole:          1500, // an empty slot mid-day is bad for invigilation planning; drive it to the day edge (or fill it). Below Adjacent (2500) so it never creates a directly-consecutive pair just to close a hole; above SameDay (900) so it may accept a mild same-day proximity.
 		TimeOfDay:     0,    // off by default; the caller sets it (and TimeSeverity) per semester
 		// ClosenessFalloffMin 0 = tiered/grid-equivalent by default; set >0 (e.g. 120) to
@@ -164,6 +171,24 @@ func (p *Problem) tbauPenalty(slotIdx, exahmUsed, sebUsed int) float64 {
 		unused += d
 	}
 	return p.W.TbauFill * float64(unused)
+}
+
+// overflowPenalty is the R-building overflow penalty for a slot given the EXaHM/SEB seats
+// placed there: seats used BEYOND the booked T-building capacity (EXaHM + SEB) times
+// OverflowSeat. Per-seat, so a big exam overflowing costs more than a small one — keeping
+// large EXaHM/SEB exams in the bookings and spilling only small ones to R-rooms.
+func (p *Problem) overflowPenalty(slotIdx, exahmUsed, sebUsed int) float64 {
+	if p.W.OverflowSeat == 0 {
+		return 0
+	}
+	over := 0
+	if d := exahmUsed - p.Slots[slotIdx].ExahmSeats; d > 0 {
+		over += d
+	}
+	if d := sebUsed - p.Slots[slotIdx].SebSeats; d > 0 {
+		over += d
+	}
+	return p.W.OverflowSeat * float64(over)
 }
 
 // TimeWindowMode is the semester behaviour of the start-time window, used only for the

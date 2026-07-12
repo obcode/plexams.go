@@ -407,18 +407,23 @@ type ComplexityRoot struct {
 		Written           func(childComplexity int) int
 	}
 
-	ExamSpreadScope struct {
+	ExamSpreadStatistics struct {
 		AdjacentDayShare           func(childComplexity int) int
+		AllFreeDayShare            func(childComplexity int) int
 		AvgExamsPerStudent         func(childComplexity int) int
 		AvgMinFreeDays             func(childComplexity int) int
 		AvgProximityCost           func(childComplexity int) int
 		ByProgram                  func(childComplexity int) int
 		ConflictShare              func(childComplexity int) int
 		ExamCountBuckets           func(childComplexity int) int
+		ExamGapMinutes             func(childComplexity int) int
+		ExcludedStudentCount       func(childComplexity int) int
 		FreeDayShare               func(childComplexity int) int
 		MaxExamsPerStudent         func(childComplexity int) int
+		MaxRegularNonRepeatExams   func(childComplexity int) int
 		MedianMinFreeDays          func(childComplexity int) int
 		MultiExamStudentCount      func(childComplexity int) int
+		NotTooCloseMinutes         func(childComplexity int) int
 		PairBuckets                func(childComplexity int) int
 		SameDayShare               func(childComplexity int) int
 		StudentBuckets             func(childComplexity int) int
@@ -427,14 +432,6 @@ type ComplexityRoot struct {
 		ThreeExamsOneDayCount      func(childComplexity int) int
 		TotalPlannedExams          func(childComplexity int) int
 		WorstStudents              func(childComplexity int) int
-	}
-
-	ExamSpreadStatistics struct {
-		All                      func(childComplexity int) int
-		ExamGapMinutes           func(childComplexity int) int
-		MaxRegularNonRepeatExams func(childComplexity int) int
-		NotTooCloseMinutes       func(childComplexity int) int
-		Regular                  func(childComplexity int) int
 	}
 
 	ExamTime struct {
@@ -3600,145 +3597,61 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamScheduleReport.Written(childComplexity), true
 
-	case "ExamSpreadScope.adjacentDayShare":
-		if e.complexity.ExamSpreadScope.AdjacentDayShare == nil {
+	case "ExamSpreadStatistics.adjacentDayShare":
+		if e.complexity.ExamSpreadStatistics.AdjacentDayShare == nil {
 			break
 		}
 
-		return e.complexity.ExamSpreadScope.AdjacentDayShare(childComplexity), true
+		return e.complexity.ExamSpreadStatistics.AdjacentDayShare(childComplexity), true
 
-	case "ExamSpreadScope.avgExamsPerStudent":
-		if e.complexity.ExamSpreadScope.AvgExamsPerStudent == nil {
+	case "ExamSpreadStatistics.allFreeDayShare":
+		if e.complexity.ExamSpreadStatistics.AllFreeDayShare == nil {
 			break
 		}
 
-		return e.complexity.ExamSpreadScope.AvgExamsPerStudent(childComplexity), true
+		return e.complexity.ExamSpreadStatistics.AllFreeDayShare(childComplexity), true
 
-	case "ExamSpreadScope.avgMinFreeDays":
-		if e.complexity.ExamSpreadScope.AvgMinFreeDays == nil {
+	case "ExamSpreadStatistics.avgExamsPerStudent":
+		if e.complexity.ExamSpreadStatistics.AvgExamsPerStudent == nil {
 			break
 		}
 
-		return e.complexity.ExamSpreadScope.AvgMinFreeDays(childComplexity), true
+		return e.complexity.ExamSpreadStatistics.AvgExamsPerStudent(childComplexity), true
 
-	case "ExamSpreadScope.avgProximityCost":
-		if e.complexity.ExamSpreadScope.AvgProximityCost == nil {
+	case "ExamSpreadStatistics.avgMinFreeDays":
+		if e.complexity.ExamSpreadStatistics.AvgMinFreeDays == nil {
 			break
 		}
 
-		return e.complexity.ExamSpreadScope.AvgProximityCost(childComplexity), true
+		return e.complexity.ExamSpreadStatistics.AvgMinFreeDays(childComplexity), true
 
-	case "ExamSpreadScope.byProgram":
-		if e.complexity.ExamSpreadScope.ByProgram == nil {
+	case "ExamSpreadStatistics.avgProximityCost":
+		if e.complexity.ExamSpreadStatistics.AvgProximityCost == nil {
 			break
 		}
 
-		return e.complexity.ExamSpreadScope.ByProgram(childComplexity), true
+		return e.complexity.ExamSpreadStatistics.AvgProximityCost(childComplexity), true
 
-	case "ExamSpreadScope.conflictShare":
-		if e.complexity.ExamSpreadScope.ConflictShare == nil {
+	case "ExamSpreadStatistics.byProgram":
+		if e.complexity.ExamSpreadStatistics.ByProgram == nil {
 			break
 		}
 
-		return e.complexity.ExamSpreadScope.ConflictShare(childComplexity), true
+		return e.complexity.ExamSpreadStatistics.ByProgram(childComplexity), true
 
-	case "ExamSpreadScope.examCountBuckets":
-		if e.complexity.ExamSpreadScope.ExamCountBuckets == nil {
+	case "ExamSpreadStatistics.conflictShare":
+		if e.complexity.ExamSpreadStatistics.ConflictShare == nil {
 			break
 		}
 
-		return e.complexity.ExamSpreadScope.ExamCountBuckets(childComplexity), true
+		return e.complexity.ExamSpreadStatistics.ConflictShare(childComplexity), true
 
-	case "ExamSpreadScope.freeDayShare":
-		if e.complexity.ExamSpreadScope.FreeDayShare == nil {
+	case "ExamSpreadStatistics.examCountBuckets":
+		if e.complexity.ExamSpreadStatistics.ExamCountBuckets == nil {
 			break
 		}
 
-		return e.complexity.ExamSpreadScope.FreeDayShare(childComplexity), true
-
-	case "ExamSpreadScope.maxExamsPerStudent":
-		if e.complexity.ExamSpreadScope.MaxExamsPerStudent == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.MaxExamsPerStudent(childComplexity), true
-
-	case "ExamSpreadScope.medianMinFreeDays":
-		if e.complexity.ExamSpreadScope.MedianMinFreeDays == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.MedianMinFreeDays(childComplexity), true
-
-	case "ExamSpreadScope.multiExamStudentCount":
-		if e.complexity.ExamSpreadScope.MultiExamStudentCount == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.MultiExamStudentCount(childComplexity), true
-
-	case "ExamSpreadScope.pairBuckets":
-		if e.complexity.ExamSpreadScope.PairBuckets == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.PairBuckets(childComplexity), true
-
-	case "ExamSpreadScope.sameDayShare":
-		if e.complexity.ExamSpreadScope.SameDayShare == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.SameDayShare(childComplexity), true
-
-	case "ExamSpreadScope.studentBuckets":
-		if e.complexity.ExamSpreadScope.StudentBuckets == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.StudentBuckets(childComplexity), true
-
-	case "ExamSpreadScope.studentCount":
-		if e.complexity.ExamSpreadScope.StudentCount == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.StudentCount(childComplexity), true
-
-	case "ExamSpreadScope.studentsWithUnplannedExams":
-		if e.complexity.ExamSpreadScope.StudentsWithUnplannedExams == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.StudentsWithUnplannedExams(childComplexity), true
-
-	case "ExamSpreadScope.threeExamsOneDayCount":
-		if e.complexity.ExamSpreadScope.ThreeExamsOneDayCount == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.ThreeExamsOneDayCount(childComplexity), true
-
-	case "ExamSpreadScope.totalPlannedExams":
-		if e.complexity.ExamSpreadScope.TotalPlannedExams == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.TotalPlannedExams(childComplexity), true
-
-	case "ExamSpreadScope.worstStudents":
-		if e.complexity.ExamSpreadScope.WorstStudents == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadScope.WorstStudents(childComplexity), true
-
-	case "ExamSpreadStatistics.all":
-		if e.complexity.ExamSpreadStatistics.All == nil {
-			break
-		}
-
-		return e.complexity.ExamSpreadStatistics.All(childComplexity), true
+		return e.complexity.ExamSpreadStatistics.ExamCountBuckets(childComplexity), true
 
 	case "ExamSpreadStatistics.examGapMinutes":
 		if e.complexity.ExamSpreadStatistics.ExamGapMinutes == nil {
@@ -3747,12 +3660,47 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamSpreadStatistics.ExamGapMinutes(childComplexity), true
 
+	case "ExamSpreadStatistics.excludedStudentCount":
+		if e.complexity.ExamSpreadStatistics.ExcludedStudentCount == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.ExcludedStudentCount(childComplexity), true
+
+	case "ExamSpreadStatistics.freeDayShare":
+		if e.complexity.ExamSpreadStatistics.FreeDayShare == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.FreeDayShare(childComplexity), true
+
+	case "ExamSpreadStatistics.maxExamsPerStudent":
+		if e.complexity.ExamSpreadStatistics.MaxExamsPerStudent == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.MaxExamsPerStudent(childComplexity), true
+
 	case "ExamSpreadStatistics.maxRegularNonRepeatExams":
 		if e.complexity.ExamSpreadStatistics.MaxRegularNonRepeatExams == nil {
 			break
 		}
 
 		return e.complexity.ExamSpreadStatistics.MaxRegularNonRepeatExams(childComplexity), true
+
+	case "ExamSpreadStatistics.medianMinFreeDays":
+		if e.complexity.ExamSpreadStatistics.MedianMinFreeDays == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.MedianMinFreeDays(childComplexity), true
+
+	case "ExamSpreadStatistics.multiExamStudentCount":
+		if e.complexity.ExamSpreadStatistics.MultiExamStudentCount == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.MultiExamStudentCount(childComplexity), true
 
 	case "ExamSpreadStatistics.notTooCloseMinutes":
 		if e.complexity.ExamSpreadStatistics.NotTooCloseMinutes == nil {
@@ -3761,12 +3709,61 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ExamSpreadStatistics.NotTooCloseMinutes(childComplexity), true
 
-	case "ExamSpreadStatistics.regular":
-		if e.complexity.ExamSpreadStatistics.Regular == nil {
+	case "ExamSpreadStatistics.pairBuckets":
+		if e.complexity.ExamSpreadStatistics.PairBuckets == nil {
 			break
 		}
 
-		return e.complexity.ExamSpreadStatistics.Regular(childComplexity), true
+		return e.complexity.ExamSpreadStatistics.PairBuckets(childComplexity), true
+
+	case "ExamSpreadStatistics.sameDayShare":
+		if e.complexity.ExamSpreadStatistics.SameDayShare == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.SameDayShare(childComplexity), true
+
+	case "ExamSpreadStatistics.studentBuckets":
+		if e.complexity.ExamSpreadStatistics.StudentBuckets == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.StudentBuckets(childComplexity), true
+
+	case "ExamSpreadStatistics.studentCount":
+		if e.complexity.ExamSpreadStatistics.StudentCount == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.StudentCount(childComplexity), true
+
+	case "ExamSpreadStatistics.studentsWithUnplannedExams":
+		if e.complexity.ExamSpreadStatistics.StudentsWithUnplannedExams == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.StudentsWithUnplannedExams(childComplexity), true
+
+	case "ExamSpreadStatistics.threeExamsOneDayCount":
+		if e.complexity.ExamSpreadStatistics.ThreeExamsOneDayCount == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.ThreeExamsOneDayCount(childComplexity), true
+
+	case "ExamSpreadStatistics.totalPlannedExams":
+		if e.complexity.ExamSpreadStatistics.TotalPlannedExams == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.TotalPlannedExams(childComplexity), true
+
+	case "ExamSpreadStatistics.worstStudents":
+		if e.complexity.ExamSpreadStatistics.WorstStudents == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.WorstStudents(childComplexity), true
 
 	case "ExamTime.from":
 		if e.complexity.ExamTime.From == nil {
@@ -13328,18 +13325,16 @@ input SpecialInterestInput {
   """
   Student-centric quality statistics of the current plan: how well the exams are
   spread out in time for the individual students. Covers our OWN students (enrolled in
-  an FK07 or MUC.DAI program), for whom we hold the complete set of exams in the period
-  — including the external / not-planned-by-me ones. Aggregates the gaps between each
-  student's consecutive exams (NTA-aware, absolute times, calendar-day gaps) into
-  human-readable shares (e.g. "share of students with at least one exam-free day between
-  all their exams"), a distribution histogram, a per-program breakdown and a Carter-style
-  proximity index.
+  an FK07 or MUC.DAI program) with at most ` + "`" + `maxRegularNonRepeatExams` + "`" + ` non-repeat exams —
+  the most anyone can have in a normal course of study; students beyond that (many
+  repeat registrations) are excluded from the figures and only summarized via
+  ` + "`" + `excludedStudentCount` + "`" + ` / ` + "`" + `allFreeDayShare` + "`" + `, since including them barely moves the
+  aggregate.
 
-  Two scopes are returned: ` + "`" + `regular` + "`" + ` counts only students with at most
-  ` + "`" + `maxRegularNonRepeatExams` + "`" + ` non-repeat exams (the most anyone can have in a normal
-  course of study — more means repeat exams are mixed in), which is the meaningful
-  headline population; ` + "`" + `all` + "`" + ` additionally includes the outliers (students with many
-  repeat registrations, up to ~14 exams).
+  Aggregates the gaps between each student's consecutive exams (NTA-aware, absolute
+  times, calendar-day gaps) into human-readable shares (e.g. "share of students with at
+  least one exam-free day between all their exams"), a distribution histogram, a
+  per-program breakdown and a Carter-style proximity index.
 
   Spurious pairs are dropped from the gap statistics (as ValidateConflicts does):
   two exams of other faculties (not ours to resolve) and two exams declared same-slot
@@ -13354,25 +13349,11 @@ input SpecialInterestInput {
 }
 
 type ExamSpreadStatistics {
-  "The meaningful headline population: students with <= maxRegularNonRepeatExams non-repeat exams."
-  regular: ExamSpreadScope!
-  "Everyone, including students whose many repeat registrations push them past the normal maximum."
-  all: ExamSpreadScope!
-  "The non-repeat-exam cap for the ` + "`" + `regular` + "`" + ` scope (6 = the most possible in a normal semester)."
-  maxRegularNonRepeatExams: Int!
-  "The travel/break buffer (minutes) below which two exams count as an overlap."
-  examGapMinutes: Int!
-  "The same-day start-to-start threshold (minutes) below which two exams count as too close."
-  notTooCloseMinutes: Int!
-}
-
-"One population's spread figures (see ExamSpreadStatistics.regular / .all)."
-type ExamSpreadScope {
-  "Students in this scope with at least one exam placed within the exam period."
+  "Students in scope with at least one exam placed within the exam period."
   studentCount: Int!
   "Students with at least one ratable gap (>= 2 exams, after dropping spurious foreign-foreign / same-slot pairs); denominator of the shares."
   multiExamStudentCount: Int!
-  "Total placed exam registrations counted across all students in this scope."
+  "Total placed exam registrations counted across all students in scope."
   totalPlannedExams: Int!
   "Students who still have at least one not-yet-placed exam (coverage caveat)."
   studentsWithUnplannedExams: Int!
@@ -13406,6 +13387,18 @@ type ExamSpreadScope {
   byProgram: [ProgramSpread!]!
   "The most tightly-scheduled students, for GUI drill-down (not part of the aggregate PDF)."
   worstStudents: [WorstStudent!]!
+
+  "The non-repeat-exam cap for the in-scope population (6 = the most possible in a normal semester)."
+  maxRegularNonRepeatExams: Int!
+  "Students excluded here because they have more than maxRegularNonRepeatExams non-repeat exams (repeat-heavy outliers)."
+  excludedStudentCount: Int!
+  "freeDayShare over ALL students incl. the excluded outliers — for a 'barely differs' note; equals freeDayShare when there are no outliers."
+  allFreeDayShare: Float!
+
+  "The travel/break buffer (minutes) below which two exams count as an overlap."
+  examGapMinutes: Int!
+  "The same-day start-to-start threshold (minutes) below which two exams count as too close."
+  notTooCloseMinutes: Int!
 }
 
 "A named distribution bucket with an absolute count and a percentage share."
@@ -31701,8 +31694,8 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_unplacedReasons(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_studentCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_studentCount(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_studentCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_studentCount(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -31732,9 +31725,9 @@ func (ec *executionContext) _ExamSpreadScope_studentCount(ctx context.Context, f
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_studentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_studentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -31745,8 +31738,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_studentCount(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_multiExamStudentCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_multiExamStudentCount(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_multiExamStudentCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_multiExamStudentCount(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -31776,9 +31769,9 @@ func (ec *executionContext) _ExamSpreadScope_multiExamStudentCount(ctx context.C
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_multiExamStudentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_multiExamStudentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -31789,8 +31782,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_multiExamStudentCount(_
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_totalPlannedExams(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_totalPlannedExams(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_totalPlannedExams(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_totalPlannedExams(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -31820,9 +31813,9 @@ func (ec *executionContext) _ExamSpreadScope_totalPlannedExams(ctx context.Conte
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_totalPlannedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_totalPlannedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -31833,8 +31826,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_totalPlannedExams(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_studentsWithUnplannedExams(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_studentsWithUnplannedExams(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_studentsWithUnplannedExams(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_studentsWithUnplannedExams(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -31864,9 +31857,9 @@ func (ec *executionContext) _ExamSpreadScope_studentsWithUnplannedExams(ctx cont
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_studentsWithUnplannedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_studentsWithUnplannedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -31877,8 +31870,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_studentsWithUnplannedEx
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_avgExamsPerStudent(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_avgExamsPerStudent(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_avgExamsPerStudent(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_avgExamsPerStudent(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -31908,9 +31901,9 @@ func (ec *executionContext) _ExamSpreadScope_avgExamsPerStudent(ctx context.Cont
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_avgExamsPerStudent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_avgExamsPerStudent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -31921,8 +31914,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_avgExamsPerStudent(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_maxExamsPerStudent(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_maxExamsPerStudent(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_maxExamsPerStudent(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_maxExamsPerStudent(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -31952,9 +31945,9 @@ func (ec *executionContext) _ExamSpreadScope_maxExamsPerStudent(ctx context.Cont
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_maxExamsPerStudent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_maxExamsPerStudent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -31965,8 +31958,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_maxExamsPerStudent(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_freeDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_freeDayShare(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_freeDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_freeDayShare(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -31996,9 +31989,9 @@ func (ec *executionContext) _ExamSpreadScope_freeDayShare(ctx context.Context, f
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_freeDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_freeDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32009,8 +32002,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_freeDayShare(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_sameDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_sameDayShare(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_sameDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_sameDayShare(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32040,9 +32033,9 @@ func (ec *executionContext) _ExamSpreadScope_sameDayShare(ctx context.Context, f
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_sameDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_sameDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32053,8 +32046,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_sameDayShare(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_adjacentDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_adjacentDayShare(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_adjacentDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_adjacentDayShare(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32084,9 +32077,9 @@ func (ec *executionContext) _ExamSpreadScope_adjacentDayShare(ctx context.Contex
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_adjacentDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_adjacentDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32097,8 +32090,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_adjacentDayShare(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_conflictShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_conflictShare(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_conflictShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_conflictShare(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32128,9 +32121,9 @@ func (ec *executionContext) _ExamSpreadScope_conflictShare(ctx context.Context, 
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_conflictShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_conflictShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32141,8 +32134,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_conflictShare(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_threeExamsOneDayCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_threeExamsOneDayCount(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_threeExamsOneDayCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_threeExamsOneDayCount(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32172,9 +32165,9 @@ func (ec *executionContext) _ExamSpreadScope_threeExamsOneDayCount(ctx context.C
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_threeExamsOneDayCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_threeExamsOneDayCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32185,8 +32178,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_threeExamsOneDayCount(_
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_avgMinFreeDays(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_avgMinFreeDays(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_avgMinFreeDays(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_avgMinFreeDays(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32216,9 +32209,9 @@ func (ec *executionContext) _ExamSpreadScope_avgMinFreeDays(ctx context.Context,
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_avgMinFreeDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_avgMinFreeDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32229,8 +32222,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_avgMinFreeDays(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_medianMinFreeDays(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_medianMinFreeDays(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_medianMinFreeDays(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_medianMinFreeDays(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32260,9 +32253,9 @@ func (ec *executionContext) _ExamSpreadScope_medianMinFreeDays(ctx context.Conte
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_medianMinFreeDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_medianMinFreeDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32273,8 +32266,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_medianMinFreeDays(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_avgProximityCost(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_avgProximityCost(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_avgProximityCost(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_avgProximityCost(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32304,9 +32297,9 @@ func (ec *executionContext) _ExamSpreadScope_avgProximityCost(ctx context.Contex
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_avgProximityCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_avgProximityCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32317,8 +32310,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_avgProximityCost(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_studentBuckets(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_studentBuckets(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_studentBuckets(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_studentBuckets(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32348,9 +32341,9 @@ func (ec *executionContext) _ExamSpreadScope_studentBuckets(ctx context.Context,
 	return ec.marshalNSpreadBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpreadBucketᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_studentBuckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_studentBuckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32371,8 +32364,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_studentBuckets(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_pairBuckets(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_pairBuckets(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_pairBuckets(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_pairBuckets(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32402,9 +32395,9 @@ func (ec *executionContext) _ExamSpreadScope_pairBuckets(ctx context.Context, fi
 	return ec.marshalNSpreadBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpreadBucketᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_pairBuckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_pairBuckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32425,8 +32418,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_pairBuckets(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_examCountBuckets(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_examCountBuckets(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_examCountBuckets(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_examCountBuckets(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32456,9 +32449,9 @@ func (ec *executionContext) _ExamSpreadScope_examCountBuckets(ctx context.Contex
 	return ec.marshalNCountBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐCountBucketᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_examCountBuckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_examCountBuckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32479,8 +32472,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_examCountBuckets(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_byProgram(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_byProgram(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_byProgram(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_byProgram(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32510,9 +32503,9 @@ func (ec *executionContext) _ExamSpreadScope_byProgram(ctx context.Context, fiel
 	return ec.marshalNProgramSpread2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐProgramSpreadᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_byProgram(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_byProgram(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32541,8 +32534,8 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_byProgram(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _ExamSpreadScope_worstStudents(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadScope) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadScope_worstStudents(ctx, field)
+func (ec *executionContext) _ExamSpreadStatistics_worstStudents(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_worstStudents(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -32572,9 +32565,9 @@ func (ec *executionContext) _ExamSpreadScope_worstStudents(ctx context.Context, 
 	return ec.marshalNWorstStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐWorstStudentᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ExamSpreadScope_worstStudents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_worstStudents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadScope",
+		Object:     "ExamSpreadStatistics",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -32598,174 +32591,6 @@ func (ec *executionContext) fieldContext_ExamSpreadScope_worstStudents(_ context
 				return ec.fieldContext_WorstStudent_exams(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WorstStudent", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ExamSpreadStatistics_regular(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadStatistics_regular(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Regular, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.ExamSpreadScope)
-	fc.Result = res
-	return ec.marshalNExamSpreadScope2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamSpreadScope(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ExamSpreadStatistics_regular(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadStatistics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "studentCount":
-				return ec.fieldContext_ExamSpreadScope_studentCount(ctx, field)
-			case "multiExamStudentCount":
-				return ec.fieldContext_ExamSpreadScope_multiExamStudentCount(ctx, field)
-			case "totalPlannedExams":
-				return ec.fieldContext_ExamSpreadScope_totalPlannedExams(ctx, field)
-			case "studentsWithUnplannedExams":
-				return ec.fieldContext_ExamSpreadScope_studentsWithUnplannedExams(ctx, field)
-			case "avgExamsPerStudent":
-				return ec.fieldContext_ExamSpreadScope_avgExamsPerStudent(ctx, field)
-			case "maxExamsPerStudent":
-				return ec.fieldContext_ExamSpreadScope_maxExamsPerStudent(ctx, field)
-			case "freeDayShare":
-				return ec.fieldContext_ExamSpreadScope_freeDayShare(ctx, field)
-			case "sameDayShare":
-				return ec.fieldContext_ExamSpreadScope_sameDayShare(ctx, field)
-			case "adjacentDayShare":
-				return ec.fieldContext_ExamSpreadScope_adjacentDayShare(ctx, field)
-			case "conflictShare":
-				return ec.fieldContext_ExamSpreadScope_conflictShare(ctx, field)
-			case "threeExamsOneDayCount":
-				return ec.fieldContext_ExamSpreadScope_threeExamsOneDayCount(ctx, field)
-			case "avgMinFreeDays":
-				return ec.fieldContext_ExamSpreadScope_avgMinFreeDays(ctx, field)
-			case "medianMinFreeDays":
-				return ec.fieldContext_ExamSpreadScope_medianMinFreeDays(ctx, field)
-			case "avgProximityCost":
-				return ec.fieldContext_ExamSpreadScope_avgProximityCost(ctx, field)
-			case "studentBuckets":
-				return ec.fieldContext_ExamSpreadScope_studentBuckets(ctx, field)
-			case "pairBuckets":
-				return ec.fieldContext_ExamSpreadScope_pairBuckets(ctx, field)
-			case "examCountBuckets":
-				return ec.fieldContext_ExamSpreadScope_examCountBuckets(ctx, field)
-			case "byProgram":
-				return ec.fieldContext_ExamSpreadScope_byProgram(ctx, field)
-			case "worstStudents":
-				return ec.fieldContext_ExamSpreadScope_worstStudents(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ExamSpreadScope", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ExamSpreadStatistics_all(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ExamSpreadStatistics_all(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.All, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.ExamSpreadScope)
-	fc.Result = res
-	return ec.marshalNExamSpreadScope2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamSpreadScope(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ExamSpreadStatistics_all(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ExamSpreadStatistics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "studentCount":
-				return ec.fieldContext_ExamSpreadScope_studentCount(ctx, field)
-			case "multiExamStudentCount":
-				return ec.fieldContext_ExamSpreadScope_multiExamStudentCount(ctx, field)
-			case "totalPlannedExams":
-				return ec.fieldContext_ExamSpreadScope_totalPlannedExams(ctx, field)
-			case "studentsWithUnplannedExams":
-				return ec.fieldContext_ExamSpreadScope_studentsWithUnplannedExams(ctx, field)
-			case "avgExamsPerStudent":
-				return ec.fieldContext_ExamSpreadScope_avgExamsPerStudent(ctx, field)
-			case "maxExamsPerStudent":
-				return ec.fieldContext_ExamSpreadScope_maxExamsPerStudent(ctx, field)
-			case "freeDayShare":
-				return ec.fieldContext_ExamSpreadScope_freeDayShare(ctx, field)
-			case "sameDayShare":
-				return ec.fieldContext_ExamSpreadScope_sameDayShare(ctx, field)
-			case "adjacentDayShare":
-				return ec.fieldContext_ExamSpreadScope_adjacentDayShare(ctx, field)
-			case "conflictShare":
-				return ec.fieldContext_ExamSpreadScope_conflictShare(ctx, field)
-			case "threeExamsOneDayCount":
-				return ec.fieldContext_ExamSpreadScope_threeExamsOneDayCount(ctx, field)
-			case "avgMinFreeDays":
-				return ec.fieldContext_ExamSpreadScope_avgMinFreeDays(ctx, field)
-			case "medianMinFreeDays":
-				return ec.fieldContext_ExamSpreadScope_medianMinFreeDays(ctx, field)
-			case "avgProximityCost":
-				return ec.fieldContext_ExamSpreadScope_avgProximityCost(ctx, field)
-			case "studentBuckets":
-				return ec.fieldContext_ExamSpreadScope_studentBuckets(ctx, field)
-			case "pairBuckets":
-				return ec.fieldContext_ExamSpreadScope_pairBuckets(ctx, field)
-			case "examCountBuckets":
-				return ec.fieldContext_ExamSpreadScope_examCountBuckets(ctx, field)
-			case "byProgram":
-				return ec.fieldContext_ExamSpreadScope_byProgram(ctx, field)
-			case "worstStudents":
-				return ec.fieldContext_ExamSpreadScope_worstStudents(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ExamSpreadScope", field.Name)
 		},
 	}
 	return fc, nil
@@ -32810,6 +32635,94 @@ func (ec *executionContext) fieldContext_ExamSpreadStatistics_maxRegularNonRepea
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_excludedStudentCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_excludedStudentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExcludedStudentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_excludedStudentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_allFreeDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_allFreeDayShare(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllFreeDayShare, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_allFreeDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -61564,12 +61477,50 @@ func (ec *executionContext) fieldContext_Query_examSpreadStatistics(_ context.Co
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "regular":
-				return ec.fieldContext_ExamSpreadStatistics_regular(ctx, field)
-			case "all":
-				return ec.fieldContext_ExamSpreadStatistics_all(ctx, field)
+			case "studentCount":
+				return ec.fieldContext_ExamSpreadStatistics_studentCount(ctx, field)
+			case "multiExamStudentCount":
+				return ec.fieldContext_ExamSpreadStatistics_multiExamStudentCount(ctx, field)
+			case "totalPlannedExams":
+				return ec.fieldContext_ExamSpreadStatistics_totalPlannedExams(ctx, field)
+			case "studentsWithUnplannedExams":
+				return ec.fieldContext_ExamSpreadStatistics_studentsWithUnplannedExams(ctx, field)
+			case "avgExamsPerStudent":
+				return ec.fieldContext_ExamSpreadStatistics_avgExamsPerStudent(ctx, field)
+			case "maxExamsPerStudent":
+				return ec.fieldContext_ExamSpreadStatistics_maxExamsPerStudent(ctx, field)
+			case "freeDayShare":
+				return ec.fieldContext_ExamSpreadStatistics_freeDayShare(ctx, field)
+			case "sameDayShare":
+				return ec.fieldContext_ExamSpreadStatistics_sameDayShare(ctx, field)
+			case "adjacentDayShare":
+				return ec.fieldContext_ExamSpreadStatistics_adjacentDayShare(ctx, field)
+			case "conflictShare":
+				return ec.fieldContext_ExamSpreadStatistics_conflictShare(ctx, field)
+			case "threeExamsOneDayCount":
+				return ec.fieldContext_ExamSpreadStatistics_threeExamsOneDayCount(ctx, field)
+			case "avgMinFreeDays":
+				return ec.fieldContext_ExamSpreadStatistics_avgMinFreeDays(ctx, field)
+			case "medianMinFreeDays":
+				return ec.fieldContext_ExamSpreadStatistics_medianMinFreeDays(ctx, field)
+			case "avgProximityCost":
+				return ec.fieldContext_ExamSpreadStatistics_avgProximityCost(ctx, field)
+			case "studentBuckets":
+				return ec.fieldContext_ExamSpreadStatistics_studentBuckets(ctx, field)
+			case "pairBuckets":
+				return ec.fieldContext_ExamSpreadStatistics_pairBuckets(ctx, field)
+			case "examCountBuckets":
+				return ec.fieldContext_ExamSpreadStatistics_examCountBuckets(ctx, field)
+			case "byProgram":
+				return ec.fieldContext_ExamSpreadStatistics_byProgram(ctx, field)
+			case "worstStudents":
+				return ec.fieldContext_ExamSpreadStatistics_worstStudents(ctx, field)
 			case "maxRegularNonRepeatExams":
 				return ec.fieldContext_ExamSpreadStatistics_maxRegularNonRepeatExams(ctx, field)
+			case "excludedStudentCount":
+				return ec.fieldContext_ExamSpreadStatistics_excludedStudentCount(ctx, field)
+			case "allFreeDayShare":
+				return ec.fieldContext_ExamSpreadStatistics_allFreeDayShare(ctx, field)
 			case "examGapMinutes":
 				return ec.fieldContext_ExamSpreadStatistics_examGapMinutes(ctx, field)
 			case "notTooCloseMinutes":
@@ -84715,135 +84666,6 @@ func (ec *executionContext) _ExamScheduleReport(ctx context.Context, sel ast.Sel
 	return out
 }
 
-var examSpreadScopeImplementors = []string{"ExamSpreadScope"}
-
-func (ec *executionContext) _ExamSpreadScope(ctx context.Context, sel ast.SelectionSet, obj *model.ExamSpreadScope) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, examSpreadScopeImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("ExamSpreadScope")
-		case "studentCount":
-			out.Values[i] = ec._ExamSpreadScope_studentCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "multiExamStudentCount":
-			out.Values[i] = ec._ExamSpreadScope_multiExamStudentCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "totalPlannedExams":
-			out.Values[i] = ec._ExamSpreadScope_totalPlannedExams(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "studentsWithUnplannedExams":
-			out.Values[i] = ec._ExamSpreadScope_studentsWithUnplannedExams(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "avgExamsPerStudent":
-			out.Values[i] = ec._ExamSpreadScope_avgExamsPerStudent(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "maxExamsPerStudent":
-			out.Values[i] = ec._ExamSpreadScope_maxExamsPerStudent(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "freeDayShare":
-			out.Values[i] = ec._ExamSpreadScope_freeDayShare(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "sameDayShare":
-			out.Values[i] = ec._ExamSpreadScope_sameDayShare(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "adjacentDayShare":
-			out.Values[i] = ec._ExamSpreadScope_adjacentDayShare(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "conflictShare":
-			out.Values[i] = ec._ExamSpreadScope_conflictShare(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "threeExamsOneDayCount":
-			out.Values[i] = ec._ExamSpreadScope_threeExamsOneDayCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "avgMinFreeDays":
-			out.Values[i] = ec._ExamSpreadScope_avgMinFreeDays(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "medianMinFreeDays":
-			out.Values[i] = ec._ExamSpreadScope_medianMinFreeDays(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "avgProximityCost":
-			out.Values[i] = ec._ExamSpreadScope_avgProximityCost(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "studentBuckets":
-			out.Values[i] = ec._ExamSpreadScope_studentBuckets(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "pairBuckets":
-			out.Values[i] = ec._ExamSpreadScope_pairBuckets(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "examCountBuckets":
-			out.Values[i] = ec._ExamSpreadScope_examCountBuckets(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "byProgram":
-			out.Values[i] = ec._ExamSpreadScope_byProgram(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "worstStudents":
-			out.Values[i] = ec._ExamSpreadScope_worstStudents(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var examSpreadStatisticsImplementors = []string{"ExamSpreadStatistics"}
 
 func (ec *executionContext) _ExamSpreadStatistics(ctx context.Context, sel ast.SelectionSet, obj *model.ExamSpreadStatistics) graphql.Marshaler {
@@ -84855,18 +84677,113 @@ func (ec *executionContext) _ExamSpreadStatistics(ctx context.Context, sel ast.S
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ExamSpreadStatistics")
-		case "regular":
-			out.Values[i] = ec._ExamSpreadStatistics_regular(ctx, field, obj)
+		case "studentCount":
+			out.Values[i] = ec._ExamSpreadStatistics_studentCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "all":
-			out.Values[i] = ec._ExamSpreadStatistics_all(ctx, field, obj)
+		case "multiExamStudentCount":
+			out.Values[i] = ec._ExamSpreadStatistics_multiExamStudentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalPlannedExams":
+			out.Values[i] = ec._ExamSpreadStatistics_totalPlannedExams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentsWithUnplannedExams":
+			out.Values[i] = ec._ExamSpreadStatistics_studentsWithUnplannedExams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "avgExamsPerStudent":
+			out.Values[i] = ec._ExamSpreadStatistics_avgExamsPerStudent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxExamsPerStudent":
+			out.Values[i] = ec._ExamSpreadStatistics_maxExamsPerStudent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "freeDayShare":
+			out.Values[i] = ec._ExamSpreadStatistics_freeDayShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sameDayShare":
+			out.Values[i] = ec._ExamSpreadStatistics_sameDayShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adjacentDayShare":
+			out.Values[i] = ec._ExamSpreadStatistics_adjacentDayShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "conflictShare":
+			out.Values[i] = ec._ExamSpreadStatistics_conflictShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "threeExamsOneDayCount":
+			out.Values[i] = ec._ExamSpreadStatistics_threeExamsOneDayCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "avgMinFreeDays":
+			out.Values[i] = ec._ExamSpreadStatistics_avgMinFreeDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "medianMinFreeDays":
+			out.Values[i] = ec._ExamSpreadStatistics_medianMinFreeDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "avgProximityCost":
+			out.Values[i] = ec._ExamSpreadStatistics_avgProximityCost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentBuckets":
+			out.Values[i] = ec._ExamSpreadStatistics_studentBuckets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pairBuckets":
+			out.Values[i] = ec._ExamSpreadStatistics_pairBuckets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examCountBuckets":
+			out.Values[i] = ec._ExamSpreadStatistics_examCountBuckets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "byProgram":
+			out.Values[i] = ec._ExamSpreadStatistics_byProgram(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "worstStudents":
+			out.Values[i] = ec._ExamSpreadStatistics_worstStudents(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "maxRegularNonRepeatExams":
 			out.Values[i] = ec._ExamSpreadStatistics_maxRegularNonRepeatExams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "excludedStudentCount":
+			out.Values[i] = ec._ExamSpreadStatistics_excludedStudentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allFreeDayShare":
+			out.Values[i] = ec._ExamSpreadStatistics_allFreeDayShare(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -96945,16 +96862,6 @@ func (ec *executionContext) marshalNExamScheduleDiagnostics2ᚖgithubᚗcomᚋob
 		return graphql.Null
 	}
 	return ec._ExamScheduleDiagnostics(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNExamSpreadScope2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamSpreadScope(ctx context.Context, sel ast.SelectionSet, v *model.ExamSpreadScope) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ExamSpreadScope(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExamSpreadStatistics2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamSpreadStatistics(ctx context.Context, sel ast.SelectionSet, v model.ExamSpreadStatistics) graphql.Marshaler {

@@ -463,13 +463,12 @@ type ExamScheduleReport struct {
 	UnplacedReasons []*UnplacedExamReason `json:"unplacedReasons"`
 }
 
-// One population's spread figures (see ExamSpreadStatistics.regular / .all).
-type ExamSpreadScope struct {
-	// Students in this scope with at least one exam placed within the exam period.
+type ExamSpreadStatistics struct {
+	// Students in scope with at least one exam placed within the exam period.
 	StudentCount int `json:"studentCount"`
 	// Students with at least one ratable gap (>= 2 exams, after dropping spurious foreign-foreign / same-slot pairs); denominator of the shares.
 	MultiExamStudentCount int `json:"multiExamStudentCount"`
-	// Total placed exam registrations counted across all students in this scope.
+	// Total placed exam registrations counted across all students in scope.
 	TotalPlannedExams int `json:"totalPlannedExams"`
 	// Students who still have at least one not-yet-placed exam (coverage caveat).
 	StudentsWithUnplannedExams int     `json:"studentsWithUnplannedExams"`
@@ -500,15 +499,12 @@ type ExamSpreadScope struct {
 	ByProgram []*ProgramSpread `json:"byProgram"`
 	// The most tightly-scheduled students, for GUI drill-down (not part of the aggregate PDF).
 	WorstStudents []*WorstStudent `json:"worstStudents"`
-}
-
-type ExamSpreadStatistics struct {
-	// The meaningful headline population: students with <= maxRegularNonRepeatExams non-repeat exams.
-	Regular *ExamSpreadScope `json:"regular"`
-	// Everyone, including students whose many repeat registrations push them past the normal maximum.
-	All *ExamSpreadScope `json:"all"`
-	// The non-repeat-exam cap for the `regular` scope (6 = the most possible in a normal semester).
+	// The non-repeat-exam cap for the in-scope population (6 = the most possible in a normal semester).
 	MaxRegularNonRepeatExams int `json:"maxRegularNonRepeatExams"`
+	// Students excluded here because they have more than maxRegularNonRepeatExams non-repeat exams (repeat-heavy outliers).
+	ExcludedStudentCount int `json:"excludedStudentCount"`
+	// freeDayShare over ALL students incl. the excluded outliers — for a 'barely differs' note; equals freeDayShare when there are no outliers.
+	AllFreeDayShare float64 `json:"allFreeDayShare"`
 	// The travel/break buffer (minutes) below which two exams count as an overlap.
 	ExamGapMinutes int `json:"examGapMinutes"`
 	// The same-day start-to-start threshold (minutes) below which two exams count as too close.

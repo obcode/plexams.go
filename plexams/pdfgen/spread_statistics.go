@@ -14,8 +14,8 @@ import (
 // SpreadStatistics renders the aggregate exam-spread statistics PDF (portrait). It is
 // deliberately anonymous: only aggregated figures, distributions and per-program
 // numbers — no student names — so it can be emailed on to the Prüfungsamt / faculty.
-// The headline block is the "regular" population (students with a normal exam load);
-// a compact comparison block for all students follows.
+// It covers the "regular" population (students with a normal exam load); the few
+// repeat-heavy outliers are only summarized in a footnote.
 func SpreadStatistics(semesterFull string, stat *model.ExamSpreadStatistics) pdf.Maroto {
 	m := pdf.NewMaroto(consts.Portrait, consts.A4)
 	m.SetPageMargins(10, 15, 10)
@@ -26,23 +26,11 @@ func SpreadStatistics(semesterFull string, stat *model.ExamSpreadStatistics) pdf
 		fmt.Sprintf("Zeitliche Verteilung der Prüfungen für die Studierenden — %s", semesterFull))
 	centeredRow(m, 8, 1, consts.Normal,
 		"Abstände zwischen aufeinanderfolgenden Prüfungen je Studierende:r. „Freier Tag“ zählt Kalendertage (Wochenende inkl.).")
+	centeredRow(m, 8, 1, consts.Normal,
+		fmt.Sprintf("Studierende mit höchstens %d Nicht-Wiederholungsprüfungen (normaler Studienverlauf).", stat.MaxRegularNonRepeatExams))
 
-	centeredRow(m, 9, 2, consts.Bold,
-		fmt.Sprintf("Hauptauswertung: Studierende mit höchstens %d Nicht-Wiederholungsprüfungen (normaler Studienverlauf).", stat.MaxRegularNonRepeatExams))
-	renderScope(m, gray, stat.Regular, true)
-
-	centeredRow(m, 12, 5, consts.Bold,
-		"Zum Vergleich: alle Studierenden (inkl. Vielschreiber:innen mit Wiederholungsprüfungen).")
-	renderScope(m, gray, stat.All, false)
-
-	return m
-}
-
-// renderScope renders one population's block. With full=false the per-program table is
-// omitted, keeping the comparison block compact.
-func renderScope(m pdf.Maroto, gray color.Color, scope *model.ExamSpreadScope, full bool) {
 	sectionRow(m, "Kennzahlen")
-	m.TableList([]string{"Kennzahl", "Wert"}, spreadKeyFigureRows(scope), props.TableList{
+	m.TableList([]string{"Kennzahl", "Wert"}, spreadKeyFigureRows(stat), props.TableList{
 		HeaderProp:           props.TableListContent{Size: 9, GridSizes: []uint{9, 3}},
 		ContentProp:          props.TableListContent{Size: 9, GridSizes: []uint{9, 3}},
 		Align:                consts.Left,
@@ -52,7 +40,7 @@ func renderScope(m pdf.Maroto, gray color.Color, scope *model.ExamSpreadScope, f
 	})
 
 	sectionRow(m, "Verteilung der Studierenden nach engstem Prüfungsabstand")
-	m.TableList([]string{"Kategorie", "Studierende", "Anteil", ""}, spreadBucketRows(scope.StudentBuckets), props.TableList{
+	m.TableList([]string{"Kategorie", "Studierende", "Anteil", ""}, spreadBucketRows(stat.StudentBuckets), props.TableList{
 		HeaderProp:           props.TableListContent{Size: 9, GridSizes: []uint{5, 2, 2, 3}},
 		ContentProp:          props.TableListContent{Size: 9, GridSizes: []uint{5, 2, 2, 3}},
 		Align:                consts.Left,
@@ -61,8 +49,25 @@ func renderScope(m pdf.Maroto, gray color.Color, scope *model.ExamSpreadScope, f
 		Line:                 false,
 	})
 
+	sectionRow(m, "Nach Studiengang (mind. 1 freier Tag / selber Tag, bezogen auf Studierende mit ≥ 2 Prüfungen)")
+	m.TableList(
+		[]string{"Studiengang", "Studierende", "≥2 Prüf.", "Ø Prüf.", "≥1 frei", "selber Tag", "Ø min. frei"},
+		spreadProgramRows(stat.ByProgram),
+		props.TableList{
+			HeaderProp:           props.TableListContent{Size: 8, GridSizes: []uint{3, 2, 2, 1, 2, 1, 1}},
+			ContentProp:          props.TableListContent{Size: 8, GridSizes: []uint{3, 2, 2, 1, 2, 1, 1}},
+			Align:                consts.Left,
+			AlternatedBackground: &gray,
+			HeaderContentSpace:   1,
+			Line:                 false,
+		})
+	if anyLowSample(stat.ByProgram) {
+		centeredRow(m, 8, 2, consts.Italic,
+			fmt.Sprintf("* geringe Fallzahl (< %d Studierende mit ≥ 2 Prüfungen) — Anteile mit Vorsicht lesen.", spreadLowSampleThreshold))
+	}
+
 	sectionRow(m, "Prüfungen je Studierende:r")
-	m.TableList([]string{"Anzahl Prüfungen", "Studierende", "Anteil"}, spreadExamCountRows(scope.ExamCountBuckets), props.TableList{
+	m.TableList([]string{"Anzahl Prüfungen", "Studierende", "Anteil"}, spreadExamCountRows(stat.ExamCountBuckets), props.TableList{
 		HeaderProp:           props.TableListContent{Size: 9, GridSizes: []uint{6, 3, 3}},
 		ContentProp:          props.TableListContent{Size: 9, GridSizes: []uint{6, 3, 3}},
 		Align:                consts.Left,
@@ -71,30 +76,18 @@ func renderScope(m pdf.Maroto, gray color.Color, scope *model.ExamSpreadScope, f
 		Line:                 false,
 	})
 
-	if full {
-		sectionRow(m, "Nach Studiengang (mind. 1 freier Tag / selber Tag, bezogen auf Studierende mit ≥ 2 Prüfungen)")
-		m.TableList(
-			[]string{"Studiengang", "Studierende", "≥2 Prüf.", "Ø Prüf.", "≥1 frei", "selber Tag", "Ø min. frei"},
-			spreadProgramRows(scope.ByProgram),
-			props.TableList{
-				HeaderProp:           props.TableListContent{Size: 8, GridSizes: []uint{3, 2, 2, 1, 2, 1, 1}},
-				ContentProp:          props.TableListContent{Size: 8, GridSizes: []uint{3, 2, 2, 1, 2, 1, 1}},
-				Align:                consts.Left,
-				AlternatedBackground: &gray,
-				HeaderContentSpace:   1,
-				Line:                 false,
-			})
-		if anyLowSample(scope.ByProgram) {
-			centeredRow(m, 8, 2, consts.Italic,
-				fmt.Sprintf("* geringe Fallzahl (< %d Studierende mit ≥ 2 Prüfungen) — Anteile mit Vorsicht lesen.", spreadLowSampleThreshold))
-		}
+	if stat.ExcludedStudentCount > 0 {
+		centeredRow(m, 8, 3, consts.Italic,
+			fmt.Sprintf("Ausgeblendet: %d Studierende mit mehr als %d Nicht-Wiederholungsprüfungen (Wiederholer:innen). Über alle Studierenden läge der Anteil „mind. 1 freier Tag“ bei %s (hier: %s) — kaum abweichend.",
+				stat.ExcludedStudentCount, stat.MaxRegularNonRepeatExams, pct(stat.AllFreeDayShare), pct(stat.FreeDayShare)))
 	}
-
-	if scope.StudentsWithUnplannedExams > 0 {
+	if stat.StudentsWithUnplannedExams > 0 {
 		centeredRow(m, 8, 2, consts.Italic,
 			fmt.Sprintf("Hinweis: %d Studierende haben noch mindestens eine nicht verplante Prüfung — die Zahlen decken nur die bereits geplanten Prüfungen ab.",
-				scope.StudentsWithUnplannedExams))
+				stat.StudentsWithUnplannedExams))
 	}
+
+	return m
 }
 
 // sectionRow renders a bold left-aligned section heading.
@@ -110,7 +103,7 @@ func pct(v float64) string  { return fmt.Sprintf("%.1f %%", v) }
 func days(v float64) string { return fmt.Sprintf("%.1f", v) }
 
 // spreadKeyFigureRows builds the headline key-figure table (label, value).
-func spreadKeyFigureRows(s *model.ExamSpreadScope) [][]string {
+func spreadKeyFigureRows(s *model.ExamSpreadStatistics) [][]string {
 	return [][]string{
 		{"Studierende mit geplanten Prüfungen", fmt.Sprintf("%d", s.StudentCount)},
 		{"davon mit mindestens 2 Prüfungen", fmt.Sprintf("%d", s.MultiExamStudentCount)},

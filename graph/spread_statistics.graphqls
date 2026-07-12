@@ -2,18 +2,16 @@ extend type Query {
   """
   Student-centric quality statistics of the current plan: how well the exams are
   spread out in time for the individual students. Covers our OWN students (enrolled in
-  an FK07 or MUC.DAI program), for whom we hold the complete set of exams in the period
-  — including the external / not-planned-by-me ones. Aggregates the gaps between each
-  student's consecutive exams (NTA-aware, absolute times, calendar-day gaps) into
-  human-readable shares (e.g. "share of students with at least one exam-free day between
-  all their exams"), a distribution histogram, a per-program breakdown and a Carter-style
-  proximity index.
+  an FK07 or MUC.DAI program) with at most `maxRegularNonRepeatExams` non-repeat exams —
+  the most anyone can have in a normal course of study; students beyond that (many
+  repeat registrations) are excluded from the figures and only summarized via
+  `excludedStudentCount` / `allFreeDayShare`, since including them barely moves the
+  aggregate.
 
-  Two scopes are returned: `regular` counts only students with at most
-  `maxRegularNonRepeatExams` non-repeat exams (the most anyone can have in a normal
-  course of study — more means repeat exams are mixed in), which is the meaningful
-  headline population; `all` additionally includes the outliers (students with many
-  repeat registrations, up to ~14 exams).
+  Aggregates the gaps between each student's consecutive exams (NTA-aware, absolute
+  times, calendar-day gaps) into human-readable shares (e.g. "share of students with at
+  least one exam-free day between all their exams"), a distribution histogram, a
+  per-program breakdown and a Carter-style proximity index.
 
   Spurious pairs are dropped from the gap statistics (as ValidateConflicts does):
   two exams of other faculties (not ours to resolve) and two exams declared same-slot
@@ -28,25 +26,11 @@ extend type Query {
 }
 
 type ExamSpreadStatistics {
-  "The meaningful headline population: students with <= maxRegularNonRepeatExams non-repeat exams."
-  regular: ExamSpreadScope!
-  "Everyone, including students whose many repeat registrations push them past the normal maximum."
-  all: ExamSpreadScope!
-  "The non-repeat-exam cap for the `regular` scope (6 = the most possible in a normal semester)."
-  maxRegularNonRepeatExams: Int!
-  "The travel/break buffer (minutes) below which two exams count as an overlap."
-  examGapMinutes: Int!
-  "The same-day start-to-start threshold (minutes) below which two exams count as too close."
-  notTooCloseMinutes: Int!
-}
-
-"One population's spread figures (see ExamSpreadStatistics.regular / .all)."
-type ExamSpreadScope {
-  "Students in this scope with at least one exam placed within the exam period."
+  "Students in scope with at least one exam placed within the exam period."
   studentCount: Int!
   "Students with at least one ratable gap (>= 2 exams, after dropping spurious foreign-foreign / same-slot pairs); denominator of the shares."
   multiExamStudentCount: Int!
-  "Total placed exam registrations counted across all students in this scope."
+  "Total placed exam registrations counted across all students in scope."
   totalPlannedExams: Int!
   "Students who still have at least one not-yet-placed exam (coverage caveat)."
   studentsWithUnplannedExams: Int!
@@ -80,6 +64,18 @@ type ExamSpreadScope {
   byProgram: [ProgramSpread!]!
   "The most tightly-scheduled students, for GUI drill-down (not part of the aggregate PDF)."
   worstStudents: [WorstStudent!]!
+
+  "The non-repeat-exam cap for the in-scope population (6 = the most possible in a normal semester)."
+  maxRegularNonRepeatExams: Int!
+  "Students excluded here because they have more than maxRegularNonRepeatExams non-repeat exams (repeat-heavy outliers)."
+  excludedStudentCount: Int!
+  "freeDayShare over ALL students incl. the excluded outliers — for a 'barely differs' note; equals freeDayShare when there are no outliers."
+  allFreeDayShare: Float!
+
+  "The travel/break buffer (minutes) below which two exams count as an overlap."
+  examGapMinutes: Int!
+  "The same-day start-to-start threshold (minutes) below which two exams count as too close."
+  notTooCloseMinutes: Int!
 }
 
 "A named distribution bucket with an absolute count and a percentage share."

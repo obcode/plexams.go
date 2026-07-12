@@ -6,14 +6,14 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-func sampleScope() *model.ExamSpreadScope {
-	return &model.ExamSpreadScope{
+func sampleStat() *model.ExamSpreadStatistics {
+	return &model.ExamSpreadStatistics{
 		StudentCount:               420,
 		MultiExamStudentCount:      380,
 		TotalPlannedExams:          1400,
 		StudentsWithUnplannedExams: 7,
 		AvgExamsPerStudent:         3.33,
-		MaxExamsPerStudent:         7,
+		MaxExamsPerStudent:         6,
 		FreeDayShare:               72.4,
 		SameDayShare:               11.1,
 		AdjacentDayShare:           14.2,
@@ -22,6 +22,11 @@ func sampleScope() *model.ExamSpreadScope {
 		AvgMinFreeDays:             1.4,
 		MedianMinFreeDays:          1,
 		AvgProximityCost:           9.6,
+		MaxRegularNonRepeatExams:   6,
+		ExcludedStudentCount:       12,
+		AllFreeDayShare:            71.9,
+		ExamGapMinutes:             30,
+		NotTooCloseMinutes:         90,
 		StudentBuckets: []*model.SpreadBucket{
 			{Key: "OVERLAP", Label: "Überschneidung (Konflikt)", Count: 0, Share: 0},
 			{Key: "SAME_DAY", Label: "Zwei Prüfungen am selben Tag", Count: 42, Share: 11.1},
@@ -43,19 +48,11 @@ func sampleScope() *model.ExamSpreadScope {
 	}
 }
 
-// TestSpreadStatisticsRenders exercises the full maroto layout (both scope blocks, all
-// TableLists, section rows, footer) end-to-end and asserts it renders to non-empty PDF
-// bytes — catching column/grid mismatches and nil handling without needing a database.
+// TestSpreadStatisticsRenders exercises the full maroto layout (all TableLists, section
+// rows, footnotes, footer) end-to-end and asserts it renders to non-empty PDF bytes —
+// catching column/grid mismatches and nil handling without needing a database.
 func TestSpreadStatisticsRenders(t *testing.T) {
-	stat := &model.ExamSpreadStatistics{
-		Regular:                  sampleScope(),
-		All:                      sampleScope(),
-		MaxRegularNonRepeatExams: 6,
-		ExamGapMinutes:           30,
-		NotTooCloseMinutes:       90,
-	}
-
-	m := SpreadStatistics("Sommersemester 2026", stat)
+	m := SpreadStatistics("Sommersemester 2026", sampleStat())
 	buf, err := m.Output()
 	if err != nil {
 		t.Fatalf("Output() error: %v", err)
@@ -67,14 +64,10 @@ func TestSpreadStatisticsRenders(t *testing.T) {
 
 // TestSpreadStatisticsEmpty renders the zero-data case (no plan yet) without panicking.
 func TestSpreadStatisticsEmpty(t *testing.T) {
-	empty := &model.ExamSpreadScope{
-		StudentBuckets:   buildEmptyBuckets(),
-		ExamCountBuckets: []*model.CountBucket{},
-		ByProgram:        []*model.ProgramSpread{},
-	}
 	stat := &model.ExamSpreadStatistics{
-		Regular:                  empty,
-		All:                      empty,
+		StudentBuckets:           buildEmptyBuckets(),
+		ExamCountBuckets:         []*model.CountBucket{},
+		ByProgram:                []*model.ProgramSpread{},
 		MaxRegularNonRepeatExams: 6,
 	}
 	m := SpreadStatistics("Wintersemester 2026/27", stat)

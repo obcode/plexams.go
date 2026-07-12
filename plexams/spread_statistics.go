@@ -90,13 +90,14 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 
 	excludePair := p.spreadPairExcluder(ctx, externalByAncode)
 
-	// Build per-student records once; classify each by its non-repeat exam count so we
-	// can aggregate two populations: the "regular" students (<= maxRegularNonRepeatExams
-	// non-repeat exams, the most anyone can have in a normal course of study) and all
-	// students (incl. the many-repeat outliers). ZpaAncodes already holds only to-plan
-	// ZPA + external registrations (not-to-plan and orphan Primuss regs are dropped
-	// upstream in PrepareStudentRegs).
-	var regular, all []*studentSpreadRecord
+	// Build per-student records. The statistic covers the "regular" students (<=
+	// maxRegularNonRepeatExams non-repeat exams — the most anyone can have in a normal
+	// course of study); the repeat-heavy outliers barely move the aggregate, so they are
+	// only summarized (excludedStudentCount + allFreeDayShare) rather than shown as a
+	// second view. ZpaAncodes already holds only to-plan ZPA + external registrations
+	// (not-to-plan and orphan Primuss regs are dropped upstream in PrepareStudentRegs).
+	var regular []*studentSpreadRecord
+	allStudents, allMulti, allFree := 0, 0, 0 // headline counters over ALL students
 	for _, s := range students {
 		if restrictProgram && !ownProgram[s.Program] {
 			continue // not one of our (fully-known) students
@@ -120,24 +121,35 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 		}
 		rec.nExams = len(rec.times)
 		if rec.nExams == 0 && !rec.hasUnplanned {
-			continue // nothing to contribute to either scope
+			continue // nothing to contribute
 		}
 		if rec.nExams >= 2 {
 			rec.sp = spreadcalc.ComputeStudent(rec.times, examGap, notTooClose, excludePair)
 		}
-		all = append(all, rec)
+
+		// all-students headline (for the "outliers barely differ" note)
+		if rec.nExams >= 1 {
+			allStudents++
+		}
+		if rec.nExams >= 2 && len(rec.sp.Pairs) > 0 {
+			allMulti++
+			if rec.sp.MinGap >= 1 {
+				allFree++
+			}
+		}
+
 		if nonRepeat <= maxRegularNonRepeatExams {
 			regular = append(regular, rec)
 		}
 	}
 
-	return &model.ExamSpreadStatistics{
-		Regular:                  aggregateScope(regular, info),
-		All:                      aggregateScope(all, info),
-		MaxRegularNonRepeatExams: maxRegularNonRepeatExams,
-		ExamGapMinutes:           examGap,
-		NotTooCloseMinutes:       notTooClose,
-	}, nil
+	stat := aggregateScope(regular, info)
+	stat.MaxRegularNonRepeatExams = maxRegularNonRepeatExams
+	stat.ExcludedStudentCount = allStudents - stat.StudentCount
+	stat.AllFreeDayShare = share(allFree, float64(allMulti))
+	stat.ExamGapMinutes = examGap
+	stat.NotTooCloseMinutes = notTooClose
+	return stat, nil
 }
 
 // studentSpreadRecord is one student's placed exams plus their precomputed spread,
@@ -151,10 +163,11 @@ type studentSpreadRecord struct {
 	hasUnplanned bool
 }
 
-// aggregateScope turns a set of per-student records into one population's figures
-// (shares, distributions, per-program breakdown, worst-off list).
-func aggregateScope(records []*studentSpreadRecord, info map[int]examInfo) *model.ExamSpreadScope {
-	scope := &model.ExamSpreadScope{}
+// aggregateScope turns a set of per-student records into the population's figures
+// (shares, distributions, per-program breakdown, worst-off list). The caller fills in
+// the scope-independent fields (thresholds, outlier note).
+func aggregateScope(records []*studentSpreadRecord, info map[int]examInfo) *model.ExamSpreadStatistics {
+	scope := &model.ExamSpreadStatistics{}
 
 	studentBucket := make(map[string]int) // worst-case bucket per student
 	pairBucket := make(map[string]int)    // every consecutive pair

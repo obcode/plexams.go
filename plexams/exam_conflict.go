@@ -293,6 +293,10 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 	durByAncode := p.examDurationsByAncode(ctx)
 	examGap := p.semesterConfig.ExamGapMinutes
 	notTooClose := p.semesterConfig.NotTooCloseMinutes
+	// per-exam campus, so a cross-campus pair uses the larger travel buffer (kept consistent
+	// with the solver and the validation). constraints is also reused below for locations/foreign.
+	constraints, _ := p.ConstraintsMap(ctx)
+	locOf := func(ancode int) string { return locationOf(constraints[ancode]) }
 
 	type studInfo struct{ mtknr, name, program, group string }
 	type agg struct {
@@ -315,10 +319,11 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		for i := 0; i < len(placed); i++ {
 			for j := i + 1; j < len(placed); j++ {
 				si, sj := slotByAncode[placed[i]], slotByAncode[placed[j]]
+				gap := effectiveGapMinutes(examGap, locOf(placed[i]), locOf(placed[j]))
 				rank, label := conflictcalc.TimeProximity(
 					si.Starttime, endOf(placed[i], si),
 					sj.Starttime, endOf(placed[j], sj),
-					examGap, notTooClose)
+					gap, notTooClose)
 				if rank <= 1 {
 					continue // drop NEXT_DAY (and farther): always acceptable, handled by the objective
 				}
@@ -356,7 +361,6 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 	// them is spurious: treat like canShareSlot (auto-accepted, info only).
 	ssRoot := p.sameSlotGroups(ctx)
 	info := p.examInfoMap(ctx)
-	constraints, _ := p.ConstraintsMap(ctx)
 	foreign := func(ancode int) bool {
 		if ancode >= externalAncodeBase {
 			return true

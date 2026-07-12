@@ -8,6 +8,7 @@ import (
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/conflictcalc"
 	"github.com/rs/zerolog/log"
 )
 
@@ -75,24 +76,94 @@ func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, slottime ti
 	})
 }
 
+// placedExamInfo is the absolute time window and campus of an exam that already has a
+// place in the plan, plus whether that placement is time-fixed (locked / external /
+// not-planned-by-me / phase-fixed → it will not move during generation). It is the input
+// to the time-based allowed-slots computation, which must reason about a conflicting
+// exam's real time window — NOT its (possibly non-existent) grid-slot ordinal, so that
+// exams placed at off-grid times (e.g. an 11:00 exam of another faculty) are honoured.
+type placedExamInfo struct {
+	start    time.Time
+	duration int // NTA-aware maximum duration (minutes)
+	location string
+	fixed    bool
+}
+
+// placedExamInfos returns, per ancode that is placed at an absolute time, its time window,
+// campus and whether its time is fixed. Off-grid times are included (that is the whole
+// point — a foreign exam at 11:00 must still block the overlapping grid slots).
+func (p *Plexams) placedExamInfos(ctx context.Context) (map[int]placedExamInfo, error) {
+	planEntries, err := p.PlanEntries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	assembled, err := p.dbClient.GetAssembledExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+	durByAncode := make(map[int]int, len(assembled))
+	for _, e := range assembled {
+		durByAncode[e.Ancode] = e.MaxDuration
+	}
+	constraints, err := p.ConstraintsMap(ctx)
+	if err != nil {
+		return nil, err
+	}
+	infos := make(map[int]placedExamInfo, len(planEntries))
+	for _, pe := range planEntries {
+		if pe.Starttime == nil {
+			continue
+		}
+		c := constraints[pe.Ancode]
+		infos[pe.Ancode] = placedExamInfo{
+			start:    *pe.Starttime,
+			duration: durByAncode[pe.Ancode],
+			location: locationOf(c),
+			fixed:    (c != nil && c.NotPlannedByMe) || pe.External || pe.Locked || pe.PhaseFixed || pe.Ancode >= externalAncodeBase,
+		}
+	}
+	return infos, nil
+}
+
+// examGapMinutes is the configured travel/break buffer a student needs between two of
+// their exams (same campus), falling back to the built-in default when unset.
+func (p *Plexams) examGapMinutes() int {
+	if p.semesterConfig != nil && p.semesterConfig.ExamGapMinutes > 0 {
+		return p.semesterConfig.ExamGapMinutes
+	}
+	return defaultExamGapMinutes
+}
+
 func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
 	exam, err := p.AssembledExam(ctx, ancode)
-	if err != nil {
+	if err != nil || exam == nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist")
+		return nil, err
 	}
+	placed, err := p.placedExamInfos(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return p.allowedSlotsFor(exam, placed, p.examGapMinutes()), nil
+}
 
+// allowedSlotsFor computes the grid slots into which exam may be placed without a HARD
+// time conflict, given a precomputed set of already-placed exams. It applies the exam's
+// day/time constraints and then removes every candidate slot whose placement would make
+// the exam's time window overlap a conflicting exam's window (location-aware travel
+// buffer) — the time-based generalisation of the former "same slot" exclusion. It does no
+// I/O, so a caller placing many exams (the schedule generator) can build `placed` once.
+func (p *Plexams) allowedSlotsFor(exam *model.AssembledExam, placed map[int]placedExamInfo, examGap int) []*model.Slot {
 	allSlots := p.semesterConfig.Slots
 
 	if exam.Constraints != nil && exam.Constraints.FixedTime != nil {
-		return []*model.Slot{matchSlotForFixedTime(allSlots, exam.Constraints.FixedTime)}, nil
+		return []*model.Slot{matchSlotForFixedTime(allSlots, exam.Constraints.FixedTime)}
 	}
-
 	if exam.Constraints != nil && exam.Constraints.FixedDay != nil {
-		return getSlotsForDay(allSlots, exam.Constraints.FixedDay), nil
+		return getSlotsForDay(allSlots, exam.Constraints.FixedDay)
 	}
 
 	allowedSlots := make([]*model.Slot, 0)
-
 	if exam.Constraints != nil && exam.Constraints.PossibleDays != nil {
 		for _, day := range exam.Constraints.PossibleDays {
 			allowedSlots = append(allowedSlots, getSlotsForDay(allSlots, day)...)
@@ -100,39 +171,31 @@ func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 	} else {
 		allowedSlots = allSlots
 	}
-
 	if exam.Constraints != nil && exam.Constraints.ExcludeDays != nil {
 		for _, day := range exam.Constraints.ExcludeDays {
 			allowedSlots = removeSlotsForDay(allowedSlots, day)
 		}
 	}
 
-	// TODO: recalculate from conflicts
+	excluded := p.overlapSlots(exam, placed, examGap)
+	for _, slot := range p.semesterConfig.ForbiddenSlots {
+		excluded.Add(*slot)
+	}
 
 	allowedSlotsWithConflicts := make([]*model.Slot, 0, len(allowedSlots))
-
-	slotsWithConflicts, err := p.slotsWithConflicts(ctx, exam)
-	if err != nil {
-		log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get slots with conflicts")
-		return nil, err
-	}
-
-	for _, slot := range p.semesterConfig.ForbiddenSlots {
-		slotsWithConflicts.Add(*slot)
-	}
 	for _, slot := range allowedSlots {
-		if !slotsWithConflicts.Contains(*slot) {
+		if !excluded.Contains(*slot) {
 			allowedSlotsWithConflicts = append(allowedSlotsWithConflicts, slot)
 		}
 	}
-
-	return allowedSlotsWithConflicts, nil
+	return allowedSlotsWithConflicts
 }
 
 func (p *Plexams) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
 	exam, err := p.AssembledExam(ctx, ancode)
-	if err != nil {
+	if err != nil || exam == nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist")
+		return nil, err
 	}
 
 	// Group the configured slots by calendar day and order each day by start time. The
@@ -148,11 +211,12 @@ func (p *Plexams) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 		sort.Slice(day, func(i, j int) bool { return day[i].Starttime.Before(day[j].Starttime) })
 	}
 
-	slotsWithConflicts, err := p.slotsWithConflicts(ctx, exam)
+	placed, err := p.placedExamInfos(ctx)
 	if err != nil {
-		log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get slots with conflicts")
+		log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get placed exam infos")
 		return nil, err
 	}
+	slotsWithConflicts := p.overlapSlots(exam, placed, p.examGapMinutes())
 
 	awkwardSlots := make([]*model.Slot, 0)
 	for _, slot := range slotsWithConflicts.ToSlice() {
@@ -178,19 +242,38 @@ func (p *Plexams) AwkwardSlots(ctx context.Context, ancode int) ([]*model.Slot, 
 	return awkwardSlots, nil
 }
 
-func (p *Plexams) slotsWithConflicts(ctx context.Context, exam *model.AssembledExam) (set.Set[model.Slot], error) {
+// overlapSlots returns the grid slots into which exam may NOT be placed because doing so
+// would make its time window overlap the window of one of its (already-placed)
+// conflicting exams — i.e. leave a shared student less than the required travel/break
+// buffer (location-aware) between the two. Unlike the former grid-ordinal lookup, it
+// compares absolute time windows, so a conflicting exam placed at an off-grid time (e.g.
+// 11:00) correctly blocks every grid slot that would overlap it, not just the — possibly
+// non-existent — grid slot at its exact start. `placed` selects which conflicting exams
+// count: the caller passes every placed exam (manual placement / GUI) or only the
+// time-fixed ones (the generator, which lets its own hard separations govern the movable
+// exams that can still move).
+func (p *Plexams) overlapSlots(exam *model.AssembledExam, placed map[int]placedExamInfo, examGap int) set.Set[model.Slot] {
 	slotSet := set.NewSet[model.Slot]()
+	if exam == nil {
+		return slotSet
+	}
+	examDur := time.Duration(exam.MaxDuration) * time.Minute
+	examLoc := locationOf(exam.Constraints)
 	for _, conflict := range exam.Conflicts {
-		slot, err := p.SlotForAncode(ctx, conflict.Ancode)
-		if err != nil {
-			log.Error().Err(err).Int("ancode", conflict.Ancode).Msg("cannot get slot for ancode")
-			return nil, err
+		c, ok := placed[conflict.Ancode]
+		if !ok {
+			continue // conflicting exam not placed at an absolute time → no window to avoid
 		}
-		if slot != nil {
-			slotSet.Add(*slot)
+		gap := effectiveGapMinutes(examGap, examLoc, c.location)
+		cEnd := c.start.Add(time.Duration(c.duration) * time.Minute)
+		for _, slot := range p.semesterConfig.Slots {
+			examEnd := slot.Starttime.Add(examDur)
+			if rank, _ := conflictcalc.TimeProximity(slot.Starttime, examEnd, c.start, cEnd, gap, 0); rank == conflictcalc.ProximityRank(conflictcalc.Overlap) {
+				slotSet.Add(*slot)
+			}
 		}
 	}
-	return slotSet, nil
+	return slotSet
 }
 
 // matchSlotForFixedTime returns the grid slot whose start time matches the given

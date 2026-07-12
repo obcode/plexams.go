@@ -24,6 +24,25 @@ const smallExamThreshold = 5
 // Overridable via planer.examGapMinutes.
 const defaultExamGapMinutes = 30
 
+// crossCampusGapMinutes is the minimum end-to-start buffer a student needs between two of
+// their exams held at DIFFERENT campuses (e.g. Pasing ↔ Lothstraße): the travel time makes
+// a tighter placement impossible even though neither exam's time window overlaps. It is a
+// HARD separation (like the same-campus examGap, just larger) applied whenever the two
+// exams' locations differ; a same-campus pair keeps the ordinary examGap.
+const crossCampusGapMinutes = 120
+
+// effectiveGapMinutes is the required end-to-start buffer between two of a student's exams
+// given the two exams' campuses: the ordinary examGap for a same-campus pair, or the larger
+// cross-campus travel buffer when the locations differ (empty = main campus). This is the
+// single source of truth for the location-aware hard separation, used consistently by the
+// solver (hardSep), the allowed-slots domain and the conflict validation/reporting.
+func effectiveGapMinutes(examGap int, locA, locB string) int {
+	if locA != locB && crossCampusGapMinutes > examGap {
+		return crossCampusGapMinutes
+	}
+	return examGap
+}
+
 // ExamScheduleResult summarizes a Terminplan generation run.
 type ExamScheduleResult struct {
 	Units             int
@@ -130,6 +149,45 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		return nil, nil, err
 	}
 
+	gapMin := sc.ExamGapMinutes
+	if gapMin <= 0 {
+		gapMin = defaultExamGapMinutes
+	}
+
+	// placedFixed: every exam whose time is FIXED (locked / external / not-planned-by-me /
+	// phase-fixed) and known, keyed by ancode, with its absolute window and campus. It drives
+	// the movable exams' allowed-slot domain below: a movable exam may not be placed where its
+	// window would overlap a fixed conflicting exam's window. Crucially this honours fixed
+	// exams at OFF-GRID times (e.g. another faculty's 11:00 exam) — those cannot be a grid
+	// unit (no slot index) and were previously dropped entirely, so they silently stopped
+	// constraining the plan. Movable-vs-movable conflicts are governed by the solver's hard
+	// separations instead, so only fixed exams belong here.
+	durByAncode := make(map[int]int, len(assembled))
+	for _, e := range assembled {
+		durByAncode[e.Ancode] = e.MaxDuration
+	}
+	placedFixed := make(map[int]placedExamInfo)
+	for _, pe := range planEntries {
+		if pe.Starttime == nil {
+			continue
+		}
+		c := constraints[pe.Ancode]
+		foreign := (c != nil && c.NotPlannedByMe) || pe.External || pe.Ancode >= externalAncodeBase
+		fixed := foreign || pe.Locked
+		if !roomPhase && pe.PhaseFixed {
+			fixed = true
+		}
+		if !fixed {
+			continue
+		}
+		placedFixed[pe.Ancode] = placedExamInfo{
+			start:    *pe.Starttime,
+			duration: durByAncode[pe.Ancode],
+			location: locationOf(c),
+			fixed:    true,
+		}
+	}
+
 	type exRec struct {
 		e          *model.AssembledExam
 		fixedSlot  int // -1 if movable
@@ -173,10 +231,11 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		if roomPhase && !exahm && !seb {
 			continue // phase A schedules only EXaHM/SEB exams
 		}
-		allowedSlots, err := p.AllowedSlots(ctx, e.Ancode)
-		if err != nil {
-			return nil, nil, fmt.Errorf("allowed slots for %d: %w", e.Ancode, err)
-		}
+		// Domain from the (time-based, location-aware) allowed-slots computation, restricted
+		// to the FIXED conflicting exams (placedFixed): those cannot move, so they genuinely
+		// constrain this exam. Movable-vs-movable overlaps are handled by the hard separations
+		// installed below, not by pre-restricting the domain to a warm-start position.
+		allowedSlots := p.allowedSlotsFor(e, placedFixed, gapMin)
 		idxs := make([]int, 0, len(allowedSlots))
 		for _, s := range allowedSlots {
 			if idx, ok := idxByStart[s.Starttime]; ok {
@@ -494,11 +553,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	// student must not overlap in time — the later may only start once the earlier one's
 	// occupied time (its duration, extended for that student's NTA) plus the buffer has
 	// passed. hardSep[{a,b}] is that minimum separation (minutes) from a's start to b's,
-	// aggregated over the students sharing the pair.
-	gapMin := sc.ExamGapMinutes
-	if gapMin <= 0 {
-		gapMin = defaultExamGapMinutes
-	}
+	// aggregated over the students sharing the pair. gapMin was resolved above.
 	unitBaseDur := make(map[int]int)       // unit -> exam duration
 	ntaExt := make(map[int]map[string]int) // unit -> mtknr -> NTA-extended duration
 	unitPreMin := make(map[int]int)        // unit -> Vorlauf minutes (EXaHM/SEB default 30)
@@ -548,14 +603,17 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		return dur
 	}
 	// build the per-pair minimum separations from the (already conflict-filtered) student
-	// pairs, so hardSep covers exactly the same pairs as the solver's hard conflicts.
+	// pairs, so hardSep covers exactly the same pairs as the solver's hard conflicts. The
+	// buffer is location-aware: two exams at different campuses need the larger cross-campus
+	// travel time between them, not just the ordinary same-campus examGap.
 	hardSep := make(map[[2]int]int)
 	for _, s := range students {
 		for _, pr := range s.Pairs {
-			if sep := occFor(pr.A, s.ID) + gapMin; sep > hardSep[[2]int{pr.A, pr.B}] {
+			pairGap := effectiveGapMinutes(gapMin, units[pr.A].Location, units[pr.B].Location)
+			if sep := occFor(pr.A, s.ID) + pairGap; sep > hardSep[[2]int{pr.A, pr.B}] {
 				hardSep[[2]int{pr.A, pr.B}] = sep
 			}
-			if sep := occFor(pr.B, s.ID) + gapMin; sep > hardSep[[2]int{pr.B, pr.A}] {
+			if sep := occFor(pr.B, s.ID) + pairGap; sep > hardSep[[2]int{pr.B, pr.A}] {
 				hardSep[[2]int{pr.B, pr.A}] = sep
 			}
 		}

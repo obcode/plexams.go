@@ -177,10 +177,22 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 
 	durByAncode := p.examDurationsByAncode(ctx)
 
+	// per-exam campus, so a conflict between two exams at different campuses uses the larger
+	// cross-campus travel buffer (a tighter placement is impossible even without a time-window
+	// overlap). Built once here; nil is fine (all same/default campus).
+	cmap, cmapErr := p.ConstraintsMap(ctx)
+	if cmapErr != nil {
+		log.Error().Err(cmapErr).Msg("cannot get constraints for conflict locations")
+	}
+	locByAncode := make(map[int]string, len(cmap))
+	for a, c := range cmap {
+		locByAncode[a] = locationOf(c)
+	}
+
 	v.step("validating students")
 	for _, student := range students {
 		p.validateStudentReg(student, planAncodeEntries, foreignAncodes, onlyPlannedByMe,
-			accepted, ancode, durByAncode, &validationMessages)
+			accepted, ancode, durByAncode, locByAncode, &validationMessages)
 	}
 
 	conflictingAncodesSlice, normalizedValidationMessages := p.sortConflictingAncodes(validationMessages)
@@ -198,16 +210,12 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		}
 		return [2]int{a, b}
 	}
-	if cmap, err := p.ConstraintsMap(ctx); err != nil {
-		log.Error().Err(err).Msg("cannot get constraints for sameSlot pairs")
-	} else {
-		for a, c := range cmap {
-			if c == nil {
-				continue
-			}
-			for _, other := range c.SameSlot {
-				sameSlotConstraintPairs.Add(normPair(a, other))
-			}
+	for a, c := range cmap {
+		if c == nil {
+			continue
+		}
+		for _, other := range c.SameSlot {
+			sameSlotConstraintPairs.Add(normPair(a, other))
 		}
 	}
 	if pairs, err := p.dbClient.CanShareSlotPairs(ctx); err != nil {
@@ -463,7 +471,7 @@ func (plexams *Plexams) sortConflictingAncodes(validationMessages map[conflictin
 
 func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEntries []*model.PlanEntry,
 	foreignAncodes set.Set[int], onlyPlannedByMe bool, accepted set.Set[studentPair], ancode int,
-	durByAncode map[int]examDurations, validationMessages *map[conflictingAncodes]*problemWithStudents) {
+	durByAncode map[int]examDurations, locByAncode map[int]string, validationMessages *map[conflictingAncodes]*problemWithStudents) {
 	log.Debug().Str("name", student.Name).Str("mtknr", student.Mtknr).Msg("checking regs for student")
 
 	planAncodeEntriesForStudent := make([]*model.PlanEntry, 0)
@@ -500,17 +508,16 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 			if p[i].Starttime == nil || p[j].Starttime == nil {
 				continue // an unplaced / timeless entry cannot conflict
 			}
-			// A conflict between two exams we do not plan (external / not planned by me)
-			// is not ours to resolve — never report it. With onlyPlannedByMe, restrict to
-			// conflicts purely among our own exams (drop any pair with a foreign side).
+			// A conflict where only ONE side is foreign is ours to fix — we can move our own
+			// exam away from the other faculty's fixed one — so it is always reported. Only a
+			// BOTH-foreign conflict is not ours to resolve; onlyPlannedByMe drops those (and is
+			// the only thing that flag now does — it must never hide a conflict touching one of
+			// our own exams).
 			iForeign := foreignAncodes.Contains(p[i].Ancode)
 			jForeign := foreignAncodes.Contains(p[j].Ancode)
-			if iForeign && jForeign {
+			if iForeign && jForeign && onlyPlannedByMe {
 				log.Debug().Int("ancode1", p[i].Ancode).Int("ancode2", p[j].Ancode).
-					Msg("both ancodes not planned by me (foreign)")
-				continue
-			}
-			if onlyPlannedByMe && (iForeign || jForeign) {
+					Msg("both ancodes not planned by me (foreign) — dropped in onlyPlannedByMe mode")
 				continue
 			}
 			if ancode != 0 && p[i].Ancode != ancode && p[j].Ancode != ancode {
@@ -522,9 +529,10 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 			}
 
 			problem := ""
+			gap := effectiveGapMinutes(plexams.semesterConfig.ExamGapMinutes, locByAncode[p[i].Ancode], locByAncode[p[j].Ancode])
 			switch _, label := conflictcalc.TimeProximity(
 				*p[i].Starttime, endOf(p[i]), *p[j].Starttime, endOf(p[j]),
-				plexams.semesterConfig.ExamGapMinutes, plexams.semesterConfig.NotTooCloseMinutes); label {
+				gap, plexams.semesterConfig.NotTooCloseMinutes); label {
 			case conflictcalc.Overlap:
 				problem = conflictOverlap
 			case conflictcalc.TooClose:

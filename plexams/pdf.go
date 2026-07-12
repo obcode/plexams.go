@@ -45,6 +45,15 @@ func (p *Plexams) sameModulNamesMaroto(ctx context.Context) pdf.Maroto {
 	return pdfgen.SameModulNames(p.semesterFull(), exams)
 }
 
+func (p *Plexams) spreadStatisticsMaroto(ctx context.Context) (pdf.Maroto, error) {
+	stat, err := p.ExamSpreadStatistics(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot compute exam spread statistics")
+		return nil, err
+	}
+	return pdfgen.SpreadStatistics(p.semesterFull(), stat), nil
+}
+
 func (p *Plexams) constraintsMaroto(ctx context.Context) (pdf.Maroto, error) {
 	examsWithConstraints, err := p.ZpaExamsToPlanWithConstraints(ctx)
 	if err != nil {

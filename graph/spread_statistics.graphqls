@@ -1,0 +1,108 @@
+extend type Query {
+  """
+  Student-centric quality statistics of the current plan: how well the exams are
+  spread out in time for the individual students. Covers our OWN students (enrolled in
+  an FK07 or MUC.DAI program), for whom we hold the complete set of exams in the period
+  — including the external / not-planned-by-me ones. Aggregates the gaps between each
+  student's consecutive exams (NTA-aware, absolute times, calendar-day gaps) into
+  human-readable shares (e.g. "share of students with at least one exam-free day between
+  all their exams"), a distribution histogram, a per-program breakdown and a Carter-style
+  proximity index. Same data feeds the GUI and the printable PDF
+  (/download/pdf/spread-statistics).
+  """
+  examSpreadStatistics: ExamSpreadStatistics!
+}
+
+type ExamSpreadStatistics {
+  "Our (FK07/MUC.DAI) students with at least one exam placed within the exam period."
+  studentCount: Int!
+  "Students with at least two placed exams (only these can have a gap)."
+  multiExamStudentCount: Int!
+  "Total placed exam registrations counted across all students."
+  totalPlannedExams: Int!
+  "Students who still have at least one not-yet-placed exam (coverage caveat)."
+  studentsWithUnplannedExams: Int!
+  avgExamsPerStudent: Float!
+  maxExamsPerStudent: Int!
+
+  "Share (%) of multi-exam students who have >= 1 free day between ALL consecutive exams."
+  freeDayShare: Float!
+  "Share (%) of multi-exam students who have two exams on the same day."
+  sameDayShare: Float!
+  "Share (%) of multi-exam students whose tightest gap is two consecutive days (0 free days)."
+  adjacentDayShare: Float!
+  "Share (%) of multi-exam students with a real overlap/too-close conflict (should be 0)."
+  conflictShare: Float!
+  "Number of students with three or more exams on a single day."
+  threeExamsOneDayCount: Int!
+
+  "Average, over multi-exam students, of their SMALLEST free-days-between-exams (same day = -1, overlap = -2)."
+  avgMinFreeDays: Float!
+  medianMinFreeDays: Float!
+  "Carter-style proximity index averaged per multi-exam student (lower = better); the objective the solver minimizes."
+  avgProximityCost: Float!
+
+  "Students grouped by their WORST (tightest) consecutive-exam gap."
+  studentBuckets: [SpreadBucket!]!
+  "All consecutive-exam gaps grouped by proximity class."
+  pairBuckets: [SpreadBucket!]!
+  "Students grouped by how many exams they have."
+  examCountBuckets: [CountBucket!]!
+  "Per study program breakdown, most students first."
+  byProgram: [ProgramSpread!]!
+  "The most tightly-scheduled students, for GUI drill-down (not part of the aggregate PDF)."
+  worstStudents: [WorstStudent!]!
+
+  "The travel/break buffer (minutes) below which two exams count as an overlap."
+  examGapMinutes: Int!
+  "The same-day start-to-start threshold (minutes) below which two exams count as too close."
+  notTooCloseMinutes: Int!
+}
+
+"A named distribution bucket with an absolute count and a percentage share."
+type SpreadBucket {
+  "Stable machine key: OVERLAP | SAME_DAY | ADJACENT | ONE_FREE | TWO_FREE | THREE_PLUS_FREE."
+  key: String!
+  label: String!
+  count: Int!
+  share: Float!
+}
+
+type CountBucket {
+  "Number of exams; the top bucket uses this as its lower bound (label carries the '+')."
+  examCount: Int!
+  label: String!
+  students: Int!
+  share: Float!
+}
+
+type ProgramSpread {
+  program: String!
+  studentCount: Int!
+  multiExamStudentCount: Int!
+  avgExamsPerStudent: Float!
+  freeDayShare: Float!
+  sameDayShare: Float!
+  avgMinFreeDays: Float!
+  "True when too few multi-exam students back the shares to be meaningful (read them with care)."
+  lowSampleSize: Boolean!
+}
+
+type WorstStudent {
+  mtknr: String!
+  name: String!
+  program: String!
+  group: String!
+  examCount: Int!
+  "Smallest free-days-between over the student's consecutive exams: -2 overlap, -1 same day, 0 adjacent, k = k free days."
+  minFreeDays: Int!
+  worstLabel: String!
+  exams: [WorstStudentExam!]!
+}
+
+type WorstStudentExam {
+  ancode: Int!
+  module: String!
+  starttime: Time!
+  durationMinutes: Int!
+}

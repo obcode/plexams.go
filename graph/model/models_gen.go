@@ -187,6 +187,14 @@ type ConstraintsInput struct {
 	Comments        *string `json:"comments,omitempty"`
 }
 
+type CountBucket struct {
+	// Number of exams; the top bucket uses this as its lower bound (label carries the '+').
+	ExamCount int     `json:"examCount"`
+	Label     string  `json:"label"`
+	Students  int     `json:"students"`
+	Share     float64 `json:"share"`
+}
+
 // CoverageReport: how many positions are filled.
 type CoverageReport struct {
 	Positions int `json:"positions"`
@@ -453,6 +461,48 @@ type ExamScheduleReport struct {
 	ExahmNtaAncodes []int `json:"exahmNtaAncodes"`
 	// why each unplaced exam could not be scheduled (empty when everything was placed).
 	UnplacedReasons []*UnplacedExamReason `json:"unplacedReasons"`
+}
+
+type ExamSpreadStatistics struct {
+	// Our (FK07/MUC.DAI) students with at least one exam placed within the exam period.
+	StudentCount int `json:"studentCount"`
+	// Students with at least two placed exams (only these can have a gap).
+	MultiExamStudentCount int `json:"multiExamStudentCount"`
+	// Total placed exam registrations counted across all students.
+	TotalPlannedExams int `json:"totalPlannedExams"`
+	// Students who still have at least one not-yet-placed exam (coverage caveat).
+	StudentsWithUnplannedExams int     `json:"studentsWithUnplannedExams"`
+	AvgExamsPerStudent         float64 `json:"avgExamsPerStudent"`
+	MaxExamsPerStudent         int     `json:"maxExamsPerStudent"`
+	// Share (%) of multi-exam students who have >= 1 free day between ALL consecutive exams.
+	FreeDayShare float64 `json:"freeDayShare"`
+	// Share (%) of multi-exam students who have two exams on the same day.
+	SameDayShare float64 `json:"sameDayShare"`
+	// Share (%) of multi-exam students whose tightest gap is two consecutive days (0 free days).
+	AdjacentDayShare float64 `json:"adjacentDayShare"`
+	// Share (%) of multi-exam students with a real overlap/too-close conflict (should be 0).
+	ConflictShare float64 `json:"conflictShare"`
+	// Number of students with three or more exams on a single day.
+	ThreeExamsOneDayCount int `json:"threeExamsOneDayCount"`
+	// Average, over multi-exam students, of their SMALLEST free-days-between-exams (same day = -1, overlap = -2).
+	AvgMinFreeDays    float64 `json:"avgMinFreeDays"`
+	MedianMinFreeDays float64 `json:"medianMinFreeDays"`
+	// Carter-style proximity index averaged per multi-exam student (lower = better); the objective the solver minimizes.
+	AvgProximityCost float64 `json:"avgProximityCost"`
+	// Students grouped by their WORST (tightest) consecutive-exam gap.
+	StudentBuckets []*SpreadBucket `json:"studentBuckets"`
+	// All consecutive-exam gaps grouped by proximity class.
+	PairBuckets []*SpreadBucket `json:"pairBuckets"`
+	// Students grouped by how many exams they have.
+	ExamCountBuckets []*CountBucket `json:"examCountBuckets"`
+	// Per study program breakdown, most students first.
+	ByProgram []*ProgramSpread `json:"byProgram"`
+	// The most tightly-scheduled students, for GUI drill-down (not part of the aggregate PDF).
+	WorstStudents []*WorstStudent `json:"worstStudents"`
+	// The travel/break buffer (minutes) below which two exams count as an overlap.
+	ExamGapMinutes int `json:"examGapMinutes"`
+	// The same-day start-to-start threshold (minutes) below which two exams count as too close.
+	NotTooCloseMinutes int `json:"notTooCloseMinutes"`
 }
 
 // ExamTime is the time span of one exam an invigilator is the main examer of:
@@ -1083,6 +1133,18 @@ type PrimussExamWithCount struct {
 	PlannedZpa bool `json:"plannedZPA"`
 }
 
+type ProgramSpread struct {
+	Program               string  `json:"program"`
+	StudentCount          int     `json:"studentCount"`
+	MultiExamStudentCount int     `json:"multiExamStudentCount"`
+	AvgExamsPerStudent    float64 `json:"avgExamsPerStudent"`
+	FreeDayShare          float64 `json:"freeDayShare"`
+	SameDayShare          float64 `json:"sameDayShare"`
+	AvgMinFreeDays        float64 `json:"avgMinFreeDays"`
+	// True when too few multi-exam students back the shares to be meaningful (read them with care).
+	LowSampleSize bool `json:"lowSampleSize"`
+}
+
 type Query struct {
 }
 
@@ -1286,6 +1348,15 @@ type SpecialInterestInput struct {
 	Ancodes  []int  `json:"ancodes"`
 }
 
+// A named distribution bucket with an absolute count and a percentage share.
+type SpreadBucket struct {
+	// Stable machine key: OVERLAP | SAME_DAY | ADJACENT | ONE_FREE | TWO_FREE | THREE_PLUS_FREE.
+	Key   string  `json:"key"`
+	Label string  `json:"label"`
+	Count int     `json:"count"`
+	Share float64 `json:"share"`
+}
+
 type Starttime struct {
 	Start string `json:"start"`
 }
@@ -1397,6 +1468,25 @@ type ValidationReport struct {
 	WarningCount int                  `json:"warningCount"`
 	InfoCount    int                  `json:"infoCount"`
 	Findings     []*ValidationFinding `json:"findings"`
+}
+
+type WorstStudent struct {
+	Mtknr     string `json:"mtknr"`
+	Name      string `json:"name"`
+	Program   string `json:"program"`
+	Group     string `json:"group"`
+	ExamCount int    `json:"examCount"`
+	// Smallest free-days-between over the student's consecutive exams: -2 overlap, -1 same day, 0 adjacent, k = k free days.
+	MinFreeDays int                 `json:"minFreeDays"`
+	WorstLabel  string              `json:"worstLabel"`
+	Exams       []*WorstStudentExam `json:"exams"`
+}
+
+type WorstStudentExam struct {
+	Ancode          int       `json:"ancode"`
+	Module          string    `json:"module"`
+	Starttime       time.Time `json:"starttime"`
+	DurationMinutes int       `json:"durationMinutes"`
 }
 
 type ZPAConflict struct {

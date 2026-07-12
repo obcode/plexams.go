@@ -49,6 +49,15 @@ func (p *Plexams) ConstraintsPDFBytes(ctx context.Context) ([]byte, error) {
 	return marotoBytes(m)
 }
 
+// SpreadStatisticsPDFBytes builds the aggregate exam-spread statistics PDF as bytes.
+func (p *Plexams) SpreadStatisticsPDFBytes(ctx context.Context) ([]byte, error) {
+	m, err := p.spreadStatisticsMaroto(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return marotoBytes(m)
+}
+
 // pdfExport describes one downloadable document, its default download filename and
 // content type, and how to build its bytes.
 type pdfExport struct {
@@ -61,16 +70,17 @@ type pdfExport struct {
 // kind strings the old `pdf` CLI command used.
 func (p *Plexams) pdfExports() map[string]pdfExport {
 	return map[string]pdfExport{
-		"exams-to-plan":    {filename: "PrüfungenImPrüfungszeitraum.pdf", build: p.GenerateExamsToPlanPDFBytes},
-		"same-module-name": {filename: "PrüfungenMitGleichenModulnamen.pdf", build: p.SameModulNamesBytes},
-		"constraints":      {filename: "Constraints.pdf", build: p.ConstraintsPDFBytes},
-		"draft-muc.dai":    {filename: "draft-muc.dai.pdf", build: func(ctx context.Context) ([]byte, error) { return marotoBytes(p.draftMucDaiMaroto(ctx)) }},
-		"draft-fk08":       {filename: "draft-fk08.pdf", build: func(ctx context.Context) ([]byte, error) { return marotoBytes(p.draftFk08Maroto(ctx)) }},
-		"draft-fk10":       {filename: "draft-fk10.pdf", build: func(ctx context.Context) ([]byte, error) { return marotoBytes(p.draftFk10Maroto(ctx)) }},
-		"draft-exahm":      {filename: "draft-exahm.pdf", build: func(ctx context.Context) ([]byte, error) { return marotoBytes(p.draftExahmMaroto(ctx)) }},
-		"draft-fs":         {filename: "draft-fs.pdf", build: p.DraftFSBytes},
-		"draft-lba-rep":    {filename: "draft-lba-rep.pdf", build: p.DraftLbaRepBytes},
-		"draft-si":         {filename: "draft-si.zip", contentType: "application/zip", build: p.DraftSIZipBytes},
+		"exams-to-plan":     {filename: "PrüfungenImPrüfungszeitraum.pdf", build: p.GenerateExamsToPlanPDFBytes},
+		"same-module-name":  {filename: "PrüfungenMitGleichenModulnamen.pdf", build: p.SameModulNamesBytes},
+		"constraints":       {filename: "Constraints.pdf", build: p.ConstraintsPDFBytes},
+		"spread-statistics": {filename: "Prüfungsverteilung-Statistik.pdf", build: p.SpreadStatisticsPDFBytes},
+		"draft-muc.dai":     {filename: "draft-muc.dai.pdf", build: func(ctx context.Context) ([]byte, error) { return marotoBytes(p.draftMucDaiMaroto(ctx)) }},
+		"draft-fk08":        {filename: "draft-fk08.pdf", build: func(ctx context.Context) ([]byte, error) { return marotoBytes(p.draftFk08Maroto(ctx)) }},
+		"draft-fk10":        {filename: "draft-fk10.pdf", build: func(ctx context.Context) ([]byte, error) { return marotoBytes(p.draftFk10Maroto(ctx)) }},
+		"draft-exahm":       {filename: "draft-exahm.pdf", build: func(ctx context.Context) ([]byte, error) { return marotoBytes(p.draftExahmMaroto(ctx)) }},
+		"draft-fs":          {filename: "draft-fs.pdf", build: p.DraftFSBytes},
+		"draft-lba-rep":     {filename: "draft-lba-rep.pdf", build: p.DraftLbaRepBytes},
+		"draft-si":          {filename: "draft-si.zip", contentType: "application/zip", build: p.DraftSIZipBytes},
 	}
 }
 

@@ -220,6 +220,13 @@ type ComplexityRoot struct {
 		SameSlot           func(childComplexity int) int
 	}
 
+	CountBucket struct {
+		ExamCount func(childComplexity int) int
+		Label     func(childComplexity int) int
+		Share     func(childComplexity int) int
+		Students  func(childComplexity int) int
+	}
+
 	CoverageReport struct {
 		Positions func(childComplexity int) int
 		Unfilled  func(childComplexity int) int
@@ -398,6 +405,30 @@ type ComplexityRoot struct {
 		UnplacedAncodes   func(childComplexity int) int
 		UnplacedReasons   func(childComplexity int) int
 		Written           func(childComplexity int) int
+	}
+
+	ExamSpreadStatistics struct {
+		AdjacentDayShare           func(childComplexity int) int
+		AvgExamsPerStudent         func(childComplexity int) int
+		AvgMinFreeDays             func(childComplexity int) int
+		AvgProximityCost           func(childComplexity int) int
+		ByProgram                  func(childComplexity int) int
+		ConflictShare              func(childComplexity int) int
+		ExamCountBuckets           func(childComplexity int) int
+		ExamGapMinutes             func(childComplexity int) int
+		FreeDayShare               func(childComplexity int) int
+		MaxExamsPerStudent         func(childComplexity int) int
+		MedianMinFreeDays          func(childComplexity int) int
+		MultiExamStudentCount      func(childComplexity int) int
+		NotTooCloseMinutes         func(childComplexity int) int
+		PairBuckets                func(childComplexity int) int
+		SameDayShare               func(childComplexity int) int
+		StudentBuckets             func(childComplexity int) int
+		StudentCount               func(childComplexity int) int
+		StudentsWithUnplannedExams func(childComplexity int) int
+		ThreeExamsOneDayCount      func(childComplexity int) int
+		TotalPlannedExams          func(childComplexity int) int
+		WorstStudents              func(childComplexity int) int
 	}
 
 	ExamTime struct {
@@ -1035,6 +1066,17 @@ type ComplexityRoot struct {
 		StudentRegsCount func(childComplexity int) int
 	}
 
+	ProgramSpread struct {
+		AvgExamsPerStudent    func(childComplexity int) int
+		AvgMinFreeDays        func(childComplexity int) int
+		FreeDayShare          func(childComplexity int) int
+		LowSampleSize         func(childComplexity int) int
+		MultiExamStudentCount func(childComplexity int) int
+		Program               func(childComplexity int) int
+		SameDayShare          func(childComplexity int) int
+		StudentCount          func(childComplexity int) int
+	}
+
 	Query struct {
 		AdditionalExams               func(childComplexity int) int
 		AllAnnyBookings               func(childComplexity int) int
@@ -1063,6 +1105,7 @@ type ComplexityRoot struct {
 		ExamRoomsPhaseState           func(childComplexity int) int
 		ExamScheduleConflicts         func(childComplexity int) int
 		ExamScheduleConstraints       func(childComplexity int) int
+		ExamSpreadStatistics          func(childComplexity int) int
 		ExamerInPlan                  func(childComplexity int) int
 		ExamersWithExamsPlannedByMe   func(childComplexity int) int
 		ExamsAt                       func(childComplexity int, starttime time.Time) int
@@ -1324,6 +1367,13 @@ type ComplexityRoot struct {
 		Name     func(childComplexity int) int
 	}
 
+	SpreadBucket struct {
+		Count func(childComplexity int) int
+		Key   func(childComplexity int) int
+		Label func(childComplexity int) int
+		Share func(childComplexity int) int
+	}
+
 	Starttime struct {
 		Start func(childComplexity int) int
 	}
@@ -1526,6 +1576,24 @@ type ComplexityRoot struct {
 		SkipReason   func(childComplexity int) int
 		Skipped      func(childComplexity int) int
 		WarningCount func(childComplexity int) int
+	}
+
+	WorstStudent struct {
+		ExamCount   func(childComplexity int) int
+		Exams       func(childComplexity int) int
+		Group       func(childComplexity int) int
+		MinFreeDays func(childComplexity int) int
+		Mtknr       func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Program     func(childComplexity int) int
+		WorstLabel  func(childComplexity int) int
+	}
+
+	WorstStudentExam struct {
+		Ancode          func(childComplexity int) int
+		DurationMinutes func(childComplexity int) int
+		Module          func(childComplexity int) int
+		Starttime       func(childComplexity int) int
 	}
 
 	ZPAConflict struct {
@@ -1804,6 +1872,7 @@ type QueryResolver interface {
 	RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error)
 	ServerInfo(ctx context.Context) (*model.ServerInfo, error)
 	SpecialInterests(ctx context.Context) ([]*model.SpecialInterest, error)
+	ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadStatistics, error)
 	StudentRegsState(ctx context.Context) (*model.StudentRegsState, error)
 	StudentByMtknr(ctx context.Context, mtknr string) (*model.Student, error)
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
@@ -2653,6 +2722,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Constraints.SameSlot(childComplexity), true
 
+	case "CountBucket.examCount":
+		if e.complexity.CountBucket.ExamCount == nil {
+			break
+		}
+
+		return e.complexity.CountBucket.ExamCount(childComplexity), true
+
+	case "CountBucket.label":
+		if e.complexity.CountBucket.Label == nil {
+			break
+		}
+
+		return e.complexity.CountBucket.Label(childComplexity), true
+
+	case "CountBucket.share":
+		if e.complexity.CountBucket.Share == nil {
+			break
+		}
+
+		return e.complexity.CountBucket.Share(childComplexity), true
+
+	case "CountBucket.students":
+		if e.complexity.CountBucket.Students == nil {
+			break
+		}
+
+		return e.complexity.CountBucket.Students(childComplexity), true
+
 	case "CoverageReport.positions":
 		if e.complexity.CoverageReport.Positions == nil {
 			break
@@ -3492,6 +3589,153 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamScheduleReport.Written(childComplexity), true
+
+	case "ExamSpreadStatistics.adjacentDayShare":
+		if e.complexity.ExamSpreadStatistics.AdjacentDayShare == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.AdjacentDayShare(childComplexity), true
+
+	case "ExamSpreadStatistics.avgExamsPerStudent":
+		if e.complexity.ExamSpreadStatistics.AvgExamsPerStudent == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.AvgExamsPerStudent(childComplexity), true
+
+	case "ExamSpreadStatistics.avgMinFreeDays":
+		if e.complexity.ExamSpreadStatistics.AvgMinFreeDays == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.AvgMinFreeDays(childComplexity), true
+
+	case "ExamSpreadStatistics.avgProximityCost":
+		if e.complexity.ExamSpreadStatistics.AvgProximityCost == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.AvgProximityCost(childComplexity), true
+
+	case "ExamSpreadStatistics.byProgram":
+		if e.complexity.ExamSpreadStatistics.ByProgram == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.ByProgram(childComplexity), true
+
+	case "ExamSpreadStatistics.conflictShare":
+		if e.complexity.ExamSpreadStatistics.ConflictShare == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.ConflictShare(childComplexity), true
+
+	case "ExamSpreadStatistics.examCountBuckets":
+		if e.complexity.ExamSpreadStatistics.ExamCountBuckets == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.ExamCountBuckets(childComplexity), true
+
+	case "ExamSpreadStatistics.examGapMinutes":
+		if e.complexity.ExamSpreadStatistics.ExamGapMinutes == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.ExamGapMinutes(childComplexity), true
+
+	case "ExamSpreadStatistics.freeDayShare":
+		if e.complexity.ExamSpreadStatistics.FreeDayShare == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.FreeDayShare(childComplexity), true
+
+	case "ExamSpreadStatistics.maxExamsPerStudent":
+		if e.complexity.ExamSpreadStatistics.MaxExamsPerStudent == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.MaxExamsPerStudent(childComplexity), true
+
+	case "ExamSpreadStatistics.medianMinFreeDays":
+		if e.complexity.ExamSpreadStatistics.MedianMinFreeDays == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.MedianMinFreeDays(childComplexity), true
+
+	case "ExamSpreadStatistics.multiExamStudentCount":
+		if e.complexity.ExamSpreadStatistics.MultiExamStudentCount == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.MultiExamStudentCount(childComplexity), true
+
+	case "ExamSpreadStatistics.notTooCloseMinutes":
+		if e.complexity.ExamSpreadStatistics.NotTooCloseMinutes == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.NotTooCloseMinutes(childComplexity), true
+
+	case "ExamSpreadStatistics.pairBuckets":
+		if e.complexity.ExamSpreadStatistics.PairBuckets == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.PairBuckets(childComplexity), true
+
+	case "ExamSpreadStatistics.sameDayShare":
+		if e.complexity.ExamSpreadStatistics.SameDayShare == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.SameDayShare(childComplexity), true
+
+	case "ExamSpreadStatistics.studentBuckets":
+		if e.complexity.ExamSpreadStatistics.StudentBuckets == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.StudentBuckets(childComplexity), true
+
+	case "ExamSpreadStatistics.studentCount":
+		if e.complexity.ExamSpreadStatistics.StudentCount == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.StudentCount(childComplexity), true
+
+	case "ExamSpreadStatistics.studentsWithUnplannedExams":
+		if e.complexity.ExamSpreadStatistics.StudentsWithUnplannedExams == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.StudentsWithUnplannedExams(childComplexity), true
+
+	case "ExamSpreadStatistics.threeExamsOneDayCount":
+		if e.complexity.ExamSpreadStatistics.ThreeExamsOneDayCount == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.ThreeExamsOneDayCount(childComplexity), true
+
+	case "ExamSpreadStatistics.totalPlannedExams":
+		if e.complexity.ExamSpreadStatistics.TotalPlannedExams == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.TotalPlannedExams(childComplexity), true
+
+	case "ExamSpreadStatistics.worstStudents":
+		if e.complexity.ExamSpreadStatistics.WorstStudents == nil {
+			break
+		}
+
+		return e.complexity.ExamSpreadStatistics.WorstStudents(childComplexity), true
 
 	case "ExamTime.from":
 		if e.complexity.ExamTime.From == nil {
@@ -6998,6 +7242,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PrimussExamWithCount.StudentRegsCount(childComplexity), true
 
+	case "ProgramSpread.avgExamsPerStudent":
+		if e.complexity.ProgramSpread.AvgExamsPerStudent == nil {
+			break
+		}
+
+		return e.complexity.ProgramSpread.AvgExamsPerStudent(childComplexity), true
+
+	case "ProgramSpread.avgMinFreeDays":
+		if e.complexity.ProgramSpread.AvgMinFreeDays == nil {
+			break
+		}
+
+		return e.complexity.ProgramSpread.AvgMinFreeDays(childComplexity), true
+
+	case "ProgramSpread.freeDayShare":
+		if e.complexity.ProgramSpread.FreeDayShare == nil {
+			break
+		}
+
+		return e.complexity.ProgramSpread.FreeDayShare(childComplexity), true
+
+	case "ProgramSpread.lowSampleSize":
+		if e.complexity.ProgramSpread.LowSampleSize == nil {
+			break
+		}
+
+		return e.complexity.ProgramSpread.LowSampleSize(childComplexity), true
+
+	case "ProgramSpread.multiExamStudentCount":
+		if e.complexity.ProgramSpread.MultiExamStudentCount == nil {
+			break
+		}
+
+		return e.complexity.ProgramSpread.MultiExamStudentCount(childComplexity), true
+
+	case "ProgramSpread.program":
+		if e.complexity.ProgramSpread.Program == nil {
+			break
+		}
+
+		return e.complexity.ProgramSpread.Program(childComplexity), true
+
+	case "ProgramSpread.sameDayShare":
+		if e.complexity.ProgramSpread.SameDayShare == nil {
+			break
+		}
+
+		return e.complexity.ProgramSpread.SameDayShare(childComplexity), true
+
+	case "ProgramSpread.studentCount":
+		if e.complexity.ProgramSpread.StudentCount == nil {
+			break
+		}
+
+		return e.complexity.ProgramSpread.StudentCount(childComplexity), true
+
 	case "Query.additionalExams":
 		if e.complexity.Query.AdditionalExams == nil {
 			break
@@ -7226,6 +7526,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.ExamScheduleConstraints(childComplexity), true
+
+	case "Query.examSpreadStatistics":
+		if e.complexity.Query.ExamSpreadStatistics == nil {
+			break
+		}
+
+		return e.complexity.Query.ExamSpreadStatistics(childComplexity), true
 
 	case "Query.examerInPlan":
 		if e.complexity.Query.ExamerInPlan == nil {
@@ -8780,6 +9087,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.SpecialInterest.Name(childComplexity), true
 
+	case "SpreadBucket.count":
+		if e.complexity.SpreadBucket.Count == nil {
+			break
+		}
+
+		return e.complexity.SpreadBucket.Count(childComplexity), true
+
+	case "SpreadBucket.key":
+		if e.complexity.SpreadBucket.Key == nil {
+			break
+		}
+
+		return e.complexity.SpreadBucket.Key(childComplexity), true
+
+	case "SpreadBucket.label":
+		if e.complexity.SpreadBucket.Label == nil {
+			break
+		}
+
+		return e.complexity.SpreadBucket.Label(childComplexity), true
+
+	case "SpreadBucket.share":
+		if e.complexity.SpreadBucket.Share == nil {
+			break
+		}
+
+		return e.complexity.SpreadBucket.Share(childComplexity), true
+
 	case "Starttime.start":
 		if e.complexity.Starttime.Start == nil {
 			break
@@ -9948,6 +10283,90 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ValidationReport.WarningCount(childComplexity), true
+
+	case "WorstStudent.examCount":
+		if e.complexity.WorstStudent.ExamCount == nil {
+			break
+		}
+
+		return e.complexity.WorstStudent.ExamCount(childComplexity), true
+
+	case "WorstStudent.exams":
+		if e.complexity.WorstStudent.Exams == nil {
+			break
+		}
+
+		return e.complexity.WorstStudent.Exams(childComplexity), true
+
+	case "WorstStudent.group":
+		if e.complexity.WorstStudent.Group == nil {
+			break
+		}
+
+		return e.complexity.WorstStudent.Group(childComplexity), true
+
+	case "WorstStudent.minFreeDays":
+		if e.complexity.WorstStudent.MinFreeDays == nil {
+			break
+		}
+
+		return e.complexity.WorstStudent.MinFreeDays(childComplexity), true
+
+	case "WorstStudent.mtknr":
+		if e.complexity.WorstStudent.Mtknr == nil {
+			break
+		}
+
+		return e.complexity.WorstStudent.Mtknr(childComplexity), true
+
+	case "WorstStudent.name":
+		if e.complexity.WorstStudent.Name == nil {
+			break
+		}
+
+		return e.complexity.WorstStudent.Name(childComplexity), true
+
+	case "WorstStudent.program":
+		if e.complexity.WorstStudent.Program == nil {
+			break
+		}
+
+		return e.complexity.WorstStudent.Program(childComplexity), true
+
+	case "WorstStudent.worstLabel":
+		if e.complexity.WorstStudent.WorstLabel == nil {
+			break
+		}
+
+		return e.complexity.WorstStudent.WorstLabel(childComplexity), true
+
+	case "WorstStudentExam.ancode":
+		if e.complexity.WorstStudentExam.Ancode == nil {
+			break
+		}
+
+		return e.complexity.WorstStudentExam.Ancode(childComplexity), true
+
+	case "WorstStudentExam.durationMinutes":
+		if e.complexity.WorstStudentExam.DurationMinutes == nil {
+			break
+		}
+
+		return e.complexity.WorstStudentExam.DurationMinutes(childComplexity), true
+
+	case "WorstStudentExam.module":
+		if e.complexity.WorstStudentExam.Module == nil {
+			break
+		}
+
+		return e.complexity.WorstStudentExam.Module(childComplexity), true
+
+	case "WorstStudentExam.starttime":
+		if e.complexity.WorstStudentExam.Starttime == nil {
+			break
+		}
+
+		return e.complexity.WorstStudentExam.Starttime(childComplexity), true
 
 	case "ZPAConflict.ancode":
 		if e.complexity.ZPAConflict.Ancode == nil {
@@ -12837,6 +13256,115 @@ input SpecialInterestInput {
   name: String!
   filename: String!
   ancodes: [Int!]!
+}
+`, BuiltIn: false},
+	{Name: "../spread_statistics.graphqls", Input: `extend type Query {
+  """
+  Student-centric quality statistics of the current plan: how well the exams are
+  spread out in time for the individual students. Covers our OWN students (enrolled in
+  an FK07 or MUC.DAI program), for whom we hold the complete set of exams in the period
+  — including the external / not-planned-by-me ones. Aggregates the gaps between each
+  student's consecutive exams (NTA-aware, absolute times, calendar-day gaps) into
+  human-readable shares (e.g. "share of students with at least one exam-free day between
+  all their exams"), a distribution histogram, a per-program breakdown and a Carter-style
+  proximity index. Same data feeds the GUI and the printable PDF
+  (/download/pdf/spread-statistics).
+  """
+  examSpreadStatistics: ExamSpreadStatistics!
+}
+
+type ExamSpreadStatistics {
+  "Our (FK07/MUC.DAI) students with at least one exam placed within the exam period."
+  studentCount: Int!
+  "Students with at least two placed exams (only these can have a gap)."
+  multiExamStudentCount: Int!
+  "Total placed exam registrations counted across all students."
+  totalPlannedExams: Int!
+  "Students who still have at least one not-yet-placed exam (coverage caveat)."
+  studentsWithUnplannedExams: Int!
+  avgExamsPerStudent: Float!
+  maxExamsPerStudent: Int!
+
+  "Share (%) of multi-exam students who have >= 1 free day between ALL consecutive exams."
+  freeDayShare: Float!
+  "Share (%) of multi-exam students who have two exams on the same day."
+  sameDayShare: Float!
+  "Share (%) of multi-exam students whose tightest gap is two consecutive days (0 free days)."
+  adjacentDayShare: Float!
+  "Share (%) of multi-exam students with a real overlap/too-close conflict (should be 0)."
+  conflictShare: Float!
+  "Number of students with three or more exams on a single day."
+  threeExamsOneDayCount: Int!
+
+  "Average, over multi-exam students, of their SMALLEST free-days-between-exams (same day = -1, overlap = -2)."
+  avgMinFreeDays: Float!
+  medianMinFreeDays: Float!
+  "Carter-style proximity index averaged per multi-exam student (lower = better); the objective the solver minimizes."
+  avgProximityCost: Float!
+
+  "Students grouped by their WORST (tightest) consecutive-exam gap."
+  studentBuckets: [SpreadBucket!]!
+  "All consecutive-exam gaps grouped by proximity class."
+  pairBuckets: [SpreadBucket!]!
+  "Students grouped by how many exams they have."
+  examCountBuckets: [CountBucket!]!
+  "Per study program breakdown, most students first."
+  byProgram: [ProgramSpread!]!
+  "The most tightly-scheduled students, for GUI drill-down (not part of the aggregate PDF)."
+  worstStudents: [WorstStudent!]!
+
+  "The travel/break buffer (minutes) below which two exams count as an overlap."
+  examGapMinutes: Int!
+  "The same-day start-to-start threshold (minutes) below which two exams count as too close."
+  notTooCloseMinutes: Int!
+}
+
+"A named distribution bucket with an absolute count and a percentage share."
+type SpreadBucket {
+  "Stable machine key: OVERLAP | SAME_DAY | ADJACENT | ONE_FREE | TWO_FREE | THREE_PLUS_FREE."
+  key: String!
+  label: String!
+  count: Int!
+  share: Float!
+}
+
+type CountBucket {
+  "Number of exams; the top bucket uses this as its lower bound (label carries the '+')."
+  examCount: Int!
+  label: String!
+  students: Int!
+  share: Float!
+}
+
+type ProgramSpread {
+  program: String!
+  studentCount: Int!
+  multiExamStudentCount: Int!
+  avgExamsPerStudent: Float!
+  freeDayShare: Float!
+  sameDayShare: Float!
+  avgMinFreeDays: Float!
+  "True when too few multi-exam students back the shares to be meaningful (read them with care)."
+  lowSampleSize: Boolean!
+}
+
+type WorstStudent {
+  mtknr: String!
+  name: String!
+  program: String!
+  group: String!
+  examCount: Int!
+  "Smallest free-days-between over the student's consecutive exams: -2 overlap, -1 same day, 0 adjacent, k = k free days."
+  minFreeDays: Int!
+  worstLabel: String!
+  exams: [WorstStudentExam!]!
+}
+
+type WorstStudentExam {
+  ancode: Int!
+  module: String!
+  starttime: Time!
+  durationMinutes: Int!
 }
 `, BuiltIn: false},
 	{Name: "../stream.graphqls", Input: `"""
@@ -25342,6 +25870,182 @@ func (ec *executionContext) fieldContext_Constraints_roomConstraints(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _CountBucket_examCount(ctx context.Context, field graphql.CollectedField, obj *model.CountBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CountBucket_examCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CountBucket_examCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CountBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CountBucket_label(ctx context.Context, field graphql.CollectedField, obj *model.CountBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CountBucket_label(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Label, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CountBucket_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CountBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CountBucket_students(ctx context.Context, field graphql.CollectedField, obj *model.CountBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CountBucket_students(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Students, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CountBucket_students(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CountBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CountBucket_share(ctx context.Context, field graphql.CollectedField, obj *model.CountBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CountBucket_share(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Share, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CountBucket_share(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CountBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CoverageReport_positions(ctx context.Context, field graphql.CollectedField, obj *model.CoverageReport) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CoverageReport_positions(ctx, field)
 	if err != nil {
@@ -30903,6 +31607,996 @@ func (ec *executionContext) fieldContext_ExamScheduleReport_unplacedReasons(_ co
 				return ec.fieldContext_UnplacedExamReason_reason(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UnplacedExamReason", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_studentCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_studentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_studentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_multiExamStudentCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_multiExamStudentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MultiExamStudentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_multiExamStudentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_totalPlannedExams(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_totalPlannedExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalPlannedExams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_totalPlannedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_studentsWithUnplannedExams(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_studentsWithUnplannedExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentsWithUnplannedExams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_studentsWithUnplannedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_avgExamsPerStudent(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_avgExamsPerStudent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AvgExamsPerStudent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_avgExamsPerStudent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_maxExamsPerStudent(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_maxExamsPerStudent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxExamsPerStudent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_maxExamsPerStudent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_freeDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_freeDayShare(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FreeDayShare, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_freeDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_sameDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_sameDayShare(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SameDayShare, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_sameDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_adjacentDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_adjacentDayShare(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AdjacentDayShare, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_adjacentDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_conflictShare(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_conflictShare(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ConflictShare, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_conflictShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_threeExamsOneDayCount(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_threeExamsOneDayCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ThreeExamsOneDayCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_threeExamsOneDayCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_avgMinFreeDays(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_avgMinFreeDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AvgMinFreeDays, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_avgMinFreeDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_medianMinFreeDays(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_medianMinFreeDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MedianMinFreeDays, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_medianMinFreeDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_avgProximityCost(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_avgProximityCost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AvgProximityCost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_avgProximityCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_studentBuckets(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_studentBuckets(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentBuckets, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.SpreadBucket)
+	fc.Result = res
+	return ec.marshalNSpreadBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpreadBucketᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_studentBuckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_SpreadBucket_key(ctx, field)
+			case "label":
+				return ec.fieldContext_SpreadBucket_label(ctx, field)
+			case "count":
+				return ec.fieldContext_SpreadBucket_count(ctx, field)
+			case "share":
+				return ec.fieldContext_SpreadBucket_share(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpreadBucket", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_pairBuckets(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_pairBuckets(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PairBuckets, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.SpreadBucket)
+	fc.Result = res
+	return ec.marshalNSpreadBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpreadBucketᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_pairBuckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "key":
+				return ec.fieldContext_SpreadBucket_key(ctx, field)
+			case "label":
+				return ec.fieldContext_SpreadBucket_label(ctx, field)
+			case "count":
+				return ec.fieldContext_SpreadBucket_count(ctx, field)
+			case "share":
+				return ec.fieldContext_SpreadBucket_share(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SpreadBucket", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_examCountBuckets(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_examCountBuckets(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamCountBuckets, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.CountBucket)
+	fc.Result = res
+	return ec.marshalNCountBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐCountBucketᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_examCountBuckets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "examCount":
+				return ec.fieldContext_CountBucket_examCount(ctx, field)
+			case "label":
+				return ec.fieldContext_CountBucket_label(ctx, field)
+			case "students":
+				return ec.fieldContext_CountBucket_students(ctx, field)
+			case "share":
+				return ec.fieldContext_CountBucket_share(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CountBucket", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_byProgram(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_byProgram(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ByProgram, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ProgramSpread)
+	fc.Result = res
+	return ec.marshalNProgramSpread2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐProgramSpreadᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_byProgram(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "program":
+				return ec.fieldContext_ProgramSpread_program(ctx, field)
+			case "studentCount":
+				return ec.fieldContext_ProgramSpread_studentCount(ctx, field)
+			case "multiExamStudentCount":
+				return ec.fieldContext_ProgramSpread_multiExamStudentCount(ctx, field)
+			case "avgExamsPerStudent":
+				return ec.fieldContext_ProgramSpread_avgExamsPerStudent(ctx, field)
+			case "freeDayShare":
+				return ec.fieldContext_ProgramSpread_freeDayShare(ctx, field)
+			case "sameDayShare":
+				return ec.fieldContext_ProgramSpread_sameDayShare(ctx, field)
+			case "avgMinFreeDays":
+				return ec.fieldContext_ProgramSpread_avgMinFreeDays(ctx, field)
+			case "lowSampleSize":
+				return ec.fieldContext_ProgramSpread_lowSampleSize(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProgramSpread", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_worstStudents(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_worstStudents(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorstStudents, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.WorstStudent)
+	fc.Result = res
+	return ec.marshalNWorstStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐWorstStudentᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_worstStudents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "mtknr":
+				return ec.fieldContext_WorstStudent_mtknr(ctx, field)
+			case "name":
+				return ec.fieldContext_WorstStudent_name(ctx, field)
+			case "program":
+				return ec.fieldContext_WorstStudent_program(ctx, field)
+			case "group":
+				return ec.fieldContext_WorstStudent_group(ctx, field)
+			case "examCount":
+				return ec.fieldContext_WorstStudent_examCount(ctx, field)
+			case "minFreeDays":
+				return ec.fieldContext_WorstStudent_minFreeDays(ctx, field)
+			case "worstLabel":
+				return ec.fieldContext_WorstStudent_worstLabel(ctx, field)
+			case "exams":
+				return ec.fieldContext_WorstStudent_exams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WorstStudent", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_examGapMinutes(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_examGapMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamGapMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_examGapMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamSpreadStatistics_notTooCloseMinutes(ctx context.Context, field graphql.CollectedField, obj *model.ExamSpreadStatistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamSpreadStatistics_notTooCloseMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NotTooCloseMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamSpreadStatistics_notTooCloseMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamSpreadStatistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -53030,6 +54724,358 @@ func (ec *executionContext) fieldContext_PrimussExamWithCount_plannedZPA(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ProgramSpread_program(ctx context.Context, field graphql.CollectedField, obj *model.ProgramSpread) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProgramSpread_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProgramSpread_program(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProgramSpread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProgramSpread_studentCount(ctx context.Context, field graphql.CollectedField, obj *model.ProgramSpread) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProgramSpread_studentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StudentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProgramSpread_studentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProgramSpread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProgramSpread_multiExamStudentCount(ctx context.Context, field graphql.CollectedField, obj *model.ProgramSpread) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProgramSpread_multiExamStudentCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MultiExamStudentCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProgramSpread_multiExamStudentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProgramSpread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProgramSpread_avgExamsPerStudent(ctx context.Context, field graphql.CollectedField, obj *model.ProgramSpread) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProgramSpread_avgExamsPerStudent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AvgExamsPerStudent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProgramSpread_avgExamsPerStudent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProgramSpread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProgramSpread_freeDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ProgramSpread) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProgramSpread_freeDayShare(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FreeDayShare, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProgramSpread_freeDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProgramSpread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProgramSpread_sameDayShare(ctx context.Context, field graphql.CollectedField, obj *model.ProgramSpread) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProgramSpread_sameDayShare(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SameDayShare, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProgramSpread_sameDayShare(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProgramSpread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProgramSpread_avgMinFreeDays(ctx context.Context, field graphql.CollectedField, obj *model.ProgramSpread) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProgramSpread_avgMinFreeDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AvgMinFreeDays, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProgramSpread_avgMinFreeDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProgramSpread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProgramSpread_lowSampleSize(ctx context.Context, field graphql.CollectedField, obj *model.ProgramSpread) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProgramSpread_lowSampleSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LowSampleSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProgramSpread_lowSampleSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProgramSpread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_allSemesterNames(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_allSemesterNames(ctx, field)
 	if err != nil {
@@ -59097,6 +61143,94 @@ func (ec *executionContext) fieldContext_Query_specialInterests(_ context.Contex
 				return ec.fieldContext_SpecialInterest_ancodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SpecialInterest", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_examSpreadStatistics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_examSpreadStatistics(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExamSpreadStatistics(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ExamSpreadStatistics)
+	fc.Result = res
+	return ec.marshalNExamSpreadStatistics2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamSpreadStatistics(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_examSpreadStatistics(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "studentCount":
+				return ec.fieldContext_ExamSpreadStatistics_studentCount(ctx, field)
+			case "multiExamStudentCount":
+				return ec.fieldContext_ExamSpreadStatistics_multiExamStudentCount(ctx, field)
+			case "totalPlannedExams":
+				return ec.fieldContext_ExamSpreadStatistics_totalPlannedExams(ctx, field)
+			case "studentsWithUnplannedExams":
+				return ec.fieldContext_ExamSpreadStatistics_studentsWithUnplannedExams(ctx, field)
+			case "avgExamsPerStudent":
+				return ec.fieldContext_ExamSpreadStatistics_avgExamsPerStudent(ctx, field)
+			case "maxExamsPerStudent":
+				return ec.fieldContext_ExamSpreadStatistics_maxExamsPerStudent(ctx, field)
+			case "freeDayShare":
+				return ec.fieldContext_ExamSpreadStatistics_freeDayShare(ctx, field)
+			case "sameDayShare":
+				return ec.fieldContext_ExamSpreadStatistics_sameDayShare(ctx, field)
+			case "adjacentDayShare":
+				return ec.fieldContext_ExamSpreadStatistics_adjacentDayShare(ctx, field)
+			case "conflictShare":
+				return ec.fieldContext_ExamSpreadStatistics_conflictShare(ctx, field)
+			case "threeExamsOneDayCount":
+				return ec.fieldContext_ExamSpreadStatistics_threeExamsOneDayCount(ctx, field)
+			case "avgMinFreeDays":
+				return ec.fieldContext_ExamSpreadStatistics_avgMinFreeDays(ctx, field)
+			case "medianMinFreeDays":
+				return ec.fieldContext_ExamSpreadStatistics_medianMinFreeDays(ctx, field)
+			case "avgProximityCost":
+				return ec.fieldContext_ExamSpreadStatistics_avgProximityCost(ctx, field)
+			case "studentBuckets":
+				return ec.fieldContext_ExamSpreadStatistics_studentBuckets(ctx, field)
+			case "pairBuckets":
+				return ec.fieldContext_ExamSpreadStatistics_pairBuckets(ctx, field)
+			case "examCountBuckets":
+				return ec.fieldContext_ExamSpreadStatistics_examCountBuckets(ctx, field)
+			case "byProgram":
+				return ec.fieldContext_ExamSpreadStatistics_byProgram(ctx, field)
+			case "worstStudents":
+				return ec.fieldContext_ExamSpreadStatistics_worstStudents(ctx, field)
+			case "examGapMinutes":
+				return ec.fieldContext_ExamSpreadStatistics_examGapMinutes(ctx, field)
+			case "notTooCloseMinutes":
+				return ec.fieldContext_ExamSpreadStatistics_notTooCloseMinutes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamSpreadStatistics", field.Name)
 		},
 	}
 	return fc, nil
@@ -65406,6 +67540,182 @@ func (ec *executionContext) fieldContext_SpecialInterest_ancodes(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpreadBucket_key(ctx context.Context, field graphql.CollectedField, obj *model.SpreadBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpreadBucket_key(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpreadBucket_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpreadBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpreadBucket_label(ctx context.Context, field graphql.CollectedField, obj *model.SpreadBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpreadBucket_label(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Label, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpreadBucket_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpreadBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpreadBucket_count(ctx context.Context, field graphql.CollectedField, obj *model.SpreadBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpreadBucket_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpreadBucket_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpreadBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpreadBucket_share(ctx context.Context, field graphql.CollectedField, obj *model.SpreadBucket) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpreadBucket_share(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Share, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpreadBucket_share(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpreadBucket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -73858,6 +76168,544 @@ func (ec *executionContext) fieldContext_ValidationReport_findings(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _WorstStudent_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudent_mtknr(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Mtknr, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudent_mtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudent_name(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudent_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudent_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudent_program(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudent_program(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Program, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudent_program(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudent_group(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudent_group(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Group, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudent_group(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudent_examCount(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudent_examCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudent_examCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudent_minFreeDays(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudent_minFreeDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MinFreeDays, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudent_minFreeDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudent_worstLabel(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudent_worstLabel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorstLabel, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudent_worstLabel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudent_exams(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudent) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudent_exams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.WorstStudentExam)
+	fc.Result = res
+	return ec.marshalNWorstStudentExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐWorstStudentExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudent_exams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudent",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ancode":
+				return ec.fieldContext_WorstStudentExam_ancode(ctx, field)
+			case "module":
+				return ec.fieldContext_WorstStudentExam_module(ctx, field)
+			case "starttime":
+				return ec.fieldContext_WorstStudentExam_starttime(ctx, field)
+			case "durationMinutes":
+				return ec.fieldContext_WorstStudentExam_durationMinutes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WorstStudentExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudentExam_ancode(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudentExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudentExam_ancode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ancode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudentExam_ancode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudentExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudentExam_module(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudentExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudentExam_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudentExam_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudentExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudentExam_starttime(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudentExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudentExam_starttime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Starttime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudentExam_starttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudentExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorstStudentExam_durationMinutes(ctx context.Context, field graphql.CollectedField, obj *model.WorstStudentExam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorstStudentExam_durationMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DurationMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorstStudentExam_durationMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorstStudentExam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ZPAConflict_ancode(ctx context.Context, field graphql.CollectedField, obj *model.ZPAConflict) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ZPAConflict_ancode(ctx, field)
 	if err != nil {
@@ -80108,6 +82956,60 @@ func (ec *executionContext) _Constraints(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var countBucketImplementors = []string{"CountBucket"}
+
+func (ec *executionContext) _CountBucket(ctx context.Context, sel ast.SelectionSet, obj *model.CountBucket) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, countBucketImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CountBucket")
+		case "examCount":
+			out.Values[i] = ec._CountBucket_examCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._CountBucket_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "students":
+			out.Values[i] = ec._CountBucket_students(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "share":
+			out.Values[i] = ec._CountBucket_share(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var coverageReportImplementors = []string{"CoverageReport"}
 
 func (ec *executionContext) _CoverageReport(ctx context.Context, sel ast.SelectionSet, obj *model.CoverageReport) graphql.Marshaler {
@@ -81350,6 +84252,145 @@ func (ec *executionContext) _ExamScheduleReport(ctx context.Context, sel ast.Sel
 			}
 		case "unplacedReasons":
 			out.Values[i] = ec._ExamScheduleReport_unplacedReasons(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var examSpreadStatisticsImplementors = []string{"ExamSpreadStatistics"}
+
+func (ec *executionContext) _ExamSpreadStatistics(ctx context.Context, sel ast.SelectionSet, obj *model.ExamSpreadStatistics) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, examSpreadStatisticsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExamSpreadStatistics")
+		case "studentCount":
+			out.Values[i] = ec._ExamSpreadStatistics_studentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "multiExamStudentCount":
+			out.Values[i] = ec._ExamSpreadStatistics_multiExamStudentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalPlannedExams":
+			out.Values[i] = ec._ExamSpreadStatistics_totalPlannedExams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentsWithUnplannedExams":
+			out.Values[i] = ec._ExamSpreadStatistics_studentsWithUnplannedExams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "avgExamsPerStudent":
+			out.Values[i] = ec._ExamSpreadStatistics_avgExamsPerStudent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxExamsPerStudent":
+			out.Values[i] = ec._ExamSpreadStatistics_maxExamsPerStudent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "freeDayShare":
+			out.Values[i] = ec._ExamSpreadStatistics_freeDayShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sameDayShare":
+			out.Values[i] = ec._ExamSpreadStatistics_sameDayShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adjacentDayShare":
+			out.Values[i] = ec._ExamSpreadStatistics_adjacentDayShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "conflictShare":
+			out.Values[i] = ec._ExamSpreadStatistics_conflictShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "threeExamsOneDayCount":
+			out.Values[i] = ec._ExamSpreadStatistics_threeExamsOneDayCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "avgMinFreeDays":
+			out.Values[i] = ec._ExamSpreadStatistics_avgMinFreeDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "medianMinFreeDays":
+			out.Values[i] = ec._ExamSpreadStatistics_medianMinFreeDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "avgProximityCost":
+			out.Values[i] = ec._ExamSpreadStatistics_avgProximityCost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentBuckets":
+			out.Values[i] = ec._ExamSpreadStatistics_studentBuckets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pairBuckets":
+			out.Values[i] = ec._ExamSpreadStatistics_pairBuckets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examCountBuckets":
+			out.Values[i] = ec._ExamSpreadStatistics_examCountBuckets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "byProgram":
+			out.Values[i] = ec._ExamSpreadStatistics_byProgram(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "worstStudents":
+			out.Values[i] = ec._ExamSpreadStatistics_worstStudents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examGapMinutes":
+			out.Values[i] = ec._ExamSpreadStatistics_examGapMinutes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "notTooCloseMinutes":
+			out.Values[i] = ec._ExamSpreadStatistics_notTooCloseMinutes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -85887,6 +88928,80 @@ func (ec *executionContext) _PrimussExamWithCount(ctx context.Context, sel ast.S
 	return out
 }
 
+var programSpreadImplementors = []string{"ProgramSpread"}
+
+func (ec *executionContext) _ProgramSpread(ctx context.Context, sel ast.SelectionSet, obj *model.ProgramSpread) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, programSpreadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProgramSpread")
+		case "program":
+			out.Values[i] = ec._ProgramSpread_program(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "studentCount":
+			out.Values[i] = ec._ProgramSpread_studentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "multiExamStudentCount":
+			out.Values[i] = ec._ProgramSpread_multiExamStudentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "avgExamsPerStudent":
+			out.Values[i] = ec._ProgramSpread_avgExamsPerStudent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "freeDayShare":
+			out.Values[i] = ec._ProgramSpread_freeDayShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sameDayShare":
+			out.Values[i] = ec._ProgramSpread_sameDayShare(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "avgMinFreeDays":
+			out.Values[i] = ec._ProgramSpread_avgMinFreeDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lowSampleSize":
+			out.Values[i] = ec._ProgramSpread_lowSampleSize(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -87975,6 +91090,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "examSpreadStatistics":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_examSpreadStatistics(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "studentRegsState":
 			field := field
 
@@ -89571,6 +92708,60 @@ func (ec *executionContext) _SpecialInterest(ctx context.Context, sel ast.Select
 	return out
 }
 
+var spreadBucketImplementors = []string{"SpreadBucket"}
+
+func (ec *executionContext) _SpreadBucket(ctx context.Context, sel ast.SelectionSet, obj *model.SpreadBucket) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, spreadBucketImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SpreadBucket")
+		case "key":
+			out.Values[i] = ec._SpreadBucket_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._SpreadBucket_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._SpreadBucket_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "share":
+			out.Values[i] = ec._SpreadBucket_share(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var starttimeImplementors = []string{"Starttime"}
 
 func (ec *executionContext) _Starttime(ctx context.Context, sel ast.SelectionSet, obj *model.Starttime) graphql.Marshaler {
@@ -90688,6 +93879,134 @@ func (ec *executionContext) _ValidationReport(ctx context.Context, sel ast.Selec
 			}
 		case "findings":
 			out.Values[i] = ec._ValidationReport_findings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var worstStudentImplementors = []string{"WorstStudent"}
+
+func (ec *executionContext) _WorstStudent(ctx context.Context, sel ast.SelectionSet, obj *model.WorstStudent) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, worstStudentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WorstStudent")
+		case "mtknr":
+			out.Values[i] = ec._WorstStudent_mtknr(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._WorstStudent_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "program":
+			out.Values[i] = ec._WorstStudent_program(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "group":
+			out.Values[i] = ec._WorstStudent_group(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examCount":
+			out.Values[i] = ec._WorstStudent_examCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "minFreeDays":
+			out.Values[i] = ec._WorstStudent_minFreeDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "worstLabel":
+			out.Values[i] = ec._WorstStudent_worstLabel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "exams":
+			out.Values[i] = ec._WorstStudent_exams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var worstStudentExamImplementors = []string{"WorstStudentExam"}
+
+func (ec *executionContext) _WorstStudentExam(ctx context.Context, sel ast.SelectionSet, obj *model.WorstStudentExam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, worstStudentExamImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WorstStudentExam")
+		case "ancode":
+			out.Values[i] = ec._WorstStudentExam_ancode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._WorstStudentExam_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "starttime":
+			out.Values[i] = ec._WorstStudentExam_starttime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "durationMinutes":
+			out.Values[i] = ec._WorstStudentExam_durationMinutes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -92272,6 +95591,60 @@ func (ec *executionContext) unmarshalNConstraintsInput2githubᚗcomᚋobcodeᚋp
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNCountBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐCountBucketᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CountBucket) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCountBucket2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐCountBucket(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCountBucket2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐCountBucket(ctx context.Context, sel ast.SelectionSet, v *model.CountBucket) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CountBucket(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNCoverageReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐCoverageReport(ctx context.Context, sel ast.SelectionSet, v *model.CoverageReport) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -93057,6 +96430,20 @@ func (ec *executionContext) marshalNExamScheduleDiagnostics2ᚖgithubᚗcomᚋob
 		return graphql.Null
 	}
 	return ec._ExamScheduleDiagnostics(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExamSpreadStatistics2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamSpreadStatistics(ctx context.Context, sel ast.SelectionSet, v model.ExamSpreadStatistics) graphql.Marshaler {
+	return ec._ExamSpreadStatistics(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNExamSpreadStatistics2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamSpreadStatistics(ctx context.Context, sel ast.SelectionSet, v *model.ExamSpreadStatistics) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExamSpreadStatistics(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExamTime2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamTimeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamTime) graphql.Marshaler {
@@ -95396,6 +98783,60 @@ func (ec *executionContext) marshalNPrimussExamWithCount2ᚖgithubᚗcomᚋobcod
 	return ec._PrimussExamWithCount(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNProgramSpread2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐProgramSpreadᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ProgramSpread) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNProgramSpread2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐProgramSpread(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNProgramSpread2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐProgramSpread(ctx context.Context, sel ast.SelectionSet, v *model.ProgramSpread) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProgramSpread(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNRegWithError2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRegWithErrorᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RegWithError) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -96275,6 +99716,60 @@ func (ec *executionContext) unmarshalNSpecialInterestInput2githubᚗcomᚋobcode
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNSpreadBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpreadBucketᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SpreadBucket) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSpreadBucket2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpreadBucket(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSpreadBucket2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSpreadBucket(ctx context.Context, sel ast.SelectionSet, v *model.SpreadBucket) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SpreadBucket(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNStarttime2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐStarttimeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Starttime) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -97126,6 +100621,114 @@ func (ec *executionContext) unmarshalNValidationLevel2githubᚗcomᚋobcodeᚋpl
 
 func (ec *executionContext) marshalNValidationLevel2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐValidationLevel(ctx context.Context, sel ast.SelectionSet, v model.ValidationLevel) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNWorstStudent2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐWorstStudentᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.WorstStudent) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWorstStudent2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐWorstStudent(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNWorstStudent2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐWorstStudent(ctx context.Context, sel ast.SelectionSet, v *model.WorstStudent) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WorstStudent(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWorstStudentExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐWorstStudentExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.WorstStudentExam) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNWorstStudentExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐWorstStudentExam(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNWorstStudentExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐWorstStudentExam(ctx context.Context, sel ast.SelectionSet, v *model.WorstStudentExam) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WorstStudentExam(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNZPAConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐZPAConflictᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ZPAConflict) graphql.Marshaler {

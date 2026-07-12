@@ -102,6 +102,31 @@ func (p *Plexams) PlannedExams(ctx context.Context) ([]*model.PlannedExam, error
 	return plannedExams, nil
 }
 
+// ExamsNotOnSlotGrid returns the planned exams whose absolute start time is NOT one of the
+// semester's standard slot start times (e.g. another faculty's exam placed at 11:00). A
+// slot-by-slot grid (which queries examsAt for each configured slot start) never shows
+// these, so the GUI needs them separately to surface them without anything going missing.
+func (p *Plexams) ExamsNotOnSlotGrid(ctx context.Context) ([]*model.PlannedExam, error) {
+	all, err := p.PlannedExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+	onGrid := make(map[int64]bool, len(p.semesterConfig.Slots))
+	for _, s := range p.semesterConfig.Slots {
+		onGrid[s.Starttime.Unix()] = true
+	}
+	offGrid := make([]*model.PlannedExam, 0)
+	for _, e := range all {
+		if e.PlanEntry == nil || e.PlanEntry.Starttime == nil {
+			continue // not placed at all → belongs to examsWithoutSlot, not here
+		}
+		if !onGrid[e.PlanEntry.Starttime.Unix()] {
+			offGrid = append(offGrid, e)
+		}
+	}
+	return offGrid, nil
+}
+
 func (p *Plexams) PlannedExamsByExamer(ctx context.Context, examerID int) ([]*model.PlannedExam, error) {
 	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {

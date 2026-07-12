@@ -51,6 +51,11 @@ func (r *queryResolver) ExamsWithoutSlot(ctx context.Context) ([]*model.PlannedE
 	return r.plexams.ExamsWithoutSlot(ctx)
 }
 
+// ExamsNotOnSlotGrid is the resolver for the examsNotOnSlotGrid field.
+func (r *queryResolver) ExamsNotOnSlotGrid(ctx context.Context) ([]*model.PlannedExam, error) {
+	return r.plexams.ExamsNotOnSlotGrid(ctx)
+}
+
 // AllowedSlots is the resolver for the allowedSlots field.
 func (r *queryResolver) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
 	return r.plexams.AllowedSlots(ctx, ancode)

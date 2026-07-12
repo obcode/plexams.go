@@ -13,6 +13,14 @@ extend type Query {
   examsAt(starttime: Time!): [PlannedExam!]
   examsWithoutSlot: [PlannedExam!]!
 
+  """
+  examsNotOnSlotGrid returns the planned exams whose absolute start time is NOT one of the
+  semester's standard slot start times (e.g. another faculty's exam placed at 11:00). They
+  are invisible in a purely slot-by-slot grid, so the GUI must surface them separately —
+  e.g. rendered in the slot whose time window they overlap, with the real start time shown.
+  """
+  examsNotOnSlotGrid: [PlannedExam!]!
+
   allowedSlots(ancode: Int!): [Slot!]
   awkwardSlots(ancode: Int!): [Slot!]! # slots before or after a conflict
 }

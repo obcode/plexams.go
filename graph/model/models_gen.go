@@ -357,6 +357,16 @@ type ExamPlanningMailRecipient struct {
 	Exams []*ExamPlanningMailExam `json:"exams"`
 }
 
+// State of the EXaHM/SEB room phase (phase A) relative to phase B.
+type ExamRoomsPhaseState struct {
+	// planned EXaHM/SEB exams (have a plan entry — the set the room phase freezes).
+	Planned int `json:"planned"`
+	// of those, how many are frozen (phaseFixed) so phase B leaves them untouched.
+	Fixed int `json:"fixed"`
+	// planned > 0 and every planned EXaHM/SEB exam is frozen — safe to run phase B.
+	AllFixed bool `json:"allFixed"`
+}
+
 // ExamScheduleConflict is a conflict in the CURRENT plan: two exams a student is
 // registered in that ended up close in time, aggregated over all affected students. A
 // conflict is only meaningful per student — the per-student acceptance lives on

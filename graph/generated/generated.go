@@ -333,6 +333,12 @@ type ComplexityRoot struct {
 		Teacher  func(childComplexity int) int
 	}
 
+	ExamRoomsPhaseState struct {
+		AllFixed func(childComplexity int) int
+		Fixed    func(childComplexity int) int
+		Planned  func(childComplexity int) int
+	}
+
 	ExamScheduleConflict struct {
 		AffectedStudents func(childComplexity int) int
 		Ancode1          func(childComplexity int) int
@@ -1053,6 +1059,7 @@ type ComplexityRoot struct {
 		EmailTemplates                func(childComplexity int) int
 		ExamDurationOverrides         func(childComplexity int) int
 		ExamPlanningMailRecipients    func(childComplexity int) int
+		ExamRoomsPhaseState           func(childComplexity int) int
 		ExamScheduleConflicts         func(childComplexity int) int
 		ExamScheduleConstraints       func(childComplexity int) int
 		ExamerInPlan                  func(childComplexity int) int
@@ -1730,6 +1737,7 @@ type QueryResolver interface {
 	CanShareSlotSuggestions(ctx context.Context) ([]*model.ExamPair, error)
 	ExamDurationOverrides(ctx context.Context) ([]*model.ExamDurationOverride, error)
 	ExamScheduleConstraints(ctx context.Context) ([]*model.OptimizerConstraint, error)
+	ExamRoomsPhaseState(ctx context.Context) (*model.ExamRoomsPhaseState, error)
 	GenerationConfig(ctx context.Context) (*model.GenerationConfig, error)
 	InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error)
 	InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error)
@@ -3096,6 +3104,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExamPlanningMailRecipient.Teacher(childComplexity), true
+
+	case "ExamRoomsPhaseState.allFixed":
+		if e.complexity.ExamRoomsPhaseState.AllFixed == nil {
+			break
+		}
+
+		return e.complexity.ExamRoomsPhaseState.AllFixed(childComplexity), true
+
+	case "ExamRoomsPhaseState.fixed":
+		if e.complexity.ExamRoomsPhaseState.Fixed == nil {
+			break
+		}
+
+		return e.complexity.ExamRoomsPhaseState.Fixed(childComplexity), true
+
+	case "ExamRoomsPhaseState.planned":
+		if e.complexity.ExamRoomsPhaseState.Planned == nil {
+			break
+		}
+
+		return e.complexity.ExamRoomsPhaseState.Planned(childComplexity), true
 
 	case "ExamScheduleConflict.affectedStudents":
 		if e.complexity.ExamScheduleConflict.AffectedStudents == nil {
@@ -7167,6 +7196,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.ExamPlanningMailRecipients(childComplexity), true
 
+	case "Query.examRoomsPhaseState":
+		if e.complexity.Query.ExamRoomsPhaseState == nil {
+			break
+		}
+
+		return e.complexity.Query.ExamRoomsPhaseState(childComplexity), true
+
 	case "Query.examScheduleConflicts":
 		if e.complexity.Query.ExamScheduleConflicts == nil {
 			break
@@ -11087,6 +11123,23 @@ extend type Mutation {
 extend type Query {
   "The read-only list of hard/soft constraints the exam-schedule generator applies."
   examScheduleConstraints: [OptimizerConstraint!]!
+  """
+  Summary of the EXaHM/SEB room phase for the GUI: how many EXaHM/SEB exams are planned and
+  how many of those are frozen (phaseFixed) for phase B. Use allFixed to decide whether to
+  warn before running generateExamSchedule (phase B), and planned/fixed to show the state
+  next to the fix/unfix buttons.
+  """
+  examRoomsPhaseState: ExamRoomsPhaseState!
+}
+
+"State of the EXaHM/SEB room phase (phase A) relative to phase B."
+type ExamRoomsPhaseState {
+  "planned EXaHM/SEB exams (have a plan entry — the set the room phase freezes)."
+  planned: Int!
+  "of those, how many are frozen (phaseFixed) so phase B leaves them untouched."
+  fixed: Int!
+  "planned > 0 and every planned EXaHM/SEB exam is frozen — safe to run phase B."
+  allFixed: Boolean!
 }
 
 "OptimizerConstraint describes one applied constraint (for the read-only view)."
@@ -28250,6 +28303,138 @@ func (ec *executionContext) fieldContext_ExamPlanningMailRecipient_exams(_ conte
 				return ec.fieldContext_ExamPlanningMailExam_constraints(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ExamPlanningMailExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamRoomsPhaseState_planned(ctx context.Context, field graphql.CollectedField, obj *model.ExamRoomsPhaseState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamRoomsPhaseState_planned(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Planned, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamRoomsPhaseState_planned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamRoomsPhaseState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamRoomsPhaseState_fixed(ctx context.Context, field graphql.CollectedField, obj *model.ExamRoomsPhaseState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamRoomsPhaseState_fixed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Fixed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamRoomsPhaseState_fixed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamRoomsPhaseState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExamRoomsPhaseState_allFixed(ctx context.Context, field graphql.CollectedField, obj *model.ExamRoomsPhaseState) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExamRoomsPhaseState_allFixed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllFixed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExamRoomsPhaseState_allFixed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExamRoomsPhaseState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -54854,6 +55039,58 @@ func (ec *executionContext) fieldContext_Query_examScheduleConstraints(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_examRoomsPhaseState(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_examRoomsPhaseState(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ExamRoomsPhaseState(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ExamRoomsPhaseState)
+	fc.Result = res
+	return ec.marshalNExamRoomsPhaseState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamRoomsPhaseState(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_examRoomsPhaseState(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "planned":
+				return ec.fieldContext_ExamRoomsPhaseState_planned(ctx, field)
+			case "fixed":
+				return ec.fieldContext_ExamRoomsPhaseState_fixed(ctx, field)
+			case "allFixed":
+				return ec.fieldContext_ExamRoomsPhaseState_allFixed(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExamRoomsPhaseState", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_generationConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_generationConfig(ctx, field)
 	if err != nil {
@@ -80582,6 +80819,55 @@ func (ec *executionContext) _ExamPlanningMailRecipient(ctx context.Context, sel 
 	return out
 }
 
+var examRoomsPhaseStateImplementors = []string{"ExamRoomsPhaseState"}
+
+func (ec *executionContext) _ExamRoomsPhaseState(ctx context.Context, sel ast.SelectionSet, obj *model.ExamRoomsPhaseState) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, examRoomsPhaseStateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExamRoomsPhaseState")
+		case "planned":
+			out.Values[i] = ec._ExamRoomsPhaseState_planned(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fixed":
+			out.Values[i] = ec._ExamRoomsPhaseState_fixed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allFixed":
+			out.Values[i] = ec._ExamRoomsPhaseState_allFixed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var examScheduleConflictImplementors = []string{"ExamScheduleConflict"}
 
 func (ec *executionContext) _ExamScheduleConflict(ctx context.Context, sel ast.SelectionSet, obj *model.ExamScheduleConflict) graphql.Marshaler {
@@ -86162,6 +86448,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_examScheduleConstraints(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "examRoomsPhaseState":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_examRoomsPhaseState(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -92518,6 +92826,20 @@ func (ec *executionContext) marshalNExamPlanningMailRecipient2ᚖgithubᚗcomᚋ
 		return graphql.Null
 	}
 	return ec._ExamPlanningMailRecipient(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNExamRoomsPhaseState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamRoomsPhaseState(ctx context.Context, sel ast.SelectionSet, v model.ExamRoomsPhaseState) graphql.Marshaler {
+	return ec._ExamRoomsPhaseState(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNExamRoomsPhaseState2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamRoomsPhaseState(ctx context.Context, sel ast.SelectionSet, v *model.ExamRoomsPhaseState) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExamRoomsPhaseState(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExamScheduleConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐExamScheduleConflictᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ExamScheduleConflict) graphql.Marshaler {

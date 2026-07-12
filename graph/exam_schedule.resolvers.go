@@ -42,6 +42,11 @@ func (r *queryResolver) ExamScheduleConstraints(ctx context.Context) ([]*model.O
 	return out, nil
 }
 
+// ExamRoomsPhaseState is the resolver for the examRoomsPhaseState field.
+func (r *queryResolver) ExamRoomsPhaseState(ctx context.Context) (*model.ExamRoomsPhaseState, error) {
+	return r.plexams.ExamRoomsPhaseState(ctx)
+}
+
 // GenerateExamSchedule is the resolver for the generateExamSchedule field. It runs the
 // automatic exam-schedule generation and streams its terminal-style output line by
 // line. The operation runs on a background context so a started (non-dry-run) run

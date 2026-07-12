@@ -40,6 +40,23 @@ extend type Mutation {
 extend type Query {
   "The read-only list of hard/soft constraints the exam-schedule generator applies."
   examScheduleConstraints: [OptimizerConstraint!]!
+  """
+  Summary of the EXaHM/SEB room phase for the GUI: how many EXaHM/SEB exams are planned and
+  how many of those are frozen (phaseFixed) for phase B. Use allFixed to decide whether to
+  warn before running generateExamSchedule (phase B), and planned/fixed to show the state
+  next to the fix/unfix buttons.
+  """
+  examRoomsPhaseState: ExamRoomsPhaseState!
+}
+
+"State of the EXaHM/SEB room phase (phase A) relative to phase B."
+type ExamRoomsPhaseState {
+  "planned EXaHM/SEB exams (have a plan entry — the set the room phase freezes)."
+  planned: Int!
+  "of those, how many are frozen (phaseFixed) so phase B leaves them untouched."
+  fixed: Int!
+  "planned > 0 and every planned EXaHM/SEB exam is frozen — safe to run phase B."
+  allFixed: Boolean!
 }
 
 "OptimizerConstraint describes one applied constraint (for the read-only view)."

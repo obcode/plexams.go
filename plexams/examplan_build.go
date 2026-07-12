@@ -947,30 +947,53 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	return result, nil
 }
 
-// FixExamRoomsPhase freezes the EXaHM/SEB room-phase result: every EXaHM/SEB exam that
-// has a plan entry is marked PhaseFixed so phase B leaves it untouched (distinct from
-// the user's manual Locked). Returns the number of exams fixed.
-func (p *Plexams) FixExamRoomsPhase(ctx context.Context) (int, error) {
+// exahmSebPlanFixState returns, for every EXaHM/SEB exam that currently has a plan entry
+// (the set the room phase freezes), whether that entry is already frozen (PhaseFixed). It is
+// the single source of truth for "which exams the EXaHM/SEB room phase covers", shared by
+// FixExamRoomsPhase (what to freeze) and ExamRoomsPhaseState (the GUI summary), so the two
+// can never disagree.
+func (p *Plexams) exahmSebPlanFixState(ctx context.Context) (map[int]bool, error) {
 	constraints, err := p.ConstraintsMap(ctx)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	planEntries, err := p.PlanEntries(ctx)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	planned := make(map[int]bool, len(planEntries))
+	peByAncode := make(map[int]*model.PlanEntry, len(planEntries))
 	for _, pe := range planEntries {
-		planned[pe.Ancode] = true
+		peByAncode[pe.Ancode] = pe
 	}
-	n := 0
+	fixedByAncode := make(map[int]bool)
 	for ancode, c := range constraints {
 		if c == nil || c.RoomConstraints == nil || (!c.RoomConstraints.Exahm && !c.RoomConstraints.Seb) {
 			continue
 		}
-		if !planned[ancode] {
-			continue
+		pe := peByAncode[ancode]
+		if pe == nil {
+			continue // EXaHM/SEB but not planned → not part of the room phase yet
 		}
+		fixedByAncode[ancode] = pe.PhaseFixed
+	}
+	return fixedByAncode, nil
+}
+
+// FixExamRoomsPhase freezes the EXaHM/SEB room-phase result: every EXaHM/SEB exam that
+// has a plan entry is marked PhaseFixed so phase B leaves it untouched (distinct from
+// the user's manual Locked). Returns the number of exams fixed.
+func (p *Plexams) FixExamRoomsPhase(ctx context.Context) (int, error) {
+	state, err := p.exahmSebPlanFixState(ctx)
+	if err != nil {
+		return 0, err
+	}
+	ancodes := make([]int, 0, len(state))
+	for a := range state {
+		ancodes = append(ancodes, a)
+	}
+	sort.Ints(ancodes) // deterministic write order
+	n := 0
+	for _, ancode := range ancodes {
 		if err := p.dbClient.SetPhaseFixed(ctx, ancode, true); err != nil {
 			return n, err
 		}
@@ -978,6 +1001,28 @@ func (p *Plexams) FixExamRoomsPhase(ctx context.Context) (int, error) {
 	}
 	p.markCondition(ctx, condExahmSebFixed)
 	return n, nil
+}
+
+// ExamRoomsPhaseState summarizes the EXaHM/SEB room phase for the GUI: how many EXaHM/SEB
+// exams are planned and how many of those are frozen (PhaseFixed) for phase B. Drives the
+// fixed-state display and the "not fixed" warning before phase-B generation.
+func (p *Plexams) ExamRoomsPhaseState(ctx context.Context) (*model.ExamRoomsPhaseState, error) {
+	state, err := p.exahmSebPlanFixState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	planned, fixed := 0, 0
+	for _, isFixed := range state {
+		planned++
+		if isFixed {
+			fixed++
+		}
+	}
+	return &model.ExamRoomsPhaseState{
+		Planned:  planned,
+		Fixed:    fixed,
+		AllFixed: planned > 0 && fixed == planned,
+	}, nil
 }
 
 // ResetExamSchedule removes the generated exam schedule (phase B): every plan entry

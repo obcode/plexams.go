@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/planstate"
@@ -36,6 +37,7 @@ const (
 	condStudentRegsUploaded       = "studentRegsUploaded"
 	condPrimussDataAllSent        = "primussDataAllSent"
 	condNTARoomAloneSent          = "ntaRoomAloneSent"
+	condOtherFKExamsScheduled     = "otherFKExamsScheduled"
 	condExahmSebPlanned           = "exahmSebPlanned"
 	condExahmSebFixed             = "exahmSebFixed"
 	condExamScheduleGenerated     = "examScheduleGenerated"
@@ -83,9 +85,10 @@ var planningConditionDefs = []planstate.CondDef{
 	{Key: condStudentRegsUploaded, Title: "Anmeldungen ins ZPA hochgeladen", Phase: "phase0"},
 	{Key: condPrimussDataAllSent, Title: "Primuss-Daten an alle verschickt", Phase: "phase0"},
 	{Key: condNTARoomAloneSent, Title: "Info an NTAs mit eigenem Raum verschickt", Phase: "phase0"},
+	{Key: condOtherFKExamsScheduled, Title: "Alle Prüfungen anderer FKs eingepflegt", Phase: "phase1"},
 	{Key: condExahmSebPlanned, Title: "EXaHM/SEB in T-Bau-Räume geplant", Phase: "phase1"},
-	{Key: condExamScheduleGenerated, Title: "Terminplan generiert", Phase: "phase1"},
 	{Key: condExahmSebFixed, Title: "EXaHM/SEB fixiert (für Phase 2)", Phase: "phase1"},
+	{Key: condExamScheduleGenerated, Title: "Terminplan generiert", Phase: "phase1"},
 	{Key: condDraftSent, Title: "Entwurf verschickt", Phase: "phase1", Gate: model.PlanningGateExams},
 	{Key: condExamPlanPublished, Title: "Terminplan veröffentlicht (E-Mail)", Phase: "phase1", Gate: model.PlanningGateExams},
 	{Key: condRoomRequestsSent, Title: "Raum-Anfragen ans Gebäudemanagement verschickt", Phase: "phase2"},
@@ -101,6 +104,80 @@ var planningConditionDefs = []planstate.CondDef{
 	{Key: condNTAPlannedSent, Title: "Info an NTAs zu ihren Räumen verschickt", Phase: "phase3"},
 	{Key: condLbaRepeatersSent, Title: "Info Wiederholungsprüfungen LBAs ans LBA-BA verschickt", Phase: "phase3"},
 	{Key: condCoverPagesSent, Title: "Deckblätter an alle verschickt (letzter Schritt)", Phase: "phase3"},
+}
+
+// planningConditions returns the planning-condition net with the auto-computed conditions'
+// Compute predicates bound to this instance. planningConditionDefs stays the static source
+// of truth for keys/titles/phases/gates; the live predicates can only be attached once we
+// have a *Plexams to call, so they are wired here and consumed in NewPlexams.
+func (p *Plexams) planningConditions() []planstate.CondDef {
+	conds := make([]planstate.CondDef, len(planningConditionDefs))
+	copy(conds, planningConditionDefs)
+	for i := range conds {
+		switch conds[i].Key {
+		case condOtherFKExamsScheduled:
+			conds[i].Compute = p.otherFacultyExamsScheduled
+		}
+	}
+	return conds
+}
+
+// otherFacultyExamsScheduled reports whether every exam planned by another faculty already
+// has a Termin. It backs the auto-computed condition condOtherFKExamsScheduled: the check
+// appears once all such exams have a start time and clears again the moment one is missing.
+// When there are no other-faculty exams at all the condition is vacuously satisfied.
+func (p *Plexams) otherFacultyExamsScheduled(ctx context.Context) (bool, error) {
+	missing, err := p.unscheduledOtherFacultyExams(ctx)
+	if err != nil {
+		return false, err
+	}
+	return len(missing) == 0, nil
+}
+
+// unscheduledOtherFacultyExams returns, sorted, the ancodes of exams planned by another
+// faculty that still lack a Termin. That covers external exams (e.g. MUC.DAI) and our own
+// exams flagged NotPlannedByMe — for both we only copy in the date the other faculty
+// scheduled. An empty result means every such exam has a start time (or there are none).
+func (p *Plexams) unscheduledOtherFacultyExams(ctx context.Context) ([]int, error) {
+	planEntries, err := p.dbClient.PlanEntries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	scheduled := make(map[int]bool, len(planEntries))
+	for _, pe := range planEntries {
+		if pe.Starttime != nil {
+			scheduled[pe.Ancode] = true
+		}
+	}
+
+	// ancodes that need a foreign Termin: external exams …
+	needed := make(map[int]bool)
+	externalExams, err := p.dbClient.ExternalExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, ex := range externalExams {
+		needed[ex.AnCode] = true
+	}
+	// … and our own exams marked as planned by another faculty.
+	constraints, err := p.dbClient.GetConstraints(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range constraints {
+		if c.NotPlannedByMe {
+			needed[c.Ancode] = true
+		}
+	}
+
+	missing := make([]int, 0)
+	for ancode := range needed {
+		if !scheduled[ancode] {
+			missing = append(missing, ancode)
+		}
+	}
+	sort.Ints(missing)
+	return missing, nil
 }
 
 // The following are thin delegators to the planstate engine (p.planState), so the many

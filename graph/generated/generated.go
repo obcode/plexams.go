@@ -884,6 +884,7 @@ type ComplexityRoot struct {
 	}
 
 	PlanningCondition struct {
+		Auto  func(childComplexity int) int
 		Done  func(childComplexity int) int
 		Gate  func(childComplexity int) int
 		Key   func(childComplexity int) int
@@ -6352,6 +6353,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PlannedRoom.StudentsInRoom(childComplexity), true
+
+	case "PlanningCondition.auto":
+		if e.complexity.PlanningCondition.Auto == nil {
+			break
+		}
+
+		return e.complexity.PlanningCondition.Auto(childComplexity), true
 
 	case "PlanningCondition.done":
 		if e.complexity.PlanningCondition.Done == nil {
@@ -11974,7 +11982,8 @@ type DryRunTestMailStatus {
 `, BuiltIn: false},
 	{Name: "../planning_state.graphqls", Input: `# The planning state is a condition/event model of the planning workflow: per
 # phase a set of conditions (milestones). Some are set automatically when an
-# operation finishes, all can be toggled by hand. A condition with a gate locks
+# operation finishes; most can be toggled by hand, except the "auto" ones which
+# are computed live from the data and are read-only. A condition with a gate locks
 # the matching generation operations while it is set (e.g. roomPlanPublished
 # blocks regenerating the rooms); explicit changes stay allowed.
 
@@ -11984,6 +11993,8 @@ type PlanningCondition {
   phase: String!
   "true when the condition (milestone) is reached."
   done: Boolean!
+  "true when the condition is computed automatically from the underlying data (read-only: it cannot be toggled by hand, done follows the data)."
+  auto: Boolean!
   "If set, the area this condition gates while done (e.g. ROOMS, INVIGILATIONS); null if it is not a gate."
   gate: PlanningGate
 }
@@ -48996,6 +49007,50 @@ func (ec *executionContext) fieldContext_PlanningCondition_done(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _PlanningCondition_auto(ctx context.Context, field graphql.CollectedField, obj *model.PlanningCondition) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PlanningCondition_auto(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Auto, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PlanningCondition_auto(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlanningCondition",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PlanningCondition_gate(ctx context.Context, field graphql.CollectedField, obj *model.PlanningCondition) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PlanningCondition_gate(ctx, field)
 	if err != nil {
@@ -49172,6 +49227,8 @@ func (ec *executionContext) fieldContext_PlanningPhase_conditions(_ context.Cont
 				return ec.fieldContext_PlanningCondition_phase(ctx, field)
 			case "done":
 				return ec.fieldContext_PlanningCondition_done(ctx, field)
+			case "auto":
+				return ec.fieldContext_PlanningCondition_auto(ctx, field)
 			case "gate":
 				return ec.fieldContext_PlanningCondition_gate(ctx, field)
 			}
@@ -84769,6 +84826,11 @@ func (ec *executionContext) _PlanningCondition(ctx context.Context, sel ast.Sele
 			}
 		case "done":
 			out.Values[i] = ec._PlanningCondition_done(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "auto":
+			out.Values[i] = ec._PlanningCondition_auto(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

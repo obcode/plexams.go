@@ -1,6 +1,7 @@
 # The planning state is a condition/event model of the planning workflow: per
 # phase a set of conditions (milestones). Some are set automatically when an
-# operation finishes, all can be toggled by hand. A condition with a gate locks
+# operation finishes; most can be toggled by hand, except the "auto" ones which
+# are computed live from the data and are read-only. A condition with a gate locks
 # the matching generation operations while it is set (e.g. roomPlanPublished
 # blocks regenerating the rooms); explicit changes stay allowed.
 
@@ -10,6 +11,8 @@ type PlanningCondition {
   phase: String!
   "true when the condition (milestone) is reached."
   done: Boolean!
+  "true when the condition is computed automatically from the underlying data (read-only: it cannot be toggled by hand, done follows the data)."
+  auto: Boolean!
   "If set, the area this condition gates while done (e.g. ROOMS, INVIGILATIONS); null if it is not a gate."
   gate: PlanningGate
 }

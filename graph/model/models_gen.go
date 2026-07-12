@@ -929,6 +929,8 @@ type PlanningCondition struct {
 	Phase string `json:"phase"`
 	// true when the condition (milestone) is reached.
 	Done bool `json:"done"`
+	// true when the condition is computed automatically from the underlying data (read-only: it cannot be toggled by hand, done follows the data).
+	Auto bool `json:"auto"`
 	// If set, the area this condition gates while done (e.g. ROOMS, INVIGILATIONS); null if it is not a gate.
 	Gate *PlanningGate `json:"gate,omitempty"`
 }

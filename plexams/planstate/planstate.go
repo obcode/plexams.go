@@ -27,6 +27,12 @@ type CondDef struct {
 	Title string
 	Phase string
 	Gate  model.PlanningGate
+	// Compute, if set, makes this a derived condition: its Done state is computed live
+	// from this predicate on every State() read instead of read from (and stored in) the
+	// DB. Such a condition is read-only — it cannot be set or cleared by hand and follows
+	// the underlying data automatically. A predicate error is logged and treated as "not
+	// done" so the state assembly never fails on it.
+	Compute func(ctx context.Context) (bool, error)
 }
 
 // DB is the persistence the engine needs; *db.DB satisfies it.
@@ -78,11 +84,22 @@ func (m *Machine) State(ctx context.Context) (*model.PlanningState, error) {
 
 	blocked := make([]model.PlanningGate, 0)
 	for _, cd := range m.conds {
+		isDone := done[cd.Key]
+		if cd.Compute != nil {
+			computed, err := cd.Compute(ctx)
+			if err != nil {
+				log.Error().Err(err).Str("key", cd.Key).
+					Msg("cannot compute planning condition; treating as not done")
+				computed = false
+			}
+			isDone = computed
+		}
 		cond := &model.PlanningCondition{
 			Key:   cd.Key,
 			Title: cd.Title,
 			Phase: cd.Phase,
-			Done:  done[cd.Key],
+			Done:  isDone,
+			Auto:  cd.Compute != nil,
 		}
 		if cd.Gate != "" {
 			gate := cd.Gate
@@ -101,8 +118,12 @@ func (m *Machine) State(ctx context.Context) (*model.PlanningState, error) {
 
 // SetCondition sets or clears a condition by hand. Errors on an unknown key.
 func (m *Machine) SetCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error) {
-	if _, ok := m.condDefByKey(key); !ok {
+	def, ok := m.condDefByKey(key)
+	if !ok {
 		return nil, fmt.Errorf("unknown planning condition %q", key)
+	}
+	if def.Compute != nil {
+		return nil, fmt.Errorf("planning condition %q is computed automatically and cannot be set by hand", key)
 	}
 	if err := m.db.SetPlanningCondition(ctx, key, done); err != nil {
 		return nil, err

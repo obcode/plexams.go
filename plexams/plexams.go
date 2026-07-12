@@ -221,7 +221,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 	if plexams.dbClient != nil {
 		planStateDB = plexams.dbClient
 	}
-	plexams.planState = planstate.New(planStateDB, planningPhaseDefs, planningConditionDefs)
+	plexams.planState = planstate.New(planStateDB, planningPhaseDefs, plexams.planningConditions())
 
 	if plexams.dbClient != nil {
 		ctx := context.Background()

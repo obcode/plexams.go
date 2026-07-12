@@ -791,6 +791,17 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 		reporter.Println(fmt.Sprintf("Hinweis: %d EXaHM/SEB-Prüfung(en) mit NTA — bei der Raumplanung NTA-Raum buchen: %v",
 			len(buildInfo.exahmNtaAncodes), buildInfo.exahmNtaAncodes))
 	}
+	// For the ordinary Terminplan run (not the EXaHM/SEB room phase) warn if exams planned
+	// by another faculty still miss their Termin: those exams cannot constrain the plan yet,
+	// so conflicts with them are invisible in this run.
+	if !roomPhase {
+		if missing, err := p.unscheduledOtherFacultyExams(ctx); err != nil {
+			log.Error().Err(err).Msg("cannot check whether other-faculty exams are scheduled")
+		} else if len(missing) > 0 {
+			reporter.Warnf("Achtung: %d Prüfung(en) anderer FKs noch ohne Termin – Konflikte mit ihnen werden in diesem Lauf nicht berücksichtigt: %v",
+				len(missing), missing)
+		}
+	}
 
 	opts := optimize.DefaultOptions()
 	opts.Seed = seed

@@ -134,6 +134,15 @@ func (p *Plexams) examGapMinutes() int {
 	return defaultExamGapMinutes
 }
 
+// crossCampusGapMinutes is the configured end-to-start travel buffer a student needs between
+// two exams at different campuses, falling back to the built-in default when unset.
+func (p *Plexams) crossCampusGapMinutes() int {
+	if p.semesterConfig != nil && p.semesterConfig.CrossCampusGapMinutes > 0 {
+		return p.semesterConfig.CrossCampusGapMinutes
+	}
+	return defaultCrossCampusGapMinutes
+}
+
 func (p *Plexams) AllowedSlots(ctx context.Context, ancode int) ([]*model.Slot, error) {
 	exam, err := p.AssembledExam(ctx, ancode)
 	if err != nil || exam == nil {
@@ -264,7 +273,7 @@ func (p *Plexams) overlapSlots(exam *model.AssembledExam, placed map[int]placedE
 		if !ok {
 			continue // conflicting exam not placed at an absolute time → no window to avoid
 		}
-		gap := effectiveGapMinutes(examGap, examLoc, c.location)
+		gap := effectiveGapMinutes(examGap, p.crossCampusGapMinutes(), examLoc, c.location)
 		cEnd := c.start.Add(time.Duration(c.duration) * time.Minute)
 		for _, slot := range p.semesterConfig.Slots {
 			examEnd := slot.Starttime.Add(examDur)

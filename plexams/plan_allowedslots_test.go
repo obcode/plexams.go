@@ -17,18 +17,33 @@ func TestEffectiveGapMinutes(t *testing.T) {
 	}{
 		{"", "", 30},
 		{"Pasing", "Pasing", 30},
-		{"", "Pasing", crossCampusGapMinutes},
-		{"Pasing", "", crossCampusGapMinutes},
-		{"Pasing", "Lothstr", crossCampusGapMinutes},
+		{"", "Pasing", defaultCrossCampusGapMinutes},
+		{"Pasing", "", defaultCrossCampusGapMinutes},
+		{"Pasing", "Lothstr", defaultCrossCampusGapMinutes},
 	}
 	for _, c := range cases {
-		if got := effectiveGapMinutes(30, c.locA, c.locB); got != c.want {
+		if got := effectiveGapMinutes(30, defaultCrossCampusGapMinutes, c.locA, c.locB); got != c.want {
 			t.Errorf("effectiveGapMinutes(30, %q, %q) = %d, want %d", c.locA, c.locB, got, c.want)
 		}
 	}
-	// a same-campus examGap already larger than the cross-campus default is not shrunk.
-	if got := effectiveGapMinutes(200, "", "Pasing"); got != 200 {
+	// a same-campus examGap already larger than the cross-campus buffer is not shrunk.
+	if got := effectiveGapMinutes(200, defaultCrossCampusGapMinutes, "", "Pasing"); got != 200 {
 		t.Errorf("effectiveGapMinutes must never shrink the gap: got %d, want 200", got)
+	}
+}
+
+func TestCrossCampusGapMinutesConfigurable(t *testing.T) {
+	p := &Plexams{semesterConfig: &model.SemesterConfig{}}
+	if got := p.crossCampusGapMinutes(); got != defaultCrossCampusGapMinutes {
+		t.Errorf("unset → default: got %d, want %d", got, defaultCrossCampusGapMinutes)
+	}
+	p.semesterConfig.CrossCampusGapMinutes = 60
+	if got := p.crossCampusGapMinutes(); got != 60 {
+		t.Errorf("configured value must win: got %d, want 60", got)
+	}
+	// and it must feed the effective gap for a cross-campus pair
+	if got := effectiveGapMinutes(30, p.crossCampusGapMinutes(), "", "Pasing"); got != 60 {
+		t.Errorf("effective gap with configured cross-campus buffer: got %d, want 60", got)
 	}
 }
 

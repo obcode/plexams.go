@@ -529,7 +529,7 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 			}
 
 			problem := ""
-			gap := effectiveGapMinutes(plexams.semesterConfig.ExamGapMinutes, locByAncode[p[i].Ancode], locByAncode[p[j].Ancode])
+			gap := effectiveGapMinutes(plexams.semesterConfig.ExamGapMinutes, plexams.crossCampusGapMinutes(), locByAncode[p[i].Ancode], locByAncode[p[j].Ancode])
 			switch _, label := conflictcalc.TimeProximity(
 				*p[i].Starttime, endOf(p[i]), *p[j].Starttime, endOf(p[j]),
 				gap, plexams.semesterConfig.NotTooCloseMinutes); label {

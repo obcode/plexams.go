@@ -319,7 +319,7 @@ func (p *Plexams) conflictsFromSlots(ctx context.Context, slotByAncode map[int]*
 		for i := 0; i < len(placed); i++ {
 			for j := i + 1; j < len(placed); j++ {
 				si, sj := slotByAncode[placed[i]], slotByAncode[placed[j]]
-				gap := effectiveGapMinutes(examGap, locOf(placed[i]), locOf(placed[j]))
+				gap := effectiveGapMinutes(examGap, p.crossCampusGapMinutes(), locOf(placed[i]), locOf(placed[j]))
 				rank, label := conflictcalc.TimeProximity(
 					si.Starttime, endOf(placed[i], si),
 					sj.Starttime, endOf(placed[j], sj),

@@ -24,21 +24,22 @@ const smallExamThreshold = 5
 // Overridable via planer.examGapMinutes.
 const defaultExamGapMinutes = 30
 
-// crossCampusGapMinutes is the minimum end-to-start buffer a student needs between two of
-// their exams held at DIFFERENT campuses (e.g. Pasing ↔ Lothstraße): the travel time makes
-// a tighter placement impossible even though neither exam's time window overlaps. It is a
-// HARD separation (like the same-campus examGap, just larger) applied whenever the two
-// exams' locations differ; a same-campus pair keeps the ordinary examGap.
-const crossCampusGapMinutes = 120
+// defaultCrossCampusGapMinutes is the fallback end-to-start buffer a student needs between
+// two of their exams held at DIFFERENT campuses (e.g. Pasing ↔ Lothstraße) when the semester
+// config leaves crossCampusGapMinutes unset: the travel time makes a tighter placement
+// impossible even though neither exam's time window overlaps. It is a HARD separation (like
+// the same-campus examGap, just larger) applied whenever the two exams' locations differ.
+const defaultCrossCampusGapMinutes = 120
 
 // effectiveGapMinutes is the required end-to-start buffer between two of a student's exams
 // given the two exams' campuses: the ordinary examGap for a same-campus pair, or the larger
-// cross-campus travel buffer when the locations differ (empty = main campus). This is the
-// single source of truth for the location-aware hard separation, used consistently by the
-// solver (hardSep), the allowed-slots domain and the conflict validation/reporting.
-func effectiveGapMinutes(examGap int, locA, locB string) int {
-	if locA != locB && crossCampusGapMinutes > examGap {
-		return crossCampusGapMinutes
+// cross-campus travel buffer (crossCampusGap) when the locations differ (empty = main
+// campus). This is the single source of truth for the location-aware hard separation, used
+// consistently by the solver (hardSep), the allowed-slots domain and the conflict
+// validation/reporting.
+func effectiveGapMinutes(examGap, crossCampusGap int, locA, locB string) int {
+	if locA != locB && crossCampusGap > examGap {
+		return crossCampusGap
 	}
 	return examGap
 }
@@ -614,7 +615,7 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	hardSep := make(map[[2]int]int)
 	for _, s := range students {
 		for _, pr := range s.Pairs {
-			pairGap := effectiveGapMinutes(gapMin, units[pr.A].Location, units[pr.B].Location)
+			pairGap := effectiveGapMinutes(gapMin, p.crossCampusGapMinutes(), units[pr.A].Location, units[pr.B].Location)
 			if sep := occFor(pr.A, s.ID) + pairGap; sep > hardSep[[2]int{pr.A, pr.B}] {
 				hardSep[[2]int{pr.A, pr.B}] = sep
 			}

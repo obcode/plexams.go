@@ -1310,32 +1310,34 @@ type ComplexityRoot struct {
 	}
 
 	SemesterConfig struct {
-		Days               func(childComplexity int) int
-		Emails             func(childComplexity int) int
-		ExamGapMinutes     func(childComplexity int) int
-		ForbiddenSlots     func(childComplexity int) int
-		From               func(childComplexity int) int
-		MaxSeatsPerSlot    func(childComplexity int) int
-		MucDaiAllowedTimes func(childComplexity int) int
-		MucDaiSlots        func(childComplexity int) int
-		NotTooCloseMinutes func(childComplexity int) int
-		Slots              func(childComplexity int) int
-		Starttimes         func(childComplexity int) int
-		TimelagMin         func(childComplexity int) int
-		Until              func(childComplexity int) int
+		CrossCampusGapMinutes func(childComplexity int) int
+		Days                  func(childComplexity int) int
+		Emails                func(childComplexity int) int
+		ExamGapMinutes        func(childComplexity int) int
+		ForbiddenSlots        func(childComplexity int) int
+		From                  func(childComplexity int) int
+		MaxSeatsPerSlot       func(childComplexity int) int
+		MucDaiAllowedTimes    func(childComplexity int) int
+		MucDaiSlots           func(childComplexity int) int
+		NotTooCloseMinutes    func(childComplexity int) int
+		Slots                 func(childComplexity int) int
+		Starttimes            func(childComplexity int) int
+		TimelagMin            func(childComplexity int) int
+		Until                 func(childComplexity int) int
 	}
 
 	SemesterConfigInput struct {
-		Emails             func(childComplexity int) int
-		ExamGapMinutes     func(childComplexity int) int
-		ForbiddenDays      func(childComplexity int) int
-		From               func(childComplexity int) int
-		MaxSeatsPerSlot    func(childComplexity int) int
-		MucDaiAllowedTimes func(childComplexity int) int
-		NotTooCloseMinutes func(childComplexity int) int
-		StartTimes         func(childComplexity int) int
-		TimelagMin         func(childComplexity int) int
-		Until              func(childComplexity int) int
+		CrossCampusGapMinutes func(childComplexity int) int
+		Emails                func(childComplexity int) int
+		ExamGapMinutes        func(childComplexity int) int
+		ForbiddenDays         func(childComplexity int) int
+		From                  func(childComplexity int) int
+		MaxSeatsPerSlot       func(childComplexity int) int
+		MucDaiAllowedTimes    func(childComplexity int) int
+		NotTooCloseMinutes    func(childComplexity int) int
+		StartTimes            func(childComplexity int) int
+		TimelagMin            func(childComplexity int) int
+		Until                 func(childComplexity int) int
 	}
 
 	ServerInfo struct {
@@ -8830,6 +8832,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Semester.Semester(childComplexity), true
 
+	case "SemesterConfig.crossCampusGapMinutes":
+		if e.complexity.SemesterConfig.CrossCampusGapMinutes == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfig.CrossCampusGapMinutes(childComplexity), true
+
 	case "SemesterConfig.days":
 		if e.complexity.SemesterConfig.Days == nil {
 			break
@@ -8920,6 +8929,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.SemesterConfig.Until(childComplexity), true
+
+	case "SemesterConfigInput.crossCampusGapMinutes":
+		if e.complexity.SemesterConfigInput.CrossCampusGapMinutes == nil {
+			break
+		}
+
+		return e.complexity.SemesterConfigInput.CrossCampusGapMinutes(childComplexity), true
 
 	case "SemesterConfigInput.emails":
 		if e.complexity.SemesterConfigInput.Emails == nil {
@@ -13144,6 +13160,8 @@ type SemesterConfigInput {
   timelagMin: Int
   "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
   notTooCloseMinutes: Int
+  "End-to-start travel buffer (minutes) a student needs between two exams at DIFFERENT campuses (null = default 120). Applied as a hard separation whenever the two exams' locations differ."
+  crossCampusGapMinutes: Int
   "Max students examined at the same start time (configurable per-time capacity for the Terminplan solver; null/0 = no limit)."
   maxSeatsPerSlot: Int
 }
@@ -13162,6 +13180,8 @@ input SemesterConfigInputData {
   timelagMin: Int
   "Two exams of a student closer than this (minutes, same day) are flagged as \"too close\" (null = default 120)."
   notTooCloseMinutes: Int
+  "End-to-start travel buffer (minutes) a student needs between two exams at DIFFERENT campuses (null = default 120). Applied as a hard separation whenever the two exams' locations differ."
+  crossCampusGapMinutes: Int
   "Max students examined at the same start time (configurable per-time capacity for the Terminplan solver; null/0 = no limit)."
   maxSeatsPerSlot: Int
 }
@@ -13218,6 +13238,8 @@ type SemesterConfig {
   timelagMin: Int!
   "Effective \"too close\" threshold (minutes, same day) for a student's two exams."
   notTooCloseMinutes: Int!
+  "Effective end-to-start travel buffer (minutes) between a student's two exams at different campuses."
+  crossCampusGapMinutes: Int!
   "Effective max students examined at the same start time (0 = no limit)."
   maxSeatsPerSlot: Int!
 }
@@ -55269,6 +55291,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfig(_ context.Context,
 				return ec.fieldContext_SemesterConfig_timelagMin(ctx, field)
 			case "notTooCloseMinutes":
 				return ec.fieldContext_SemesterConfig_notTooCloseMinutes(ctx, field)
+			case "crossCampusGapMinutes":
+				return ec.fieldContext_SemesterConfig_crossCampusGapMinutes(ctx, field)
 			case "maxSeatsPerSlot":
 				return ec.fieldContext_SemesterConfig_maxSeatsPerSlot(ctx, field)
 			}
@@ -55332,6 +55356,8 @@ func (ec *executionContext) fieldContext_Query_semesterConfigInput(_ context.Con
 				return ec.fieldContext_SemesterConfigInput_timelagMin(ctx, field)
 			case "notTooCloseMinutes":
 				return ec.fieldContext_SemesterConfigInput_notTooCloseMinutes(ctx, field)
+			case "crossCampusGapMinutes":
+				return ec.fieldContext_SemesterConfigInput_crossCampusGapMinutes(ctx, field)
 			case "maxSeatsPerSlot":
 				return ec.fieldContext_SemesterConfigInput_maxSeatsPerSlot(ctx, field)
 			}
@@ -55398,6 +55424,8 @@ func (ec *executionContext) fieldContext_Query_newSemesterConfigDefaults(_ conte
 				return ec.fieldContext_SemesterConfigInput_timelagMin(ctx, field)
 			case "notTooCloseMinutes":
 				return ec.fieldContext_SemesterConfigInput_notTooCloseMinutes(ctx, field)
+			case "crossCampusGapMinutes":
+				return ec.fieldContext_SemesterConfigInput_crossCampusGapMinutes(ctx, field)
 			case "maxSeatsPerSlot":
 				return ec.fieldContext_SemesterConfigInput_maxSeatsPerSlot(ctx, field)
 			}
@@ -66487,6 +66515,50 @@ func (ec *executionContext) fieldContext_SemesterConfig_notTooCloseMinutes(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _SemesterConfig_crossCampusGapMinutes(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfig_crossCampusGapMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CrossCampusGapMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfig_crossCampusGapMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SemesterConfig_maxSeatsPerSlot(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SemesterConfig_maxSeatsPerSlot(ctx, field)
 	if err != nil {
@@ -66920,6 +66992,47 @@ func (ec *executionContext) _SemesterConfigInput_notTooCloseMinutes(ctx context.
 }
 
 func (ec *executionContext) fieldContext_SemesterConfigInput_notTooCloseMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SemesterConfigInput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SemesterConfigInput_crossCampusGapMinutes(ctx context.Context, field graphql.CollectedField, obj *model.SemesterConfigInput) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SemesterConfigInput_crossCampusGapMinutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CrossCampusGapMinutes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SemesterConfigInput_crossCampusGapMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SemesterConfigInput",
 		Field:      field,
@@ -81669,7 +81782,7 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"from", "until", "startTimes", "forbiddenDays", "mucDaiAllowedTimes", "emails", "examGapMinutes", "timelagMin", "notTooCloseMinutes", "maxSeatsPerSlot"}
+	fieldsInOrder := [...]string{"from", "until", "startTimes", "forbiddenDays", "mucDaiAllowedTimes", "emails", "examGapMinutes", "timelagMin", "notTooCloseMinutes", "crossCampusGapMinutes", "maxSeatsPerSlot"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81739,6 +81852,13 @@ func (ec *executionContext) unmarshalInputSemesterConfigInputData(ctx context.Co
 				return it, err
 			}
 			it.NotTooCloseMinutes = data
+		case "crossCampusGapMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("crossCampusGapMinutes"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CrossCampusGapMinutes = data
 		case "maxSeatsPerSlot":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxSeatsPerSlot"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -92485,6 +92605,11 @@ func (ec *executionContext) _SemesterConfig(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "crossCampusGapMinutes":
+			out.Values[i] = ec._SemesterConfig_crossCampusGapMinutes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "maxSeatsPerSlot":
 			out.Values[i] = ec._SemesterConfig_maxSeatsPerSlot(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -92554,6 +92679,8 @@ func (ec *executionContext) _SemesterConfigInput(ctx context.Context, sel ast.Se
 			out.Values[i] = ec._SemesterConfigInput_timelagMin(ctx, field, obj)
 		case "notTooCloseMinutes":
 			out.Values[i] = ec._SemesterConfigInput_notTooCloseMinutes(ctx, field, obj)
+		case "crossCampusGapMinutes":
+			out.Values[i] = ec._SemesterConfigInput_crossCampusGapMinutes(ctx, field, obj)
 		case "maxSeatsPerSlot":
 			out.Values[i] = ec._SemesterConfigInput_maxSeatsPerSlot(ctx, field, obj)
 		default:

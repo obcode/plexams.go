@@ -31,6 +31,10 @@ type SemesterConfigInput struct {
 	// NotTooCloseMinutes is the threshold (minutes, same day) below which two of a
 	// student's exams are flagged "too close" (nil = use the built-in default 120).
 	NotTooCloseMinutes *int `json:"notTooCloseMinutes,omitempty" bson:"notTooCloseMinutes,omitempty"`
+	// CrossCampusGapMinutes is the end-to-start travel buffer a student needs between two
+	// exams at DIFFERENT campuses (nil = use the built-in default). See
+	// defaultCrossCampusGapMinutes.
+	CrossCampusGapMinutes *int `json:"crossCampusGapMinutes,omitempty" bson:"crossCampusGapMinutes,omitempty"`
 	// MaxSeatsPerSlot limits COMBINING exams at the same start time: independent exams may
 	// share a start time only while their combined registrations stay within this cap (so a
 	// slot stays roomable). A single exam (or sameSlot unit) is NOT limited by it — every exam

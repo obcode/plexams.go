@@ -153,16 +153,17 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 	}
 
 	input := &model.SemesterConfigInput{
-		From:               data.From.Local(),
-		Until:              data.Until.Local(),
-		StartTimes:         data.StartTimes,
-		ForbiddenDays:      forbiddenDays,
-		MucDaiAllowedTimes: mucDaiAllowedTimes,
-		Emails:             emails,
-		ExamGapMinutes:     data.ExamGapMinutes,
-		TimelagMin:         data.TimelagMin,
-		NotTooCloseMinutes: data.NotTooCloseMinutes,
-		MaxSeatsPerSlot:    data.MaxSeatsPerSlot,
+		From:                  data.From.Local(),
+		Until:                 data.Until.Local(),
+		StartTimes:            data.StartTimes,
+		ForbiddenDays:         forbiddenDays,
+		MucDaiAllowedTimes:    mucDaiAllowedTimes,
+		Emails:                emails,
+		ExamGapMinutes:        data.ExamGapMinutes,
+		TimelagMin:            data.TimelagMin,
+		NotTooCloseMinutes:    data.NotTooCloseMinutes,
+		CrossCampusGapMinutes: data.CrossCampusGapMinutes,
+		MaxSeatsPerSlot:       data.MaxSeatsPerSlot,
 	}
 	if err := validateSemesterConfigInput(input); err != nil {
 		return nil, err
@@ -195,6 +196,16 @@ func notTooCloseMinutesOf(input *model.SemesterConfigInput) int {
 		return *input.NotTooCloseMinutes
 	}
 	return defaultNotTooCloseMinutes
+}
+
+// crossCampusGapMinutesOf returns the effective end-to-start travel buffer (minutes) a
+// student needs between two exams at different campuses: the configured value, or the
+// built-in default when unset/invalid.
+func crossCampusGapMinutesOf(input *model.SemesterConfigInput) int {
+	if input != nil && input.CrossCampusGapMinutes != nil && *input.CrossCampusGapMinutes > 0 {
+		return *input.CrossCampusGapMinutes
+	}
+	return defaultCrossCampusGapMinutes
 }
 
 // maxSeatsPerSlotOf returns the effective per-time seat cap for the Terminplan solver:
@@ -419,19 +430,20 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 	}
 
 	p.semesterConfig = &model.SemesterConfig{
-		Days:               days,
-		Starttimes:         starttimes,
-		Slots:              slots,
-		Emails:             input.Emails,
-		MucDaiAllowedTimes: mucDaiAllowedTimes,
-		MucDaiSlots:        slots,
-		From:               from,
-		Until:              until,
-		ForbiddenSlots:     forbiddenSlots,
-		ExamGapMinutes:     examGapMinutesOf(input),
-		TimelagMin:         timelagMinOf(input),
-		NotTooCloseMinutes: notTooCloseMinutesOf(input),
-		MaxSeatsPerSlot:    maxSeatsPerSlotOf(input),
+		Days:                  days,
+		Starttimes:            starttimes,
+		Slots:                 slots,
+		Emails:                input.Emails,
+		MucDaiAllowedTimes:    mucDaiAllowedTimes,
+		MucDaiSlots:           slots,
+		From:                  from,
+		Until:                 until,
+		ForbiddenSlots:        forbiddenSlots,
+		ExamGapMinutes:        examGapMinutesOf(input),
+		TimelagMin:            timelagMinOf(input),
+		NotTooCloseMinutes:    notTooCloseMinutesOf(input),
+		CrossCampusGapMinutes: crossCampusGapMinutesOf(input),
+		MaxSeatsPerSlot:       maxSeatsPerSlotOf(input),
 	}
 
 	p.deriveMucDaiSlots(input.MucDaiAllowedTimes)

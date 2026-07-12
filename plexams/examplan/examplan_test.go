@@ -124,6 +124,72 @@ func TestSolveRespectsTimeOverlap(t *testing.T) {
 	}
 }
 
+// TestSeatCapExemptsSingleExam pins the per-slot seat-cap semantics: the cap
+// (Slot.Seats = MaxSeatsPerSlot) limits COMBINING exams, but a single exam (or sameSlot
+// unit) is never blocked by it — every exam must be schedulable even with more
+// registrations than the cap, occupying its slot alone. Adding a second exam to a slot that
+// would push the combined total over the cap must stay infeasible.
+func TestSeatCapExemptsSingleExam(t *testing.T) {
+	cap120 := func(n int) []Slot {
+		s := oneDaySlots(n)
+		for i := range s {
+			s[i].Seats = 120
+		}
+		return s
+	}
+
+	t.Run("single over-cap exam is placed alone", func(t *testing.T) {
+		// one slot, cap 120, a single 500-seat exam pinned to it → must be placed.
+		p := NewProblem(cap120(1), []Unit{{ID: 1, Ancodes: []int{1}, Seats: 500, Allowed: []int{0}}}, nil, nil, DefaultWeights())
+		st, _ := Solve(p, fastOpts(), false)
+		if st.SlotOf[0] != 0 {
+			t.Fatalf("single over-cap exam not placed: %v", st.SlotOf)
+		}
+		if vs := p.Registry().HardViolations(st); len(vs) != 0 {
+			t.Errorf("a single over-cap exam must not be a hard violation, got %+v", vs)
+		}
+	})
+
+	t.Run("second exam may not push a slot over the cap", func(t *testing.T) {
+		// one slot only, cap 120: a 120 exam fills it; a 10 exam cannot join (130 > 120) and
+		// stays unplaced — the combined-over-cap situation the planner wants to avoid.
+		units := []Unit{
+			{ID: 1, Ancodes: []int{1}, Seats: 120, Allowed: []int{0}},
+			{ID: 2, Ancodes: []int{2}, Seats: 10, Allowed: []int{0}},
+		}
+		p := NewProblem(cap120(1), units, nil, nil, DefaultWeights())
+		st, _ := Solve(p, fastOpts(), false)
+		placed := 0
+		for _, s := range st.SlotOf {
+			if s >= 0 {
+				placed++
+			}
+		}
+		if placed != 1 {
+			t.Fatalf("expected exactly one of the two exams placed (cap forbids combining), got SlotOf=%v", st.SlotOf)
+		}
+		if vs := p.Registry().HardViolations(st); len(vs) != 0 {
+			t.Errorf("leaving the second exam unplaced must be violation-free, got %+v", vs)
+		}
+	})
+
+	t.Run("two exams within the cap may share when needed", func(t *testing.T) {
+		// one slot, cap 120, two exams 60 + 50 = 110 ≤ 120 → both fit together.
+		units := []Unit{
+			{ID: 1, Ancodes: []int{1}, Seats: 60, Allowed: []int{0}},
+			{ID: 2, Ancodes: []int{2}, Seats: 50, Allowed: []int{0}},
+		}
+		p := NewProblem(cap120(1), units, nil, nil, DefaultWeights())
+		st, _ := Solve(p, fastOpts(), false)
+		if st.SlotOf[0] != 0 || st.SlotOf[1] != 0 {
+			t.Fatalf("two exams within the cap should share the only slot, got %v", st.SlotOf)
+		}
+		if vs := p.Registry().HardViolations(st); len(vs) != 0 {
+			t.Errorf("60+50 within cap 120 must be violation-free, got %+v", vs)
+		}
+	})
+}
+
 func TestSolveRespectsExahmCapacity(t *testing.T) {
 	slots := testSlots()
 	slots[2].ExahmSeats = 10 // only idx2 is an EXaHM slot

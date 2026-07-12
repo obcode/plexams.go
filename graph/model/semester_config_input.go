@@ -31,8 +31,10 @@ type SemesterConfigInput struct {
 	// NotTooCloseMinutes is the threshold (minutes, same day) below which two of a
 	// student's exams are flagged "too close" (nil = use the built-in default 120).
 	NotTooCloseMinutes *int `json:"notTooCloseMinutes,omitempty" bson:"notTooCloseMinutes,omitempty"`
-	// MaxSeatsPerSlot caps how many students may be examined at the same start time
-	// (the configurable per-time capacity used by the Terminplan solver). nil or 0 =
-	// no limit. With finer start times this keeps overlapping exams roomable.
+	// MaxSeatsPerSlot limits COMBINING exams at the same start time: independent exams may
+	// share a start time only while their combined registrations stay within this cap (so a
+	// slot stays roomable). A single exam (or sameSlot unit) is NOT limited by it — every exam
+	// must be schedulable, even with more registrations than the cap, in which case it occupies
+	// its slot alone. nil or 0 = no limit.
 	MaxSeatsPerSlot *int `json:"maxSeatsPerSlot,omitempty" bson:"maxSeatsPerSlot,omitempty"`
 }

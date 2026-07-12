@@ -232,13 +232,16 @@ type capacityC struct{}
 
 func (capacityC) Info() optimize.Info {
 	return optimize.Info{Name: "capacity", Title: "Slot-Kapazität", Kind: optimize.KindHard, Tier: 4,
-		Description: "Pro Slot: EXaHM-Prüfungen ≤ gebuchte EXaHM-Sitze, alle Prüfungen ≤ Gesamt-Raumkapazität."}
+		Description: "Pro Slot: EXaHM-Prüfungen ≤ gebuchte EXaHM-Sitze; beim Zusammenlegen mehrerer Prüfungen ≤ Gesamt-Raumkapazität (eine einzelne Prüfung darf die Kapazität überschreiten und belegt den Slot dann allein)."}
 }
 func (capacityC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
 	for s := range st.P.Slots {
-		if cap := st.P.Slots[s].Seats; cap > 0 && st.slotSeats[s] > cap {
-			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über Gesamt-Kapazität", Refs: st.P.slotDayRef(s)})
+		// The general seat cap limits COMBINING exams only: a single exam (or sameSlot unit)
+		// may exceed it and occupy the slot alone, so an over-cap slot is a violation only
+		// when it holds two or more seat-consuming exams (see feasible/canSwap).
+		if cap := st.P.Slots[s].Seats; cap > 0 && st.slotSeats[s] > cap && st.seatUnitsInSlot(s) >= 2 {
+			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über Gesamt-Kapazität (Zusammenlegung)", Refs: st.P.slotDayRef(s)})
 		}
 		if st.slotExahm[s] > st.P.Slots[s].ExahmSeats {
 			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über EXaHM-Kapazität", Refs: st.P.slotDayRef(s)})

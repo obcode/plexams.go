@@ -103,6 +103,20 @@ func (st *State) setPhysical(u, s int) {
 	}
 }
 
+// seatUnitsInSlot counts the seat-consuming exams (Units[u].Seats > 0) currently placed in
+// slot s. Used by the general-capacity check to tell a single over-cap exam (allowed, occupies
+// the slot alone) from an over-cap COMBINATION (a violation). Only called for the rare
+// over-cap slots during validation, so the O(units) scan is cheap.
+func (st *State) seatUnitsInSlot(s int) int {
+	n := 0
+	for u := range st.P.Units {
+		if st.SlotOf[u] == s && st.P.Units[u].Seats > 0 {
+			n++
+		}
+	}
+	return n
+}
+
 // initCost computes the running cost totals and per-student penalties from scratch;
 // call once after the constructive start, before annealing.
 func (st *State) initCost() {
@@ -329,7 +343,13 @@ func (st *State) feasible(u, s int) bool {
 		}
 	}
 	seats := p.Units[u].Seats
-	if cap := p.Slots[s].Seats; cap > 0 && st.slotSeats[s]+seats > cap {
+	// General per-slot seat cap (MaxSeatsPerSlot): a SINGLE exam (or sameSlot unit) is never
+	// blocked by it — every exam must be schedulable, even with more registrations than the
+	// cap (it then occupies its slot alone). The cap only limits COMBINING exams: u may join
+	// a slot that already holds seats of ours only if the combined total stays within the cap.
+	// slotSeats counts only our seats (foreign obstacles are 0), so slotSeats == 0 means u
+	// would be the sole seat-consuming exam and is admitted at any size.
+	if cap := p.Slots[s].Seats; cap > 0 && st.slotSeats[s] > 0 && st.slotSeats[s]+seats > cap {
 		return false
 	}
 	// EXaHM exams may only go where enough EXaHM seats are booked; 0 booked means
@@ -376,12 +396,16 @@ func (st *State) canSwap(u, v int) bool {
 			}
 		}
 	}
+	// General per-slot seat cap only limits COMBINING exams (see feasible): a slot that ends
+	// up with a single seat-consuming exam is exempt at any size. A swap keeps each slot's
+	// exam count, so the destination stays single-exam iff the unit leaving was its only
+	// seat-consumer (slotSeats == that unit's seats; foreign obstacles contribute 0).
 	su2 := st.slotSeats[sv] - p.Units[v].Seats + p.Units[u].Seats
-	if cap := p.Slots[sv].Seats; cap > 0 && su2 > cap {
+	if cap := p.Slots[sv].Seats; cap > 0 && st.slotSeats[sv] != p.Units[v].Seats && su2 > cap {
 		return false
 	}
 	sv2 := st.slotSeats[su] - p.Units[u].Seats + p.Units[v].Seats
-	if cap := p.Slots[su].Seats; cap > 0 && sv2 > cap {
+	if cap := p.Slots[su].Seats; cap > 0 && st.slotSeats[su] != p.Units[u].Seats && sv2 > cap {
 		return false
 	}
 	// Swapping a unit whose extended Nachlauf overruns into other slots would have to move

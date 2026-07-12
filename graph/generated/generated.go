@@ -456,7 +456,10 @@ type ComplexityRoot struct {
 		Iterations              func(childComplexity int) int
 		MaxSpanHours            func(childComplexity int) int
 		PreplanCapacityFactor   func(childComplexity int) int
+		SlotTimeEnforcement     func(childComplexity int) int
+		SlotTimeGradientWeight  func(childComplexity int) int
 		SlotTimeMode            func(childComplexity int) int
+		SlotTimeSummerLatest    func(childComplexity int) int
 		SlotTimeWeight          func(childComplexity int) int
 		SlotTimeWinterEarliest  func(childComplexity int) int
 		StartTemp               func(childComplexity int) int
@@ -3717,12 +3720,33 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.GenerationConfig.PreplanCapacityFactor(childComplexity), true
 
+	case "GenerationConfig.slotTimeEnforcement":
+		if e.complexity.GenerationConfig.SlotTimeEnforcement == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.SlotTimeEnforcement(childComplexity), true
+
+	case "GenerationConfig.slotTimeGradientWeight":
+		if e.complexity.GenerationConfig.SlotTimeGradientWeight == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.SlotTimeGradientWeight(childComplexity), true
+
 	case "GenerationConfig.slotTimeMode":
 		if e.complexity.GenerationConfig.SlotTimeMode == nil {
 			break
 		}
 
 		return e.complexity.GenerationConfig.SlotTimeMode(childComplexity), true
+
+	case "GenerationConfig.slotTimeSummerLatest":
+		if e.complexity.GenerationConfig.SlotTimeSummerLatest == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.SlotTimeSummerLatest(childComplexity), true
 
 	case "GenerationConfig.slotTimeWeight":
 		if e.complexity.GenerationConfig.SlotTimeWeight == nil {
@@ -11154,16 +11178,29 @@ extend type Mutation {
 }
 
 """
-When the exam-schedule generator (Terminplan) applies the start-time soft constraint, and
-which way. AUTO follows the semester (winter → avoid early starts before the morning limit;
-summer → prefer early starts, the later the worse, weighted by registrations so large exams
-go first); WINTER/SUMMER force one variant (for testing); OFF disables it. Default AUTO.
+When the exam-schedule generator (Terminplan) applies the start-time window constraint, and
+which way. AUTO follows the semester (winter → exams must not start before the morning limit,
+e.g. 10:00; summer → exams must not start after the afternoon limit, e.g. 14:00, because the
+non-climatised rooms get too hot); WINTER/SUMMER force one variant (for testing); OFF disables
+it. Booked, climate-controlled T-building rooms (EXaHM/SEB) are always exempt. Default AUTO.
 """
 enum SlotTimeConstraintMode {
   AUTO
   WINTER
   SUMMER
   OFF
+}
+
+"""
+How strictly the start-time window is enforced. HARD (default): a hard domain restriction —
+a non-exempt exam is never placed outside its window; one that fits nowhere is left UNPLACED
+with a clear reason (the rest of the plan is still written). SOFT: a strong penalty instead —
+the exam may be placed outside the window (deliberate emergency deviation) but is reported as
+a violation. EXaHM/SEB exams (booked T-building rooms) are exempt in both cases.
+"""
+enum SlotTimeConstraintEnforcement {
+  HARD
+  SOFT
 }
 
 type GenerationConfig {
@@ -11181,12 +11218,18 @@ type GenerationConfig {
   weightPreferExamDays: Float!
   weightDistribution: Float!
   weightDaySpan: Float!
-  "Terminplan: whether/how to weight exam start times (default AUTO by semester)."
+  "Terminplan: whether/how the start-time window applies (default AUTO by semester)."
   slotTimeMode: SlotTimeConstraintMode!
-  "Terminplan: start-time weight (penalty per registration, per hour of badness). 0 = use default."
+  "Terminplan: how strictly the window is enforced — HARD (domain restriction, default) or SOFT (penalty)."
+  slotTimeEnforcement: SlotTimeConstraintEnforcement!
+  "Terminplan: SOFT-mode window penalty (per registration, per hour outside the window). Unused in HARD mode. 0 = use default."
   slotTimeWeight: Float!
-  "Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00. Ignored in summer (there earlier is always better)."
+  "Terminplan (winter): exams must not start before this (HH:MM), e.g. 10:00."
   slotTimeWinterEarliest: String!
+  "Terminplan (summer): exams must not start after this (HH:MM), e.g. 14:00 (non-climatised rooms get too hot in the afternoon)."
+  slotTimeSummerLatest: String!
+  "Terminplan (summer): mild 'earlier is better' pull below the cutoff (per registration, per hour later than the day's first slot). 0 = use default."
+  slotTimeGradientWeight: Float!
 
   # --- Terminplan (examplan) solver weights: calibration knobs, seeded with the tuned
   # defaults. Higher = the solver avoids that situation harder. ---
@@ -11235,8 +11278,11 @@ input GenerationConfigInput {
   weightDistribution: Float!
   weightDaySpan: Float!
   slotTimeMode: SlotTimeConstraintMode!
+  slotTimeEnforcement: SlotTimeConstraintEnforcement!
   slotTimeWeight: Float!
   slotTimeWinterEarliest: String!
+  slotTimeSummerLatest: String!
+  slotTimeGradientWeight: Float!
   examAdjacent: Float!
   examSameDay: Float!
   examDayFactor: Float!
@@ -32289,6 +32335,50 @@ func (ec *executionContext) fieldContext_GenerationConfig_slotTimeMode(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _GenerationConfig_slotTimeEnforcement(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_slotTimeEnforcement(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SlotTimeEnforcement, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.SlotTimeConstraintEnforcement)
+	fc.Result = res
+	return ec.marshalNSlotTimeConstraintEnforcement2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotTimeConstraintEnforcement(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_slotTimeEnforcement(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type SlotTimeConstraintEnforcement does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GenerationConfig_slotTimeWeight(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GenerationConfig_slotTimeWeight(ctx, field)
 	if err != nil {
@@ -32372,6 +32462,94 @@ func (ec *executionContext) fieldContext_GenerationConfig_slotTimeWinterEarliest
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_slotTimeSummerLatest(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_slotTimeSummerLatest(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SlotTimeSummerLatest, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_slotTimeSummerLatest(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_slotTimeGradientWeight(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_slotTimeGradientWeight(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SlotTimeGradientWeight, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_slotTimeGradientWeight(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -39997,10 +40175,16 @@ func (ec *executionContext) fieldContext_Mutation_setGenerationConfig(ctx contex
 				return ec.fieldContext_GenerationConfig_weightDaySpan(ctx, field)
 			case "slotTimeMode":
 				return ec.fieldContext_GenerationConfig_slotTimeMode(ctx, field)
+			case "slotTimeEnforcement":
+				return ec.fieldContext_GenerationConfig_slotTimeEnforcement(ctx, field)
 			case "slotTimeWeight":
 				return ec.fieldContext_GenerationConfig_slotTimeWeight(ctx, field)
 			case "slotTimeWinterEarliest":
 				return ec.fieldContext_GenerationConfig_slotTimeWinterEarliest(ctx, field)
+			case "slotTimeSummerLatest":
+				return ec.fieldContext_GenerationConfig_slotTimeSummerLatest(ctx, field)
+			case "slotTimeGradientWeight":
+				return ec.fieldContext_GenerationConfig_slotTimeGradientWeight(ctx, field)
 			case "examAdjacent":
 				return ec.fieldContext_GenerationConfig_examAdjacent(ctx, field)
 			case "examSameDay":
@@ -54737,10 +54921,16 @@ func (ec *executionContext) fieldContext_Query_generationConfig(_ context.Contex
 				return ec.fieldContext_GenerationConfig_weightDaySpan(ctx, field)
 			case "slotTimeMode":
 				return ec.fieldContext_GenerationConfig_slotTimeMode(ctx, field)
+			case "slotTimeEnforcement":
+				return ec.fieldContext_GenerationConfig_slotTimeEnforcement(ctx, field)
 			case "slotTimeWeight":
 				return ec.fieldContext_GenerationConfig_slotTimeWeight(ctx, field)
 			case "slotTimeWinterEarliest":
 				return ec.fieldContext_GenerationConfig_slotTimeWinterEarliest(ctx, field)
+			case "slotTimeSummerLatest":
+				return ec.fieldContext_GenerationConfig_slotTimeSummerLatest(ctx, field)
+			case "slotTimeGradientWeight":
+				return ec.fieldContext_GenerationConfig_slotTimeGradientWeight(ctx, field)
 			case "examAdjacent":
 				return ec.fieldContext_GenerationConfig_examAdjacent(ctx, field)
 			case "examSameDay":
@@ -77523,7 +77713,7 @@ func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"iterations", "startTemp", "endTemp", "toleranceMin", "maxSpanHours", "weightMinuteBalance", "weightBeyondTolerance", "weightOverTargetFactor", "weightCoverage", "weightMaxDays", "weightPreferExamDays", "weightDistribution", "weightDaySpan", "slotTimeMode", "slotTimeWeight", "slotTimeWinterEarliest", "examAdjacent", "examSameDay", "examDayFactor", "examWorstCase", "examRepeatFactor", "examAttract", "examSlotLoad", "examLoadThreshold", "examUnplaced", "examCrossCampus", "examTbauFill", "examHole", "examClosenessFalloffMin", "preplanCapacityFactor"}
+	fieldsInOrder := [...]string{"iterations", "startTemp", "endTemp", "toleranceMin", "maxSpanHours", "weightMinuteBalance", "weightBeyondTolerance", "weightOverTargetFactor", "weightCoverage", "weightMaxDays", "weightPreferExamDays", "weightDistribution", "weightDaySpan", "slotTimeMode", "slotTimeEnforcement", "slotTimeWeight", "slotTimeWinterEarliest", "slotTimeSummerLatest", "slotTimeGradientWeight", "examAdjacent", "examSameDay", "examDayFactor", "examWorstCase", "examRepeatFactor", "examAttract", "examSlotLoad", "examLoadThreshold", "examUnplaced", "examCrossCampus", "examTbauFill", "examHole", "examClosenessFalloffMin", "preplanCapacityFactor"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77628,6 +77818,13 @@ func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Cont
 				return it, err
 			}
 			it.SlotTimeMode = data
+		case "slotTimeEnforcement":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slotTimeEnforcement"))
+			data, err := ec.unmarshalNSlotTimeConstraintEnforcement2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotTimeConstraintEnforcement(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlotTimeEnforcement = data
 		case "slotTimeWeight":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slotTimeWeight"))
 			data, err := ec.unmarshalNFloat2float64(ctx, v)
@@ -77642,6 +77839,20 @@ func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Cont
 				return it, err
 			}
 			it.SlotTimeWinterEarliest = data
+		case "slotTimeSummerLatest":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slotTimeSummerLatest"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlotTimeSummerLatest = data
+		case "slotTimeGradientWeight":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slotTimeGradientWeight"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlotTimeGradientWeight = data
 		case "examAdjacent":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("examAdjacent"))
 			data, err := ec.unmarshalNFloat2float64(ctx, v)
@@ -81186,6 +81397,11 @@ func (ec *executionContext) _GenerationConfig(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "slotTimeEnforcement":
+			out.Values[i] = ec._GenerationConfig_slotTimeEnforcement(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "slotTimeWeight":
 			out.Values[i] = ec._GenerationConfig_slotTimeWeight(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -81193,6 +81409,16 @@ func (ec *executionContext) _GenerationConfig(ctx context.Context, sel ast.Selec
 			}
 		case "slotTimeWinterEarliest":
 			out.Values[i] = ec._GenerationConfig_slotTimeWinterEarliest(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slotTimeSummerLatest":
+			out.Values[i] = ec._GenerationConfig_slotTimeSummerLatest(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slotTimeGradientWeight":
+			out.Values[i] = ec._GenerationConfig_slotTimeGradientWeight(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -95425,6 +95651,16 @@ func (ec *executionContext) marshalNSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgo
 		return graphql.Null
 	}
 	return ec._Slot(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSlotTimeConstraintEnforcement2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotTimeConstraintEnforcement(ctx context.Context, v any) (model.SlotTimeConstraintEnforcement, error) {
+	var res model.SlotTimeConstraintEnforcement
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSlotTimeConstraintEnforcement2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotTimeConstraintEnforcement(ctx context.Context, sel ast.SelectionSet, v model.SlotTimeConstraintEnforcement) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNSlotTimeConstraintMode2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSlotTimeConstraintMode(ctx context.Context, v any) (model.SlotTimeConstraintMode, error) {

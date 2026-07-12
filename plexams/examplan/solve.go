@@ -160,7 +160,7 @@ func addedCost(st *State, u, s int) float64 {
 	if over > 0 {
 		c += p.W.SlotLoad * float64(over) * float64(over)
 	}
-	c += p.timePenalty(seats, s)
+	c += p.timePenalty(u, s)
 	return c
 }
 
@@ -294,7 +294,7 @@ type timeOfDayC struct{ w Weights }
 
 func (c timeOfDayC) Info() optimize.Info {
 	return optimize.Info{Name: "time-of-day", Title: "Tageszeit der Prüfungen", Kind: optimize.KindSoft, Weight: c.w.TimeOfDay, Tier: 32,
-		Description: "Semesterabhängig: im Wintersemester frühe Slots (Beginn vor der Morgen-Grenze, z.B. 08:30) meiden; im Sommersemester möglichst früh beginnen — je später, desto schlechter. Je Anmeldung gewichtet, d.h. große Prüfungen werden nach vorne gezogen. Gebuchte T-Bau-Räume (Phase EXaHM/SEB) sind ausgenommen (im Sommer ganz, im Winter nur ein milder Sog Richtung späterer Beginn)."}
+		Description: "Semesterabhängiges Zeitfenster für den Prüfungsbeginn: im Winter nicht vor der Morgen-Grenze (z.B. 10:00), im Sommer nicht nach der Nachmittags-Grenze (z.B. 14:00, sonst zu heiße Räume); im Sommer zusätzlich ein milder Sog, große Prüfungen früher zu legen. Standardmäßig als harte Domänen-Einschränkung erzwungen (Prüfung sonst ungeplant); optional als Strafe (SOFT), dann sind Abweichungen möglich und werden als Verletzung gemeldet. Gebuchte, klimatisierte T-Bau-Räume (EXaHM/SEB) sind ausgenommen."}
 }
 func (c timeOfDayC) Cost(st *State) (float64, []optimize.Violation) { return timeOfDayCost(st) }
 

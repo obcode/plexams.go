@@ -13,6 +13,7 @@
 package examplan
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -165,6 +166,16 @@ func (p *Problem) tbauPenalty(slotIdx, exahmUsed, sebUsed int) float64 {
 	return p.W.TbauFill * float64(unused)
 }
 
+// TimeWindowMode is the semester behaviour of the start-time window, used only for the
+// solver's violation messages (the numeric penalty comes from TimeSeverity).
+type TimeWindowMode int
+
+const (
+	TimeWindowOff    TimeWindowMode = iota // no window
+	TimeWindowWinter                       // exams must not start before the morning limit
+	TimeWindowSummer                       // exams must not start after the afternoon limit
+)
+
 // SetTimeSeverity installs the per-slot start-time avoidance severity (see
 // Problem.TimeSeverity). len(sev) must equal len(Slots); a shorter/nil slice or a zero
 // W.TimeOfDay simply disables the penalty. Call before Solve.
@@ -172,13 +183,63 @@ func (p *Problem) SetTimeSeverity(sev []float64) {
 	p.TimeSeverity = sev
 }
 
-// timePenalty is the start-time avoidance penalty for placing `seats` students into slot
-// slotIdx: W.TimeOfDay * severity(slot) * seats. slotIdx < 0 (unplaced) costs nothing.
-func (p *Problem) timePenalty(seats, slotIdx int) float64 {
-	if p.W.TimeOfDay == 0 || slotIdx < 0 || slotIdx >= len(p.TimeSeverity) {
+// SetTimeWindow records the semester window (mode + morning/afternoon clock-minute limits)
+// for the violation messages of the time-of-day soft constraint. Purely descriptive — the
+// penalty itself is driven by TimeSeverity/W.TimeOfDay.
+func (p *Problem) SetTimeWindow(mode TimeWindowMode, earliestMin, latestMin int) {
+	p.timeMode = mode
+	p.timeEarliestMin = earliestMin
+	p.timeLatestMin = latestMin
+}
+
+// timeExempt reports whether unit u is exempt from the start-time window: EXaHM/SEB exams
+// run in booked, climate-controlled T-building rooms, so they may sit outside the window.
+func (p *Problem) timeExempt(u int) bool {
+	return p.Units[u].Exahm || p.Units[u].Seb
+}
+
+// timePenalty is the start-time avoidance penalty for placing unit u into slot slotIdx:
+// W.TimeOfDay * severity(slot) * u.seats, or 0 when u is exempt (EXaHM/SEB), unplaced
+// (slotIdx < 0) or the term is off.
+func (p *Problem) timePenalty(u, slotIdx int) float64 {
+	if p.W.TimeOfDay == 0 || slotIdx < 0 || slotIdx >= len(p.TimeSeverity) || p.timeExempt(u) {
 		return 0
 	}
-	return p.W.TimeOfDay * p.TimeSeverity[slotIdx] * float64(seats)
+	return p.W.TimeOfDay * p.TimeSeverity[slotIdx] * float64(p.Units[u].Seats)
+}
+
+// windowBreachMessage is the violation text for an exam placed outside the semester window.
+func (p *Problem) windowBreachMessage() string {
+	switch p.timeMode {
+	case TimeWindowWinter:
+		return "Prüfung beginnt vor " + clockMinutes(p.timeEarliestMin)
+	case TimeWindowSummer:
+		return "Prüfung beginnt nach " + clockMinutes(p.timeLatestMin)
+	}
+	return "Prüfung außerhalb des erlaubten Zeitfensters"
+}
+
+// clockMinutes formats minutes-since-midnight as "HH:MM".
+func clockMinutes(min int) string {
+	return fmt.Sprintf("%02d:%02d", min/60, min%60)
+}
+
+// outsideWindow reports whether slot slotIdx's start time lies outside the semester window
+// (winter: before the morning limit; summer: after the afternoon limit). Used to emit a
+// precise violation only for a genuine window breach (SOFT mode), not for the mild summer
+// gradient inside the window.
+func (p *Problem) outsideWindow(slotIdx int) bool {
+	if slotIdx < 0 || slotIdx >= len(p.Slots) {
+		return false
+	}
+	startMin := p.Slots[slotIdx].Start.Hour()*60 + p.Slots[slotIdx].Start.Minute()
+	switch p.timeMode {
+	case TimeWindowWinter:
+		return startMin < p.timeEarliestMin
+	case TimeWindowSummer:
+		return startMin > p.timeLatestMin
+	}
+	return false
 }
 
 // Problem is the immutable input to the solver.
@@ -195,6 +256,12 @@ type Problem struct {
 	// SetTimeSeverity; combined with W.TimeOfDay and a unit's seats into timePenalty.
 	// nil (or W.TimeOfDay == 0) disables the term.
 	TimeSeverity []float64
+	// timeMode / timeEarliestMin / timeLatestMin describe the semester start-time window
+	// for the violation messages only (winter: start ≥ earliest; summer: start ≤ latest).
+	// Set via SetTimeWindow; the numeric penalty is driven by TimeSeverity.
+	timeMode        TimeWindowMode
+	timeEarliestMin int
+	timeLatestMin   int
 
 	// derived
 	movable        []int

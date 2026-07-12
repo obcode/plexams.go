@@ -512,12 +512,18 @@ type GenerationConfig struct {
 	WeightPreferExamDays   float64 `json:"weightPreferExamDays"`
 	WeightDistribution     float64 `json:"weightDistribution"`
 	WeightDaySpan          float64 `json:"weightDaySpan"`
-	// Terminplan: whether/how to weight exam start times (default AUTO by semester).
+	// Terminplan: whether/how the start-time window applies (default AUTO by semester).
 	SlotTimeMode SlotTimeConstraintMode `json:"slotTimeMode"`
-	// Terminplan: start-time weight (penalty per registration, per hour of badness). 0 = use default.
+	// Terminplan: how strictly the window is enforced — HARD (domain restriction, default) or SOFT (penalty).
+	SlotTimeEnforcement SlotTimeConstraintEnforcement `json:"slotTimeEnforcement"`
+	// Terminplan: SOFT-mode window penalty (per registration, per hour outside the window). Unused in HARD mode. 0 = use default.
 	SlotTimeWeight float64 `json:"slotTimeWeight"`
-	// Terminplan (winter): avoid a start time before this (HH:MM), e.g. 10:00. Ignored in summer (there earlier is always better).
+	// Terminplan (winter): exams must not start before this (HH:MM), e.g. 10:00.
 	SlotTimeWinterEarliest string `json:"slotTimeWinterEarliest"`
+	// Terminplan (summer): exams must not start after this (HH:MM), e.g. 14:00 (non-climatised rooms get too hot in the afternoon).
+	SlotTimeSummerLatest string `json:"slotTimeSummerLatest"`
+	// Terminplan (summer): mild 'earlier is better' pull below the cutoff (per registration, per hour later than the day's first slot). 0 = use default.
+	SlotTimeGradientWeight float64 `json:"slotTimeGradientWeight"`
 	// spread: two exams of a student directly consecutive on the same day (very bad).
 	ExamAdjacent float64 `json:"examAdjacent"`
 	// spread: two exams of a student on the same day but not consecutive.
@@ -549,36 +555,39 @@ type GenerationConfig struct {
 }
 
 type GenerationConfigInput struct {
-	Iterations              int                    `json:"iterations"`
-	StartTemp               float64                `json:"startTemp"`
-	EndTemp                 float64                `json:"endTemp"`
-	ToleranceMin            int                    `json:"toleranceMin"`
-	MaxSpanHours            float64                `json:"maxSpanHours"`
-	WeightMinuteBalance     float64                `json:"weightMinuteBalance"`
-	WeightBeyondTolerance   float64                `json:"weightBeyondTolerance"`
-	WeightOverTargetFactor  float64                `json:"weightOverTargetFactor"`
-	WeightCoverage          float64                `json:"weightCoverage"`
-	WeightMaxDays           float64                `json:"weightMaxDays"`
-	WeightPreferExamDays    float64                `json:"weightPreferExamDays"`
-	WeightDistribution      float64                `json:"weightDistribution"`
-	WeightDaySpan           float64                `json:"weightDaySpan"`
-	SlotTimeMode            SlotTimeConstraintMode `json:"slotTimeMode"`
-	SlotTimeWeight          float64                `json:"slotTimeWeight"`
-	SlotTimeWinterEarliest  string                 `json:"slotTimeWinterEarliest"`
-	ExamAdjacent            float64                `json:"examAdjacent"`
-	ExamSameDay             float64                `json:"examSameDay"`
-	ExamDayFactor           float64                `json:"examDayFactor"`
-	ExamWorstCase           float64                `json:"examWorstCase"`
-	ExamRepeatFactor        float64                `json:"examRepeatFactor"`
-	ExamAttract             float64                `json:"examAttract"`
-	ExamSlotLoad            float64                `json:"examSlotLoad"`
-	ExamLoadThreshold       int                    `json:"examLoadThreshold"`
-	ExamUnplaced            float64                `json:"examUnplaced"`
-	ExamCrossCampus         float64                `json:"examCrossCampus"`
-	ExamTbauFill            float64                `json:"examTbauFill"`
-	ExamHole                float64                `json:"examHole"`
-	ExamClosenessFalloffMin float64                `json:"examClosenessFalloffMin"`
-	PreplanCapacityFactor   float64                `json:"preplanCapacityFactor"`
+	Iterations              int                           `json:"iterations"`
+	StartTemp               float64                       `json:"startTemp"`
+	EndTemp                 float64                       `json:"endTemp"`
+	ToleranceMin            int                           `json:"toleranceMin"`
+	MaxSpanHours            float64                       `json:"maxSpanHours"`
+	WeightMinuteBalance     float64                       `json:"weightMinuteBalance"`
+	WeightBeyondTolerance   float64                       `json:"weightBeyondTolerance"`
+	WeightOverTargetFactor  float64                       `json:"weightOverTargetFactor"`
+	WeightCoverage          float64                       `json:"weightCoverage"`
+	WeightMaxDays           float64                       `json:"weightMaxDays"`
+	WeightPreferExamDays    float64                       `json:"weightPreferExamDays"`
+	WeightDistribution      float64                       `json:"weightDistribution"`
+	WeightDaySpan           float64                       `json:"weightDaySpan"`
+	SlotTimeMode            SlotTimeConstraintMode        `json:"slotTimeMode"`
+	SlotTimeEnforcement     SlotTimeConstraintEnforcement `json:"slotTimeEnforcement"`
+	SlotTimeWeight          float64                       `json:"slotTimeWeight"`
+	SlotTimeWinterEarliest  string                        `json:"slotTimeWinterEarliest"`
+	SlotTimeSummerLatest    string                        `json:"slotTimeSummerLatest"`
+	SlotTimeGradientWeight  float64                       `json:"slotTimeGradientWeight"`
+	ExamAdjacent            float64                       `json:"examAdjacent"`
+	ExamSameDay             float64                       `json:"examSameDay"`
+	ExamDayFactor           float64                       `json:"examDayFactor"`
+	ExamWorstCase           float64                       `json:"examWorstCase"`
+	ExamRepeatFactor        float64                       `json:"examRepeatFactor"`
+	ExamAttract             float64                       `json:"examAttract"`
+	ExamSlotLoad            float64                       `json:"examSlotLoad"`
+	ExamLoadThreshold       int                           `json:"examLoadThreshold"`
+	ExamUnplaced            float64                       `json:"examUnplaced"`
+	ExamCrossCampus         float64                       `json:"examCrossCampus"`
+	ExamTbauFill            float64                       `json:"examTbauFill"`
+	ExamHole                float64                       `json:"examHole"`
+	ExamClosenessFalloffMin float64                       `json:"examClosenessFalloffMin"`
+	PreplanCapacityFactor   float64                       `json:"preplanCapacityFactor"`
 }
 
 type ImportMucDaiResult struct {
@@ -1762,10 +1771,71 @@ func (e RoomRequestType) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// When the exam-schedule generator (Terminplan) applies the start-time soft constraint, and
-// which way. AUTO follows the semester (winter → avoid early starts before the morning limit;
-// summer → prefer early starts, the later the worse, weighted by registrations so large exams
-// go first); WINTER/SUMMER force one variant (for testing); OFF disables it. Default AUTO.
+// How strictly the start-time window is enforced. HARD (default): a hard domain restriction —
+// a non-exempt exam is never placed outside its window; one that fits nowhere is left UNPLACED
+// with a clear reason (the rest of the plan is still written). SOFT: a strong penalty instead —
+// the exam may be placed outside the window (deliberate emergency deviation) but is reported as
+// a violation. EXaHM/SEB exams (booked T-building rooms) are exempt in both cases.
+type SlotTimeConstraintEnforcement string
+
+const (
+	SlotTimeConstraintEnforcementHard SlotTimeConstraintEnforcement = "HARD"
+	SlotTimeConstraintEnforcementSoft SlotTimeConstraintEnforcement = "SOFT"
+)
+
+var AllSlotTimeConstraintEnforcement = []SlotTimeConstraintEnforcement{
+	SlotTimeConstraintEnforcementHard,
+	SlotTimeConstraintEnforcementSoft,
+}
+
+func (e SlotTimeConstraintEnforcement) IsValid() bool {
+	switch e {
+	case SlotTimeConstraintEnforcementHard, SlotTimeConstraintEnforcementSoft:
+		return true
+	}
+	return false
+}
+
+func (e SlotTimeConstraintEnforcement) String() string {
+	return string(e)
+}
+
+func (e *SlotTimeConstraintEnforcement) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SlotTimeConstraintEnforcement(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SlotTimeConstraintEnforcement", str)
+	}
+	return nil
+}
+
+func (e SlotTimeConstraintEnforcement) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SlotTimeConstraintEnforcement) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SlotTimeConstraintEnforcement) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// When the exam-schedule generator (Terminplan) applies the start-time window constraint, and
+// which way. AUTO follows the semester (winter → exams must not start before the morning limit,
+// e.g. 10:00; summer → exams must not start after the afternoon limit, e.g. 14:00, because the
+// non-climatised rooms get too hot); WINTER/SUMMER force one variant (for testing); OFF disables
+// it. Booked, climate-controlled T-building rooms (EXaHM/SEB) are always exempt. Default AUTO.
 type SlotTimeConstraintMode string
 
 const (

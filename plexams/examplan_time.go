@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,17 +11,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Start-time-preference defaults, used when the generation config leaves a field unset (so
-// an older stored config, or a fresh DB, still gets sensible behaviour).
+// Start-time-window defaults, used when the generation config leaves a field unset (so an
+// older stored config, or a fresh DB, still gets sensible behaviour).
 const (
-	defaultSlotTimeWeight         = 2.0     // penalty per registration, per hour of "badness" of the start time
-	defaultSlotTimeWinterEarliest = "10:00" // winter: avoid a start time before this
-	// tbauSlotTimePullFactor: in phase A (EXaHM/SEB into booked T-Bau slots) the booked
-	// rooms are exempt from the constraint — in summer entirely (they are climate-
-	// controlled, so we go purely by the booking). In winter we still apply a gentle pull
-	// towards later starts, using this fraction of the normal weight, so an 08:30 booking
-	// is left empty when possible (and can then be dropped in favour of R-rooms).
-	tbauSlotTimePullFactor = 0.4
+	// defaultSlotTimeWeight is the SOFT-mode window penalty (per registration, per hour a
+	// non-exempt exam starts outside its window). High so that even in SOFT mode the solver
+	// exhausts every in-window option before deliberately deviating; below Unplaced (1e6),
+	// so a placement-with-deviation still beats leaving the exam unplaced.
+	defaultSlotTimeWeight = 20000.0
+	// defaultSlotTimeGradientWeight is the mild "earlier is better" summer pull below the
+	// cutoff (per registration, per hour later than the day's first slot). Small — it only
+	// breaks ties inside the allowed window and pulls the large exams to the front.
+	defaultSlotTimeGradientWeight = 2.0
+	defaultSlotTimeWinterEarliest = "10:00" // winter: exams must not start before this
+	defaultSlotTimeSummerLatest   = "14:00" // summer: exams must not start after this
 )
 
 // slotTimeMode is the resolved (semester-independent) behaviour of the start-time
@@ -28,10 +32,25 @@ const (
 type slotTimeMode int
 
 const (
-	slotTimeOff    slotTimeMode = iota // no penalty
-	slotTimeWinter                     // avoid early starts (before the morning limit) — threshold
-	slotTimeSummer                     // prefer early starts (the later, the worse) — monotonic
+	slotTimeOff    slotTimeMode = iota // no window
+	slotTimeWinter                     // exams must not start before the morning limit
+	slotTimeSummer                     // exams must not start after the afternoon limit (+ mild early pull)
 )
+
+// slotTimeSpec is the resolved start-time constraint for one generation run: the per-slot
+// soft severity and its scalar weight (for the solver's TimeOfDay term), plus, when the
+// window is enforced HARD, the per-slot "outside the window" flags used to restrict each
+// non-exempt exam's slot domain. mode/earliest/latest are carried for the solver's
+// violation messages. A zero weight (and nil forbidden) disables the whole term.
+type slotTimeSpec struct {
+	severity    []float64               // per-slot soft severity (hours of badness)
+	weight      float64                 // scalar TimeOfDay weight; 0 = term off
+	hard        bool                    // true: apply the window as a domain restriction
+	forbidden   []bool                  // per-slot: start lies outside the window (only when hard)
+	mode        examplan.TimeWindowMode // off/winter/summer, for reporting
+	earliestMin int                     // winter morning limit (clock minutes)
+	latestMin   int                     // summer afternoon limit (clock minutes)
+}
 
 // isSummerSemester reports whether the current semester is a summer semester (SS). The
 // semester string is like "2026 SS" (runtime) or "2026-SS" (create form) — both end in
@@ -58,74 +77,132 @@ func (p *Plexams) resolveSlotTimeMode(mode model.SlotTimeConstraintMode) slotTim
 	}
 }
 
-// slotTimeSeverity computes the per-slot start-time severity (hours of "badness" of the
-// slot's start time) and the weight to use, honouring the phase-A T-Bau exception:
-//   - phase B (general schedule): full weight; winter avoids early starts (threshold before
-//     the morning limit), summer prefers early starts (monotonic — the later, the worse).
-//   - phase A (booked T-Bau EXaHM/SEB): summer/off → no penalty (go by the booking); winter
-//     → a gentle pull (reduced weight) towards later starts so an early booking is left empty
-//     when possible.
-//
-// A nil severity or a zero weight disables the term.
-func (p *Plexams) slotTimeSeverity(ctx context.Context, slots []examplan.Slot, roomPhase bool) ([]float64, float64) {
+// slotTimeSpec resolves the start-time constraint for this run from the generation config
+// and the run's slots. EXaHM/SEB exemption is handled per-unit in the solver (and the
+// caller skips exempt units when applying the HARD domain restriction), so it is not baked
+// into the per-slot arrays here.
+func (p *Plexams) slotTimeSpec(ctx context.Context, slots []examplan.Slot) slotTimeSpec {
 	cfg, err := p.GenerationConfig(ctx)
 	if err != nil {
-		log.Warn().Err(err).Msg("cannot read generation config; start-time preference disabled for this run")
-		return nil, 0
+		log.Warn().Err(err).Msg("cannot read generation config; start-time window disabled for this run")
+		return slotTimeSpec{}
 	}
-	weight := cfg.SlotTimeWeight
-	if weight <= 0 {
-		weight = defaultSlotTimeWeight
+	windowWeight := cfg.SlotTimeWeight
+	if windowWeight <= 0 {
+		windowWeight = defaultSlotTimeWeight
 	}
-	return computeSlotTimeSeverity(
-		p.resolveSlotTimeMode(cfg.SlotTimeMode), weight,
+	gradientWeight := cfg.SlotTimeGradientWeight
+	if gradientWeight <= 0 {
+		gradientWeight = defaultSlotTimeGradientWeight
+	}
+	hard := cfg.SlotTimeEnforcement != model.SlotTimeConstraintEnforcementSoft // default HARD
+	return computeSlotTimeSpec(
+		p.resolveSlotTimeMode(cfg.SlotTimeMode), hard, windowWeight, gradientWeight,
 		parseDayMinutes(cfg.SlotTimeWinterEarliest, defaultSlotTimeWinterEarliest),
-		slots, roomPhase)
+		parseDayMinutes(cfg.SlotTimeSummerLatest, defaultSlotTimeSummerLatest),
+		slots)
 }
 
-// computeSlotTimeSeverity is the pure core of slotTimeSeverity (no config/DB): it turns a
-// resolved mode, weight and the winter morning limit (minutes since midnight) into the
-// per-slot severity and the effective weight, applying the phase-A T-Bau exception.
+// computeSlotTimeSpec is the pure core of slotTimeSpec (no config/DB): it turns the resolved
+// mode, enforcement and window limits into the per-slot severity, the scalar weight and the
+// per-slot "outside the window" flags.
 //
-//   - winter: threshold — a start before winterEarliestMin is penalized by the hours it is
-//     too early (later slots are all equally fine).
-//   - summer: monotonic — every start is penalized by the hours it is later than the day's
-//     earliest possible start, so earlier is always strictly better. Combined with the
-//     per-registration weighting in timePenalty this pulls the LARGE exams to the front.
-func computeSlotTimeSeverity(mode slotTimeMode, weight float64, winterEarliestMin int, slots []examplan.Slot, roomPhase bool) ([]float64, float64) {
-	if mode == slotTimeOff || weight <= 0 || len(slots) == 0 {
-		return nil, 0
+//   - winter: the window is [earliestMin, ∞) — a start before earliestMin is outside it.
+//   - summer: the window is (-∞, latestMin] — a start after latestMin is outside it; within
+//     the window a mild gradient (hours later than the day's first slot) pulls the large
+//     exams to the front.
+//
+// HARD: the window is a domain restriction (forbidden[s] = outside), so the solver only sees
+// the mild gradient (winter → none). SOFT: no domain restriction (forbidden nil); the window
+// is a strong penalty folded into the severity together with the mild gradient, both driven
+// by the single scalar weight.
+func computeSlotTimeSpec(mode slotTimeMode, hard bool, windowWeight, gradientWeight float64, earliestMin, latestMin int, slots []examplan.Slot) slotTimeSpec {
+	if mode == slotTimeOff || len(slots) == 0 {
+		return slotTimeSpec{}
 	}
-	if roomPhase {
-		// T-Bau exception (booked EXaHM/SEB rooms): only the winter pull survives, softly;
-		// in summer the booking decides (climate-controlled), so no penalty at all.
-		if mode != slotTimeWinter {
-			return nil, 0
-		}
-		weight *= tbauSlotTimePullFactor
-	}
-	// earliest start time of day (clock minutes) — the reference for the summer gradient.
+	// earliest start of day (clock minutes) — the reference for the summer gradient. All
+	// exam days share the same slot grid, so a single global minimum is each day's minimum.
 	earliestStart := 24 * 60
 	for _, s := range slots {
 		if m := s.Start.Hour()*60 + s.Start.Minute(); m < earliestStart {
 			earliestStart = m
 		}
 	}
-	sev := make([]float64, len(slots))
+	windowHours := make([]float64, len(slots))
+	gradientHours := make([]float64, len(slots))
 	for i, s := range slots {
 		startMin := s.Start.Hour()*60 + s.Start.Minute()
-		outside := 0
 		switch mode {
 		case slotTimeWinter:
-			outside = winterEarliestMin - startMin // start before the morning limit
+			if d := earliestMin - startMin; d > 0 {
+				windowHours[i] = float64(d) / 60.0
+			}
 		case slotTimeSummer:
-			outside = startMin - earliestStart // the later the start, the worse
-		}
-		if outside > 0 {
-			sev[i] = float64(outside) / 60.0
+			if d := startMin - latestMin; d > 0 {
+				windowHours[i] = float64(d) / 60.0
+			}
+			if d := startMin - earliestStart; d > 0 {
+				gradientHours[i] = float64(d) / 60.0
+			}
 		}
 	}
-	return sev, weight
+
+	spec := slotTimeSpec{hard: hard, earliestMin: earliestMin, latestMin: latestMin}
+	switch mode {
+	case slotTimeWinter:
+		spec.mode = examplan.TimeWindowWinter
+	case slotTimeSummer:
+		spec.mode = examplan.TimeWindowSummer
+	}
+
+	if hard {
+		// window handled by the domain restriction; the solver only sees the mild gradient.
+		spec.forbidden = make([]bool, len(slots))
+		hasSeverity := false
+		for i := range slots {
+			spec.forbidden[i] = windowHours[i] > 0
+			if gradientHours[i] > 0 {
+				hasSeverity = true
+			}
+		}
+		if hasSeverity && gradientWeight > 0 {
+			spec.severity = gradientHours
+			spec.weight = gradientWeight
+		}
+		return spec
+	}
+
+	// SOFT: no domain restriction; fold the (strong) window penalty and the (mild) gradient
+	// into one severity array driven by the single window weight.
+	sev := make([]float64, len(slots))
+	ratio := 0.0
+	if windowWeight > 0 {
+		ratio = gradientWeight / windowWeight
+	}
+	any := false
+	for i := range slots {
+		sev[i] = windowHours[i] + ratio*gradientHours[i]
+		if sev[i] > 0 {
+			any = true
+		}
+	}
+	if any && windowWeight > 0 {
+		spec.severity = sev
+		spec.weight = windowWeight
+	}
+	return spec
+}
+
+// timeWindowBoundText describes the active window bound for an unplaceable-reason message,
+// e.g. "nicht vor 10:00" (winter) or "nicht nach 14:00" (summer).
+func timeWindowBoundText(spec slotTimeSpec) string {
+	switch spec.mode {
+	case examplan.TimeWindowWinter:
+		return fmt.Sprintf("nicht vor %02d:%02d", spec.earliestMin/60, spec.earliestMin%60)
+	case examplan.TimeWindowSummer:
+		return fmt.Sprintf("nicht nach %02d:%02d", spec.latestMin/60, spec.latestMin%60)
+	}
+	return "Zeitfenster"
 }
 
 // parseDayMinutes parses an "HH:MM" time of day into minutes since midnight, falling back

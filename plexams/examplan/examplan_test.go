@@ -650,6 +650,30 @@ func TestTimeOfDayAvoidsPenalizedSlots(t *testing.T) {
 	}
 }
 
+// TestTimeExemptForExahmSeb: EXaHM/SEB exams run in booked, climate-controlled T-Bau rooms
+// and are exempt from the start-time window — they incur no time penalty even in a fully
+// penalized slot, while a regular exam is penalized.
+func TestTimeExemptForExahmSeb(t *testing.T) {
+	units := []Unit{
+		{ID: 1, Ancodes: []int{1}, Seats: 50},              // regular → penalized
+		{ID: 2, Ancodes: []int{2}, Seats: 50, Exahm: true}, // EXaHM → exempt
+		{ID: 3, Ancodes: []int{3}, Seats: 50, Seb: true},   // SEB → exempt
+	}
+	w := DefaultWeights()
+	w.TimeOfDay = 100
+	p := NewProblem(testSlots(), units, nil, nil, w)
+	p.SetTimeSeverity([]float64{1.5, 1.5, 1.5, 1.5}) // every slot outside the window
+	if got := p.timePenalty(0, 0); got <= 0 {
+		t.Errorf("regular exam should be penalized in an out-of-window slot, got %v", got)
+	}
+	if got := p.timePenalty(1, 0); got != 0 {
+		t.Errorf("EXaHM exam must be exempt from the start-time window, got %v", got)
+	}
+	if got := p.timePenalty(2, 0); got != 0 {
+		t.Errorf("SEB exam must be exempt from the start-time window, got %v", got)
+	}
+}
+
 // TestTimeOfDayPullsLargeExamsEarlier: summer "earlier is better" (monotonic severity,
 // per-seat weighted) — two conflicting exams that cannot share a slot; the LARGER one must
 // take the earlier slot.

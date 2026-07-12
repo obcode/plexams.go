@@ -147,7 +147,7 @@ func (st *State) initCost() {
 	st.timeTotal = 0
 	for u := range p.Units {
 		if s := st.SlotOf[u]; s >= 0 {
-			st.timeTotal += p.timePenalty(p.Units[u].Seats, s)
+			st.timeTotal += p.timePenalty(u, s)
 		}
 	}
 	st.nUnplaced = 0
@@ -255,8 +255,7 @@ func (st *State) moveUnit(u, newSlot int) func() {
 	savedUnplaced := st.nUnplaced
 
 	// start-time avoidance delta: depends only on the moved unit's slot (and its seats)
-	uSeats := p.Units[u].Seats
-	st.timeTotal += p.timePenalty(uSeats, newSlot) - p.timePenalty(uSeats, old)
+	st.timeTotal += p.timePenalty(u, newSlot) - p.timePenalty(u, old)
 
 	// slot-load + T-building-fill deltas over the (at most two) touched slots
 	loadBefore, fillBefore := 0.0, 0.0
@@ -634,8 +633,10 @@ func holeCost(st *State) (float64, []optimize.Violation) {
 	return total, vs
 }
 
-// timeOfDayCost sums the start-time avoidance penalty over all placed units and reports
-// each unit sitting in a penalized slot (start time outside the wanted window).
+// timeOfDayCost sums the start-time avoidance penalty over all placed units and reports a
+// violation for each unit that genuinely sits OUTSIDE the semester window (a deliberate
+// SOFT-mode deviation). The mild in-window summer gradient contributes to the cost but is
+// not reported as a violation (it is a preference, not a breach).
 func timeOfDayCost(st *State) (float64, []optimize.Violation) {
 	p := st.P
 	if p.W.TimeOfDay == 0 {
@@ -648,11 +649,13 @@ func timeOfDayCost(st *State) (float64, []optimize.Violation) {
 		if s < 0 {
 			continue
 		}
-		c := p.timePenalty(p.Units[u].Seats, s)
-		if c > 0 {
-			total += c
-			vs = append(vs, optimize.Violation{Constraint: "time-of-day", Message: "Prüfung in ungünstiger Tageszeit",
-				Refs: p.slotDayRef(s)})
+		c := p.timePenalty(u, s)
+		if c <= 0 {
+			continue
+		}
+		total += c
+		if p.outsideWindow(s) {
+			vs = append(vs, optimize.Violation{Constraint: "time-of-day", Message: p.windowBreachMessage(), Refs: p.slotDayRef(s)})
 		}
 	}
 	return total, vs

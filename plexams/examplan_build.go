@@ -62,6 +62,8 @@ type UnplacedExamReason struct {
 const (
 	unplaceableNoMucDaiSlot   = "keine passende MUC.DAI-Zeit (Fachtermine ∩ MUC.DAI-Zeiten leer)"
 	unplaceableNoExahmBooking = "keine EXaHM/SEB-Buchung deckt das Prüfungsfenster (Prüfungsdauer + Puffer)"
+	// %s is filled with the concrete window bound (e.g. "nicht vor 10:00" / "nicht nach 14:00").
+	unplaceableOutsideTimeWindow = "kein erlaubter Slot im Zeitfenster (%s); ggf. Enforcement auf SOFT stellen"
 )
 
 // examPlanBuildInfo carries diagnostics from problem construction that the caller surfaces in
@@ -429,10 +431,13 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		w.SlotLoad = 0
 		w.Hole = 0
 	}
-	// start-time avoidance (semester-dependent soft constraint): compute the per-slot
-	// severity and the weight, honouring the T-Bau exception in phase A.
-	timeSeverity, timeWeight := p.slotTimeSeverity(ctx, slots, roomPhase)
-	w.TimeOfDay = timeWeight
+	// start-time window (semester-dependent): resolve the per-slot soft severity, the weight
+	// and — for HARD enforcement — the per-slot "outside the window" flags. EXaHM/SEB exams
+	// are exempt (climate-controlled T-Bau rooms) and are handled per-unit in the solver /
+	// skipped by the HARD domain filter below; in phase A every movable exam is EXaHM/SEB, so
+	// the window is inert there.
+	timeSpec := p.slotTimeSpec(ctx, slots)
+	w.TimeOfDay = timeSpec.weight
 	students := make([]examplan.Student, 0, len(studentsRaw))
 	for _, s := range studentsRaw {
 		seen := make(map[int]bool)
@@ -644,6 +649,52 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 			Msg("EXaHM exams with NTA students — book an NTA room at room planning (not gated here)")
 	}
 
+	// Start-time window (HARD enforcement): restrict every movable, NON-exempt exam to the
+	// slots inside its semester window (winter: start ≥ earliest; summer: start ≤ latest).
+	// EXaHM/SEB exams are exempt (climate-controlled T-Bau rooms); in phase A every movable
+	// exam is EXaHM/SEB, so this loop is a no-op there. A unit left with no in-window slot
+	// gets the unplaceable sentinel and is reported as unplaced (the rest of the plan is still
+	// written). SOFT enforcement sets timeSpec.hard = false and skips this entirely (the
+	// window is then a solver penalty instead). Same shape as the EXaHM-window filter above.
+	if timeSpec.hard && len(timeSpec.forbidden) == len(slots) {
+		windowUnplaceable := make([]int, 0)
+		for u := range units {
+			if units[u].Fixed || units[u].Exahm || units[u].Seb {
+				continue
+			}
+			base := units[u].Allowed
+			if len(base) == 0 {
+				base = allSlotIdx // empty Allowed means "all slots"; make it explicit before filtering
+			}
+			hadRealSlots := false
+			inWindow := make([]int, 0, len(base))
+			for _, idx := range base {
+				if idx < 0 || idx >= len(slots) {
+					continue
+				}
+				hadRealSlots = true
+				if !timeSpec.forbidden[idx] {
+					inWindow = append(inWindow, idx)
+				}
+			}
+			if len(inWindow) == 0 {
+				inWindow = []int{-1} // no in-window slot → unplaceable (reported as unplaced)
+				if hadRealSlots {
+					windowUnplaceable = append(windowUnplaceable, units[u].ID)
+					for _, a := range units[u].Ancodes {
+						unplaceableReason[a] = fmt.Sprintf(unplaceableOutsideTimeWindow, timeWindowBoundText(timeSpec))
+					}
+				}
+			}
+			units[u].Allowed = inWindow
+		}
+		if len(windowUnplaceable) > 0 {
+			sort.Ints(windowUnplaceable)
+			log.Warn().Ints("ancodes", windowUnplaceable).Int("count", len(windowUnplaceable)).
+				Msg("exams have no slot inside the start-time window — left unplaced (set enforcement to SOFT to override)")
+		}
+	}
+
 	// Room overrun (time-based): an EXaHM exam with an extended Nachlauf keeps its booked
 	// T-building rooms occupied past its own start time; the later slots whose exam window
 	// it reaches must count it against their booked EXaHM seats too. Compute, per such unit
@@ -679,7 +730,8 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 	}
 
 	prob := examplan.NewProblem(slots, units, students, attract, w)
-	prob.SetTimeSeverity(timeSeverity)
+	prob.SetTimeSeverity(timeSpec.severity)
+	prob.SetTimeWindow(timeSpec.mode, timeSpec.earliestMin, timeSpec.latestMin)
 	prob.SetHardSeparations(hardSep)
 	prob.SetOverrunTargets(overrun)
 	return prob, &examPlanBuildInfo{exahmNtaAncodes: exahmWithNTA, unplaceableReason: unplaceableReason}, nil

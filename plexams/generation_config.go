@@ -81,11 +81,20 @@ func fillSlotTimeDefaults(cfg *model.GenerationConfig) {
 	if cfg.SlotTimeMode == "" {
 		cfg.SlotTimeMode = model.SlotTimeConstraintModeAuto
 	}
+	if cfg.SlotTimeEnforcement == "" {
+		cfg.SlotTimeEnforcement = model.SlotTimeConstraintEnforcementHard
+	}
 	if cfg.SlotTimeWeight == 0 {
 		cfg.SlotTimeWeight = defaultSlotTimeWeight
 	}
+	if cfg.SlotTimeGradientWeight == 0 {
+		cfg.SlotTimeGradientWeight = defaultSlotTimeGradientWeight
+	}
 	if cfg.SlotTimeWinterEarliest == "" {
 		cfg.SlotTimeWinterEarliest = defaultSlotTimeWinterEarliest
+	}
+	if cfg.SlotTimeSummerLatest == "" {
+		cfg.SlotTimeSummerLatest = defaultSlotTimeSummerLatest
 	}
 }
 
@@ -118,8 +127,11 @@ func defaultGenerationConfig() *model.GenerationConfig {
 		WeightDistribution:     w.Distribution,
 		WeightDaySpan:          w.DaySpan,
 		SlotTimeMode:           model.SlotTimeConstraintModeAuto,
+		SlotTimeEnforcement:    model.SlotTimeConstraintEnforcementHard,
 		SlotTimeWeight:         defaultSlotTimeWeight,
+		SlotTimeGradientWeight: defaultSlotTimeGradientWeight,
 		SlotTimeWinterEarliest: defaultSlotTimeWinterEarliest,
+		SlotTimeSummerLatest:   defaultSlotTimeSummerLatest,
 	}
 	fillExamWeightDefaults(cfg) // seed the examplan/preplan solver weights from the tuned defaults
 

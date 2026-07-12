@@ -1,45 +1,48 @@
 ---
 name: slot-time-avoidance
-description: Terminplan soft constraint avoiding early (WS) / late (SS) start times; AUTO-by-semester toggle in GenerationConfig; T-Bau phase-A exception.
+description: Terminplan start-time window — winter no-early / summer no-late, HARD-by-default (domain restriction) with SOFT override; EXaHM/SEB exempt.
 metadata:
   node_type: memory
   type: project
   originSessionId: 45634ece-9b26-4445-8ed6-d852d423160d
 ---
 
-Soft constraint in the Terminplan SA solver ([[terminplan-generator-design]]) that weights exam
-**start times** (Beginn-Uhrzeit, not slot number), semester-dependent:
-- **Winter**: threshold — avoid starts before ~10:00 (08:30). Later slots all equally fine.
-- **Summer**: monotonic — the later the start, the worse, so **earlier is always better**;
-  size-weighted (per registration) so LARGE exams get pulled to the front. (Replaced the older
-  "avoid after 13:00" threshold on 2026-07-06 per user: "große Prüfungen früh besser als spät".)
+Semester-dependent **start-time window** in the Terminplan SA solver ([[terminplan-generator-design]]),
+weighting exam **start times** (Beginn-Uhrzeit). Recalibrated 2026-07-12 from the old soft-only design
+to a hard-by-default window:
 
-**Why:** early slots in winter are unpopular; in summer afternoons are hot, and a big exam early
-spares more students. User plans with ~15 instead of 10 days to leave slack.
+- **Winter**: exams must **not start before** a limit (default **10:00**, `slotTimeWinterEarliest`).
+- **Summer**: exams must **not start after** a limit (default **14:00**, `slotTimeSummerLatest`) —
+  non-climatised rooms get too hot in the afternoon — **plus** a mild "earlier is better" gradient
+  below the cutoff (`slotTimeGradientWeight`, default 2.0), size-weighted so LARGE exams go first.
+  NB: the summer rule is on the **start time** (user chose start ≤ cutoff, NOT end-of-duration), so it
+  stays per-slot / duration-independent.
 
-**How it works (backend, on `main` as of 2026-07-06):**
-- `examplan`: `Weights.TimeOfDay` + `Problem.TimeSeverity` (per-slot severity, hours of badness)
-  + `timePenalty(seats,slot)=TimeOfDay*severity*seats`; incremental `timeTotal` in `State`; soft
-  constraint `timeOfDayC` in `solve.go`. Per-seat weighting = student impact.
-- `plexams/examplan_time.go`: `slotTimeSeverity` (config→severity+weight) + pure
-  `computeSlotTimeSeverity` (winter=threshold, summer=monotonic from earliest start);
-  `resolveSlotTimeMode` (AUTO follows semester via `isSummerSemester` = suffix "SS"); wired in
-  `buildExamPlanProblem`.
-- Config in the **global** `GenerationConfig` (mutation `setGenerationConfig`): `slotTimeMode`
-  (enum AUTO/WINTER/SUMMER/OFF, default AUTO), `slotTimeWeight` (default **2.0**, per reg/hour),
-  `slotTimeWinterEarliest` ("10:00", winter only). Backfilled for older stored configs.
+**Enforcement (`slotTimeEnforcement`, default HARD):**
+- **HARD** = domain restriction (like MUC.DAI / EXaHM-window): non-exempt exams get out-of-window slots
+  removed from `Allowed`; one that fits nowhere is left **UNPLACED with a reason** (rest of plan still
+  written) — does NOT block the whole write. Weaken to SOFT for a deliberate emergency deviation.
+- **SOFT** = strong penalty (`slotTimeWeight`, default **20000**, per reg/hour outside; below Unplaced
+  1e6): exam may sit outside but is reported as a `time-of-day` violation ("beginnt vor 10:00" / "nach 14:00").
 
-**T-Bau exception (phase A = `GenerateExamRoomsPhase`, EXaHM/SEB into booked Anny/T-Bau
-slots):** summer/off → penalty fully OFF (climate-controlled, go by booking); winter → only a
-gentle pull (weight × `tbauSlotTimePullFactor`=0.4) toward later starts so an 08:30 booking is
-left empty when possible (user may drop it for R-rooms). Phase B applies the full penalty.
+**Exemption:** EXaHM/SEB exams (booked, climate-controlled T-Bau rooms) are exempt from BOTH the domain
+filter and the soft penalty — `Problem.timeExempt(u) = Units[u].Exahm||Seb`. Phase A (`GenerateExamRoomsPhase`)
+schedules only EXaHM/SEB, so the window is inert there. The old `tbauSlotTimePullFactor` / roomPhase
+severity branch was **removed**.
 
-**Debugging note:** `runExamGeneration` now logs/streams each concrete hard violation (not just
-the count) — "refusing to write: N hard violations" no longer hides *which*. A `From`-date
-change reindexes day numbers; stale plan entries / phaseFixed / locked exams then clash (esp.
-EXaHM capacity, since Anny bookings map by date). Recover via unfix → reset → regenerate.
+**Where (backend, main as of 2026-07-12):**
+- `plexams/examplan_time.go`: `slotTimeSpec` (config→spec) + pure `computeSlotTimeSpec`
+  (windowHours + gradientHours; HARD→forbidden[]+gradient severity, SOFT→folded severity). Replaced
+  `slotTimeSeverity`/`computeSlotTimeSeverity`.
+- `plexams/examplan_build.go`: HARD domain filter over movable non-EXaHM/SEB units (mirrors the
+  EXaHM-window block); reason `unplaceableOutsideTimeWindow`; `SetTimeSeverity`+`SetTimeWindow`.
+- `plexams/examplan/problem.go`: `TimeWindowMode` + window fields + `SetTimeWindow`, `timeExempt`,
+  `outsideWindow`, `windowBreachMessage`; `timePenalty(u,slot)` now per-unit (exempt-aware).
+- `graph/generation_config.graphqls`: enum `SlotTimeConstraintEnforcement{HARD,SOFT}` + fields
+  `slotTimeEnforcement`, `slotTimeSummerLatest`, `slotTimeGradientWeight`. Defaults/backfill in
+  `plexams/generation_config.go` (`fillSlotTimeDefaults`, `defaultGenerationConfig`).
 
-**How to apply:** default weight is a guess — tune `slotTimeWeight` via dry-run generation.
-GUI ([[gui-and-cli-sync]]): generation-config page needs a mode dropdown, a weight number, and
-one HH:MM field (winter earliest). No CLI command touches exam-schedule generation.
-Related: [[two-phase-exahm-seb]].
+**How to apply:** weights need tuning against real data (Test26SS) — the HARD default means
+`slotTimeWeight` only matters in SOFT mode. GUI ([[gui-and-cli-sync]]): generation-config page needs a
+HARD/SOFT select, a second HH:MM field (summer latest), and a gradient-weight number; document that
+summer is now a start-cutoff and `slotTimeWeight` is SOFT-only. Related: [[two-phase-exahm-seb]].

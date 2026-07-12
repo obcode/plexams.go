@@ -62,47 +62,75 @@ func fiveSlots() []examplan.Slot {
 	return slots
 }
 
-func TestComputeSlotTimeSeverity(t *testing.T) {
+func TestComputeSlotTimeSpec(t *testing.T) {
+	// slots at 08:30, 10:30, 12:30, 14:30, 16:30 (day earliest start = 08:30).
 	slots := fiveSlots()
-	earliest := parseDayMinutes(defaultSlotTimeWinterEarliest, "10:00") // 600
+	earliest := parseDayMinutes(defaultSlotTimeWinterEarliest, "10:00") // 600 (10:00)
+	latest := parseDayMinutes(defaultSlotTimeSummerLatest, "14:00")     // 840 (14:00)
+	const windowWeight, gradientWeight = 20000.0, 2.0
 
-	// winter, phase B: threshold — only 08:30 is before 10:00 → severity (600-510)/60 = 1.5.
-	sev, w := computeSlotTimeSeverity(slotTimeWinter, 5, earliest, slots, false)
-	if w != 5 {
-		t.Errorf("phase-B weight should be the full weight, got %v", w)
+	// OFF → empty spec.
+	if spec := computeSlotTimeSpec(slotTimeOff, true, windowWeight, gradientWeight, earliest, latest, slots); spec.weight != 0 || spec.severity != nil || spec.forbidden != nil {
+		t.Errorf("off must yield an empty spec, got %+v", spec)
 	}
-	want := []float64{1.5, 0, 0, 0, 0}
-	for i := range want {
-		if sev[i] != want[i] {
-			t.Errorf("winter severity[%d] = %v, want %v (%v)", i, sev[i], want[i], sev)
+
+	// Winter HARD: only 08:30 is before 10:00 → forbidden[0]; winter has no gradient, so no
+	// soft term (weight 0).
+	winterHard := computeSlotTimeSpec(slotTimeWinter, true, windowWeight, gradientWeight, earliest, latest, slots)
+	if !winterHard.hard || winterHard.mode != examplan.TimeWindowWinter {
+		t.Errorf("winter HARD: hard/mode wrong, got %+v", winterHard)
+	}
+	wantForbidden := []bool{true, false, false, false, false}
+	for i := range wantForbidden {
+		if winterHard.forbidden[i] != wantForbidden[i] {
+			t.Errorf("winter HARD forbidden[%d] = %v, want %v (%v)", i, winterHard.forbidden[i], wantForbidden[i], winterHard.forbidden)
+		}
+	}
+	if winterHard.weight != 0 || winterHard.severity != nil {
+		t.Errorf("winter HARD should carry no soft term, got weight=%v severity=%v", winterHard.weight, winterHard.severity)
+	}
+
+	// Summer HARD: 14:30 and 16:30 are after 14:00 → forbidden; the mild gradient (hours later
+	// than 08:30) is the only soft term, at the gradient weight.
+	summerHard := computeSlotTimeSpec(slotTimeSummer, true, windowWeight, gradientWeight, earliest, latest, slots)
+	if summerHard.mode != examplan.TimeWindowSummer || summerHard.weight != gradientWeight {
+		t.Errorf("summer HARD: mode/weight wrong, got mode=%v weight=%v", summerHard.mode, summerHard.weight)
+	}
+	wantForbidden = []bool{false, false, false, true, true}
+	for i := range wantForbidden {
+		if summerHard.forbidden[i] != wantForbidden[i] {
+			t.Errorf("summer HARD forbidden[%d] = %v, want %v", i, summerHard.forbidden[i], wantForbidden[i])
+		}
+	}
+	wantGrad := []float64{0, 2, 4, 6, 8} // (start-08:30)/60h
+	for i := range wantGrad {
+		if summerHard.severity[i] != wantGrad[i] {
+			t.Errorf("summer HARD gradient severity[%d] = %v, want %v", i, summerHard.severity[i], wantGrad[i])
 		}
 	}
 
-	// summer, phase B: monotonic — hours later than the earliest start (08:30). The later,
-	// the worse, so earlier is always strictly better (and, weighted by seats, large exams
-	// go first).
-	sev, _ = computeSlotTimeSeverity(slotTimeSummer, 5, earliest, slots, false)
-	want = []float64{0, 2, 4, 6, 8}
-	for i := range want {
-		if sev[i] != want[i] {
-			t.Errorf("summer severity[%d] = %v, want %v (%v)", i, sev[i], want[i], sev)
+	// Summer SOFT: no domain restriction; the (strong) window overflow and the (mild) gradient
+	// fold into one severity at the window weight. 14:30 is 0.5h past 14:00, 16:30 is 2.5h past.
+	summerSoft := computeSlotTimeSpec(slotTimeSummer, false, windowWeight, gradientWeight, earliest, latest, slots)
+	if summerSoft.hard || summerSoft.forbidden != nil || summerSoft.weight != windowWeight {
+		t.Errorf("summer SOFT: hard/forbidden/weight wrong, got %+v", summerSoft)
+	}
+	ratio := gradientWeight / windowWeight
+	wantSoft := []float64{0, ratio * 2, ratio * 4, 0.5 + ratio*6, 2.5 + ratio*8}
+	for i := range wantSoft {
+		if diff := summerSoft.severity[i] - wantSoft[i]; diff > 1e-9 || diff < -1e-9 {
+			t.Errorf("summer SOFT severity[%d] = %v, want %v", i, summerSoft.severity[i], wantSoft[i])
 		}
 	}
 
-	// phase A (T-Bau) in summer / off → no penalty at all (go by the booking).
-	if sev, w := computeSlotTimeSeverity(slotTimeSummer, 5, earliest, slots, true); sev != nil || w != 0 {
-		t.Errorf("phase-A summer must disable the penalty, got sev=%v w=%v", sev, w)
+	// Winter SOFT: window overflow only (08:30 is 1.5h before 10:00), no gradient.
+	winterSoft := computeSlotTimeSpec(slotTimeWinter, false, windowWeight, gradientWeight, earliest, latest, slots)
+	if winterSoft.weight != windowWeight || winterSoft.severity[0] != 1.5 {
+		t.Errorf("winter SOFT: expected window penalty 1.5 at 08:30 with window weight, got weight=%v sev0=%v", winterSoft.weight, winterSoft.severity[0])
 	}
-	if _, w := computeSlotTimeSeverity(slotTimeOff, 5, earliest, slots, false); w != 0 {
-		t.Errorf("off must disable the penalty, got w=%v", w)
-	}
-
-	// phase A (T-Bau) in winter → gentle pull only: reduced weight, but 08:30 still penalized.
-	sev, w = computeSlotTimeSeverity(slotTimeWinter, 5, earliest, slots, true)
-	if w != 5*tbauSlotTimePullFactor {
-		t.Errorf("phase-A winter weight should be reduced to %v, got %v", 5*tbauSlotTimePullFactor, w)
-	}
-	if sev[0] != 1.5 {
-		t.Errorf("phase-A winter should still prefer later T-Bau starts (08:30 severity 1.5), got %v", sev[0])
+	for i := 1; i < len(slots); i++ {
+		if winterSoft.severity[i] != 0 {
+			t.Errorf("winter SOFT severity[%d] should be 0 (in window), got %v", i, winterSoft.severity[i])
+		}
 	}
 }

@@ -6,11 +6,8 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// TestSpreadStatisticsRenders exercises the full maroto layout (all TableLists,
-// section rows, footer) end-to-end and asserts it renders to non-empty PDF bytes —
-// catching column/grid mismatches and nil handling without needing a database.
-func TestSpreadStatisticsRenders(t *testing.T) {
-	stat := &model.ExamSpreadStatistics{
+func sampleScope() *model.ExamSpreadScope {
+	return &model.ExamSpreadScope{
 		StudentCount:               420,
 		MultiExamStudentCount:      380,
 		TotalPlannedExams:          1400,
@@ -25,8 +22,6 @@ func TestSpreadStatisticsRenders(t *testing.T) {
 		AvgMinFreeDays:             1.4,
 		MedianMinFreeDays:          1,
 		AvgProximityCost:           9.6,
-		ExamGapMinutes:             30,
-		NotTooCloseMinutes:         90,
 		StudentBuckets: []*model.SpreadBucket{
 			{Key: "OVERLAP", Label: "Überschneidung (Konflikt)", Count: 0, Share: 0},
 			{Key: "SAME_DAY", Label: "Zwei Prüfungen am selben Tag", Count: 42, Share: 11.1},
@@ -43,7 +38,21 @@ func TestSpreadStatisticsRenders(t *testing.T) {
 		ByProgram: []*model.ProgramSpread{
 			{Program: "IF", StudentCount: 200, MultiExamStudentCount: 190, AvgExamsPerStudent: 3.4, FreeDayShare: 75, SameDayShare: 9, AvgMinFreeDays: 1.5},
 			{Program: "DC", StudentCount: 90, MultiExamStudentCount: 80, AvgExamsPerStudent: 3.1, FreeDayShare: 60, SameDayShare: 20, AvgMinFreeDays: 0.9},
+			{Program: "GS", StudentCount: 6, MultiExamStudentCount: 3, AvgExamsPerStudent: 2.5, FreeDayShare: 66.7, SameDayShare: 33.3, AvgMinFreeDays: 0.5, LowSampleSize: true},
 		},
+	}
+}
+
+// TestSpreadStatisticsRenders exercises the full maroto layout (both scope blocks, all
+// TableLists, section rows, footer) end-to-end and asserts it renders to non-empty PDF
+// bytes — catching column/grid mismatches and nil handling without needing a database.
+func TestSpreadStatisticsRenders(t *testing.T) {
+	stat := &model.ExamSpreadStatistics{
+		Regular:                  sampleScope(),
+		All:                      sampleScope(),
+		MaxRegularNonRepeatExams: 6,
+		ExamGapMinutes:           30,
+		NotTooCloseMinutes:       90,
 	}
 
 	m := SpreadStatistics("Sommersemester 2026", stat)
@@ -58,10 +67,15 @@ func TestSpreadStatisticsRenders(t *testing.T) {
 
 // TestSpreadStatisticsEmpty renders the zero-data case (no plan yet) without panicking.
 func TestSpreadStatisticsEmpty(t *testing.T) {
-	stat := &model.ExamSpreadStatistics{
+	empty := &model.ExamSpreadScope{
 		StudentBuckets:   buildEmptyBuckets(),
 		ExamCountBuckets: []*model.CountBucket{},
 		ByProgram:        []*model.ProgramSpread{},
+	}
+	stat := &model.ExamSpreadStatistics{
+		Regular:                  empty,
+		All:                      empty,
+		MaxRegularNonRepeatExams: 6,
 	}
 	m := SpreadStatistics("Wintersemester 2026/27", stat)
 	if _, err := m.Output(); err != nil {

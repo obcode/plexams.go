@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/repeatcalc"
 	"github.com/obcode/plexams.go/plexams/spreadcalc"
 )
 
@@ -15,6 +16,11 @@ const worstStudentsLimit = 25
 // lowSampleThreshold is the number of multi-exam students below which a program's
 // shares rest on too small a base to be read as reliable percentages.
 const lowSampleThreshold = 5
+
+// maxRegularNonRepeatExams is the most non-repeat exams a student can have in a normal
+// course of study; above it the extra registrations are repeat exams. The "regular"
+// scope keeps only students at or below this, the meaningful headline population.
+const maxRegularNonRepeatExams = 6
 
 // spreadBucketLabels are the German presentation labels for the distribution buckets.
 var spreadBucketLabels = map[string]string{
@@ -30,7 +36,9 @@ var spreadBucketLabels = map[string]string{
 // plan: per student it takes the placed exams (NTA-aware end times, absolute times),
 // classifies the gaps between consecutive exams by exam-free calendar days, and
 // aggregates that into shares, a distribution histogram, a per-program breakdown, a
-// Carter-style proximity index and a worst-off drill-down list.
+// Carter-style proximity index and a worst-off drill-down list. The figures are
+// returned for two populations: the "regular" students (<= maxRegularNonRepeatExams
+// non-repeat exams) and all students.
 func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadStatistics, error) {
 	students, err := p.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
@@ -82,61 +90,97 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 
 	excludePair := p.spreadPairExcluder(ctx, externalByAncode)
 
-	stat := &model.ExamSpreadStatistics{
-		ExamGapMinutes:     examGap,
-		NotTooCloseMinutes: notTooClose,
-	}
-
-	// bucket -> student count (worst-case per student) and pair count (all pairs)
-	studentBucket := make(map[string]int)
-	pairBucket := make(map[string]int)
-	examCountHist := make(map[int]int) // #exams -> #students
-	mins := make([]int, 0, len(students))
-	var proximitySum float64
-
-	progs := make(map[string]*spreadProgAgg)
-
-	worst := make([]*model.WorstStudent, 0, len(students))
-
+	// Build per-student records once; classify each by its non-repeat exam count so we
+	// can aggregate two populations: the "regular" students (<= maxRegularNonRepeatExams
+	// non-repeat exams, the most anyone can have in a normal course of study) and all
+	// students (incl. the many-repeat outliers). ZpaAncodes already holds only to-plan
+	// ZPA + external registrations (not-to-plan and orphan Primuss regs are dropped
+	// upstream in PrepareStudentRegs).
+	var regular, all []*studentSpreadRecord
 	for _, s := range students {
 		if restrictProgram && !ownProgram[s.Program] {
 			continue // not one of our (fully-known) students
 		}
-		// collect this student's placed exams within the period (incl. external ones)
-		times := make([]spreadcalc.ExamTime, 0, len(s.ZpaAncodes))
-		examAncodes := make([]int, 0, len(s.ZpaAncodes))
-		hasUnplanned := false
+		studSem := repeatcalc.SemesterOf(s.Group)
+		rec := &studentSpreadRecord{student: s}
+		nonRepeat := 0
 		for _, ancode := range s.ZpaAncodes {
+			ei := info[ancode]
+			if !repeatcalc.RepeatForStudent(studSem, ei.repeater, ei.minSem) {
+				nonRepeat++
+			}
 			if start, ok := startByAncode[ancode]; ok {
 				dur := durByAncode[ancode].forStudent(s.Mtknr)
-				times = append(times, spreadcalc.ExamTime{Ancode: ancode, Start: start, End: start.Add(time.Duration(dur) * time.Minute)})
-				examAncodes = append(examAncodes, ancode)
-				continue
-			}
-			// not on our grid: an unplaced own exam (coverage caveat), not a placed-
-			// elsewhere external one.
-			if !plannedSomewhere[ancode] && ancode < externalAncodeBase {
-				hasUnplanned = true
+				rec.times = append(rec.times, spreadcalc.ExamTime{Ancode: ancode, Start: start, End: start.Add(time.Duration(dur) * time.Minute)})
+				rec.ancodes = append(rec.ancodes, ancode)
+			} else if !plannedSomewhere[ancode] && ancode < externalAncodeBase {
+				// an unplaced own exam (coverage caveat), not a placed-elsewhere external one
+				rec.hasUnplanned = true
 			}
 		}
+		rec.nExams = len(rec.times)
+		if rec.nExams == 0 && !rec.hasUnplanned {
+			continue // nothing to contribute to either scope
+		}
+		if rec.nExams >= 2 {
+			rec.sp = spreadcalc.ComputeStudent(rec.times, examGap, notTooClose, excludePair)
+		}
+		all = append(all, rec)
+		if nonRepeat <= maxRegularNonRepeatExams {
+			regular = append(regular, rec)
+		}
+	}
 
-		nExams := len(times)
-		if nExams == 0 {
-			if hasUnplanned {
-				stat.StudentsWithUnplannedExams++
+	return &model.ExamSpreadStatistics{
+		Regular:                  aggregateScope(regular, info),
+		All:                      aggregateScope(all, info),
+		MaxRegularNonRepeatExams: maxRegularNonRepeatExams,
+		ExamGapMinutes:           examGap,
+		NotTooCloseMinutes:       notTooClose,
+	}, nil
+}
+
+// studentSpreadRecord is one student's placed exams plus their precomputed spread,
+// built once and then aggregated into one or both scopes.
+type studentSpreadRecord struct {
+	student      *model.Student
+	times        []spreadcalc.ExamTime
+	ancodes      []int
+	sp           spreadcalc.StudentSpread // valid only when nExams >= 2
+	nExams       int
+	hasUnplanned bool
+}
+
+// aggregateScope turns a set of per-student records into one population's figures
+// (shares, distributions, per-program breakdown, worst-off list).
+func aggregateScope(records []*studentSpreadRecord, info map[int]examInfo) *model.ExamSpreadScope {
+	scope := &model.ExamSpreadScope{}
+
+	studentBucket := make(map[string]int) // worst-case bucket per student
+	pairBucket := make(map[string]int)    // every consecutive pair
+	examCountHist := make(map[int]int)
+	mins := make([]int, 0, len(records))
+	var proximitySum float64
+	progs := make(map[string]*spreadProgAgg)
+	worst := make([]*model.WorstStudent, 0, len(records))
+
+	for _, rec := range records {
+		if rec.nExams == 0 {
+			if rec.hasUnplanned {
+				scope.StudentsWithUnplannedExams++
 			}
 			continue
 		}
-
-		stat.StudentCount++
-		stat.TotalPlannedExams += nExams
-		if hasUnplanned {
-			stat.StudentsWithUnplannedExams++
+		s := rec.student
+		scope.StudentCount++
+		scope.TotalPlannedExams += rec.nExams
+		if rec.hasUnplanned {
+			scope.StudentsWithUnplannedExams++
 		}
-		if nExams > stat.MaxExamsPerStudent {
-			stat.MaxExamsPerStudent = nExams
+		if rec.nExams > scope.MaxExamsPerStudent {
+			scope.MaxExamsPerStudent = rec.nExams
 		}
-		examCountHist[capExamCount(nExams)]++
+		examCountHist[capExamCount(rec.nExams)]++
 
 		pa := progs[s.Program]
 		if pa == nil {
@@ -144,20 +188,19 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 			progs[s.Program] = pa
 		}
 		pa.students++
-		pa.examSum += nExams
+		pa.examSum += rec.nExams
 
-		if nExams < 2 {
+		if rec.nExams < 2 {
 			continue // single exam: no gap to rate
 		}
-
-		sp := spreadcalc.ComputeStudent(times, examGap, notTooClose, excludePair)
+		sp := rec.sp
 		if sp.MaxExamsPerDay >= 3 {
-			stat.ThreeExamsOneDayCount++
+			scope.ThreeExamsOneDayCount++
 		}
 		if len(sp.Pairs) == 0 {
 			continue // all pairs were spurious (foreign-foreign / same-slot) — no ratable gap
 		}
-		stat.MultiExamStudentCount++
+		scope.MultiExamStudentCount++
 		proximitySum += sp.ProximityCost
 		mins = append(mins, int(sp.MinGap))
 
@@ -176,32 +219,32 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 			pa.sameDay++
 		}
 
-		worst = append(worst, buildWorstStudent(s, sp, times, examAncodes, info))
+		worst = append(worst, buildWorstStudent(s, sp, rec.times, rec.ancodes, info))
 	}
 
 	// headline shares are a clean partition of the multi-exam students by their worst gap
-	denom := float64(stat.MultiExamStudentCount)
-	stat.ConflictShare = share(studentBucket[spreadcalc.KeyOverlap], denom)
-	stat.SameDayShare = share(studentBucket[spreadcalc.KeySameDay], denom)
-	stat.AdjacentDayShare = share(studentBucket[spreadcalc.KeyAdjacent], denom)
-	stat.FreeDayShare = share(studentBucket[spreadcalc.KeyOneFree]+studentBucket[spreadcalc.KeyTwoFree]+studentBucket[spreadcalc.KeyThreePlus], denom)
-	if stat.StudentCount > 0 {
-		stat.AvgExamsPerStudent = float64(stat.TotalPlannedExams) / float64(stat.StudentCount)
+	denom := float64(scope.MultiExamStudentCount)
+	scope.ConflictShare = share(studentBucket[spreadcalc.KeyOverlap], denom)
+	scope.SameDayShare = share(studentBucket[spreadcalc.KeySameDay], denom)
+	scope.AdjacentDayShare = share(studentBucket[spreadcalc.KeyAdjacent], denom)
+	scope.FreeDayShare = share(studentBucket[spreadcalc.KeyOneFree]+studentBucket[spreadcalc.KeyTwoFree]+studentBucket[spreadcalc.KeyThreePlus], denom)
+	if scope.StudentCount > 0 {
+		scope.AvgExamsPerStudent = float64(scope.TotalPlannedExams) / float64(scope.StudentCount)
 	}
-	if stat.MultiExamStudentCount > 0 {
-		stat.AvgProximityCost = proximitySum / denom
-		stat.AvgMinFreeDays = meanInts(mins)
-		stat.MedianMinFreeDays = medianInts(mins)
+	if scope.MultiExamStudentCount > 0 {
+		scope.AvgProximityCost = proximitySum / denom
+		scope.AvgMinFreeDays = meanInts(mins)
+		scope.MedianMinFreeDays = medianInts(mins)
 	}
 
-	stat.StudentBuckets = buildBuckets(studentBucket, stat.MultiExamStudentCount)
+	scope.StudentBuckets = buildBuckets(studentBucket, scope.MultiExamStudentCount)
 	pairTotal := 0
 	for _, c := range pairBucket {
 		pairTotal += c
 	}
-	stat.PairBuckets = buildBuckets(pairBucket, pairTotal)
-	stat.ExamCountBuckets = buildExamCountBuckets(examCountHist, stat.StudentCount)
-	stat.ByProgram = buildProgramSpread(progs)
+	scope.PairBuckets = buildBuckets(pairBucket, pairTotal)
+	scope.ExamCountBuckets = buildExamCountBuckets(examCountHist, scope.StudentCount)
+	scope.ByProgram = buildProgramSpread(progs)
 
 	sort.Slice(worst, func(i, j int) bool {
 		if worst[i].MinFreeDays != worst[j].MinFreeDays {
@@ -215,9 +258,9 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 	if len(worst) > worstStudentsLimit {
 		worst = worst[:worstStudentsLimit]
 	}
-	stat.WorstStudents = worst
+	scope.WorstStudents = worst
 
-	return stat, nil
+	return scope
 }
 
 // spreadPairExcluder builds the predicate that drops a student's exam pair from the

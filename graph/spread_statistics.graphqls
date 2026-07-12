@@ -7,22 +7,46 @@ extend type Query {
   student's consecutive exams (NTA-aware, absolute times, calendar-day gaps) into
   human-readable shares (e.g. "share of students with at least one exam-free day between
   all their exams"), a distribution histogram, a per-program breakdown and a Carter-style
-  proximity index. Same data feeds the GUI and the printable PDF
-  (/download/pdf/spread-statistics).
+  proximity index.
+
+  Two scopes are returned: `regular` counts only students with at most
+  `maxRegularNonRepeatExams` non-repeat exams (the most anyone can have in a normal
+  course of study — more means repeat exams are mixed in), which is the meaningful
+  headline population; `all` additionally includes the outliers (students with many
+  repeat registrations, up to ~14 exams).
 
   Spurious pairs are dropped from the gap statistics (as ValidateConflicts does):
   two exams of other faculties (not ours to resolve) and two exams declared same-slot
-  or can-share-slot (a student may not sit both, so the registration is invalid).
+  or can-share-slot (a student may not sit both, so the registration is invalid). Only
+  registrations that appear in the plan are counted (to-plan ZPA exams and external
+  exams); not-to-plan ZPA exams (e.g. Modularbeiten) and orphan MUC.DAI Primuss
+  registrations are already excluded upstream.
+
+  Same data feeds the GUI and the printable PDF (/download/pdf/spread-statistics).
   """
   examSpreadStatistics: ExamSpreadStatistics!
 }
 
 type ExamSpreadStatistics {
-  "Our (FK07/MUC.DAI) students with at least one exam placed within the exam period."
+  "The meaningful headline population: students with <= maxRegularNonRepeatExams non-repeat exams."
+  regular: ExamSpreadScope!
+  "Everyone, including students whose many repeat registrations push them past the normal maximum."
+  all: ExamSpreadScope!
+  "The non-repeat-exam cap for the `regular` scope (6 = the most possible in a normal semester)."
+  maxRegularNonRepeatExams: Int!
+  "The travel/break buffer (minutes) below which two exams count as an overlap."
+  examGapMinutes: Int!
+  "The same-day start-to-start threshold (minutes) below which two exams count as too close."
+  notTooCloseMinutes: Int!
+}
+
+"One population's spread figures (see ExamSpreadStatistics.regular / .all)."
+type ExamSpreadScope {
+  "Students in this scope with at least one exam placed within the exam period."
   studentCount: Int!
   "Students with at least one ratable gap (>= 2 exams, after dropping spurious foreign-foreign / same-slot pairs); denominator of the shares."
   multiExamStudentCount: Int!
-  "Total placed exam registrations counted across all students."
+  "Total placed exam registrations counted across all students in this scope."
   totalPlannedExams: Int!
   "Students who still have at least one not-yet-placed exam (coverage caveat)."
   studentsWithUnplannedExams: Int!
@@ -37,7 +61,7 @@ type ExamSpreadStatistics {
   adjacentDayShare: Float!
   "Share (%) of multi-exam students with a real overlap/too-close conflict (should be 0)."
   conflictShare: Float!
-  "Number of students with three or more exams on a single day."
+  "Number of students with three or more exam sittings on a single day."
   threeExamsOneDayCount: Int!
 
   "Average, over multi-exam students, of their SMALLEST free-days-between-exams (same day = -1, overlap = -2)."
@@ -56,11 +80,6 @@ type ExamSpreadStatistics {
   byProgram: [ProgramSpread!]!
   "The most tightly-scheduled students, for GUI drill-down (not part of the aggregate PDF)."
   worstStudents: [WorstStudent!]!
-
-  "The travel/break buffer (minutes) below which two exams count as an overlap."
-  examGapMinutes: Int!
-  "The same-day start-to-start threshold (minutes) below which two exams count as too close."
-  notTooCloseMinutes: Int!
 }
 
 "A named distribution bucket with an absolute count and a percentage share."

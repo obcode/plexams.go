@@ -463,12 +463,13 @@ type ExamScheduleReport struct {
 	UnplacedReasons []*UnplacedExamReason `json:"unplacedReasons"`
 }
 
-type ExamSpreadStatistics struct {
-	// Our (FK07/MUC.DAI) students with at least one exam placed within the exam period.
+// One population's spread figures (see ExamSpreadStatistics.regular / .all).
+type ExamSpreadScope struct {
+	// Students in this scope with at least one exam placed within the exam period.
 	StudentCount int `json:"studentCount"`
 	// Students with at least one ratable gap (>= 2 exams, after dropping spurious foreign-foreign / same-slot pairs); denominator of the shares.
 	MultiExamStudentCount int `json:"multiExamStudentCount"`
-	// Total placed exam registrations counted across all students.
+	// Total placed exam registrations counted across all students in this scope.
 	TotalPlannedExams int `json:"totalPlannedExams"`
 	// Students who still have at least one not-yet-placed exam (coverage caveat).
 	StudentsWithUnplannedExams int     `json:"studentsWithUnplannedExams"`
@@ -482,7 +483,7 @@ type ExamSpreadStatistics struct {
 	AdjacentDayShare float64 `json:"adjacentDayShare"`
 	// Share (%) of multi-exam students with a real overlap/too-close conflict (should be 0).
 	ConflictShare float64 `json:"conflictShare"`
-	// Number of students with three or more exams on a single day.
+	// Number of students with three or more exam sittings on a single day.
 	ThreeExamsOneDayCount int `json:"threeExamsOneDayCount"`
 	// Average, over multi-exam students, of their SMALLEST free-days-between-exams (same day = -1, overlap = -2).
 	AvgMinFreeDays    float64 `json:"avgMinFreeDays"`
@@ -499,6 +500,15 @@ type ExamSpreadStatistics struct {
 	ByProgram []*ProgramSpread `json:"byProgram"`
 	// The most tightly-scheduled students, for GUI drill-down (not part of the aggregate PDF).
 	WorstStudents []*WorstStudent `json:"worstStudents"`
+}
+
+type ExamSpreadStatistics struct {
+	// The meaningful headline population: students with <= maxRegularNonRepeatExams non-repeat exams.
+	Regular *ExamSpreadScope `json:"regular"`
+	// Everyone, including students whose many repeat registrations push them past the normal maximum.
+	All *ExamSpreadScope `json:"all"`
+	// The non-repeat-exam cap for the `regular` scope (6 = the most possible in a normal semester).
+	MaxRegularNonRepeatExams int `json:"maxRegularNonRepeatExams"`
 	// The travel/break buffer (minutes) below which two exams count as an overlap.
 	ExamGapMinutes int `json:"examGapMinutes"`
 	// The same-day start-to-start threshold (minutes) below which two exams count as too close.

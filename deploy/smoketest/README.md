@@ -86,8 +86,9 @@ docker compose up -d
 
 `https://<dein-host>/` öffnen → Weiterleitung zu sso.hm.edu → nach dem Login zeigt die
 Seite **„Hallo &lt;deine-email&gt;"** samt `email` / `sub` / `preferred_username` /
-`groups`. Die vollständigen Session-Claims als JSON gibt es unter `/oauth2/userinfo`,
-Abmelden unter `/oauth2/sign_out`.
+`department` (Claim `fhmDepartment` über den groups-Slot). Die vollständigen
+Session-Claims als JSON gibt es unter `/oauth2/userinfo`, dazu ein Dump des ID-Tokens und
+ein fertiger `curl` gegen den IdP-UserInfo-Endpoint für die volle Attributliste.
 
 > Hinweis: oauth2-proxy stellt standardmäßig `email`, `sub`, `preferred_username` und
 > `groups` bereit — das reicht, um zu bestätigen, dass die Anmeldung funktioniert und

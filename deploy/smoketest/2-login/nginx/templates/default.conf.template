@@ -105,7 +105,6 @@ vom UserInfo-Endpoint. Der Fachbereich (Claim „fhmDepartment&ldquo;) wird hier
 wirklich alles freigibt, dieses (Diagnose-)Access-Token gegen den IdP-UserInfo-Endpoint
 abfragen:</p>
 <pre>curl -s -H "Authorization: Bearer $access_token" https://sso.hm.edu/idp/profile/oidc/userinfo | jq .</pre>
-<p><a href="/oauth2/sign_out?rd=/abgemeldet">Abmelden</a></p>
 <script>
 (function(){
   var el = document.getElementById("idtoken");
@@ -123,22 +122,6 @@ fetch("/oauth2/userinfo", {credentials: "same-origin"})
   .then(function(txt){ var el = document.getElementById("userinfo"); try { el.textContent = JSON.stringify(JSON.parse(txt), null, 2); } catch (e) { el.textContent = txt; } })
   .catch(function(e){ document.getElementById("userinfo").textContent = "Fehler: " + e; });
 </script>
-';
-    }
-
-    # Local logout only: /oauth2/sign_out clears the oauth2-proxy cookie and (via rd)
-    # lands here. This page is PUBLIC (auth_request off) so it is not itself re-protected
-    # and does not bounce back into a silent SSO re-login. The central HM SSO session at
-    # sso.hm.edu is intentionally left intact — no single-logout across HM services.
-    location = /abgemeldet {
-        auth_request off;
-        default_type "text/html; charset=utf-8";
-        return 200 '<!doctype html>
-<meta charset="utf-8">
-<title>plexams — abgemeldet</title>
-<h1>Abgemeldet &#128075;</h1>
-<p>Die lokale plexams-Session wurde beendet.</p>
-<p><a href="/">Erneut anmelden</a></p>
 ';
     }
 }

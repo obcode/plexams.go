@@ -50,7 +50,13 @@ services:
       OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET}
       # MUST match the redirect URI registered with the HM IdP team.
       OAUTH2_PROXY_REDIRECT_URL: https://${SERVER_NAME}/oauth2/callback
-      OAUTH2_PROXY_SCOPE: "openid email profile"
+      OAUTH2_PROXY_SCOPE: "openid profile email department"
+      # HM's id_token is minimal; email/preferred_username/fhmDepartment all come from the
+      # IdP UserInfo endpoint, which oauth2-proxy's claim extractor queries at login. It
+      # only retains its four known fields (email/user/preferred_username/groups), so we
+      # read the faculty (claim `fhmDepartment`, e.g. "07" = FK07) through the groups slot;
+      # nginx forwards it as X-Remote-Department. Identity stays email; names come from ZPA.
+      OAUTH2_PROXY_OIDC_GROUPS_CLAIM: "fhmDepartment"
       # Extra layer on top of the DB allow-list (the backend is authoritative).
       OAUTH2_PROXY_EMAIL_DOMAINS: hm.edu
       OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180

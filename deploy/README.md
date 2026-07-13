@@ -22,7 +22,7 @@ Für die OIDC-Client-Registrierung an `sso.hm.edu`:
 |------|------|
 | **Redirect / Callback URI** | `https://<DEIN-HOST>/oauth2/callback` |
 | Grant type | `authorization_code` |
-| Scopes | `openid email profile` |
+| Scopes | `openid profile email department` (`department` = client-spezifischer Custom-Scope → Claim `fhmDepartment`) |
 | Post-Logout Redirect | — nicht nötig (Abmelden ist rein lokal, siehe unten) |
 
 > Die **Redirect-URI ist exakt** `https://<DEIN-HOST>/oauth2/callback` (das ist der

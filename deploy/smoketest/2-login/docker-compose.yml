@@ -32,6 +32,12 @@ services:
       # (a real deployment would use --alpha-config injectResponseHeaders for a dedicated
       # X-Auth-Request-Department header); the plexams backend needs only email anyway.
       OAUTH2_PROXY_OIDC_GROUPS_CLAIM: "fhmDepartment"
+      # DIAGNOSTIC ONLY: expose the access token (as X-Auth-Request-Access-Token) so the
+      # greeting page can print a ready-to-run curl against the IdP UserInfo endpoint —
+      # that reveals the FULL set of attributes HM actually releases (name, given_name,
+      # family_name, eduPersonScopedAffiliation, fhmDepartment, …), which oauth2-proxy
+      # itself does not surface. Never expose the access token like this in production.
+      OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"
       # Permissive for the test: any account the IdP authenticates may log in.
       OAUTH2_PROXY_EMAIL_DOMAINS: "*"
       OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180

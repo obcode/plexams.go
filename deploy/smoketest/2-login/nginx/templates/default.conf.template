@@ -41,6 +41,9 @@ server {
     # so the greeting page can decode & dump ALL id_token claims client-side, incl. any
     # the fixed X-Auth-Request-* headers don't expose (e.g. department).
     auth_request_set $auth_token  $upstream_http_authorization;
+    # DIAGNOSTIC: the raw access token, so the greeting page can print a curl against the
+    # IdP UserInfo endpoint to reveal every attribute HM releases (see docker-compose.yml).
+    auth_request_set $access_token $upstream_http_x_auth_request_access_token;
 
     location /oauth2/ {
         auth_request off;
@@ -95,8 +98,13 @@ vom UserInfo-Endpoint. Der Fachbereich (Claim „fhmDepartment&ldquo;) wird hier
 &uuml;ber den groups-Claim sichtbar gemacht (siehe docker-compose.yml).</small></p>
 <h2>Alle Claims aus dem ID-Token</h2>
 <pre id="idtoken">(wird geladen &hellip;)</pre>
-<h2>/oauth2/userinfo (oauth2-proxy Session)</h2>
+<h2>/oauth2/userinfo (oauth2-proxy Session &mdash; nur die 4 bekannten Felder)</h2>
 <pre id="userinfo">(wird geladen &hellip;)</pre>
+<h2>Rohe UserInfo direkt von sso.hm.edu (ALLE freigegebenen Attribute)</h2>
+<p>oauth2-proxy zeigt nur email/user/preferred_username/groups. Um zu sehen, was HM
+wirklich alles freigibt, dieses (Diagnose-)Access-Token gegen den IdP-UserInfo-Endpoint
+abfragen:</p>
+<pre>curl -s -H "Authorization: Bearer $access_token" https://sso.hm.edu/idp/profile/oidc/userinfo | jq .</pre>
 <p><a href="/oauth2/sign_out?rd=/abgemeldet">Abmelden</a></p>
 <script>
 (function(){

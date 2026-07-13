@@ -88,11 +88,11 @@ server {
 <li>email: $oidc_email</li>
 <li>user (sub): $oidc_user</li>
 <li>preferred_username: $oidc_pref</li>
-<li>department (via oidc-groups-claim): $oidc_groups</li>
+<li>department (Claim fhmDepartment, via oidc-groups-claim): $oidc_groups</li>
 </ul>
-<p><small>Hinweis: HMs ID-Token ist minimal; email/preferred_username/department kommen
-vom UserInfo-Endpoint. „department&ldquo; wird hier diagnostisch &uuml;ber den
-groups-Claim sichtbar gemacht (siehe docker-compose.yml).</small></p>
+<p><small>Hinweis: HMs ID-Token ist minimal; email/preferred_username/fhmDepartment kommen
+vom UserInfo-Endpoint. Der Fachbereich (Claim „fhmDepartment&ldquo;) wird hier diagnostisch
+&uuml;ber den groups-Claim sichtbar gemacht (siehe docker-compose.yml).</small></p>
 <h2>Alle Claims aus dem ID-Token</h2>
 <pre id="idtoken">(wird geladen &hellip;)</pre>
 <h2>/oauth2/userinfo (oauth2-proxy Session)</h2>

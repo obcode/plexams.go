@@ -924,6 +924,23 @@ type MutationLogEntry struct {
 	DurationMs int     `json:"durationMs"`
 }
 
+// The current user's own account: identity (from the IdP via the auth proxy,
+// read-only) plus editable self-service settings — the Kürzel (shortname) and the
+// per-user Jira Personal Access Token (stored encrypted in the DB, never returned).
+type MyAccount struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
+	Role  Role   `json:"role"`
+	// Effective Kürzel: the user's own override if set, otherwise the ZPA default.
+	Shortname string `json:"shortname"`
+	// The Kürzel from the matching ZPA teacher record (for display / reset), empty if none.
+	ShortnameFromZpa string `json:"shortnameFromZpa"`
+	// Whether an (encrypted) Jira PAT is stored for this user.
+	JiraTokenSet bool `json:"jiraTokenSet"`
+	// When the Jira PAT was last set (null if none).
+	JiraTokenUpdatedAt *time.Time `json:"jiraTokenUpdatedAt,omitempty"`
+}
+
 type NTAInput struct {
 	Name                 string  `json:"name"`
 	Email                *string `json:"email,omitempty"`
@@ -1493,6 +1510,8 @@ type User struct {
 	Email string `json:"email"`
 	Name  string `json:"name"`
 	Role  Role   `json:"role"`
+	// Kürzel (shortname) override; empty when not set — the effective value then defaults to the ZPA teacher shortname (see myAccount).
+	Shortname string `json:"shortname"`
 }
 
 // ValidationFinding is one problem (or note) found by a validator. message is clean

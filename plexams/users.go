@@ -43,6 +43,11 @@ func (p *Plexams) SetUser(ctx context.Context, email, name string, role model.Ro
 		return nil, fmt.Errorf("invalid role %q", role)
 	}
 	user := &model.User{Email: email, Name: name, Role: role}
+	// Preserve self-service fields (the Kürzel) an admin edit must not clobber, since
+	// SaveUser does a full ReplaceOne.
+	if existing, err := p.dbClient.GetUserByEmail(ctx, email); err == nil && existing != nil {
+		user.Shortname = existing.Shortname
+	}
 	if err := p.dbClient.SaveUser(ctx, user); err != nil {
 		return nil, err
 	}

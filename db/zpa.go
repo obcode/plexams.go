@@ -2,11 +2,13 @@ package db
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (db *DB) GetZPAStudents(ctx context.Context) ([]*model.ZPAStudent, error) {
@@ -59,6 +61,27 @@ func (db *DB) GetTeacher(ctx context.Context, id int) (*model.Teacher, error) {
 		return nil, err
 	}
 
+	return &teacher, nil
+}
+
+// GetTeacherByEmail looks up a teacher by email (case-insensitive; ZPA stores raw
+// emails, our user emails are lower-cased). Returns nil when no teacher matches.
+func (db *DB) GetTeacherByEmail(ctx context.Context, email string) (*model.Teacher, error) {
+	collection := db.Client.Database(db.databaseName).Collection("teachers")
+
+	var teacher model.Teacher
+	filter := bson.D{{Key: "email", Value: bson.D{
+		{Key: "$regex", Value: "^" + regexp.QuoteMeta(email) + "$"},
+		{Key: "$options", Value: "i"},
+	}}}
+	err := collection.FindOne(ctx, filter).Decode(&teacher)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		log.Error().Err(err).Str("email", email).Msg("cannot find teacher by email in db")
+		return nil, err
+	}
 	return &teacher, nil
 }
 

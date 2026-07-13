@@ -1,0 +1,36 @@
+"""
+The current user's own account: identity (from the IdP via the auth proxy,
+read-only) plus editable self-service settings — the Kürzel (shortname) and the
+per-user Jira Personal Access Token (stored encrypted in the DB, never returned).
+"""
+type MyAccount {
+  email: String!
+  name: String!
+  role: Role!
+  "Effective Kürzel: the user's own override if set, otherwise the ZPA default."
+  shortname: String!
+  "The Kürzel from the matching ZPA teacher record (for display / reset), empty if none."
+  shortnameFromZpa: String!
+  "Whether an (encrypted) Jira PAT is stored for this user."
+  jiraTokenSet: Boolean!
+  "When the Jira PAT was last set (null if none)."
+  jiraTokenUpdatedAt: Time
+}
+
+extend type Query {
+  "The current user's account (identity + Kürzel + Jira-token status)."
+  myAccount: MyAccount!
+}
+
+extend type Mutation {
+  "Set the current user's Kürzel override. An empty string resets to the ZPA default."
+  setMyShortname(shortname: String!): MyAccount!
+  """
+  Store the current user's Jira Personal Access Token, AES-256-GCM encrypted in the
+  DB. Write-only: the token is never returned by any query. Requires secrets.key to
+  be configured on the server.
+  """
+  setMyJiraToken(token: String!): MyAccount!
+  "Remove the current user's stored Jira PAT."
+  removeMyJiraToken: MyAccount!
+}

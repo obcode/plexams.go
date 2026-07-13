@@ -8,22 +8,17 @@ import (
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams"
+	"github.com/obcode/plexams.go/principal"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
-// contextKey is a private type for context keys defined in this package, to avoid
-// collisions with keys from other packages.
-type contextKey string
-
-const userContextKey contextKey = "authUser"
-
 // UserFromContext returns the authenticated user carried in the context by
 // authMiddleware, or nil when none is present (e.g. a request that did not pass the
-// middleware). Resolvers use it to read the current identity/role.
+// middleware). Resolvers use it to read the current identity/role. The context value
+// lives in the neutral principal package so plexams can read it too.
 func UserFromContext(ctx context.Context) *model.User {
-	user, _ := ctx.Value(userContextKey).(*model.User)
-	return user
+	return principal.UserFromContext(ctx)
 }
 
 // authProvider is the slice of *plexams.Plexams the auth middleware needs: the local
@@ -92,7 +87,7 @@ func authMiddleware(p authProvider) func(http.Handler) http.Handler {
 				user = u
 			}
 
-			ctx := context.WithValue(r.Context(), userContextKey, user)
+			ctx := principal.WithUser(r.Context(), user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

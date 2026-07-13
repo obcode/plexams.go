@@ -22,6 +22,8 @@ type User {
   email: String!
   name: String!
   role: Role!
+  "Kürzel (shortname) override; empty when not set — the effective value then defaults to the ZPA teacher shortname (see myAccount)."
+  shortname: String!
 }
 
 extend type Query {

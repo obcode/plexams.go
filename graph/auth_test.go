@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/principal"
 	"github.com/spf13/viper"
 )
 
@@ -38,11 +39,11 @@ func TestRoleHierarchy(t *testing.T) {
 }
 
 func TestRequireAdmin(t *testing.T) {
-	admin := context.WithValue(context.Background(), userContextKey, &model.User{Email: "a@hm.edu", Role: model.RoleAdmin})
+	admin := principal.WithUser(context.Background(), &model.User{Email: "a@hm.edu", Role: model.RoleAdmin})
 	if err := requireAdmin(admin); err != nil {
 		t.Errorf("admin must pass: %v", err)
 	}
-	planer := context.WithValue(context.Background(), userContextKey, &model.User{Email: "p@hm.edu", Role: model.RolePlaner})
+	planer := principal.WithUser(context.Background(), &model.User{Email: "p@hm.edu", Role: model.RolePlaner})
 	if err := requireAdmin(planer); err == nil {
 		t.Error("planer must be rejected by requireAdmin")
 	}
@@ -52,7 +53,7 @@ func TestRequireAdmin(t *testing.T) {
 }
 
 func TestUserFromContextAndAuditUser(t *testing.T) {
-	ctx := context.WithValue(context.Background(), userContextKey, &model.User{Email: "a@hm.edu", Role: model.RolePlaner})
+	ctx := principal.WithUser(context.Background(), &model.User{Email: "a@hm.edu", Role: model.RolePlaner})
 	if u := UserFromContext(ctx); u == nil || u.Email != "a@hm.edu" {
 		t.Fatalf("UserFromContext = %+v", u)
 	}

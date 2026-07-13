@@ -57,6 +57,7 @@ const (
 	collectionEmailTemplates           = "email_templates"
 	collectionPlaner                   = "planer"
 	collectionUsers                    = "users"
+	collectionUserSecrets              = "user_secrets"
 	collectionInvigilatorTodos         = "invigilator_todos"
 	collectionOtherInvigilations       = "invigilations_other"
 	collectionSelfInvigilations        = "invigilations_self"

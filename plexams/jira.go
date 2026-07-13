@@ -13,12 +13,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// jiraClient ensures the Jira client is built and returns it.
-func (p *Plexams) jiraClient() (*jira.Jira, error) {
-	if err := p.SetJira(); err != nil {
+// jiraClient builds a Jira client for the CURRENT user: baseurl/project come from the
+// config, the PAT is the caller's own token (decrypted from the DB via the ctx
+// principal). Fails closed when Jira is unconfigured or the user has no PAT stored.
+// The constructor makes no network call, so building one per request is cheap.
+func (p *Plexams) jiraClient(ctx context.Context) (*jira.Jira, error) {
+	if p.jira.baseurl == "" {
+		return nil, fmt.Errorf("jira not configured: set jira.baseurl in .plexams.yaml")
+	}
+	token, err := p.jiraTokenForUser(ctx)
+	if err != nil {
 		return nil, err
 	}
-	return p.jira.client, nil
+	return jira.New(p.jira.baseurl, token, p.jira.project), nil
 }
 
 // issueURL builds the human-facing browse URL for an issue key.
@@ -99,7 +106,7 @@ func mapJiraComments(comments []jira.Comment) []*model.JiraComment {
 
 // JiraConnection verifies the configured Jira connection (GET /myself).
 func (p *Plexams) JiraConnection(ctx context.Context) (*model.JiraUser, error) {
-	client, err := p.jiraClient()
+	client, err := p.jiraClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +123,7 @@ func (p *Plexams) JiraConnection(ctx context.Context) (*model.JiraUser, error) {
 
 // GetJiraIssue fetches a single issue by key.
 func (p *Plexams) GetJiraIssue(ctx context.Context, key string) (*model.JiraIssue, error) {
-	client, err := p.jiraClient()
+	client, err := p.jiraClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +144,7 @@ func (p *Plexams) GetJiraIssue(ctx context.Context, key string) (*model.JiraIssu
 
 // JiraTransitions lists the workflow transitions available for an issue.
 func (p *Plexams) JiraTransitions(ctx context.Context, key string) ([]*model.JiraTransition, error) {
-	client, err := p.jiraClient()
+	client, err := p.jiraClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +161,7 @@ func (p *Plexams) JiraTransitions(ctx context.Context, key string) ([]*model.Jir
 
 // JiraOpenIssues returns the open (not-done) issues, newest first.
 func (p *Plexams) JiraOpenIssues(ctx context.Context, project *string) ([]*model.JiraIssue, error) {
-	client, err := p.jiraClient()
+	client, err := p.jiraClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +212,7 @@ func (p *Plexams) JiraOpenIssuesByType(ctx context.Context, project *string) ([]
 // issues without one land in a "(kein Anfragetyp)" group. Only meaningful for
 // service desk projects (e.g. FK07PP).
 func (p *Plexams) JiraOpenIssuesByRequestType(ctx context.Context, project *string) ([]*model.JiraRequestTypeGroup, error) {
-	client, err := p.jiraClient()
+	client, err := p.jiraClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +247,7 @@ func (p *Plexams) JiraOpenIssuesByRequestType(ctx context.Context, project *stri
 
 // CreateJiraIssue creates an issue; project/issueType/description are optional.
 func (p *Plexams) CreateJiraIssue(ctx context.Context, project, issueType *string, summary string, description *string) (*model.JiraIssue, error) {
-	client, err := p.jiraClient()
+	client, err := p.jiraClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +284,7 @@ func (p *Plexams) CreateJiraIssue(ctx context.Context, project, issueType *strin
 
 // AddJiraComment adds a plain-text comment to an issue.
 func (p *Plexams) AddJiraComment(ctx context.Context, key, body string) (bool, error) {
-	client, err := p.jiraClient()
+	client, err := p.jiraClient(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -289,7 +296,7 @@ func (p *Plexams) AddJiraComment(ctx context.Context, key, body string) (bool, e
 
 // TransitionJiraIssue moves an issue through the given transition id.
 func (p *Plexams) TransitionJiraIssue(ctx context.Context, key, transitionID string) (bool, error) {
-	client, err := p.jiraClient()
+	client, err := p.jiraClient(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -324,7 +331,7 @@ func (p *Plexams) HTTPUploadJiraAttachment(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	client, err := p.jiraClient()
+	client, err := p.jiraClient(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return

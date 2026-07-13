@@ -8,11 +8,11 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
-	"github.com/obcode/plexams.go/jira"
 	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/obcode/plexams.go/plexams/email"
 	"github.com/obcode/plexams.go/plexams/planstate"
 	"github.com/obcode/plexams.go/plexams/primuss"
+	"github.com/obcode/plexams.go/plexams/secrets"
 	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -23,6 +23,7 @@ type Plexams struct {
 	dbClient       *db.DB
 	zpa            *ZPA
 	jira           *Jira
+	sealer         *secrets.Sealer
 	planer         *Planer
 	operator       *Operator
 	email          *Email
@@ -55,15 +56,13 @@ type ZPA struct {
 	oldprograms  []string
 }
 
-// Jira wraps the on-prem Jira (jira.cc.hm.edu) client together with the config it
-// is built from. The client is created lazily on first use via SetJira, so a
-// missing/incomplete jira.* config never blocks startup — only actual Jira calls
-// fail then. baseurl/token/project come from the local config (jira.*); the PAT
-// is a secret and stays in the config file, never in the DB.
+// Jira holds the on-prem Jira (jira.cc.hm.edu) connection config. baseurl and project
+// come from the local config (jira.*); the PAT is NOT here — it is per-user, stored
+// AES-256-GCM-encrypted in the DB and resolved per request from the ctx principal (see
+// jiraClient in jira.go and user_secrets.go). No cached client: a fresh jira.Jira is
+// built per call with the caller's decrypted PAT.
 type Jira struct {
-	client  *jira.Jira
 	baseurl string
-	token   string
 	project string
 }
 
@@ -159,9 +158,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			oldprograms:  oldprograms,
 		},
 		jira: &Jira{
-			client:  nil,
 			baseurl: viper.GetString("jira.baseurl"),
-			token:   viper.GetString("jira.token"),
 			project: viper.GetString("jira.project"),
 		},
 		planer: &Planer{
@@ -204,6 +201,15 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		PlanerName:   plexams.planer.Name,
 		PlanerEmail:  plexams.planer.Email,
 	})
+
+	// Master key (KEK) for per-user secrets (Jira PAT). Lives only in the config/env
+	// (secrets.key), never in the DB. A malformed key disables secret operations
+	// (fail-closed); an empty key leaves the sealer nil (secrets simply unavailable).
+	sealer, err := secrets.NewSealer(viper.GetString("secrets.key"))
+	if err != nil {
+		log.Error().Err(err).Msg("invalid secrets.key — per-user secrets (Jira PAT) are disabled until fixed")
+	}
+	plexams.sealer = sealer
 
 	var annyDB anny.DB
 	if plexams.dbClient != nil {
@@ -267,33 +273,6 @@ func (p *Plexams) SetZPA() error {
 		p.zpa.client = zpaClient
 	}
 	return nil
-}
-
-// SetJira lazily builds the Jira client from the local jira.* config. Unlike
-// SetZPA it performs no network call, so it only fails when the config is
-// missing; use TestJira to actually verify baseurl and PAT against the server.
-func (p *Plexams) SetJira() error {
-	if p.jira.client == nil {
-		if p.jira.baseurl == "" || p.jira.token == "" {
-			return fmt.Errorf("jira not configured: set jira.baseurl and jira.token in .plexams.yaml")
-		}
-		p.jira.client = jira.New(p.jira.baseurl, p.jira.token, p.jira.project)
-	}
-	return nil
-}
-
-// TestJira verifies the configured Jira connection (GET /rest/api/2/myself) and
-// returns the authenticated user's display name.
-func (p *Plexams) TestJira() (string, error) {
-	if err := p.SetJira(); err != nil {
-		return "", err
-	}
-	me, err := p.jira.client.Myself()
-	if err != nil {
-		return "", err
-	}
-	log.Info().Str("user", me.Name).Str("displayName", me.DisplayName).Msg("connected to Jira")
-	return me.DisplayName, nil
 }
 
 func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, error) {

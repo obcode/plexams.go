@@ -742,6 +742,7 @@ type ComplexityRoot struct {
 		RemoveExamDuration            func(childComplexity int, ancode int) int
 		RemoveExamsCanShareSlot       func(childComplexity int, ancode1 int, ancode2 int) int
 		RemoveMucDaiLink              func(childComplexity int, program string, primussAncode int) int
+		RemoveMyJiraToken             func(childComplexity int) int
 		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
 		RemovePermanentNonInvigilator func(childComplexity int, teacherID int) int
 		RemovePrePlannedInvigilation  func(childComplexity int, starttime time.Time, roomName *string) int
@@ -771,6 +772,8 @@ type ComplexityRoot struct {
 		SetGenerationConfig           func(childComplexity int, input model.GenerationConfigInput) int
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetMucDaiZpaLink              func(childComplexity int, program string, primussAncode int, zpaAncode int) int
+		SetMyJiraToken                func(childComplexity int, token string) int
+		SetMyShortname                func(childComplexity int, shortname string) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string) int
 		SetPlaner                     func(childComplexity int, name string, email string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) int
@@ -815,6 +818,16 @@ type ComplexityRoot struct {
 		Time       func(childComplexity int) int
 		Type       func(childComplexity int) int
 		User       func(childComplexity int) int
+	}
+
+	MyAccount struct {
+		Email              func(childComplexity int) int
+		JiraTokenSet       func(childComplexity int) int
+		JiraTokenUpdatedAt func(childComplexity int) int
+		Name               func(childComplexity int) int
+		Role               func(childComplexity int) int
+		Shortname          func(childComplexity int) int
+		ShortnameFromZpa   func(childComplexity int) int
 	}
 
 	NTA struct {
@@ -1146,6 +1159,7 @@ type ComplexityRoot struct {
 		MucdaiExams                   func(childComplexity int) int
 		MutationLog                   func(childComplexity int, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, user *string, since *time.Time, until *time.Time, limit *int) int
 		MutationLogNames              func(childComplexity int) int
+		MyAccount                     func(childComplexity int) int
 		NewSemesterConfigDefaults     func(childComplexity int) int
 		Nta                           func(childComplexity int, mtknr string) int
 		NtaRoomAloneWaivers           func(childComplexity int) int
@@ -1583,9 +1597,10 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		Email func(childComplexity int) int
-		Name  func(childComplexity int) int
-		Role  func(childComplexity int) int
+		Email     func(childComplexity int) int
+		Name      func(childComplexity int) int
+		Role      func(childComplexity int) int
+		Shortname func(childComplexity int) int
 	}
 
 	ValidationFinding struct {
@@ -1700,6 +1715,9 @@ type AssembledExamResolver interface {
 	MainExamer(ctx context.Context, obj *model.AssembledExam) (*model.Teacher, error)
 }
 type MutationResolver interface {
+	SetMyShortname(ctx context.Context, shortname string) (*model.MyAccount, error)
+	SetMyJiraToken(ctx context.Context, token string) (*model.MyAccount, error)
+	RemoveMyJiraToken(ctx context.Context) (*model.MyAccount, error)
 	UpsertAdditionalExam(ctx context.Context, input model.AdditionalExamInput) (*model.AdditionalExam, error)
 	DeleteAdditionalExam(ctx context.Context, ancode int) (bool, error)
 	SetAnnyPersonalizationNames(ctx context.Context, names []string) (*model.AnnyConfig, error)
@@ -1811,6 +1829,7 @@ type QueryResolver interface {
 	SemesterConfig(ctx context.Context) (*model.SemesterConfig, error)
 	SemesterConfigInput(ctx context.Context) (*model.SemesterConfigInput, error)
 	NewSemesterConfigDefaults(ctx context.Context) (*model.SemesterConfigInput, error)
+	MyAccount(ctx context.Context) (*model.MyAccount, error)
 	AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error)
 	AnnyBookings(ctx context.Context, room *string) ([]*model.AnnyBooking, error)
 	AllAnnyBookings(ctx context.Context) ([]*model.AnnyBooking, error)
@@ -5496,6 +5515,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.RemoveMucDaiLink(childComplexity, args["program"].(string), args["primussAncode"].(int)), true
 
+	case "Mutation.removeMyJiraToken":
+		if e.complexity.Mutation.RemoveMyJiraToken == nil {
+			break
+		}
+
+		return e.complexity.Mutation.RemoveMyJiraToken(childComplexity), true
+
 	case "Mutation.removeNtaRoomAloneWaiver":
 		if e.complexity.Mutation.RemoveNtaRoomAloneWaiver == nil {
 			break
@@ -5803,6 +5829,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetMucDaiZpaLink(childComplexity, args["program"].(string), args["primussAncode"].(int), args["zpaAncode"].(int)), true
+
+	case "Mutation.setMyJiraToken":
+		if e.complexity.Mutation.SetMyJiraToken == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setMyJiraToken_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetMyJiraToken(childComplexity, args["token"].(string)), true
+
+	case "Mutation.setMyShortname":
+		if e.complexity.Mutation.SetMyShortname == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setMyShortname_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetMyShortname(childComplexity, args["shortname"].(string)), true
 
 	case "Mutation.setNTAActive":
 		if e.complexity.Mutation.SetNTAActive == nil {
@@ -6204,6 +6254,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.MutationLogEntry.User(childComplexity), true
+
+	case "MyAccount.email":
+		if e.complexity.MyAccount.Email == nil {
+			break
+		}
+
+		return e.complexity.MyAccount.Email(childComplexity), true
+
+	case "MyAccount.jiraTokenSet":
+		if e.complexity.MyAccount.JiraTokenSet == nil {
+			break
+		}
+
+		return e.complexity.MyAccount.JiraTokenSet(childComplexity), true
+
+	case "MyAccount.jiraTokenUpdatedAt":
+		if e.complexity.MyAccount.JiraTokenUpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.MyAccount.JiraTokenUpdatedAt(childComplexity), true
+
+	case "MyAccount.name":
+		if e.complexity.MyAccount.Name == nil {
+			break
+		}
+
+		return e.complexity.MyAccount.Name(childComplexity), true
+
+	case "MyAccount.role":
+		if e.complexity.MyAccount.Role == nil {
+			break
+		}
+
+		return e.complexity.MyAccount.Role(childComplexity), true
+
+	case "MyAccount.shortname":
+		if e.complexity.MyAccount.Shortname == nil {
+			break
+		}
+
+		return e.complexity.MyAccount.Shortname(childComplexity), true
+
+	case "MyAccount.shortnameFromZpa":
+		if e.complexity.MyAccount.ShortnameFromZpa == nil {
+			break
+		}
+
+		return e.complexity.MyAccount.ShortnameFromZpa(childComplexity), true
 
 	case "NTA.compensation":
 		if e.complexity.NTA.Compensation == nil {
@@ -7897,6 +7996,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.MutationLogNames(childComplexity), true
+
+	case "Query.myAccount":
+		if e.complexity.Query.MyAccount == nil {
+			break
+		}
+
+		return e.complexity.Query.MyAccount(childComplexity), true
 
 	case "Query.newSemesterConfigDefaults":
 		if e.complexity.Query.NewSemesterConfigDefaults == nil {
@@ -10414,6 +10520,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.User.Role(childComplexity), true
 
+	case "User.shortname":
+		if e.complexity.User.Shortname == nil {
+			break
+		}
+
+		return e.complexity.User.Shortname(childComplexity), true
+
 	case "ValidationFinding.ancode":
 		if e.complexity.ValidationFinding.Ancode == nil {
 			break
@@ -11027,6 +11140,43 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
+	{Name: "../account.graphqls", Input: `"""
+The current user's own account: identity (from the IdP via the auth proxy,
+read-only) plus editable self-service settings — the Kürzel (shortname) and the
+per-user Jira Personal Access Token (stored encrypted in the DB, never returned).
+"""
+type MyAccount {
+  email: String!
+  name: String!
+  role: Role!
+  "Effective Kürzel: the user's own override if set, otherwise the ZPA default."
+  shortname: String!
+  "The Kürzel from the matching ZPA teacher record (for display / reset), empty if none."
+  shortnameFromZpa: String!
+  "Whether an (encrypted) Jira PAT is stored for this user."
+  jiraTokenSet: Boolean!
+  "When the Jira PAT was last set (null if none)."
+  jiraTokenUpdatedAt: Time
+}
+
+extend type Query {
+  "The current user's account (identity + Kürzel + Jira-token status)."
+  myAccount: MyAccount!
+}
+
+extend type Mutation {
+  "Set the current user's Kürzel override. An empty string resets to the ZPA default."
+  setMyShortname(shortname: String!): MyAccount!
+  """
+  Store the current user's Jira Personal Access Token, AES-256-GCM encrypted in the
+  DB. Write-only: the token is never returned by any query. Requires secrets.key to
+  be configured on the server.
+  """
+  setMyJiraToken(token: String!): MyAccount!
+  "Remove the current user's stored Jira PAT."
+  removeMyJiraToken: MyAccount!
+}
+`, BuiltIn: false},
 	{Name: "../additional_exam.graphqls", Input: `extend type Query {
   """
   Additional exams: fully specified entries that are appended to the ZPA upload
@@ -11195,6 +11345,8 @@ type User {
   email: String!
   name: String!
   role: Role!
+  "Kürzel (shortname) override; empty when not set — the effective value then defaults to the ZPA teacher shortname (see myAccount)."
+  shortname: String!
 }
 
 extend type Query {
@@ -17028,6 +17180,62 @@ func (ec *executionContext) field_Mutation_setMucDaiZpaLink_argsZpaAncode(
 	}
 
 	var zeroVal int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setMyJiraToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setMyJiraToken_argsToken(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["token"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setMyJiraToken_argsToken(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["token"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
+	if tmp, ok := rawArgs["token"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setMyShortname_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setMyShortname_argsShortname(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["shortname"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setMyShortname_argsShortname(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	if _, ok := rawArgs["shortname"]; !ok {
+		var zeroVal string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("shortname"))
+	if tmp, ok := rawArgs["shortname"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -41418,6 +41626,208 @@ func (ec *executionContext) fieldContext_MucDaiExam_planEntry(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setMyShortname(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setMyShortname(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetMyShortname(rctx, fc.Args["shortname"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MyAccount)
+	fc.Result = res
+	return ec.marshalNMyAccount2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMyAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setMyShortname(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "email":
+				return ec.fieldContext_MyAccount_email(ctx, field)
+			case "name":
+				return ec.fieldContext_MyAccount_name(ctx, field)
+			case "role":
+				return ec.fieldContext_MyAccount_role(ctx, field)
+			case "shortname":
+				return ec.fieldContext_MyAccount_shortname(ctx, field)
+			case "shortnameFromZpa":
+				return ec.fieldContext_MyAccount_shortnameFromZpa(ctx, field)
+			case "jiraTokenSet":
+				return ec.fieldContext_MyAccount_jiraTokenSet(ctx, field)
+			case "jiraTokenUpdatedAt":
+				return ec.fieldContext_MyAccount_jiraTokenUpdatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MyAccount", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setMyShortname_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setMyJiraToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setMyJiraToken(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SetMyJiraToken(rctx, fc.Args["token"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MyAccount)
+	fc.Result = res
+	return ec.marshalNMyAccount2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMyAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setMyJiraToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "email":
+				return ec.fieldContext_MyAccount_email(ctx, field)
+			case "name":
+				return ec.fieldContext_MyAccount_name(ctx, field)
+			case "role":
+				return ec.fieldContext_MyAccount_role(ctx, field)
+			case "shortname":
+				return ec.fieldContext_MyAccount_shortname(ctx, field)
+			case "shortnameFromZpa":
+				return ec.fieldContext_MyAccount_shortnameFromZpa(ctx, field)
+			case "jiraTokenSet":
+				return ec.fieldContext_MyAccount_jiraTokenSet(ctx, field)
+			case "jiraTokenUpdatedAt":
+				return ec.fieldContext_MyAccount_jiraTokenUpdatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MyAccount", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setMyJiraToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeMyJiraToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeMyJiraToken(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveMyJiraToken(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MyAccount)
+	fc.Result = res
+	return ec.marshalNMyAccount2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMyAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeMyJiraToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "email":
+				return ec.fieldContext_MyAccount_email(ctx, field)
+			case "name":
+				return ec.fieldContext_MyAccount_name(ctx, field)
+			case "role":
+				return ec.fieldContext_MyAccount_role(ctx, field)
+			case "shortname":
+				return ec.fieldContext_MyAccount_shortname(ctx, field)
+			case "shortnameFromZpa":
+				return ec.fieldContext_MyAccount_shortnameFromZpa(ctx, field)
+			case "jiraTokenSet":
+				return ec.fieldContext_MyAccount_jiraTokenSet(ctx, field)
+			case "jiraTokenUpdatedAt":
+				return ec.fieldContext_MyAccount_jiraTokenUpdatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MyAccount", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_upsertAdditionalExam(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_upsertAdditionalExam(ctx, field)
 	if err != nil {
@@ -41736,6 +42146,8 @@ func (ec *executionContext) fieldContext_Mutation_setUser(ctx context.Context, f
 				return ec.fieldContext_User_name(ctx, field)
 			case "role":
 				return ec.fieldContext_User_role(ctx, field)
+			case "shortname":
+				return ec.fieldContext_User_shortname(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -48078,6 +48490,311 @@ func (ec *executionContext) fieldContext_MutationLogEntry_durationMs(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyAccount_email(ctx context.Context, field graphql.CollectedField, obj *model.MyAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MyAccount_email(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Email, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MyAccount_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyAccount_name(ctx context.Context, field graphql.CollectedField, obj *model.MyAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MyAccount_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MyAccount_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyAccount_role(ctx context.Context, field graphql.CollectedField, obj *model.MyAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MyAccount_role(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Role, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.Role)
+	fc.Result = res
+	return ec.marshalNRole2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MyAccount_role(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Role does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyAccount_shortname(ctx context.Context, field graphql.CollectedField, obj *model.MyAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MyAccount_shortname(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Shortname, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MyAccount_shortname(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyAccount_shortnameFromZpa(ctx context.Context, field graphql.CollectedField, obj *model.MyAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MyAccount_shortnameFromZpa(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ShortnameFromZpa, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MyAccount_shortnameFromZpa(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyAccount_jiraTokenSet(ctx context.Context, field graphql.CollectedField, obj *model.MyAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MyAccount_jiraTokenSet(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JiraTokenSet, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MyAccount_jiraTokenSet(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MyAccount_jiraTokenUpdatedAt(ctx context.Context, field graphql.CollectedField, obj *model.MyAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MyAccount_jiraTokenUpdatedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JiraTokenUpdatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MyAccount_jiraTokenUpdatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MyAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -56408,6 +57125,66 @@ func (ec *executionContext) fieldContext_Query_newSemesterConfigDefaults(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_myAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_myAccount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().MyAccount(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MyAccount)
+	fc.Result = res
+	return ec.marshalNMyAccount2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMyAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_myAccount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "email":
+				return ec.fieldContext_MyAccount_email(ctx, field)
+			case "name":
+				return ec.fieldContext_MyAccount_name(ctx, field)
+			case "role":
+				return ec.fieldContext_MyAccount_role(ctx, field)
+			case "shortname":
+				return ec.fieldContext_MyAccount_shortname(ctx, field)
+			case "shortnameFromZpa":
+				return ec.fieldContext_MyAccount_shortnameFromZpa(ctx, field)
+			case "jiraTokenSet":
+				return ec.fieldContext_MyAccount_jiraTokenSet(ctx, field)
+			case "jiraTokenUpdatedAt":
+				return ec.fieldContext_MyAccount_jiraTokenUpdatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MyAccount", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_additionalExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_additionalExams(ctx, field)
 	if err != nil {
@@ -56802,6 +57579,8 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_User_name(ctx, field)
 			case "role":
 				return ec.fieldContext_User_role(ctx, field)
+			case "shortname":
+				return ec.fieldContext_User_shortname(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -56854,6 +57633,8 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 				return ec.fieldContext_User_name(ctx, field)
 			case "role":
 				return ec.fieldContext_User_role(ctx, field)
+			case "shortname":
+				return ec.fieldContext_User_shortname(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -77438,6 +78219,50 @@ func (ec *executionContext) fieldContext_User_role(_ context.Context, field grap
 	return fc, nil
 }
 
+func (ec *executionContext) _User_shortname(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_shortname(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Shortname, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_shortname(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ValidationFinding_level(ctx context.Context, field graphql.CollectedField, obj *model.ValidationFinding) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ValidationFinding_level(ctx, field)
 	if err != nil {
@@ -88323,6 +89148,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
+		case "setMyShortname":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setMyShortname(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setMyJiraToken":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setMyJiraToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeMyJiraToken":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeMyJiraToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "upsertAdditionalExam":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_upsertAdditionalExam(ctx, field)
@@ -89121,6 +89967,72 @@ func (ec *executionContext) _MutationLogEntry(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var myAccountImplementors = []string{"MyAccount"}
+
+func (ec *executionContext) _MyAccount(ctx context.Context, sel ast.SelectionSet, obj *model.MyAccount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, myAccountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MyAccount")
+		case "email":
+			out.Values[i] = ec._MyAccount_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._MyAccount_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "role":
+			out.Values[i] = ec._MyAccount_role(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "shortname":
+			out.Values[i] = ec._MyAccount_shortname(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "shortnameFromZpa":
+			out.Values[i] = ec._MyAccount_shortnameFromZpa(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jiraTokenSet":
+			out.Values[i] = ec._MyAccount_jiraTokenSet(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jiraTokenUpdatedAt":
+			out.Values[i] = ec._MyAccount_jiraTokenUpdatedAt(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -91211,6 +92123,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_newSemesterConfigDefaults(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myAccount":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myAccount(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -96000,6 +96934,11 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "shortname":
+			out.Values[i] = ec._User_shortname(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99741,6 +100680,20 @@ func (ec *executionContext) marshalNMutationLogEntry2ᚖgithubᚗcomᚋobcodeᚋ
 		return graphql.Null
 	}
 	return ec._MutationLogEntry(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMyAccount2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMyAccount(ctx context.Context, sel ast.SelectionSet, v model.MyAccount) graphql.Marshaler {
+	return ec._MyAccount(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMyAccount2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMyAccount(ctx context.Context, sel ast.SelectionSet, v *model.MyAccount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MyAccount(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNNTA2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTA(ctx context.Context, sel ast.SelectionSet, v model.NTA) graphql.Marshaler {

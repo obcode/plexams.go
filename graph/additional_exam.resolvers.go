@@ -7,7 +7,6 @@ package graph
 import (
 	"context"
 
-	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
@@ -41,8 +40,3 @@ func (r *mutationResolver) DeleteAdditionalExam(ctx context.Context, ancode int)
 func (r *queryResolver) AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error) {
 	return r.plexams.AdditionalExams(ctx)
 }
-
-// Mutation returns generated.MutationResolver implementation.
-func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
-
-type mutationResolver struct{ *Resolver }

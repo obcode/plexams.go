@@ -93,6 +93,10 @@ func flattenArgs(args map[string]interface{}) ([]*model.MutationLogArg, []int) {
 			// skip nulls
 		default:
 			s := formatScalar(v)
+			if isSecretKey(key) {
+				// never store secrets (Jira PAT, passwords, …) in the audit log
+				s = "***"
+			}
 			pairs = append(pairs, &model.MutationLogArg{Key: key, Value: s})
 			if strings.Contains(strings.ToLower(key), "ancode") {
 				if n, ok := asInt(v); ok {
@@ -110,6 +114,16 @@ func flattenArgs(args map[string]interface{}) ([]*model.MutationLogArg, []int) {
 		ancodes = append(ancodes, a)
 	}
 	return pairs, ancodes
+}
+
+// isSecretKey reports whether an argument key holds a secret that must not be written
+// to the audit log in clear (e.g. the per-user Jira PAT via setMyJiraToken).
+func isSecretKey(key string) bool {
+	k := strings.ToLower(key)
+	return strings.Contains(k, "token") ||
+		strings.Contains(k, "password") ||
+		strings.Contains(k, "secret") ||
+		k == "pat"
 }
 
 // formatScalar renders a JSON scalar without a trailing ".0" for whole numbers.

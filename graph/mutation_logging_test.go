@@ -63,3 +63,37 @@ func TestFlattenArgs(t *testing.T) {
 		t.Errorf("ancodes = %v, want [134 99999]", ancodes)
 	}
 }
+
+func TestFlattenArgsMasksSecrets(t *testing.T) {
+	pairs, ancodes := flattenArgs(map[string]interface{}{
+		"token":  "super-secret-pat",
+		"name":   "foo",
+		"ancode": 42,
+	})
+	got := map[string]string{}
+	for _, p := range pairs {
+		got[p.Key] = p.Value
+	}
+	if got["token"] != "***" {
+		t.Errorf("token = %q, want *** (secret must be masked)", got["token"])
+	}
+	if got["name"] != "foo" {
+		t.Errorf("name = %q, want foo", got["name"])
+	}
+	if len(ancodes) != 1 || ancodes[0] != 42 {
+		t.Errorf("ancodes = %v, want [42]", ancodes)
+	}
+}
+
+func TestIsSecretKey(t *testing.T) {
+	for _, k := range []string{"token", "Token", "jiraToken", "password", "clientSecret", "pat"} {
+		if !isSecretKey(k) {
+			t.Errorf("%q should be a secret key", k)
+		}
+	}
+	for _, k := range []string{"ancode", "name", "email", "summary"} {
+		if isSecretKey(k) {
+			t.Errorf("%q should NOT be a secret key", k)
+		}
+	}
+}

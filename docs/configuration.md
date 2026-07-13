@@ -142,23 +142,30 @@ anny:
 Die on-prem-Jira `jira.cc.hm.edu` (Service-Desk-Projekt **FK07PP**) wird per
 **Personal Access Token (PAT)** angebunden — `Authorization: Bearer <PAT>` gegen
 die REST-API v2. Damit liest/erstellt plexams Tickets, kommentiert, ändert den
-Status und hängt Dateien (PDF/CSV) an. Der PAT ist ein **Secret** und bleibt in
-der Datei (nie in der DB).
+Status und hängt Dateien (PDF/CSV) an.
+
+Das **PAT ist personenbezogen und pro Planer** — es liegt **nicht** in der YAML,
+sondern **verschlüsselt in der DB** und wird pro Request aus der Identität des
+Anmelders aufgelöst. Jeder Planer trägt sein PAT auf der **„Mein Account"-Seite** der
+GUI ein (`setMyJiraToken`); es wird sofort AES-256-GCM-verschlüsselt gespeichert
+(Master-Key `secrets.key`, s. Abschnitt 5c) und nie im Klartext zurückgegeben. In der
+YAML bleiben nur die **geteilten, nicht-personenbezogenen** Werte:
 
 ```yaml
 jira:
   baseurl: https://jira.cc.hm.edu     # Instanz-Wurzel (für die REST-Anbindung)
-  token: <jira-pat>                   # Secret — Personal Access Token
   project: FK07PP                     # Default-Projekt-Key (createJiraIssue, offene Issues)
   url: https://jira.cc.hm.edu/servicedesk/customer/portal/13   # Kundenportal-Link
                                       # (nur für den E-Mail-Helper `jiraURL`, optional)
+  # token: <jira-pat>                 # ENTFÄLLT — PATs liegen jetzt pro Planer
+                                      # verschlüsselt in der DB (Mein Account → setMyJiraToken)
 ```
 
 > PAT anlegen: in Jira → Avatar → **Profil** → **Personal Access Tokens** →
-> *Create token*. Ohne `baseurl`/`token` bleibt die Jira-Anbindung inaktiv
-> (der Start schlägt nicht fehl; nur die Jira-Operationen melden dann einen Fehler).
-> `url` (Kundenportal) ist unabhängig davon und speist nur den `jiraURL`-Platzhalter
-> in den E-Mail-Vorlagen.
+> *Create token* — dann auf „Mein Account" eintragen. Ohne hinterlegtes PAT melden die
+> Jira-Operationen für diesen Nutzer „kein Jira-Token hinterlegt". Ohne `secrets.key`
+> (Abschnitt 5c) sind PAT-Operationen fail-closed. `url` (Kundenportal) ist unabhängig
+> und speist nur den `jiraURL`-Platzhalter in den E-Mail-Vorlagen.
 
 ## 5a. Sonstiges (Bootstrap)
 
@@ -204,6 +211,26 @@ auth:
 > ist strikt getrennt vom `planer`-Doc (geteilte E-Mail-Absenderidentität). Auf dem
 > Server kommt die Audit-Identität (`mutation_log.user`) aus dem Proxy-Principal statt
 > aus `operator.*`. Lokal (ohne `auth.enabled`) ist der Dev-User **ADMIN**.
+
+## 5c. Secrets / Master-Key (`secrets.key`)
+
+Benutzerbezogene Secrets (aktuell das **Jira-PAT pro Planer**) liegen **verschlüsselt
+in der globalen `plexams`-DB** (Collection `user_secrets`, AES-256-GCM). Der
+**Master-Key (KEK)** dafür lebt **nur** hier in der Config bzw. als Env-Var — **nie**
+in der DB, **nie** in Git.
+
+```yaml
+secrets:
+  key: <base64-32-byte-key>    # `openssl rand -base64 32`  (32 Byte → AES-256)
+```
+
+> Erzeugen: `openssl rand -base64 32`. Fehlt `secrets.key`, sind alle
+> PAT-Operationen **fail-closed** (klare Fehlermeldung, kein Klartext-Fallback); ein
+> **fehlerhafter** Key (kein base64 / ≠ 32 Byte) deaktiviert sie ebenfalls (Log-Fehler
+> beim Start). Der Key gehört zu den gemounteten Secrets (`.plexams.yaml` / Env /
+> Docker-Secret). PATs erscheinen nie im Klartext in Logs oder im `mutation_log`
+> (maskiert) und sind aus Dump/Export ausgeschlossen. `keyVersion` wird mitgespeichert
+> → spätere Key-Rotation ohne Big-Bang möglich.
 
 ---
 

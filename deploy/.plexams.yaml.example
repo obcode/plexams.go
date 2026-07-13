@@ -66,8 +66,16 @@ planer:
 # server the audit "who" comes from the OIDC principal instead, so operator.* is not
 # needed here.
 
+# Master key (KEK) for per-user secrets (each planner's Jira PAT), AES-256-GCM
+# encrypted in the DB. Generate with `openssl rand -base64 32`. Stays in this file /
+# env, never in the DB or git. Missing/invalid key => Jira-PAT operations fail closed.
+secrets:
+  key: change-me-openssl-rand-base64-32
+
 # --- Add the sections you actually use (secrets stay here) ---
-# zpa: { ... }
+# zpa:  { baseurl: ..., token: ... }        # ZPA app token — shared, stays here
 # smtp: { ... }
 # anny: { token: ... }
-# jira: { baseurl: ..., token: ... }
+# jira: { baseurl: https://jira.cc.hm.edu, project: FK07PP }
+#   NOTE: no jira.token here — Jira PATs are per planner, entered on the GUI
+#   "Mein Account" page and stored encrypted (needs secrets.key above).

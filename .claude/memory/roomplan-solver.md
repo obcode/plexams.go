@@ -25,7 +25,14 @@ on Mongo port 27013 (2026-07-12).
   (`RequestWith==NONE`; booked ANNY/MANAGEMENT incl. R1.046/049 exempt): `heat-floor` soft (later slot
   → lower floor, floor from `Rx.abc` name or optional `model.Room.Hitzewert` override) + `summer-cooldown`
   hard (own room never in two directly consecutive same-day slots). See [[slot-time-avoidance]].
-- 7 hard + 6 soft constraints, shown via new query `roomPlanConstraints` (reuses `OptimizerConstraint`).
+- 7 hard + 8 soft constraints, shown via new query `roomPlanConstraints` (reuses `OptimizerConstraint`).
+- **Room preferences (soft, keep booked T-Bau free for EXaHM):** `seb-rbau` (SEB exam prefers plain
+  R-Bau SEB rooms over booked EXaHM rooms) + `exahm-booked` (EXaHM exam incl. room-alone NTA prefers a
+  booked T-Bau EXaHM room; an OWN R-Bau EXaHM room like the 1-seat NTA room **R1.011** is only a
+  fallback when T3.021 isn't booked). `ValidateRoomsPerExam` emits an INFO hint when that fallback is
+  used. Weights `SebAvoidExahm`/`OwnExahmFallback` (internal, not yet in GenerationConfig). With R1.011
+  active this took Test26SS-v2 from 52 unplaced to **0** (SEB moves to R-Bau → frees T3 for EXaHM;
+  room-alone NTA takes 1-seat R1.011 instead of wasting a 30-seat T3 room).
 
 **GraphQL:** `assignRoomsForExams` repurposed to the solver (now takes `dryRun/seed/iterations/keepAssigned`,
 streams `LogLine`, final RESULT carries `RoomPlanReport` with `costByConstraint`/`hardViolations`).

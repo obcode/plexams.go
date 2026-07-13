@@ -145,6 +145,7 @@ func roomInputToRoom(input model.RoomInput) *model.Room {
 		Seb:              input.Seb,
 		SebSeats:         input.SebSeats,
 		HmebSeats:        input.HmebSeats,
+		Hitzewert:        input.Hitzewert,
 	}
 }
 

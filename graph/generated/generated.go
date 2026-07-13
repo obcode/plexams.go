@@ -496,6 +496,14 @@ type ComplexityRoot struct {
 		Iterations              func(childComplexity int) int
 		MaxSpanHours            func(childComplexity int) int
 		PreplanCapacityFactor   func(childComplexity int) int
+		RoomBuffer              func(childComplexity int) int
+		RoomChurn               func(childComplexity int) int
+		RoomCompaction          func(childComplexity int) int
+		RoomHeatBaselineHour    func(childComplexity int) int
+		RoomHeatFloor           func(childComplexity int) int
+		RoomHeatMode            func(childComplexity int) int
+		RoomSplit               func(childComplexity int) int
+		RoomUnplaced            func(childComplexity int) int
 		SlotTimeEnforcement     func(childComplexity int) int
 		SlotTimeGradientWeight  func(childComplexity int) int
 		SlotTimeMode            func(childComplexity int) int
@@ -665,6 +673,7 @@ type ComplexityRoot struct {
 		Level      func(childComplexity int) int
 		Progress   func(childComplexity int) int
 		Report     func(childComplexity int) int
+		RoomReport func(childComplexity int) int
 		Text       func(childComplexity int) int
 		Validation func(childComplexity int) int
 	}
@@ -1165,6 +1174,7 @@ type ComplexityRoot struct {
 		PrimussExams                  func(childComplexity int) int
 		PrimussExamsForAnCode         func(childComplexity int, ancode int) int
 		RenderEmailTemplatePreview    func(childComplexity int, name string, markdown string) int
+		RoomPlanConstraints           func(childComplexity int) int
 		RoomRequests                  func(childComplexity int) int
 		RoomRequestsPreview           func(childComplexity int) int
 		Rooms                         func(childComplexity int) int
@@ -1215,6 +1225,7 @@ type ComplexityRoot struct {
 		Deactivated      func(childComplexity int) int
 		Exahm            func(childComplexity int) int
 		Handicap         func(childComplexity int) int
+		Hitzewert        func(childComplexity int) int
 		HmebSeats        func(childComplexity int) int
 		Lab              func(childComplexity int) int
 		Name             func(childComplexity int) int
@@ -1251,6 +1262,21 @@ type ComplexityRoot struct {
 		Examer       func(childComplexity int) int
 		Module       func(childComplexity int) int
 		StudentCount func(childComplexity int) int
+	}
+
+	RoomPlanReport struct {
+		Cost             func(childComplexity int) int
+		CostByConstraint func(childComplexity int) int
+		Exams            func(childComplexity int) int
+		HardViolations   func(childComplexity int) int
+		Iterations       func(childComplexity int) int
+		PlacedSeats      func(childComplexity int) int
+		Rooms            func(childComplexity int) int
+		Seed             func(childComplexity int) int
+		StoppedEarly     func(childComplexity int) int
+		UnplacedExams    func(childComplexity int) int
+		UnplacedSeats    func(childComplexity int) int
+		Written          func(childComplexity int) int
 	}
 
 	RoomRequest struct {
@@ -1446,7 +1472,7 @@ type ComplexityRoot struct {
 
 	Subscription struct {
 		AssignInvigilations                  func(childComplexity int, dryRun bool, seed *int, iterations *int) int
-		AssignRoomsForExams                  func(childComplexity int) int
+		AssignRoomsForExams                  func(childComplexity int, dryRun bool, seed *int, iterations *int, keepAssigned *bool) int
 		GenerateExamRoomsPhase               func(childComplexity int, dryRun bool, seed *int, iterations *int) int
 		GenerateExamSchedule                 func(childComplexity int, dryRun bool, seed *int, iterations *int, ignoreRatings *bool, keepAssigned *bool) int
 		ImportAnnyBookings                   func(childComplexity int) int
@@ -1875,6 +1901,7 @@ type QueryResolver interface {
 	BlockedRooms(ctx context.Context) ([]*model.BlockedRoom, error)
 	RoomsWithFreeSeatsAt(ctx context.Context, starttime time.Time) ([]*model.RoomWithFreeSeats, error)
 	UnplacedExams(ctx context.Context) ([]*model.UnplacedExam, error)
+	RoomPlanConstraints(ctx context.Context) ([]*model.OptimizerConstraint, error)
 	RoomRequests(ctx context.Context) ([]*model.RoomRequest, error)
 	RoomRequestsPreview(ctx context.Context) ([]*model.RoomRequestPreview, error)
 	ServerInfo(ctx context.Context) (*model.ServerInfo, error)
@@ -1926,7 +1953,7 @@ type SubscriptionResolver interface {
 	SendEmailNTAPlanned(ctx context.Context, run bool) (<-chan *model.LogLine, error)
 	GenerateExamSchedule(ctx context.Context, dryRun bool, seed *int, iterations *int, ignoreRatings *bool, keepAssigned *bool) (<-chan *model.LogLine, error)
 	GenerateExamRoomsPhase(ctx context.Context, dryRun bool, seed *int, iterations *int) (<-chan *model.LogLine, error)
-	AssignRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error)
+	AssignRoomsForExams(ctx context.Context, dryRun bool, seed *int, iterations *int, keepAssigned *bool) (<-chan *model.LogLine, error)
 	ImportAnnyBookings(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateInvigilatorRequirements(ctx context.Context) (<-chan *model.LogLine, error)
 	ValidateInvigilationDuplicates(ctx context.Context) (<-chan *model.LogLine, error)
@@ -4024,6 +4051,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.GenerationConfig.PreplanCapacityFactor(childComplexity), true
 
+	case "GenerationConfig.roomBuffer":
+		if e.complexity.GenerationConfig.RoomBuffer == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.RoomBuffer(childComplexity), true
+
+	case "GenerationConfig.roomChurn":
+		if e.complexity.GenerationConfig.RoomChurn == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.RoomChurn(childComplexity), true
+
+	case "GenerationConfig.roomCompaction":
+		if e.complexity.GenerationConfig.RoomCompaction == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.RoomCompaction(childComplexity), true
+
+	case "GenerationConfig.roomHeatBaselineHour":
+		if e.complexity.GenerationConfig.RoomHeatBaselineHour == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.RoomHeatBaselineHour(childComplexity), true
+
+	case "GenerationConfig.roomHeatFloor":
+		if e.complexity.GenerationConfig.RoomHeatFloor == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.RoomHeatFloor(childComplexity), true
+
+	case "GenerationConfig.roomHeatMode":
+		if e.complexity.GenerationConfig.RoomHeatMode == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.RoomHeatMode(childComplexity), true
+
+	case "GenerationConfig.roomSplit":
+		if e.complexity.GenerationConfig.RoomSplit == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.RoomSplit(childComplexity), true
+
+	case "GenerationConfig.roomUnplaced":
+		if e.complexity.GenerationConfig.RoomUnplaced == nil {
+			break
+		}
+
+		return e.complexity.GenerationConfig.RoomUnplaced(childComplexity), true
+
 	case "GenerationConfig.slotTimeEnforcement":
 		if e.complexity.GenerationConfig.SlotTimeEnforcement == nil {
 			break
@@ -4807,6 +4890,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.LogLine.Report(childComplexity), true
+
+	case "LogLine.roomReport":
+		if e.complexity.LogLine.RoomReport == nil {
+			break
+		}
+
+		return e.complexity.LogLine.RoomReport(childComplexity), true
 
 	case "LogLine.text":
 		if e.complexity.LogLine.Text == nil {
@@ -8059,6 +8149,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.RenderEmailTemplatePreview(childComplexity, args["name"].(string), args["markdown"].(string)), true
 
+	case "Query.roomPlanConstraints":
+		if e.complexity.Query.RoomPlanConstraints == nil {
+			break
+		}
+
+		return e.complexity.Query.RoomPlanConstraints(childComplexity), true
+
 	case "Query.roomRequests":
 		if e.complexity.Query.RoomRequests == nil {
 			break
@@ -8401,6 +8498,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Room.Handicap(childComplexity), true
 
+	case "Room.hitzewert":
+		if e.complexity.Room.Hitzewert == nil {
+			break
+		}
+
+		return e.complexity.Room.Hitzewert(childComplexity), true
+
 	case "Room.hmebSeats":
 		if e.complexity.Room.HmebSeats == nil {
 			break
@@ -8589,6 +8693,90 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RoomInSlotUsage.StudentCount(childComplexity), true
+
+	case "RoomPlanReport.cost":
+		if e.complexity.RoomPlanReport.Cost == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.Cost(childComplexity), true
+
+	case "RoomPlanReport.costByConstraint":
+		if e.complexity.RoomPlanReport.CostByConstraint == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.CostByConstraint(childComplexity), true
+
+	case "RoomPlanReport.exams":
+		if e.complexity.RoomPlanReport.Exams == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.Exams(childComplexity), true
+
+	case "RoomPlanReport.hardViolations":
+		if e.complexity.RoomPlanReport.HardViolations == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.HardViolations(childComplexity), true
+
+	case "RoomPlanReport.iterations":
+		if e.complexity.RoomPlanReport.Iterations == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.Iterations(childComplexity), true
+
+	case "RoomPlanReport.placedSeats":
+		if e.complexity.RoomPlanReport.PlacedSeats == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.PlacedSeats(childComplexity), true
+
+	case "RoomPlanReport.rooms":
+		if e.complexity.RoomPlanReport.Rooms == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.Rooms(childComplexity), true
+
+	case "RoomPlanReport.seed":
+		if e.complexity.RoomPlanReport.Seed == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.Seed(childComplexity), true
+
+	case "RoomPlanReport.stoppedEarly":
+		if e.complexity.RoomPlanReport.StoppedEarly == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.StoppedEarly(childComplexity), true
+
+	case "RoomPlanReport.unplacedExams":
+		if e.complexity.RoomPlanReport.UnplacedExams == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.UnplacedExams(childComplexity), true
+
+	case "RoomPlanReport.unplacedSeats":
+		if e.complexity.RoomPlanReport.UnplacedSeats == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.UnplacedSeats(childComplexity), true
+
+	case "RoomPlanReport.written":
+		if e.complexity.RoomPlanReport.Written == nil {
+			break
+		}
+
+		return e.complexity.RoomPlanReport.Written(childComplexity), true
 
 	case "RoomRequest.active":
 		if e.complexity.RoomRequest.Active == nil {
@@ -9440,7 +9628,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Subscription.AssignRoomsForExams(childComplexity), true
+		args, err := ec.field_Subscription_assignRoomsForExams_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.AssignRoomsForExams(childComplexity, args["dryRun"].(bool), args["seed"].(*int), args["iterations"].(*int), args["keepAssigned"].(*bool)), true
 
 	case "Subscription.generateExamRoomsPhase":
 		if e.complexity.Subscription.GenerateExamRoomsPhase == nil {
@@ -11741,6 +11934,17 @@ enum SlotTimeConstraintEnforcement {
   SOFT
 }
 
+"""
+When the room-plan generator applies the summer heat constraints (heat-floor soft + summer
+cooldown hard). AUTO follows the semester (active only in summer/SS); SUMMER forces them on
+(for testing); OFF disables them. Only own (non-booked) rooms are ever affected. Default AUTO.
+"""
+enum RoomHeatConstraintMode {
+  AUTO
+  SUMMER
+  OFF
+}
+
 type GenerationConfig {
   iterations: Int!
   startTemp: Float!
@@ -11799,6 +12003,24 @@ type GenerationConfig {
   examClosenessFalloffMin: Float!
   "Pre-plan (SEB/EXaHM): usable fraction of a slot's booked Anny seats (1.0 = fill completely)."
   preplanCapacityFactor: Float!
+
+  # --- Room plan (roomplan) solver weights + the summer heat mode. ---
+  "Room plan: whether/how the summer heat constraints apply (default AUTO by semester)."
+  roomHeatMode: RoomHeatConstraintMode!
+  "Room plan: penalty per unplaced seat (dominant — keep very high so everyone gets a room)."
+  roomUnplaced: Float!
+  "Room plan: penalty per seat an exam's free-seat buffer falls short (do not pack rooms full)."
+  roomBuffer: Float!
+  "Room plan: penalty per extra room an exam is split across (keep an exam together)."
+  roomSplit: Float!
+  "Room plan: penalty per distinct room used overall (compaction — request/open fewer rooms)."
+  roomCompaction: Float!
+  "Room plan (summer): penalty per (floor × lateness × seat) in own rooms — later = lower floor."
+  roomHeatFloor: Float!
+  "Room plan: penalty per seat whose room differs from the saved plan on a re-run (warm start)."
+  roomChurn: Float!
+  "Room plan (summer): clock hour up to which a slot start is 'cool' (lateness 0); later starts get lateness = start − baseline."
+  roomHeatBaselineHour: Float!
 }
 
 input GenerationConfigInput {
@@ -11835,6 +12057,14 @@ input GenerationConfigInput {
   examHole: Float!
   examClosenessFalloffMin: Float!
   preplanCapacityFactor: Float!
+  roomHeatMode: RoomHeatConstraintMode!
+  roomUnplaced: Float!
+  roomBuffer: Float!
+  roomSplit: Float!
+  roomCompaction: Float!
+  roomHeatFloor: Float!
+  roomChurn: Float!
+  roomHeatBaselineHour: Float!
 }
 `, BuiltIn: false},
 	{Name: "../invigilation.graphqls", Input: `extend type Query {
@@ -12895,6 +13125,8 @@ type ConflictsPerProgramAncode {
   roomsWithFreeSeatsAt(starttime: Time!): [RoomWithFreeSeats!]!
   "Students that could not be assigned a real room in their slot during the last room generation (the replacement for the old 'No Room' placeholder)."
   unplacedExams: [UnplacedExam!]!
+  "The read-only list of hard/soft constraints the room-plan generator (solver) applies."
+  roomPlanConstraints: [OptimizerConstraint!]!
 }
 
 extend type Mutation {
@@ -12931,8 +13163,14 @@ extend type Mutation {
 # exclusive operations they are blocked while a validation or another
 # transfer/email/generation runs.
 extend type Subscription {
-  "Assign rooms to all exams (rooms-for-exams) and stream the output. The allowed rooms per slot are computed live from the current rooms/requests/bookings; there is no separate rooms-for-slots step or cache."
-  assignRoomsForExams: LogLine!
+  """
+  Assign rooms to all exams with the constraint solver (simulated annealing) and stream the
+  output line by line. The allowed rooms per slot are computed live from the current
+  rooms/requests/bookings. With dryRun nothing is written; the final RESULT line carries the
+  structured roomReport either way. seed and iterations override the defaults (0/null = keep
+  default). With keepAssigned the current plan is used as the warm start (minimal churn).
+  """
+  assignRoomsForExams(dryRun: Boolean! = false, seed: Int, iterations: Int, keepAssigned: Boolean): LogLine!
   "Fetch the room bookings from anny.eu and store them (used for the EXaHM room slots). Streams its output."
   importAnnyBookings: LogLine!
 }
@@ -12951,6 +13189,8 @@ input RoomInput {
   seb: Boolean!
   sebSeats: Int
   hmebSeats: Int
+  "Optional summer heat override (higher = hotter). Null = derive from the R-building floor in the name. Only used for own (non-booked) rooms."
+  hitzewert: Int
 }
 
 """
@@ -12980,6 +13220,27 @@ type Room {
   sebSeats: Int
   hmebSeats: Int
   deactivated: Boolean!
+  "Optional summer heat override (higher = hotter). Null = derive from the R-building floor in the name. Only used for own (non-booked) rooms."
+  hitzewert: Int
+}
+
+"Structured outcome of a solver-based room-generation run (assignRoomsForExams), delivered once on the final RESULT line (also for dryRun)."
+type RoomPlanReport {
+  exams: Int!
+  placedSeats: Int!
+  unplacedSeats: Int!
+  "distinct rooms used."
+  rooms: Int!
+  hardViolations: [String!]!
+  cost: Float!
+  costByConstraint: [ConstraintCost!]!
+  iterations: Int!
+  "the seed used — pass it back to reproduce this exact plan."
+  seed: Int!
+  stoppedEarly: Boolean!
+  written: Boolean!
+  "exams with students that got no room (grouped)."
+  unplacedExams: [UnplacedExam!]!
 }
 
 type RoomsForSlot {
@@ -13488,6 +13749,7 @@ type LogLine {
   report: InvigilationReport
   validation: ValidationReport
   examReport: ExamScheduleReport
+  roomReport: RoomPlanReport
 }
 
 """
@@ -19802,6 +20064,103 @@ func (ec *executionContext) field_Subscription_assignInvigilations_argsIteration
 	}
 
 	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_assignRoomsForExams_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_assignRoomsForExams_argsDryRun(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["dryRun"] = arg0
+	arg1, err := ec.field_Subscription_assignRoomsForExams_argsSeed(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["seed"] = arg1
+	arg2, err := ec.field_Subscription_assignRoomsForExams_argsIterations(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["iterations"] = arg2
+	arg3, err := ec.field_Subscription_assignRoomsForExams_argsKeepAssigned(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["keepAssigned"] = arg3
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_assignRoomsForExams_argsDryRun(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["dryRun"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dryRun"))
+	if tmp, ok := rawArgs["dryRun"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_assignRoomsForExams_argsSeed(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["seed"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("seed"))
+	if tmp, ok := rawArgs["seed"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_assignRoomsForExams_argsIterations(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["iterations"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("iterations"))
+	if tmp, ok := rawArgs["iterations"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_assignRoomsForExams_argsKeepAssigned(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*bool, error) {
+	if _, ok := rawArgs["keepAssigned"]; !ok {
+		var zeroVal *bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("keepAssigned"))
+	if tmp, ok := rawArgs["keepAssigned"]; ok {
+		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+	}
+
+	var zeroVal *bool
 	return zeroVal, nil
 }
 
@@ -35292,6 +35651,358 @@ func (ec *executionContext) fieldContext_GenerationConfig_preplanCapacityFactor(
 	return fc, nil
 }
 
+func (ec *executionContext) _GenerationConfig_roomHeatMode(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_roomHeatMode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomHeatMode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.RoomHeatConstraintMode)
+	fc.Result = res
+	return ec.marshalNRoomHeatConstraintMode2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomHeatConstraintMode(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_roomHeatMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type RoomHeatConstraintMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_roomUnplaced(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_roomUnplaced(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomUnplaced, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_roomUnplaced(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_roomBuffer(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_roomBuffer(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomBuffer, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_roomBuffer(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_roomSplit(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_roomSplit(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomSplit, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_roomSplit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_roomCompaction(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_roomCompaction(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomCompaction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_roomCompaction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_roomHeatFloor(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_roomHeatFloor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomHeatFloor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_roomHeatFloor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_roomChurn(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_roomChurn(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomChurn, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_roomChurn(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GenerationConfig_roomHeatBaselineHour(ctx context.Context, field graphql.CollectedField, obj *model.GenerationConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GenerationConfig_roomHeatBaselineHour(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomHeatBaselineHour, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GenerationConfig_roomHeatBaselineHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GenerationConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ImportMucDaiResult_programs(ctx context.Context, field graphql.CollectedField, obj *model.ImportMucDaiResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ImportMucDaiResult_programs(ctx, field)
 	if err != nil {
@@ -39933,6 +40644,73 @@ func (ec *executionContext) fieldContext_LogLine_examReport(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _LogLine_roomReport(ctx context.Context, field graphql.CollectedField, obj *model.LogLine) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LogLine_roomReport(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoomReport, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.RoomPlanReport)
+	fc.Result = res
+	return ec.marshalORoomPlanReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomPlanReport(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LogLine_roomReport(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LogLine",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "exams":
+				return ec.fieldContext_RoomPlanReport_exams(ctx, field)
+			case "placedSeats":
+				return ec.fieldContext_RoomPlanReport_placedSeats(ctx, field)
+			case "unplacedSeats":
+				return ec.fieldContext_RoomPlanReport_unplacedSeats(ctx, field)
+			case "rooms":
+				return ec.fieldContext_RoomPlanReport_rooms(ctx, field)
+			case "hardViolations":
+				return ec.fieldContext_RoomPlanReport_hardViolations(ctx, field)
+			case "cost":
+				return ec.fieldContext_RoomPlanReport_cost(ctx, field)
+			case "costByConstraint":
+				return ec.fieldContext_RoomPlanReport_costByConstraint(ctx, field)
+			case "iterations":
+				return ec.fieldContext_RoomPlanReport_iterations(ctx, field)
+			case "seed":
+				return ec.fieldContext_RoomPlanReport_seed(ctx, field)
+			case "stoppedEarly":
+				return ec.fieldContext_RoomPlanReport_stoppedEarly(ctx, field)
+			case "written":
+				return ec.fieldContext_RoomPlanReport_written(ctx, field)
+			case "unplacedExams":
+				return ec.fieldContext_RoomPlanReport_unplacedExams(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoomPlanReport", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MinutesReport_withinTolerance(ctx context.Context, field graphql.CollectedField, obj *model.MinutesReport) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_MinutesReport_withinTolerance(ctx, field)
 	if err != nil {
@@ -42334,6 +43112,22 @@ func (ec *executionContext) fieldContext_Mutation_setGenerationConfig(ctx contex
 				return ec.fieldContext_GenerationConfig_examClosenessFalloffMin(ctx, field)
 			case "preplanCapacityFactor":
 				return ec.fieldContext_GenerationConfig_preplanCapacityFactor(ctx, field)
+			case "roomHeatMode":
+				return ec.fieldContext_GenerationConfig_roomHeatMode(ctx, field)
+			case "roomUnplaced":
+				return ec.fieldContext_GenerationConfig_roomUnplaced(ctx, field)
+			case "roomBuffer":
+				return ec.fieldContext_GenerationConfig_roomBuffer(ctx, field)
+			case "roomSplit":
+				return ec.fieldContext_GenerationConfig_roomSplit(ctx, field)
+			case "roomCompaction":
+				return ec.fieldContext_GenerationConfig_roomCompaction(ctx, field)
+			case "roomHeatFloor":
+				return ec.fieldContext_GenerationConfig_roomHeatFloor(ctx, field)
+			case "roomChurn":
+				return ec.fieldContext_GenerationConfig_roomChurn(ctx, field)
+			case "roomHeatBaselineHour":
+				return ec.fieldContext_GenerationConfig_roomHeatBaselineHour(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GenerationConfig", field.Name)
 		},
@@ -45513,6 +46307,8 @@ func (ec *executionContext) fieldContext_Mutation_setRoomActive(ctx context.Cont
 				return ec.fieldContext_Room_hmebSeats(ctx, field)
 			case "deactivated":
 				return ec.fieldContext_Room_deactivated(ctx, field)
+			case "hitzewert":
+				return ec.fieldContext_Room_hitzewert(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -45596,6 +46392,8 @@ func (ec *executionContext) fieldContext_Mutation_addRoom(ctx context.Context, f
 				return ec.fieldContext_Room_hmebSeats(ctx, field)
 			case "deactivated":
 				return ec.fieldContext_Room_deactivated(ctx, field)
+			case "hitzewert":
+				return ec.fieldContext_Room_hitzewert(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -45679,6 +46477,8 @@ func (ec *executionContext) fieldContext_Mutation_updateRoom(ctx context.Context
 				return ec.fieldContext_Room_hmebSeats(ctx, field)
 			case "deactivated":
 				return ec.fieldContext_Room_deactivated(ctx, field)
+			case "hitzewert":
+				return ec.fieldContext_Room_hitzewert(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -50383,6 +51183,8 @@ func (ec *executionContext) fieldContext_PlannedRoom_room(_ context.Context, fie
 				return ec.fieldContext_Room_hmebSeats(ctx, field)
 			case "deactivated":
 				return ec.fieldContext_Room_deactivated(ctx, field)
+			case "hitzewert":
+				return ec.fieldContext_Room_hitzewert(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -57536,6 +58338,22 @@ func (ec *executionContext) fieldContext_Query_generationConfig(_ context.Contex
 				return ec.fieldContext_GenerationConfig_examClosenessFalloffMin(ctx, field)
 			case "preplanCapacityFactor":
 				return ec.fieldContext_GenerationConfig_preplanCapacityFactor(ctx, field)
+			case "roomHeatMode":
+				return ec.fieldContext_GenerationConfig_roomHeatMode(ctx, field)
+			case "roomUnplaced":
+				return ec.fieldContext_GenerationConfig_roomUnplaced(ctx, field)
+			case "roomBuffer":
+				return ec.fieldContext_GenerationConfig_roomBuffer(ctx, field)
+			case "roomSplit":
+				return ec.fieldContext_GenerationConfig_roomSplit(ctx, field)
+			case "roomCompaction":
+				return ec.fieldContext_GenerationConfig_roomCompaction(ctx, field)
+			case "roomHeatFloor":
+				return ec.fieldContext_GenerationConfig_roomHeatFloor(ctx, field)
+			case "roomChurn":
+				return ec.fieldContext_GenerationConfig_roomChurn(ctx, field)
+			case "roomHeatBaselineHour":
+				return ec.fieldContext_GenerationConfig_roomHeatBaselineHour(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GenerationConfig", field.Name)
 		},
@@ -60547,6 +61365,8 @@ func (ec *executionContext) fieldContext_Query_rooms(_ context.Context, field gr
 				return ec.fieldContext_Room_hmebSeats(ctx, field)
 			case "deactivated":
 				return ec.fieldContext_Room_deactivated(ctx, field)
+			case "hitzewert":
+				return ec.fieldContext_Room_hitzewert(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -61201,6 +62021,64 @@ func (ec *executionContext) fieldContext_Query_unplacedExams(_ context.Context, 
 				return ec.fieldContext_UnplacedExam_ntaMtknr(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UnplacedExam", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_roomPlanConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_roomPlanConstraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().RoomPlanConstraints(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.OptimizerConstraint)
+	fc.Result = res
+	return ec.marshalNOptimizerConstraint2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐOptimizerConstraintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_roomPlanConstraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_OptimizerConstraint_name(ctx, field)
+			case "title":
+				return ec.fieldContext_OptimizerConstraint_title(ctx, field)
+			case "description":
+				return ec.fieldContext_OptimizerConstraint_description(ctx, field)
+			case "kind":
+				return ec.fieldContext_OptimizerConstraint_kind(ctx, field)
+			case "weight":
+				return ec.fieldContext_OptimizerConstraint_weight(ctx, field)
+			case "tier":
+				return ec.fieldContext_OptimizerConstraint_tier(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OptimizerConstraint", field.Name)
 		},
 	}
 	return fc, nil
@@ -63570,6 +64448,47 @@ func (ec *executionContext) fieldContext_Room_deactivated(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Room_hitzewert(ctx context.Context, field graphql.CollectedField, obj *model.Room) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Room_hitzewert(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Hitzewert, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Room_hitzewert(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Room",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RoomAndExam_room(ctx context.Context, field graphql.CollectedField, obj *model.RoomAndExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RoomAndExam_room(ctx, field)
 	if err != nil {
@@ -64342,6 +65261,550 @@ func (ec *executionContext) fieldContext_RoomInSlotUsage_studentCount(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_exams(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_exams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Exams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_exams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_placedSeats(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_placedSeats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PlacedSeats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_placedSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_unplacedSeats(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_unplacedSeats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnplacedSeats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_unplacedSeats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_rooms(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_rooms(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rooms, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_rooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_hardViolations(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_hardViolations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HardViolations, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_hardViolations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_cost(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_cost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_costByConstraint(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_costByConstraint(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CostByConstraint, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ConstraintCost)
+	fc.Result = res
+	return ec.marshalNConstraintCost2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐConstraintCostᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_costByConstraint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_ConstraintCost_name(ctx, field)
+			case "cost":
+				return ec.fieldContext_ConstraintCost_cost(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ConstraintCost", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_iterations(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_iterations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Iterations, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_iterations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_seed(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_seed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_seed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_stoppedEarly(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_stoppedEarly(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StoppedEarly, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_stoppedEarly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_written(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_written(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Written, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_written(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoomPlanReport_unplacedExams(ctx context.Context, field graphql.CollectedField, obj *model.RoomPlanReport) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoomPlanReport_unplacedExams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnplacedExams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.UnplacedExam)
+	fc.Result = res
+	return ec.marshalNUnplacedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExamᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoomPlanReport_unplacedExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoomPlanReport",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "starttime":
+				return ec.fieldContext_UnplacedExam_starttime(ctx, field)
+			case "ancode":
+				return ec.fieldContext_UnplacedExam_ancode(ctx, field)
+			case "mtknrs":
+				return ec.fieldContext_UnplacedExam_mtknrs(ctx, field)
+			case "ntaMtknr":
+				return ec.fieldContext_UnplacedExam_ntaMtknr(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UnplacedExam", field.Name)
 		},
 	}
 	return fc, nil
@@ -65821,6 +67284,8 @@ func (ec *executionContext) fieldContext_RoomsForSlot_rooms(_ context.Context, f
 				return ec.fieldContext_Room_hmebSeats(ctx, field)
 			case "deactivated":
 				return ec.fieldContext_Room_deactivated(ctx, field)
+			case "hitzewert":
+				return ec.fieldContext_Room_hitzewert(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Room", field.Name)
 		},
@@ -69869,6 +71334,8 @@ func (ec *executionContext) fieldContext_Subscription_assignInvigilations(ctx co
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -69952,6 +71419,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailExaHM(ctx context
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70035,6 +71504,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailExamPlanningInfo(
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70118,6 +71589,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailDraft(ctx context
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70201,6 +71674,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPublishedExams(ct
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70284,6 +71759,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPublishedRooms(ct
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70367,6 +71844,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailInvigilations(ctx
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70450,6 +71929,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailInvigilationsMiss
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70533,6 +72014,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPublishedInvigila
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70616,6 +72099,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailCoverPages(ctx co
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70699,6 +72184,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailCoverPage(ctx con
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70782,6 +72269,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailRoomRequests(ctx 
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70865,6 +72354,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailRoomsSecretariat(
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -70948,6 +72439,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailKdpExahm(ctx cont
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71031,6 +72524,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailLbaRepeaters(ctx 
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71114,6 +72609,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailInvigilationsSecr
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71197,6 +72694,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPrimussDataAll(ct
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71280,6 +72779,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPrimussData(ctx c
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71363,6 +72864,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailPrimussDataUnplan
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71446,6 +72949,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailNewNTA(ctx contex
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71529,6 +73034,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailNTARoomAlone(ctx 
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71612,6 +73119,8 @@ func (ec *executionContext) fieldContext_Subscription_sendEmailNTAPlanned(ctx co
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71695,6 +73204,8 @@ func (ec *executionContext) fieldContext_Subscription_generateExamSchedule(ctx c
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71778,6 +73289,8 @@ func (ec *executionContext) fieldContext_Subscription_generateExamRoomsPhase(ctx
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -71810,7 +73323,7 @@ func (ec *executionContext) _Subscription_assignRoomsForExams(ctx context.Contex
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Subscription().AssignRoomsForExams(rctx)
+		return ec.resolvers.Subscription().AssignRoomsForExams(rctx, fc.Args["dryRun"].(bool), fc.Args["seed"].(*int), fc.Args["iterations"].(*int), fc.Args["keepAssigned"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -71841,7 +73354,7 @@ func (ec *executionContext) _Subscription_assignRoomsForExams(ctx context.Contex
 	}
 }
 
-func (ec *executionContext) fieldContext_Subscription_assignRoomsForExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Subscription_assignRoomsForExams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Subscription",
 		Field:      field,
@@ -71861,9 +73374,22 @@ func (ec *executionContext) fieldContext_Subscription_assignRoomsForExams(_ cont
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_assignRoomsForExams_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -71933,6 +73459,8 @@ func (ec *executionContext) fieldContext_Subscription_importAnnyBookings(_ conte
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72005,6 +73533,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilatorRequire
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72077,6 +73607,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilationDuplic
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72149,6 +73681,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilatorSlots(_
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72221,6 +73755,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilationsTimeD
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72293,6 +73829,8 @@ func (ec *executionContext) fieldContext_Subscription_validateInvigilationConstr
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72365,6 +73903,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsPerSlot(_ con
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72437,6 +73977,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsNeedRequest(_
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72509,6 +74051,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsPerExam(_ con
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72581,6 +74125,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsTimeDistance(
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72653,6 +74199,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsBlocked(_ con
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72725,6 +74273,8 @@ func (ec *executionContext) fieldContext_Subscription_validateRoomsEnoughSeats(_
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72797,6 +74347,8 @@ func (ec *executionContext) fieldContext_Subscription_validateZPADateTimes(_ con
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72869,6 +74421,8 @@ func (ec *executionContext) fieldContext_Subscription_validateZPARooms(_ context
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -72941,6 +74495,8 @@ func (ec *executionContext) fieldContext_Subscription_validateZPAInvigilators(_ 
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73013,6 +74569,8 @@ func (ec *executionContext) fieldContext_Subscription_validateConflicts(ctx cont
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73096,6 +74654,8 @@ func (ec *executionContext) fieldContext_Subscription_validateConstraints(_ cont
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73168,6 +74728,8 @@ func (ec *executionContext) fieldContext_Subscription_validateStudentRegs(_ cont
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73240,6 +74802,8 @@ func (ec *executionContext) fieldContext_Subscription_validateSemesterTimes(_ co
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73312,6 +74876,8 @@ func (ec *executionContext) fieldContext_Subscription_validateDBPlanEntries(_ co
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73384,6 +74950,8 @@ func (ec *executionContext) fieldContext_Subscription_validateDBConstraints(_ co
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73456,6 +75024,8 @@ func (ec *executionContext) fieldContext_Subscription_validateDBRooms(_ context.
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73528,6 +75098,8 @@ func (ec *executionContext) fieldContext_Subscription_validateDBNtas(_ context.C
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73600,6 +75172,8 @@ func (ec *executionContext) fieldContext_Subscription_validateDBReferences(_ con
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73672,6 +75246,8 @@ func (ec *executionContext) fieldContext_Subscription_uploadExamsToZPA(ctx conte
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73755,6 +75331,8 @@ func (ec *executionContext) fieldContext_Subscription_uploadExamsWithRoomsToZPA(
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73838,6 +75416,8 @@ func (ec *executionContext) fieldContext_Subscription_uploadExamsWithInvigilator
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73921,6 +75501,8 @@ func (ec *executionContext) fieldContext_Subscription_uploadStudentRegsToZPA(_ c
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -73993,6 +75575,8 @@ func (ec *executionContext) fieldContext_Subscription_importTeachersFromZPA(_ co
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -74065,6 +75649,8 @@ func (ec *executionContext) fieldContext_Subscription_importExamsFromZPA(_ conte
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -74137,6 +75723,8 @@ func (ec *executionContext) fieldContext_Subscription_importInvigilatorRequireme
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -74209,6 +75797,8 @@ func (ec *executionContext) fieldContext_Subscription_importStudentsFromZPA(_ co
 				return ec.fieldContext_LogLine_validation(ctx, field)
 			case "examReport":
 				return ec.fieldContext_LogLine_examReport(ctx, field)
+			case "roomReport":
+				return ec.fieldContext_LogLine_roomReport(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 		},
@@ -81325,7 +82915,7 @@ func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"iterations", "startTemp", "endTemp", "toleranceMin", "maxSpanHours", "weightMinuteBalance", "weightBeyondTolerance", "weightOverTargetFactor", "weightCoverage", "weightMaxDays", "weightPreferExamDays", "weightDistribution", "weightDaySpan", "slotTimeMode", "slotTimeEnforcement", "slotTimeWeight", "slotTimeWinterEarliest", "slotTimeSummerLatest", "slotTimeGradientWeight", "examAdjacent", "examSameDay", "examDayFactor", "examWorstCase", "examRepeatFactor", "examAttract", "examSlotLoad", "examLoadThreshold", "examUnplaced", "examCrossCampus", "examTbauFill", "examHole", "examClosenessFalloffMin", "preplanCapacityFactor"}
+	fieldsInOrder := [...]string{"iterations", "startTemp", "endTemp", "toleranceMin", "maxSpanHours", "weightMinuteBalance", "weightBeyondTolerance", "weightOverTargetFactor", "weightCoverage", "weightMaxDays", "weightPreferExamDays", "weightDistribution", "weightDaySpan", "slotTimeMode", "slotTimeEnforcement", "slotTimeWeight", "slotTimeWinterEarliest", "slotTimeSummerLatest", "slotTimeGradientWeight", "examAdjacent", "examSameDay", "examDayFactor", "examWorstCase", "examRepeatFactor", "examAttract", "examSlotLoad", "examLoadThreshold", "examUnplaced", "examCrossCampus", "examTbauFill", "examHole", "examClosenessFalloffMin", "preplanCapacityFactor", "roomHeatMode", "roomUnplaced", "roomBuffer", "roomSplit", "roomCompaction", "roomHeatFloor", "roomChurn", "roomHeatBaselineHour"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81563,6 +83153,62 @@ func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Cont
 				return it, err
 			}
 			it.PreplanCapacityFactor = data
+		case "roomHeatMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomHeatMode"))
+			data, err := ec.unmarshalNRoomHeatConstraintMode2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomHeatConstraintMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomHeatMode = data
+		case "roomUnplaced":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomUnplaced"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomUnplaced = data
+		case "roomBuffer":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomBuffer"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomBuffer = data
+		case "roomSplit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomSplit"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomSplit = data
+		case "roomCompaction":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomCompaction"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomCompaction = data
+		case "roomHeatFloor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomHeatFloor"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomHeatFloor = data
+		case "roomChurn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomChurn"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomChurn = data
+		case "roomHeatBaselineHour":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomHeatBaselineHour"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomHeatBaselineHour = data
 		}
 	}
 
@@ -81862,7 +83508,7 @@ func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any
 		asMap["requestPriority"] = 0
 	}
 
-	fieldsInOrder := [...]string{"name", "seats", "handicap", "lab", "placesWithSocket", "requestWith", "requestPriority", "exahm", "seb", "sebSeats", "hmebSeats"}
+	fieldsInOrder := [...]string{"name", "seats", "handicap", "lab", "placesWithSocket", "requestWith", "requestPriority", "exahm", "seb", "sebSeats", "hmebSeats", "hitzewert"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81946,6 +83592,13 @@ func (ec *executionContext) unmarshalInputRoomInput(ctx context.Context, obj any
 				return it, err
 			}
 			it.HmebSeats = data
+		case "hitzewert":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hitzewert"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Hitzewert = data
 		}
 	}
 
@@ -85368,6 +87021,46 @@ func (ec *executionContext) _GenerationConfig(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "roomHeatMode":
+			out.Values[i] = ec._GenerationConfig_roomHeatMode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomUnplaced":
+			out.Values[i] = ec._GenerationConfig_roomUnplaced(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomBuffer":
+			out.Values[i] = ec._GenerationConfig_roomBuffer(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomSplit":
+			out.Values[i] = ec._GenerationConfig_roomSplit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomCompaction":
+			out.Values[i] = ec._GenerationConfig_roomCompaction(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomHeatFloor":
+			out.Values[i] = ec._GenerationConfig_roomHeatFloor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomChurn":
+			out.Values[i] = ec._GenerationConfig_roomChurn(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roomHeatBaselineHour":
+			out.Values[i] = ec._GenerationConfig_roomHeatBaselineHour(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -86447,6 +88140,8 @@ func (ec *executionContext) _LogLine(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._LogLine_validation(ctx, field, obj)
 		case "examReport":
 			out.Values[i] = ec._LogLine_examReport(ctx, field, obj)
+		case "roomReport":
+			out.Values[i] = ec._LogLine_roomReport(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -91427,6 +93122,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "roomPlanConstraints":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_roomPlanConstraints(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "roomRequests":
 			field := field
 
@@ -92093,6 +93810,8 @@ func (ec *executionContext) _Room(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "hitzewert":
+			out.Values[i] = ec._Room_hitzewert(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -92256,6 +93975,100 @@ func (ec *executionContext) _RoomInSlotUsage(ctx context.Context, sel ast.Select
 			}
 		case "studentCount":
 			out.Values[i] = ec._RoomInSlotUsage_studentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var roomPlanReportImplementors = []string{"RoomPlanReport"}
+
+func (ec *executionContext) _RoomPlanReport(ctx context.Context, sel ast.SelectionSet, obj *model.RoomPlanReport) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, roomPlanReportImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RoomPlanReport")
+		case "exams":
+			out.Values[i] = ec._RoomPlanReport_exams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "placedSeats":
+			out.Values[i] = ec._RoomPlanReport_placedSeats(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unplacedSeats":
+			out.Values[i] = ec._RoomPlanReport_unplacedSeats(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rooms":
+			out.Values[i] = ec._RoomPlanReport_rooms(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hardViolations":
+			out.Values[i] = ec._RoomPlanReport_hardViolations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cost":
+			out.Values[i] = ec._RoomPlanReport_cost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "costByConstraint":
+			out.Values[i] = ec._RoomPlanReport_costByConstraint(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "iterations":
+			out.Values[i] = ec._RoomPlanReport_iterations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seed":
+			out.Values[i] = ec._RoomPlanReport_seed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stoppedEarly":
+			out.Values[i] = ec._RoomPlanReport_stoppedEarly(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "written":
+			out.Values[i] = ec._RoomPlanReport_written(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unplacedExams":
+			out.Values[i] = ec._RoomPlanReport_unplacedExams(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -99499,6 +101312,16 @@ func (ec *executionContext) marshalNRoomAndExam2ᚖgithubᚗcomᚋobcodeᚋplexa
 	return ec._RoomAndExam(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNRoomHeatConstraintMode2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomHeatConstraintMode(ctx context.Context, v any) (model.RoomHeatConstraintMode, error) {
+	var res model.RoomHeatConstraintMode
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRoomHeatConstraintMode2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomHeatConstraintMode(ctx context.Context, sel ast.SelectionSet, v model.RoomHeatConstraintMode) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNRoomInSlotUsage2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomInSlotUsageᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RoomInSlotUsage) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -102592,6 +104415,13 @@ func (ec *executionContext) marshalORoomConstraints2ᚖgithubᚗcomᚋobcodeᚋp
 		return graphql.Null
 	}
 	return ec._RoomConstraints(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORoomPlanReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomPlanReport(ctx context.Context, sel ast.SelectionSet, v *model.RoomPlanReport) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RoomPlanReport(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalORoomsForSlot2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomsForSlot(ctx context.Context, sel ast.SelectionSet, v *model.RoomsForSlot) graphql.Marshaler {

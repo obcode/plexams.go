@@ -11,6 +11,7 @@ import (
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams"
+	"github.com/rs/zerolog/log"
 )
 
 // PrePlanRoom is the resolver for the prePlanRoom field.
@@ -153,16 +154,67 @@ func (r *queryResolver) UnplacedExams(ctx context.Context) ([]*model.UnplacedExa
 	return r.plexams.UnplacedExams(ctx)
 }
 
+// RoomPlanConstraints is the resolver for the roomPlanConstraints field.
+func (r *queryResolver) RoomPlanConstraints(ctx context.Context) ([]*model.OptimizerConstraint, error) {
+	infos := r.plexams.RoomPlanConstraints()
+	out := make([]*model.OptimizerConstraint, 0, len(infos))
+	for _, i := range infos {
+		out = append(out, &model.OptimizerConstraint{
+			Name: i.Name, Title: i.Title, Description: i.Description,
+			Kind: i.Kind.String(), Weight: i.Weight, Tier: i.Tier,
+		})
+	}
+	return out, nil
+}
+
 // Rooms is the resolver for the rooms field.
 func (r *roomsForSlotResolver) Rooms(ctx context.Context, obj *model.RoomsForSlot) ([]*model.Room, error) {
 	return r.plexams.RoomsFromRoomNames(ctx, obj.RoomNames)
 }
 
-// AssignRoomsForExams is the resolver for the assignRoomsForExams field.
-func (r *subscriptionResolver) AssignRoomsForExams(ctx context.Context) (<-chan *model.LogLine, error) {
-	return r.runExclusiveOp(ctx, func(ctx context.Context, reporter plexams.Reporter) error {
-		return r.plexams.PrepareRoomForExams(ctx, reporter)
-	}), nil
+// AssignRoomsForExams is the resolver for the assignRoomsForExams field. It runs the
+// solver-based room generation and streams its terminal-style output line by line; the
+// final RESULT line carries the structured roomReport (also on a dry run). Like the other
+// generators it runs exclusively (blocked while a validation/transfer/email runs) and on a
+// context detached from the subscription so a started non-dry-run write finishes even if the
+// client disconnects.
+func (r *subscriptionResolver) AssignRoomsForExams(ctx context.Context, dryRun bool, seed *int, iterations *int, keepAssigned *bool) (<-chan *model.LogLine, error) {
+	ch := make(chan *model.LogLine, 256)
+	reporter := newStreamReporter(ctx, ch)
+	if !r.plexams.TryBeginExclusiveOp() {
+		go func() {
+			defer close(ch)
+			reporter.emit(model.LogLevelError, "error: a validation or another transfer/email is running, cannot start now")
+			reporter.emit(model.LogLevelDone, "done")
+		}()
+		return ch, nil
+	}
+
+	var seedVal int64
+	if seed != nil {
+		seedVal = int64(*seed)
+	}
+	var iterVal int
+	if iterations != nil {
+		iterVal = *iterations
+	}
+	keep := keepAssigned != nil && *keepAssigned
+
+	opCtx := context.WithoutCancel(ctx)
+	go func() {
+		defer close(ch)
+		defer r.plexams.EndExclusiveOp()
+		result, err := r.plexams.GenerateRoomPlan(opCtx, dryRun, seedVal, iterVal, keep, reporter)
+		if err != nil {
+			log.Error().Err(err).Msg("generate room plan failed")
+			reporter.emit(model.LogLevelError, "error: "+err.Error())
+		}
+		if result != nil {
+			reporter.send(&model.LogLine{Level: model.LogLevelResult, Text: "report", RoomReport: roomPlanReport(result)})
+		}
+		reporter.emit(model.LogLevelDone, "done")
+	}()
+	return ch, nil
 }
 
 // ImportAnnyBookings is the resolver for the importAnnyBookings field.

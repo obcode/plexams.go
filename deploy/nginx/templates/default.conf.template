@@ -109,6 +109,23 @@ server {
         proxy_set_header X-Remote-Displayname $preferred_username;
     }
 
+    # --- Local logout landing (PUBLIC) ---
+    # The GUI's logout links to /oauth2/sign_out?rd=/abgemeldet: oauth2-proxy clears its
+    # cookie and redirects here. This page opts out of auth (auth_request off) so it is
+    # not re-protected and does not bounce into a silent SSO re-login. The central HM SSO
+    # session at sso.hm.edu is left intact — no single-logout across HM services.
+    location = /abgemeldet {
+        auth_request off;
+        default_type "text/html; charset=utf-8";
+        return 200 '<!doctype html>
+<meta charset="utf-8">
+<title>plexams — abgemeldet</title>
+<h1>Abgemeldet &#128075;</h1>
+<p>Die plexams-Session wurde beendet.</p>
+<p><a href="/">Erneut anmelden</a></p>
+';
+    }
+
     # --- plexams.gui single-page app (static build) ---
     location / {
         root /var/www/plexams;

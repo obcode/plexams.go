@@ -71,7 +71,7 @@ Voraussetzung: der OIDC-Client ist bei der IT registriert (Redirect-URI
 
 ```bash
 cd smoketest/2-login
-cp .env.example .env            # SERVER_NAME + OIDC-Client + Cookie-Secret (openssl rand -base64 32)
+cp .env.example .env            # SERVER_NAME + OIDC-Client + Cookie-Secret (openssl rand -base64 24 → 32 Zeichen)
 cp acme.env.example acme.env
 ```
 Verzeichnisse anlegen (wie in Schritt 1, vor `docker compose up`), dann Zertifikat:

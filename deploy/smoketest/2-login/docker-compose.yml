@@ -18,7 +18,11 @@ services:
       OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET}
       # MUST match the redirect URI registered with the HM IdP team.
       OAUTH2_PROXY_REDIRECT_URL: https://${SERVER_NAME}/oauth2/callback
-      OAUTH2_PROXY_SCOPE: "openid email profile"
+      OAUTH2_PROXY_SCOPE: "openid profile email department"
+      # Expose the raw id_token as "Authorization: Bearer …" on the /oauth2/auth response
+      # so nginx (auth_request) can hand it to the greeting page, which decodes ALL claims
+      # client-side — including ones without a dedicated X-Auth-Request-* header (department).
+      OAUTH2_PROXY_SET_AUTHORIZATION_HEADER: "true"
       # Permissive for the test: any account the IdP authenticates may log in.
       OAUTH2_PROXY_EMAIL_DOMAINS: "*"
       OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180

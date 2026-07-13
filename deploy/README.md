@@ -23,7 +23,7 @@ Für die OIDC-Client-Registrierung an `sso.hm.edu`:
 | **Redirect / Callback URI** | `https://<DEIN-HOST>/oauth2/callback` |
 | Grant type | `authorization_code` |
 | Scopes | `openid email profile` |
-| Post-Logout Redirect (optional) | `https://<DEIN-HOST>/` |
+| Post-Logout Redirect | — nicht nötig (Abmelden ist rein lokal, siehe unten) |
 
 > Die **Redirect-URI ist exakt** `https://<DEIN-HOST>/oauth2/callback` (das ist der
 > oauth2-proxy-Standardpfad — **nicht** `/redirect_uri`). `<DEIN-HOST>` = endgültiger
@@ -57,7 +57,8 @@ Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** un
    cp acme.env.example    acme.env        # ACME-Directory-URL + EAB kid/hmac (von der IT)
    cp .plexams.yaml.example .plexams.yaml # db.uri, auth.seedusers (die zwei ADMINs), zpa/smtp/…
    ```
-   `OAUTH2_PROXY_COOKIE_SECRET` z. B. mit `openssl rand -base64 32`. Denselben Host in
+   `OAUTH2_PROXY_COOKIE_SECRET` z. B. mit `openssl rand -base64 24` (ergibt 32 Zeichen;
+   oauth2-proxy verlangt 16/24/32 Zeichen, `-base64 32` liefert 44 und schlägt fehl). Denselben Host in
    `.env` `SERVER_NAME` ↔ `.plexams.yaml` `server.allowedorigins` verwenden, dieselbe
    Mongo-Passphrase in `.env` `MONGO_PASSWORD` ↔ `.plexams.yaml` `db.uri`.
 

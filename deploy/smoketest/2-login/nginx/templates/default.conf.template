@@ -37,6 +37,10 @@ server {
     auth_request_set $oidc_user   $upstream_http_x_auth_request_user;
     auth_request_set $oidc_pref   $upstream_http_x_auth_request_preferred_username;
     auth_request_set $oidc_groups $upstream_http_x_auth_request_groups;
+    # Raw "Authorization: Bearer <id_token>" from oauth2-proxy (SET_AUTHORIZATION_HEADER)
+    # so the greeting page can decode & dump ALL id_token claims client-side, incl. any
+    # the fixed X-Auth-Request-* headers don't expose (e.g. department).
+    auth_request_set $auth_token  $upstream_http_authorization;
 
     location /oauth2/ {
         auth_request off;
@@ -64,21 +68,66 @@ server {
     }
 
     # Greeting rendered directly from the auth attributes — no backend.
+    # NOTE: a bare `return 200` here would run in nginx's rewrite phase, BEFORE the
+    # access phase where auth_request lives — so it would serve the page unauthenticated
+    # and never redirect to sso.hm.edu. try_files runs in the precontent phase (after
+    # auth_request), so the greeting below is only reached once auth has passed.
     location / {
+        try_files /__greeting__ @greeting;
+    }
+
+    location @greeting {
         default_type "text/html; charset=utf-8";
         return 200 '<!doctype html>
 <meta charset="utf-8">
 <title>plexams — Login-Test</title>
+<style>body{font-family:sans-serif;max-width:52rem;margin:2rem auto;padding:0 1rem}pre{background:#f4f4f4;padding:1rem;border-radius:6px;overflow:auto}</style>
 <h1>Hallo $oidc_email &#128075;</h1>
-<p>Login &uuml;ber sso.hm.edu hat funktioniert. &Uuml;bertragen wurde:</p>
+<p>Login &uuml;ber sso.hm.edu hat funktioniert. Aus den festen oauth2-proxy-Headern:</p>
 <ul>
 <li>email: $oidc_email</li>
 <li>user (sub): $oidc_user</li>
 <li>preferred_username: $oidc_pref</li>
 <li>groups: $oidc_groups</li>
 </ul>
-<p>Vollst&auml;ndige Session-Claims als JSON: <a href="/oauth2/userinfo">/oauth2/userinfo</a></p>
-<p><a href="/oauth2/sign_out">Abmelden</a></p>
+<h2>Alle Claims aus dem ID-Token</h2>
+<pre id="idtoken">(wird geladen &hellip;)</pre>
+<h2>/oauth2/userinfo (oauth2-proxy Session)</h2>
+<pre id="userinfo">(wird geladen &hellip;)</pre>
+<p><a href="/oauth2/sign_out?rd=/abgemeldet">Abmelden</a></p>
+<script>
+(function(){
+  var el = document.getElementById("idtoken");
+  var t = "$auth_token";
+  if (t.indexOf("Bearer ") !== 0) { el.textContent = "kein ID-Token im Authorization-Header"; return; }
+  var p = t.slice(7).split(".");
+  if (p.length < 2) { el.textContent = "ungueltiges Token"; return; }
+  var b = p[1].replace(/-/g, "+").replace(/_/g, "/");
+  while (b.length % 4) { b += "="; }
+  try { el.textContent = JSON.stringify(JSON.parse(decodeURIComponent(escape(atob(b)))), null, 2); }
+  catch (e) { el.textContent = "Decode-Fehler: " + e; }
+})();
+fetch("/oauth2/userinfo", {credentials: "same-origin"})
+  .then(function(r){ return r.text(); })
+  .then(function(txt){ var el = document.getElementById("userinfo"); try { el.textContent = JSON.stringify(JSON.parse(txt), null, 2); } catch (e) { el.textContent = txt; } })
+  .catch(function(e){ document.getElementById("userinfo").textContent = "Fehler: " + e; });
+</script>
+';
+    }
+
+    # Local logout only: /oauth2/sign_out clears the oauth2-proxy cookie and (via rd)
+    # lands here. This page is PUBLIC (auth_request off) so it is not itself re-protected
+    # and does not bounce back into a silent SSO re-login. The central HM SSO session at
+    # sso.hm.edu is intentionally left intact — no single-logout across HM services.
+    location = /abgemeldet {
+        auth_request off;
+        default_type "text/html; charset=utf-8";
+        return 200 '<!doctype html>
+<meta charset="utf-8">
+<title>plexams — abgemeldet</title>
+<h1>Abgemeldet &#128075;</h1>
+<p>Die lokale plexams-Session wurde beendet.</p>
+<p><a href="/">Erneut anmelden</a></p>
 ';
     }
 }

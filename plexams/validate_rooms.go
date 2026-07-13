@@ -543,6 +543,12 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 							break
 						}
 					}
+					// No room-alone was planned for this NTA (e.g. its exclusive room could not be
+					// placed and the student is in the unplaced list, reported separately). Nothing
+					// to check here — skip instead of dereferencing a nil room.
+					if roomForNta == nil {
+						continue
+					}
 				OUTER:
 					for _, room := range exam.PlannedRooms {
 						if room.RoomName == roomForNta.RoomName {

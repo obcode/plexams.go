@@ -6,6 +6,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/examplan"
 	"github.com/obcode/plexams.go/plexams/invigplan"
+	"github.com/obcode/plexams.go/plexams/roomplan"
 	"github.com/spf13/viper"
 )
 
@@ -20,9 +21,30 @@ func (p *Plexams) GenerationConfig(ctx context.Context) (*model.GenerationConfig
 	if cfg != nil {
 		fillSlotTimeDefaults(cfg)   // backfill fields absent from an older stored config
 		fillExamWeightDefaults(cfg) // backfill the examplan/preplan solver weights
+		fillRoomWeightDefaults(cfg) // backfill the roomplan solver weights + heat mode
 		return cfg, nil
 	}
 	return defaultGenerationConfig(), nil
+}
+
+// fillRoomWeightDefaults seeds the room-plan (roomplan) solver weights and heat mode for a
+// stored config that predates them (all zero → treated as "unset"). RoomUnplaced is the
+// sentinel: its tuned default is far from 0, so a stored 0 means the whole room-weight group
+// is missing and gets backfilled from the defaults.
+func fillRoomWeightDefaults(cfg *model.GenerationConfig) {
+	if cfg.RoomUnplaced == 0 {
+		w := roomplan.DefaultWeights()
+		cfg.RoomUnplaced = w.Unplaced
+		cfg.RoomBuffer = w.Buffer
+		cfg.RoomSplit = w.Split
+		cfg.RoomCompaction = w.Compaction
+		cfg.RoomHeatFloor = w.HeatFloor
+		cfg.RoomChurn = w.Churn
+		cfg.RoomHeatBaselineHour = w.HeatBaselineHour
+	}
+	if cfg.RoomHeatMode == "" {
+		cfg.RoomHeatMode = model.RoomHeatConstraintModeAuto
+	}
 }
 
 // fillExamWeightDefaults seeds the Terminplan (examplan) solver weights and the pre-plan
@@ -134,6 +156,7 @@ func defaultGenerationConfig() *model.GenerationConfig {
 		SlotTimeSummerLatest:   defaultSlotTimeSummerLatest,
 	}
 	fillExamWeightDefaults(cfg) // seed the examplan/preplan solver weights from the tuned defaults
+	fillRoomWeightDefaults(cfg) // seed the roomplan solver weights + heat mode from the defaults
 
 	// legacy seed from the config file
 	if viper.IsSet("invigilation.optimizer.iterations") {

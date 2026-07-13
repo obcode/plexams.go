@@ -618,6 +618,22 @@ type GenerationConfig struct {
 	ExamClosenessFalloffMin float64 `json:"examClosenessFalloffMin"`
 	// Pre-plan (SEB/EXaHM): usable fraction of a slot's booked Anny seats (1.0 = fill completely).
 	PreplanCapacityFactor float64 `json:"preplanCapacityFactor"`
+	// Room plan: whether/how the summer heat constraints apply (default AUTO by semester).
+	RoomHeatMode RoomHeatConstraintMode `json:"roomHeatMode"`
+	// Room plan: penalty per unplaced seat (dominant — keep very high so everyone gets a room).
+	RoomUnplaced float64 `json:"roomUnplaced"`
+	// Room plan: penalty per seat an exam's free-seat buffer falls short (do not pack rooms full).
+	RoomBuffer float64 `json:"roomBuffer"`
+	// Room plan: penalty per extra room an exam is split across (keep an exam together).
+	RoomSplit float64 `json:"roomSplit"`
+	// Room plan: penalty per distinct room used overall (compaction — request/open fewer rooms).
+	RoomCompaction float64 `json:"roomCompaction"`
+	// Room plan (summer): penalty per (floor × lateness × seat) in own rooms — later = lower floor.
+	RoomHeatFloor float64 `json:"roomHeatFloor"`
+	// Room plan: penalty per seat whose room differs from the saved plan on a re-run (warm start).
+	RoomChurn float64 `json:"roomChurn"`
+	// Room plan (summer): clock hour up to which a slot start is 'cool' (lateness 0); later starts get lateness = start − baseline.
+	RoomHeatBaselineHour float64 `json:"roomHeatBaselineHour"`
 }
 
 type GenerationConfigInput struct {
@@ -654,6 +670,14 @@ type GenerationConfigInput struct {
 	ExamHole                float64                       `json:"examHole"`
 	ExamClosenessFalloffMin float64                       `json:"examClosenessFalloffMin"`
 	PreplanCapacityFactor   float64                       `json:"preplanCapacityFactor"`
+	RoomHeatMode            RoomHeatConstraintMode        `json:"roomHeatMode"`
+	RoomUnplaced            float64                       `json:"roomUnplaced"`
+	RoomBuffer              float64                       `json:"roomBuffer"`
+	RoomSplit               float64                       `json:"roomSplit"`
+	RoomCompaction          float64                       `json:"roomCompaction"`
+	RoomHeatFloor           float64                       `json:"roomHeatFloor"`
+	RoomChurn               float64                       `json:"roomChurn"`
+	RoomHeatBaselineHour    float64                       `json:"roomHeatBaselineHour"`
 }
 
 type ImportMucDaiResult struct {
@@ -841,6 +865,7 @@ type LogLine struct {
 	Report     *InvigilationReport `json:"report,omitempty"`
 	Validation *ValidationReport   `json:"validation,omitempty"`
 	ExamReport *ExamScheduleReport `json:"examReport,omitempty"`
+	RoomReport *RoomPlanReport     `json:"roomReport,omitempty"`
 }
 
 // MinutesReport: distribution of assigned vs. target minutes around the tolerance band.
@@ -1179,6 +1204,8 @@ type Room struct {
 	SebSeats        *int `json:"sebSeats,omitempty"`
 	HmebSeats       *int `json:"hmebSeats,omitempty"`
 	Deactivated     bool `json:"deactivated"`
+	// Optional summer heat override (higher = hotter). Null = derive from the R-building floor in the name. Only used for own (non-booked) rooms.
+	Hitzewert *int `json:"hitzewert,omitempty"`
 }
 
 type RoomAndExam struct {
@@ -1227,6 +1254,27 @@ type RoomInput struct {
 	Seb             bool `json:"seb"`
 	SebSeats        *int `json:"sebSeats,omitempty"`
 	HmebSeats       *int `json:"hmebSeats,omitempty"`
+	// Optional summer heat override (higher = hotter). Null = derive from the R-building floor in the name. Only used for own (non-booked) rooms.
+	Hitzewert *int `json:"hitzewert,omitempty"`
+}
+
+// Structured outcome of a solver-based room-generation run (assignRoomsForExams), delivered once on the final RESULT line (also for dryRun).
+type RoomPlanReport struct {
+	Exams         int `json:"exams"`
+	PlacedSeats   int `json:"placedSeats"`
+	UnplacedSeats int `json:"unplacedSeats"`
+	// distinct rooms used.
+	Rooms            int               `json:"rooms"`
+	HardViolations   []string          `json:"hardViolations"`
+	Cost             float64           `json:"cost"`
+	CostByConstraint []*ConstraintCost `json:"costByConstraint"`
+	Iterations       int               `json:"iterations"`
+	// the seed used — pass it back to reproduce this exact plan.
+	Seed         int  `json:"seed"`
+	StoppedEarly bool `json:"stoppedEarly"`
+	Written      bool `json:"written"`
+	// exams with students that got no room (grouped).
+	UnplacedExams []*UnplacedExam `json:"unplacedExams"`
 }
 
 // A room allowed in a slot, with its free seats and the exams already using it.
@@ -1818,6 +1866,66 @@ func (e *Role) UnmarshalJSON(b []byte) error {
 }
 
 func (e Role) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// When the room-plan generator applies the summer heat constraints (heat-floor soft + summer
+// cooldown hard). AUTO follows the semester (active only in summer/SS); SUMMER forces them on
+// (for testing); OFF disables them. Only own (non-booked) rooms are ever affected. Default AUTO.
+type RoomHeatConstraintMode string
+
+const (
+	RoomHeatConstraintModeAuto   RoomHeatConstraintMode = "AUTO"
+	RoomHeatConstraintModeSummer RoomHeatConstraintMode = "SUMMER"
+	RoomHeatConstraintModeOff    RoomHeatConstraintMode = "OFF"
+)
+
+var AllRoomHeatConstraintMode = []RoomHeatConstraintMode{
+	RoomHeatConstraintModeAuto,
+	RoomHeatConstraintModeSummer,
+	RoomHeatConstraintModeOff,
+}
+
+func (e RoomHeatConstraintMode) IsValid() bool {
+	switch e {
+	case RoomHeatConstraintModeAuto, RoomHeatConstraintModeSummer, RoomHeatConstraintModeOff:
+		return true
+	}
+	return false
+}
+
+func (e RoomHeatConstraintMode) String() string {
+	return string(e)
+}
+
+func (e *RoomHeatConstraintMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RoomHeatConstraintMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RoomHeatConstraintMode", str)
+	}
+	return nil
+}
+
+func (e RoomHeatConstraintMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RoomHeatConstraintMode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RoomHeatConstraintMode) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

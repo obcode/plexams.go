@@ -14,6 +14,8 @@ extend type Query {
   roomsWithFreeSeatsAt(starttime: Time!): [RoomWithFreeSeats!]!
   "Students that could not be assigned a real room in their slot during the last room generation (the replacement for the old 'No Room' placeholder)."
   unplacedExams: [UnplacedExam!]!
+  "The read-only list of hard/soft constraints the room-plan generator (solver) applies."
+  roomPlanConstraints: [OptimizerConstraint!]!
 }
 
 extend type Mutation {
@@ -50,8 +52,14 @@ extend type Mutation {
 # exclusive operations they are blocked while a validation or another
 # transfer/email/generation runs.
 extend type Subscription {
-  "Assign rooms to all exams (rooms-for-exams) and stream the output. The allowed rooms per slot are computed live from the current rooms/requests/bookings; there is no separate rooms-for-slots step or cache."
-  assignRoomsForExams: LogLine!
+  """
+  Assign rooms to all exams with the constraint solver (simulated annealing) and stream the
+  output line by line. The allowed rooms per slot are computed live from the current
+  rooms/requests/bookings. With dryRun nothing is written; the final RESULT line carries the
+  structured roomReport either way. seed and iterations override the defaults (0/null = keep
+  default). With keepAssigned the current plan is used as the warm start (minimal churn).
+  """
+  assignRoomsForExams(dryRun: Boolean! = false, seed: Int, iterations: Int, keepAssigned: Boolean): LogLine!
   "Fetch the room bookings from anny.eu and store them (used for the EXaHM room slots). Streams its output."
   importAnnyBookings: LogLine!
 }
@@ -70,6 +78,8 @@ input RoomInput {
   seb: Boolean!
   sebSeats: Int
   hmebSeats: Int
+  "Optional summer heat override (higher = hotter). Null = derive from the R-building floor in the name. Only used for own (non-booked) rooms."
+  hitzewert: Int
 }
 
 """
@@ -99,6 +109,27 @@ type Room {
   sebSeats: Int
   hmebSeats: Int
   deactivated: Boolean!
+  "Optional summer heat override (higher = hotter). Null = derive from the R-building floor in the name. Only used for own (non-booked) rooms."
+  hitzewert: Int
+}
+
+"Structured outcome of a solver-based room-generation run (assignRoomsForExams), delivered once on the final RESULT line (also for dryRun)."
+type RoomPlanReport {
+  exams: Int!
+  placedSeats: Int!
+  unplacedSeats: Int!
+  "distinct rooms used."
+  rooms: Int!
+  hardViolations: [String!]!
+  cost: Float!
+  costByConstraint: [ConstraintCost!]!
+  iterations: Int!
+  "the seed used — pass it back to reproduce this exact plan."
+  seed: Int!
+  stoppedEarly: Boolean!
+  written: Boolean!
+  "exams with students that got no room (grouped)."
+  unplacedExams: [UnplacedExam!]!
 }
 
 type RoomsForSlot {

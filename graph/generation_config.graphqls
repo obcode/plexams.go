@@ -39,6 +39,17 @@ enum SlotTimeConstraintEnforcement {
   SOFT
 }
 
+"""
+When the room-plan generator applies the summer heat constraints (heat-floor soft + summer
+cooldown hard). AUTO follows the semester (active only in summer/SS); SUMMER forces them on
+(for testing); OFF disables them. Only own (non-booked) rooms are ever affected. Default AUTO.
+"""
+enum RoomHeatConstraintMode {
+  AUTO
+  SUMMER
+  OFF
+}
+
 type GenerationConfig {
   iterations: Int!
   startTemp: Float!
@@ -97,6 +108,24 @@ type GenerationConfig {
   examClosenessFalloffMin: Float!
   "Pre-plan (SEB/EXaHM): usable fraction of a slot's booked Anny seats (1.0 = fill completely)."
   preplanCapacityFactor: Float!
+
+  # --- Room plan (roomplan) solver weights + the summer heat mode. ---
+  "Room plan: whether/how the summer heat constraints apply (default AUTO by semester)."
+  roomHeatMode: RoomHeatConstraintMode!
+  "Room plan: penalty per unplaced seat (dominant — keep very high so everyone gets a room)."
+  roomUnplaced: Float!
+  "Room plan: penalty per seat an exam's free-seat buffer falls short (do not pack rooms full)."
+  roomBuffer: Float!
+  "Room plan: penalty per extra room an exam is split across (keep an exam together)."
+  roomSplit: Float!
+  "Room plan: penalty per distinct room used overall (compaction — request/open fewer rooms)."
+  roomCompaction: Float!
+  "Room plan (summer): penalty per (floor × lateness × seat) in own rooms — later = lower floor."
+  roomHeatFloor: Float!
+  "Room plan: penalty per seat whose room differs from the saved plan on a re-run (warm start)."
+  roomChurn: Float!
+  "Room plan (summer): clock hour up to which a slot start is 'cool' (lateness 0); later starts get lateness = start − baseline."
+  roomHeatBaselineHour: Float!
 }
 
 input GenerationConfigInput {
@@ -133,4 +162,12 @@ input GenerationConfigInput {
   examHole: Float!
   examClosenessFalloffMin: Float!
   preplanCapacityFactor: Float!
+  roomHeatMode: RoomHeatConstraintMode!
+  roomUnplaced: Float!
+  roomBuffer: Float!
+  roomSplit: Float!
+  roomCompaction: Float!
+  roomHeatFloor: Float!
+  roomChurn: Float!
+  roomHeatBaselineHour: Float!
 }

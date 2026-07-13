@@ -37,6 +37,7 @@ type LogLine {
   report: InvigilationReport
   validation: ValidationReport
   examReport: ExamScheduleReport
+  roomReport: RoomPlanReport
 }
 
 """

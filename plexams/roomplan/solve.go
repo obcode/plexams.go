@@ -110,7 +110,7 @@ func (p *Problem) Registry() optimize.Registry[*State] {
 			allowedRoomC{}, capacityC{}, ntaAloneC{}, prePlannedC{}, overrunC{}, summerCooldownC{}, exahmWindowC{},
 		},
 		Soft: []optimize.SoftConstraint[*State]{
-			placementC{}, bufferC{}, splitC{}, compactionC{}, heatFloorC{}, churnC{},
+			placementC{}, bufferC{}, splitC{}, compactionC{}, sebRbauC{}, exahmBookedC{}, heatFloorC{}, churnC{},
 		},
 	}
 }
@@ -334,6 +334,34 @@ func (compactionC) Info() optimize.Info {
 }
 func (compactionC) Cost(st *State) (float64, []optimize.Violation) {
 	return st.P.W.Compaction * float64(st.distinctRooms), nil
+}
+
+type sebRbauC struct{}
+
+func (sebRbauC) Info() optimize.Info {
+	return optimize.Info{Name: "seb-rbau", Title: "SEB möglichst im R-Bau", Kind: optimize.KindSoft, Tier: 15,
+		Description: "SEB-Prüfungen bevorzugt in normale SEB-Räume (R-Bau) legen und die knappen gebuchten T-Bau-EXaHM-Räume für echte EXaHM-Prüfungen frei halten. Reichen die R-Bau-SEB-Räume nicht, darf SEB weiter in den T-Bau."}
+}
+func (sebRbauC) Cost(st *State) (float64, []optimize.Violation) {
+	var total float64
+	for i := range st.roomOf {
+		total += st.P.sebAvoidCostOf(i, st.roomOf[i])
+	}
+	return total, nil
+}
+
+type exahmBookedC struct{}
+
+func (exahmBookedC) Info() optimize.Info {
+	return optimize.Info{Name: "exahm-booked", Title: "EXaHM bevorzugt in gebuchten T-Bau-Räumen", Kind: optimize.KindSoft, Tier: 16,
+		Description: "EXaHM-Prüfungen (inkl. NTA-Alleinräume) bevorzugt in die gebuchten T-Bau-Räume; ein eigener EXaHM-Raum im R-Bau (z. B. der 1-Platz-NTA-Raum R1.011) wird nur als Ausweichlösung genutzt, wenn kein gebuchter T-Bau-Raum verfügbar ist (etwa der NTA-Raum T3.021)."}
+}
+func (exahmBookedC) Cost(st *State) (float64, []optimize.Violation) {
+	var total float64
+	for i := range st.roomOf {
+		total += st.P.ownExahmCostOf(i, st.roomOf[i])
+	}
+	return total, nil
 }
 
 type heatFloorC struct{}

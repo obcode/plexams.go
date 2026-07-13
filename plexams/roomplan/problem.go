@@ -97,6 +97,15 @@ type Weights struct {
 	HeatFloor  float64 // summer: per (heat level × lateness × seat) in an own room
 	Churn      float64 // per seat whose room differs from the previous plan (warm start)
 
+	// SebAvoidExahm penalizes, per seat, a SEB (non-EXaHM) exam placed in an EXaHM-capable
+	// room, so SEB exams prefer plain SEB rooms (R-building) and leave the scarce booked
+	// T-building EXaHM rooms for the exams that actually require EXaHM.
+	SebAvoidExahm float64
+	// OwnExahmFallback penalizes, per seat, an EXaHM exam placed in an OWN (R-building) EXaHM
+	// room instead of a booked one — so an own EXaHM room (e.g. the 1-seat NTA room R1.011)
+	// is used only as a fallback when no booked T-building EXaHM room is available.
+	OwnExahmFallback float64
+
 	// HeatBaselineHour is the clock hour up to which a slot start is "cool" (lateness 0);
 	// later starts get lateness = start hour − baseline (hours). Only used in summer.
 	HeatBaselineHour float64
@@ -111,7 +120,9 @@ func DefaultWeights() Weights {
 		Split:            30,
 		Compaction:       20,
 		HeatFloor:        5,
-		Churn:            0, // off by default; warm-start construction already limits churn
+		Churn:            0,  // off by default; warm-start construction already limits churn
+		SebAvoidExahm:    40, // keep booked EXaHM rooms free for EXaHM: push SEB to R-building
+		OwnExahmFallback: 40, // prefer a booked EXaHM room; own R-building EXaHM room only as fallback
 		HeatBaselineHour: 10,
 	}
 }
@@ -286,6 +297,35 @@ func (p *Problem) heatCostOf(i, r int) float64 {
 		return 0
 	}
 	return p.W.HeatFloor * float64(room.HeatLevel) * p.slotLateness[p.Exams[p.Seats[i].Exam].Slot]
+}
+
+// sebAvoidCostOf is the SEB-in-EXaHM-room penalty for placing seat i into room r: W.SebAvoidExahm
+// when the seat's exam is SEB (and not EXaHM) and r is an EXaHM-capable room. Keeps the booked
+// T-building EXaHM rooms free for EXaHM exams (SEB can also run in plain R-building SEB rooms).
+func (p *Problem) sebAvoidCostOf(i, r int) float64 {
+	if r < 0 || p.W.SebAvoidExahm == 0 {
+		return 0
+	}
+	e := p.Seats[i].Exam
+	if p.Exams[e].Seb && !p.Exams[e].Exahm && p.Rooms[r].Exahm {
+		return p.W.SebAvoidExahm
+	}
+	return 0
+}
+
+// ownExahmCostOf is the own-EXaHM-room fallback penalty for placing seat i into room r:
+// W.OwnExahmFallback when the seat's exam requires EXaHM and r is an OWN (R-building) EXaHM room
+// (e.g. the 1-seat NTA room R1.011). Prefers the booked T-building EXaHM rooms; the own room is
+// used only when no booked one is available.
+func (p *Problem) ownExahmCostOf(i, r int) float64 {
+	if r < 0 || p.W.OwnExahmFallback == 0 {
+		return 0
+	}
+	e := p.Seats[i].Exam
+	if p.Exams[e].Exahm && p.Rooms[r].Exahm && p.Rooms[r].OwnRoom {
+		return p.W.OwnExahmFallback
+	}
+	return 0
 }
 
 // FloorFromName extracts the R-building floor from a room name of the form "Rx.abc"

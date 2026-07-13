@@ -33,6 +33,7 @@ type State struct {
 	splitTotal   float64
 	compactTotal float64
 	churnTotal   float64
+	prefTotal    float64 // SEB-avoid-EXaHM + own-EXaHM-fallback room preferences
 	nUnplaced    int
 }
 
@@ -79,10 +80,12 @@ func (st *State) rebuild() {
 	}
 	st.heatTotal = 0
 	st.churnTotal = 0
+	st.prefTotal = 0
 	for i := range st.roomOf {
 		r := st.roomOf[i]
 		st.heatTotal += p.heatCostOf(i, r)
 		st.churnTotal += st.churnCostOf(i, r)
+		st.prefTotal += p.sebAvoidCostOf(i, r) + p.ownExahmCostOf(i, r)
 	}
 	st.splitTotal = 0
 	for e := range p.Exams {
@@ -246,11 +249,12 @@ func (st *State) moveSeat(i, newRoom int) func() {
 	for k, x := range affExams {
 		savedBuf[k] = st.bufferByExam[x]
 	}
-	saved := costTotals{st.bufferTotal, st.heatTotal, st.splitTotal, st.compactTotal, st.churnTotal, st.nUnplaced}
+	saved := costTotals{st.bufferTotal, st.heatTotal, st.splitTotal, st.compactTotal, st.churnTotal, st.prefTotal, st.nUnplaced}
 
 	beforeExtra := extraRooms(st.examRooms[e])
 	deltaHeat := p.heatCostOf(i, newRoom) - p.heatCostOf(i, old)
 	deltaChurn := st.churnCostOf(i, newRoom) - st.churnCostOf(i, old)
+	deltaPref := (p.sebAvoidCostOf(i, newRoom) + p.ownExahmCostOf(i, newRoom)) - (p.sebAvoidCostOf(i, old) + p.ownExahmCostOf(i, old))
 
 	if old >= 0 {
 		st.structuralRemove(i, old)
@@ -267,6 +271,7 @@ func (st *State) moveSeat(i, newRoom int) func() {
 	}
 	st.heatTotal += deltaHeat
 	st.churnTotal += deltaChurn
+	st.prefTotal += deltaPref
 	st.splitTotal += p.W.Split * float64(extraRooms(st.examRooms[e])-beforeExtra)
 	st.compactTotal = p.W.Compaction * float64(st.distinctRooms)
 	for _, x := range affExams {
@@ -288,6 +293,7 @@ func (st *State) moveSeat(i, newRoom int) func() {
 		st.splitTotal = saved.split
 		st.compactTotal = saved.compact
 		st.churnTotal = saved.churn
+		st.prefTotal = saved.pref
 		st.nUnplaced = saved.nUnplaced
 		for k, x := range affExams {
 			st.bufferByExam[x] = savedBuf[k]
@@ -296,8 +302,8 @@ func (st *State) moveSeat(i, newRoom int) func() {
 }
 
 type costTotals struct {
-	buffer, heat, split, compact, churn float64
-	nUnplaced                           int
+	buffer, heat, split, compact, churn, pref float64
+	nUnplaced                                 int
 }
 
 // churnCostOf is the warm-start churn penalty for seat i sitting in room r: W.Churn when a
@@ -403,7 +409,7 @@ func (st *State) allowedRooms(i int) []int {
 
 // Cost is the maintained total soft objective (O(1)).
 func (st *State) Cost() float64 {
-	return st.P.W.Unplaced*float64(st.nUnplaced) + st.bufferTotal + st.splitTotal + st.compactTotal + st.heatTotal + st.churnTotal
+	return st.P.W.Unplaced*float64(st.nUnplaced) + st.bufferTotal + st.splitTotal + st.compactTotal + st.heatTotal + st.churnTotal + st.prefTotal
 }
 
 func (st *State) Snapshot() any {

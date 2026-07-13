@@ -282,11 +282,48 @@ func TestRoomTurnaround(t *testing.T) {
 	}
 }
 
+// TestRoomPreferences: SEB exams prefer plain SEB rooms (R-Bau) over booked EXaHM rooms, and
+// EXaHM exams prefer a booked EXaHM room over an own (R-Bau) fallback EXaHM room (e.g. R1.011).
+func TestRoomPreferences(t *testing.T) {
+	rooms := []Room{
+		{Name: "T3.001", Seats: 4, OwnRoom: false, Exahm: true, Seb: true}, // 0: booked EXaHM/SEB
+		{Name: "R1.009", Seats: 4, OwnRoom: true, Seb: true},               // 1: R-Bau SEB (own)
+		{Name: "R1.011", Seats: 1, OwnRoom: true, Exahm: true},             // 2: own EXaHM fallback
+	}
+	slots := []Slot{{Start: at(6, 9)}}
+	exams := []Exam{
+		{Ancode: 1, Slot: 0, Seb: true, NormalCount: 3, AllowedNormal: []int{0, 1}, AllowedAlone: []int{0, 1}},   // SEB
+		{Ancode: 2, Slot: 0, Exahm: true, NormalCount: 1, AllowedNormal: []int{0, 2}, AllowedAlone: []int{0, 2}}, // EXaHM
+	}
+	seats := []Seat{
+		{Exam: 0, Mtknr: "s0", Kind: Normal}, {Exam: 0, Mtknr: "s1", Kind: Normal}, {Exam: 0, Mtknr: "s2", Kind: Normal},
+		{Exam: 1, Mtknr: "e0", Kind: Normal},
+	}
+	p := NewProblem(slots, rooms, exams, seats, DefaultWeights())
+	opts := optimize.DefaultOptions()
+	opts.Iterations = 20000
+	opts.Seed = 5
+	st, _ := Solve(p, opts, false)
+
+	for _, a := range st.Assignments() {
+		if a.Ancode == 1 && a.Room == "T3.001" {
+			t.Errorf("SEB exam went into the booked EXaHM room instead of R-Bau: %s", a.Room)
+		}
+		if a.Ancode == 2 && a.Room != "T3.001" {
+			t.Errorf("EXaHM exam used the own fallback room %s instead of the booked T3.001", a.Room)
+		}
+	}
+	// incremental cost must still equal the full recompute with the preference terms active.
+	if got, want := st.Cost(), recomputeSoftCost(p, st); math.Abs(got-want) > 1e-6 {
+		t.Fatalf("incremental cost %.4f != recompute %.4f", got, want)
+	}
+}
+
 func TestRegistryDescribeCoversAll(t *testing.T) {
 	p := buildScenario(true)
 	infos := p.Registry().Describe()
-	if len(infos) != 13 { // 7 hard + 6 soft
-		t.Fatalf("expected 13 constraints, got %d", len(infos))
+	if len(infos) != 15 { // 7 hard + 8 soft
+		t.Fatalf("expected 15 constraints, got %d", len(infos))
 	}
 	seen := map[string]bool{}
 	for _, in := range infos {

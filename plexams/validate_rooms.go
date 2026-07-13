@@ -549,6 +549,16 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 					if roomForNta == nil {
 						continue
 					}
+					// Hint: the NTA sits in an OWN (R-building) EXaHM room used only as a fallback
+					// (e.g. R1.011) because no booked T-building NTA room (T3.021) was available in
+					// the slot. A whole R-building room is then tied up for one student — booking
+					// T3.021 for the slot frees it.
+					if ri := roomInfos[roomForNta.RoomName]; ri != nil && ri.Exahm && ri.RequestWith == model.RoomRequestTypeNone {
+						r := ref{Ancode: ptr(exam.Ancode), Room: ptr(roomForNta.RoomName), StudentMtknr: ptr(nta.Mtknr), Starttime: exam.PlanEntry.Starttime}
+						v.infof(r,
+							"NTA %s sitzt im Ausweich-EXaHM-Raum %s für Prüfung %d. %s (%s) am %s – kein gebuchter T-Bau-NTA-Raum (T3.021) im Slot verfügbar; ggf. T3.021 buchen",
+							nta.Name, roomForNta.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer, examStart)
+					}
 				OUTER:
 					for _, room := range exam.PlannedRooms {
 						if room.RoomName == roomForNta.RoomName {

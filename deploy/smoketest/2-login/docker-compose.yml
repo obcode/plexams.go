@@ -23,6 +23,14 @@ services:
       # so nginx (auth_request) can hand it to the greeting page, which decodes ALL claims
       # client-side — including ones without a dedicated X-Auth-Request-* header (department).
       OAUTH2_PROXY_SET_AUTHORIZATION_HEADER: "true"
+      # DIAGNOSTIC ONLY: HM's id_token is minimal (no email/groups/department) — those
+      # claims come from the IdP UserInfo endpoint, which oauth2-proxy's claim extractor
+      # also queries. The simple env config has no per-claim custom header, so to SEE that
+      # `department` actually arrives we repurpose the groups claim to read `department`.
+      # It then shows up as X-Auth-Request-Groups / the "groups" field. Not for production
+      # (a real deployment would use --alpha-config injectResponseHeaders for a dedicated
+      # X-Auth-Request-Department header); the plexams backend needs only email anyway.
+      OAUTH2_PROXY_OIDC_GROUPS_CLAIM: "department"
       # Permissive for the test: any account the IdP authenticates may log in.
       OAUTH2_PROXY_EMAIL_DOMAINS: "*"
       OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180

@@ -23,7 +23,7 @@ Für die OIDC-Client-Registrierung an `sso.hm.edu`:
 | **Redirect / Callback URI** | `https://<DEIN-HOST>/oauth2/callback` |
 | Grant type | `authorization_code` |
 | Scopes | `openid profile email department` (`department` = client-spezifischer Custom-Scope → Claim `fhmDepartment`) |
-| Post-Logout Redirect | — nicht nötig (Abmelden ist rein lokal, siehe unten) |
+| Post-Logout Redirect | — nicht nötig (kein Logout im Stack) |
 
 > Die **Redirect-URI ist exakt** `https://<DEIN-HOST>/oauth2/callback` (das ist der
 > oauth2-proxy-Standardpfad — **nicht** `/redirect_uri`). `<DEIN-HOST>` = endgültiger

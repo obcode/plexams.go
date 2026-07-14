@@ -197,4 +197,21 @@ versioniert vorhanden.
 - Logs: `docker compose logs -f nginx` / `... oauth2-proxy` / `... plexams` / `... gui`.
 - Manuelles Update ohne CI: `docker compose pull && docker compose up -d`.
 - Zertifikat-Renew testen: `~/.acme.sh/acme.sh --renew -d <host> --force`.
-- Mongo-Backup: Volume `mongo-data` sichern oder das Semester über die GUI als ZIP dumpen.
+
+### MongoDB-Backup
+
+Zwei komplementäre Ebenen:
+
+1. **Lokale rotierende Dumps (Host).** [`backup/mongo-backup.sh`](backup/mongo-backup.sh)
+   dumpt via `docker compose exec mongo mongodump` **alle** Datenbanken (jedes Semester +
+   die globale `plexams`-DB) in ein gzip-Archiv nach `/home/plexams/backups/` und rotiert
+   (Default 14 täglich + 8 wöchentlich). Als User `plexams` per busybox-`crond` einplanen:
+   ```sh
+   crontab -e   # als plexams:
+   30 2 * * *  /home/plexams/deploy/backup/mongo-backup.sh >> /home/plexams/backups/backup.log 2>&1
+   ```
+   Restore-Kommando steht im Skript-Kopf. Schützt gegen versehentliches Löschen / kaputte
+   Restores, **nicht** gegen Hostverlust — für off-site am Skriptende ein `scp`/`rclone` anhängen.
+2. **Planer-ZIP über die GUI.** Der Planer kann jederzeit einen Semester-Dump als ZIP
+   herunterladen (`/download/...`); die GUI bietet das prominent an, sobald sich seit dem
+   letzten Dump etwas in der DB geändert hat. Gut vor riskanten Aktionen / zum Mitnehmen.

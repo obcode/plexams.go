@@ -1,6 +1,8 @@
 # Memory Index
 
 - [Jira integration](jira-integration.md) — on-prem jira.cc.hm.edu via PAT; backend done (jira/ pkg, GraphQL create/read/comment/transition + REST attachment upload) on feat/jira-integration; GUI pending.
+- [HM OIDC claims](hm-oidc-claims.md) — sso.hm.edu scope→claim map; id_token minimal, claims via UserInfo; department claim = `fhmDepartment`; end_session=/idp/profile/Logout (unused, local logout only).
+- [deploy push-CD](deploy-push-cd.md) — plexams.cs.hm.edu (user plexams, /home/plexams), ghcr images + self-hosted-runner push-CD (AUTO_DEPLOY gate); open: notification + Mongo backup.
 - [auth & roles via Shibboleth](auth-roles-shibboleth.md) — PLANNED (plan file persisted 2026-07-08, not built): Apache mod_shib → X-Remote-User header, DB users collection, audit "who" on mutation_log, two full-access planners now, granular roles later; backend enforces, GUI cosmetic.
 - [slotless time-based redesign](slotless-timebased-redesign.md) — planned big refactor: drop slot/day numbers, store exams as absolute times; conflicts/rooms/invig become interval-based; no migration, clean cut; plan in docs/plan-slotless-timebased.md.
 - [slot time avoidance](slot-time-avoidance.md) — Terminplan start-time window: WS no-early(10:00)/SS no-late(14:00)+mild früh-Sog; HARD-by-default (domain restrict→unplaced) with SOFT override; EXaHM/SEB exempt; recalibrated 2026-07-12.

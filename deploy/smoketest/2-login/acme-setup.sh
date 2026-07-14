@@ -15,8 +15,12 @@ set -eu
 
 cd "$(dirname "$0")"
 
-# shellcheck disable=SC1091
-. ./.env
+# .env is a docker-compose env-file, NOT a shell script: values may contain #, *, ^, @,
+# spaces, ... that break `.`-sourcing in sh (e.g. a password would be run as a command).
+# We only need SERVER_NAME from it, so extract just that instead of sourcing the file.
+SERVER_NAME=$(sed -n 's/^SERVER_NAME=//p' ./.env | head -n1 | tr -d '\r')
+[ -n "${SERVER_NAME:-}" ] || { echo "SERVER_NAME not set in ./.env" >&2; exit 1; }
+# acme.env is our own shell-source file (simple KEY=value), so sourcing it is fine.
 # shellcheck disable=SC1091
 . ./acme.env
 

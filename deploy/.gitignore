@@ -3,5 +3,4 @@
 acme.env
 .plexams.yaml
 tls/
-gui-dist/
 acme-webroot/

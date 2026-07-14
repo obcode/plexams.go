@@ -5,15 +5,18 @@
 #                           ├── auth_request → oauth2-proxy (OIDC handshake w/ sso.hm.edu)
 #                           ├── /oauth2/*    → oauth2-proxy (login/callback)
 #                           ├── sets X-Remote-User from the verified email claim
-#                           ├── /            → GUI static files (plexams.gui dist)
+#                           ├── /            → gui (plexams.gui container)
 #                           └── /query,/upload,/download → plexams.go:8080
-#   plexams / mongo / oauth2-proxy ── internal only (never published)
+#   plexams / gui / mongo / oauth2-proxy ── internal only (never published)
 #
 # Only nginx publishes ports. plexams.go trusts the X-Remote-User header nginx sets,
 # so it MUST NOT be reachable except through nginx — hence no `ports:`.
 #
+# Backend + GUI run as pre-built images from ghcr.io (tags pinned via PLEXAMS_TAG /
+# GUI_TAG in .env; the CI deploy job updates them on release). No local build here.
+#
 # Setup: copy .env.example -> .env and .plexams.yaml.example -> .plexams.yaml, fill
-# both, provide tls/ + gui-dist/ (see README.md), then: docker compose up -d --build
+# both, provide tls/ (see README.md), then: docker compose up -d
 
 services:
   mongo:
@@ -27,9 +30,7 @@ services:
     # No ports: — reachable only inside the compose network.
 
   plexams:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    image: ghcr.io/obcode/plexams.go:${PLEXAMS_TAG:-latest}
     restart: unless-stopped
     depends_on:
       - mongo
@@ -38,6 +39,15 @@ services:
     # No ports: — only nginx reaches it (http://plexams:8080) over the internal network.
     expose:
       - "8080"
+
+  gui:
+    image: ghcr.io/obcode/plexams.gui:${GUI_TAG:-latest}
+    restart: unless-stopped
+    # SvelteKit app, served internally on 3000 (adapter-node default). No ports: —
+    # only nginx reaches it (http://gui:3000). Keep the port in sync with the GUI
+    # Dockerfile and the nginx `upstream plexams_gui` block.
+    expose:
+      - "3000"
 
   oauth2-proxy:
     image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
@@ -79,6 +89,7 @@ services:
     restart: unless-stopped
     depends_on:
       - plexams
+      - gui
       - oauth2-proxy
     ports:
       - "80:80"
@@ -89,7 +100,6 @@ services:
     volumes:
       - ./nginx/templates:/etc/nginx/templates:ro
       - ./tls:/etc/ssl/plexams:ro         # fullchain.pem + privkey.pem (acme.sh)
-      - ./gui-dist:/var/www/plexams:ro    # built plexams.gui (npm run build -> dist)
       - ./acme-webroot:/var/www/acme:ro   # ACME HTTP-01 challenge files (acme.sh writes)
 
 volumes:

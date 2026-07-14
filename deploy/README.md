@@ -152,9 +152,11 @@ User auch bei SSR — ohne dass die öffentliche URL involviert ist.
 
 ## Sicherheits-Kernregeln
 
-- **Backend nie veröffentlichen.** `plexams` (und `mongo`, `oauth2-proxy`) haben
-  bewusst kein `ports:` — nur über nginx **und** den internen `gui`-Container erreichbar.
-  Sonst könnte jeder den `X-Remote-User`-Header selbst setzen.
+- **Backend nie veröffentlichen.** `plexams` und `oauth2-proxy` haben bewusst kein
+  `ports:` — nur über nginx **und** den internen `gui`-Container erreichbar. Sonst könnte
+  jeder den `X-Remote-User`-Header selbst setzen. `mongo` ist ausschließlich auf
+  `127.0.0.1` veröffentlicht (nur Host-Loopback, für den SSH-Tunnel oben) — **nie** auf
+  `0.0.0.0`.
 - nginx setzt `X-Remote-User` per `proxy_set_header` autoritativ (überschreibt jeden
   Client-Wert) aus dem verifizierten `email`-Claim — sowohl auf `/query`/`/upload`/
   `/download` als auch auf `/` (für die SSR-Calls des `gui`-Containers, s. o.).
@@ -236,6 +238,34 @@ versioniert vorhanden.
 - Logs: `docker compose logs -f nginx` / `... oauth2-proxy` / `... plexams` / `... gui`.
 - Manuelles Update ohne CI: `docker compose pull && docker compose up -d`.
 - Zertifikat-Renew testen: `~/.acme.sh/acme.sh --renew -d <host> --force`.
+
+### Von außen an die MongoDB (SSH-Tunnel)
+
+Mongo ist bewusst **nur auf dem Host-Loopback** veröffentlicht
+(`127.0.0.1:27017:27017` in `docker-compose.yml`) — **nicht** auf `0.0.0.0`. Damit ist der
+Port aus dem Netz **nicht** erreichbar (die Firewall braucht keinen offenen 27017), aber
+lokal auf dem Host schon. Der einzige Weg von außen ist deshalb ein **SSH-Tunnel**:
+
+```sh
+# Lokaler Port 27017 → Host-Loopback → Mongo-Container
+ssh -N -L 27017:127.0.0.1:27017 plexams@plexams.cs.hm.edu
+```
+
+Dann in **MongoDB Compass** (oder `mongosh`) auf `localhost` verbinden:
+
+```
+mongodb://<MONGO_USER>:<MONGO_PASSWORD>@localhost:27017/?authSource=admin
+```
+
+(`MONGO_USER`/`MONGO_PASSWORD` aus `.env`; `authSource=admin`, weil es der Root-User ist.)
+Läuft schon lokal etwas auf 27017, einen anderen lokalen Port wählen, z. B.
+`-L 27018:127.0.0.1:27017` und dann `localhost:27018`.
+
+> **Warum das sicher ist:** Der `127.0.0.1`-Bind gilt auch dann, wenn Docker die
+> awall-INPUT-Regeln umgeht — Dockers DNAT greift nur für Pakete mit Ziel `127.0.0.1`, und
+> die kann von außen niemand erzeugen. Ein `0.0.0.0`-Bind (oder ein `ports:`-Eintrag ohne
+> `127.0.0.1:`-Präfix) würde Mongo dagegen an der Firewall vorbei ins Netz stellen — **nie
+> tun.**
 
 ### MongoDB-Backup
 

@@ -27,7 +27,15 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     volumes:
       - mongo-data:/data/db
-    # No ports: — reachable only inside the compose network.
+    # Published ONLY on the host loopback (127.0.0.1), never 0.0.0.0. That keeps Mongo
+    # unreachable from the network/firewall — the only way in from outside is an SSH
+    # tunnel onto the host (see README "Von außen an die MongoDB (SSH-Tunnel)"):
+    #   ssh -L 27017:127.0.0.1:27017 plexams@<host>
+    #   then connect Compass to mongodb://<MONGO_USER>:<pw>@localhost:27017/?authSource=admin
+    # The 127.0.0.1 bind is safe even with Docker bypassing awall's INPUT chain: Docker's
+    # DNAT only matches packets destined for 127.0.0.1, which external traffic never is.
+    ports:
+      - "127.0.0.1:27017:27017"
 
   plexams:
     image: ghcr.io/obcode/plexams.go:${PLEXAMS_TAG:-latest}

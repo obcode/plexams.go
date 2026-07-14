@@ -105,6 +105,24 @@ Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** un
    `acme-webroot/`, installiert es nach `tls/` und lädt nginx neu. Renewals macht der
    acme.sh-Cron automatisch (mit `--reloadcmd`).
 
+   > **Zwei Stolperfallen:**
+   > - **Nicht das Cert aus dem Smoketest kopieren, sondern hier neu ausstellen.**
+   >   acme.sh merkt sich pro Domain den Webroot des erfolgreichen Issues (`Le_Webroot`).
+   >   Stellst du im [`smoketest/`](smoketest/) aus und kopierst dann nur die Dateien nach
+   >   `deploy/tls/`, zeigt `Le_Webroot` weiter auf das Smoketest-Verzeichnis — der
+   >   automatische Renew schreibt die Challenge dann dorthin (nicht in das in den
+   >   Produktiv-nginx gemountete `deploy/acme-webroot/`) und **scheitert**. Prüfen:
+   >   `grep -i webroot ~/.acme.sh/<host>_ecc/<host>.conf` muss `.../deploy/acme-webroot`
+   >   zeigen; falls nicht, `./acme-setup.sh` bzw. `acme.sh --issue --force -w "$(pwd)/acme-webroot"`
+   >   erneut aus `deploy/` laufen lassen.
+   > - **Den Renew-Cron sicherstellen.** Auf einem frischen (Alpine-)Host existiert evtl.
+   >   noch kein Crontab (`crontab -l` → BusyBox „can't open ..."). Dann einmalig
+   >   `~/.acme.sh/acme.sh --install-cronjob` und prüfen, dass ein Cron-Daemon läuft
+   >   (`pgrep crond`; sonst `sudo rc-update add crond default && sudo rc-service crond start`).
+   >   Einen **separaten Cronjob für den Reload brauchst du nicht** — der hängt am
+   >   `--reloadcmd`. Der harmlose `Cannot parse _ssldate2time`-Hinweis kommt vom
+   >   BusyBox-`date` und betrifft nur die Datumsanzeige, nicht das Cert.
+
 6. **Erst-Boot der App**: `auth.seedusers` legt die beiden Planer als `ADMIN` an (nur
    solange die `users`-Collection leer ist). Danach werden User über die GUI verwaltet
    (`setUser`/`removeUser`).

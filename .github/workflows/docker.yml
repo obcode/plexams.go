@@ -60,3 +60,50 @@ jobs:
                       VERSION=${{ steps.version.outputs.VERSION }}
                       GIT_COMMIT=${{ steps.version.outputs.GIT_COMMIT }}
                       BUILD_TIME=${{ steps.version.outputs.BUILD_TIME }}
+
+    # Ship the freshly pushed image to the on-host compose stack. The runner lives ON the
+    # deploy host (outbound-only long-poll to GitHub; the host is VPN-internal, so no
+    # inbound is possible). It operates on the persistent on-host deploy dir where the
+    # secrets live (.env, .plexams.yaml, tls/) — those are never touched; only the
+    # non-secret infra (compose file + nginx templates) is synced from the repo.
+    deploy:
+        needs: build-and-push-image
+        # Gate: only runs once the self-hosted runner on the deploy host exists — set the
+        # repo variable AUTO_DEPLOY=true then. Until then the image is still built & pushed
+        # above; this job is simply skipped (no stuck queue waiting for a missing runner).
+        if: ${{ vars.AUTO_DEPLOY == 'true' }}
+        runs-on: [self-hosted, plexams-deploy]
+        env:
+            # On-host deploy dir; override via repo variable DEPLOY_DIR if different.
+            DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/home/plexams/deploy' }}
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Sync infra + deploy pinned image
+              run: |
+                  set -euo pipefail
+                  VERSION="${GITHUB_REF#refs/tags/v}"
+
+                  # Sync non-secret infra into the on-host deploy dir. Secrets & tls/ stay put.
+                  cp deploy/docker-compose.yml "$DEPLOY_DIR/"
+                  NGINX_CHANGED=0
+                  if ! diff -r deploy/nginx/templates "$DEPLOY_DIR/nginx/templates" >/dev/null 2>&1; then
+                      mkdir -p "$DEPLOY_DIR/nginx"
+                      cp -r deploy/nginx/templates "$DEPLOY_DIR/nginx/"
+                      NGINX_CHANGED=1
+                  fi
+
+                  cd "$DEPLOY_DIR"
+                  # Pin the backend tag so the host reflects the running version
+                  # (manual rollback = edit .env + `docker compose up -d plexams`).
+                  sed -i "s/^PLEXAMS_TAG=.*/PLEXAMS_TAG=$VERSION/" .env
+
+                  docker compose pull plexams
+                  # Reconcile the stack: only plexams (new tag) + any changed service is recreated.
+                  docker compose up -d
+                  # nginx re-renders its templates only on container (re)start.
+                  if [ "$NGINX_CHANGED" = "1" ]; then
+                      docker compose up -d --force-recreate nginx
+                  fi
+                  docker image prune -f

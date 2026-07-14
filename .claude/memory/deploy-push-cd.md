@@ -29,9 +29,16 @@ Automation = **pull-of-prebuilt-images + push-CD via a self-hosted runner ON the
 **Operator TODO (outside repos):** register the runner on BOTH repos (label `plexams-deploy`,
 run as user plexams, in docker group), set `AUTO_DEPLOY=true` (+ optional `DEPLOY_DIR`) in each.
 
-**Open (Oliver asked 2026-07-14, proposals pending, NOT built):**
-1. Deploy notification — leaning "footer version is enough"; cheapest = GitHub *watch releases*
-   email, no code. Optional job-summary line.
-2. **MongoDB backup strategy** — idea was periodic `mongodump` pushed to a gitlab.lrz.de repo.
-   Caveat: student PII ⇒ git-forever + plaintext is bad; recommend host-cron `mongodump
-   --archive --gzip` + gpg/age encrypt + offsite (rotation), git only as encrypted offsite store.
+**Deploy notification (open, Oliver 2026-07-14):** leaning "footer version is enough"; cheapest
+= GitHub *watch releases* email, no code. Optional job-summary line — not built.
+
+**MongoDB backup — BUILT 2026-07-14 (on main):** Oliver chose local rotation + a GUI planner
+ZIP prompt (NOT the gitlab.lrz.de push).
+- Host: `deploy/backup/mongo-backup.sh` — `docker compose exec mongo mongodump --archive --gzip`
+  of ALL dbs → `/home/plexams/backups`, rotation 14 daily + 8 weekly; empty-dump guard; restore
+  cmd in header. Schedule via busybox `crond` (README). No offsite (add scp/rclone to extend).
+- Backend: `SemesterMeta.LastDumpAt` stamped in `HTTPDownloadSemesterDump`; `db.LatestMutationTime`;
+  new GraphQL `backupStatus { hasUnsavedChanges, lastDumpAt, lastChangeAt }` (hasUnsavedChanges =
+  lastChangeAt after lastDumpAt, or never dumped). See [[semester-dump-restore]] for the ZIP.
+- **GUI pending (Teil 3):** poll `backupStatus`, show a subtle prominent banner/button linking to
+  `/download/semester-dump.zip` when hasUnsavedChanges; download stamps lastDumpAt → banner clears.

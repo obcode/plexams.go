@@ -36,12 +36,21 @@ services:
     # DNAT only matches packets destined for 127.0.0.1, which external traffic never is.
     ports:
       - "127.0.0.1:27017:27017"
+    # So plexams can wait for Mongo to be *ready* (not just started) — avoids the
+    # boot race where plexams fatals on DB connect and crash-loops until Mongo is up.
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   plexams:
     image: ghcr.io/obcode/plexams.go:${PLEXAMS_TAG:-latest}
     restart: unless-stopped
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     volumes:
       - ./.plexams.yaml:/app/.plexams.yaml:ro
     # No ports: — only nginx reaches it (http://plexams:8080) over the internal network.

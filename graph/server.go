@@ -60,7 +60,23 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		KeepAlivePingInterval: 10 * time.Second,
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				return originSet[r.Header.Get("Origin")]
+				origin := r.Header.Get("Origin")
+				// No Origin header → not a browser cross-origin request (same-origin,
+				// or a server-side/proxied client behind the reverse proxy). Browsers
+				// always send Origin on a cross-origin upgrade, so an empty Origin can
+				// never be a cross-site websocket hijack — allow it.
+				if origin == "" {
+					return true
+				}
+				if originSet[origin] {
+					return true
+				}
+				// Log the rejected origin: gqlgen does not surface it, so a config
+				// mismatch (server.allowedorigins vs the real host) is otherwise a
+				// silent "request origin not allowed" with no clue what to fix.
+				log.Warn().Str("origin", origin).Strs("allowed", origins).
+					Msg("websocket upgrade rejected: origin not in server.allowedorigins")
+				return false
 			},
 		},
 	})

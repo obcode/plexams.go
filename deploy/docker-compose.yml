@@ -46,6 +46,16 @@ services:
     # SvelteKit app, served internally on 3000 (adapter-node default). No ports: —
     # only nginx reaches it (http://gui:3000). Keep the port in sync with the GUI
     # Dockerfile and the nginx `upstream plexams_gui` block.
+    environment:
+      # Where the GUI reaches the backend. BOTH must go through nginx (never the
+      # internal http://plexams:8080), because nginx is what injects the authoritative
+      # X-Remote-User header — with auth.enabled the backend fail-closed rejects any
+      # request that bypasses it. The GUI reads both via $env/dynamic/* at runtime, so
+      # setting them here (no CI build-arg) is enough.
+      #   PUBLIC_* → client bundle (browser queries + the wss:// subscription upgrade)
+      #   PLEXAMS_SERVER → SSR node server (+page.server.ts load(), hooks, /api proxies)
+      PUBLIC_PLEXAMS_SERVER: https://${SERVER_NAME}/query
+      PLEXAMS_SERVER: https://${SERVER_NAME}/query
     expose:
       - "3000"
 

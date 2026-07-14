@@ -119,12 +119,25 @@ server {
 
     # --- plexams.gui (SvelteKit app served by its own container) ---
     # auth_request (server level) still applies, so the SPA is login-gated too.
-    # No X-Remote-* here: the GUI is not the security boundary — identity is only
-    # forwarded on the backend paths (/query, /upload, /download).
+    #
+    # We DO inject the validated identity here, unlike a pure SPA proxy. Reason: the GUI
+    # renders server-side (SvelteKit SSR load()/hooks/api-proxies) and those calls run in
+    # the gui *container*, not the browser — they carry no OIDC session cookie, so they
+    # can never pass oauth2-proxy on their own (they'd be bounced to the IdP login page).
+    # The GUI therefore reaches the backend INTERNALLY (http://plexams:8080/query, its
+    # PLEXAMS_SERVER) and relays this header on those calls. nginx sets it authoritatively
+    # from the verified claim (overwriting any client value), so a browser cannot forge it;
+    # the gui only ever relays what nginx validated. Browser-side (client) queries keep
+    # going to the public /query above with the cookie. See docker-compose.yml gui env.
     location / {
         proxy_pass http://plexams_gui;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host                 $host;
+        proxy_set_header X-Forwarded-Proto    $scheme;
+        # authoritative identity for the GUI's server-side backend calls (overwrites any
+        # client-sent value); the gui forwards it internally to plexams:8080.
+        proxy_set_header X-Remote-User        $email;
+        proxy_set_header X-Remote-Displayname $preferred_username;
+        proxy_set_header X-Remote-Department  $department;
         # websocket upgrade (SvelteKit SSR/dev channels, if any)
         proxy_http_version 1.1;
         proxy_set_header Upgrade    $http_upgrade;

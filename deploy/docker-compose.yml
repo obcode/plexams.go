@@ -47,15 +47,24 @@ services:
     # only nginx reaches it (http://gui:3000). Keep the port in sync with the GUI
     # Dockerfile and the nginx `upstream plexams_gui` block.
     environment:
-      # Where the GUI reaches the backend. BOTH must go through nginx (never the
-      # internal http://plexams:8080), because nginx is what injects the authoritative
-      # X-Remote-User header — with auth.enabled the backend fail-closed rejects any
-      # request that bypasses it. The GUI reads both via $env/dynamic/* at runtime, so
-      # setting them here (no CI build-arg) is enough.
-      #   PUBLIC_* → client bundle (browser queries + the wss:// subscription upgrade)
-      #   PLEXAMS_SERVER → SSR node server (+page.server.ts load(), hooks, /api proxies)
+      # Where the GUI reaches the backend — the two hops need DIFFERENT URLs because only
+      # one of them carries an OIDC session cookie:
+      #   PUBLIC_* → client bundle: runs in the BROWSER, has the oauth2-proxy cookie, so it
+      #     goes through nginx (public URL). Also drives the wss:// subscription upgrade.
+      #   PLEXAMS_SERVER → SSR node server (+page.server.ts load(), hooks, /api proxies):
+      #     runs in THIS container with NO cookie. If it hit the public URL, oauth2-proxy
+      #     would bounce it to the sso.hm.edu login page and the GUI would try to parse that
+      #     HTML as GraphQL ("result is not object or array" → 500). So it reaches the
+      #     backend INTERNALLY, bypassing oauth2-proxy, and relays the X-Remote-User that
+      #     nginx injected into this container's page request (see nginx `location /`).
+      # The GUI reads both via $env/dynamic/* at runtime, so setting them here is enough.
+      #
+      # NOTE: with auth.enabled=true the backend fail-closed rejects internal SSR calls
+      # unless the GUI forwards X-Remote-User. Until the GUI ships that forwarding, either
+      # run with auth.enabled=false (SSO wall stays at nginx, everyone acts as ADMIN) or
+      # keep both URLs on the public one. See ../deploy/README.md "SSR-Identität".
       PUBLIC_PLEXAMS_SERVER: https://${SERVER_NAME}/query
-      PLEXAMS_SERVER: https://${SERVER_NAME}/query
+      PLEXAMS_SERVER: ${PLEXAMS_SERVER:-http://plexams:8080/query}
     expose:
       - "3000"
 

@@ -67,11 +67,11 @@ Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** un
    oauth2-proxy verlangt 16/24/32 Zeichen, `-base64 32` liefert 44 und schlägt fehl). Denselben Host in
    `.env` `SERVER_NAME` ↔ `.plexams.yaml` `server.allowedorigins` verwenden, dieselbe
    Mongo-Passphrase in `.env` `MONGO_PASSWORD` ↔ `.plexams.yaml` `db.uri`.
-   `PUBLIC_PLEXAMS_SERVER` / `PLEXAMS_SERVER` in `.env` auf `https://<SERVER_NAME>/query`
-   setzen (Host wie `SERVER_NAME`) — die GUI erreicht das Backend **immer über nginx**, nie
-   intern über `http://plexams:8080`, sonst fehlt der von nginx injizierte `X-Remote-User`
-   und das Backend weist bei `auth.enabled` alles ab. Die GUI liest beide zur Laufzeit
-   (`$env/dynamic/*`), also genügt der `environment:`-Block am `gui`-Service — kein CI-Build-Arg.
+   `.env`: `PUBLIC_PLEXAMS_SERVER=https://<SERVER_NAME>/query` (Browser) und
+   `PLEXAMS_SERVER=http://plexams:8080/query` (SSR, intern) — **zwei verschiedene URLs**,
+   weil nur der Browser-Hop das OIDC-Cookie trägt (Details unten,
+   [SSR-Identität](#ssr-identität-warum-zwei-backend-urls)). Die GUI liest beide zur
+   Laufzeit (`$env/dynamic/*`), also genügt der `environment:`-Block am `gui`-Service.
 
 2. **Image-Tags** in `.env` setzen: `PLEXAMS_TAG` / `GUI_TAG` (Default `latest`, oder
    eine konkrete Release-Version für einen reproduzierbaren Erststart). Der automatische
@@ -120,13 +120,47 @@ Zum Öffnen für einen größeren Kreis neue User mit `VIEWER` anlegen. Mindeste
 geseedeter User muss `ADMIN` sein, damit später jemand User über die GUI verwalten
 kann. Feinere Rechte später über eine `@requires`-Directive pro Feld.
 
+## SSR-Identität (warum zwei Backend-URLs)
+
+Die GUI erreicht das Backend über **zwei verschiedene URLs**, weil nur einer der beiden
+Hops das OIDC-Session-Cookie hat:
+
+| GUI-Teil | läuft in | URL | Identität |
+|----------|----------|-----|-----------|
+| Client-Bundle (Browser-Queries, `wss://`-Subscriptions) | **Browser** | `PUBLIC_PLEXAMS_SERVER` = `https://<SERVER_NAME>/query` | Cookie → oauth2-proxy → nginx injiziert `X-Remote-User` |
+| SSR-Node (`+page.server.ts` `load()`, `hooks.server.js`, `/api`-Proxys) | **`gui`-Container** | `PLEXAMS_SERVER` = `http://plexams:8080/query` (intern) | relayter `X-Remote-User` |
+
+**Warum nicht beide über die öffentliche URL?** Der SSR-Node macht Server-zu-Server-Calls
+**ohne** Browser-Cookie. Ginge er über `https://<SERVER_NAME>/query`, würde ihn oauth2-proxy
+zur `sso.hm.edu`-Loginseite umleiten; die GUI bekäme HTML statt GraphQL-JSON und
+`graphql-request` scheitert mit *„Invalid execution result: result is not object or array"*
+→ **500** auf `GET /`. Genau dieser Fehler tritt auf, wenn `PLEXAMS_SERVER` fälschlich auf
+die öffentliche URL zeigt.
+
+**Wie die SSR-Calls dann autorisiert werden:** nginx injiziert `X-Remote-User` (validiert,
+autoritativ) auch in den Seiten-Request an den `gui`-Container (`location /`), und die GUI
+**reicht diesen Header auf ihren internen Backend-Calls weiter**. So kennt das Backend den
+User auch bei SSR — ohne dass die öffentliche URL involviert ist.
+
+> **Voraussetzung `auth.enabled: true`:** Die GUI muss den `X-Remote-User` auf dem
+> `gui`→`plexams:8080`-Hop tatsächlich weiterreichen (SSR-`load()`s, `hooks.server.js`,
+> alle `/api`-Proxys). Solange das GUI-Release das noch **nicht** tut, weist das Backend die
+> anonymen internen SSR-Calls fail-closed ab (JSON-401). Übergangs­weise dann
+> `auth.enabled: false` fahren: die SSO-Wand bleibt an nginx, alle eingeloggten Nutzer
+> agieren als ADMIN (kein Rollen-Split, kein per-User-Audit) — sobald das GUI-Forwarding
+> live ist, `auth.enabled: true` schalten, ohne weitere Deploy-Änderung.
+
 ## Sicherheits-Kernregeln
 
 - **Backend nie veröffentlichen.** `plexams` (und `mongo`, `oauth2-proxy`) haben
-  bewusst kein `ports:` — nur über nginx erreichbar. Sonst könnte jeder den
-  `X-Remote-User`-Header selbst setzen.
+  bewusst kein `ports:` — nur über nginx **und** den internen `gui`-Container erreichbar.
+  Sonst könnte jeder den `X-Remote-User`-Header selbst setzen.
 - nginx setzt `X-Remote-User` per `proxy_set_header` autoritativ (überschreibt jeden
-  Client-Wert) aus dem verifizierten `email`-Claim.
+  Client-Wert) aus dem verifizierten `email`-Claim — sowohl auf `/query`/`/upload`/
+  `/download` als auch auf `/` (für die SSR-Calls des `gui`-Containers, s. o.).
+- **`gui` relayt nur, was nginx validiert hat.** Der `gui`-Container darf `plexams:8080`
+  intern erreichen und `X-Remote-User` weiterreichen; er kann ihn aber nicht fälschen, weil
+  nginx den Header vor Erreichen des `gui`-Containers autoritativ überschreibt.
 - `server.production: true` schaltet Playground + Introspection ab.
 - Secrets nur in `.env` / `acme.env` / `.plexams.yaml` (alle gitignored), nie in der
   DB, nie im Image.

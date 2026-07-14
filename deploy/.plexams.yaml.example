@@ -32,6 +32,11 @@ server:
 auth:
   # true on the server. false (or omitted) = local development: a full-access dev
   # user is injected and nothing is ever rejected (local operation stays unchanged).
+  #
+  # PREREQUISITE for true: the GUI must forward X-Remote-User on its internal SSR hop
+  # (gui → plexams:8080). Until that GUI release is live, the backend fail-closed rejects
+  # the anonymous SSR calls (JSON-401); run with `false` in the meantime — the SSO wall
+  # stays at nginx, all logged-in users act as ADMIN. See ../deploy/README.md "SSR-Identität".
   enabled: true
 
   # Header the proxy sets with the verified identity (the OIDC "email" claim).

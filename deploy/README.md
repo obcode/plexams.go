@@ -67,6 +67,11 @@ Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** un
    oauth2-proxy verlangt 16/24/32 Zeichen, `-base64 32` liefert 44 und schlägt fehl). Denselben Host in
    `.env` `SERVER_NAME` ↔ `.plexams.yaml` `server.allowedorigins` verwenden, dieselbe
    Mongo-Passphrase in `.env` `MONGO_PASSWORD` ↔ `.plexams.yaml` `db.uri`.
+   `PUBLIC_PLEXAMS_SERVER` / `PLEXAMS_SERVER` in `.env` auf `https://<SERVER_NAME>/query`
+   setzen (Host wie `SERVER_NAME`) — die GUI erreicht das Backend **immer über nginx**, nie
+   intern über `http://plexams:8080`, sonst fehlt der von nginx injizierte `X-Remote-User`
+   und das Backend weist bei `auth.enabled` alles ab. Die GUI liest beide zur Laufzeit
+   (`$env/dynamic/*`), also genügt der `environment:`-Block am `gui`-Service — kein CI-Build-Arg.
 
 2. **Image-Tags** in `.env` setzen: `PLEXAMS_TAG` / `GUI_TAG` (Default `latest`, oder
    eine konkrete Release-Version für einen reproduzierbaren Erststart). Der automatische

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
@@ -11,13 +12,14 @@ import (
 )
 
 // SemesterMeta is per-database metadata (not planning config): the data schema
-// version (compatibility), the read-only flag and the logical semester (used
+// version (compatibility), the read-only flag, the logical semester (used
 // against external systems like ZPA, so a clone keeps the real semester instead of
-// its database name).
+// its database name) and the time the last full semester dump was downloaded.
 type SemesterMeta struct {
-	SchemaVersion int    `bson:"schemaVersion"`
-	ReadOnly      bool   `bson:"readOnly"`
-	Semester      string `bson:"semester,omitempty"`
+	SchemaVersion int        `bson:"schemaVersion"`
+	ReadOnly      bool       `bson:"readOnly"`
+	Semester      string     `bson:"semester,omitempty"`
+	LastDumpAt    *time.Time `bson:"lastDumpAt,omitempty"`
 }
 
 func (db *DB) getSemesterMetaFrom(ctx context.Context, databaseName string) (*SemesterMeta, error) {
@@ -141,6 +143,20 @@ func (db *DB) SetSemesterReadOnly(ctx context.Context, readOnly bool) error {
 		options.Update().SetUpsert(true))
 	if err != nil {
 		log.Error().Err(err).Bool("readOnly", readOnly).Msg("cannot set read-only flag")
+		return err
+	}
+	return nil
+}
+
+// SetLastDumpAt records when the current database was last dumped as a full semester
+// ZIP (used to tell the planner whether there are changes since the last backup).
+func (db *DB) SetLastDumpAt(ctx context.Context, at time.Time) error {
+	collection := db.Client.Database(db.databaseName).Collection(collectionSemesterMeta)
+	_, err := collection.UpdateOne(ctx, bson.M{},
+		bson.M{"$set": bson.M{"lastDumpAt": at}},
+		options.Update().SetUpsert(true))
+	if err != nil {
+		log.Error().Err(err).Msg("cannot set last dump time")
 		return err
 	}
 	return nil

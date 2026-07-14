@@ -1,0 +1,18 @@
+extend type Query {
+  """
+  Whether the current semester has changes that are not yet captured in a
+  downloaded full ZIP dump, plus the relevant timestamps. Used by the GUI to
+  prominently offer the semester-dump download once something changed since the
+  last backup.
+  """
+  backupStatus: BackupStatus!
+}
+
+type BackupStatus {
+  "True when there were mutations after the last dump (or a dump was never taken)."
+  hasUnsavedChanges: Boolean!
+  "When the last full semester ZIP dump was downloaded; null if never."
+  lastDumpAt: Time
+  "Timestamp of the most recent change (mutation log); null if nothing changed yet."
+  lastChangeAt: Time
+}

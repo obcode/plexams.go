@@ -76,6 +76,15 @@ type AssembledExamsState struct {
 	ChangedAt *time.Time `json:"changedAt,omitempty"`
 }
 
+type BackupStatus struct {
+	// True when there were mutations after the last dump (or a dump was never taken).
+	HasUnsavedChanges bool `json:"hasUnsavedChanges"`
+	// When the last full semester ZIP dump was downloaded; null if never.
+	LastDumpAt *time.Time `json:"lastDumpAt,omitempty"`
+	// Timestamp of the most recent change (mutation log); null if nothing changed yet.
+	LastChangeAt *time.Time `json:"lastChangeAt,omitempty"`
+}
+
 // BalanceReport: are all invigilators within ±tolerance of their target minutes.
 type BalanceReport struct {
 	Satisfied       bool `json:"satisfied"`

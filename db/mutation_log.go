@@ -7,6 +7,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -79,6 +80,23 @@ func (db *DB) MutationLog(ctx context.Context, opType, name *string, ancode *int
 		return nil, err
 	}
 	return entries, nil
+}
+
+// LatestMutationTime returns the timestamp of the most recent mutation-log entry,
+// or nil when the log is empty (nothing changed yet).
+func (db *DB) LatestMutationTime(ctx context.Context) (*time.Time, error) {
+	collection := db.getCollectionSemester(collectionMutationLog)
+	opts := options.FindOne().SetSort(bson.D{{Key: "time", Value: -1}})
+	var entry model.MutationLogEntry
+	err := collection.FindOne(ctx, bson.M{}, opts).Decode(&entry)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get latest mutation-log time")
+		return nil, err
+	}
+	return &entry.Time, nil
 }
 
 // MutationLogNames returns the distinct operation names present in the log.

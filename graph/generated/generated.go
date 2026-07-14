@@ -134,6 +134,12 @@ type ComplexityRoot struct {
 		Reason    func(childComplexity int) int
 	}
 
+	BackupStatus struct {
+		HasUnsavedChanges func(childComplexity int) int
+		LastChangeAt      func(childComplexity int) int
+		LastDumpAt        func(childComplexity int) int
+	}
+
 	BalanceReport struct {
 		Invigilators    func(childComplexity int) int
 		MaxOver         func(childComplexity int) int
@@ -1115,6 +1121,7 @@ type ComplexityRoot struct {
 		AssembledExams                func(childComplexity int) int
 		AssembledExamsState           func(childComplexity int) int
 		AwkwardSlots                  func(childComplexity int, ancode int) int
+		BackupStatus                  func(childComplexity int) int
 		BlockedRooms                  func(childComplexity int) int
 		CanShareSlotSuggestions       func(childComplexity int) int
 		ConflictingAncodes            func(childComplexity int, ancode int) int
@@ -1837,6 +1844,7 @@ type QueryResolver interface {
 	AssembledExamsState(ctx context.Context) (*model.AssembledExamsState, error)
 	Me(ctx context.Context) (*model.User, error)
 	Users(ctx context.Context) ([]*model.User, error)
+	BackupStatus(ctx context.Context) (*model.BackupStatus, error)
 	ConstraintForAncode(ctx context.Context, ancode int) (*model.Constraints, error)
 	ZpaExamsToPlanWithConstraints(ctx context.Context) ([]*model.ZPAExamWithConstraints, error)
 	EmailAttachments(ctx context.Context, kind string) ([]*model.EmailAttachmentInfo, error)
@@ -2403,6 +2411,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AssembledExamsState.Reason(childComplexity), true
+
+	case "BackupStatus.hasUnsavedChanges":
+		if e.complexity.BackupStatus.HasUnsavedChanges == nil {
+			break
+		}
+
+		return e.complexity.BackupStatus.HasUnsavedChanges(childComplexity), true
+
+	case "BackupStatus.lastChangeAt":
+		if e.complexity.BackupStatus.LastChangeAt == nil {
+			break
+		}
+
+		return e.complexity.BackupStatus.LastChangeAt(childComplexity), true
+
+	case "BackupStatus.lastDumpAt":
+		if e.complexity.BackupStatus.LastDumpAt == nil {
+			break
+		}
+
+		return e.complexity.BackupStatus.LastDumpAt(childComplexity), true
 
 	case "BalanceReport.invigilators":
 		if e.complexity.BalanceReport.Invigilators == nil {
@@ -7619,6 +7648,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.AwkwardSlots(childComplexity, args["ancode"].(int)), true
 
+	case "Query.backupStatus":
+		if e.complexity.Query.BackupStatus == nil {
+			break
+		}
+
+		return e.complexity.Query.BackupStatus(childComplexity), true
+
 	case "Query.blockedRooms":
 		if e.complexity.Query.BlockedRooms == nil {
 			break
@@ -11368,6 +11404,25 @@ extend type Mutation {
   setUser(email: String!, name: String!, role: Role!): User!
   "Remove a user from the allow-list, so they can no longer log in. Requires role ADMIN."
   removeUser(email: String!): Boolean!
+}
+`, BuiltIn: false},
+	{Name: "../backup.graphqls", Input: `extend type Query {
+  """
+  Whether the current semester has changes that are not yet captured in a
+  downloaded full ZIP dump, plus the relevant timestamps. Used by the GUI to
+  prominently offer the semester-dump download once something changed since the
+  last backup.
+  """
+  backupStatus: BackupStatus!
+}
+
+type BackupStatus {
+  "True when there were mutations after the last dump (or a dump was never taken)."
+  hasUnsavedChanges: Boolean!
+  "When the last full semester ZIP dump was downloaded; null if never."
+  lastDumpAt: Time
+  "Timestamp of the most recent change (mutation log); null if nothing changed yet."
+  lastChangeAt: Time
 }
 `, BuiltIn: false},
 	{Name: "../constraints.graphqls", Input: `scalar Time
@@ -24109,6 +24164,132 @@ func (ec *executionContext) _AssembledExamsState_changedAt(ctx context.Context, 
 func (ec *executionContext) fieldContext_AssembledExamsState_changedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AssembledExamsState",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BackupStatus_hasUnsavedChanges(ctx context.Context, field graphql.CollectedField, obj *model.BackupStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BackupStatus_hasUnsavedChanges(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasUnsavedChanges, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BackupStatus_hasUnsavedChanges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BackupStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BackupStatus_lastDumpAt(ctx context.Context, field graphql.CollectedField, obj *model.BackupStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BackupStatus_lastDumpAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LastDumpAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BackupStatus_lastDumpAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BackupStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BackupStatus_lastChangeAt(ctx context.Context, field graphql.CollectedField, obj *model.BackupStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BackupStatus_lastChangeAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LastChangeAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BackupStatus_lastChangeAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BackupStatus",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -57642,6 +57823,58 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_backupStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_backupStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().BackupStatus(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.BackupStatus)
+	fc.Result = res
+	return ec.marshalNBackupStatus2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBackupStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_backupStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "hasUnsavedChanges":
+				return ec.fieldContext_BackupStatus_hasUnsavedChanges(ctx, field)
+			case "lastDumpAt":
+				return ec.fieldContext_BackupStatus_lastDumpAt(ctx, field)
+			case "lastChangeAt":
+				return ec.fieldContext_BackupStatus_lastChangeAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BackupStatus", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_constraintForAncode(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_constraintForAncode(ctx, field)
 	if err != nil {
@@ -85231,6 +85464,49 @@ func (ec *executionContext) _AssembledExamsState(ctx context.Context, sel ast.Se
 	return out
 }
 
+var backupStatusImplementors = []string{"BackupStatus"}
+
+func (ec *executionContext) _BackupStatus(ctx context.Context, sel ast.SelectionSet, obj *model.BackupStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, backupStatusImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BackupStatus")
+		case "hasUnsavedChanges":
+			out.Values[i] = ec._BackupStatus_hasUnsavedChanges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastDumpAt":
+			out.Values[i] = ec._BackupStatus_lastDumpAt(ctx, field, obj)
+		case "lastChangeAt":
+			out.Values[i] = ec._BackupStatus_lastChangeAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var balanceReportImplementors = []string{"BalanceReport"}
 
 func (ec *executionContext) _BalanceReport(ctx context.Context, sel ast.SelectionSet, obj *model.BalanceReport) graphql.Marshaler {
@@ -92311,6 +92587,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "backupStatus":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_backupStatus(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "constraintForAncode":
 			field := field
 
@@ -98386,6 +98684,20 @@ func (ec *executionContext) marshalNAssembledExamsState2ᚖgithubᚗcomᚋobcode
 		return graphql.Null
 	}
 	return ec._AssembledExamsState(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNBackupStatus2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBackupStatus(ctx context.Context, sel ast.SelectionSet, v model.BackupStatus) graphql.Marshaler {
+	return ec._BackupStatus(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBackupStatus2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBackupStatus(ctx context.Context, sel ast.SelectionSet, v *model.BackupStatus) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BackupStatus(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNBalanceReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐBalanceReport(ctx context.Context, sel ast.SelectionSet, v *model.BalanceReport) graphql.Marshaler {

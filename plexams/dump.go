@@ -468,6 +468,12 @@ func (p *Plexams) HTTPDownloadSemesterDump(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	if _, err := w.Write(data); err != nil {
 		log.Error().Err(err).Msg("cannot write semester dump download")
+		return
+	}
+	// Record that a full dump was taken, so the GUI can tell whether there are
+	// changes since the last backup. Best-effort: the download already succeeded.
+	if err := p.dbClient.SetLastDumpAt(r.Context(), time.Now()); err != nil {
+		log.Error().Err(err).Msg("cannot record last dump time")
 	}
 }
 

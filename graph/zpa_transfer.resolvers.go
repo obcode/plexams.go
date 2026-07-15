@@ -9,6 +9,7 @@ import (
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams"
+	"github.com/rs/zerolog/log"
 )
 
 // UploadExamsToZpa is the resolver for the uploadExamsToZPA field.
@@ -74,4 +75,25 @@ func (r *subscriptionResolver) ImportStudentsFromZpa(ctx context.Context) (<-cha
 		_, _, err := r.plexams.GetStudentsFromZPA(ctx, reporter)
 		return err
 	}), nil
+}
+
+// TriggerScheduledSync is the resolver for the triggerScheduledSync field. It runs the
+// same job as the nightly scheduler on demand and streams its progress. Unlike the other
+// transfer subscriptions it does not use runExclusiveOp: RunScheduledSync manages the
+// exclusive-op guard itself (and skips cleanly when a transfer is already running). The
+// op runs on a detached context so it completes even if the client leaves the page.
+func (r *subscriptionResolver) TriggerScheduledSync(ctx context.Context) (<-chan *model.LogLine, error) {
+	ch := make(chan *model.LogLine, 256)
+	reporter := newStreamReporter(ctx, ch)
+	opCtx := context.WithoutCancel(ctx)
+	cfg := plexams.ScheduledSyncConfigFromViper()
+	go func() {
+		defer close(ch)
+		if _, err := r.plexams.RunScheduledSync(opCtx, cfg, reporter); err != nil {
+			log.Error().Err(err).Msg("triggered auto-sync failed")
+			reporter.emit(model.LogLevelError, "error: "+err.Error())
+		}
+		reporter.emit(model.LogLevelDone, "done")
+	}()
+	return ch, nil
 }

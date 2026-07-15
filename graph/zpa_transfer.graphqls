@@ -20,4 +20,7 @@ extend type Subscription {
   importInvigilatorRequirementsFromZPA: LogLine!
   "Fetch the ZPA infos of students with registrations and cache them."
   importStudentsFromZPA: LogLine!
+
+  "Run the nightly auto-sync now: pull ZPA (exams/teachers/invigilator requirements) and Anny bookings, record the diff and mail it. Streams progress; ends with DONE."
+  triggerScheduledSync: LogLine!
 }

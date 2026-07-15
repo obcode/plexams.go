@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/spf13/viper"
 )
 
@@ -41,7 +42,14 @@ func personalizationNamesFromConfig() []string {
 }
 
 func (p *Plexams) FetchFromAnny(ctx context.Context, reporter Reporter) error {
-	return p.anny.Fetch(ctx, reporter)
+	// Restrict the change report to the exam period so bookings outside it (and stale
+	// past ones) are not reported as noise. A missing config leaves the window zero,
+	// which the anny service falls back to "from now on".
+	var window anny.DiffWindow
+	if p.semesterConfig != nil {
+		window = anny.DiffWindow{From: p.semesterConfig.From, Until: p.semesterConfig.Until}
+	}
+	return p.anny.Fetch(ctx, reporter, window)
 }
 
 func (p *Plexams) AnnyConfig(ctx context.Context) (*model.AnnyConfig, error) {

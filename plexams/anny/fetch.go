@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/zpaimport"
 	"github.com/rs/zerolog/log"
 )
 
@@ -81,10 +82,20 @@ type bookingsPage struct {
 	} `json:"links"`
 }
 
+// DiffWindow restricts the change report to bookings that start within [From, Until].
+// A zero From falls back to "from now on"; a zero Until means no upper bound. The store
+// itself is never restricted — only which bookings the added/changed/removed report
+// covers (the nightly auto-sync passes the exam period so off-period bookings are noise).
+type DiffWindow struct {
+	From  time.Time
+	Until time.Time
+}
+
 // Fetch fetches the bookings from the Anny API and stores them in the database. All
 // bookings (all rooms, all people) are kept; "ours" is flagged via the personalization
-// names at query time, not filtered away here.
-func (s *Service) Fetch(ctx context.Context, reporter Reporter) error {
+// names at query time, not filtered away here. window restricts the change report (not
+// the store) to the exam period.
+func (s *Service) Fetch(ctx context.Context, reporter Reporter, window DiffWindow) error {
 	reporter.Step("fetching bookings from anny.eu")
 	personalizationNames := s.PersonalizationNames(ctx)
 
@@ -184,6 +195,15 @@ func (s *Service) Fetch(ctx context.Context, reporter Reporter) error {
 		dbBookings = append(dbBookings, bookingToDBBooking(b))
 	}
 
+	// Snapshot the current bookings before the save overwrites them, so we can report
+	// what actually changed (added/changed/removed) like the ZPA imports do — the
+	// nightly auto-sync mails this diff.
+	oldBookings, err := s.db.AllAnnyBookings(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot read current anny bookings for diff")
+		oldBookings = nil
+	}
+
 	if err := s.db.SaveAnnyBookings(ctx, dbBookings); err != nil {
 		return fmt.Errorf("cannot save anny bookings: %w", err)
 	}
@@ -191,16 +211,110 @@ func (s *Service) Fetch(ctx context.Context, reporter Reporter) error {
 	summary(bookings, personalizationNames, reporter)
 	reporter.StopProgress(fmt.Sprintf("saved %d anny bookings to the database", len(dbBookings)))
 
-	s.logSync(ctx, &model.SyncLogEntry{
-		Operation: "anny-import-bookings",
-		Label:     "Buchungen aus Anny importiert",
-		Direction: "import",
-		System:    "Anny",
-		OK:        true,
-		Summary:   fmt.Sprintf("%d Buchungen gespeichert", len(dbBookings)),
-	})
+	rec := diffBookings(oldBookings, dbBookings, window, time.Now(), personalizationNames)
+	for _, m := range rec.msgs {
+		reporter.Println(m)
+	}
+	rec.entry.Operation = "anny-import-bookings"
+	rec.entry.Label = "Buchungen aus Anny importiert"
+	rec.entry.Direction = "import"
+	rec.entry.System = "Anny"
+	rec.entry.OK = true
+	rec.entry.Summary = fmt.Sprintf("%d Buchungen gespeichert (%d neu, %d geändert, %d entfallen)",
+		len(dbBookings), rec.entry.Added, rec.entry.Changed, rec.entry.Removed)
+	s.logSync(ctx, rec.entry)
 
 	return nil
+}
+
+// bookingDiff bundles the diff SyncLogEntry with the human-readable report lines.
+type bookingDiff struct {
+	entry *model.SyncLogEntry
+	msgs  []string
+}
+
+// diffBookings compares the freshly fetched bookings against the previous DB state,
+// keyed by the Anny booking number. Both sides are first restricted to the exam period
+// (window): the Anny API is fetched with filter[upcoming_only]=1 and covers all rooms /
+// all people, so a stored booking that merely aged out or that lies outside the period
+// would otherwise show up as spurious noise — only genuine cancellations/changes within
+// the period should be reported. Each entry is marked "[eigene]" / "[fremd]" and carries
+// the booker so it is clear who booked (personalizationNames are our own names).
+func diffBookings(old, neu []*model.AnnyBooking, window DiffWindow, now time.Time, personalizationNames []string) bookingDiff {
+	keep := windowFilter(window, now)
+	nameFn := func(b *model.AnnyBooking) string {
+		return bookingName(b, MatchesAnyPersonalization(b.PersonalizationName, personalizationNames))
+	}
+	fieldsFn := func(b *model.AnnyBooking) map[string]string {
+		mine := "nein"
+		if MatchesAnyPersonalization(b.PersonalizationName, personalizationNames) {
+			mine = "ja"
+		}
+		return map[string]string{
+			"room":       b.Room,
+			"start":      b.StartDate.Format("02.01.2006 15:04"),
+			"end":        b.EndDate.Format("02.01.2006 15:04"),
+			"duration":   fmt.Sprint(b.ChargedDuration),
+			"status":     b.Status,
+			"gebuchtVon": strings.TrimSpace(b.PersonalizationName),
+			"eigene":     mine,
+			"note":       b.Note,
+		}
+	}
+	entry, msgs := zpaimport.DiffChanges(filterBookings(old, keep), filterBookings(neu, keep),
+		func(b *model.AnnyBooking) string { return b.Number }, nameFn, fieldsFn)
+	return bookingDiff{entry: entry, msgs: msgs}
+}
+
+// windowFilter returns a predicate that keeps bookings starting within the exam period.
+// A zero window.From falls back to now (no past bookings); a zero window.Until means no
+// upper bound. The upper bound is inclusive of the whole Until day.
+func windowFilter(window DiffWindow, now time.Time) func(*model.AnnyBooking) bool {
+	lower := window.From
+	if lower.IsZero() {
+		lower = now
+	}
+	hasUpper := !window.Until.IsZero()
+	upper := window.Until.AddDate(0, 0, 1) // start of the day after Until → whole Until day counts
+	return func(b *model.AnnyBooking) bool {
+		if b == nil || b.StartDate.Before(lower) {
+			return false
+		}
+		if hasUpper && !b.StartDate.Before(upper) {
+			return false
+		}
+		return true
+	}
+}
+
+// filterBookings returns the bookings for which keep reports true.
+func filterBookings(bookings []*model.AnnyBooking, keep func(*model.AnnyBooking) bool) []*model.AnnyBooking {
+	out := make([]*model.AnnyBooking, 0, len(bookings))
+	for _, b := range bookings {
+		if keep(b) {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+// bookingName is the human-readable label of a booking used in the diff report. It leads
+// with "[eigene]" / "[fremd]" and names the booker so mine-vs-others is obvious.
+func bookingName(b *model.AnnyBooking, mine bool) string {
+	room := b.Room
+	if room == "" {
+		room = "(unbekannt)"
+	}
+	who := strings.TrimSpace(b.PersonalizationName)
+	if who == "" {
+		who = "unbekannt"
+	}
+	owner := "fremd"
+	if mine {
+		owner = "eigene"
+	}
+	return fmt.Sprintf("[%s] %s %s–%s – %s [%s]", owner, room,
+		b.StartDate.Format("02.01.2006 15:04"), b.EndDate.Format("15:04"), who, b.Number)
 }
 
 // logSync records a sync-log entry (best effort; failure is only logged).

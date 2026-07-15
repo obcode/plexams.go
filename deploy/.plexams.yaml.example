@@ -77,6 +77,31 @@ planer:
 secrets:
   key: change-me-openssl-rand-base64-32
 
+# ============================================================
+# Nightly auto-sync (background scheduler)
+# ============================================================
+# Once a day the server pulls ZPA (exams/teachers/invigilator requirements) and the Anny
+# bookings for the ACTIVE workspace — the same imports the GUI triggers manually, which
+# still work unchanged — and mails what changed. Uses the zpa/anny/smtp config below, no
+# extra secrets. Server-only; leave disabled for local dev. A "Sync jetzt starten" run is
+# also available on demand via the GUI (triggerScheduledSync).
+scheduler:
+  # Off by default. Set true on the server to enable the nightly run.
+  enabled: true
+  # Daily fire time, local (Europe/Berlin), "HH:MM". Default 03:00.
+  time: "03:00"
+  # Gets a mail ONLY when the run found differences (the shared planning mailbox).
+  changesRecipient: pruefungsplanung-fk07@hm.edu
+  # Gets a mail on EVERY run (heartbeat) — including "no changes" and errors. Leave empty
+  # to disable. Point it at yourself while bringing the feature up.
+  debugRecipient: ""
+  # Optional per-source toggles. Omit the whole block to pull all four (the default).
+  # sources:
+  #   exams: true
+  #   teachers: true
+  #   invigilatorRequirements: true
+  #   anny: true
+
 # --- Add the sections you actually use (secrets stay here) ---
 # zpa:  { baseurl: ..., token: ... }        # ZPA app token — shared, stays here
 # smtp: { ... }

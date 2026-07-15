@@ -137,6 +137,40 @@ anny:
 > - die relevanten Räume sind die Räume mit `requestWith: ANNY` in den globalen
 >   Raum-Stammdaten (DB). Die YAML-Liste entfällt.
 
+## 4a. Nächtlicher Auto-Sync (`scheduler.*`)
+
+Eine In-Process-Goroutine zieht **einmal täglich** ZPA (Prüfungen, Lehrende,
+Aufsichtsbedarf) und die Anny-Buchungen für das **aktive Workspace-Semester** — dieselben
+Importe wie die manuellen GUI-Aktionen, die unverändert bestehen bleiben — und mailt die
+**Unterschiede** zum vorherigen Stand. Nutzt die `zpa.*`/`anny.*`/`smtp.*`-Konfiguration,
+**keine** zusätzlichen Secrets. Nur fürs Server-Deployment gedacht; lokal ausgelassen.
+
+```yaml
+scheduler:
+  enabled: true                                # Default false (aus)
+  time: "03:00"                                # Uhrzeit lokal (Europe/Berlin), HH:MM; Default 03:00
+  changesRecipient: pruefungsplanung-fk07@hm.edu  # Mail NUR bei Änderungen
+  debugRecipient: ""                           # Mail bei JEDEM Lauf (Heartbeat, auch „keine
+                                               # Änderungen"/Fehler); leer = aus
+  # sources:                                   # optional; ganz weglassen = alle vier ziehen
+  #   exams: true
+  #   teachers: true
+  #   invigilatorRequirements: true
+  #   anny: true
+```
+
+> - **Erstbefüllung:** Ist eine Quelle beim ersten Lauf noch leer (z.B. ein frisches
+>   Semester, für das ZPA noch keine Prüfungen liefert), erscheint alles als *neu*, sobald
+>   ZPA erstmals Daten hat — dann feuert die Änderungs-Mail (bei sehr vielen Einträgen
+>   kompakt als Zähler statt Einzelliste).
+> - **Kollision:** Läuft gerade ein manueller Import/E-Mail-Versand, wartet der Nachtlauf
+>   kurz und überspringt sonst sauber (derselbe Exclusive-Op-Guard).
+> - **Sofort starten:** Über das GUI lässt sich der komplette Lauf on-demand auslösen
+>   (`triggerScheduledSync`, gestreamt wie die anderen Importe).
+> - Der Nachtlauf betrifft nur das **aktive** Workspace-Semester. Andere Semester
+>   unabhängig vom aktiven Workspace zu beobachten wäre ein späterer Ausbau (eigene
+>   gescopte Instanz pro Semester).
+
 ## 5. Jira (FK07-Prüfungsplanungs-Helpdesk)
 
 Die on-prem-Jira `jira.cc.hm.edu` (Service-Desk-Projekt **FK07PP**) wird per

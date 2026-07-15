@@ -42,6 +42,13 @@ Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** un
 **EAB-Zugangsdaten** (`kid` + `hmac-key`) — die HM-CA nutzt External Account Binding.
 Die kommen in `.env` (`ACME_*`); Caddy holt und erneuert das Zertifikat damit selbst.
 
+> **Wichtig — eigene EAB pro ACME-Client:** Die HM-EAB bindet **genau einen** ACME-Account.
+> Ein bereits (z. B. früher von acme.sh) verwendetes kid/hmac-Paar lässt sich **nicht**
+> für Caddys eigenen Account wiederverwenden — die CA lehnt die zweite Bindung beim
+> `new-account` mit `HTTP 401 … The client lacks sufficient authorization` ab. Für Caddy
+> also **frische EAB-Credentials** bei der IT anfordern (Stichwort: „neuer ACME-Client für
+> denselben Host, brauche eigene EAB kid/hmac"). Alte acme.sh-EAB → funktioniert nicht.
+
 > **Tipp:** Erst das Fundament einzeln testen — [`smoketest/`](smoketest/) bringt in
 > zwei Mini-Stacks nacheinander (1) TLS/ACME mit „Hello World" und (2) den
 > OIDC-Login mit „Hallo + Attribute" zum Laufen, **ohne** plexams dahinter. Wenn beide

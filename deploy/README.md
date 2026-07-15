@@ -1,13 +1,14 @@
-# plexams.go — Server-Deployment (Docker Compose, nginx + oauth2-proxy, OIDC via HM)
+# plexams.go — Server-Deployment (Docker Compose, Caddy + oauth2-proxy, OIDC via HM)
 
-Betreibt plexams.go hinter **nginx**, das die Authentifizierung **über OIDC gegen
-`sso.hm.edu`** per **`oauth2-proxy`** macht (`auth_request`). nginx setzt die
+Betreibt plexams.go hinter **Caddy**, das die Authentifizierung **über OIDC gegen
+`sso.hm.edu`** per **`oauth2-proxy`** macht (`forward_auth`). Caddy setzt die
 verifizierte Identität autoritativ als Header `X-Remote-User`; das Backend vertraut
-diesem Header und erzwingt die Autorisierung (Rollen) selbst. TLS via **acme.sh**
-gegen die HM-ACME-CA (mit **EAB**).
+diesem Header und erzwingt die Autorisierung (Rollen) selbst. TLS macht **Caddys
+eingebauter ACME-Client** selbst — gegen die HM-ACME-CA (mit **EAB**), inkl.
+automatischer Erneuerung; kein acme.sh, kein Renew-Cron.
 
 ```
-Internet ──443/TLS──> nginx (auth_request → oauth2-proxy → sso.hm.edu)
+Internet ──443/TLS──> Caddy (forward_auth → oauth2-proxy → sso.hm.edu)
                         ├── /oauth2/*    → oauth2-proxy (Login/Callback)
                         ├── /            → gui (plexams.gui-Container)
                         └── /query,/upload,/download → plexams.go:8080
@@ -39,6 +40,7 @@ Zurück bekommst du **Client-ID** + **Client-Secret** → in `.env`.
 
 Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** und die
 **EAB-Zugangsdaten** (`kid` + `hmac-key`) — die HM-CA nutzt External Account Binding.
+Die kommen in `.env` (`ACME_*`); Caddy holt und erneuert das Zertifikat damit selbst.
 
 > **Tipp:** Erst das Fundament einzeln testen — [`smoketest/`](smoketest/) bringt in
 > zwei Mini-Stacks nacheinander (1) TLS/ACME mit „Hello World" und (2) den
@@ -47,9 +49,9 @@ Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** un
 
 ## Voraussetzungen
 
-- Docker + Docker Compose auf dem (Alpine-)Server; `acme.sh` auf dem Host.
+- Docker + Docker Compose auf dem (Alpine-)Server. (Kein acme.sh mehr — das erledigt Caddy.)
 - DNS-Name, der auf den Server zeigt; Port 80 + 443 aus dem Netz der HM-CA erreichbar
-  (für die HTTP-01-Challenge).
+  (Port 80 für die HTTP-01-Challenge, die Caddy selbst beantwortet).
 - OIDC-Client registriert (s. o.) — **frühzeitig anstoßen**, längste Vorlaufzeit.
 - Zugriff auf die ghcr-Images `ghcr.io/obcode/plexams.go` + `ghcr.io/obcode/plexams.gui`
   (öffentlich → kein Login nötig; privat → einmalig `docker login ghcr.io`).
@@ -59,10 +61,11 @@ Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** un
 1. **Konfig anlegen** (nichts davon wird committet):
    ```bash
    cd deploy
-   cp .env.example        .env            # Mongo-Creds, SERVER_NAME, OIDC-Client, Cookie-Secret
-   cp acme.env.example    acme.env        # ACME-Directory-URL + EAB kid/hmac (von der IT)
+   cp .env.example        .env            # Mongo-Creds, SERVER_NAME, ACME_*/EAB, OIDC-Client, Cookie-Secret
    cp .plexams.yaml.example .plexams.yaml # db.uri, auth.seedusers (die zwei ADMINs), zpa/smtp/…
    ```
+   In `.env` die `ACME_*`-Werte (Directory-URL + EAB `kid`/`hmac-key`, von der IT) eintragen —
+   Caddy holt das Zertifikat damit selbst.
    `OAUTH2_PROXY_COOKIE_SECRET` z. B. mit `openssl rand -base64 24` (ergibt 32 Zeichen;
    oauth2-proxy verlangt 16/24/32 Zeichen, `-base64 32` liefert 44 und schlägt fehl). Denselben Host in
    `.env` `SERVER_NAME` ↔ `.plexams.yaml` `server.allowedorigins` verwenden, dieselbe
@@ -77,53 +80,25 @@ Für **TLS/ACME** brauchst du außerdem von der IT die **ACME-Directory-URL** un
    eine konkrete Release-Version für einen reproduzierbaren Erststart). Der automatische
    Deploy pinnt sie später auf die jeweils veröffentlichte Version.
 
-3. **Erststart (Henne-Ei beim Zertifikat):** nginx lädt beim Start ein Zertifikat,
-   das es noch nicht gibt. **`tls/` und `acme-webroot/` VOR `docker compose up`
-   anlegen** — sonst legt Docker die Bind-Mount-Verzeichnisse als `root` an und acme.sh
-   kann den Challenge-Token nicht hineinschreiben. Dann ein selbstsigniertes
-   Platzhalter-Zertifikat, damit nginx hochkommt und die HTTP-01-Challenge ausliefert:
-   ```bash
-   mkdir -p tls acme-webroot
-   openssl req -x509 -newkey rsa:2048 -nodes -days 3 \
-     -keyout tls/privkey.pem -out tls/fullchain.pem \
-     -subj "/CN=$(grep '^SERVER_NAME=' .env | cut -d= -f2)"
-   ```
-   > Schon zu spät und `acme-webroot/` gehört root?
-   > `sudo chown -R "$(id -un):$(id -gn)" tls acme-webroot`.
-
-4. **Stack starten** (zieht die Images und startet alle Services):
+3. **Stack starten** (zieht die Images und startet alle Services):
    ```bash
    docker compose pull
    docker compose up -d
    ```
-
-5. **Echtes Zertifikat holen** (acme.sh, HTTP-01 über nginx, EAB):
+   **Caddy holt das Zertifikat beim ersten Start selbst** — registriert den ACME-Account mit
+   EAB gegen die HM-CA, beantwortet die HTTP-01-Challenge auf Port 80 und bedient danach
+   `:443`. Kein Platzhalter-Cert, kein separater Cert-Schritt, kein Renew-Cron: Erneuerungen
+   laufen automatisch. Der erste Start dauert ein paar Sekunden länger (Cert-Ausstellung);
+   bei Problemen in die Logs schauen:
    ```bash
-   ./acme-setup.sh
+   docker compose logs -f caddy      # ACME-Registrierung / Ausstellung verfolgen
    ```
-   Das registriert den ACME-Account mit EAB, holt das Zertifikat über
-   `acme-webroot/`, installiert es nach `tls/` und lädt nginx neu. Renewals macht der
-   acme.sh-Cron automatisch (mit `--reloadcmd`).
+   > Zertifikat + ACME-Account/EAB-Registrierung liegen im **`caddy-data`-Volume** (nicht in
+   > `deploy/`). Für einen sauberen Neuanlauf `docker compose down` + `docker volume rm
+   > deploy_caddy-data` — dann stellt Caddy beim nächsten Start neu aus (nicht ohne Not, die
+   > HM-CA kann Rate-Limits haben).
 
-   > **Zwei Stolperfallen:**
-   > - **Nicht das Cert aus dem Smoketest kopieren, sondern hier neu ausstellen.**
-   >   acme.sh merkt sich pro Domain den Webroot des erfolgreichen Issues (`Le_Webroot`).
-   >   Stellst du im [`smoketest/`](smoketest/) aus und kopierst dann nur die Dateien nach
-   >   `deploy/tls/`, zeigt `Le_Webroot` weiter auf das Smoketest-Verzeichnis — der
-   >   automatische Renew schreibt die Challenge dann dorthin (nicht in das in den
-   >   Produktiv-nginx gemountete `deploy/acme-webroot/`) und **scheitert**. Prüfen:
-   >   `grep -i webroot ~/.acme.sh/<host>_ecc/<host>.conf` muss `.../deploy/acme-webroot`
-   >   zeigen; falls nicht, `./acme-setup.sh` bzw. `acme.sh --issue --force -w "$(pwd)/acme-webroot"`
-   >   erneut aus `deploy/` laufen lassen.
-   > - **Den Renew-Cron sicherstellen.** Auf einem frischen (Alpine-)Host existiert evtl.
-   >   noch kein Crontab (`crontab -l` → BusyBox „can't open ..."). Dann einmalig
-   >   `~/.acme.sh/acme.sh --install-cronjob` und prüfen, dass ein Cron-Daemon läuft
-   >   (`pgrep crond`; sonst `sudo rc-update add crond default && sudo rc-service crond start`).
-   >   Einen **separaten Cronjob für den Reload brauchst du nicht** — der hängt am
-   >   `--reloadcmd`. Der harmlose `Cannot parse _ssldate2time`-Hinweis kommt vom
-   >   BusyBox-`date` und betrifft nur die Datumsanzeige, nicht das Cert.
-
-6. **Erst-Boot der App**: `auth.seedusers` legt die beiden Planer als `ADMIN` an (nur
+4. **Erst-Boot der App**: `auth.seedusers` legt die beiden Planer als `ADMIN` an (nur
    solange die `users`-Collection leer ist). Danach werden User über die GUI verwaltet
    (`setUser`/`removeUser`).
 
@@ -145,7 +120,7 @@ Hops das OIDC-Session-Cookie hat:
 
 | GUI-Teil | läuft in | URL | Identität |
 |----------|----------|-----|-----------|
-| Client-Bundle (Browser-Queries, `wss://`-Subscriptions) | **Browser** | `PUBLIC_PLEXAMS_SERVER` = `https://<SERVER_NAME>/query` | Cookie → oauth2-proxy → nginx injiziert `X-Remote-User` |
+| Client-Bundle (Browser-Queries, `wss://`-Subscriptions) | **Browser** | `PUBLIC_PLEXAMS_SERVER` = `https://<SERVER_NAME>/query` | Cookie → oauth2-proxy → Caddy injiziert `X-Remote-User` |
 | SSR-Node (`+page.server.ts` `load()`, `hooks.server.js`, `/api`-Proxys) | **`gui`-Container** | `PLEXAMS_SERVER` = `http://plexams:8080/query` (intern) | relayter `X-Remote-User` |
 
 **Warum nicht beide über die öffentliche URL?** Der SSR-Node macht Server-zu-Server-Calls
@@ -155,8 +130,9 @@ zur `sso.hm.edu`-Loginseite umleiten; die GUI bekäme HTML statt GraphQL-JSON un
 → **500** auf `GET /`. Genau dieser Fehler tritt auf, wenn `PLEXAMS_SERVER` fälschlich auf
 die öffentliche URL zeigt.
 
-**Wie die SSR-Calls dann autorisiert werden:** nginx injiziert `X-Remote-User` (validiert,
-autoritativ) auch in den Seiten-Request an den `gui`-Container (`location /`), und die GUI
+**Wie die SSR-Calls dann autorisiert werden:** Caddy injiziert `X-Remote-User` (validiert,
+autoritativ) auch in den Seiten-Request an den `gui`-Container (der `reverse_proxy gui:3000`),
+und die GUI
 **reicht diesen Header auf ihren internen Backend-Calls weiter**. So kennt das Backend den
 User auch bei SSR — ohne dass die öffentliche URL involviert ist.
 
@@ -164,31 +140,31 @@ User auch bei SSR — ohne dass die öffentliche URL involviert ist.
 > `gui`→`plexams:8080`-Hop tatsächlich weiterreichen (SSR-`load()`s, `hooks.server.js`,
 > alle `/api`-Proxys). Solange das GUI-Release das noch **nicht** tut, weist das Backend die
 > anonymen internen SSR-Calls fail-closed ab (JSON-401). Übergangs­weise dann
-> `auth.enabled: false` fahren: die SSO-Wand bleibt an nginx, alle eingeloggten Nutzer
+> `auth.enabled: false` fahren: die SSO-Wand bleibt an Caddy, alle eingeloggten Nutzer
 > agieren als ADMIN (kein Rollen-Split, kein per-User-Audit) — sobald das GUI-Forwarding
 > live ist, `auth.enabled: true` schalten, ohne weitere Deploy-Änderung.
 
 ## Sicherheits-Kernregeln
 
 - **Backend nie veröffentlichen.** `plexams` und `oauth2-proxy` haben bewusst kein
-  `ports:` — nur über nginx **und** den internen `gui`-Container erreichbar. Sonst könnte
+  `ports:` — nur über Caddy **und** den internen `gui`-Container erreichbar. Sonst könnte
   jeder den `X-Remote-User`-Header selbst setzen. `mongo` ist ausschließlich auf
   `127.0.0.1` veröffentlicht (nur Host-Loopback, für den SSH-Tunnel oben) — **nie** auf
   `0.0.0.0`.
-- nginx setzt `X-Remote-User` per `proxy_set_header` autoritativ (überschreibt jeden
-  Client-Wert) aus dem verifizierten `email`-Claim — sowohl auf `/query`/`/upload`/
-  `/download` als auch auf `/` (für die SSR-Calls des `gui`-Containers, s. o.).
-- **`gui` relayt nur, was nginx validiert hat.** Der `gui`-Container darf `plexams:8080`
+- Caddy verwirft eingehende `X-Remote-*`-Header (`request_header -X-Remote-User`) und setzt
+  `X-Remote-User` per `copy_headers` autoritativ aus dem verifizierten `email`-Claim —
+  sowohl auf `/query`/`/upload`/`/download` als auch auf `/` (für die SSR-Calls des
+  `gui`-Containers, s. o.).
+- **`gui` relayt nur, was Caddy validiert hat.** Der `gui`-Container darf `plexams:8080`
   intern erreichen und `X-Remote-User` weiterreichen; er kann ihn aber nicht fälschen, weil
-  nginx den Header vor Erreichen des `gui`-Containers autoritativ überschreibt.
+  Caddy den Header vor Erreichen des `gui`-Containers autoritativ überschreibt.
 - `server.production: true` schaltet Playground + Introspection ab.
-- Secrets nur in `.env` / `acme.env` / `.plexams.yaml` (alle gitignored), nie in der
-  DB, nie im Image.
+- Secrets nur in `.env` / `.plexams.yaml` (beide gitignored), nie in der DB, nie im Image.
 
 ## Lokale Entwicklung (unverändert)
 
 Ohne `auth.enabled: true` läuft plexams.go wie bisher: ein voll berechtigter (ADMIN)
-Dev-User wird injiziert, nichts wird abgewiesen. Kein nginx, kein OIDC nötig.
+Dev-User wird injiziert, nichts wird abgewiesen. Kein Caddy, kein OIDC nötig.
 
 ## Firewall (awall) + Docker
 
@@ -221,7 +197,7 @@ GitHub pollt und bei einem Release lokal `docker compose` ausführt.
 **Ablauf pro Release:** Conventional-Commit → semantic-release schneidet ein GitHub-Release
 → der Image-Build (`.github/workflows/docker.yml`) pusht nach ghcr.io → der `deploy`-Job
 im selben Workflow läuft auf dem Runner, spiegelt die Nicht-Secret-Infra (compose-Datei +
-nginx-Templates) in das on-host Deploy-Verzeichnis, pinnt `PLEXAMS_TAG` in `.env` auf die
+`Caddyfile`) in das on-host Deploy-Verzeichnis, pinnt `PLEXAMS_TAG` in `.env` auf die
 Release-Version und macht `docker compose pull plexams && up -d`. plexams.gui hat im eigenen
 Repo einen spiegelbildlichen Workflow, der `GUI_TAG` pinnt und den `gui`-Service neu zieht.
 
@@ -258,8 +234,9 @@ erwartet. Der `plexams`-User muss in der `docker`-Gruppe sein (Socket-Zugriff).
   läuft er — vorher wird das Image weiterhin gebaut+gepusht, der Deploy-Job aber übersprungen
   (kein hängender Queue-Job, solange der Runner fehlt).
 - Das on-host Deploy-Verzeichnis ist standardmäßig `/home/plexams/plexams.go/deploy` (überschreibbar
-  über die Repo-Variable `DEPLOY_DIR`). Dort liegen die Secrets (`.env`, `.plexams.yaml`,
-  `tls/`) — der Job fasst sie **nie** an, er synct nur compose-Datei + nginx-Templates.
+  über die Repo-Variable `DEPLOY_DIR`). Dort liegen die Secrets (`.env`, `.plexams.yaml`) und
+  das `caddy-data`-Volume mit den Zertifikaten — der Job fasst sie **nie** an, er synct nur
+  compose-Datei + `Caddyfile`.
 - Für **plexams.gui** liegt ein **zweiter** Runner-Service `gh-runner-gui` in derselben
   Compose-Datei (`obcode` ist ein persönlicher Account → nur Repo-Scope-Runner, kein
   org-weites Teilen; jedes Repo braucht seinen eigenen Runner). `docker compose --profile
@@ -277,9 +254,10 @@ in ein `not found`. `latest` zeigt auf den jeweils neuesten Release.
 
 ## Betrieb
 
-- Logs: `docker compose logs -f nginx` / `... oauth2-proxy` / `... plexams` / `... gui`.
+- Logs: `docker compose logs -f caddy` / `... oauth2-proxy` / `... plexams` / `... gui`.
 - Manuelles Update ohne CI: `docker compose pull && docker compose up -d`.
-- Zertifikat-Renew testen: `~/.acme.sh/acme.sh --renew -d <host> --force`.
+- Zertifikat: Caddy erneuert automatisch (~30 Tage vor Ablauf). Status in den `caddy`-Logs;
+  Cert-Metadaten liegen im `caddy-data`-Volume unter `caddy/certificates/`.
 
 ### Von außen an die MongoDB (SSH-Tunnel)
 

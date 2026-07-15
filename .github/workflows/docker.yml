@@ -83,7 +83,11 @@ jobs:
             - name: Sync infra + deploy pinned image
               run: |
                   set -euo pipefail
-                  VERSION="${GITHUB_REF#refs/tags/v}"
+                  # Keep the leading "v": docker/metadata-action tags the image with the raw
+                  # git ref (v3.21.1), matching the whole registry's v-prefixed history — so
+                  # PLEXAMS_TAG must carry the v too, else the pull 404s. (Only the build job
+                  # above strips it, for the bare ldflags version.)
+                  VERSION="${GITHUB_REF#refs/tags/}"
 
                   # Sync non-secret infra into the on-host deploy dir. Secrets & tls/ stay put.
                   cp deploy/docker-compose.yml "$DEPLOY_DIR/"

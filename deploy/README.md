@@ -270,7 +270,9 @@ erwartet. Der `plexams`-User muss in der `docker`-Gruppe sein (Socket-Zugriff).
 
 **Rollback:** in `/home/plexams/plexams.go/deploy/.env` `PLEXAMS_TAG` (bzw. `GUI_TAG`) auf eine ältere
 Version setzen und `docker compose up -d plexams` (bzw. `gui`) — die ghcr-Images sind
-versioniert vorhanden.
+versioniert vorhanden. **Die Image-Tags tragen ein `v`-Präfix** (z. B. `PLEXAMS_TAG=v3.21.0`,
+nicht `3.21.0`) — so taggt `docker/metadata-action` (roher Git-Ref); ohne `v` läuft der Pull
+in ein `not found`. `latest` zeigt auf den jeweils neuesten Release.
 
 ## Betrieb
 

@@ -8,11 +8,11 @@
 #
 # Run as the deploy user (`plexams`) from cron. Reads Mongo creds from the deploy .env.
 # Schedule (busybox crond on Alpine), e.g. daily 02:30 — `crontab -e` as plexams:
-#     30 2 * * *  /home/plexams/deploy/backup/mongo-backup.sh >> /home/plexams/backups/backup.log 2>&1
+#     30 2 * * *  /home/plexams/plexams.go/deploy/backup/mongo-backup.sh >> /home/plexams/backups/backup.log 2>&1
 #
 # Restore an archive:
 #     gunzip -c plexams-YYYYMMDD-HHMM.archive.gz \
-#       | docker compose -f /home/plexams/deploy/docker-compose.yml exec -T mongo \
+#       | docker compose -f /home/plexams/plexams.go/deploy/docker-compose.yml exec -T mongo \
 #           mongorestore --archive --gzip --drop \
 #             --username "$MONGO_USER" --password "$MONGO_PASSWORD" --authenticationDatabase admin
 #   (--drop replaces existing collections; omit to merge. Test into a throwaway host first.)
@@ -20,7 +20,7 @@
 set -eu
 
 # --- Config (override via environment before calling) --------------------------------
-DEPLOY_DIR="${DEPLOY_DIR:-/home/plexams/deploy}"
+DEPLOY_DIR="${DEPLOY_DIR:-/home/plexams/plexams.go/deploy}"
 BACKUP_DIR="${BACKUP_DIR:-/home/plexams/backups}"
 KEEP_DAILY="${KEEP_DAILY:-14}"    # keep this many most-recent daily archives
 KEEP_WEEKLY="${KEEP_WEEKLY:-8}"   # plus this many weekly (Monday) archives

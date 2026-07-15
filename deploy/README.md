@@ -225,29 +225,50 @@ nginx-Templates) in das on-host Deploy-Verzeichnis, pinnt `PLEXAMS_TAG` in `.env
 Release-Version und macht `docker compose pull plexams && up -d`. plexams.gui hat im eigenen
 Repo einen spiegelbildlichen Workflow, der `GUI_TAG` pinnt und den `gui`-Service neu zieht.
 
-**Runner einrichten (einmalig, auf dem Host, als User `plexams`):**
+**Runner einrichten (einmalig, auf dem Host, als User `plexams`):** Der Runner läuft als
+**Container** (`gh-runner`-Service in der `docker-compose.yml`, Profil `runner`) — nicht als
+nativer Host-Dienst. Grund: der Host ist Alpine (musl-libc, kein systemd), das native
+.NET-Runner-Binary von GitHub braucht aber glibc und `svc.sh` erzeugt eine systemd-Unit;
+das glibc-Image umgeht beides.
+
 ```sh
-# plexams muss in der docker-Gruppe sein:
-mkdir -p ~/actions-runner && cd ~/actions-runner       # → /home/plexams/actions-runner
-# Runner-Tarball von GitHub → Repo → Settings → Actions → Runners → New self-hosted runner
-./config.sh --url https://github.com/obcode/plexams.go \
-            --token <RUNNER-TOKEN> --labels plexams-deploy --unattended
-sudo ./svc.sh install plexams && sudo ./svc.sh start
+# 1) PAT anlegen: GitHub → Settings → Developer settings → Personal access tokens.
+#    Classic mit Scope `repo` + `workflow`, ODER Fine-grained mit Repository-Permission
+#    "Administration: Read and write" auf obcode/plexams.go. Damit erneuert der Container
+#    seine kurzlebigen Registration-Tokens selbst (übersteht Neustarts ohne Token-Tausch).
+# 2) In /home/plexams/plexams.go/deploy/.env eintragen:
+#    GH_RUNNER_PAT=ghp_...
+# 3) Nur den Runner starten (Profil "runner"; der Default-Stack bleibt unberührt):
+cd /home/plexams/plexams.go/deploy
+docker compose --profile runner up -d gh-runner
+docker compose logs -f gh-runner        # Registrierung prüfen
 ```
+Danach taucht der Runner unter *Repo → Settings → Actions → Runners* mit Label
+`plexams-deploy` auf — genau was `runs-on: [self-hosted, plexams-deploy]` im Workflow
+erwartet. Der `plexams`-User muss in der `docker`-Gruppe sein (Socket-Zugriff).
+
+> **Warum ein eigenes Profil?** Der Deploy-Job macht ein blankes `docker compose up -d`.
+> Ein Service unter `profiles: [runner]` wird davon **komplett ignoriert** (weder gestartet
+> noch gestoppt) und läuft ungestört weiter — sonst würde der Runner sich **mitten im
+> eigenen Deploy-Job selbst neu starten** und den Job abbrechen. Deshalb steckt er zwar in
+> derselben Compose-Datei, gehört aber nicht zum Default-Stack.
+
 - **Freischalten:** Der `deploy`-Job ist hinter der Repo-Variable **`AUTO_DEPLOY`** gegated
   (Settings → Secrets and variables → Actions → Variables → `AUTO_DEPLOY=true`). Erst danach
   läuft er — vorher wird das Image weiterhin gebaut+gepusht, der Deploy-Job aber übersprungen
   (kein hängender Queue-Job, solange der Runner fehlt).
-- Das on-host Deploy-Verzeichnis ist standardmäßig `/home/plexams/deploy` (überschreibbar
+- Das on-host Deploy-Verzeichnis ist standardmäßig `/home/plexams/plexams.go/deploy` (überschreibbar
   über die Repo-Variable `DEPLOY_DIR`). Dort liegen die Secrets (`.env`, `.plexams.yaml`,
   `tls/`) — der Job fasst sie **nie** an, er synct nur compose-Datei + nginx-Templates.
-- Für **plexams.gui** denselben Runner/Label wiederverwenden (Runner zusätzlich auf das
-  GUI-Repo registrieren) und dort ebenfalls `AUTO_DEPLOY=true` setzen — beide Workflows
-  arbeiten auf demselben Stack und fassen jeweils nur ihren eigenen Service an.
+- Für **plexams.gui** einen **zweiten** Runner-Container mit eigenem `REPO_URL`/`RUNNER_NAME`
+  danebenstellen (der `myoung34`-Container ist an genau ein Repo gebunden) und im GUI-Repo
+  ebenfalls `AUTO_DEPLOY=true` setzen — beide Workflows arbeiten auf demselben Stack und
+  fassen jeweils nur ihren eigenen Service an. Alternativ den PAT/Runner org-weit
+  registrieren (`RUNNER_SCOPE=org`), dann bedient ein Container beide Repos.
 - **Sicherheit:** der Runner führt Workflow-Code auf dem Prod-Host aus → Trigger strikt auf
   `release` beschränkt (kein PR-Code), Runner nur für diese beiden Repos.
 
-**Rollback:** in `/home/plexams/deploy/.env` `PLEXAMS_TAG` (bzw. `GUI_TAG`) auf eine ältere
+**Rollback:** in `/home/plexams/plexams.go/deploy/.env` `PLEXAMS_TAG` (bzw. `GUI_TAG`) auf eine ältere
 Version setzen und `docker compose up -d plexams` (bzw. `gui`) — die ghcr-Images sind
 versioniert vorhanden.
 
@@ -295,7 +316,7 @@ Zwei komplementäre Ebenen:
    (Default 14 täglich + 8 wöchentlich). Als User `plexams` per busybox-`crond` einplanen:
    ```sh
    crontab -e   # als plexams:
-   30 2 * * *  /home/plexams/deploy/backup/mongo-backup.sh >> /home/plexams/backups/backup.log 2>&1
+   30 2 * * *  /home/plexams/plexams.go/deploy/backup/mongo-backup.sh >> /home/plexams/backups/backup.log 2>&1
    ```
    Restore-Kommando steht im Skript-Kopf. Schützt gegen versehentliches Löschen / kaputte
    Restores, **nicht** gegen Hostverlust — für off-site am Skriptende ein `scp`/`rclone` anhängen.

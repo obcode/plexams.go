@@ -138,5 +138,44 @@ services:
       - ./tls:/etc/ssl/plexams:ro         # fullchain.pem + privkey.pem (acme.sh)
       - ./acme-webroot:/var/www/acme:ro   # ACME HTTP-01 challenge files (acme.sh writes)
 
+  # Self-hosted GitHub Actions Runner für den automatischen Deploy (siehe README
+  # "Automatischer Deploy"). Der Host ist nur im VPN erreichbar, GitHub kann also nicht
+  # hineinpushen — dieser Runner pollt ausgehend zu GitHub und führt bei einem Release
+  # lokal `docker compose` aus. Läuft als Container, weil der Host (Alpine/musl, kein
+  # systemd) das native .NET-Runner-Binary nicht ausführen kann; das glibc-Image umgeht
+  # sowohl das musl- als auch das systemd-Problem.
+  #
+  # WICHTIG — `profiles: [runner]`: der Deploy-Job macht ein blankes `docker compose up -d`.
+  # Ein Service unter einem Profil wird davon KOMPLETT ignoriert (weder gestartet noch
+  # gestoppt), läuft also ungestört weiter — sonst würde der Runner sich mitten im eigenen
+  # Deploy-Job selbst neu starten und den Job abbrechen. Deshalb ist der Runner nicht Teil
+  # des Default-Stacks; er wird einmalig separat gestartet:
+  #   docker compose --profile runner up -d gh-runner
+  gh-runner:
+    image: myoung34/github-runner:latest
+    container_name: plexams-gh-runner
+    restart: unless-stopped
+    profiles: ["runner"]
+    environment:
+      REPO_URL: https://github.com/obcode/plexams.go
+      RUNNER_NAME: plexams-deploy
+      RUNNER_SCOPE: repo
+      LABELS: plexams-deploy
+      # PAT (Fine-grained: Actions RW, oder classic mit repo+workflow) statt des
+      # kurzlebigen Registration-Tokens aus der GitHub-UI: das Image erneuert damit
+      # Registration-Tokens selbst und übersteht Neustarts ohne Token-Tausch.
+      ACCESS_TOKEN: ${GH_RUNNER_PAT:-}
+      RUNNER_WORKDIR: /tmp/runner/work
+    security_opt:
+      - label:disable
+    volumes:
+      # Docker-Socket des Hosts → `docker compose` im Deploy-Job spricht mit dem
+      # Host-Daemon; die Bind-Mounts im Compose-File lösen gegen Host-Pfade auf.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Das on-host Deploy-Verzeichnis unter GLEICHEM Pfad, damit `cp`/`sed` im Job und
+      # die Compose-Bind-Mounts stimmen (DEPLOY_DIR default /home/plexams/plexams.go/deploy).
+      - /home/plexams/plexams.go/deploy:/home/plexams/plexams.go/deploy
+      - /tmp/runner:/tmp/runner
+
 volumes:
   mongo-data:

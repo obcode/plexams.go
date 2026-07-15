@@ -1,20 +1,28 @@
-# Smoke test — Step 1: TLS/ACME only. nginx serves a static "Hello World" over HTTPS.
-# No OIDC, no plexams, no mongo. Proves the DNS name, the certificate (acme.sh/EAB
-# against the HM ACME CA) and the reverse proxy host all work, before adding login.
+# Smoke test — Step 1: TLS/ACME only. Caddy serves a static "Hello World" over HTTPS.
+# No OIDC, no plexams, no mongo. Proves the DNS name, the certificate (Caddy's built-in
+# ACME client against the HM ACME CA, EAB) and the reverse-proxy host all work.
 #
-# Setup: cp .env.example .env && cp acme.env.example acme.env (fill both), bootstrap a
-# self-signed cert (see ../README.md), then: docker compose up -d && ./acme-setup.sh
+# Setup: cp .env.example .env (fill in SERVER_NAME + ACME_*), then: docker compose up -d
+# Caddy fetches the certificate itself on first start — no acme.sh, no self-signed bootstrap.
 
 services:
-  nginx:
-    image: nginx:1.27-alpine
+  caddy:
+    image: caddy:2-alpine
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "80:80"      # HTTP-01 ACME challenge + HTTP->HTTPS redirect
       - "443:443"
     environment:
       SERVER_NAME: ${SERVER_NAME}
+      ACME_EMAIL: ${ACME_EMAIL}
+      ACME_DIRECTORY_URL: ${ACME_DIRECTORY_URL}
+      ACME_EAB_KID: ${ACME_EAB_KID}
+      ACME_EAB_HMAC_KEY: ${ACME_EAB_HMAC_KEY}
     volumes:
-      - ./nginx/templates:/etc/nginx/templates:ro
-      - ./tls:/etc/ssl/plexams:ro         # fullchain.pem + privkey.pem (acme.sh)
-      - ./acme-webroot:/var/www/acme:ro   # ACME HTTP-01 challenge files
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data       # certificate + ACME account/EAB registration
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

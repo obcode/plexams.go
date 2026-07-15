@@ -1,0 +1,56 @@
+# Smoke test — Step 2: TLS + OIDC login. Caddy authenticates every request against
+# oauth2-proxy (forward_auth) and then renders a greeting from the attributes oauth2-proxy
+# exposes (no backend needed). TLS is managed by Caddy's ACME client (HM CA, EAB).
+#
+# {$VAR} placeholders come from the environment; {http.request.header.*} are Caddy runtime
+# placeholders expanded per request.
+{
+	email {$ACME_EMAIL}
+	acme_ca {$ACME_DIRECTORY_URL}
+	acme_eab {
+		key_id {$ACME_EAB_KID}
+		mac_key {$ACME_EAB_HMAC_KEY}
+	}
+}
+
+{$SERVER_NAME} {
+	route {
+		# oauth2-proxy login/callback flow — not auth-gated.
+		reverse_proxy /oauth2/* oauth2-proxy:4180 {
+			header_up X-Real-IP {remote_host}
+		}
+
+		# Authenticate every other request; copy the identity headers onto the request so the
+		# greeting below can read them. On 401 (not signed in) redirect to the OIDC login.
+		forward_auth oauth2-proxy:4180 {
+			uri /oauth2/auth
+			copy_headers X-Auth-Request-Email X-Auth-Request-User X-Auth-Request-Preferred-Username X-Auth-Request-Groups X-Auth-Request-Access-Token
+			@unauth status 401
+			handle_response @unauth {
+				redir * /oauth2/start?rd={scheme}://{host}{uri}
+			}
+		}
+
+		# Greeting rendered straight from the auth attributes — no backend.
+		header Content-Type "text/html; charset=utf-8"
+		respond `<!doctype html>
+		<meta charset="utf-8">
+		<title>plexams — Login-Test</title>
+		<h1>Hallo {http.request.header.X-Auth-Request-Email} &#128075;</h1>
+		<p>Login über sso.hm.edu hat funktioniert. Aus den festen oauth2-proxy-Headern:</p>
+		<ul>
+		<li>email: {http.request.header.X-Auth-Request-Email}</li>
+		<li>user (sub): {http.request.header.X-Auth-Request-User}</li>
+		<li>preferred_username: {http.request.header.X-Auth-Request-Preferred-Username}</li>
+		<li>department (Claim fhmDepartment, via oidc-groups-claim): {http.request.header.X-Auth-Request-Groups}</li>
+		</ul>
+		<p>Hinweis: HMs ID-Token ist minimal; email/preferred_username/fhmDepartment kommen vom
+		UserInfo-Endpoint. Der Fachbereich (Claim „fhmDepartment") wird hier diagnostisch über den
+		groups-Claim sichtbar gemacht (siehe docker-compose.yml).</p>
+		<p>Die vollständige Session als JSON gibt es unter <a href="/oauth2/userinfo">/oauth2/userinfo</a>
+		(nur die 4 oauth2-proxy-Felder). ALLE von HM freigegebenen Attribute holst du direkt vom IdP
+		mit dem (Diagnose-)Access-Token:</p>
+		<p>curl -s -H "Authorization: Bearer {http.request.header.X-Auth-Request-Access-Token}" https://sso.hm.edu/idp/profile/oidc/userinfo | jq .</p>
+		` 200
+	}
+}

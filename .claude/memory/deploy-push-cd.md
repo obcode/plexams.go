@@ -1,15 +1,20 @@
 ---
 name: deploy-push-cd
-description: "Deploy automation for plexams.cs.hm.edu — ghcr images + self-hosted runner push-CD; open: notification + Mongo backup."
+description: Deploy automation for plexams.cs.hm.edu — ghcr images + self-hosted runner push-CD; LIVE & auto-deploying for BOTH plexams.go and plexams.gui.
 metadata:
   node_type: memory
   type: project
+  originSessionId: ce64cc7e-14d0-4b61-8721-724a749f3a4c
 ---
 
 **BUILT 2026-07-14 (branch `feat/deploy-push-cd` → merged to main).** plexams.go +
 plexams.gui are deployed on `plexams.cs.hm.edu` as user **`plexams` under `/home/plexams`**
 (deploy dir `/home/plexams/deploy`), VPN-only reachable. See [[auth-roles-shibboleth]] for the
 nginx + oauth2-proxy OIDC stack this builds on.
+
+**UPDATE 2026-07-15 — the reverse proxy is now Caddy, not nginx** (see [[deploy-caddy-migration]]):
+the `location /` → gui:3000 reverse-proxy + auth is now a Caddy `reverse_proxy`/`forward_auth`, and
+the CI deploy job syncs the `Caddyfile` (not nginx templates). Everything else below still holds.
 
 Automation = **pull-of-prebuilt-images + push-CD via a self-hosted runner ON the deploy host**
 (VPN-only ⇒ GitHub can't push in; the runner polls outbound). What changed in `deploy/`:
@@ -26,8 +31,11 @@ Automation = **pull-of-prebuilt-images + push-CD via a self-hosted runner ON the
 - plexams.gui repo: mirror Dockerfile (adapter-node, non-root, 3000), docker.yml build+push +
   deploy job (pins `GUI_TAG`, `up -d gui`), semantic-release — all confirmed done by Oliver.
 
-**Operator TODO (outside repos):** register the runner on BOTH repos (label `plexams-deploy`,
-run as user plexams, in docker group), set `AUTO_DEPLOY=true` (+ optional `DEPLOY_DIR`) in each.
+**LIVE 2026-07-15 (Oliver confirmed):** auto-deploy is fully running end-to-end for BOTH
+repos — a release of plexams.go OR plexams.gui builds+pushes the ghcr image and the self-hosted
+runner on the host pulls & `up -d`s it. Runners are containerized (Alpine host, `git log`
+`c69ced9`); a **second self-hosted runner** was added for the plexams.gui repo (`3e1feb8`).
+Operator setup (register runner on both repos, `AUTO_DEPLOY=true`) = DONE.
 
 **Deploy notification (open, Oliver 2026-07-14):** leaning "footer version is enough"; cheapest
 = GitHub *watch releases* email, no code. Optional job-summary line — not built.

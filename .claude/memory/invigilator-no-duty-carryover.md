@@ -21,7 +21,23 @@ on duty (e.g. a former Dekanin) is far less harmful than planning someone who is
 still excused. So a carry-over/review step should err on the side of keeping the
 exclusion until explicitly cleared.
 
-Current state (2026-SS): only the 6 retired ("pensioniert") people are in the
-global `permanent_non_invigilators` collection; Präsident (245), Dekanin (301),
-Mutterschutz (7313) and "vorgearbeitet" (246) stay per-semester in
-`invigilator_constraints`. See [[cli-to-gui-migration]].
+**Status 2026-07-15 (verified against repo):** the carryover *mechanic* now EXISTS.
+- Global collection `permanent_non_invigilators` (`db/permanent_non_invigilators.go`,
+  `db/collection.go`), model `PermanentNonInvigilator{TeacherID, Name, Reason}`
+  (`graph/model/permanent_non_invigilator.go`), business layer
+  `plexams/invigilator_constraints.go` (`PermanentNonInvigilators`,
+  `SetPermanentNonInvigilator`, `RemovePermanentNonInvigilator`, `notInvigilating`),
+  GraphQL resolvers in `graph/invigilation.resolvers.go`.
+- `notInvigilating` unions the global permanent set with per-semester
+  `invigilator_constraints.IsNotInvigilator`, so a global entry carries across semesters.
+- Commits `4089c79`, `f9166bf` (display name), `821c245`, `da7dfaa`, `f91c701`.
+
+**Still open (the refinement this note was about):**
+- No **"temporär" flag** — the model is a single flat permanent list; it can't
+  distinguish role-bound/temporary exclusions (Präsident/Dekanin/Mutterschutz, should
+  expire) from truly permanent ones (retired).
+- `Reason` is **not required** — `SetPermanentNonInvigilator` accepts an empty reason;
+  no enum/validation.
+- No **new-semester review/confirmation step** surfacing carried-over exclusions.
+
+See [[cli-to-gui-migration]].

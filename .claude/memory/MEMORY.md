@@ -1,9 +1,10 @@
 # Memory Index
 
-- [Jira integration](jira-integration.md) — on-prem jira.cc.hm.edu via PAT; backend done (jira/ pkg, GraphQL create/read/comment/transition + REST attachment upload) on feat/jira-integration; GUI pending.
+- [Jira integration](jira-integration.md) — on-prem jira.cc.hm.edu via PAT; backend DONE & on main (jira/ pkg, GraphQL create/read/comment/transition + REST attachment upload, per-user encrypted PATs); GUI pending.
 - [HM OIDC claims](hm-oidc-claims.md) — sso.hm.edu scope→claim map; id_token minimal, claims via UserInfo; department claim = `fhmDepartment`; end_session=/idp/profile/Logout (unused, local logout only).
-- [deploy push-CD](deploy-push-cd.md) — plexams.cs.hm.edu (user plexams, /home/plexams), ghcr images + self-hosted-runner push-CD (AUTO_DEPLOY gate); open: notification + Mongo backup.
-- [auth & roles via Shibboleth](auth-roles-shibboleth.md) — PLANNED (plan file persisted 2026-07-08, not built): Apache mod_shib → X-Remote-User header, DB users collection, audit "who" on mutation_log, two full-access planners now, granular roles later; backend enforces, GUI cosmetic.
+- [deploy push-CD](deploy-push-cd.md) — plexams.cs.hm.edu (user plexams, /home/plexams), ghcr images + self-hosted-runner push-CD (AUTO_DEPLOY gate) LIVE; Mongo backup DONE (script+backupStatus, GUI banner pending); only open: deploy-completion notification (leaning GitHub watch-releases mail, no code).
+- [deploy Caddy migration](deploy-caddy-migration.md) — nginx+acme.sh → Caddy (built-in ACME/EAB, forward_auth) MERGED to main 2026-07-15 & live; gotcha: HM EAB binds one ACME account → Caddy needs its OWN fresh EAB (401 unauthorized otherwise); cutover needs `up -d --remove-orphans`.
+- [auth & roles via OIDC](auth-roles-shibboleth.md) — DONE + LIVE on plexams.cs.hm.edu: nginx+oauth2-proxy OIDC → X-Remote-User, DB users collection, ADMIN/PLANER/VIEWER, audit "who" on mutation_log, per-user encrypted PATs; all on main; nothing left to build.
 - [slotless time-based redesign](slotless-timebased-redesign.md) — planned big refactor: drop slot/day numbers, store exams as absolute times; conflicts/rooms/invig become interval-based; no migration, clean cut; plan in docs/plan-slotless-timebased.md.
 - [slot time avoidance](slot-time-avoidance.md) — Terminplan start-time window: WS no-early(10:00)/SS no-late(14:00)+mild früh-Sog; HARD-by-default (domain restrict→unplaced) with SOFT override; EXaHM/SEB exempt; recalibrated 2026-07-12.
 - [CLI→GUI migration](cli-to-gui-migration.md) — DONE 2026-07-08: cmd/ + zpa/cli deleted, server-only via bootstrap/; final gaps = REST pdf/csv/ics downloads + add/removeStudentReg mutations; CLI gone for good.
@@ -14,17 +15,17 @@
 - [build binary cleanup](build-binary-cleanup.md) — always rm the ./plexams.go binary after testing (breaks gowatch); prefer `go run .`.
 - [planning state model](planning-state-model.md) — workflow as condition/event Petri net; publish-email gates lock generation; planningState/setPlanningCondition; defined in Go.
 - [ZPA upload via GUI](zpa-upload-via-gui.md) — plan upload runs via GUI streaming subscriptions; surface failures through the Reporter/returned error; post() errors on non-2xx.
-- [invigilator no-duty carryover](invigilator-no-duty-carryover.md) — future: carry Präsident/Dekanin/Mutterschutz "keine Aufsicht" across semesters; reason required / "temporär" flag; err toward keeping exclusion.
-- [pre-planning SEB/EXaHM](preplanning-seb-exahm.md) — new feature: manual pseudo-exams in next-semester DB to size early Anny room bookings; global StudyProgram entity; GUI-only; link to ZPA ancode later.
+- [invigilator no-duty carryover](invigilator-no-duty-carryover.md) — carryover mechanic DONE (global permanent_non_invigilators w/ Reason+Name, unioned into notInvigilating); still open: "temporär" flag + making reason mandatory + new-semester review step.
+- [pre-planning SEB/EXaHM](preplanning-seb-exahm.md) — DONE: manual pseudo-exams (plexams/preplan_exams.go) sizing Anny bookings; global StudyProgram entity; compaction/overflow solver (preplan_solve.go); link to ZPA ancode later.
 - [ZPA import behaviors](zpa-import-behaviors.md) — import auto-presets to-plan (schriftlich/praktisch→plan, rest→not); stale banners only after first generation.
 - [exam-planning info email](exam-planning-info-email.md) — consolidated per-examer mail replacing constraints+prepared; examPlanningMailRecipients + sendEmailExamPlanningInfo.
 - [MUC.DAI import linking](mucdai-import-linking.md) — import builds explicit mucdai_links (external/zpa/unresolved); candidates + manual set/remove; mucDaiImported state point.
 - [StudentReg dual ancodes](studentreg-dual-ancodes.md) — StudentRegs carry Primuss+ZPA ancode explicitly (intern=ZPA/extern=Primuss); new Ancodes value type; prepare no longer overwrites; +2 MUC.DAI bug fixes; on main (30524ab, 7fbbee7); GUI-sync pending.
 - [Primuss XLSX import](primuss-xlsx-import.md) — GUI ZIP upload (/upload/primuss-zip) replaces ssconvert+mongoimport; group from filename; change detection → update emails.
-- [Terminplan generator design](terminplan-generator-design.md) — next big feature: generic SA core for all 3 solvers; spread objective; canShareSlot vs per-student conflict rating loop.
-- [two-phase EXaHM/SEB](two-phase-exahm-seb.md) — Terminplan gen splits: phase A EXaHM/SEB into booked T-Bau slots (maximize util), freeze via PhaseFixed, then phase B for the rest.
-- [email markdown templates](email-markdown-templates.md) — all email bodies single-source Markdown via renderMarkdownEmail; text+HTML no longer duplicated; golden tests; next: DB-editable + email package.
-- [plexams decomposition](plexams-decomposition.md) — marathon to split the god-package; net-first then peel concerns; no clean leaf; slice 0 (anny char. tests) done.
+- [Terminplan generator design](terminplan-generator-design.md) — DONE: generic SA core (plexams/optimize) shared by all solvers; Terminplan solver plexams/examplan (spread objective, canShareSlot, per-student conflict rating).
+- [two-phase EXaHM/SEB](two-phase-exahm-seb.md) — DONE: Terminplan gen splits: phase A EXaHM/SEB into booked T-Bau slots (TbauFill/OverflowSeat), freeze via PhaseFixed, then phase B for the rest (examplan_build.go roomPhase).
+- [email markdown templates](email-markdown-templates.md) — DONE incl. both follow-ups: single-source Markdown in own package plexams/email (Renderer.Render); DB-editable overrides (email_templates collection, setEmailTemplate/resetEmailTemplate). Legacy plexams/email_*.go still coexist.
+- [plexams decomposition](plexams-decomposition.md) — marathon to split the god-package; ~18 sub-packages extracted (optimize/examplan/roomplan solvers + *calc helpers + email/pdfgen/csvgen/...); root plexams still a monolith of orchestration/glue (examplan_build.go, csv_export.go, email_*.go).
 - [mongotest without docker](mongotest-without-docker.md) — run integration tests via a downloaded standalone mongod + PLEXAMS_TEST_MONGO_URI when Docker is absent.
 - [GraphQL interface cleanup](graphql-interface-cleanup.md) — schema audited vs GUI usage & fully trimmed (all unused queries+mutations gone, 3 validators wired into GUI); done, on main.
 - [validation conflict severity](validation-conflict-severity.md) — ValidateConflicts graded (sameSlot=error/adjacent=warn/sameDay=info), sorted most-severe-first; accepted decisions (DB+YAML) shown as info not hidden.
@@ -39,5 +40,5 @@
 - [spread statistics](spread-statistics.md) — student-centric exam-spread quality stats (gaps between exams); GraphQL examSpreadStatistics + aggregate PDF spread-statistics; Kalendertage, PDF anonym; GUI-sync pending.
 - [planer email overrides](planer-email-overrides.md) — envelope-from + testMail/cc/noreply(addr+name) defaults, overridable GLOBALLY on Planer (per-user under Shibboleth later); dry-run session override mutations/query.
 - [sameSlot off-grid conflict fix](sameslot-offgrid-conflict-fix.md) — slotless residue: solver+AllowedSlots still grid-indexed, silently dropped off-grid foreign exams (missed overlaps); fixed time-based overlapSlots + hard cross-campus 120min travel buffer + onlyPlannedByMe semantics.
-- [phase A overflow fix](phase-a-overflow-fix.md) — Phase A now keeps big EXaHM/SEB exams in T-Bau bookings via per-seat OverflowSeat penalty + booking-aware greedy order; small ones overflow to R-Bau. crossCampus config still TODO.
+- [phase A overflow fix](phase-a-overflow-fix.md) — Phase A now keeps big EXaHM/SEB exams in T-Bau bookings via per-seat OverflowSeat penalty + booking-aware greedy order; small ones overflow to R-Bau. crossCampus config DONE (crossCampusGapMinutes, commit bc40186; 120min only fallback).
 - [roomplan solver](roomplan-solver.md) — Raumplanung rebuilt as 4th SA solver (plexams/roomplan, per-seat decision); greedy removed; pairwise turnaround + summer Hitzeschutz (heat-floor/cooldown) + Hitzewert override; assignRoomsForExams repurposed; validated on Test26SS-v2.

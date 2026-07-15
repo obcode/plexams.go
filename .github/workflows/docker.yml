@@ -64,8 +64,8 @@ jobs:
     # Ship the freshly pushed image to the on-host compose stack. The runner lives ON the
     # deploy host (outbound-only long-poll to GitHub; the host is VPN-internal, so no
     # inbound is possible). It operates on the persistent on-host deploy dir where the
-    # secrets live (.env, .plexams.yaml, tls/) — those are never touched; only the
-    # non-secret infra (compose file + nginx templates) is synced from the repo.
+    # secrets live (.env, .plexams.yaml) plus the caddy-data volume (TLS certs) — those are
+    # never touched; only the non-secret infra (compose file + Caddyfile) is synced from the repo.
     deploy:
         needs: build-and-push-image
         # Gate: only runs once the self-hosted runner on the deploy host exists — set the
@@ -89,13 +89,13 @@ jobs:
                   # above strips it, for the bare ldflags version.)
                   VERSION="${GITHUB_REF#refs/tags/}"
 
-                  # Sync non-secret infra into the on-host deploy dir. Secrets & tls/ stay put.
+                  # Sync non-secret infra into the on-host deploy dir. Secrets (.env,
+                  # .plexams.yaml) and the caddy-data volume (certs) stay put.
                   cp deploy/docker-compose.yml "$DEPLOY_DIR/"
-                  NGINX_CHANGED=0
-                  if ! diff -r deploy/nginx/templates "$DEPLOY_DIR/nginx/templates" >/dev/null 2>&1; then
-                      mkdir -p "$DEPLOY_DIR/nginx"
-                      cp -r deploy/nginx/templates "$DEPLOY_DIR/nginx/"
-                      NGINX_CHANGED=1
+                  CADDY_CHANGED=0
+                  if ! diff deploy/Caddyfile "$DEPLOY_DIR/Caddyfile" >/dev/null 2>&1; then
+                      cp deploy/Caddyfile "$DEPLOY_DIR/"
+                      CADDY_CHANGED=1
                   fi
 
                   cd "$DEPLOY_DIR"
@@ -106,8 +106,8 @@ jobs:
                   docker compose pull plexams
                   # Reconcile the stack: only plexams (new tag) + any changed service is recreated.
                   docker compose up -d
-                  # nginx re-renders its templates only on container (re)start.
-                  if [ "$NGINX_CHANGED" = "1" ]; then
-                      docker compose up -d --force-recreate nginx
+                  # Caddy re-reads its Caddyfile only on container (re)start.
+                  if [ "$CADDY_CHANGED" = "1" ]; then
+                      docker compose up -d --force-recreate caddy
                   fi
                   docker image prune -f

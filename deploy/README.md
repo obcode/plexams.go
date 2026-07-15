@@ -260,11 +260,12 @@ erwartet. Der `plexams`-User muss in der `docker`-Gruppe sein (Socket-Zugriff).
 - Das on-host Deploy-Verzeichnis ist standardmäßig `/home/plexams/plexams.go/deploy` (überschreibbar
   über die Repo-Variable `DEPLOY_DIR`). Dort liegen die Secrets (`.env`, `.plexams.yaml`,
   `tls/`) — der Job fasst sie **nie** an, er synct nur compose-Datei + nginx-Templates.
-- Für **plexams.gui** einen **zweiten** Runner-Container mit eigenem `REPO_URL`/`RUNNER_NAME`
-  danebenstellen (der `myoung34`-Container ist an genau ein Repo gebunden) und im GUI-Repo
-  ebenfalls `AUTO_DEPLOY=true` setzen — beide Workflows arbeiten auf demselben Stack und
-  fassen jeweils nur ihren eigenen Service an. Alternativ den PAT/Runner org-weit
-  registrieren (`RUNNER_SCOPE=org`), dann bedient ein Container beide Repos.
+- Für **plexams.gui** liegt ein **zweiter** Runner-Service `gh-runner-gui` in derselben
+  Compose-Datei (`obcode` ist ein persönlicher Account → nur Repo-Scope-Runner, kein
+  org-weites Teilen; jedes Repo braucht seinen eigenen Runner). `docker compose --profile
+  runner up -d gh-runner gh-runner-gui` startet beide; ein classic-PAT (`repo`+`workflow`)
+  deckt beide Repos ab. Im GUI-Repo ebenfalls `AUTO_DEPLOY=true` setzen — beide Workflows
+  arbeiten auf demselben Stack und fassen jeweils nur ihren eigenen Service an.
 - **Sicherheit:** der Runner führt Workflow-Code auf dem Prod-Host aus → Trigger strikt auf
   `release` beschränkt (kein PR-Code), Runner nur für diese beiden Repos.
 

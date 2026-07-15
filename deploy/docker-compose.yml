@@ -177,5 +177,29 @@ services:
       - /home/plexams/plexams.go/deploy:/home/plexams/plexams.go/deploy
       - /tmp/runner:/tmp/runner
 
+  # Zweiter Runner für das plexams.gui-Repo. obcode ist ein persönlicher Account (keine
+  # Organisation) → GitHub erlaubt nur Repo-Scope-Runner, kein org-weites Teilen; jedes
+  # Repo braucht also seinen eigenen Runner. Gleicher Stack, gleiches `runner`-Profil,
+  # gleiches PAT (classic repo+workflow deckt beide Repos ab), gleiches Label — nur REPO_URL
+  # + RUNNER_NAME unterscheiden sich. Der GUI-Deploy-Job fasst nur den `gui`-Service an.
+  gh-runner-gui:
+    image: myoung34/github-runner:latest
+    container_name: plexams-gh-runner-gui
+    restart: unless-stopped
+    profiles: ["runner"]
+    environment:
+      REPO_URL: https://github.com/obcode/plexams.gui
+      RUNNER_NAME: plexams-deploy-gui
+      RUNNER_SCOPE: repo
+      LABELS: plexams-deploy
+      ACCESS_TOKEN: ${GH_RUNNER_PAT:-}
+      RUNNER_WORKDIR: /tmp/runner-gui/work
+    security_opt:
+      - label:disable
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/plexams/plexams.go/deploy:/home/plexams/plexams.go/deploy
+      - /tmp/runner-gui:/tmp/runner-gui
+
 volumes:
   mongo-data:

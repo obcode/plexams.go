@@ -41,8 +41,8 @@ extend type Mutation {
   setInvigilatorConstraints(input: InvigilatorConstraintsInput!): InvigilatorConstraints!
   "Remove the constraints record of one invigilator (key: teacherID). Returns false if there was none."
   deleteInvigilatorConstraints(teacherID: Int!): Boolean!
-  "Add or update a permanent (cross-semester) non-invigilator (key: teacherID), e.g. someone retired. name is the display name (pass the candidate's name; if empty the backend tries to resolve it)."
-  setPermanentNonInvigilator(teacherID: Int!, name: String!, reason: String!): PermanentNonInvigilator!
+  "Add or update a permanent (cross-semester) non-invigilator (key: teacherID), e.g. someone retired. name is the display name (pass the candidate's name; if empty the backend tries to resolve it). validFrom/validUntil (semester labels like \"2026-SS\", either omitted for an open bound) limit the semesters the exemption applies to; leave both empty for a truly permanent exemption, or set validUntil to retire it without deleting the record (so past semesters stay correct)."
+  setPermanentNonInvigilator(teacherID: Int!, name: String!, reason: String!, validFrom: String, validUntil: String): PermanentNonInvigilator!
   "Remove a permanent non-invigilator (key: teacherID). Returns false if there was none."
   removePermanentNonInvigilator(teacherID: Int!): Boolean!
 }
@@ -127,15 +127,20 @@ input InvigilationTimeWindowInput {
 }
 
 """
-PermanentNonInvigilator is a teacher who never does invigilation duty again
-(e.g. retired). It lives in the global plexams database and therefore carries
-over between semesters; it always implies isNotInvigilator.
+PermanentNonInvigilator is a teacher who does no invigilation duty (e.g.
+retired, or a role/leave-bound exemption). It lives in the global plexams
+database and therefore carries over between semesters; it implies
+isNotInvigilator for the semesters it applies to.
 """
 type PermanentNonInvigilator {
   teacherID: Int!
   "Denormalized display name, kept so the entry stays readable even after the teacher has left the FK07 invigilator pool."
   name: String!
   reason: String!
+  "First semester the exemption applies to (inclusive, label like \"2026-SS\"); null = open (applies to all earlier semesters too)."
+  validFrom: String
+  "Last semester the exemption applies to (inclusive, label like \"2026-SS\"); null = open (never retires). Set this to retire an exemption without deleting the record."
+  validUntil: String
 }
 
 type Invigilator {

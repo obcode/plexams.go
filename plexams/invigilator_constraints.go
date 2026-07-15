@@ -3,11 +3,79 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
+
+var semesterYearRE = regexp.MustCompile(`\d{4}`)
+
+// semesterOrdinal maps a semester label into a monotonically increasing integer
+// so semesters can be range-compared. It accepts the runtime form ("2026 SS"),
+// the create-form ("2026-SS") and "2026SS"; the summer semester (SS) sorts
+// before the winter semester (WS) of the same year (WS starts the academic
+// year, e.g. "2025 WS" < "2026 SS" < "2026 WS"). ok is false when the label is
+// not a recognizable semester (e.g. a workspace clone name without an SS/WS
+// suffix).
+func semesterOrdinal(label string) (int, bool) {
+	s := strings.ToUpper(strings.TrimSpace(label))
+	var season int
+	switch {
+	case strings.HasSuffix(s, "SS"):
+		season = 0
+	case strings.HasSuffix(s, "WS"):
+		season = 1
+	default:
+		return 0, false
+	}
+	yearStr := semesterYearRE.FindString(s)
+	if yearStr == "" {
+		return 0, false
+	}
+	year, err := strconv.Atoi(yearStr)
+	if err != nil {
+		return 0, false
+	}
+	return year*2 + season, true
+}
+
+// permanentAppliesTo reports whether a permanent non-invigilator entry applies
+// to the semester with ordinal curOrd. It errs toward keeping the exclusion: if
+// the current semester or a bound cannot be parsed the corresponding check is
+// skipped rather than treated as "does not apply".
+func permanentAppliesTo(n *model.PermanentNonInvigilator, curOrd int, curOK bool) bool {
+	if !curOK {
+		return true
+	}
+	if n.ValidFrom != nil {
+		if fromOrd, ok := semesterOrdinal(*n.ValidFrom); ok && curOrd < fromOrd {
+			return false
+		}
+	}
+	if n.ValidUntil != nil {
+		if untilOrd, ok := semesterOrdinal(*n.ValidUntil); ok && curOrd > untilOrd {
+			return false
+		}
+	}
+	return true
+}
+
+// normalizeSemesterBound trims a validity bound and maps empty/blank to nil (an
+// open-ended bound).
+func normalizeSemesterBound(bound *string) *string {
+	if bound == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*bound)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
 
 // InvigilatorConstraints returns all per-invigilator constraints stored in the DB.
 func (p *Plexams) InvigilatorConstraints(ctx context.Context) ([]*model.InvigilatorConstraints, error) {
@@ -54,14 +122,44 @@ func (p *Plexams) InvigilatorCandidates(ctx context.Context) ([]*model.Teacher, 
 
 // SetPermanentNonInvigilator adds or updates a permanent (cross-semester)
 // non-invigilator. If name is empty it tries to resolve the teacher's name (so a
-// CLI/API caller need not supply it for teachers still in the pool).
-func (p *Plexams) SetPermanentNonInvigilator(ctx context.Context, teacherID int, name, reason string) (*model.PermanentNonInvigilator, error) {
+// CLI/API caller need not supply it for teachers still in the pool). validFrom
+// and validUntil (semester labels like "2026-SS", either may be nil/empty for an
+// open bound) limit the semesters the exemption applies to.
+func (p *Plexams) SetPermanentNonInvigilator(ctx context.Context, teacherID int, name, reason string, validFrom, validUntil *string) (*model.PermanentNonInvigilator, error) {
+	validFrom = normalizeSemesterBound(validFrom)
+	validUntil = normalizeSemesterBound(validUntil)
+
+	var fromOrd, untilOrd int
+	if validFrom != nil {
+		ord, ok := semesterOrdinal(*validFrom)
+		if !ok {
+			return nil, fmt.Errorf("invalid validFrom semester %q (expected e.g. 2026-SS)", *validFrom)
+		}
+		fromOrd = ord
+	}
+	if validUntil != nil {
+		ord, ok := semesterOrdinal(*validUntil)
+		if !ok {
+			return nil, fmt.Errorf("invalid validUntil semester %q (expected e.g. 2026-SS)", *validUntil)
+		}
+		untilOrd = ord
+	}
+	if validFrom != nil && validUntil != nil && fromOrd > untilOrd {
+		return nil, fmt.Errorf("validFrom %q is after validUntil %q", *validFrom, *validUntil)
+	}
+
 	if name == "" {
 		if teacher, err := p.dbClient.GetTeacher(ctx, teacherID); err == nil && teacher != nil {
 			name = teacher.Fullname
 		}
 	}
-	nonInvigilator := &model.PermanentNonInvigilator{TeacherID: teacherID, Name: name, Reason: reason}
+	nonInvigilator := &model.PermanentNonInvigilator{
+		TeacherID:  teacherID,
+		Name:       name,
+		Reason:     reason,
+		ValidFrom:  validFrom,
+		ValidUntil: validUntil,
+	}
 	if err := p.dbClient.UpsertPermanentNonInvigilator(ctx, nonInvigilator); err != nil {
 		return nil, err
 	}
@@ -92,9 +190,12 @@ func (p *Plexams) notInvigilating(ctx context.Context) (func(teacherID int) bool
 	if err != nil {
 		return nil, nil, err
 	}
+	curOrd, curOK := semesterOrdinal(p.semester)
 	permanentSet := make(map[int]bool, len(permanent))
 	for _, n := range permanent {
-		permanentSet[n.TeacherID] = true
+		if permanentAppliesTo(n, curOrd, curOK) {
+			permanentSet[n.TeacherID] = true
+		}
 	}
 	isNot := func(teacherID int) bool {
 		if permanentSet[teacherID] {

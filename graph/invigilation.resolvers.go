@@ -45,8 +45,8 @@ func (r *mutationResolver) DeleteInvigilatorConstraints(ctx context.Context, tea
 }
 
 // SetPermanentNonInvigilator is the resolver for the setPermanentNonInvigilator field.
-func (r *mutationResolver) SetPermanentNonInvigilator(ctx context.Context, teacherID int, name string, reason string) (*model.PermanentNonInvigilator, error) {
-	return r.plexams.SetPermanentNonInvigilator(ctx, teacherID, name, reason)
+func (r *mutationResolver) SetPermanentNonInvigilator(ctx context.Context, teacherID int, name string, reason string, validFrom *string, validUntil *string) (*model.PermanentNonInvigilator, error) {
+	return r.plexams.SetPermanentNonInvigilator(ctx, teacherID, name, reason, validFrom, validUntil)
 }
 
 // RemovePermanentNonInvigilator is the resolver for the removePermanentNonInvigilator field.

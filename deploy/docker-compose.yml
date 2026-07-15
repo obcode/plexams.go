@@ -1,22 +1,24 @@
-# plexams.go server deployment — nginx + oauth2-proxy (OIDC against sso.hm.edu).
+# plexams.go server deployment — Caddy + oauth2-proxy (OIDC against sso.hm.edu).
 #
 # Topology:
-#   internet ──443/TLS──> nginx
-#                           ├── auth_request → oauth2-proxy (OIDC handshake w/ sso.hm.edu)
+#   internet ──443/TLS──> caddy
+#                           ├── forward_auth → oauth2-proxy (OIDC handshake w/ sso.hm.edu)
 #                           ├── /oauth2/*    → oauth2-proxy (login/callback)
 #                           ├── sets X-Remote-User from the verified email claim
 #                           ├── /            → gui (plexams.gui container)
 #                           └── /query,/upload,/download → plexams.go:8080
 #   plexams / gui / mongo / oauth2-proxy ── internal only (never published)
 #
-# Only nginx publishes ports. plexams.go trusts the X-Remote-User header nginx sets,
-# so it MUST NOT be reachable except through nginx — hence no `ports:`.
+# Only caddy publishes ports. plexams.go trusts the X-Remote-User header caddy sets,
+# so it MUST NOT be reachable except through caddy — hence no `ports:`.
+# TLS is managed by Caddy's built-in ACME client (HM CA via EAB) — no acme.sh, no tls/ mount.
 #
 # Backend + GUI run as pre-built images from ghcr.io (tags pinned via PLEXAMS_TAG /
 # GUI_TAG in .env; the CI deploy job updates them on release). No local build here.
 #
 # Setup: copy .env.example -> .env and .plexams.yaml.example -> .plexams.yaml, fill
-# both, provide tls/ (see README.md), then: docker compose up -d
+# both (incl. the ACME_* / EAB values), then: docker compose up -d
+# (Caddy fetches the TLS certificate itself on first start — see README.md.)
 
 services:
   mongo:
@@ -53,7 +55,7 @@ services:
         condition: service_healthy
     volumes:
       - ./.plexams.yaml:/app/.plexams.yaml:ro
-    # No ports: — only nginx reaches it (http://plexams:8080) over the internal network.
+    # No ports: — only Caddy reaches it (http://plexams:8080) over the internal network.
     expose:
       - "8080"
 
@@ -61,24 +63,24 @@ services:
     image: ghcr.io/obcode/plexams.gui:${GUI_TAG:-latest}
     restart: unless-stopped
     # SvelteKit app, served internally on 3000 (adapter-node default). No ports: —
-    # only nginx reaches it (http://gui:3000). Keep the port in sync with the GUI
-    # Dockerfile and the nginx `upstream plexams_gui` block.
+    # only Caddy reaches it (http://gui:3000). Keep the port in sync with the GUI
+    # Dockerfile and the Caddyfile `reverse_proxy gui:3000`.
     environment:
       # Where the GUI reaches the backend — the two hops need DIFFERENT URLs because only
       # one of them carries an OIDC session cookie:
       #   PUBLIC_* → client bundle: runs in the BROWSER, has the oauth2-proxy cookie, so it
-      #     goes through nginx (public URL). Also drives the wss:// subscription upgrade.
+      #     goes through Caddy (public URL). Also drives the wss:// subscription upgrade.
       #   PLEXAMS_SERVER → SSR node server (+page.server.ts load(), hooks, /api proxies):
       #     runs in THIS container with NO cookie. If it hit the public URL, oauth2-proxy
       #     would bounce it to the sso.hm.edu login page and the GUI would try to parse that
       #     HTML as GraphQL ("result is not object or array" → 500). So it reaches the
       #     backend INTERNALLY, bypassing oauth2-proxy, and relays the X-Remote-User that
-      #     nginx injected into this container's page request (see nginx `location /`).
+      #     Caddy injected into this container's page request (see Caddyfile `reverse_proxy gui:3000`).
       # The GUI reads both via $env/dynamic/* at runtime, so setting them here is enough.
       #
       # NOTE: with auth.enabled=true the backend fail-closed rejects internal SSR calls
       # unless the GUI forwards X-Remote-User. Until the GUI ships that forwarding, either
-      # run with auth.enabled=false (SSO wall stays at nginx, everyone acts as ADMIN) or
+      # run with auth.enabled=false (SSO wall stays at Caddy, everyone acts as ADMIN) or
       # keep both URLs on the public one. See ../deploy/README.md "SSR-Identität".
       PUBLIC_PLEXAMS_SERVER: https://${SERVER_NAME}/query
       PLEXAMS_SERVER: ${PLEXAMS_SERVER:-http://plexams:8080/query}
@@ -101,18 +103,18 @@ services:
       # IdP UserInfo endpoint, which oauth2-proxy's claim extractor queries at login. It
       # only retains its four known fields (email/user/preferred_username/groups), so we
       # read the faculty (claim `fhmDepartment`, e.g. "07" = FK07) through the groups slot;
-      # nginx forwards it as X-Remote-Department. Identity stays email; names come from ZPA.
+      # Caddy forwards it as X-Remote-Department. Identity stays email; names come from ZPA.
       OAUTH2_PROXY_OIDC_GROUPS_CLAIM: "fhmDepartment"
       # Extra layer on top of the DB allow-list (the backend is authoritative).
       OAUTH2_PROXY_EMAIL_DOMAINS: hm.edu
       OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
       OAUTH2_PROXY_REVERSE_PROXY: "true"
-      # Expose X-Auth-Request-Email/-User on the /oauth2/auth response for nginx.
+      # Expose X-Auth-Request-Email/-User on the /oauth2/auth response for Caddy's forward_auth.
       OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
       OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
       OAUTH2_PROXY_COOKIE_SECURE: "true"
       OAUTH2_PROXY_WHITELIST_DOMAINS: ${SERVER_NAME}
-      # oauth2-proxy is used only for auth (via nginx auth_request) + the login flow,
+      # oauth2-proxy is used only for auth (via Caddy forward_auth) + the login flow,
       # not as a real upstream — so a static 200 upstream is enough.
       OAUTH2_PROXY_UPSTREAMS: static://200
       # Shibboleth OPs often omit email_verified; tighten to "false" if the IdP sets it.
@@ -120,23 +122,28 @@ services:
     expose:
       - "4180"
 
-  nginx:
-    image: nginx:1.27-alpine
+  caddy:
+    image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
       - plexams
       - gui
       - oauth2-proxy
     ports:
-      - "80:80"
+      - "80:80"      # HTTP-01 ACME challenge + HTTP->HTTPS redirect (Caddy handles both)
       - "443:443"
     environment:
-      # Substituted into templates/*.template by the nginx image (envsubst).
+      # Substituted into the Caddyfile ({$VAR}) when the config loads.
       SERVER_NAME: ${SERVER_NAME}
+      # TLS via Caddy's ACME client against the HM CA (External Account Binding).
+      ACME_EMAIL: ${ACME_EMAIL}
+      ACME_DIRECTORY_URL: ${ACME_DIRECTORY_URL}
+      ACME_EAB_KID: ${ACME_EAB_KID}
+      ACME_EAB_HMAC_KEY: ${ACME_EAB_HMAC_KEY}
     volumes:
-      - ./nginx/templates:/etc/nginx/templates:ro
-      - ./tls:/etc/ssl/plexams:ro         # fullchain.pem + privkey.pem (acme.sh)
-      - ./acme-webroot:/var/www/acme:ro   # ACME HTTP-01 challenge files (acme.sh writes)
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data     # certificates + ACME account/EAB registration — MUST persist
+      - caddy-config:/config
 
   # Self-hosted GitHub Actions Runner für den automatischen Deploy (siehe README
   # "Automatischer Deploy"). Der Host ist nur im VPN erreichbar, GitHub kann also nicht
@@ -203,3 +210,5 @@ services:
 
 volumes:
   mongo-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,69 @@
+# plexams.go server deployment — Caddy reverse proxy + oauth2-proxy (OIDC against sso.hm.edu).
+#
+# Trust model: Caddy is the only authenticated entry point. It authenticates every request
+# against oauth2-proxy (OIDC to sso.hm.edu, via forward_auth) and sets X-Remote-User
+# authoritatively from the verified email claim (overwriting any client value). The
+# plexams.go backend trusts that header and is not published (compose network only).
+#
+# TLS is fully managed by Caddy's built-in ACME client: it obtains and renews the
+# certificate from the HM CA (External Account Binding, see the global acme_* options) on
+# its own — no acme.sh, no self-signed bootstrap, no renew cron. Port 80 must stay reachable
+# by the HM ACME CA for the HTTP-01 challenge; Caddy also does the HTTP->HTTPS redirect.
+#
+# {$VAR} placeholders are substituted from the environment (see docker-compose.yml caddy env)
+# when the config loads. Caddy runtime placeholders ({scheme}, {host}, {uri}, ...) are left
+# untouched.
+{
+	email {$ACME_EMAIL}
+	acme_ca {$ACME_DIRECTORY_URL}
+	acme_eab {
+		key_id {$ACME_EAB_KID}
+		mac_key {$ACME_EAB_HMAC_KEY}
+	}
+}
+
+{$SERVER_NAME} {
+	# Large uploads (semester dump / dataset ZIPs) — parity with nginx client_max_body_size 200m.
+	request_body {
+		max_size 200MB
+	}
+
+	# route{} runs directives in written order, so auth is enforced before any backend proxy.
+	route {
+		# Drop any client-supplied identity headers before authenticating — the browser must
+		# never be able to forge them; only the verified values below are trusted downstream.
+		request_header -X-Remote-User
+		request_header -X-Remote-Displayname
+		request_header -X-Remote-Department
+
+		# oauth2-proxy login/callback flow — NOT auth-gated (terminal for these paths).
+		reverse_proxy /oauth2/* oauth2-proxy:4180 {
+			header_up X-Real-IP {remote_host}
+		}
+
+		# Authenticate every other request against oauth2-proxy (nginx auth_request equivalent).
+		forward_auth oauth2-proxy:4180 {
+			uri /oauth2/auth
+			# Forward the verified identity to the upstream as authoritative X-Remote-* headers.
+			# HM releases the faculty via the groups slot (OIDC_GROUPS_CLAIM=fhmDepartment).
+			copy_headers X-Auth-Request-Email>X-Remote-User X-Auth-Request-Preferred-Username>X-Remote-Displayname X-Auth-Request-Groups>X-Remote-Department
+
+			# 401 (not signed in) -> redirect to the OIDC login (nginx @oauth2_signin equivalent).
+			@unauth status 401
+			handle_response @unauth {
+				redir * /oauth2/start?rd={scheme}://{host}{uri}
+			}
+		}
+
+		# GraphQL API + subscription websocket (Caddy upgrades websockets automatically).
+		reverse_proxy /query* plexams:8080
+		# REST upload/download.
+		reverse_proxy /upload* plexams:8080
+		reverse_proxy /download* plexams:8080
+
+		# plexams.gui (SvelteKit). Its SSR (load()/hooks/api-proxies) runs in the gui container
+		# with no OIDC cookie, reaches the backend internally (http://plexams:8080/query) and
+		# relays the X-Remote-User we injected here — so the identity headers are set on / too.
+		reverse_proxy gui:3000
+	}
+}

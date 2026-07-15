@@ -16,9 +16,9 @@ db:
 server:
   port: "8080"
   # Production hardening: turns OFF the GraphQL playground and introspection, and
-  # makes "/" serve nothing (the GUI is served by nginx). Keep true on the server.
+  # makes "/" serve nothing (the GUI is served by Caddy). Keep true on the server.
   production: true
-  # The real HTTPS origin of the GUI (same host as nginx). Used for CORS + websocket
+  # The real HTTPS origin of the GUI (same host as Caddy). Used for CORS + websocket
   # origin checks. Must be the exact scheme+host the browser uses.
   allowedorigins:
     - https://plexams.example.hm.edu
@@ -26,7 +26,7 @@ server:
 # ============================================================
 # Authentication / authorization
 # ============================================================
-# The backend trusts the identity header the nginx/oauth2-proxy (OIDC) proxy injects. It does NOT
+# The backend trusts the identity header the Caddy/oauth2-proxy (OIDC) proxy injects. It does NOT
 # authenticate itself — so it must be reachable only via the proxy (compose: no
 # published port). Authorization (roles) IS enforced here.
 auth:
@@ -36,11 +36,11 @@ auth:
   # PREREQUISITE for true: the GUI must forward X-Remote-User on its internal SSR hop
   # (gui → plexams:8080). Until that GUI release is live, the backend fail-closed rejects
   # the anonymous SSR calls (JSON-401); run with `false` in the meantime — the SSO wall
-  # stays at nginx, all logged-in users act as ADMIN. See ../deploy/README.md "SSR-Identität".
+  # stays at Caddy, all logged-in users act as ADMIN. See ../deploy/README.md "SSR-Identität".
   enabled: true
 
   # Header the proxy sets with the verified identity (the OIDC "email" claim).
-  # Must match the nginx `proxy_set_header X-Remote-User` directive. Default: X-Remote-User.
+  # Must match the Caddy `copy_headers X-Auth-Request-Email>X-Remote-User`. Default: X-Remote-User.
   header: X-Remote-User
   displaynameHeader: X-Remote-Displayname
 

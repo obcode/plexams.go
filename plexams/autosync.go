@@ -211,8 +211,10 @@ func (p *Plexams) attachSyncLogEntries(ctx context.Context, report *SyncRunRepor
 func (p *Plexams) sendSyncReportMail(cfg ScheduledSyncConfig, report *SyncRunReport) {
 	subject, body := buildSyncReportMail(report)
 
+	// Automated mails: do NOT add the configured Cc (smtp.cc) — the run must not copy the
+	// planner mailbox on every night.
 	if report.TotalChanges > 0 && cfg.ChangesRecipient != "" {
-		if err := p.sendMail(true, []string{cfg.ChangesRecipient}, nil, subject, body, nil, nil, false); err != nil {
+		if err := p.sendMailNoCc(true, []string{cfg.ChangesRecipient}, nil, subject, body, nil, nil, false); err != nil {
 			log.Error().Err(err).Str("to", cfg.ChangesRecipient).Msg("scheduled sync: cannot send change mail")
 		}
 	}
@@ -221,7 +223,7 @@ func (p *Plexams) sendSyncReportMail(cfg ScheduledSyncConfig, report *SyncRunRep
 	// address; otherwise send on every run.
 	sameAsChangeMail := cfg.DebugRecipient == cfg.ChangesRecipient && report.TotalChanges > 0
 	if cfg.DebugRecipient != "" && !sameAsChangeMail {
-		if err := p.sendMail(true, []string{cfg.DebugRecipient}, nil, "[auto-sync] "+subject, body, nil, nil, false); err != nil {
+		if err := p.sendMailNoCc(true, []string{cfg.DebugRecipient}, nil, "[auto-sync] "+subject, body, nil, nil, false); err != nil {
 			log.Error().Err(err).Str("to", cfg.DebugRecipient).Msg("scheduled sync: cannot send heartbeat mail")
 		}
 	}

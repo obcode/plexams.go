@@ -283,9 +283,22 @@ func (s *Sender) nonJiraReplyTo() string {
 // is active the mail is captured as .eml, otherwise it goes to the dry-run address with the
 // real recipients prefixed into the subject.
 func (s *Sender) Send(run bool, to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool) error {
+	return s.send(run, to, cc, subject, text, html, attachments, jira, true)
+}
+
+// SendWithoutConfiguredCc sends like Send but omits the configured Cc (smtp.cc, the
+// shared planner self-copy). Automated mails such as the nightly auto-sync use it so they
+// do not copy the planner mailbox on every run.
+func (s *Sender) SendWithoutConfiguredCc(run bool, to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool) error {
+	return s.send(run, to, cc, subject, text, html, attachments, jira, false)
+}
+
+func (s *Sender) send(run bool, to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool, includeConfiguredCc bool) error {
 	realCc := append([]string{}, cc...)
-	if effCc := s.EffectiveCc(); effCc != "" {
-		realCc = append(realCc, effCc)
+	if includeConfiguredCc {
+		if effCc := s.EffectiveCc(); effCc != "" {
+			realCc = append(realCc, effCc)
+		}
 	}
 
 	if !run && s.collector != nil {

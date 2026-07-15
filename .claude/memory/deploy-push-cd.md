@@ -37,8 +37,8 @@ runner on the host pulls & `up -d`s it. Runners are containerized (Alpine host, 
 `c69ced9`); a **second self-hosted runner** was added for the plexams.gui repo (`3e1feb8`).
 Operator setup (register runner on both repos, `AUTO_DEPLOY=true`) = DONE.
 
-**Deploy notification (open, Oliver 2026-07-14):** leaning "footer version is enough"; cheapest
-= GitHub *watch releases* email, no code. Optional job-summary line — not built.
+**Deploy notification — DROPPED (Oliver 2026-07-15):** not building it; the GitHub *watch
+releases* email is enough. Footer already shows the version. Nothing to do here.
 
 **MongoDB backup — BUILT 2026-07-14 (on main):** Oliver chose local rotation + a GUI planner
 ZIP prompt (NOT the gitlab.lrz.de push).

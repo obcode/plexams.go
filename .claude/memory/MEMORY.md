@@ -1,8 +1,9 @@
 # Memory Index
 
+- [nightly auto-sync ZPA+Anny](nightly-autosync-zpa-anny.md) — in-process daily scheduler re-pulls ZPA+Anny for active workspace, diffs, mails changes (+heartbeat); backend DONE on working tree, `triggerScheduledSync` for on-demand; GUI "Sync jetzt" button pending.
 - [Jira integration](jira-integration.md) — on-prem jira.cc.hm.edu via PAT; backend DONE & on main (jira/ pkg, GraphQL create/read/comment/transition + REST attachment upload, per-user encrypted PATs); GUI pending.
 - [HM OIDC claims](hm-oidc-claims.md) — sso.hm.edu scope→claim map; id_token minimal, claims via UserInfo; department claim = `fhmDepartment`; end_session=/idp/profile/Logout (unused, local logout only).
-- [deploy push-CD](deploy-push-cd.md) — plexams.cs.hm.edu (user plexams, /home/plexams), ghcr images + self-hosted-runner push-CD (AUTO_DEPLOY gate) LIVE; Mongo backup DONE (script+backupStatus, GUI banner pending); only open: deploy-completion notification (leaning GitHub watch-releases mail, no code).
+- [deploy push-CD](deploy-push-cd.md) — plexams.cs.hm.edu (user plexams, /home/plexams), ghcr images + self-hosted-runner push-CD (AUTO_DEPLOY gate) LIVE; Mongo backup DONE (script+backupStatus, GUI banner pending). Deploy-completion notification dropped (GitHub watch-releases mail suffices) — nothing open.
 - [deploy Caddy migration](deploy-caddy-migration.md) — nginx+acme.sh → Caddy (built-in ACME/EAB, forward_auth) MERGED to main 2026-07-15 & live; gotcha: HM EAB binds one ACME account → Caddy needs its OWN fresh EAB (401 unauthorized otherwise); cutover needs `up -d --remove-orphans`.
 - [auth & roles via OIDC](auth-roles-shibboleth.md) — DONE + LIVE on plexams.cs.hm.edu: nginx+oauth2-proxy OIDC → X-Remote-User, DB users collection, ADMIN/PLANER/VIEWER, audit "who" on mutation_log, per-user encrypted PATs; all on main; nothing left to build.
 - [slotless time-based redesign](slotless-timebased-redesign.md) — planned big refactor: drop slot/day numbers, store exams as absolute times; conflicts/rooms/invig become interval-based; no migration, clean cut; plan in docs/plan-slotless-timebased.md.
@@ -15,7 +16,7 @@
 - [build binary cleanup](build-binary-cleanup.md) — always rm the ./plexams.go binary after testing (breaks gowatch); prefer `go run .`.
 - [planning state model](planning-state-model.md) — workflow as condition/event Petri net; publish-email gates lock generation; planningState/setPlanningCondition; defined in Go.
 - [ZPA upload via GUI](zpa-upload-via-gui.md) — plan upload runs via GUI streaming subscriptions; surface failures through the Reporter/returned error; post() errors on non-2xx.
-- [invigilator no-duty carryover](invigilator-no-duty-carryover.md) — carryover mechanic DONE (global permanent_non_invigilators w/ Reason+Name, unioned into notInvigilating); still open: "temporär" flag + making reason mandatory + new-semester review step.
+- [invigilator no-duty carryover](invigilator-no-duty-carryover.md) — DONE (backend, on main working tree, uncommitted): permanent_non_invigilators gained validFrom/validUntil semester-range (semesterOrdinal+permanentAppliesTo; notInvigilating filters by p.semester). Set validUntil to retire an exemption without deleting → past semesters stay correct. GUI-sync pending (2 optional semester dropdowns in form + show range).
 - [pre-planning SEB/EXaHM](preplanning-seb-exahm.md) — DONE: manual pseudo-exams (plexams/preplan_exams.go) sizing Anny bookings; global StudyProgram entity; compaction/overflow solver (preplan_solve.go); link to ZPA ancode later.
 - [ZPA import behaviors](zpa-import-behaviors.md) — import auto-presets to-plan (schriftlich/praktisch→plan, rest→not); stale banners only after first generation.
 - [exam-planning info email](exam-planning-info-email.md) — consolidated per-examer mail replacing constraints+prepared; examPlanningMailRecipients + sendEmailExamPlanningInfo.

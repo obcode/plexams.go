@@ -1,6 +1,6 @@
 # Memory Index
 
-- [nightly auto-sync ZPA+Anny](nightly-autosync-zpa-anny.md) — in-process daily scheduler re-pulls ZPA+Anny for active workspace, diffs, mails changes (+heartbeat); backend DONE on working tree, `triggerScheduledSync` for on-demand; GUI "Sync jetzt" button pending.
+- [nightly auto-sync ZPA+Anny](nightly-autosync-zpa-anny.md) — in-process daily scheduler re-pulls ZPA+Anny for active workspace, diffs, mails changes (+heartbeat); backend DONE & on main, `triggerScheduledSync` for on-demand; GUI "Sync jetzt" button pending.
 - [Jira integration](jira-integration.md) — on-prem jira.cc.hm.edu via PAT; backend DONE & on main (jira/ pkg, GraphQL create/read/comment/transition + REST attachment upload, per-user encrypted PATs); GUI pending.
 - [HM OIDC claims](hm-oidc-claims.md) — sso.hm.edu scope→claim map; id_token minimal, claims via UserInfo; department claim = `fhmDepartment`; end_session=/idp/profile/Logout (unused, local logout only).
 - [deploy push-CD](deploy-push-cd.md) — plexams.cs.hm.edu (user plexams, /home/plexams), ghcr images + self-hosted-runner push-CD (AUTO_DEPLOY gate) LIVE; Mongo backup DONE (script+backupStatus, GUI banner pending). Deploy-completion notification dropped (GitHub watch-releases mail suffices) — nothing open.

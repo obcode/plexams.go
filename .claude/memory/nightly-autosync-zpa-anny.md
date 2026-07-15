@@ -1,13 +1,13 @@
 ---
 name: nightly-autosync-zpa-anny
-description: "Nightly in-process scheduler that re-pulls ZPA + Anny and mails the diff; backend DONE on working tree, GUI-sync pending."
+description: "Nightly in-process scheduler that re-pulls ZPA + Anny and mails the diff; backend DONE & on main, GUI-sync pending."
 metadata:
   node_type: memory
   type: project
   originSessionId: a4245363-309a-45fb-ae09-45214c2e5879
 ---
 
-Nightly auto-sync of ZPA + Anny with change-email. Backend DONE (working tree, uncommitted as of 2026-07-15), builds/vets/lints/tests green.
+Nightly auto-sync of ZPA + Anny with change-email. Backend DONE, merged to main & pushed 2026-07-15 (commits `4031168` zpaimport, `45738e2` anny, `062362f` plexams, `4507b11` graph, `ff33e3c` docs), builds/vets/lints/tests green.
 
 **What:** in-process goroutine (`plexams/scheduler`, started from `graph.StartServer`, ctx cancelled on shutdown signal) runs daily at `scheduler.time` (local, default 03:00) when `scheduler.enabled`. Calls `Plexams.RunScheduledSync` ([plexams/autosync.go](../../../../workspace/plexams.go/plexams/autosync.go)): `ResetZPA()` (fresh client — the long-lived one caches teachers/exams in memory), re-imports ZPA exams/teachers/invig-reqs + Anny bookings for the **active** workspace via the existing import methods under `TryBeginExclusiveOp` (retries then skips on collision), reads back per-source `SyncLogEntry` diffs, mails: change-mail to `scheduler.changesrecipient` only when something differs + heartbeat to `scheduler.debugrecipient` on every run (also errors/skips). Big first-fill collapses to a count (`maxDetailLines`).
 

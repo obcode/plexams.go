@@ -10,11 +10,12 @@
 # Schedule (busybox crond on Alpine), e.g. daily 02:30 — `crontab -e` as plexams:
 #     30 2 * * *  /home/plexams/plexams.go/deploy/backup/mongo-backup.sh >> /home/plexams/backups/backup.log 2>&1
 #
-# Restore an archive:
+# Restore an archive (creds read from the mongo container's own env, like the dump):
 #     gunzip -c plexams-YYYYMMDD-HHMM.archive.gz \
 #       | docker compose -f /home/plexams/plexams.go/deploy/docker-compose.yml exec -T mongo \
-#           mongorestore --archive --gzip --drop \
-#             --username "$MONGO_USER" --password "$MONGO_PASSWORD" --authenticationDatabase admin
+#           sh -c 'mongorestore --archive --gzip --drop \
+#             --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD" \
+#             --authenticationDatabase admin'
 #   (--drop replaces existing collections; omit to merge. Test into a throwaway host first.)
 
 set -eu
@@ -27,11 +28,12 @@ KEEP_WEEKLY="${KEEP_WEEKLY:-8}"   # plus this many weekly (Monday) archives
 
 COMPOSE="docker compose -f ${DEPLOY_DIR}/docker-compose.yml"
 
-# --- Mongo credentials from the deploy .env ------------------------------------------
-# shellcheck disable=SC1091
-. "${DEPLOY_DIR}/.env"
-: "${MONGO_USER:?MONGO_USER not set in ${DEPLOY_DIR}/.env}"
-: "${MONGO_PASSWORD:?MONGO_PASSWORD not set in ${DEPLOY_DIR}/.env}"
+# --- Mongo credentials ---------------------------------------------------------------
+# Do NOT source the deploy .env here: it is docker-compose format, not shell. Strong
+# passwords contain #, *, ^, @, spaces … which `. .env` would try to execute (that is
+# exactly what broke this script). Instead we let mongodump read the credentials from
+# the mongo container's OWN environment (MONGO_INITDB_ROOT_USERNAME/PASSWORD, set by
+# compose from the .env). The password never touches the host shell, `ps`, or this log.
 
 mkdir -p "${BACKUP_DIR}"
 
@@ -42,11 +44,16 @@ weekday="$(date +%u)"                     # 1 = Monday
 out="${BACKUP_DIR}/plexams-daily-${stamp}.archive.gz"
 tmp="${out}.part"
 
+# The single-quoted inner script is expanded by the container's shell, so the creds are
+# resolved inside mongo and never appear in the host process list or environment.
 # shellcheck disable=SC2086
-${COMPOSE} exec -T mongo mongodump \
-    --username "${MONGO_USER}" --password "${MONGO_PASSWORD}" \
-    --authenticationDatabase admin \
-    --archive --gzip > "${tmp}"
+${COMPOSE} exec -T mongo sh -c '
+    mongodump \
+        --username "$MONGO_INITDB_ROOT_USERNAME" \
+        --password "$MONGO_INITDB_ROOT_PASSWORD" \
+        --authenticationDatabase admin \
+        --archive --gzip
+' > "${tmp}"
 
 # Guard against a truncated/empty dump before committing the file.
 if [ ! -s "${tmp}" ]; then

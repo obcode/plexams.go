@@ -275,6 +275,21 @@ func (p *Plexams) SetZPA() error {
 	return nil
 }
 
+// ResetZPA forces a fresh ZPA client. The client eagerly loads teachers and exams once
+// at construction and then serves them from memory (see zpa.NewZPA), so a long-running
+// server would otherwise re-import the same in-memory snapshot forever. The nightly
+// auto-sync calls this first so it actually pulls the current ZPA state. The fresh
+// client is built before the field is replaced (no nil window), so concurrent readers
+// always see a usable client.
+func (p *Plexams) ResetZPA() error {
+	zpaClient, err := zpa.NewZPA(p.zpa.baseurl, p.zpa.username, p.zpa.password, p.zpa.token, p.semester)
+	if err != nil {
+		return err
+	}
+	p.zpa.client = zpaClient
+	return nil
+}
+
 func (p *Plexams) GetAllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	return p.dbClient.AllSemesterNames(ctx)
 }

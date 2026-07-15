@@ -14,18 +14,21 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// DiffChanges compares a fresh ZPA import (neu) against the previous DB state (old),
-// keyed by id, and returns a partial SyncLogEntry (Added/Changed/Removed/Entries) that
-// the caller completes (operation/label/…) together with the human-readable report
+// DiffChanges compares a fresh import (neu) against the previous DB state (old),
+// keyed by id (any comparable key — an int ZPA ancode/teacher-id, or a string Anny
+// booking number), and returns a partial SyncLogEntry (Added/Changed/Removed/Entries)
+// that the caller completes (operation/label/…) together with the human-readable report
 // lines, in order, for the caller to emit. New entries, per-field changes on existing
-// entries and dropped entries are reported.
-func DiffChanges[T any](old, neu []T,
-	id func(T) int, name func(T) string, fields func(T) map[string]string) (*model.SyncLogEntry, []string) {
-	oldByID := make(map[int]T, len(old))
+// entries and dropped entries are reported. Output is ordered by name (added/changed
+// interleaved while walking the new items by name, then removed items by name) so it is
+// deterministic regardless of the key type.
+func DiffChanges[T any, K comparable](old, neu []T,
+	id func(T) K, name func(T) string, fields func(T) map[string]string) (*model.SyncLogEntry, []string) {
+	oldByID := make(map[K]T, len(old))
 	for _, o := range old {
 		oldByID[id(o)] = o
 	}
-	newByID := make(map[int]T, len(neu))
+	newByID := make(map[K]T, len(neu))
 	for _, n := range neu {
 		newByID[id(n)] = n
 	}
@@ -33,12 +36,14 @@ func DiffChanges[T any](old, neu []T,
 	rec := &model.SyncLogEntry{Entries: make([]*model.SyncChangeEntry, 0)}
 	msgs := make([]string, 0)
 
-	newIDs := make([]int, 0, len(newByID))
+	// deterministic order without assuming the key is sortable: order the unique new
+	// keys by their name, then the removed old keys by their name.
+	newKeys := make([]K, 0, len(newByID))
 	for k := range newByID {
-		newIDs = append(newIDs, k)
+		newKeys = append(newKeys, k)
 	}
-	sort.Ints(newIDs)
-	for _, k := range newIDs {
+	sort.SliceStable(newKeys, func(i, j int) bool { return name(newByID[newKeys[i]]) < name(newByID[newKeys[j]]) })
+	for _, k := range newKeys {
 		n := newByID[k]
 		o, ok := oldByID[k]
 		if !ok {
@@ -68,12 +73,12 @@ func DiffChanges[T any](old, neu []T,
 		}
 	}
 
-	oldIDs := make([]int, 0, len(oldByID))
+	oldKeys := make([]K, 0, len(oldByID))
 	for k := range oldByID {
-		oldIDs = append(oldIDs, k)
+		oldKeys = append(oldKeys, k)
 	}
-	sort.Ints(oldIDs)
-	for _, k := range oldIDs {
+	sort.SliceStable(oldKeys, func(i, j int) bool { return name(oldByID[oldKeys[i]]) < name(oldByID[oldKeys[j]]) })
+	for _, k := range oldKeys {
 		if _, ok := newByID[k]; !ok {
 			msgs = append(msgs, fmt.Sprintf("  - entfällt: %s", name(oldByID[k])))
 			rec.Entries = append(rec.Entries, &model.SyncChangeEntry{Type: "removed", Name: name(oldByID[k])})

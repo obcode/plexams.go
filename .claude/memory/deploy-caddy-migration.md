@@ -7,7 +7,9 @@ metadata:
   originSessionId: 11e67bde-092b-48e8-a9a3-ef9b7ea61158
 ---
 
-**MERGED to main 2026-07-15 (feat/deploy-caddy, Branch gelöscht) & live auf dem Host.** Ersetzt im
+**MERGED to main 2026-07-15 (feat/deploy-caddy, Branch gelöscht) & live + end-to-end verifiziert
+auf dem Host** (Oliver: TLS grün via neuer EAB, `curl` → 308 Redirect `Server: Caddy`, Login gegen
+sso.hm.edu, GUI lädt, Websocket-Subscription läuft). nginx + acme.sh sind entfernt. Ersetzt im
 `deploy/` **nginx + acme.sh** durch **Caddy**: `forward_auth` statt `auth_request`
 (oauth2-proxy unverändert), TLS via Caddys eingebautem ACME-Client mit `acme_ca` + `acme_eab`
 gegen die HM-CA. Entfallen: `acme-setup.sh`, `acme.env`, `tls/`+`acme-webroot/`-Mounts,

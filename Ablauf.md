@@ -165,7 +165,7 @@ Nachdem die Sammellisten aller Studiengänge vom Prüfungsamt da sind.
 - Planen über CLI (`plan move-to <ancode> <day> <slot>`), nicht Drag&Drop.
 - **Validierung mitlaufen lassen** — `validate conflicts` / `validate constraints`
   (CLI: `make validate-exams-planning`; GUI: die `validate*`-Subscriptions).
-  - MUC.DAI-Slots visuell prüfen.
+  - Reservierte Zeiten der gemeinsamen Studiengänge (MUC.DAI/MUC.HEALTH) visuell prüfen.
   - Akzeptable Konflikte in `<Semester>.yaml` unter `knownConflicts`.
   - **Semester-Zeiten** (`validateSemesterTimes`): prüft die Startzeiten gegen das
     Tageszeit-Fenster (Winter: nicht zu früh; Sommer: nicht zu spät). Eigene Prüfungen

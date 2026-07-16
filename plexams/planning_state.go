@@ -27,7 +27,7 @@ const (
 	condZPAImported               = "zpaImported"
 	condSebExahmZpaConnected      = "sebExahmZpaConnected"
 	condZPAExamsSelected          = "zpaExamsSelected"
-	condMucDaiImported            = "mucDaiImported"
+	condJointImported             = "mucDaiImported"
 	condPrimussImported           = "primussImported"
 	condZpaPrimussConnected       = "zpaPrimussConnected"
 	condConstraintsEntered        = "constraintsEntered"
@@ -76,7 +76,7 @@ var planningConditionDefs = []planstate.CondDef{
 	{Key: condSebExahmZpaConnected, Title: "EXaHM/SEB-Vorplanung mit ZPA-Prüfungen verknüpft", Phase: "phase0"},
 	{Key: condZPAExamsSelected, Title: "ZPA-Prüfungen für die Planung ausgewählt", Phase: "phase0"},
 	{Key: condExamPlanningInfoSent, Title: "Prüfungsplanungs-Info an Prüfende verschickt", Phase: "phase0"},
-	{Key: condMucDaiImported, Title: "MUC.DAI-Prüfungen importiert & verknüpft", Phase: "phase0"},
+	{Key: condJointImported, Title: "Prüfungen gemeinsamer Studiengänge importiert & verknüpft", Phase: "phase0"},
 	{Key: condPrimussImported, Title: "Primuss-Anmeldedaten importiert", Phase: "phase0"},
 	{Key: condZpaPrimussConnected, Title: "ZPA- & Primuss-Prüfungen verknüpft", Phase: "phase0"},
 	{Key: condConstraintsEntered, Title: "Constraints eingepflegt", Phase: "phase0"},

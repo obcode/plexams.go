@@ -1,8 +1,8 @@
-package mucdai
+package joint
 
 import "testing"
 
-func TestParseMucDaiCSVSemicolonAndUmlauts(t *testing.T) {
+func TestParseJointCSVSemicolonAndUmlauts(t *testing.T) {
 	csv := "\ufeffNr;Modulname;Prüfungsform;Dauer;Erstpruefender;IstWiederholung;Studiengruppe;Prüfungsplanung\n" +
 		"12;Mathe;schriftlich;90;Prof A;;DE;FK07\n" +
 		"34;Physik;schriftlich;120;Prof B;x;DE;FK03\n" +
@@ -32,7 +32,7 @@ func TestParseMucDaiCSVSemicolonAndUmlauts(t *testing.T) {
 }
 
 // the real MUC.DAI format: tab-separated, mongoimport type suffixes in the header.
-func TestParseMucDaiCSVRealTabTypedHeader(t *testing.T) {
+func TestParseJointCSVRealTabTypedHeader(t *testing.T) {
 	csv := "Nr.int32()\tModulname.string()\tPrüfungsform.string()\tBewertung.string()\tDauer.int32()\tErstpruefender.string()\tZweitpruefender.string()\tIstWiederholung.string()\tStudiengruppe.string()\tPrüfungsplanung.string()\n" +
 		"101\tComputational Thinking\tschrP\tbenotet\t90\tDietrich, Benedikt\tHobelsberger, Martin\tx\tDE\tFK07\n" +
 		"112\tElektrotechnik\tschrP\tbenotet\t60\tPalme, Frank\tKüpper, Tilman\tx\tDE\tFK03\n" +
@@ -54,7 +54,7 @@ func TestParseMucDaiCSVRealTabTypedHeader(t *testing.T) {
 	}
 }
 
-func TestParseMucDaiCSVLatin1(t *testing.T) {
+func TestParseJointCSVLatin1(t *testing.T) {
 	// "Prüfungsform" / "mündlich" as ISO-8859-1 (ü = 0xFC)
 	latin1 := "Nr;Modulname;Pr\xfcfungsform;Studiengruppe;Pr\xfcfungsplanung\n" +
 		"5;M\xfcndliche;m\xfcndlich;DE;FK07\n"
@@ -70,7 +70,7 @@ func TestParseMucDaiCSVLatin1(t *testing.T) {
 	}
 }
 
-func TestParseMucDaiCSVCommaAndMissingNr(t *testing.T) {
+func TestParseJointCSVCommaAndMissingNr(t *testing.T) {
 	csv := "Nr,Modulname,Studiengruppe,Prüfungsplanung\n" +
 		"7,Test,GS,FK08\n" +
 		",NoNr,GS,FK08\n" + // skipped (no Nr)
@@ -88,7 +88,7 @@ func TestParseMucDaiCSVCommaAndMissingNr(t *testing.T) {
 	}
 }
 
-func TestParseMucDaiCSVMissingRequiredColumn(t *testing.T) {
+func TestParseJointCSVMissingRequiredColumn(t *testing.T) {
 	if _, err := ParseCSV("Modulname,Studiengruppe\nMathe,DE\n"); err == nil {
 		t.Error("expected error for missing Nr column")
 	}
@@ -97,7 +97,7 @@ func TestParseMucDaiCSVMissingRequiredColumn(t *testing.T) {
 // A TAB-separated CSV with an empty field (e.g. IstWiederholung) must keep the row and
 // its column alignment. With a whitespace delimiter, TrimLeadingSpace would collapse the
 // empty field between two tabs and shift all later columns (dropping/misfiling the row).
-func TestParseMucDaiCSVEmptyFieldTabSeparated(t *testing.T) {
+func TestParseJointCSVEmptyFieldTabSeparated(t *testing.T) {
 	csv := "Nr.int32()\tModulname.string()\tPrüfungsform.string()\tBewertung.string()\tDauer.int32()\tErstpruefender.string()\tZweitpruefender.string()\tIstWiederholung.string()\tStudiengruppe.string()\tPrüfungsplanung.string()\n" +
 		"101\tComputational Thinking\tschrP\tbenotet\t90\tDietrich, Benedikt\tHobelsberger, Martin\tx\tID\tFK07\n" +
 		"221\tMathematische Methoden\tschrP\tbenotet\t90\tBrockhaus, Sarah\tHögele, Wolfgang\t\tID\tFK07\n" +

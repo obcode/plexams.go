@@ -2,12 +2,12 @@ extend type Mutation {
   """
   Import MUC.DAI exams from a CSV (the file you get from MUC.DAI; columns Nr,
   Modulname, Prüfungsform, Bewertung, Dauer, Erstpruefender, Zweitpruefender,
-  IstWiederholung, Studiengruppe, Prüfungsplanung). Replaces the mucdai_<program>
+  IstWiederholung, Studiengruppe, Prüfungsplanung). Replaces the joint_<program>
   data and generates the non-ZPA exams for everything not planned by FK07 (FK07
   exams already exist as ZPA exams and are only linked). The GUI sends the file
   content as text.
   """
-  importMucDaiExams(csv: String!): ImportMucDaiResult!
+  importJointExams(csv: String!): ImportJointResult!
   """
   Set the external date/time of an exam (e.g. a MUC.DAI exam planned by another
   faculty). The matching slot is computed and stored as the plan entry's
@@ -18,11 +18,11 @@ extend type Mutation {
   Manually link a MUC.DAI exam (program + primussAncode) to a ZPA exam (zpaAncode),
   for the unresolved/wrong FK07 cases. Stored as a manual link that survives re-imports.
   """
-  setMucDaiZpaLink(program: String!, primussAncode: Int!, zpaAncode: Int!): MucDaiExam!
+  setJointZpaLink(program: String!, primussAncode: Int!, zpaAncode: Int!): JointExam!
   """
   Remove the (manual) link of a MUC.DAI exam and fall back to automatic detection.
   """
-  removeMucDaiLink(program: String!, primussAncode: Int!): MucDaiExam!
+  removeJointLink(program: String!, primussAncode: Int!): JointExam!
 }
 
 extend type Query {
@@ -31,13 +31,13 @@ extend type Query {
   carry the program with a missing number (0/-1) first, then same-examer + similar
   module, then either. For the GUI to confirm/correct the link.
   """
-  mucDaiZpaCandidates(program: String!, primussAncode: Int!): [ZPAExam!]!
+  jointZpaCandidates(program: String!, primussAncode: Int!): [ZPAExam!]!
 }
 
-type ImportMucDaiResult {
+type ImportJointResult {
   "programs (Studiengruppen) found in the CSV."
   programs: [String!]!
-  "total exam rows imported into the mucdai_<program> collections."
+  "total exam rows imported into the joint_<program> collections."
   examsImported: Int!
   "new non-ZPA exams created (non-FK07, not existing yet)."
   examsCreated: Int!

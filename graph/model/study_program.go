@@ -10,14 +10,18 @@ type StudyProgram struct {
 	Name      string `json:"name" bson:"name"`
 	// Degree, e.g. "Bachelor" / "Master" (optional).
 	Degree *string `json:"degree,omitempty" bson:"degree,omitempty"`
-	// Category groups the program by origin: "fk07" | "mucdai" | "misc".
+	// Category groups the program by origin: "fk07" | "joint" | "misc".
 	Category string `json:"category" bson:"category"`
 	Active   bool   `json:"active" bson:"active"`
 	// Retired marks a discontinued program. A retired fk07 program is treated as
 	// an "old program" (no longer planned, but still relevant for old exams).
 	Retired bool `json:"retired" bson:"retired"`
-	// ExternalExamsBase is the base ancode for external (e.g. MUC.DAI) exams of this
-	// program: the local ZPA ancode is base + primussAncode. Only relevant for
-	// programs whose exams are imported externally (mucdai/misc).
+	// ExternalExamsBase is the base ancode for external (e.g. joint-program) exams of
+	// this program: the local ZPA ancode is base + primussAncode. Only relevant for
+	// programs whose exams are imported externally (joint/misc).
 	ExternalExamsBase *int `json:"externalExamsBase,omitempty" bson:"externalExamsBase,omitempty"`
+	// JointFaculty names the joint Studienfakultät this program belongs to (e.g.
+	// "MUC.DAI" | "MUC.HEALTH"). Set exactly for category "joint" programs; nil
+	// otherwise. Used to group joint programs for import/display.
+	JointFaculty *string `json:"jointFaculty,omitempty" bson:"jointFaculty,omitempty"`
 }

@@ -231,6 +231,9 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 
 	if plexams.dbClient != nil {
 		ctx := context.Background()
+		// One-time upgrade of legacy MUC.DAI study programs to the generalized
+		// joint-program model (category "mucdai" → "joint" + jointFaculty). Idempotent.
+		plexams.migrateMucdaiToJoint(ctx)
 		// FK07 programs come from the StudyProgram master data when present; the
 		// config values are only the bootstrap/seed fallback.
 		if current, old, err := plexams.fk07ProgramsFromStudyPrograms(ctx); err != nil {
@@ -311,7 +314,9 @@ func (p *Plexams) PrintSemesterConfig() {
 	fmt.Printf("Days: %v\n", p.semesterConfig.Days)
 	fmt.Printf("Starttimes: %v\n", p.semesterConfig.Starttimes)
 	fmt.Printf("Slots: %v\n", p.semesterConfig.Slots)
-	fmt.Printf("MUC.DAI-Slots: %v\n", p.semesterConfig.MucDaiSlots)
+	for _, jps := range p.semesterConfig.JointProgramSlots {
+		fmt.Printf("Reservierte Slots (%s): %v\n", jps.Program, jps.Slots)
+	}
 	fmt.Printf("Emails: %v\n", p.semesterConfig.Emails)
 }
 

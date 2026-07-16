@@ -64,8 +64,8 @@ type SemesterConfigInput {
   "Allowed daily exam start times as \"HH:MM\"."
   startTimes: [String!]!
   forbiddenDays: [Time!]
-  "Absolute start times allowed for MUC.DAI exams (currently \"morning vs afternoon\"; will become allowed/forbidden times)."
-  mucDaiAllowedTimes: [Time!]
+  "Absolute start times reserved per joint study program (one entry per program, e.g. DE/GS/ID)."
+  jointProgramAllowedTimes: [JointProgramTimes!]
   emails: Emails!
   "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
   examGapMinutes: Int
@@ -79,13 +79,31 @@ type SemesterConfigInput {
   maxSeatsPerSlot: Int
 }
 
+"Absolute start times reserved for one joint study program's exams."
+type JointProgramTimes {
+  "Study program shortname (Kürzel), e.g. \"DE\"."
+  program: String!
+  allowedTimes: [Time!]!
+}
+
+input JointProgramTimesInput {
+  program: String!
+  allowedTimes: [Time!]!
+}
+
+"The reserved grid slots (matching the allowed times) for one joint study program."
+type JointProgramSlots {
+  program: String!
+  slots: [Slot!]!
+}
+
 input SemesterConfigInputData {
   from: Time!
   until: Time!
   startTimes: [String!]!
   forbiddenDays: [Time!]
-  "Absolute start times allowed for MUC.DAI exams (currently \"morning vs afternoon\"; will become allowed/forbidden times)."
-  mucDaiAllowedTimes: [Time!]
+  "Absolute start times reserved per joint study program (one entry per program, e.g. DE/GS/ID)."
+  jointProgramAllowedTimes: [JointProgramTimesInput!]
   emails: EmailsInput!
   "Travel/break buffer (minutes) a student needs between two consecutive exams (null = default)."
   examGapMinutes: Int
@@ -138,9 +156,10 @@ type SemesterConfig {
   days: [ExamDay!]!
   starttimes: [Starttime!]!
   slots: [Slot!]!
-  "Absolute start times allowed for MUC.DAI exams (echo of the raw config)."
-  mucDaiAllowedTimes: [Time!]
-  mucDaiSlots: [Slot!]!
+  "Reserved start times per joint study program (echo of the raw config)."
+  jointProgramAllowedTimes: [JointProgramTimes!]
+  "Reserved grid slots per joint study program (derived from jointProgramAllowedTimes)."
+  jointProgramSlots: [JointProgramSlots!]!
   forbiddenSlots: [Slot!]
   from: Time!
   until: Time!

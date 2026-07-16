@@ -54,16 +54,21 @@ func fmtStart(t *time.Time) string {
 }
 
 // validStarttimes returns the set (by startKey) of allowed exam start times a plan
-// entry or planned room may use: the regular exam slots plus the MUC.DAI slots (used by
-// external exams). A start time outside this set is only legitimate for an external exam
-// whose time lies outside our exam period.
+// entry or planned room may use: the regular exam slots plus every joint program's
+// reserved slots (used by external exams). A start time outside this set is only
+// legitimate for an external exam whose time lies outside our exam period.
 func (p *Plexams) validStarttimes() map[string]bool {
 	starts := make(map[string]bool)
 	for _, s := range p.semesterConfig.Slots {
 		starts[startKey(s.Starttime)] = true
 	}
-	for _, s := range p.semesterConfig.MucDaiSlots {
-		starts[startKey(s.Starttime)] = true
+	for _, jps := range p.semesterConfig.JointProgramSlots {
+		if jps == nil {
+			continue
+		}
+		for _, s := range jps.Slots {
+			starts[startKey(s.Starttime)] = true
+		}
 	}
 	return starts
 }
@@ -401,7 +406,7 @@ func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationRepo
 	}
 
 	v.step("validating MUC.DAI links")
-	links, err := p.dbClient.MucDaiLinks(ctx)
+	links, err := p.dbClient.JointLinks(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get muc.dai links")
 		return nil, err

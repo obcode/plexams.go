@@ -8,7 +8,8 @@ per-Semester-Konfiguration liegt vollständig in der Datenbank (Collection
 
 Kurz: In die `.plexams.yaml` gehören **Bootstrap + Secrets + betriebliche Keys,
 die (noch) nicht in der DB liegen**. Die eigentliche Semester-Planung (`from`,
-`until`, `slots`, `forbiddenDays`, E-Mail-Adressen, MUC.DAI-Slots) kommt aus der DB.
+`until`, `slots`, `forbiddenDays`, E-Mail-Adressen, reservierte Zeiten gemeinsamer
+Studiengänge) kommt aus der DB.
 
 ---
 
@@ -292,9 +293,27 @@ knownConflicts:
 > wird nur noch für die einmalige Erst-Migration gelesen und kann danach entfernt
 > werden.
 
-> `mucdaiprograms`/`miscprograms` und `externalExamsBase.<prog>` werden nur noch
+> `jointfaculties`/`miscprograms` und `externalExamsBase.<prog>` werden nur noch
 > von `seedStudyProgramsFromConfig` als Seed gelesen; zur Laufzeit kommt alles aus
 > den `StudyProgram`-Stammdaten. Nach dem Seeden können sie aus der YAML entfallen.
+> `jointfaculties` beschreibt die gemeinsamen Studienfakultäten (z. B. MUC.DAI,
+> MUC.HEALTH) mit ihren Studiengängen:
+>
+> ```yaml
+> jointfaculties:
+>   - name: MUC.DAI
+>     programs: [DE, GS, ID]
+>   - name: MUC.HEALTH
+>     programs: [HE]
+> externalExamsBase:
+>   DE: 30000
+>   GS: 80000
+>   ID: 120000
+>   HE: 160000
+> ```
+>
+> Der frühere flache Key `mucdaiprograms` wird weiterhin als Fallback gelesen und
+> als Fakultät `MUC.DAI` interpretiert.
 
 > `invigilation.optimizer.*`, `rooms.timelag` werden nur noch als Default-Seed
 > gelesen, solange keine `generationConfig` in der DB gespeichert ist (s. u.).
@@ -312,11 +331,12 @@ Diese per-Semester-Werte kommen aus der DB (`semester_config_input`) und werden
 - `semesterConfig.forbiddenDays`
 - `semesterConfig.emails.*` (profs, lbas, lbaslastsemester, fs, sekr, roommanagement, kdp, lbaba)
 - `semesterConfig.additionalexamer`
-- `mucdaislots` (MUC.DAI-Slots als absolute `[Tag, Slot]`-Paare)
+- reservierte Zeiten je gemeinsamem Studiengang (`jointProgramAllowedTimes`, absolute
+  Startzeiten pro Studiengang; ersetzt die frühere einzelne `mucdaislots`-Liste)
 
 Außerdem (über eigene Collections / GUI gepflegt, YAML nur noch Seed/Fallback):
 
-- `mucdaiprograms` / `miscprograms` → `StudyProgram`-Stammdaten (Kategorie)
+- `jointfaculties` / `miscprograms` → `StudyProgram`-Stammdaten (Kategorie + `jointFaculty`)
 - `externalExamsBase.<prog>` → Feld `externalExamsBase` am `StudyProgram`
 - `duration` (Dauer-Overrides pro Ancode) → `setExamDuration` (greift nur bei ZPA-Dauer 0)
 - `donotpublish` → Constraint `doNotPublish` an der Prüfung
@@ -333,4 +353,4 @@ Migration gelesen und können raus:
 - `semesterConfig.fromFK07`   (es gibt nur noch `from`)
 - `semesterConfig.dayNumberStart`
 - `semesterConfig.goDay0`
-- `goslots`                   (ersetzt durch `mucdaislots`, absolute Paare)
+- `goslots`                   (ersetzt durch reservierte Zeiten je gemeinsamem Studiengang, absolute Startzeiten)

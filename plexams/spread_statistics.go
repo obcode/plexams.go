@@ -62,7 +62,7 @@ func (p *Plexams) ExamSpreadStatistics(ctx context.Context) (*model.ExamSpreadSt
 	for _, prog := range p.zpa.fk07programs {
 		ownProgram[prog] = true
 	}
-	for _, prog := range p.mucdaiProgramNames(ctx) {
+	for _, prog := range p.jointProgramNames(ctx) {
 		ownProgram[prog] = true
 	}
 	restrictProgram := len(ownProgram) > 0 // guard against a misconfigured empty list

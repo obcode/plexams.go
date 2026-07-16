@@ -52,7 +52,9 @@ func semesterConfigInputFromViper() *model.SemesterConfigInput {
 		}
 	}
 
-	// MUC.DAI: absolute start times allowed for MUC.DAI exams (seed from YAML if present).
+	// Legacy single MUC.DAI reserved-times list (seed from YAML if present). On load
+	// it is expanded to all joint programs when no per-program times are stored yet
+	// (see applyLegacyJointTimes); new configs use jointProgramAllowedTimes instead.
 	mucDaiAllowedTimes := make([]time.Time, 0)
 	if raw, ok := viper.Get("semesterConfig.mucDaiAllowedTimes").([]interface{}); ok {
 		for _, d := range raw {
@@ -145,25 +147,33 @@ func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.Se
 		}
 	}
 
-	mucDaiAllowedTimes := make([]time.Time, 0, len(data.MucDaiAllowedTimes))
-	for _, t := range data.MucDaiAllowedTimes {
-		if t != nil {
-			mucDaiAllowedTimes = append(mucDaiAllowedTimes, t.Local())
+	jointProgramAllowedTimes := make([]*model.JointProgramTimes, 0, len(data.JointProgramAllowedTimes))
+	for _, jt := range data.JointProgramAllowedTimes {
+		if jt == nil {
+			continue
 		}
+		times := make([]time.Time, 0, len(jt.AllowedTimes))
+		for _, t := range jt.AllowedTimes {
+			times = append(times, t.Local())
+		}
+		jointProgramAllowedTimes = append(jointProgramAllowedTimes, &model.JointProgramTimes{
+			Program:      jt.Program,
+			AllowedTimes: times,
+		})
 	}
 
 	input := &model.SemesterConfigInput{
-		From:                  data.From.Local(),
-		Until:                 data.Until.Local(),
-		StartTimes:            data.StartTimes,
-		ForbiddenDays:         forbiddenDays,
-		MucDaiAllowedTimes:    mucDaiAllowedTimes,
-		Emails:                emails,
-		ExamGapMinutes:        data.ExamGapMinutes,
-		TimelagMin:            data.TimelagMin,
-		NotTooCloseMinutes:    data.NotTooCloseMinutes,
-		CrossCampusGapMinutes: data.CrossCampusGapMinutes,
-		MaxSeatsPerSlot:       data.MaxSeatsPerSlot,
+		From:                     data.From.Local(),
+		Until:                    data.Until.Local(),
+		StartTimes:               data.StartTimes,
+		ForbiddenDays:            forbiddenDays,
+		JointProgramAllowedTimes: jointProgramAllowedTimes,
+		Emails:                   emails,
+		ExamGapMinutes:           data.ExamGapMinutes,
+		TimelagMin:               data.TimelagMin,
+		NotTooCloseMinutes:       data.NotTooCloseMinutes,
+		CrossCampusGapMinutes:    data.CrossCampusGapMinutes,
+		MaxSeatsPerSlot:          data.MaxSeatsPerSlot,
 	}
 	if err := validateSemesterConfigInput(input); err != nil {
 		return nil, err
@@ -246,8 +256,9 @@ func validateSemesterConfigInput(input *model.SemesterConfigInput) error {
 var semesterNameRE = regexp.MustCompile(`^\d{4}-(SS|WS)$`)
 
 // NewSemesterConfigDefaults returns a template for creating a new semester,
-// based on the current semester's stored config (slots, emails, MUC.DAI slots and
-// — as a starting point — the dates carry over; the planner adjusts the dates).
+// based on the current semester's stored config (slots, emails, joint-program
+// reserved times and — as a starting point — the dates carry over; the planner
+// adjusts the dates).
 // Falls back to minimal defaults when nothing is stored.
 func (p *Plexams) NewSemesterConfigDefaults(ctx context.Context) (*model.SemesterConfigInput, error) {
 	input, err := p.SemesterConfigInput(ctx)
@@ -366,7 +377,34 @@ func (p *Plexams) loadSemesterConfig(ctx context.Context) {
 		return
 	}
 
+	p.applyLegacyJointTimes(ctx, input)
 	p.deriveSemesterConfig(input)
+}
+
+// applyLegacyJointTimes fills JointProgramAllowedTimes from the legacy single
+// MucDaiAllowedTimes list (applied to every joint program) when the per-program
+// field is empty — so a stored pre-migration config keeps working until the planner
+// re-enters per-program reserved times in the GUI.
+func (p *Plexams) applyLegacyJointTimes(ctx context.Context, input *model.SemesterConfigInput) {
+	if len(input.JointProgramAllowedTimes) > 0 || len(input.MucDaiAllowedTimes) == 0 || p.dbClient == nil {
+		return
+	}
+	times := make([]time.Time, 0, len(input.MucDaiAllowedTimes))
+	for _, t := range input.MucDaiAllowedTimes {
+		times = append(times, t.Local())
+	}
+	jpts := make([]*model.JointProgramTimes, 0)
+	for _, prog := range p.jointProgramNames(ctx) {
+		cp := make([]time.Time, len(times))
+		copy(cp, times)
+		jpts = append(jpts, &model.JointProgramTimes{Program: prog, AllowedTimes: cp})
+	}
+	if len(jpts) == 0 {
+		return
+	}
+	input.JointProgramAllowedTimes = jpts
+	log.Info().Int("programs", len(jpts)).
+		Msg("seeded joint-program reserved times from legacy mucDaiAllowedTimes")
 }
 
 // deriveSemesterConfig computes the runtime SemesterConfig (days, slots, forbidden
@@ -423,45 +461,60 @@ func (p *Plexams) deriveSemesterConfig(input *model.SemesterConfigInput) {
 		}
 	}
 
-	mucDaiAllowedTimes := make([]*time.Time, 0, len(input.MucDaiAllowedTimes))
-	for i := range input.MucDaiAllowedTimes {
-		t := input.MucDaiAllowedTimes[i].Local()
-		mucDaiAllowedTimes = append(mucDaiAllowedTimes, &t)
+	// Per-program reserved times (echo, normalized to Local) and the derived grid slots.
+	jointProgramAllowedTimes := make([]*model.JointProgramTimes, 0, len(input.JointProgramAllowedTimes))
+	for _, jpt := range input.JointProgramAllowedTimes {
+		if jpt == nil {
+			continue
+		}
+		times := make([]time.Time, 0, len(jpt.AllowedTimes))
+		for _, t := range jpt.AllowedTimes {
+			times = append(times, t.Local())
+		}
+		jointProgramAllowedTimes = append(jointProgramAllowedTimes, &model.JointProgramTimes{
+			Program:      jpt.Program,
+			AllowedTimes: times,
+		})
 	}
 
 	p.semesterConfig = &model.SemesterConfig{
-		Days:                  days,
-		Starttimes:            starttimes,
-		Slots:                 slots,
-		Emails:                input.Emails,
-		MucDaiAllowedTimes:    mucDaiAllowedTimes,
-		MucDaiSlots:           slots,
-		From:                  from,
-		Until:                 until,
-		ForbiddenSlots:        forbiddenSlots,
-		ExamGapMinutes:        examGapMinutesOf(input),
-		TimelagMin:            timelagMinOf(input),
-		NotTooCloseMinutes:    notTooCloseMinutesOf(input),
-		CrossCampusGapMinutes: crossCampusGapMinutesOf(input),
-		MaxSeatsPerSlot:       maxSeatsPerSlotOf(input),
+		Days:                     days,
+		Starttimes:               starttimes,
+		Slots:                    slots,
+		Emails:                   input.Emails,
+		JointProgramAllowedTimes: jointProgramAllowedTimes,
+		JointProgramSlots:        deriveJointProgramSlots(slots, jointProgramAllowedTimes),
+		From:                     from,
+		Until:                    until,
+		ForbiddenSlots:           forbiddenSlots,
+		ExamGapMinutes:           examGapMinutesOf(input),
+		TimelagMin:               timelagMinOf(input),
+		NotTooCloseMinutes:       notTooCloseMinutesOf(input),
+		CrossCampusGapMinutes:    crossCampusGapMinutesOf(input),
+		MaxSeatsPerSlot:          maxSeatsPerSlotOf(input),
 	}
-
-	p.deriveMucDaiSlots(input.MucDaiAllowedTimes)
 }
 
-// deriveMucDaiSlots maps the MUC.DAI allowed start times onto real slots (matching by
-// exact absolute start time) and stores them on the semester config.
-func (p *Plexams) deriveMucDaiSlots(mucDaiAllowedTimes []time.Time) {
-	slotsByStart := make(map[time.Time]*model.Slot)
-	for _, slot := range p.semesterConfig.Slots {
+// deriveJointProgramSlots maps each joint program's reserved start times onto the
+// real grid slots (matching by exact absolute start time).
+func deriveJointProgramSlots(slots []*model.Slot, jpts []*model.JointProgramTimes) []*model.JointProgramSlots {
+	slotsByStart := make(map[time.Time]*model.Slot, len(slots))
+	for _, slot := range slots {
 		slotsByStart[slot.Starttime] = slot
 	}
 
-	mucDaiSlots := make([]*model.Slot, 0, len(mucDaiAllowedTimes))
-	for _, t := range mucDaiAllowedTimes {
-		if slot, ok := slotsByStart[t.Local()]; ok {
-			mucDaiSlots = append(mucDaiSlots, slot)
+	result := make([]*model.JointProgramSlots, 0, len(jpts))
+	for _, jpt := range jpts {
+		if jpt == nil {
+			continue
 		}
+		progSlots := make([]*model.Slot, 0, len(jpt.AllowedTimes))
+		for _, t := range jpt.AllowedTimes {
+			if slot, ok := slotsByStart[t.Local()]; ok {
+				progSlots = append(progSlots, slot)
+			}
+		}
+		result = append(result, &model.JointProgramSlots{Program: jpt.Program, Slots: progSlots})
 	}
-	p.semesterConfig.MucDaiSlots = mucDaiSlots
+	return result
 }

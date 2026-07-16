@@ -79,7 +79,7 @@ Key sections consumed by the code:
 | `server.*` | `port`, `allowedorigins` |
 
 The per-semester planning config (`from`/`until`, `slots`, `forbiddenDays`,
-`emails`, MUC.DAI slots) is not in the YAML — it lives in the DB
+`emails`, per-joint-program reserved times) is not in the YAML — it lives in the DB
 (`semester_config_input`) and is edited through the GUI.
 
 The only command-line surface is three flags: `-v/--verbose`, `--db-uri`,

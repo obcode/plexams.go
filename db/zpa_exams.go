@@ -113,6 +113,14 @@ func (db *DB) CacheZPAExams(exams []*model.ZPAExam) error {
 		return err
 	}
 
+	if len(examsIntf) == 0 {
+		// ZPA has no exams for this semester yet (e.g. a fresh semester before the exams
+		// are entered): the collection is now empty; InsertMany with an empty slice would
+		// error ("must provide at least one element in input slice").
+		log.Debug().Str("semester", db.semester).Msg("no zpaexams to cache (ZPA returned none)")
+		return nil
+	}
+
 	res, err := collection.InsertMany(ctx, examsIntf)
 	if err != nil {
 		return err

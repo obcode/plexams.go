@@ -169,6 +169,13 @@ func (db *DB) CacheTeachers(teachers []*model.Teacher, semester string) error {
 		return err
 	}
 
+	if len(teachersIntf) == 0 {
+		// No teachers returned: the collection is now empty; InsertMany with an empty
+		// slice would error ("must provide at least one element in input slice").
+		log.Debug().Str("semester", semester).Msg("no teachers to cache (ZPA returned none)")
+		return nil
+	}
+
 	res, err := collection.InsertMany(ctx, teachersIntf)
 	if err != nil {
 		return err

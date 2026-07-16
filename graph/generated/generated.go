@@ -1502,6 +1502,7 @@ type ComplexityRoot struct {
 		Name              func(childComplexity int) int
 		Retired           func(childComplexity int) int
 		Shortname         func(childComplexity int) int
+		ZpaCode           func(childComplexity int) int
 	}
 
 	Subscription struct {
@@ -9817,6 +9818,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.StudyProgram.Shortname(childComplexity), true
 
+	case "StudyProgram.zpaCode":
+		if e.complexity.StudyProgram.ZpaCode == nil {
+			break
+		}
+
+		return e.complexity.StudyProgram.ZpaCode(childComplexity), true
+
 	case "Subscription.assignInvigilations":
 		if e.complexity.Subscription.AssignInvigilations == nil {
 			break
@@ -14245,11 +14253,16 @@ extend type Mutation {
 
 "A study program (Studiengang), e.g. IF / DE / GN."
 type StudyProgram {
-  "Kürzel, e.g. IF (unique key)."
+  "Kürzel, e.g. IF (unique key). May be degree-suffixed, e.g. DC-B / DC-M."
   shortname: String!
   name: String!
   "e.g. Bachelor / Master."
   degree: String
+  """
+  The (still 2-letter, possibly non-unique) code this program has in the external
+  ZPA system, e.g. "DC" for both DC-B and DC-M. Empty defaults to shortname.
+  """
+  zpaCode: String
   "Origin/grouping: fk07 | joint | misc."
   category: String!
   active: Boolean!
@@ -14272,6 +14285,7 @@ input StudyProgramInput {
   shortname: String!
   name: String!
   degree: String
+  zpaCode: String
   category: String!
   active: Boolean!
   retired: Boolean!
@@ -48336,6 +48350,8 @@ func (ec *executionContext) fieldContext_Mutation_upsertStudyProgram(ctx context
 				return ec.fieldContext_StudyProgram_name(ctx, field)
 			case "degree":
 				return ec.fieldContext_StudyProgram_degree(ctx, field)
+			case "zpaCode":
+				return ec.fieldContext_StudyProgram_zpaCode(ctx, field)
 			case "category":
 				return ec.fieldContext_StudyProgram_category(ctx, field)
 			case "active":
@@ -64149,6 +64165,8 @@ func (ec *executionContext) fieldContext_Query_studyPrograms(_ context.Context, 
 				return ec.fieldContext_StudyProgram_name(ctx, field)
 			case "degree":
 				return ec.fieldContext_StudyProgram_degree(ctx, field)
+			case "zpaCode":
+				return ec.fieldContext_StudyProgram_zpaCode(ctx, field)
 			case "category":
 				return ec.fieldContext_StudyProgram_category(ctx, field)
 			case "active":
@@ -72537,6 +72555,47 @@ func (ec *executionContext) _StudyProgram_degree(ctx context.Context, field grap
 }
 
 func (ec *executionContext) fieldContext_StudyProgram_degree(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "StudyProgram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _StudyProgram_zpaCode(ctx context.Context, field graphql.CollectedField, obj *model.StudyProgram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_StudyProgram_zpaCode(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ZpaCode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_StudyProgram_zpaCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "StudyProgram",
 		Field:      field,
@@ -85396,7 +85455,7 @@ func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"shortname", "name", "degree", "category", "active", "retired", "externalExamsBase", "jointFaculty"}
+	fieldsInOrder := [...]string{"shortname", "name", "degree", "zpaCode", "category", "active", "retired", "externalExamsBase", "jointFaculty"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85424,6 +85483,13 @@ func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context,
 				return it, err
 			}
 			it.Degree = data
+		case "zpaCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("zpaCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ZpaCode = data
 		case "category":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("category"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -97359,6 +97425,8 @@ func (ec *executionContext) _StudyProgram(ctx context.Context, sel ast.Selection
 			}
 		case "degree":
 			out.Values[i] = ec._StudyProgram_degree(ctx, field, obj)
+		case "zpaCode":
+			out.Values[i] = ec._StudyProgram_zpaCode(ctx, field, obj)
 		case "category":
 			out.Values[i] = ec._StudyProgram_category(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

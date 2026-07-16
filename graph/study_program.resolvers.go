@@ -22,6 +22,9 @@ func (r *mutationResolver) UpsertStudyProgram(ctx context.Context, input model.S
 		ExternalExamsBase: input.ExternalExamsBase,
 		JointFaculty:      input.JointFaculty,
 	}
+	if input.ZpaCode != nil {
+		program.ZpaCode = *input.ZpaCode
+	}
 	return r.plexams.UpsertStudyProgram(ctx, program)
 }
 

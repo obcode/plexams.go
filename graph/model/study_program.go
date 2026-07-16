@@ -10,6 +10,13 @@ type StudyProgram struct {
 	Name      string `json:"name" bson:"name"`
 	// Degree, e.g. "Bachelor" / "Master" (optional).
 	Degree *string `json:"degree,omitempty" bson:"degree,omitempty"`
+	// ZpaCode is the (still 2-letter, possibly non-unique) code this program has in
+	// the external ZPA system, e.g. "DC" for both "DC-B" and "DC-M". The internal
+	// Shortname may be degree-suffixed to stay unique; ZpaCode is what ZPA emits in
+	// study-group names and expects back in student-registration uploads. When empty
+	// it defaults to Shortname (identity) — the state before the suffix rename and
+	// once ZPA itself adopts unique per-degree codes.
+	ZpaCode string `json:"zpaCode,omitempty" bson:"zpaCode,omitempty"`
 	// Category groups the program by origin: "fk07" | "joint" | "misc".
 	Category string `json:"category" bson:"category"`
 	Active   bool   `json:"active" bson:"active"`

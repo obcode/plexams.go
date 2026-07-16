@@ -189,7 +189,8 @@ func (db *DB) studentRegsCollectionNames(ctx context.Context) ([]string, error) 
 			Key: "name",
 			Value: bson.D{
 				primitive.E{Key: "$regex",
-					Value: primitive.Regex{Pattern: "studentregs_..$"},
+					// program code: 2-4 letters, optionally a "-B"/"-M" degree suffix.
+					Value: primitive.Regex{Pattern: `^studentregs_[A-Z]{2,4}(-[BM])?$`},
 				},
 			},
 		}})

@@ -26,8 +26,13 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 			log.Error().Err(err).Str("program", program).Msg("error while getting student regs")
 			return nil, nil, err
 		}
+		// ZPA still uses the (2-letter) external code, while the internal program
+		// may be degree-suffixed (e.g. DC-B/DC-M → DC). Translate back on the way out.
+		zpaCode := p.zpaCodeForProgram(ctx, program)
 		for _, studentReg := range studentRegs {
-			zpaStudentRegs = append(zpaStudentRegs, p.zpa.client.StudentReg2ZPAStudentReg(studentReg))
+			zpaStudentReg := p.zpa.client.StudentReg2ZPAStudentReg(studentReg)
+			zpaStudentReg.Program = zpaCode
+			zpaStudentRegs = append(zpaStudentRegs, zpaStudentReg)
 		}
 	}
 

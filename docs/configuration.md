@@ -81,6 +81,28 @@ zpa:
 > `seedStudyProgramsFromConfig` (oldprograms werden dabei als `retired` angelegt).
 > Sind die Stammdaten gepflegt, können die beiden Listen aus der YAML entfallen.
 
+> **Studiengangskürzel & ZPA-Code.** Das interne Kürzel (`StudyProgram.shortname`)
+> darf grad-suffigiert sein (`DC-B`, `DC-M`, `IF-B`, …), damit Bachelor und Master
+> desselben 2-Buchstaben-Codes eindeutig bleiben. Im ZPA sind die Codes weiterhin
+> 2-stellig; die Zuordnung liegt im Feld `StudyProgram.zpaCode` (leer ⇒ identisch zum
+> `shortname`). Beim Seed wird `zpaCode` automatisch abgeleitet, indem ein
+> `-B`/`-M`-Suffix entfernt wird (`DC-B` → `DC`); für Sonderfälle kann ein Mapping
+> `zpacodes.<shortname>: <ZPA-Code>` in der YAML gesetzt werden. Die Übersetzung
+> greift nur an den externen Grenzen (ZPA-Import der Prüfungsgruppen, Upload der
+> Anmeldungen); intern/Primuss wird durchgängig das suffigierte Kürzel verwendet.
+> Primuss-Dateien tragen das Grad-Kürzel bereits im Dateinamen
+> (`…-DC-B-…xlsx`) und landen dadurch direkt in getrennten Collections. Alte
+> Semester bleiben 2-stellig und werden **nicht** migriert; die Auflösung ist
+> semester-sicher (fällt auf den rohen 2-Buchstaben-Code zurück, wenn kein
+> suffigierter Studiengang in diesem Semester existiert).
+>
+> ```yaml
+> # optional, nur für Sonderfälle: explizites shortname → ZPA-Code Mapping
+> zpacodes:
+>   DC-B: DC
+>   DC-M: DC
+> ```
+
 ## 3. SMTP / E-Mail
 
 ```yaml

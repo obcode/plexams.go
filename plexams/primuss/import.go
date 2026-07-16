@@ -35,9 +35,12 @@ type ImportProgram struct {
 	ChangedAncodes []int    // ancodes whose registrations changed vs before (empty on first import)
 }
 
-// primussGroupRE extracts the program code from a Sammellisten filename, e.g.
-// "Prüfungsanmeldungen-IF-B-126.xlsx" -> "IF".
-var primussGroupRE = regexp.MustCompile(`-([A-Z]{2,4})-[BM]-`)
+// primussGroupRE extracts the degree-suffixed program code from a Sammellisten
+// filename, e.g. "Prüfungsanmeldungen-IF-B-126.xlsx" -> "IF-B". Keeping the B/M
+// degree marker in the code makes Bachelor and Master of the same 2-letter code
+// (e.g. DC-B vs DC-M) distinct programs / collections instead of colliding in a
+// single "DC".
+var primussGroupRE = regexp.MustCompile(`-([A-Z]{2,4}-[BM])-`)
 
 // primussStudentregNumeric marks the numeric columns of the Prüfungsanmeldungen file.
 // Only AnCode is numeric; everything else (incl. MTKNR) stays a string.

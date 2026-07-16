@@ -1508,6 +1508,7 @@ type StudyProgramInput struct {
 	Shortname         string  `json:"shortname"`
 	Name              string  `json:"name"`
 	Degree            *string `json:"degree,omitempty"`
+	ZpaCode           *string `json:"zpaCode,omitempty"`
 	Category          string  `json:"category"`
 	Active            bool    `json:"active"`
 	Retired           bool    `json:"retired"`

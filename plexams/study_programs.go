@@ -110,6 +110,7 @@ func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) 
 				Category:  set.category,
 				Active:    !set.retired,
 				Retired:   set.retired,
+				ZpaCode:   defaultZpaCode(shortname),
 			}
 			if set.jointFaculty != "" {
 				jf := set.jointFaculty
@@ -129,6 +130,44 @@ func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) 
 		}
 	}
 	return created, nil
+}
+
+// defaultZpaCode derives the external ZPA code for a (possibly degree-suffixed)
+// program shortname when seeding: an explicit `zpacodes.<shortname>` config entry
+// wins, otherwise a trailing "-B"/"-M" degree suffix is stripped (DC-B → DC).
+// Returns "" when the code equals the shortname (identity — no mapping needed).
+func defaultZpaCode(shortname string) string {
+	if code := strings.TrimSpace(viper.GetString("zpacodes." + shortname)); code != "" {
+		if code == shortname {
+			return ""
+		}
+		return code
+	}
+	for _, suffix := range []string{"-B", "-M"} {
+		if strings.HasSuffix(shortname, suffix) {
+			return strings.TrimSuffix(shortname, suffix)
+		}
+	}
+	return ""
+}
+
+// zpaCodeForProgram returns the external ZPA code (the 2-letter code ZPA uses) for
+// an internal, possibly degree-suffixed program shortname. It is the reverse of the
+// inbound ZPA-group→program mapping and is used when posting student registrations
+// back to ZPA. Falls back to the shortname itself when no ZpaCode is stored — the
+// identity case before the suffix rename and once ZPA adopts unique codes.
+func (p *Plexams) zpaCodeForProgram(ctx context.Context, shortname string) string {
+	programs, err := p.dbClient.StudyPrograms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot read study programs for zpa code mapping")
+		return shortname
+	}
+	for _, prog := range programs {
+		if prog.Shortname == shortname && prog.ZpaCode != "" {
+			return prog.ZpaCode
+		}
+	}
+	return shortname
 }
 
 // migrateMucdaiToJoint upgrades legacy study programs (category "mucdai") to the

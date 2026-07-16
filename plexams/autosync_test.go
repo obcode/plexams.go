@@ -23,14 +23,28 @@ func report(sources ...*syncSourceResult) *SyncRunReport {
 
 func TestBuildSyncReportMailNoChanges(t *testing.T) {
 	subject, body := buildSyncReportMail(report(&syncSourceResult{
-		key: "zpa-import-exams", label: "Prüfungen (ZPA)",
+		key: "zpa-import-exams", label: "Prüfungen (ZPA)", noun: "Prüfungen", count: 120,
 		entry: &model.SyncLogEntry{},
 	}))
 	if !strings.Contains(subject, "keine Änderungen") {
 		t.Errorf("subject = %q, want 'keine Änderungen'", subject)
 	}
-	if !strings.Contains(string(body), "Keine Änderungen") {
-		t.Errorf("body missing no-change line:\n%s", body)
+	if !strings.Contains(string(body), "keine Änderungen (120 Prüfungen)") {
+		t.Errorf("body missing unchanged-with-data line:\n%s", body)
+	}
+}
+
+func TestBuildSyncReportMailEmptySource(t *testing.T) {
+	// ZPA has no exams for a fresh semester yet: count 0, no error → not a failure.
+	subject, body := buildSyncReportMail(report(&syncSourceResult{
+		key: "zpa-import-exams", label: "Prüfungen (ZPA)", noun: "Prüfungen", count: 0,
+		entry: &model.SyncLogEntry{},
+	}))
+	if !strings.Contains(subject, "keine Änderungen") {
+		t.Errorf("subject = %q, want 'keine Änderungen' (empty source is not an error)", subject)
+	}
+	if !strings.Contains(string(body), "Prüfungen (ZPA): keine Prüfungen vorhanden") {
+		t.Errorf("body missing empty-source line:\n%s", body)
 	}
 }
 

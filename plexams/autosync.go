@@ -42,7 +42,8 @@ type ScheduledSyncConfig struct {
 // syncSourceResult is the outcome of pulling one source.
 type syncSourceResult struct {
 	key   string // sync-log operation key, e.g. "zpa-import-exams"
-	label string // human-readable label
+	label string // human-readable label, e.g. "Prüfungen (ZPA)"
+	noun  string // plural noun for the "keine … vorhanden" line, e.g. "Prüfungen"
 	count int    // number of entries fetched
 	err   error  // nil on success
 	entry *model.SyncLogEntry
@@ -122,11 +123,11 @@ func (p *Plexams) RunScheduledSync(ctx context.Context, cfg ScheduledSyncConfig,
 	}
 
 	start := time.Now()
-	run := func(enabled bool, key, label string, fn func() (int, error)) {
+	run := func(enabled bool, key, label, noun string, fn func() (int, error)) {
 		if !enabled {
 			return
 		}
-		res := &syncSourceResult{key: key, label: label}
+		res := &syncSourceResult{key: key, label: label, noun: noun}
 		res.count, res.err = fn()
 		if res.err != nil {
 			reporter.Warnf("%s: Fehler beim Abruf: %v", label, res.err)
@@ -135,17 +136,25 @@ func (p *Plexams) RunScheduledSync(ctx context.Context, cfg ScheduledSyncConfig,
 		report.Sources = append(report.Sources, res)
 	}
 
-	run(cfg.Teachers, "zpa-import-teachers", "Lehrende (ZPA)", func() (int, error) {
+	run(cfg.Teachers, "zpa-import-teachers", "Lehrende (ZPA)", "Lehrende", func() (int, error) {
 		return p.ImportTeachersFromZPA(ctx, reporter)
 	})
-	run(cfg.Exams, "zpa-import-exams", "Prüfungen (ZPA)", func() (int, error) {
+	run(cfg.Exams, "zpa-import-exams", "Prüfungen (ZPA)", "Prüfungen", func() (int, error) {
 		return p.ImportExamsFromZPA(ctx, reporter)
 	})
-	run(cfg.InvigilatorRequirements, "zpa-import-invigilator-requirements", "Aufsichtsbedarf (ZPA)", func() (int, error) {
+	run(cfg.InvigilatorRequirements, "zpa-import-invigilator-requirements", "Aufsichtsbedarf (ZPA)", "Aufsichtsanforderungen", func() (int, error) {
 		return p.ImportInvigilatorRequirementsFromZPA(ctx, reporter)
 	})
-	run(cfg.Anny, "anny-import-bookings", "Anny-Buchungen", func() (int, error) {
-		return 0, p.FetchFromAnny(ctx, reporter)
+	run(cfg.Anny, "anny-import-bookings", "Anny-Buchungen", "Buchungen", func() (int, error) {
+		if err := p.FetchFromAnny(ctx, reporter); err != nil {
+			return 0, err
+		}
+		// count = total stored bookings, so the report can say "keine Buchungen vorhanden".
+		bookings, err := p.AllAnnyBookings(ctx)
+		if err != nil {
+			return 0, nil // count unknown; not fatal for the report
+		}
+		return len(bookings), nil
 	})
 
 	p.attachSyncLogEntries(ctx, report, start)
@@ -272,16 +281,18 @@ func writeSourceSection(b *strings.Builder, s *syncSourceResult) {
 		fmt.Fprintf(b, "%s: FEHLER – %v\n\n", s.label, s.err)
 		return
 	}
-	if s.entry == nil {
-		fmt.Fprintf(b, "%s: %d abgerufen (kein Änderungsprotokoll)\n\n", s.label, s.count)
+	// No changes: either the source is (still) empty — e.g. ZPA has no exams for a fresh
+	// semester yet — or it is unchanged with data.
+	if s.changes() == 0 {
+		if s.count == 0 {
+			fmt.Fprintf(b, "%s: keine %s vorhanden\n\n", s.label, s.noun)
+		} else {
+			fmt.Fprintf(b, "%s: keine Änderungen (%d %s)\n\n", s.label, s.count, s.noun)
+		}
 		return
 	}
 	fmt.Fprintf(b, "%s: %d neu, %d geändert, %d entfallen\n",
 		s.label, s.entry.Added, s.entry.Changed, s.entry.Removed)
-	if s.changes() == 0 {
-		fmt.Fprintf(b, "\n")
-		return
-	}
 	if len(s.entry.Entries) > maxDetailLines {
 		fmt.Fprintf(b, "  (%d Änderungen – Detailliste ausgelassen, z.B. Erstbefüllung)\n\n", len(s.entry.Entries))
 		return

@@ -1,5 +1,6 @@
 # Memory Index
 
+- [program-code degree suffix](program-code-degree-suffix.md) — Kürzel may be degree-suffixed (DC-B/DC-M) internally; `StudyProgram.zpaCode` maps back to 2-letter ZPA at boundaries; semester-safe resolver, no old-semester migration; backend DONE & on main (c9e0d37), Mongo integration + GUI-sync pending.
 - [nightly auto-sync ZPA+Anny](nightly-autosync-zpa-anny.md) — in-process daily scheduler re-pulls ZPA+Anny for active workspace, diffs, mails changes (+heartbeat); backend DONE & on main, `triggerScheduledSync` for on-demand; GUI "Sync jetzt" button pending.
 - [Jira integration](jira-integration.md) — on-prem jira.cc.hm.edu via PAT; backend DONE & on main (jira/ pkg, GraphQL create/read/comment/transition + REST attachment upload, per-user encrypted PATs); GUI pending.
 - [HM OIDC claims](hm-oidc-claims.md) — sso.hm.edu scope→claim map; id_token minimal, claims via UserInfo; department claim = `fhmDepartment`; end_session=/idp/profile/Logout (unused, local logout only).
@@ -20,7 +21,8 @@
 - [pre-planning SEB/EXaHM](preplanning-seb-exahm.md) — DONE: manual pseudo-exams (plexams/preplan_exams.go) sizing Anny bookings; global StudyProgram entity; compaction/overflow solver (preplan_solve.go); link to ZPA ancode later.
 - [ZPA import behaviors](zpa-import-behaviors.md) — import auto-presets to-plan (schriftlich/praktisch→plan, rest→not); stale banners only after first generation.
 - [exam-planning info email](exam-planning-info-email.md) — consolidated per-examer mail replacing constraints+prepared; examPlanningMailRecipients + sendEmailExamPlanningInfo.
-- [MUC.DAI import linking](mucdai-import-linking.md) — import builds explicit mucdai_links (external/zpa/unresolved); candidates + manual set/remove; mucDaiImported state point.
+- [MUC.DAI import linking](mucdai-import-linking.md) — import builds explicit mucdai_links (external/zpa/unresolved); candidates + manual set/remove; mucDaiImported state point. SUPERSEDED by [[mucdai-to-joint-generalization]] (renamed joint_links etc.).
+- [MUC.DAI→joint generalization](mucdai-to-joint-generalization.md) — MUC.DAI special-casing generalized to first-class joint study programs (category joint + jointFaculty label + per-program reserved slots + full MucDai*→Joint* rename); backend DONE (build/test/lint green), GUI-sync pending; enables MUC.HEALTH.
 - [StudentReg dual ancodes](studentreg-dual-ancodes.md) — StudentRegs carry Primuss+ZPA ancode explicitly (intern=ZPA/extern=Primuss); new Ancodes value type; prepare no longer overwrites; +2 MUC.DAI bug fixes; on main (30524ab, 7fbbee7); GUI-sync pending.
 - [Primuss XLSX import](primuss-xlsx-import.md) — GUI ZIP upload (/upload/primuss-zip) replaces ssconvert+mongoimport; group from filename; change detection → update emails.
 - [Terminplan generator design](terminplan-generator-design.md) — DONE: generic SA core (plexams/optimize) shared by all solvers; Terminplan solver plexams/examplan (spread objective, canShareSlot, per-student conflict rating).

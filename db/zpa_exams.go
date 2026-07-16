@@ -33,6 +33,8 @@ func (db *DB) GetZPAExams(ctx context.Context) ([]*model.ZPAExam, error) {
 		return nil, err
 	}
 
+	resolver := db.newProgramResolver(ctx)
+
 	for cur.Next(ctx) {
 		var exam model.ZPAExam
 
@@ -43,7 +45,7 @@ func (db *DB) GetZPAExams(ctx context.Context) ([]*model.ZPAExam, error) {
 			return exams, err
 		}
 
-		db.cleanupPrimussAncodes(&exam)
+		db.cleanupPrimussAncodes(&exam, resolver)
 		addedAncodesForAncode, ok := addedAncodes[exam.AnCode]
 
 		if ok {
@@ -78,7 +80,7 @@ func (db *DB) GetZpaExamByAncode(ctx context.Context, ancode int) (*model.ZPAExa
 		return nil, err
 	}
 
-	db.cleanupPrimussAncodes(&result)
+	db.cleanupPrimussAncodes(&result, db.newProgramResolver(ctx))
 	addedAncodes, err := db.GetAddedAncodesForAncode(ctx, result.AnCode)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).
@@ -239,10 +241,11 @@ func (db *DB) getZPAExamsPlannedOrNot(ctx context.Context, toPlan *bool) ([]*mod
 	}
 
 	exams := make([]*model.ZPAExam, 0, (*ancodeSet).Cardinality())
+	resolver := db.newProgramResolver(ctx)
 
 	for _, zpaExam := range zpaExams {
 		if (*ancodeSet).Contains(zpaExam.AnCode) {
-			db.cleanupPrimussAncodes(zpaExam)
+			db.cleanupPrimussAncodes(zpaExam, resolver)
 			addedAncodesForAncode, ok := addedAncodes[zpaExam.AnCode]
 
 			if ok {
@@ -307,13 +310,109 @@ func (db *DB) getZpaAncodesPlannedOrNot(ctx context.Context, toPlan *bool) (*set
 	return &resultSet, nil
 }
 
-func (db *DB) cleanupPrimussAncodes(zpaExam *model.ZPAExam) {
+// programResolver maps a ZPA study-group name to the internal program shortname
+// used as the per-semester Primuss collection suffix and connect key. It bridges the
+// external (2-letter, possibly non-unique) ZPA code to a possibly degree-suffixed
+// internal program (e.g. "DC" → "DC-B"), using the global StudyProgram master data
+// (ZpaCode field) cross-checked against the programs actually realized in this
+// semester. When no mapping applies it returns the raw 2-letter ZPA code, preserving
+// legacy behaviour for un-suffixed (old) semesters — which makes it semester-safe:
+// an archival "2025-WS" (collections exams_IF) still resolves to "IF", while a new
+// semester (collections exams_IF-B) resolves to "IF-B".
+type programResolver struct {
+	candidatesByCode map[string][]*model.StudyProgram // ZPA code → master programs
+	realized         map[string]bool                  // programs present in this semester (exams_<p>)
+}
+
+// newProgramResolver builds a resolver for the current semester. Errors reading the
+// master data or the semester's programs degrade to raw ZPA codes (legacy behaviour).
+func (db *DB) newProgramResolver(ctx context.Context) *programResolver {
+	r := &programResolver{
+		candidatesByCode: make(map[string][]*model.StudyProgram),
+		realized:         make(map[string]bool),
+	}
+	programs, err := db.StudyPrograms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("program resolver: cannot read study programs; falling back to raw ZPA codes")
+	}
+	for _, prog := range programs {
+		code := prog.ZpaCode
+		if code == "" {
+			code = prog.Shortname
+		}
+		r.candidatesByCode[code] = append(r.candidatesByCode[code], prog)
+	}
+	realized, err := db.GetPrograms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("program resolver: cannot list semester programs")
+	}
+	for _, prog := range realized {
+		r.realized[prog] = true
+	}
+	return r
+}
+
+// program returns the internal program shortname for one ZPA study-group name.
+func (r *programResolver) program(group string) string {
+	if len(group) < 2 {
+		return group
+	}
+	code := group[:2]
+	candidates := r.candidatesByCode[code]
+
+	// Prefer candidates that actually exist as collections this semester.
+	realized := make([]*model.StudyProgram, 0, len(candidates))
+	for _, c := range candidates {
+		if r.realized[c.Shortname] {
+			realized = append(realized, c)
+		}
+	}
+
+	switch len(realized) {
+	case 1:
+		return realized[0].Shortname
+	case 0:
+		// Nothing realized (yet): an old 2-letter semester keeps the raw code; a
+		// single master candidate (e.g. before Primuss import) is used directly.
+		if r.realized[code] {
+			return code
+		}
+		if len(candidates) == 1 {
+			return candidates[0].Shortname
+		}
+		return code
+	default:
+		// Ambiguous ZPA code realized as several programs (e.g. DC → DC-B/DC-M).
+		if sn, ok := degreeSuffixedForGroup(group, realized); ok {
+			return sn
+		}
+		log.Warn().Str("group", group).Str("zpaCode", code).
+			Msg("ambiguous ZPA code maps to several study programs; link the exam manually (primuss ancode / joint link)")
+		return code
+	}
+}
+
+// degreeSuffixedForGroup picks the right degree-suffixed program for an ambiguous
+// ZPA code (one shared by a Bachelor and a Master program, e.g. "DC") by reading the
+// degree from the ZPA study-group name. The exact group format for such dual-code
+// programs is not yet known (ZPA still uses 2-letter codes today), so this is the
+// single, isolated hook to extend once the real group names are known. It returns
+// (shortname, true) only on a confident match; today it never matches, so ambiguous
+// exams fall back to the raw code and are linked manually.
+func degreeSuffixedForGroup(_ string, _ []*model.StudyProgram) (string, bool) {
+	// TODO(program-codes): derive Bachelor/Master from the group string and match
+	// against candidate.Degree once the ZPA group naming for dual codes is known.
+	return "", false
+}
+
+func (db *DB) cleanupPrimussAncodes(zpaExam *model.ZPAExam, resolver *programResolver) {
 	programs := set.NewSet[string]()
 
 	ancodesMap := make(map[string]int)
 	for _, group := range zpaExam.Groups {
-		ancodesMap[group[:2]] = -1
-		programs.Add(group[:2])
+		program := resolver.program(group)
+		ancodesMap[program] = -1
+		programs.Add(program)
 	}
 
 	for _, primussAncode := range zpaExam.PrimussAncodes {

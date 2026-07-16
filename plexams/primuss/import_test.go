@@ -13,13 +13,15 @@ func TestDetectPrimussFile(t *testing.T) {
 		wantProgram string
 		wantKind    string
 	}{
-		{"Prüfungsanmeldungen-IF-B-126.xlsx", "IF", "studentregs"},
-		{"Prüfungskatalog-IF-B-126.xlsx", "IF", "exams"},
-		{"Prüfungsplanung-IB-B-126.xlsx", "IB", "count"},
-		{"Prüfungsüberschneidungen_nach_AnCode-IF-M-126.xlsx", "IF", "conflicts"},
-		{"Prüfungsüberschneidungen-IF-B-126.xlsx", "IF", ""}, // CodeNr-keyed variant -> ignored
-		{"random.xlsx", "", ""},                              // no program code
-		{"Prüfungsanmeldungen-DC-M-99.xlsx", "DC", "studentregs"},
+		// the degree marker stays part of the program code (DC-B vs DC-M distinct)
+		{"Prüfungsanmeldungen-IF-B-126.xlsx", "IF-B", "studentregs"},
+		{"Prüfungskatalog-IF-B-126.xlsx", "IF-B", "exams"},
+		{"Prüfungsplanung-IB-B-126.xlsx", "IB-B", "count"},
+		{"Prüfungsüberschneidungen_nach_AnCode-IF-M-126.xlsx", "IF-M", "conflicts"},
+		{"Prüfungsüberschneidungen-IF-B-126.xlsx", "IF-B", ""}, // CodeNr-keyed variant -> ignored
+		{"random.xlsx", "", ""}, // no program code
+		{"Prüfungsanmeldungen-DC-B-99.xlsx", "DC-B", "studentregs"},
+		{"Prüfungsanmeldungen-DC-M-99.xlsx", "DC-M", "studentregs"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.base, func(t *testing.T) {

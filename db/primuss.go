@@ -18,7 +18,10 @@ func (db *DB) GetPrograms(ctx context.Context) ([]string, error) {
 			Key: "name",
 			Value: bson.D{
 				primitive.E{Key: "$regex",
-					Value: primitive.Regex{Pattern: "exams_..$"},
+					// program code: 2-4 letters, optionally a "-B"/"-M" degree suffix
+					// (e.g. exams_IF, exams_DC-B). Precise so it never matches an
+					// unrelated collection whose name happens to start with "exams_".
+					Value: primitive.Regex{Pattern: `^exams_[A-Z]{2,4}(-[BM])?$`},
 				},
 			},
 		}})

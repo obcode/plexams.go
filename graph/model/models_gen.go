@@ -689,10 +689,10 @@ type GenerationConfigInput struct {
 	RoomHeatBaselineHour    float64                       `json:"roomHeatBaselineHour"`
 }
 
-type ImportMucDaiResult struct {
+type ImportJointResult struct {
 	// programs (Studiengruppen) found in the CSV.
 	Programs []string `json:"programs"`
-	// total exam rows imported into the mucdai_<program> collections.
+	// total exam rows imported into the joint_<program> collections.
 	ExamsImported int `json:"examsImported"`
 	// new non-ZPA exams created (non-FK07, not existing yet).
 	ExamsCreated int `json:"examsCreated"`
@@ -863,29 +863,7 @@ type JiraUser struct {
 	EmailAddress string `json:"emailAddress"`
 }
 
-// LogLine is one streamed line of output. text carries the rendered line including
-// ANSI color codes, so a terminal-like frontend can display it verbatim. progress
-// is only set when level is PROGRESS; report is only set on the final RESULT line
-// of an invigilation generation and carries the structured outcome.
-type LogLine struct {
-	Level      LogLevel            `json:"level"`
-	Text       string              `json:"text"`
-	Progress   *OptimizerProgress  `json:"progress,omitempty"`
-	Report     *InvigilationReport `json:"report,omitempty"`
-	Validation *ValidationReport   `json:"validation,omitempty"`
-	ExamReport *ExamScheduleReport `json:"examReport,omitempty"`
-	RoomReport *RoomPlanReport     `json:"roomReport,omitempty"`
-}
-
-// MinutesReport: distribution of assigned vs. target minutes around the tolerance band.
-type MinutesReport struct {
-	WithinTolerance int `json:"withinTolerance"`
-	Over            int `json:"over"`
-	Under           int `json:"under"`
-	ToleranceMin    int `json:"toleranceMin"`
-}
-
-type MucDaiExam struct {
+type JointExam struct {
 	PrimussAncode  int    `json:"primussAncode"`
 	Module         string `json:"module"`
 	MainExamer     string `json:"mainExamer"`
@@ -906,6 +884,39 @@ type MucDaiExam struct {
 	LinkStatus string `json:"linkStatus"`
 	// The plan entry, if planned: dayNumber/slotNumber = my time, externalTime = the other faculty's time.
 	PlanEntry *PlanEntry `json:"planEntry,omitempty"`
+}
+
+// The reserved grid slots (matching the allowed times) for one joint study program.
+type JointProgramSlots struct {
+	Program string  `json:"program"`
+	Slots   []*Slot `json:"slots"`
+}
+
+type JointProgramTimesInput struct {
+	Program      string       `json:"program"`
+	AllowedTimes []*time.Time `json:"allowedTimes"`
+}
+
+// LogLine is one streamed line of output. text carries the rendered line including
+// ANSI color codes, so a terminal-like frontend can display it verbatim. progress
+// is only set when level is PROGRESS; report is only set on the final RESULT line
+// of an invigilation generation and carries the structured outcome.
+type LogLine struct {
+	Level      LogLevel            `json:"level"`
+	Text       string              `json:"text"`
+	Progress   *OptimizerProgress  `json:"progress,omitempty"`
+	Report     *InvigilationReport `json:"report,omitempty"`
+	Validation *ValidationReport   `json:"validation,omitempty"`
+	ExamReport *ExamScheduleReport `json:"examReport,omitempty"`
+	RoomReport *RoomPlanReport     `json:"roomReport,omitempty"`
+}
+
+// MinutesReport: distribution of assigned vs. target minutes around the tolerance band.
+type MinutesReport struct {
+	WithinTolerance int `json:"withinTolerance"`
+	Over            int `json:"over"`
+	Under           int `json:"under"`
+	ToleranceMin    int `json:"toleranceMin"`
 }
 
 type Mutation struct {
@@ -1351,13 +1362,14 @@ type SemesterConfig struct {
 	Days       []*ExamDay   `json:"days"`
 	Starttimes []*Starttime `json:"starttimes"`
 	Slots      []*Slot      `json:"slots"`
-	// Absolute start times allowed for MUC.DAI exams (echo of the raw config).
-	MucDaiAllowedTimes []*time.Time `json:"mucDaiAllowedTimes,omitempty"`
-	MucDaiSlots        []*Slot      `json:"mucDaiSlots"`
-	ForbiddenSlots     []*Slot      `json:"forbiddenSlots,omitempty"`
-	From               time.Time    `json:"from"`
-	Until              time.Time    `json:"until"`
-	Emails             *Emails      `json:"emails"`
+	// Reserved start times per joint study program (echo of the raw config).
+	JointProgramAllowedTimes []*JointProgramTimes `json:"jointProgramAllowedTimes,omitempty"`
+	// Reserved grid slots per joint study program (derived from jointProgramAllowedTimes).
+	JointProgramSlots []*JointProgramSlots `json:"jointProgramSlots"`
+	ForbiddenSlots    []*Slot              `json:"forbiddenSlots,omitempty"`
+	From              time.Time            `json:"from"`
+	Until             time.Time            `json:"until"`
+	Emails            *Emails              `json:"emails"`
 	// Effective travel/break buffer (minutes) between a student's consecutive exams.
 	ExamGapMinutes int `json:"examGapMinutes"`
 	// Effective turnaround (minutes) between two uses of a room / between two invigilations.
@@ -1375,9 +1387,9 @@ type SemesterConfigInputData struct {
 	Until         time.Time    `json:"until"`
 	StartTimes    []string     `json:"startTimes"`
 	ForbiddenDays []*time.Time `json:"forbiddenDays,omitempty"`
-	// Absolute start times allowed for MUC.DAI exams (currently "morning vs afternoon"; will become allowed/forbidden times).
-	MucDaiAllowedTimes []*time.Time `json:"mucDaiAllowedTimes,omitempty"`
-	Emails             *EmailsInput `json:"emails"`
+	// Absolute start times reserved per joint study program (one entry per program, e.g. DE/GS/ID).
+	JointProgramAllowedTimes []*JointProgramTimesInput `json:"jointProgramAllowedTimes,omitempty"`
+	Emails                   *EmailsInput              `json:"emails"`
 	// Travel/break buffer (minutes) a student needs between two consecutive exams (null = default).
 	ExamGapMinutes *int `json:"examGapMinutes,omitempty"`
 	// Minimum turnaround (minutes) between two uses of a room / between two invigilations (null = default).
@@ -1500,6 +1512,7 @@ type StudyProgramInput struct {
 	Active            bool    `json:"active"`
 	Retired           bool    `json:"retired"`
 	ExternalExamsBase *int    `json:"externalExamsBase,omitempty"`
+	JointFaculty      *string `json:"jointFaculty,omitempty"`
 }
 
 type Subscription struct {

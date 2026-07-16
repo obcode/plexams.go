@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type MucDaiExam struct {
+type JointExam struct {
 	PrimussAncode  int    `bson:"Nr"`
 	Module         string `bson:"Modulname"`
 	ExamType       string `bson:"Prüfungsform"`
@@ -21,9 +21,9 @@ type MucDaiExam struct {
 	Planer         string `bson:"Prüfungsplanung"`
 }
 
-// ReplaceMucDaiExamsForProgram drops and refills the mucdai_<program> collection.
-func (db *DB) ReplaceMucDaiExamsForProgram(ctx context.Context, program string, exams []*MucDaiExam) error {
-	collection := db.getMucDaiCollection(program)
+// ReplaceJointExamsForProgram drops and refills the joint_<program> collection.
+func (db *DB) ReplaceJointExamsForProgram(ctx context.Context, program string, exams []*JointExam) error {
+	collection := db.getJointCollection(program)
 
 	if err := collection.Drop(ctx); err != nil {
 		log.Error().Err(err).Str("program", program).Msg("cannot drop MUC.DAI collection")
@@ -43,8 +43,8 @@ func (db *DB) ReplaceMucDaiExamsForProgram(ctx context.Context, program string, 
 	return nil
 }
 
-func (db *DB) MucDaiExamsForProgram(ctx context.Context, program string) ([]*MucDaiExam, error) {
-	collection := db.getMucDaiCollection(program)
+func (db *DB) JointExamsForProgram(ctx context.Context, program string) ([]*JointExam, error) {
+	collection := db.getJointCollection(program)
 
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{Key: "Nr", Value: 1}})
@@ -55,7 +55,7 @@ func (db *DB) MucDaiExamsForProgram(ctx context.Context, program string) ([]*Muc
 	}
 	defer cur.Close(ctx) //nolint:errcheck
 
-	exams := make([]*MucDaiExam, 0)
+	exams := make([]*JointExam, 0)
 	err = cur.All(ctx, &exams)
 	if err != nil {
 		log.Error().Err(err).Str("program", program).Msg("cannot decode exams for MUC.DAI program")
@@ -65,10 +65,10 @@ func (db *DB) MucDaiExamsForProgram(ctx context.Context, program string) ([]*Muc
 	return exams, nil
 }
 
-func (db *DB) MucDaiExam(ctx context.Context, program string, ancode int) (*MucDaiExam, error) {
-	collection := db.getMucDaiCollection(program)
+func (db *DB) JointExam(ctx context.Context, program string, ancode int) (*JointExam, error) {
+	collection := db.getJointCollection(program)
 
-	var exam MucDaiExam
+	var exam JointExam
 
 	err := collection.FindOne(ctx, bson.D{{Key: "Nr", Value: ancode}}).Decode(&exam)
 	if err != nil {

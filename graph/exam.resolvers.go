@@ -67,9 +67,9 @@ func (r *queryResolver) PlannedExam(ctx context.Context, ancode int) (*model.Pla
 	return r.plexams.PlannedExam(ctx, ancode)
 }
 
-// MucdaiExams is the resolver for the mucdaiExams field.
-func (r *queryResolver) MucdaiExams(ctx context.Context) ([]*model.MucDaiExam, error) {
-	return r.plexams.MucdaiExams(ctx)
+// JointExams is the resolver for the jointExams field.
+func (r *queryResolver) JointExams(ctx context.Context) ([]*model.JointExam, error) {
+	return r.plexams.JointExams(ctx)
 }
 
 // ConflictingAncodes is the resolver for the conflictingAncodes field.

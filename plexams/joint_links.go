@@ -11,26 +11,26 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// MUC.DAI link status values exposed on model.MucDaiExam.LinkStatus.
+// MUC.DAI link status values exposed on model.JointExam.LinkStatus.
 const (
-	mucDaiLinkExternal   = "external"   // auto-created external exam, linked
-	mucDaiLinkZPA        = "zpa"        // linked to a ZPA exam
-	mucDaiLinkUnresolved = "unresolved" // FK07 exam without a clear ZPA match
+	jointLinkExternal   = "external"   // auto-created external exam, linked
+	jointLinkZPA        = "zpa"        // linked to a ZPA exam
+	jointLinkUnresolved = "unresolved" // FK07 exam without a clear ZPA match
 )
 
-// relinkMucDaiExams (re)builds the explicit mucdai_links collection for all imported
+// relinkJointExams (re)builds the explicit joint_links collection for all imported
 // MUC.DAI exams: non-FK07 exams link to their auto-created external exam, FK07 exams to
 // the ZPA exam whose primussAncodes contain (program, primussAncode) exactly (unique
 // match → linked, otherwise unresolved). Manual links (source=manual) are preserved.
 // Links for exams no longer present are removed.
-func (p *Plexams) relinkMucDaiExams(ctx context.Context) error {
-	programs := p.mucdaiProgramNames(ctx)
+func (p *Plexams) relinkJointExams(ctx context.Context) error {
+	programs := p.jointProgramNames(ctx)
 
-	existing, err := p.dbClient.MucDaiLinks(ctx)
+	existing, err := p.dbClient.JointLinks(ctx)
 	if err != nil {
 		return err
 	}
-	linkByKey := make(map[primussKey]*db.MucDaiLink, len(existing))
+	linkByKey := make(map[primussKey]*db.JointLink, len(existing))
 	for _, l := range existing {
 		linkByKey[primussKey{l.Program, l.PrimussAncode}] = l
 	}
@@ -47,7 +47,7 @@ func (p *Plexams) relinkMucDaiExams(ctx context.Context) error {
 
 	valid := make(map[primussKey]bool)
 	for _, program := range programs {
-		exams, err := p.MucDaiExamsForProgram(ctx, program)
+		exams, err := p.JointExamsForProgram(ctx, program)
 		if err != nil {
 			return err
 		}
@@ -58,13 +58,13 @@ func (p *Plexams) relinkMucDaiExams(ctx context.Context) error {
 			// preserve a manual link, only refreshing the display snapshot
 			if l := linkByKey[key]; l != nil && l.Source == "manual" {
 				l.Module, l.MainExamer = e.Module, e.MainExamer
-				if err := p.dbClient.UpsertMucDaiLink(ctx, l); err != nil {
+				if err := p.dbClient.UpsertJointLink(ctx, l); err != nil {
 					return err
 				}
 				continue
 			}
 
-			if err := p.dbClient.UpsertMucDaiLink(ctx, autoMucDaiLink(e, zpaByPrimuss, externalMap)); err != nil {
+			if err := p.dbClient.UpsertJointLink(ctx, autoJointLink(e, zpaByPrimuss, externalMap)); err != nil {
 				return err
 			}
 		}
@@ -73,34 +73,34 @@ func (p *Plexams) relinkMucDaiExams(ctx context.Context) error {
 	// drop links of exams that are no longer in the imported data
 	for key := range linkByKey {
 		if !valid[key] {
-			if err := p.dbClient.DeleteMucDaiLink(ctx, key.program, key.ancode); err != nil {
+			if err := p.dbClient.DeleteJointLink(ctx, key.program, key.ancode); err != nil {
 				log.Error().Err(err).Str("program", key.program).Int("ancode", key.ancode).
-					Msg("cannot delete stale mucdai link")
+					Msg("cannot delete stale joint link")
 			}
 		}
 	}
 	return nil
 }
 
-// autoMucDaiLink computes the automatic link for one MUC.DAI exam: FK07-planned exams
+// autoJointLink computes the automatic link for one MUC.DAI exam: FK07-planned exams
 // link to the ZPA exam whose primussAncodes contain (program, primussAncode) exactly
 // (unique match → linked, else unresolved); other faculties' exams link to their
 // auto-created external exam. Pure (no DB), so it is unit-testable.
-func autoMucDaiLink(e *model.MucDaiExam, zpaByPrimuss map[primussKey][]int, externalMap map[primussKey]int) *db.MucDaiLink {
+func autoJointLink(e *model.JointExam, zpaByPrimuss map[primussKey][]int, externalMap map[primussKey]int) *db.JointLink {
 	key := primussKey{e.Program, e.PrimussAncode}
-	link := &db.MucDaiLink{
+	link := &db.JointLink{
 		Program: e.Program, PrimussAncode: e.PrimussAncode,
 		Source: "auto", Module: e.Module, MainExamer: e.MainExamer,
 		Status: "unresolved",
 	}
-	if strings.EqualFold(strings.TrimSpace(e.PlannedBy), mucDaiPlannerFK07) {
-		link.Kind = mucDaiLinkZPA
+	if strings.EqualFold(strings.TrimSpace(e.PlannedBy), jointPlannerFK07) {
+		link.Kind = jointLinkZPA
 		if zas := zpaByPrimuss[key]; len(zas) == 1 {
 			a := zas[0]
 			link.Ancode, link.Status = &a, "linked"
 		}
 	} else {
-		link.Kind = mucDaiLinkExternal
+		link.Kind = jointLinkExternal
 		if a, ok := externalMap[key]; ok {
 			aa := a
 			link.Ancode, link.Status = &aa, "linked"
@@ -109,10 +109,10 @@ func autoMucDaiLink(e *model.MucDaiExam, zpaByPrimuss map[primussKey][]int, exte
 	return link
 }
 
-// SetMucDaiZpaLink manually links a MUC.DAI exam to a ZPA exam (the unresolved/wrong
+// SetJointZpaLink manually links a MUC.DAI exam to a ZPA exam (the unresolved/wrong
 // FK07 cases). Stored as a manual link that survives re-imports. Returns the updated exam.
-func (p *Plexams) SetMucDaiZpaLink(ctx context.Context, program string, primussAncode, zpaAncode int) (*model.MucDaiExam, error) {
-	mucExam, err := p.dbClient.MucDaiExam(ctx, program, primussAncode)
+func (p *Plexams) SetJointZpaLink(ctx context.Context, program string, primussAncode, zpaAncode int) (*model.JointExam, error) {
+	mucExam, err := p.dbClient.JointExam(ctx, program, primussAncode)
 	if err != nil || mucExam == nil {
 		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
 	}
@@ -121,19 +121,19 @@ func (p *Plexams) SetMucDaiZpaLink(ctx context.Context, program string, primussA
 		return nil, fmt.Errorf("no ZPA exam with ancode %d", zpaAncode)
 	}
 	a := zpaAncode
-	if err := p.dbClient.UpsertMucDaiLink(ctx, &db.MucDaiLink{
+	if err := p.dbClient.UpsertJointLink(ctx, &db.JointLink{
 		Program: program, PrimussAncode: primussAncode,
-		Kind: mucDaiLinkZPA, Ancode: &a, Status: "linked", Source: "manual",
+		Kind: jointLinkZPA, Ancode: &a, Status: "linked", Source: "manual",
 		Module: mucExam.Module, MainExamer: mucExam.MainExamer,
 	}); err != nil {
 		return nil, err
 	}
-	return p.enrichedMucDaiExam(ctx, program, primussAncode)
+	return p.enrichedJointExam(ctx, program, primussAncode)
 }
 
-// RemoveMucDaiLink drops a (manual) link and falls back to automatic detection.
-func (p *Plexams) RemoveMucDaiLink(ctx context.Context, program string, primussAncode int) (*model.MucDaiExam, error) {
-	mucExam, err := p.dbClient.MucDaiExam(ctx, program, primussAncode)
+// RemoveJointLink drops a (manual) link and falls back to automatic detection.
+func (p *Plexams) RemoveJointLink(ctx context.Context, program string, primussAncode int) (*model.JointExam, error) {
+	mucExam, err := p.dbClient.JointExam(ctx, program, primussAncode)
 	if err != nil || mucExam == nil {
 		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
 	}
@@ -145,29 +145,29 @@ func (p *Plexams) RemoveMucDaiLink(ctx context.Context, program string, primussA
 	if err != nil {
 		return nil, err
 	}
-	if err := p.dbClient.UpsertMucDaiLink(ctx, autoMucDaiLink(p.mkMucdaiExam(mucExam), zpaByPrimuss, externalMap)); err != nil {
+	if err := p.dbClient.UpsertJointLink(ctx, autoJointLink(p.mkJointExam(mucExam), zpaByPrimuss, externalMap)); err != nil {
 		return nil, err
 	}
-	return p.enrichedMucDaiExam(ctx, program, primussAncode)
+	return p.enrichedJointExam(ctx, program, primussAncode)
 }
 
-// enrichedMucDaiExam loads one MUC.DAI exam and fills its link status/ancode/plan entry.
-func (p *Plexams) enrichedMucDaiExam(ctx context.Context, program string, primussAncode int) (*model.MucDaiExam, error) {
-	mucExam, err := p.dbClient.MucDaiExam(ctx, program, primussAncode)
+// enrichedJointExam loads one MUC.DAI exam and fills its link status/ancode/plan entry.
+func (p *Plexams) enrichedJointExam(ctx context.Context, program string, primussAncode int) (*model.JointExam, error) {
+	mucExam, err := p.dbClient.JointExam(ctx, program, primussAncode)
 	if err != nil || mucExam == nil {
 		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
 	}
-	exam := p.mkMucdaiExam(mucExam)
-	p.enrichMucDaiExams(ctx, []*model.MucDaiExam{exam})
+	exam := p.mkJointExam(mucExam)
+	p.enrichJointExams(ctx, []*model.JointExam{exam})
 	return exam, nil
 }
 
-// MucDaiZpaCandidates suggests ZPA exams for linking an (unresolved) MUC.DAI exam,
+// JointZpaCandidates suggests ZPA exams for linking an (unresolved) MUC.DAI exam,
 // ranked: the program carried with a missing number (0/-1) first, then same examer +
 // similar module, then either. Only exams marked "to plan" are offered — linking to
 // an exam that isn't being planned makes no sense.
-func (p *Plexams) MucDaiZpaCandidates(ctx context.Context, program string, primussAncode int) ([]*model.ZPAExam, error) {
-	muc, err := p.dbClient.MucDaiExam(ctx, program, primussAncode)
+func (p *Plexams) JointZpaCandidates(ctx context.Context, program string, primussAncode int) ([]*model.ZPAExam, error) {
+	muc, err := p.dbClient.JointExam(ctx, program, primussAncode)
 	if err != nil {
 		return nil, err
 	}

@@ -43,7 +43,7 @@ var assembledExamsDirtyOps = map[string]bool{
 	"importExamsFromZPA":    true,
 	"importStudentsFromZPA": true,
 	// MUC.DAI import adds/removes non-ZPA exams
-	"importMucDaiExams": true,
+	"importJointExams": true,
 	// linking a pre-exam carries its constraints over to the ZPA exam
 	"connectPreplanExamToAncode": true,
 }

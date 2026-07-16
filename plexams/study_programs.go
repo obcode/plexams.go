@@ -35,10 +35,34 @@ func (p *Plexams) DeleteStudyProgram(ctx context.Context, shortname string) (boo
 	return p.dbClient.DeleteStudyProgram(ctx, shortname)
 }
 
+// jointFacultyConfig is one joint Studienfakultät (e.g. MUC.DAI / MUC.HEALTH) and
+// its study programs, as read from the `jointfaculties` config list.
+type jointFacultyConfig struct {
+	Name     string   `mapstructure:"name"`
+	Programs []string `mapstructure:"programs"`
+}
+
+// jointFacultyConfigsFromViper reads the joint Studienfakultäten (each with its
+// program list) from the `jointfaculties` config block. Falls back to the legacy
+// flat `mucdaiprograms` list (seeded as MUC.DAI) when no `jointfaculties` block is
+// present, so old configs keep working.
+func jointFacultyConfigsFromViper() []jointFacultyConfig {
+	var jfs []jointFacultyConfig
+	if err := viper.UnmarshalKey("jointfaculties", &jfs); err != nil {
+		log.Error().Err(err).Msg("cannot read jointfaculties config")
+	}
+	if len(jfs) == 0 {
+		if legacy := viper.GetStringSlice("mucdaiprograms"); len(legacy) > 0 {
+			jfs = []jointFacultyConfig{{Name: "MUC.DAI", Programs: legacy}}
+		}
+	}
+	return jfs
+}
+
 // SeedStudyProgramsFromConfig creates study programs from the configured program
-// lists — fk07programs, oldprograms (retired fk07), mucdaiprograms (DE/GS/ID) and
-// miscprograms (default GN) — without overwriting any that already exist. Returns
-// the number newly created.
+// lists — fk07programs, oldprograms (retired fk07), the joint Studienfakultäten
+// (jointfaculties, e.g. MUC.DAI DE/GS/ID + MUC.HEALTH) and miscprograms (default
+// GN) — without overwriting any that already exist. Returns the number newly created.
 func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) {
 	existing, err := p.dbClient.StudyPrograms(ctx)
 	if err != nil {
@@ -54,16 +78,20 @@ func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) 
 		miscPrograms = []string{"GN"}
 	}
 
-	seedSets := []struct {
-		category   string
-		retired    bool
-		external   bool // read externalExamsBase.<shortname> from config
-		shortnames []string
-	}{
-		{"fk07", false, false, viper.GetStringSlice("zpa.fk07programs")},
-		{"fk07", true, false, viper.GetStringSlice("zpa.oldprograms")},
-		{"mucdai", false, true, viper.GetStringSlice("mucdaiprograms")},
-		{"misc", false, true, miscPrograms},
+	type seedSet struct {
+		category     string
+		retired      bool
+		external     bool   // read externalExamsBase.<shortname> from config
+		jointFaculty string // set for category "joint"
+		shortnames   []string
+	}
+	seedSets := []seedSet{
+		{"fk07", false, false, "", viper.GetStringSlice("zpa.fk07programs")},
+		{"fk07", true, false, "", viper.GetStringSlice("zpa.oldprograms")},
+		{"misc", false, true, "", miscPrograms},
+	}
+	for _, jf := range jointFacultyConfigsFromViper() {
+		seedSets = append(seedSets, seedSet{"joint", false, true, jf.Name, jf.Programs})
 	}
 
 	created := 0
@@ -83,6 +111,10 @@ func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) 
 				Active:    !set.retired,
 				Retired:   set.retired,
 			}
+			if set.jointFaculty != "" {
+				jf := set.jointFaculty
+				program.JointFaculty = &jf
+			}
 			if set.external {
 				if base := viper.GetInt(fmt.Sprintf("externalExamsBase.%s", shortname)); base > 0 {
 					b := base
@@ -97,6 +129,30 @@ func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) 
 		}
 	}
 	return created, nil
+}
+
+// migrateMucdaiToJoint upgrades legacy study programs (category "mucdai") to the
+// generalized joint-program model: category "joint" + jointFaculty "MUC.DAI".
+// Idempotent (a no-op once migrated). Global master data (~3 docs), run at startup.
+func (p *Plexams) migrateMucdaiToJoint(ctx context.Context) {
+	programs, err := p.dbClient.StudyPrograms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot read study programs for mucdai→joint migration")
+		return
+	}
+	mucDai := "MUC.DAI"
+	for _, prog := range programs {
+		if prog.Category != "mucdai" {
+			continue
+		}
+		prog.Category = "joint"
+		if prog.JointFaculty == nil {
+			prog.JointFaculty = &mucDai
+		}
+		if err := p.dbClient.UpsertStudyProgram(ctx, prog); err != nil {
+			log.Error().Err(err).Str("shortname", prog.Shortname).Msg("cannot migrate mucdai program to joint")
+		}
+	}
 }
 
 // externalExamsBaseForProgram returns the base ancode for external (e.g. MUC.DAI)

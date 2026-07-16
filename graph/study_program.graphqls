@@ -9,7 +9,7 @@ extend type Mutation {
   "Delete a study program by its shortname. Returns false if there was none."
   deleteStudyProgram(shortname: String!): Boolean!
   """
-  Seed study programs from the configured lists (fk07programs, mucdaiprograms,
+  Seed study programs from the configured lists (fk07programs, joint faculties,
   miscprograms) without overwriting existing ones. Returns the number created.
   """
   seedStudyProgramsFromConfig: Int!
@@ -22,17 +22,22 @@ type StudyProgram {
   name: String!
   "e.g. Bachelor / Master."
   degree: String
-  "Origin/grouping: fk07 | mucdai | misc."
+  "Origin/grouping: fk07 | joint | misc."
   category: String!
   active: Boolean!
   "A retired fk07 program counts as an \"old program\" (no longer planned)."
   retired: Boolean!
   """
-  Base ancode for external (e.g. MUC.DAI) exams of this program: the local ZPA
-  ancode is externalExamsBase + primussAncode. Only for externally imported
-  programs (mucdai/misc).
+  Base ancode for external (e.g. joint-program) exams of this program: the local
+  ZPA ancode is externalExamsBase + primussAncode. Only for externally imported
+  programs (joint/misc).
   """
   externalExamsBase: Int
+  """
+  The joint Studienfakultät this program belongs to (e.g. "MUC.DAI" |
+  "MUC.HEALTH"). Set exactly for category "joint" programs.
+  """
+  jointFaculty: String
 }
 
 input StudyProgramInput {
@@ -43,4 +48,5 @@ input StudyProgramInput {
   active: Boolean!
   retired: Boolean!
   externalExamsBase: Int
+  jointFaculty: String
 }

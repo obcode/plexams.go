@@ -2,11 +2,22 @@ package model
 
 import "time"
 
+// JointProgramTimes are the absolute start times reserved for one joint study
+// program's exams (e.g. DE / GS / ID of MUC.DAI, or a MUC.HEALTH program). Each
+// joint program can have its own reserved window; an exam is restricted to the
+// intersection of the reserved slots of all joint programs its students belong to.
+type JointProgramTimes struct {
+	// Program is the study program shortname (Kürzel), e.g. "DE".
+	Program string `json:"program" bson:"program"`
+	// AllowedTimes are the absolute start times reserved for this program.
+	AllowedTimes []time.Time `json:"allowedTimes" bson:"allowedTimes"`
+}
+
 // SemesterConfigInput holds the raw, editable per-semester configuration — the
 // values that used to live in <semester>.yaml. It is the source of truth from
-// which the derived SemesterConfig (days, slots, MUC.DAI slots, forbidden slots)
-// is computed in deriveSemesterConfig. It is persisted in the per-semester DB
-// (collection semester_config_input).
+// which the derived SemesterConfig (days, slots, joint-program slots, forbidden
+// slots) is computed in deriveSemesterConfig. It is persisted in the per-semester
+// DB (collection semester_config_input).
 type SemesterConfigInput struct {
 	// From is the start of the planning period; day 1 = from. Exams of other
 	// faculties may have earlier dates (or a negative day number); there is no
@@ -18,9 +29,14 @@ type SemesterConfigInput struct {
 	// ForbiddenDays are full days inside the planning window on which no exams may
 	// be scheduled.
 	ForbiddenDays []time.Time `json:"forbiddenDays,omitempty" bson:"forbiddenDays,omitempty"`
-	// MucDaiAllowedTimes are the absolute start times allowed for MUC.DAI exams
-	// (currently "morning vs afternoon"; will become allowed/forbidden times).
-	MucDaiAllowedTimes []time.Time `json:"mucDaiAllowedTimes,omitempty" bson:"mucDaiAllowedTimes,omitempty"`
+	// JointProgramAllowedTimes are the absolute start times reserved per joint study
+	// program (one entry per program, e.g. DE/GS/ID/…). Replaces the former single
+	// MucDaiAllowedTimes list.
+	JointProgramAllowedTimes []*JointProgramTimes `json:"jointProgramAllowedTimes,omitempty" bson:"jointProgramAllowedTimes,omitempty"`
+	// MucDaiAllowedTimes is the LEGACY single MUC.DAI reserved-times list. Kept only
+	// so a stored pre-migration config still decodes; on load it seeds every joint
+	// program's times when JointProgramAllowedTimes is empty (see loadSemesterConfig).
+	MucDaiAllowedTimes []time.Time `json:"-" bson:"mucDaiAllowedTimes,omitempty"`
 	Emails             *Emails     `json:"emails" bson:"emails"`
 	// ExamGapMinutes is the travel/break buffer a student needs between two of their
 	// consecutive exams (nil = use the built-in default). See defaultExamGapMinutes.

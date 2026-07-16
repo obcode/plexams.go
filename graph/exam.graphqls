@@ -8,7 +8,7 @@ extend type Query {
   plannedExams: [PlannedExam!]!
   plannedExam(ancode: Int!): PlannedExam
 
-  mucdaiExams: [MucDaiExam!]!
+  jointExams: [JointExam!]!
 
   conflictingAncodes(ancode: Int!): [Conflict!]
 }
@@ -108,7 +108,7 @@ type PlannedExam {
   plannedRooms: [PlannedRoom!]
 }
 
-type MucDaiExam {
+type JointExam {
   primussAncode: Int!
   module: String!
   mainExamer: String!

@@ -67,8 +67,8 @@ type ExamScheduleResult struct {
 	// that room. See buildExamPlanProblem.
 	ExahmNtaAncodes []int
 	// UnplacedReasons explains, per unplaced exam, why it could not be scheduled — a
-	// structural reason (no allowed MUC.DAI time, no EXaHM/SEB booking covers its window) or,
-	// when it did have candidate slots, that none stayed free in this run.
+	// structural reason (no allowed joint-program time, no EXaHM/SEB booking covers its
+	// window) or, when it did have candidate slots, that none stayed free in this run.
 	UnplacedReasons []*UnplacedExamReason
 }
 
@@ -80,7 +80,7 @@ type UnplacedExamReason struct {
 
 // reasons an exam can never be placed, decided during problem construction (before solving).
 const (
-	unplaceableNoMucDaiSlot   = "keine passende MUC.DAI-Zeit (Fachtermine ∩ MUC.DAI-Zeiten leer)"
+	unplaceableNoJointSlot    = "keine passende Zeit für den gemeinsamen Studiengang (Fachtermine ∩ reservierte Zeiten leer)"
 	unplaceableNoExahmBooking = "keine EXaHM/SEB-Buchung deckt das Prüfungsfenster (Prüfungsdauer + Puffer)"
 	// %s is filled with the concrete window bound (e.g. "nicht vor 10:00" / "nicht nach 14:00").
 	unplaceableOutsideTimeWindow = "kein erlaubter Slot im Zeitfenster (%s); ggf. Enforcement auf SOFT stellen"
@@ -437,39 +437,71 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		return nil, nil, err
 	}
 
-	// MUC.DAI restriction: any exam a MUC.DAI-program student (DE/GS/ID) is registered
-	// for must be scheduled in a MUC.DAI slot — this includes normal ZPA exams (e.g.
-	// 134/118) that a MUC.DAI student takes, not only the external MUC.DAI exams.
-	mucDaiProg := make(map[string]bool)
-	for _, prog := range p.mucdaiProgramNames(ctx) {
-		mucDaiProg[prog] = true
+	// Joint-program restriction: any exam a joint-program student (e.g. MUC.DAI DE/GS/ID
+	// or a MUC.HEALTH program) is registered for must be scheduled in that program's
+	// reserved slots — this includes normal ZPA exams (e.g. 134/118) a joint-program
+	// student takes, not only the external joint exams. An exam spanning several joint
+	// programs is restricted to the INTERSECTION of their reserved slots. A joint program
+	// with no reserved times configured imposes no restriction.
+	jointProg := make(map[string]bool)
+	for _, prog := range p.jointProgramNames(ctx) {
+		jointProg[prog] = true
 	}
-	mucDaiSlotIdx := make([]int, 0)
-	for _, t := range sc.MucDaiAllowedTimes {
-		if idx, ok := slotIndexAt(slotStarts, *t); ok {
-			mucDaiSlotIdx = append(mucDaiSlotIdx, idx)
+	// progSlotIdx: joint program shortname → its reserved slot indices (only programs
+	// that actually have reserved slots configured).
+	progSlotIdx := make(map[string][]int)
+	for _, jps := range sc.JointProgramSlots {
+		if jps == nil {
+			continue
+		}
+		idxs := make([]int, 0, len(jps.Slots))
+		for _, s := range jps.Slots {
+			if idx, ok := slotIndexAt(slotStarts, s.Starttime); ok {
+				idxs = append(idxs, idx)
+			}
+		}
+		if len(idxs) > 0 {
+			progSlotIdx[jps.Program] = idxs
 		}
 	}
 	// unplaceableReason collects, per ancode, why it can never be placed (its allowed set
 	// becomes the -1 sentinel). Reported by the caller for the unplaced exams.
 	unplaceableReason := make(map[int]string)
-	if len(mucDaiProg) > 0 && len(mucDaiSlotIdx) > 0 {
-		mucDaiUnit := make(map[int]bool)
+	if len(jointProg) > 0 && len(progSlotIdx) > 0 {
+		// unit → set of joint programs (with reserved slots) its students belong to
+		unitJointProgs := make(map[int]map[string]bool)
 		for _, s := range studentsRaw {
 			for _, rwp := range s.RegsWithProgram {
-				if mucDaiProg[rwp.Program] {
-					if u, ok := unitOf[rwp.ZpaAncode]; ok && !units[u].Fixed {
-						mucDaiUnit[u] = true
+				if !jointProg[rwp.Program] {
+					continue
+				}
+				if _, ok := progSlotIdx[rwp.Program]; !ok {
+					continue // joint program without reserved times → no restriction
+				}
+				if u, ok := unitOf[rwp.ZpaAncode]; ok && !units[u].Fixed {
+					if unitJointProgs[u] == nil {
+						unitJointProgs[u] = make(map[string]bool)
 					}
+					unitJointProgs[u][rwp.Program] = true
 				}
 			}
 		}
-		for u := range mucDaiUnit {
-			inter := examplan.IntersectSlots(units[u].Allowed, mucDaiSlotIdx)
+		for u, progs := range unitJointProgs {
+			// intersect the unit's allowed slots with each joint program's reserved slots
+			// (sorted for a deterministic result order)
+			progNames := make([]string, 0, len(progs))
+			for prog := range progs {
+				progNames = append(progNames, prog)
+			}
+			sort.Strings(progNames)
+			inter := units[u].Allowed
+			for _, prog := range progNames {
+				inter = examplan.IntersectSlots(inter, progSlotIdx[prog])
+			}
 			if len(inter) == 0 {
-				inter = []int{-1} // no MUC.DAI slot fits its other constraints → unplaceable (reported)
+				inter = []int{-1} // no reserved slot fits its other constraints → unplaceable (reported)
 				for _, a := range units[u].Ancodes {
-					unplaceableReason[a] = unplaceableNoMucDaiSlot
+					unplaceableReason[a] = unplaceableNoJointSlot
 				}
 			}
 			units[u].Allowed = inter

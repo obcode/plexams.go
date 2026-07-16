@@ -1,8 +1,8 @@
-// Package mucdai holds the pure MUC.DAI CSV import parsing: turning a raw CSV export (of
-// varying encoding and delimiter) into db.MucDaiExam records grouped by program. The
+// Package joint holds the pure MUC.DAI CSV import parsing: turning a raw CSV export (of
+// varying encoding and delimiter) into db.JointExam records grouped by program. The
 // plexams package does the surrounding I/O (replacing collections, generating exams); this
 // parser is I/O-free and unit-tested (mirrors plexams/primuss).
-package mucdai
+package joint
 
 import (
 	"encoding/csv"
@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// columns maps the (normalized) CSV header names to the db.MucDaiExam fields.
+// columns maps the (normalized) CSV header names to the db.JointExam fields.
 var columns = map[string]string{
 	"nr":               "ancode",
 	"modulname":        "module",
@@ -35,9 +35,9 @@ var columns = map[string]string{
 }
 
 // ParseCSV parses the CSV text (comma/semicolon/tab auto-detected, ISO-8859-1 tolerated)
-// into db.MucDaiExam grouped by program (Studiengruppe). Rows without a numeric Nr or a
+// into db.JointExam grouped by program (Studiengruppe). Rows without a numeric Nr or a
 // program are skipped; the file must have the 'Nr' and 'Studiengruppe' columns.
-func ParseCSV(csvText string) (map[string][]*db.MucDaiExam, error) {
+func ParseCSV(csvText string) (map[string][]*db.JointExam, error) {
 	// MUC.DAI files are often ISO-8859-1; decode to UTF-8 if not already valid.
 	if !utf8.ValidString(csvText) {
 		csvText = latin1ToUTF8(csvText)
@@ -86,7 +86,7 @@ func ParseCSV(csvText string) (map[string][]*db.MucDaiExam, error) {
 		return ""
 	}
 
-	byProgram := make(map[string][]*db.MucDaiExam)
+	byProgram := make(map[string][]*db.JointExam)
 	for _, row := range rows[1:] {
 		ancodeStr := get(row, "ancode")
 		program := get(row, "program")
@@ -99,7 +99,7 @@ func ParseCSV(csvText string) (map[string][]*db.MucDaiExam, error) {
 			continue
 		}
 		duration, _ := strconv.Atoi(get(row, "duration"))
-		byProgram[program] = append(byProgram[program], &db.MucDaiExam{
+		byProgram[program] = append(byProgram[program], &db.JointExam{
 			PrimussAncode:  ancode,
 			Module:         get(row, "module"),
 			ExamType:       get(row, "examType"),

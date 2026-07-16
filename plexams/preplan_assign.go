@@ -430,16 +430,24 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		slots = append(slots, &preplanSlot{start: s.Starttime, capacity: capacity})
 	}
 
-	// MUC.DAI slots are reserved: an exam with a MUC.DAI program (DE/GS/ID) may ONLY be
-	// placed in a (booked) MUC.DAI slot; all other exams may use any booked slot.
-	mucdaiProgs := make(map[string]bool)
-	for _, prog := range p.mucdaiProgramNames(ctx) {
-		mucdaiProgs[prog] = true
-	}
-	mucdaiSlotIdx := make(map[int]bool)
-	for _, s := range p.semesterConfig.MucDaiSlots {
-		if idx, ok := slotIdxByStart[s.Starttime]; ok {
-			mucdaiSlotIdx[idx] = true
+	// Joint-program slots are reserved: a pre-exam of a joint program (e.g. MUC.DAI
+	// DE/GS/ID or a MUC.HEALTH program) may ONLY be placed in that program's (booked)
+	// reserved slots; all other exams may use any booked slot. An exam spanning several
+	// joint programs is restricted to the INTERSECTION of their reserved slots. A joint
+	// program with no reserved times configured imposes no restriction.
+	progSlotIdx := make(map[string]map[int]bool)
+	for _, jps := range p.semesterConfig.JointProgramSlots {
+		if jps == nil {
+			continue
+		}
+		idxs := make(map[int]bool)
+		for _, s := range jps.Slots {
+			if idx, ok := slotIdxByStart[s.Starttime]; ok {
+				idxs[idx] = true
+			}
+		}
+		if len(idxs) > 0 {
+			progSlotIdx[jps.Program] = idxs
 		}
 	}
 
@@ -567,11 +575,26 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 				dropCost = preplanDropBase - 1
 			}
 		}
+		// restrict to the intersection of the reserved slots of the unit's joint programs
+		// (nil = no joint program with reserved slots → unrestricted; empty non-nil =
+		// disjoint reserved windows → unplaceable, handled downstream by intersectSlotSet).
 		var allowedSlots map[int]bool
 		for prog := range programs {
-			if mucdaiProgs[prog] {
-				allowedSlots = mucdaiSlotIdx // restrict MUC.DAI exams to MUC.DAI slots
-				break
+			progSlots, ok := progSlotIdx[prog]
+			if !ok {
+				continue
+			}
+			if allowedSlots == nil {
+				allowedSlots = make(map[int]bool, len(progSlots))
+				for idx := range progSlots {
+					allowedSlots[idx] = true
+				}
+				continue
+			}
+			for idx := range allowedSlots {
+				if !progSlots[idx] {
+					delete(allowedSlots, idx)
+				}
 			}
 		}
 		// EXaHM and SEB pre-exams run in booked T-building rooms. Compute the unit's window

@@ -228,7 +228,7 @@ var datasetRegistry = map[string]datasetSpec{
 	"constraints":    {Title: "Constraints (inkl. notPlannedByMe)", Collections: []string{"constraints"}},
 	"external-exams": {Title: "Externe Prüfungen + Zeiten", Collections: []string{"non_zpaexams", "plan"}, external: true},
 	"preplan":        {Title: "Vorplanung (SEB/EXaHM)", Collections: []string{"preplan_exams"}},
-	"mucdai-links":   {Title: "MUC.DAI-Verknüpfungen", Collections: []string{"mucdai_links"}},
+	"joint-links":    {Title: "Verknüpfungen gemeinsamer Studiengänge", Collections: []string{"joint_links"}},
 	"room-requests":  {Title: "Raumanfragen", Collections: []string{"room_requests"}},
 }
 

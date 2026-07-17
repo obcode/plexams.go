@@ -103,3 +103,31 @@ func TestProgramResolver(t *testing.T) {
 		})
 	}
 }
+
+// TestCleanupPrimussAncodesMapsStoredZpaCode guards the connect regression: ZPA
+// delivers each exam's primuss ancode tagged with the raw 2-letter code (e.g. "DA"),
+// which must be mapped to the internal degree-suffixed program (e.g. "DA-M") so the
+// real ancode is kept instead of being dropped to -1 (which breaks connecting).
+func TestCleanupPrimussAncodesMapsStoredZpaCode(t *testing.T) {
+	master := []*model.StudyProgram{
+		sp("DA-M", "DA", "Master"),
+		sp("IF-B", "IF", "Bachelor"),
+	}
+	resolver := newResolverFor(master, "DA-M", "IF-B")
+
+	exam := &model.ZPAExam{
+		AnCode: 815,
+		Groups: []string{"DA1"},
+		// ZPA tags the primuss ancode with the raw 2-letter code:
+		PrimussAncodes: []model.ZPAPrimussAncodes{{Program: "DA", Ancode: 815}},
+	}
+	(&DB{}).cleanupPrimussAncodes(exam, resolver)
+
+	if len(exam.PrimussAncodes) != 1 {
+		t.Fatalf("got %d primuss ancodes, want 1: %+v", len(exam.PrimussAncodes), exam.PrimussAncodes)
+	}
+	if got := exam.PrimussAncodes[0]; got.Program != "DA-M" || got.Ancode != 815 {
+		t.Errorf("got {%q, %d}, want {DA-M, 815}: stored raw code must map to the suffixed program keeping its ancode",
+			got.Program, got.Ancode)
+	}
+}

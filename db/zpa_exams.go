@@ -358,16 +358,36 @@ func (r *programResolver) program(group string) string {
 		return group
 	}
 	code := group[:2]
-	candidates := r.candidatesByCode[code]
+	// Dual codes (e.g. DC → DC-B/DC-M): try to read the degree from the full group
+	// name before falling back to the plain-code resolution.
+	if realized := r.realizedCandidates(code); len(realized) > 1 {
+		if sn, ok := degreeSuffixedForGroup(group, realized); ok {
+			return sn
+		}
+	}
+	return r.programForCode(code)
+}
 
-	// Prefer candidates that actually exist as collections this semester.
+// realizedCandidates returns the master programs mapped to a ZPA code that actually
+// exist as collections in this semester.
+func (r *programResolver) realizedCandidates(code string) []*model.StudyProgram {
+	candidates := r.candidatesByCode[code]
 	realized := make([]*model.StudyProgram, 0, len(candidates))
 	for _, c := range candidates {
 		if r.realized[c.Shortname] {
 			realized = append(realized, c)
 		}
 	}
+	return realized
+}
 
+// programForCode maps a raw ZPA (2-letter) program code to the internal, possibly
+// degree-suffixed program shortname. It is used both for study-group names (via
+// program) and for the program code that ZPA carries on an exam's primuss ancodes —
+// both come in as the plain 2-letter code and must resolve to the same internal
+// program, otherwise the ancode ZPA delivered is dropped and the exam never connects.
+func (r *programResolver) programForCode(code string) string {
+	realized := r.realizedCandidates(code)
 	switch len(realized) {
 	case 1:
 		return realized[0].Shortname
@@ -377,16 +397,13 @@ func (r *programResolver) program(group string) string {
 		if r.realized[code] {
 			return code
 		}
-		if len(candidates) == 1 {
+		if candidates := r.candidatesByCode[code]; len(candidates) == 1 {
 			return candidates[0].Shortname
 		}
 		return code
 	default:
 		// Ambiguous ZPA code realized as several programs (e.g. DC → DC-B/DC-M).
-		if sn, ok := degreeSuffixedForGroup(group, realized); ok {
-			return sn
-		}
-		log.Warn().Str("group", group).Str("zpaCode", code).
+		log.Warn().Str("zpaCode", code).
 			Msg("ambiguous ZPA code maps to several study programs; link the exam manually (primuss ancode / joint link)")
 		return code
 	}
@@ -416,8 +433,12 @@ func (db *DB) cleanupPrimussAncodes(zpaExam *model.ZPAExam, resolver *programRes
 	}
 
 	for _, primussAncode := range zpaExam.PrimussAncodes {
-		if programs.Contains(primussAncode.Program) {
-			ancodesMap[primussAncode.Program] = primussAncode.Ancode
+		// The primuss ancodes ZPA delivers carry the raw ZPA (2-letter) program code
+		// (e.g. "DA"); map it to the internal, possibly degree-suffixed program
+		// (e.g. "DA-M") so the ancode lands on the same key the groups produced.
+		program := resolver.programForCode(primussAncode.Program)
+		if programs.Contains(program) {
+			ancodesMap[program] = primussAncode.Ancode
 		}
 	}
 

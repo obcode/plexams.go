@@ -82,6 +82,10 @@ func initConfig() error {
 		if semester == "" {
 			semester = viper.GetString("semester")
 		}
+		// Watch the file so runtime re-reads pick up edits without a restart. The nightly
+		// auto-sync re-reads scheduler.* on every fire, so recipient/source-toggle changes
+		// take effect on the next run (scheduler.enabled/time are still bound at startup).
+		viper.WatchConfig()
 		// Per-semester config lives in the database (collection semester_config_input),
 		// edited through the GUI; there is no <semester>.yaml merge anymore.
 	} else {

@@ -172,13 +172,18 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	router.Post("/upload/dataset-csv", plexams.HTTPUploadDatasetCSV)
 
 	server := &http.Server{Addr: fmt.Sprintf(":%s", port), Handler: router}
-	defer server.Shutdown(context.Background()) // nolint:errcheck
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+	}()
 
-	// The nightly auto-sync scheduler shares the server lifetime: its context is
-	// cancelled on the same shutdown signal, so the loop exits cleanly.
+	// The nightly auto-sync scheduler shares the server lifetime. Its context is a
+	// fallback stop; the primary, graceful stop is sched.Shutdown below, which drains an
+	// in-flight run instead of cutting it off.
 	schedulerCtx, cancelScheduler := context.WithCancel(context.Background())
 	defer cancelScheduler()
-	startScheduledSync(schedulerCtx, plexams)
+	sched := startScheduledSync(schedulerCtx, plexams)
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -190,6 +195,16 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
 	log.Info().Msg("Server will be shut down.")
+	if sched != nil {
+		// Drain a running auto-sync gracefully (bounded); on timeout it is cancelled
+		// cooperatively. A cut-off run is safe: the sync is idempotent and self-heals
+		// via the next nightly run plus the startup catch-up.
+		drainCtx, cancelDrain := context.WithTimeout(context.Background(), 30*time.Second)
+		if err := sched.Shutdown(drainCtx); err != nil {
+			log.Warn().Err(err).Msg("auto-sync did not drain within grace period")
+		}
+		cancelDrain()
+	}
 	cancelScheduler()
 
 	// log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)

@@ -179,6 +179,63 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 		},
 	},
 
+	"adminDigest.md.tmpl": {
+		Description: "Täglicher Plattform-Digest an alle Admin-Accounts: Zugriff/Rollen, Auto-Sync-Status, Aktivität/Audit, Fehler, Backup-Fälligkeit, Workspaces und letzte Transfers. Versendet als „Plexams“ ohne Antwortadresse.",
+		Jira:        false,
+		Variables: []emailTemplateVar{
+			v("{{ .Semester }}", "Aktiver Workspace (Semester).", "2026 SS"),
+			v("{{ .GeneratedAt }}", "Zeitpunkt der Erhebung.", "22.07.2026 06:00"),
+			v("{{ .Server.Version }}", "Build-Version des Servers.", "1.99.0"),
+			v("{{ .Users.Total }}", "Gesamtzahl der Nutzer, plus .Admins/.Planer/.Viewer.", "3"),
+			v("{{ range .Users.Emails }}", "Schleife über die Admin-E-Mail-Adressen.", "1 Admin"),
+			v("{{ .AutoSync.Enabled }} / {{ .AutoSync.NeverRan }}", "Ob der Auto-Sync aktiv ist bzw. noch nie lief.", "true / false"),
+			v("{{ .AutoSync.LastRun }} / {{ .AutoSync.LastStatus }}", "Zeit und Ergebnis des letzten Auto-Sync-Laufs.", "22.07.2026 03:00 / ok"),
+			v("{{ .Activity.Last24h }} / {{ .Activity.Last7d }}", "Anzahl Änderungen in 24 h bzw. 7 Tagen.", "4 / 27"),
+			v("{{ .Activity.Errors7d }} / {{ .Activity.DistinctUsers7d }}", "Fehler und aktive Nutzer (7 Tage).", "1 / 2"),
+			v("{{ range .Activity.TopOperations }}", "Häufigste Operationen (Name/Count).", "3 Operationen"),
+			v("{{ range .RecentError }}", "Letzte fehlgeschlagene Operationen (Zeit/Name/User/Error).", "1 Fehler"),
+			v("{{ .Backup.HasUnsavedChanges }}", "Ob ein Backup fällig ist (Änderungen seit letztem Dump).", "true"),
+			v("{{ .Live.WritesAllowed }} / {{ .Live.ReadOnly }}", "Ob gerade geschrieben werden darf / Workspace read-only.", "true / false"),
+			v("{{ range .Workspaces }}", "Alle Workspaces (Name/Active/ReadOnly).", "2 Workspaces"),
+			v("{{ range .RecentSync }}", "Letzte externe Transfers (Zeit/System/Label/Summary/OK).", "3 Transfers"),
+			v("{{ .Recipients }}", "Empfängerliste (für die Fußzeile).", "oliver.braun@hm.edu"),
+		},
+		Sample: adminDigestView{
+			Semester:    "2026 SS",
+			GeneratedAt: "22.07.2026 06:00",
+			Server:      adminServerView{Version: "1.99.0", MongoHost: "localhost:27017", MongoDatabase: "2026-SS"},
+			Users: adminUsersView{
+				Total: 3, Admins: 1, Planer: 1, Viewer: 1,
+				Emails: []string{"oliver.braun@hm.edu"},
+			},
+			AutoSync: adminAutoSyncView{
+				Enabled: true, Time: "03:00", NeverRan: false,
+				LastRun: "22.07.2026 03:00", LastStatus: "ok", LastTrigger: "nightly",
+				LastChanges: 3, StatusSymbol: "✅",
+			},
+			AdminMail: adminMailView{Enabled: true, Time: "06:00"},
+			Activity: adminActivityView{
+				Last24h: 4, Last7d: 27, Errors7d: 1, DistinctUsers7d: 2,
+				TopOperations: []adminOpView{
+					{Name: "addPreplanExam", Count: 12},
+					{Name: "setPlanningCondition", Count: 6},
+					{Name: "importExamsFromZPA", Count: 3},
+				},
+			},
+			RecentError: []adminErrorView{
+				{Time: "21.07. 14:32", Name: "uploadExamsToZPA", User: "oliver.braun@hm.edu", Error: "ZPA: 500 Internal Server Error"},
+			},
+			Backup:     adminBackupView{HasUnsavedChanges: true, LastDump: "20.07.2026 18:00", LastChange: "22.07.2026 05:12"},
+			Live:       adminLiveView{WritesAllowed: true, ReadOnly: false},
+			Workspaces: []adminWorkspaceView{{Name: "2026 SS", Active: true, ReadOnly: false}, {Name: "2025 WS", Active: false, ReadOnly: true}},
+			RecentSync: []adminSyncView{
+				{Time: "22.07. 03:00", System: "ZPA", Label: "Prüfungen", Summary: "3 geändert", OK: true},
+				{Time: "22.07. 03:00", System: "Anny", Label: "Buchungen", Summary: "keine Änderungen", OK: true},
+			},
+			Recipients: "oliver.braun@hm.edu",
+		},
+	},
+
 	"coverPageEmail.md.tmpl": {
 		Description: "An die/den Prüfende:n: die generierten Deckblätter für ihre/seine Prüfungen im Anhang.",
 		Jira:        false,

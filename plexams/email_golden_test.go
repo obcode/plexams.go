@@ -85,6 +85,22 @@ func assertGolden(t *testing.T, name string, got []byte) {
 	}
 }
 
+// TestAdminDigestGolden locks the daily admin-overview digest (text + HTML), rendered
+// through the production Markdown single-source path against the catalog's sample data.
+func TestAdminDigestGolden(t *testing.T) {
+	data := emailTemplateCatalog["adminDigest.md.tmpl"].Sample
+
+	text, html, err := email.New(nil, renderFuncs(), jiraURL).Render("adminDigest.md.tmpl", false, data)
+	if err != nil {
+		t.Fatalf("render admin digest: %v", err)
+	}
+	if strings.Contains(string(text), "<no value>") {
+		t.Error("admin digest text has an unfilled placeholder (<no value>)")
+	}
+	assertGolden(t, "adminDigest.txt", text)
+	assertGolden(t, "adminDigest.html", html)
+}
+
 // TestExahmEmailGolden locks the EXaHM/SEB request email (text + HTML) against a golden,
 // rendered through the production Markdown single-source path. First migrated email; the
 // rest follow the same pattern.

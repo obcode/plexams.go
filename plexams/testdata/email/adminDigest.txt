@@ -1,0 +1,55 @@
+### Plexams Admin-Digest
+
+**Workspace:** 2026 SS
+**Server:** Version 1.99.0 · localhost:27017 / 2026-SS
+**Stand:** 22.07.2026 06:00 Uhr
+
+#### Zugriff
+
+3 Nutzer — 1 Admin, 1 Planer, 1 Viewer.
+Admins: oliver.braun@hm.edu.
+
+#### Auto-Sync (ZPA/Anny)
+
+✅ Letzter Lauf 22.07.2026 03:00 Uhr (nightly): **ok**, 3 Änderungen. Geplant täglich 03:00 Uhr.
+
+#### Aktivität (Audit-Log, aktiver Workspace)
+
+- **4** Änderungen in 24 h · **27** in 7 Tagen
+- **2** aktive Nutzer · **1** Fehler (7 Tage)
+
+Häufigste Operationen (7 Tage):
+- addPreplanExam (12)
+- setPlanningCondition (6)
+- importExamsFromZPA (3)
+
+
+#### Letzte Fehler
+
+- **21.07. 14:32** uploadExamsToZPA (oliver.braun@hm.edu): ZPA: 500 Internal Server Error
+
+
+#### Backup
+
+⚠️ Änderungen seit dem letzten Dump — ein Backup ist fällig. Letzter Dump: 20.07.2026 18:00, letzte Änderung: 22.07.2026 05:12.
+
+#### Laufzeit
+
+Schreiben möglich.
+Täglicher Digest: aktiv, 06:00 Uhr.
+
+#### Workspaces
+
+- 2026 SS (aktiv)
+- 2025 WS · read-only
+
+
+#### Letzte Transfers (ZPA/Anny)
+
+- **22.07. 03:00** ZPA · Prüfungen — 3 geändert
+- **22.07. 03:00** Anny · Buchungen — keine Änderungen
+
+_Empfänger: oliver.braun@hm.edu_
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

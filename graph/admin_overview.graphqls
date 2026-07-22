@@ -1,0 +1,116 @@
+# Admin-Übersicht: ein Plattform-Betriebsblick für Admins (nicht Prüfungsplanung).
+# Komponiert vorhandene Datenquellen (Audit-Log, Sync-Historie, Users/Rollen,
+# Scheduler-Zustand, Backup-Status, Server-Info, Workspaces) zu einem Überblick und
+# füllt zwei bisher nicht exponierte Lücken: den Scheduler-Zustand und den Live-Op-Status.
+#
+# WICHTIG: Reine Queries sind für jede authentifizierte Rolle erreichbar (die
+# VIEWER-Sperre in AroundOperations greift nur bei datenverändernden Operationen).
+# Beide Resolver erzwingen daher selbst die Rolle ADMIN (requireAdmin).
+
+extend type Query {
+  "Plattform-Überblick für Admins (Zugriff/Rollen, Auto-Sync, Aktivität/Audit, Backup, Workspaces). Erfordert Rolle ADMIN."
+  adminOverview: AdminOverview!
+  "Zustand des nächtlichen Auto-Syncs und des Admin-Digest-Versands. Erfordert Rolle ADMIN."
+  schedulerStatus: SchedulerStatus!
+}
+
+extend type Subscription {
+  """
+  Sendet den Admin-Digest sofort (statt zur geplanten Zeit) und streamt den Fortschritt.
+  dryRun=true schickt die Vorschau an die Testadresse (smtp.testmail) statt an die Admins.
+  Erfordert Rolle ADMIN. Endet mit DONE.
+  """
+  sendAdminDigestNow(dryRun: Boolean!): LogLine!
+}
+
+"Plattform-Überblick für Admins."
+type AdminOverview {
+  "Zeitpunkt, zu dem diese Übersicht erhoben wurde."
+  generatedAt: Time!
+  "Build-Version und verbundene MongoDB des laufenden Servers."
+  server: ServerInfo!
+  "Das aktuell aktive Semester (Workspace), z. B. \"2026 SS\"."
+  activeSemester: String!
+  "Alle bekannten Workspaces (Semester-Datenbanken) mit Read-only-/Schema-Stand."
+  workspaces: [Semester!]!
+  "Die Zugriffsliste (alle bekannten Login-Identitäten)."
+  users: [User!]!
+  "Anzahl der Nutzer je Rolle."
+  roleCounts: RoleCounts!
+  "Zustand des Auto-Syncs und des Admin-Digests."
+  scheduler: SchedulerStatus!
+  "Backup-Fälligkeit des aktiven Workspace (Änderungen seit dem letzten Dump)."
+  backup: BackupStatus!
+  "Laufzeit-Status: ob gerade geschrieben werden darf und ob der Workspace schreibgeschützt ist."
+  live: LiveStatus!
+  "Aktivitäts-Kennzahlen aus dem Audit-Log des aktiven Workspace (24h/7d/Fehler/aktive Nutzer + Top-Operationen)."
+  activity: ActivitySummary!
+  "Die jüngsten Audit-Einträge (neueste zuerst) des aktiven Workspace."
+  recentActivity: [MutationLogEntry!]!
+  "Die jüngsten fehlgeschlagenen Operationen (neueste zuerst) des aktiven Workspace."
+  recentErrors: [MutationLogEntry!]!
+  "Die jüngsten externen Transfers (ZPA/Anny) des aktiven Workspace."
+  recentSyncs: [SyncLogEntry!]!
+}
+
+"Anzahl der Nutzer je Rolle."
+type RoleCounts {
+  admin: Int!
+  planer: Int!
+  viewer: Int!
+  total: Int!
+}
+
+"Aktivitäts-Kennzahlen aus dem Audit-Log (bezogen auf das aktive Semester)."
+type ActivitySummary {
+  "Anzahl mutierender Operationen der letzten 24 Stunden."
+  last24h: Int!
+  "Anzahl mutierender Operationen der letzten 7 Tage."
+  last7d: Int!
+  "Anzahl fehlgeschlagener Operationen in den letzten 7 Tagen."
+  errors7d: Int!
+  "Anzahl unterschiedlicher handelnder Nutzer in den letzten 7 Tagen."
+  distinctUsers7d: Int!
+  "Die häufigsten Operationen der letzten 7 Tage (absteigend), gekappt."
+  topOperations: [OperationCount!]!
+}
+
+"Eine Operation mit ihrer Häufigkeit."
+type OperationCount {
+  name: String!
+  count: Int!
+}
+
+"Zustand der beiden serverinternen Zeitpläne (nächtlicher Auto-Sync, täglicher Admin-Digest)."
+type SchedulerStatus {
+  "Ob der nächtliche Auto-Sync aktiviert ist (scheduler.enabled)."
+  autoSyncEnabled: Boolean!
+  "Geplante Uhrzeit des Auto-Syncs (HH:MM, lokal)."
+  autoSyncTime: String!
+  "Ob der Auto-Sync noch nie gelaufen ist (kein persistierter Zustand)."
+  neverRan: Boolean!
+  "Beginn des letzten Auto-Sync-Laufs; null wenn nie gelaufen."
+  lastFireAt: Time
+  "Ende des letzten Auto-Sync-Laufs; null wenn nie gelaufen."
+  lastFinished: Time
+  "Ergebnis des letzten Laufs: ok | errors | skipped | panic (leer wenn nie gelaufen)."
+  lastStatus: String!
+  "Auslöser des letzten Laufs: nightly | catchup | manual (leer wenn nie gelaufen)."
+  lastTrigger: String!
+  "Workspace, den der letzte Lauf abgeglichen hat."
+  lastSemester: String!
+  "Anzahl der im letzten Lauf gefundenen Änderungen."
+  lastTotalChanges: Int!
+  "Ob der tägliche Admin-Digest aktiviert ist (scheduler.adminmail.enabled)."
+  adminMailEnabled: Boolean!
+  "Geplante Uhrzeit des Admin-Digests (HH:MM, lokal)."
+  adminMailTime: String!
+}
+
+"Laufzeit-Status der Schreibsperren."
+type LiveStatus {
+  "Ob Schreiboperationen aktuell erlaubt sind (keine Validierung/kein exklusiver Transfer läuft)."
+  writesAllowed: Boolean!
+  "Ob der aktive Workspace schreibgeschützt ist (read-only)."
+  readOnly: Boolean!
+}

@@ -101,6 +101,19 @@ scheduler:
   #   teachers: true
   #   invigilatorRequirements: true
   #   anny: true
+  # Daily admin-overview digest (platform operations, NOT exam planning). Sent to all ADMIN
+  # accounts from the users allow-list — self-maintaining, no recipient list to keep. It
+  # summarises access/roles, auto-sync status, activity/audit, backup due-ness, workspaces
+  # and recent transfers. Server-only; leave disabled for local dev. Also available on demand
+  # via the GUI (sendAdminDigestNow; dryRun sends the preview to smtp.testmail).
+  adminMail:
+    # Off by default. Set true on the server to enable the daily digest.
+    enabled: true
+    # Daily fire time, local (Europe/Berlin), "HH:MM". Default 06:00.
+    time: "06:00"
+    # Optional fallback recipient, used ONLY when the users allow-list has no ADMIN
+    # (e.g. before users are seeded). Normally leave empty — ADMIN users are the source.
+    # recipient: ""
 
 # --- Add the sections you actually use (secrets stay here) ---
 # zpa:  { baseurl: ..., token: ... }        # ZPA app token — shared, stays here

@@ -1,0 +1,58 @@
+### Plexams Admin-Digest
+
+**Workspace:** {{ .Semester }}
+**Server:** Version {{ .Server.Version }} · {{ .Server.MongoHost }} / {{ .Server.MongoDatabase }}
+**Stand:** {{ .GeneratedAt }} Uhr
+
+#### Zugriff
+
+{{ .Users.Total }} Nutzer — {{ .Users.Admins }} Admin, {{ .Users.Planer }} Planer, {{ .Users.Viewer }} Viewer.
+{{ if .Users.Emails }}Admins: {{ range $i, $e := .Users.Emails }}{{ if $i }}, {{ end }}{{ $e }}{{ end }}.{{ end }}
+
+#### Auto-Sync (ZPA/Anny)
+
+{{ if not .AutoSync.Enabled -}}
+⏸️ Auto-Sync ist deaktiviert.
+{{- else if .AutoSync.NeverRan -}}
+Aktiviert für {{ .AutoSync.Time }} Uhr, aber noch nie gelaufen.
+{{- else -}}
+{{ .AutoSync.StatusSymbol }} Letzter Lauf {{ .AutoSync.LastRun }} Uhr ({{ .AutoSync.LastTrigger }}): **{{ .AutoSync.LastStatus }}**, {{ .AutoSync.LastChanges }} Änderungen. Geplant täglich {{ .AutoSync.Time }} Uhr.
+{{- end }}
+
+#### Aktivität (Audit-Log, aktiver Workspace)
+
+- **{{ .Activity.Last24h }}** Änderungen in 24 h · **{{ .Activity.Last7d }}** in 7 Tagen
+- **{{ .Activity.DistinctUsers7d }}** aktive Nutzer · **{{ .Activity.Errors7d }}** Fehler (7 Tage)
+{{ if .Activity.TopOperations }}
+Häufigste Operationen (7 Tage):
+{{ range .Activity.TopOperations }}- {{ .Name }} ({{ .Count }})
+{{ end }}{{- end }}
+{{ if .RecentError }}
+#### Letzte Fehler
+
+{{ range .RecentError }}- **{{ .Time }}** {{ .Name }}{{ if .User }} ({{ .User }}){{ end }}: {{ .Error }}
+{{ end }}{{- end }}
+
+#### Backup
+
+{{ if .Backup.HasUnsavedChanges -}}
+⚠️ Änderungen seit dem letzten Dump — ein Backup ist fällig. Letzter Dump: {{ .Backup.LastDump }}, letzte Änderung: {{ .Backup.LastChange }}.
+{{- else -}}
+✅ Kein Backup fällig (letzter Dump: {{ .Backup.LastDump }}).
+{{- end }}
+
+#### Laufzeit
+
+Schreiben {{ if .Live.WritesAllowed }}möglich{{ else }}gesperrt (Operation läuft){{ end }}{{ if .Live.ReadOnly }} · Workspace schreibgeschützt{{ end }}.
+Täglicher Digest: {{ if .AdminMail.Enabled }}aktiv, {{ .AdminMail.Time }} Uhr{{ else }}deaktiviert{{ end }}.
+{{ if .Workspaces }}
+#### Workspaces
+
+{{ range .Workspaces }}- {{ .Name }}{{ if .Active }} (aktiv){{ end }}{{ if .ReadOnly }} · read-only{{ end }}
+{{ end }}{{- end }}
+{{ if .RecentSync }}
+#### Letzte Transfers (ZPA/Anny)
+
+{{ range .RecentSync }}- **{{ .Time }}** {{ .System }} · {{ .Label }}{{ if .Summary }} — {{ .Summary }}{{ end }}{{ if not .OK }} ⚠️{{ end }}
+{{ end }}{{- end }}
+_Empfänger: {{ .Recipients }}_

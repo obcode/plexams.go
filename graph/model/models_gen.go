@@ -10,6 +10,20 @@ import (
 	"time"
 )
 
+// Aktivitäts-Kennzahlen aus dem Audit-Log (bezogen auf das aktive Semester).
+type ActivitySummary struct {
+	// Anzahl mutierender Operationen der letzten 24 Stunden.
+	Last24h int `json:"last24h"`
+	// Anzahl mutierender Operationen der letzten 7 Tage.
+	Last7d int `json:"last7d"`
+	// Anzahl fehlgeschlagener Operationen in den letzten 7 Tagen.
+	Errors7d int `json:"errors7d"`
+	// Anzahl unterschiedlicher handelnder Nutzer in den letzten 7 Tagen.
+	DistinctUsers7d int `json:"distinctUsers7d"`
+	// Die häufigsten Operationen der letzten 7 Tage (absteigend), gekappt.
+	TopOperations []*OperationCount `json:"topOperations"`
+}
+
 type AdditionalExam struct {
 	Ancode int `json:"ancode"`
 	// date in dd.mm.yyyy.
@@ -42,6 +56,36 @@ type AdditionalExamRoomInput struct {
 	IsReserve     bool   `json:"isReserve"`
 	StudentCount  int    `json:"studentCount"`
 	IsHandicap    bool   `json:"isHandicap"`
+}
+
+// Plattform-Überblick für Admins.
+type AdminOverview struct {
+	// Zeitpunkt, zu dem diese Übersicht erhoben wurde.
+	GeneratedAt time.Time `json:"generatedAt"`
+	// Build-Version und verbundene MongoDB des laufenden Servers.
+	Server *ServerInfo `json:"server"`
+	// Das aktuell aktive Semester (Workspace), z. B. "2026 SS".
+	ActiveSemester string `json:"activeSemester"`
+	// Alle bekannten Workspaces (Semester-Datenbanken) mit Read-only-/Schema-Stand.
+	Workspaces []*Semester `json:"workspaces"`
+	// Die Zugriffsliste (alle bekannten Login-Identitäten).
+	Users []*User `json:"users"`
+	// Anzahl der Nutzer je Rolle.
+	RoleCounts *RoleCounts `json:"roleCounts"`
+	// Zustand des Auto-Syncs und des Admin-Digests.
+	Scheduler *SchedulerStatus `json:"scheduler"`
+	// Backup-Fälligkeit des aktiven Workspace (Änderungen seit dem letzten Dump).
+	Backup *BackupStatus `json:"backup"`
+	// Laufzeit-Status: ob gerade geschrieben werden darf und ob der Workspace schreibgeschützt ist.
+	Live *LiveStatus `json:"live"`
+	// Aktivitäts-Kennzahlen aus dem Audit-Log des aktiven Workspace (24h/7d/Fehler/aktive Nutzer + Top-Operationen).
+	Activity *ActivitySummary `json:"activity"`
+	// Die jüngsten Audit-Einträge (neueste zuerst) des aktiven Workspace.
+	RecentActivity []*MutationLogEntry `json:"recentActivity"`
+	// Die jüngsten fehlgeschlagenen Operationen (neueste zuerst) des aktiven Workspace.
+	RecentErrors []*MutationLogEntry `json:"recentErrors"`
+	// Die jüngsten externen Transfers (ZPA/Anny) des aktiven Workspace.
+	RecentSyncs []*SyncLogEntry `json:"recentSyncs"`
 }
 
 type AnCode struct {
@@ -897,6 +941,14 @@ type JointProgramTimesInput struct {
 	AllowedTimes []*time.Time `json:"allowedTimes"`
 }
 
+// Laufzeit-Status der Schreibsperren.
+type LiveStatus struct {
+	// Ob Schreiboperationen aktuell erlaubt sind (keine Validierung/kein exklusiver Transfer läuft).
+	WritesAllowed bool `json:"writesAllowed"`
+	// Ob der aktive Workspace schreibgeschützt ist (read-only).
+	ReadOnly bool `json:"readOnly"`
+}
+
 // LogLine is one streamed line of output. text carries the rendered line including
 // ANSI color codes, so a terminal-like frontend can display it verbatim. progress
 // is only set when level is PROGRESS; report is only set on the final RESULT line
@@ -993,6 +1045,12 @@ type NtaRoomAloneWaiver struct {
 	Mtknr  string `json:"mtknr"`
 	Ancode int    `json:"ancode"`
 	Reason string `json:"reason"`
+}
+
+// Eine Operation mit ihrer Häufigkeit.
+type OperationCount struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
 }
 
 // OptimizerConstraint describes one applied constraint (for the read-only view).
@@ -1225,6 +1283,14 @@ type RegWithProgram struct {
 	ZpaAncode     int    `json:"zpaAncode"`
 }
 
+// Anzahl der Nutzer je Rolle.
+type RoleCounts struct {
+	Admin  int `json:"admin"`
+	Planer int `json:"planer"`
+	Viewer int `json:"viewer"`
+	Total  int `json:"total"`
+}
+
 type Room struct {
 	Name             string `json:"name"`
 	Seats            int    `json:"seats"`
@@ -1343,6 +1409,32 @@ type SaveSemesterConfigResult struct {
 	Ok bool `json:"ok"`
 	// Non-fatal warnings, e.g. changes that may invalidate an existing plan.
 	Warnings []string `json:"warnings"`
+}
+
+// Zustand der beiden serverinternen Zeitpläne (nächtlicher Auto-Sync, täglicher Admin-Digest).
+type SchedulerStatus struct {
+	// Ob der nächtliche Auto-Sync aktiviert ist (scheduler.enabled).
+	AutoSyncEnabled bool `json:"autoSyncEnabled"`
+	// Geplante Uhrzeit des Auto-Syncs (HH:MM, lokal).
+	AutoSyncTime string `json:"autoSyncTime"`
+	// Ob der Auto-Sync noch nie gelaufen ist (kein persistierter Zustand).
+	NeverRan bool `json:"neverRan"`
+	// Beginn des letzten Auto-Sync-Laufs; null wenn nie gelaufen.
+	LastFireAt *time.Time `json:"lastFireAt,omitempty"`
+	// Ende des letzten Auto-Sync-Laufs; null wenn nie gelaufen.
+	LastFinished *time.Time `json:"lastFinished,omitempty"`
+	// Ergebnis des letzten Laufs: ok | errors | skipped | panic (leer wenn nie gelaufen).
+	LastStatus string `json:"lastStatus"`
+	// Auslöser des letzten Laufs: nightly | catchup | manual (leer wenn nie gelaufen).
+	LastTrigger string `json:"lastTrigger"`
+	// Workspace, den der letzte Lauf abgeglichen hat.
+	LastSemester string `json:"lastSemester"`
+	// Anzahl der im letzten Lauf gefundenen Änderungen.
+	LastTotalChanges int `json:"lastTotalChanges"`
+	// Ob der tägliche Admin-Digest aktiviert ist (scheduler.adminmail.enabled).
+	AdminMailEnabled bool `json:"adminMailEnabled"`
+	// Geplante Uhrzeit des Admin-Digests (HH:MM, lokal).
+	AdminMailTime string `json:"adminMailTime"`
 }
 
 type Semester struct {

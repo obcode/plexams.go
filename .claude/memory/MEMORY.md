@@ -1,6 +1,7 @@
 # Memory Index
 
 - [program-code degree suffix](program-code-degree-suffix.md) — Kürzel may be degree-suffixed (DC-B/DC-M) internally; `StudyProgram.zpaCode` maps back to 2-letter ZPA at boundaries; semester-safe resolver, no old-semester migration; backend DONE & on main (c9e0d37), Mongo integration + GUI-sync pending.
+- [admin overview + digest](admin-overview-digest.md) — ADMIN-only `adminOverview`/`schedulerStatus` queries + daily digest mail to all ADMIN users (self-maintaining recipients); backend DONE & merged to main, GUI page pending.
 - [nightly auto-sync ZPA+Anny](nightly-autosync-zpa-anny.md) — in-process daily scheduler re-pulls ZPA+Anny for active workspace, diffs, mails changes (+heartbeat); backend DONE & on main, `triggerScheduledSync` for on-demand; GUI "Sync jetzt" button pending. HARDENING on branch `feature/scheduler-hardening` (recover/persist+catch-up/graceful-drain/DST-fix, dependency-free) not yet merged.
 - [Jira integration](jira-integration.md) — on-prem jira.cc.hm.edu via PAT; backend DONE & on main (jira/ pkg, GraphQL create/read/comment/transition + REST attachment upload, per-user encrypted PATs); GUI pending.
 - [HM OIDC claims](hm-oidc-claims.md) — sso.hm.edu scope→claim map; id_token minimal, claims via UserInfo; department claim = `fhmDepartment`; end_session=/idp/profile/Logout (unused, local logout only).

@@ -65,3 +65,39 @@ func startScheduledSync(ctx context.Context, p *plexams.Plexams) *scheduler.Sche
 		}
 	})
 }
+
+// startAdminDigestMail starts the daily admin-overview digest when scheduler.adminmail.enabled
+// is set and returns the scheduler handle (nil when disabled) so the server can drain it on
+// shutdown. It is a second, independent scheduler instance (the engine runs one job per
+// instance); its fire runs plexams.SendAdminDigest, which mails the platform digest to all
+// ADMIN accounts. It deliberately keeps no persisted state and no catch-up: a missed digest
+// is simply skipped (the next day's digest reflects the current state anyway).
+//
+// The recipients are re-derived on every fire (from the users allow-list), so opening or
+// closing admin access takes effect without a restart. The fire time and enabled flag are
+// bound once here and require a restart to change.
+func startAdminDigestMail(ctx context.Context, p *plexams.Plexams) *scheduler.Scheduler {
+	if !viper.GetBool("scheduler.adminmail.enabled") {
+		return nil
+	}
+
+	timeStr := viper.GetString("scheduler.adminmail.time")
+	if strings.TrimSpace(timeStr) == "" {
+		timeStr = "06:00"
+	}
+
+	return scheduler.Start(ctx, scheduler.Config{
+		Enabled: true,
+		Time:    timeStr,
+		CatchUp: false,
+	}, func(runCtx context.Context, _ scheduler.Trigger) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error().Interface("panic", r).Msg("admin digest mail panicked")
+			}
+		}()
+		if err := p.SendAdminDigest(runCtx, true, plexams.NewLogReporter()); err != nil {
+			log.Error().Err(err).Msg("admin digest mail failed")
+		}
+	})
+}

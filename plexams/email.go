@@ -60,10 +60,10 @@ func (p *Plexams) sendMail(run bool, to []string, cc []string, subject string, t
 	return p.sender.Send(run, to, cc, subject, text, html, attachments, jira)
 }
 
-// sendMailNoCc is like sendMail but omits the configured Cc (smtp.cc). Used by automated
-// mails (the nightly auto-sync) that must not copy the planner mailbox.
-func (p *Plexams) sendMailNoCc(run bool, to []string, cc []string, subject string, text []byte, html []byte, attachments []*mailAttachment, jira bool) error {
-	return p.sender.SendWithoutConfiguredCc(run, to, cc, subject, text, html, attachments, jira)
+// sendSystemMail sends an automated system mail: From "Plexams <noreply>" (not the planner),
+// no Reply-To, no configured Cc. Used by the nightly auto-sync report.
+func (p *Plexams) sendSystemMail(run bool, to []string, subject string, text, html []byte) error {
+	return p.sender.SendSystem(run, to, subject, text, html, nil)
 }
 
 func (p *Plexams) recipientInfo(run bool, recipients ...string) string {

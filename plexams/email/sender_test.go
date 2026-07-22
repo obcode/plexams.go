@@ -9,7 +9,7 @@ func TestBuildMsgSetsFQDNMessageID(t *testing.T) {
 	// Default hostname: Message-ID must use the FQDN, never os.Hostname() (e.g. docker-desktop).
 	s := NewSender(SMTPConfig{PlanerEmail: "oliver.braun@hm.edu"})
 	s.SetPlaner("Oliver Braun", "oliver.braun@hm.edu", "", "", "", "")
-	msg, err := s.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false)
+	msg, err := s.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false, false)
 	if err != nil {
 		t.Fatalf("buildMsg: %v", err)
 	}
@@ -23,12 +23,38 @@ func TestBuildMsgSetsFQDNMessageID(t *testing.T) {
 
 	// Configured hostname overrides the default.
 	s2 := NewSender(SMTPConfig{PlanerEmail: "x@hm.edu", Hostname: "custom.example.edu"})
-	msg2, err := s2.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false)
+	msg2, err := s2.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false, false)
 	if err != nil {
 		t.Fatalf("buildMsg: %v", err)
 	}
 	if !strings.Contains(msg2.GetMessageID(), "@custom.example.edu>") {
 		t.Errorf("Message-ID = %q, want @custom.example.edu", msg2.GetMessageID())
+	}
+}
+
+func TestBuildMsgSystemIdentity(t *testing.T) {
+	// A system mail is sent as "Plexams <noreply+plexams@hm.edu>" (not the planner) and
+	// carries no Reply-To, even with a planner configured.
+	s := NewSender(SMTPConfig{PlanerName: "Oliver Braun", PlanerEmail: "oliver.braun@hm.edu", EnvelopeFrom: "noreply@hm.edu"})
+	s.SetPlaner("Oliver Braun", "oliver.braun@hm.edu", "", "", "", "")
+	msg, err := s.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false, true)
+	if err != nil {
+		t.Fatalf("buildMsg system: %v", err)
+	}
+	from := msg.GetFromString()
+	if len(from) != 1 || !strings.Contains(from[0], "<"+defaultNoreplyMail+">") || !strings.Contains(from[0], systemFromName) {
+		t.Errorf("system From = %v, want %q <%s>", from, systemFromName, defaultNoreplyMail)
+	}
+	if rt := msg.GetReplyTo(); len(rt) != 0 {
+		t.Errorf("system mail Reply-To = %v, want none", rt)
+	}
+	// A non-system mail still carries a Reply-To (regression guard for the switch).
+	msg2, err := s.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false, false)
+	if err != nil {
+		t.Fatalf("buildMsg non-system: %v", err)
+	}
+	if rt := msg2.GetReplyTo(); len(rt) == 0 {
+		t.Error("non-system mail has no Reply-To, want the planner Reply-To")
 	}
 }
 
@@ -70,7 +96,7 @@ func TestBuildMsgSendAsAccount(t *testing.T) {
 	if got, want := s2.nonJiraReplyTo(), "oliver.braun@hm.edu"; got != want {
 		t.Errorf("nonJiraReplyTo = %q, want %q", got, want)
 	}
-	msg, err := s2.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false)
+	msg, err := s2.buildMsg([]string{"to@hm.edu"}, nil, "subj", []byte("body"), nil, nil, false, false)
 	if err != nil {
 		t.Fatalf("buildMsg: %v", err)
 	}

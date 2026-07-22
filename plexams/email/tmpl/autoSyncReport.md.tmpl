@@ -1,0 +1,37 @@
+{{- if .Skipped -}}
+### Automatischer Abgleich {{ .Semester }}
+
+**Lauf übersprungen.**
+
+{{ .SkipReason }}
+
+_Lauf: {{ .Started }} – {{ .Finished }} Uhr_
+{{- else -}}
+### Automatischer Abgleich mit ZPA und Anny
+
+**Semester:** {{ .Semester }}
+**Lauf:** {{ .Started }} – {{ .Finished }} Uhr
+**Änderungen gesamt:** {{ .TotalChanges }}{{ if .HasErrors }} · ⚠️ mit Fehlern{{ end }}
+
+{{ if and (eq .TotalChanges 0) (not .HasErrors) -}}
+Keine Änderungen gegenüber dem vorherigen Stand. ✅
+{{ end -}}
+{{- range .Sources }}
+#### {{ .Label }}
+
+{{ if .Failed -}}
+⚠️ **Fehler beim Abruf:** {{ .Error }}
+{{- else if eq .Changes 0 -}}
+{{ if eq .Count 0 }}Keine {{ .Noun }} vorhanden.{{ else }}Keine Änderungen ({{ .Count }} {{ .Noun }}).{{ end }}
+{{- else -}}
+**{{ .Added }}** neu · **{{ .Changed }}** geändert · **{{ .Removed }}** entfallen
+{{ if gt .Omitted 0 }}
+_{{ .Omitted }} Änderungen – Detailliste ausgelassen (z. B. Erstbefüllung)._
+{{- else }}
+{{ range .Details }}
+- **{{ .Label }}:** {{ .Name }}{{ with .Fields }} — {{ . }}{{ end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{ end }}
+{{- end }}

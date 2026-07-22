@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/invigplan"
 	"github.com/rs/zerolog/log"
@@ -78,6 +79,20 @@ func (r *SyncRunReport) hasErrors() bool {
 	return false
 }
 
+// Status summarizes the run for the persisted scheduler state: "skipped" when the guard was
+// not acquired, "errors" when any source failed, otherwise "ok". A panic that escapes the run
+// is recorded as "panic" by the caller, not here.
+func (r *SyncRunReport) Status() string {
+	switch {
+	case r.Skipped:
+		return "skipped"
+	case r.hasErrors():
+		return "errors"
+	default:
+		return "ok"
+	}
+}
+
 // ScheduledSyncConfigFromViper reads the scheduler.* recipients and source toggles from
 // the config. When no source toggle is set all four sources are pulled (the default).
 func ScheduledSyncConfigFromViper() ScheduledSyncConfig {
@@ -128,7 +143,17 @@ func (p *Plexams) RunScheduledSync(ctx context.Context, cfg ScheduledSyncConfig,
 			return
 		}
 		res := &syncSourceResult{key: key, label: label, noun: noun}
-		res.count, res.err = fn()
+		// Guard each source against panics so one broken import becomes a source-level
+		// error (still mailed) instead of aborting the whole sync or crashing the loop.
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					res.err = fmt.Errorf("panic: %v", r)
+					log.Error().Interface("panic", r).Str("source", key).Msg("scheduled sync: source panicked")
+				}
+			}()
+			res.count, res.err = fn()
+		}()
 		if res.err != nil {
 			reporter.Warnf("%s: Fehler beim Abruf: %v", label, res.err)
 			log.Error().Err(res.err).Str("source", key).Msg("scheduled sync: source failed")
@@ -341,5 +366,45 @@ func (r *logReporter) StopProgress(finalMsg string) {
 func (r *logReporter) StopProgressFail(finalMsg string) {
 	if finalMsg != "" {
 		log.Warn().Msg(finalMsg)
+	}
+}
+
+// SchedulerLastFire returns the last recorded scheduler fire time (zero when none is stored),
+// used by the server to decide whether a missed fire needs a startup catch-up.
+func (p *Plexams) SchedulerLastFire(ctx context.Context) time.Time {
+	state, err := p.dbClient.GetSchedulerState(ctx)
+	if err != nil || state == nil {
+		return time.Time{}
+	}
+	return state.LastFireAt
+}
+
+// RecordSchedulerFire persists the start of a scheduled fire (the catch-up anchor and trigger)
+// before the run executes, so a crash mid-run — or several restarts within the same day — does
+// not re-trigger the catch-up against a stale anchor.
+func (p *Plexams) RecordSchedulerFire(ctx context.Context, at time.Time, trigger string) {
+	if err := p.dbClient.TouchSchedulerFire(ctx, at, trigger, p.semester); err != nil {
+		log.Error().Err(err).Msg("scheduled sync: cannot record fire start")
+	}
+}
+
+// SaveSchedulerOutcome persists the outcome of a finished (or panicked) scheduled run, keeping
+// the fire anchor (fireAt) that RecordSchedulerFire wrote at the start.
+func (p *Plexams) SaveSchedulerOutcome(ctx context.Context, fireAt time.Time, trigger, status string, report *SyncRunReport) {
+	state := &db.SchedulerState{
+		LastFireAt:   fireAt,
+		LastFinished: time.Now(),
+		LastStatus:   status,
+		LastTrigger:  trigger,
+		Semester:     p.semester,
+	}
+	if report != nil {
+		state.TotalChanges = report.TotalChanges
+		if report.Semester != "" {
+			state.Semester = report.Semester
+		}
+	}
+	if err := p.dbClient.SaveSchedulerState(ctx, state); err != nil {
+		log.Error().Err(err).Msg("scheduled sync: cannot save run outcome")
 	}
 }

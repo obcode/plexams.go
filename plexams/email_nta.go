@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	// TODO: Ersetzen durch github.com/wneessen/go-mail
 
@@ -53,6 +54,17 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 				exams = append(exams, exam)
 			}
 		}
+
+		// sort the listed exams chronologically by their exam date/time
+		// (unplaced exams sort last)
+		sort.SliceStable(exams, func(i, j int) bool {
+			si, oki := planEntryStart(exams[i].PlanEntry)
+			sj, okj := planEntryStart(exams[j].PlanEntry)
+			if !oki || !okj {
+				return oki && !okj
+			}
+			return si.Before(sj)
+		})
 
 		to := []string{}
 		cc := []string{}
@@ -211,6 +223,16 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 			})
 		}
 		cc = ccSet.ToSlice()
+
+		// sort the listed exams chronologically by their exam date/time
+		sort.SliceStable(examsWithRoom, func(i, j int) bool {
+			si, oki := planEntryStart(examsWithRoom[i].Exam.PlanEntry)
+			sj, okj := planEntryStart(examsWithRoom[j].Exam.PlanEntry)
+			if !oki || !okj {
+				return oki && !okj
+			}
+			return si.Before(sj)
+		})
 
 		err = p.SendHandicapsMailToStudentPlanned(ctx, run, to, cc, &NTAEmailWithRooms{
 			NTA:           nta,

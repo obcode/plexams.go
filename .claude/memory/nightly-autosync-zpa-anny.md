@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: a4245363-309a-45fb-ae09-45214c2e5879
+  modified: 2026-07-22T13:20:50.809Z
 ---
 
 Nightly auto-sync of ZPA + Anny with change-email. Backend DONE, merged to main & pushed 2026-07-15 (commits `4031168` zpaimport, `45738e2` anny, `062362f` plexams, `4507b11` graph, `ff33e3c` docs), builds/vets/lints/tests green.
@@ -14,6 +15,8 @@ Nightly auto-sync of ZPA + Anny with change-email. Backend DONE, merged to main 
 **Key building blocks reused:** `zpaimport.DiffChanges` generalized to `[T any, K comparable]` (int ZPA keys still infer, Anny keys on string `Number`); Anny import now writes a full diff (`plexams/anny/fetch.go` `diffBookings`). The Anny diff is restricted to the **exam period** (`DiffWindow{From,Until}` passed from `semesterConfig` via `FetchFromAnny`; zero window falls back to now) and each entry is marked `[eigene]`/`[fremd]` with the booker (`PersonalizationName` + `MatchesAnyPersonalization`) so mine-vs-others is clear. Manual per-source GUI imports unchanged. On-demand `triggerScheduledSync` subscription streams the same run.
 
 **Decisions:** in-process goroutine (not OS cron); import+diff+mail (not detect-only); active-workspace only in v1 — watching a specific non-active upcoming semester (e.g. 2026-WS while another is active) would need a scoped per-semester instance, deferred.
+
+**Hardening (2026-07-22, branch `feature/scheduler-hardening`, NOT yet merged):** kept single job, dependency-free (no cron lib), made it robust. (1) **recover() two layers** — loop-level in `plexams/scheduler` + per-source in `RunScheduledSync`'s run closure (panic→source error, still mailed) + graph-callback recover records `LastStatus=panic`; a panic no longer kills the loop goroutine. (2) **Persisted last-run + catch-up** — new GLOBAL singleton `scheduler_state` in the `plexams` DB (`db/scheduler_state.go`: `GetSchedulerState`/`TouchSchedulerFire`/`SaveSchedulerState`; wrappers `p.SchedulerLastFire`/`RecordSchedulerFire`/`SaveSchedulerOutcome`). Anchor = last **FIRE** (attempt, not success), written at fire **START** (crash/restart-loop safe). On boot `scheduler.ShouldCatchUp(lastFire,hh,mm)` → one idempotent make-up run (`TriggerCatchUp`); absent state = fresh deploy = no catch-up. (3) **Graceful drain** — `Start` returns `*Scheduler`; `Shutdown(ctx)` stops scheduling + waits bounded (30s in server.go) for in-flight run, then cooperative cancel; run uses `context.WithoutCancel`+internal cancel so shutdown doesn't abort mid-import. (4) **DST fix** — `nextFire`/`prevFire` use civil-day `time.Date(d±1)` not `Add(24h)`. (5) **Config re-read per fire** + `viper.WatchConfig()` in bootstrap → recipients/source-toggles change without restart (`enabled`/`time` still need restart). Testable via pure funcs + injected `now`/`newTimer` seams (no Clock interface). `SyncRunReport.Status()` = ok|errors|skipped. build/vet/lint/`go test -race` green.
 
 **Config:** `scheduler.{enabled,time,changesrecipient,debugrecipient,sources.*}` — documented in [deploy/.plexams.yaml.example], [docs/configuration.md] §4a, [CLAUDE.md]. Uses existing zpa/anny/smtp secrets.
 

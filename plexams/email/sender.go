@@ -65,6 +65,10 @@ type Attachment struct {
 const (
 	defaultNoreplyMail = "noreply+plexams@hm.edu"
 	defaultNoreplyName = "Prüfungsplanung FK07 (NOREPLY)"
+	// systemFromName is the From display name for automated system mails (e.g. the nightly
+	// auto-sync report). They are sent as "Plexams <noreply>" — not as the planner — and
+	// carry no Reply-To, since the mailbox is unattended.
+	systemFromName = "Plexams"
 	// defaultMailHostname is the FQDN used for the HELO/EHLO greeting and the Message-ID
 	// domain when SMTPConfig.Hostname is empty (this is the host plexams runs on).
 	defaultMailHostname = "plexams.cs.hm.edu"
@@ -179,17 +183,25 @@ func (s *Sender) newClient() (*mail.Client, error) {
 // buildMsg assembles a go-mail message. From = the send-as account (FromAddress →
 // EnvelopeFrom → planner) with the planner's NAME as display name; the planner's address is
 // the non-JIRA Reply-To. Envelope-From and Reply-To (JIRA vs. not) follow the config.
-func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool) (*mail.Msg, error) {
+func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira, system bool) (*mail.Msg, error) {
 	msg := mail.NewMsg()
-	if strings.TrimSpace(s.cfg.PlanerEmail) == "" {
-		return nil, fmt.Errorf("no planner set: From address is empty — set the planner (name + email) " +
-			"via the GUI (setPlaner) or planer.name/planer.email in config")
-	}
-	// From is the send-as account with the planner's name; sending as a shared account (e.g.
-	// noreply@hm.edu) is required by servers that forbid From ≠ authenticated user. The
-	// planner stays reachable via Reply-To (set below).
-	if err := msg.FromFormat(s.cfg.PlanerName, s.fromAddress()); err != nil {
-		return nil, fmt.Errorf("invalid From address %q <%s>: %w", s.cfg.PlanerName, s.fromAddress(), err)
+	if system {
+		// Automated system mail: From "Plexams <noreply>", no planner required, no Reply-To
+		// (set below). The unattended noreply mailbox is the sender identity.
+		if err := msg.FromFormat(systemFromName, s.EffectiveNoreplyMail()); err != nil {
+			return nil, fmt.Errorf("invalid system From %q <%s>: %w", systemFromName, s.EffectiveNoreplyMail(), err)
+		}
+	} else {
+		if strings.TrimSpace(s.cfg.PlanerEmail) == "" {
+			return nil, fmt.Errorf("no planner set: From address is empty — set the planner (name + email) " +
+				"via the GUI (setPlaner) or planer.name/planer.email in config")
+		}
+		// From is the send-as account with the planner's name; sending as a shared account (e.g.
+		// noreply@hm.edu) is required by servers that forbid From ≠ authenticated user. The
+		// planner stays reachable via Reply-To (set below).
+		if err := msg.FromFormat(s.cfg.PlanerName, s.fromAddress()); err != nil {
+			return nil, fmt.Errorf("invalid From address %q <%s>: %w", s.cfg.PlanerName, s.fromAddress(), err)
+		}
 	}
 	// Explicit envelope sender (MAIL FROM / Return-Path). go-mail's GetSender prefers
 	// HeaderEnvelopeFrom and only falls back to From when it is unset.
@@ -210,14 +222,20 @@ func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, at
 			return nil, fmt.Errorf("invalid Cc address(es) %v: %w", cc, err)
 		}
 	}
-	// JIRA-answered mails get the noreply address with its display name; other mails a
-	// plain Reply-To (planner/reply address, no name).
-	if jira {
+	// System mails carry no Reply-To (unattended mailbox). Otherwise JIRA-answered mails get
+	// the noreply address with its display name; other mails a plain Reply-To (planner/reply
+	// address, no name).
+	switch {
+	case system:
+		// no Reply-To
+	case jira:
 		if err := msg.ReplyToFormat(s.EffectiveNoreplyName(), s.EffectiveNoreplyMail()); err != nil {
 			return nil, fmt.Errorf("invalid noreply Reply-To %q <%s>: %w", s.EffectiveNoreplyName(), s.EffectiveNoreplyMail(), err)
 		}
-	} else if err := msg.ReplyTo(s.nonJiraReplyTo()); err != nil {
-		return nil, fmt.Errorf("invalid Reply-To address: %w", err)
+	default:
+		if err := msg.ReplyTo(s.nonJiraReplyTo()); err != nil {
+			return nil, fmt.Errorf("invalid Reply-To address: %w", err)
+		}
 	}
 	msg.Subject(subject)
 	msg.SetBodyString(mail.TypeTextPlain, string(text))
@@ -246,7 +264,7 @@ func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, at
 func (s *Sender) SendTest() error {
 	msg, err := s.buildMsg([]string{s.cfg.PlanerEmail}, nil, "Awesome Subject",
 		[]byte("Text Body is, of course, supported!"),
-		[]byte("<h1>Fancy HTML is supported, too!</h1>"), nil, false)
+		[]byte("<h1>Fancy HTML is supported, too!</h1>"), nil, false, false)
 	if err != nil {
 		return err
 	}
@@ -283,17 +301,17 @@ func (s *Sender) nonJiraReplyTo() string {
 // is active the mail is captured as .eml, otherwise it goes to the dry-run address with the
 // real recipients prefixed into the subject.
 func (s *Sender) Send(run bool, to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool) error {
-	return s.send(run, to, cc, subject, text, html, attachments, jira, true)
+	return s.send(run, to, cc, subject, text, html, attachments, jira, true, false)
 }
 
-// SendWithoutConfiguredCc sends like Send but omits the configured Cc (smtp.cc, the
-// shared planner self-copy). Automated mails such as the nightly auto-sync use it so they
-// do not copy the planner mailbox on every run.
-func (s *Sender) SendWithoutConfiguredCc(run bool, to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool) error {
-	return s.send(run, to, cc, subject, text, html, attachments, jira, false)
+// SendSystem sends an automated system mail (e.g. the nightly auto-sync report): From is
+// "Plexams <noreply>" (not the planner), there is no Reply-To (unattended mailbox), and the
+// configured Cc is never added. Dry-run behaves like the other sends.
+func (s *Sender) SendSystem(run bool, to []string, subject string, text, html []byte, attachments []*Attachment) error {
+	return s.send(run, to, nil, subject, text, html, attachments, false, false, true)
 }
 
-func (s *Sender) send(run bool, to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool, includeConfiguredCc bool) error {
+func (s *Sender) send(run bool, to, cc []string, subject string, text, html []byte, attachments []*Attachment, jira bool, includeConfiguredCc, system bool) error {
 	realCc := append([]string{}, cc...)
 	if includeConfiguredCc {
 		if effCc := s.EffectiveCc(); effCc != "" {
@@ -302,7 +320,7 @@ func (s *Sender) send(run bool, to, cc []string, subject string, text, html []by
 	}
 
 	if !run && s.collector != nil {
-		msg, err := s.buildMsg(to, realCc, subject, text, html, attachments, jira)
+		msg, err := s.buildMsg(to, realCc, subject, text, html, attachments, jira, system)
 		if err != nil {
 			return err
 		}
@@ -332,7 +350,7 @@ func (s *Sender) send(run bool, to, cc []string, subject string, text, html []by
 		actualCc = nil
 	}
 
-	msg, err := s.buildMsg(actualTo, actualCc, subject, text, html, attachments, jira)
+	msg, err := s.buildMsg(actualTo, actualCc, subject, text, html, attachments, jira, system)
 	if err != nil {
 		return err
 	}
@@ -394,7 +412,7 @@ func (s *Sender) FlushCollection() (int, string, error) {
 		"(je Anhang öffnet sich als echte E-Mail mit den tatsächlichen Empfängern).\n\n%s",
 		len(collector.mails), list.String())
 
-	msg, err := s.buildMsg([]string{recipient}, nil, subject, []byte(text), nil, attachments, false)
+	msg, err := s.buildMsg([]string{recipient}, nil, subject, []byte(text), nil, attachments, false, false)
 	if err != nil {
 		return 0, "", err
 	}

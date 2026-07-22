@@ -139,6 +139,46 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 		},
 	},
 
+	"autoSyncReport.md.tmpl": {
+		Description: "Automatischer Nacht-Abgleich mit ZPA/Anny: Ergebnisbericht (Änderungen je Quelle, Fehler, Heartbeat). Versendet als „Plexams“ ohne Antwortadresse.",
+		Jira:        false,
+		Variables: []emailTemplateVar{
+			v("{{ .Semester }}", "Semester des abgeglichenen Workspace.", "2026-SS"),
+			v("{{ .Started }} / {{ .Finished }}", "Start- und Endzeit des Laufs.", "22.07.2026 03:00 / 03:02"),
+			v("{{ .Skipped }} / {{ .SkipReason }}", "Ob der Lauf übersprungen wurde und warum.", "false"),
+			v("{{ .HasErrors }}", "Ob eine Quelle beim Abruf fehlschlug.", "false"),
+			v("{{ .TotalChanges }}", "Gesamtzahl der Änderungen über alle Quellen.", "3"),
+			v("{{ range .Sources }}", "Schleife über die Quellen (Lehrende/Prüfungen/Aufsichtsbedarf/Anny).", "3 Quellen"),
+			v("{{ .Label }}", "Bezeichnung der Quelle.", "Prüfungen (ZPA)"),
+			v("{{ .Failed }} / {{ .Error }}", "Ob der Abruf dieser Quelle fehlschlug, samt Meldung.", "false"),
+			v("{{ .Count }} / {{ .Noun }}", "Anzahl vorhandener Datensätze und ihr Plural-Substantiv.", "128 / Prüfungen"),
+			v("{{ .Added }} / {{ .Changed }} / {{ .Removed }}", "Neu / geändert / entfallen.", "2 / 1 / 0"),
+			v("{{ .Omitted }}", "Bei Erstbefüllung >0: Anzahl ausgelassener Detailzeilen.", "0"),
+			v("{{ range .Details }}", "Schleife über die einzelnen Änderungen.", "3 Änderungen"),
+			v("{{ .Label }}: {{ .Name }}", "Art (neu/geändert/entfällt) und Name der Änderung.", "neu: 1234 — Datenbanken"),
+			v("{{ .Fields }}", "Bei „geändert“: die geänderten Felder als Text.", "Prüfer: \"A\" → \"B\""),
+		},
+		Sample: syncReportView{
+			Semester:     "2026-SS",
+			Started:      "22.07.2026 03:00",
+			Finished:     "03:02",
+			TotalChanges: 3,
+			Sources: []syncSourceView{
+				{
+					Label: "Prüfungen (ZPA)", Count: 128, Noun: "Prüfungen",
+					Added: 2, Changed: 1, Removed: 0, Changes: 3,
+					Details: []syncChangeView{
+						{Label: "neu", Name: "1234 — Datenbanken"},
+						{Label: "neu", Name: "1250 — Rechnernetze"},
+						{Label: "geändert", Name: "1301 — Mathematik", Fields: `Prüfer: "Müller" → "Meier"`},
+					},
+				},
+				{Label: "Lehrende (ZPA)", Count: 84, Noun: "Lehrende", Changes: 0},
+				{Label: "Anny-Buchungen", Count: 12, Noun: "Buchungen", Changes: 0},
+			},
+		},
+	},
+
 	"coverPageEmail.md.tmpl": {
 		Description: "An die/den Prüfende:n: die generierten Deckblätter für ihre/seine Prüfungen im Anhang.",
 		Jira:        false,

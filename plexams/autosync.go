@@ -243,12 +243,20 @@ func (p *Plexams) attachSyncLogEntries(ctx context.Context, report *SyncRunRepor
 // heartbeat mail (always, when a debug recipient is configured). Best-effort: mail
 // failures are logged, not returned, so they never abort the run.
 func (p *Plexams) sendSyncReportMail(cfg ScheduledSyncConfig, report *SyncRunReport) {
-	subject, body := buildSyncReportMail(report)
+	subject := buildSyncReportSubject(report)
 
-	// Automated mails: do NOT add the configured Cc (smtp.cc) — the run must not copy the
-	// planner mailbox on every night.
+	// The body is a Markdown template rendered to a formatted HTML mail (plus a readable
+	// plain-text alternative); on the near-impossible render error fall back to a one-liner.
+	text, html, err := p.mailRenderer().Render("autoSyncReport.md.tmpl", false, newSyncReportView(report))
+	if err != nil {
+		log.Error().Err(err).Msg("scheduled sync: cannot render report mail; sending minimal text")
+		text, html = []byte(subject+"\n\n(Bericht konnte nicht formatiert werden – siehe Server-Log.)"), nil
+	}
+
+	// Automated system mails: From "Plexams <noreply>", no Reply-To, no configured Cc — the
+	// run must not copy the planner mailbox every night.
 	if report.TotalChanges > 0 && cfg.ChangesRecipient != "" {
-		if err := p.sendMailNoCc(true, []string{cfg.ChangesRecipient}, nil, subject, body, nil, nil, false); err != nil {
+		if err := p.sendSystemMail(true, []string{cfg.ChangesRecipient}, subject, text, html); err != nil {
 			log.Error().Err(err).Str("to", cfg.ChangesRecipient).Msg("scheduled sync: cannot send change mail")
 		}
 	}
@@ -257,82 +265,108 @@ func (p *Plexams) sendSyncReportMail(cfg ScheduledSyncConfig, report *SyncRunRep
 	// address; otherwise send on every run.
 	sameAsChangeMail := cfg.DebugRecipient == cfg.ChangesRecipient && report.TotalChanges > 0
 	if cfg.DebugRecipient != "" && !sameAsChangeMail {
-		if err := p.sendMailNoCc(true, []string{cfg.DebugRecipient}, nil, "[auto-sync] "+subject, body, nil, nil, false); err != nil {
+		if err := p.sendSystemMail(true, []string{cfg.DebugRecipient}, "[auto-sync] "+subject, text, html); err != nil {
 			log.Error().Err(err).Str("to", cfg.DebugRecipient).Msg("scheduled sync: cannot send heartbeat mail")
 		}
 	}
 }
 
-// buildSyncReportMail renders the subject and plain-text body of the auto-sync report.
-func buildSyncReportMail(report *SyncRunReport) (subject string, body []byte) {
+// buildSyncReportSubject renders the subject line of the auto-sync report.
+func buildSyncReportSubject(report *SyncRunReport) string {
 	semester := strings.TrimSpace(report.Semester)
 	switch {
 	case report.Skipped:
-		subject = fmt.Sprintf("Auto-Sync %s: übersprungen", semester)
+		return fmt.Sprintf("Auto-Sync %s: übersprungen", semester)
 	case report.hasErrors() && report.TotalChanges > 0:
-		subject = fmt.Sprintf("Auto-Sync %s: %d Änderungen, mit Fehlern", semester, report.TotalChanges)
+		return fmt.Sprintf("Auto-Sync %s: %d Änderungen, mit Fehlern", semester, report.TotalChanges)
 	case report.hasErrors():
-		subject = fmt.Sprintf("Auto-Sync %s: Fehler beim Abruf", semester)
+		return fmt.Sprintf("Auto-Sync %s: Fehler beim Abruf", semester)
 	case report.TotalChanges > 0:
-		subject = fmt.Sprintf("Auto-Sync %s: %d Änderungen", semester, report.TotalChanges)
+		return fmt.Sprintf("Auto-Sync %s: %d Änderungen", semester, report.TotalChanges)
 	default:
-		subject = fmt.Sprintf("Auto-Sync %s: keine Änderungen", semester)
+		return fmt.Sprintf("Auto-Sync %s: keine Änderungen", semester)
 	}
-
-	var b strings.Builder
-	fmt.Fprintf(&b, "Automatischer Abgleich mit ZPA und Anny\n")
-	fmt.Fprintf(&b, "Semester: %s\n", semester)
-	fmt.Fprintf(&b, "Lauf: %s – %s\n\n", report.Started.Format("02.01.2006 15:04"), report.Finished.Format("15:04"))
-
-	if report.Skipped {
-		fmt.Fprintf(&b, "%s\n", report.SkipReason)
-		return subject, []byte(b.String())
-	}
-
-	if report.TotalChanges == 0 && !report.hasErrors() {
-		fmt.Fprintf(&b, "Keine Änderungen gegenüber dem vorherigen Stand.\n\n")
-	}
-
-	for _, s := range report.Sources {
-		writeSourceSection(&b, s)
-	}
-
-	return subject, []byte(b.String())
 }
 
-// writeSourceSection renders one source's outcome into the mail body.
-func writeSourceSection(b *strings.Builder, s *syncSourceResult) {
-	if s.err != nil {
-		fmt.Fprintf(b, "%s: FEHLER – %v\n\n", s.label, s.err)
-		return
+// syncReportView is the template data for the auto-sync report mail (exported fields for the
+// text/template renderer). It is built from the internal SyncRunReport.
+type syncReportView struct {
+	Semester     string
+	Started      string // "02.01.2006 15:04"
+	Finished     string // "15:04"
+	Skipped      bool
+	SkipReason   string
+	HasErrors    bool
+	TotalChanges int
+	Sources      []syncSourceView
+}
+
+// syncSourceView is one source's outcome for the report template.
+type syncSourceView struct {
+	Label   string
+	Failed  bool
+	Error   string
+	Count   int
+	Noun    string
+	Added   int
+	Changed int
+	Removed int
+	Changes int
+	Details []syncChangeView
+	Omitted int // >0 when the detail list was collapsed (e.g. first fill), holds the count
+}
+
+// syncChangeView is a single change line for the report template.
+type syncChangeView struct {
+	Label  string // "neu" | "geändert" | "entfällt"
+	Name   string
+	Fields string // formatted field changes, for changed entries
+}
+
+// newSyncReportView projects a SyncRunReport into the template view model.
+func newSyncReportView(report *SyncRunReport) syncReportView {
+	v := syncReportView{
+		Semester:     strings.TrimSpace(report.Semester),
+		Started:      report.Started.Format("02.01.2006 15:04"),
+		Finished:     report.Finished.Format("15:04"),
+		Skipped:      report.Skipped,
+		SkipReason:   report.SkipReason,
+		HasErrors:    report.hasErrors(),
+		TotalChanges: report.TotalChanges,
 	}
-	// No changes: either the source is (still) empty — e.g. ZPA has no exams for a fresh
-	// semester yet — or it is unchanged with data.
-	if s.changes() == 0 {
-		if s.count == 0 {
-			fmt.Fprintf(b, "%s: keine %s vorhanden\n\n", s.label, s.noun)
-		} else {
-			fmt.Fprintf(b, "%s: keine Änderungen (%d %s)\n\n", s.label, s.count, s.noun)
+	for _, s := range report.Sources {
+		sv := syncSourceView{Label: s.label, Count: s.count, Noun: s.noun, Changes: s.changes()}
+		switch {
+		case s.err != nil:
+			sv.Failed = true
+			sv.Error = s.err.Error()
+		case s.entry != nil:
+			sv.Added, sv.Changed, sv.Removed = s.entry.Added, s.entry.Changed, s.entry.Removed
+			if sv.Changes > 0 {
+				if len(s.entry.Entries) > maxDetailLines {
+					sv.Omitted = len(s.entry.Entries)
+				} else {
+					for _, e := range s.entry.Entries {
+						sv.Details = append(sv.Details, newSyncChangeView(e))
+					}
+				}
+			}
 		}
-		return
+		v.Sources = append(v.Sources, sv)
 	}
-	fmt.Fprintf(b, "%s: %d neu, %d geändert, %d entfallen\n",
-		s.label, s.entry.Added, s.entry.Changed, s.entry.Removed)
-	if len(s.entry.Entries) > maxDetailLines {
-		fmt.Fprintf(b, "  (%d Änderungen – Detailliste ausgelassen, z.B. Erstbefüllung)\n\n", len(s.entry.Entries))
-		return
+	return v
+}
+
+// newSyncChangeView maps a diff entry to a labelled change line.
+func newSyncChangeView(e *model.SyncChangeEntry) syncChangeView {
+	switch e.Type {
+	case "added":
+		return syncChangeView{Label: "neu", Name: e.Name}
+	case "removed":
+		return syncChangeView{Label: "entfällt", Name: e.Name}
+	default: // "changed"
+		return syncChangeView{Label: "geändert", Name: e.Name, Fields: fieldChangesText(e.Fields)}
 	}
-	for _, e := range s.entry.Entries {
-		switch e.Type {
-		case "added":
-			fmt.Fprintf(b, "  + neu: %s\n", e.Name)
-		case "removed":
-			fmt.Fprintf(b, "  - entfällt: %s\n", e.Name)
-		case "changed":
-			fmt.Fprintf(b, "  ~ %s: %s\n", e.Name, fieldChangesText(e.Fields))
-		}
-	}
-	fmt.Fprintf(b, "\n")
 }
 
 // fieldChangesText joins per-field changes as `field: "old" → "new"`.

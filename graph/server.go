@@ -184,6 +184,8 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	schedulerCtx, cancelScheduler := context.WithCancel(context.Background())
 	defer cancelScheduler()
 	sched := startScheduledSync(schedulerCtx, plexams)
+	// A second, independent scheduler for the daily admin-overview digest (nil when disabled).
+	digestSched := startAdminDigestMail(schedulerCtx, plexams)
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -202,6 +204,14 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		drainCtx, cancelDrain := context.WithTimeout(context.Background(), 30*time.Second)
 		if err := sched.Shutdown(drainCtx); err != nil {
 			log.Warn().Err(err).Msg("auto-sync did not drain within grace period")
+		}
+		cancelDrain()
+	}
+	if digestSched != nil {
+		// Drain a running digest send gracefully; on timeout it is cancelled cooperatively.
+		drainCtx, cancelDrain := context.WithTimeout(context.Background(), 30*time.Second)
+		if err := digestSched.Shutdown(drainCtx); err != nil {
+			log.Warn().Err(err).Msg("admin digest did not drain within grace period")
 		}
 		cancelDrain()
 	}

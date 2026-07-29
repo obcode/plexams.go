@@ -5,6 +5,11 @@
 #
 # Run once after a container (re)build, e.g. from the devcontainer postCreateCommand:
 #   "postCreateCommand": "bash .claude/link-memory.sh"
+#
+# NOTE (since 2026-07-29): inside the combined DevContainer (repo plexams.dev) this is
+# handled centrally by plexams.dev/.devcontainer/post-create.sh, which links the memory
+# dirs of all repos at once. This script is kept for a standalone clone of this public
+# repo outside that container; it is idempotent, so running both is harmless.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

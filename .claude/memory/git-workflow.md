@@ -24,6 +24,13 @@ clean stepwise history matters.
   branch, want a PR?" — merge to main and push unless he explicitly says otherwise. No PR needed.
 - Committing **directly to main** is also fine (Oliver 2026-07-06: "direkt auf main ist wunderbar"),
   e.g. small follow-up fixes — branch only when it adds value or he asks.
-- Do NOT commit session noise like `.claude/settings.json` permission-allowlist changes.
+- **Settings-Politik:** `.claude/settings.json` **ist** versioniert und wird bewusst
+  gepflegt (schlanke Toolchain-Regeln, die auch für einen Standalone-Clone des
+  öffentlichen Repos stimmen). Was NICHT hineingehört und nicht committet wird, sind
+  die Berechtigungs-Zuwächse aus einer einzelnen Session — eingefrorene `curl`-Queries,
+  Einmal-`python3 -c`-Aufrufe, absolute Pfade der jeweiligen Maschine. Die allgemeine
+  Toolchain-Basis liegt im DevContainer ohnehin auf User-Ebene
+  (`plexams.dev/.claude/user-settings.json`). `.claude/settings.local.json` wird **nie**
+  committet.
 - **DO always commit AND push `.claude/memory/`** (Oliver 2026-07-08: "committen und pushen"). The home memory dir symlinks to the repo's tracked `.claude/memory/`, so memory edits are versioned; keep them in sync on the remote. Commit them (own commit is fine) and `git push` whenever memory changes.
 - End commit messages with the Co-Authored-By trailer.

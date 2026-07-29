@@ -43,8 +43,10 @@ func exahmRoomBuffers(constraints *model.Constraints) (pre, post time.Duration) 
 
 // bookedRoomInterval is one of our booked T-building rooms as a time interval, together
 // with the room's EXaHM/SEB capability and physical seats. Overlapping/adjacent bookings of
-// the same room are merged (see bookedExahmIntervals).
+// the same room are merged (see bookedExahmIntervals). The same type also carries the
+// FREE (still bookable) windows of the booking proposal — see freeRoomIntervals.
 type bookedRoomInterval struct {
+	room        string // room name (for the booking proposal; ignored by the capacity math)
 	from, until time.Time
 	exahm, seb  bool
 	seats       int // EXaHM / physical seats
@@ -108,7 +110,7 @@ func (p *Plexams) bookedExahmIntervals(ctx context.Context) ([]bookedRoomInterva
 			sebSeats = *room.SebSeats
 		}
 		result = append(result, bookedRoomInterval{
-			from: m.From, until: m.Until,
+			room: room.Name, from: m.From, until: m.Until,
 			exahm: room.Exahm, seb: room.Seb, seats: room.Seats, sebSeats: sebSeats,
 		})
 	}

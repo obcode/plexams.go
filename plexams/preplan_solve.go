@@ -65,6 +65,12 @@ const (
 type preplanSlot struct {
 	start    time.Time
 	capacity int // usable seats (~90% of the booked physical seats)
+	// alreadyBooked marks a slot we hold Anny bookings for. Only the booking PROPOSAL sets
+	// it (there the capacity comes from the still-FREE rooms): using such a slot needs no
+	// new booking, so it is free to open, while every other slot pays preplanSlotOpenCost.
+	// In the real assignment every candidate slot is booked by construction, so the flag
+	// stays false there and all slots pay the same cost as before.
+	alreadyBooked bool
 }
 
 // preplanUnit is a set of pre-exams that must share a slot (same-slot), treated as one
@@ -248,7 +254,7 @@ func solvePreplan(units []*preplanUnit, slots []*preplanSlot, fixedUsed []int, f
 		// packed into the fewest slots and the rest can be cancelled.
 		used, _ := occupancy(a)
 		for s := range slots {
-			if used[s] > 0 {
+			if used[s] > 0 && !slots[s].alreadyBooked {
 				total += preplanSlotOpenCost
 			}
 		}
@@ -332,15 +338,17 @@ func dsaturBefore(u *preplanUnit, fu int, v *preplanUnit, fv int) bool {
 
 // chooseSlot picks, among the feasible slots, the one that adds the least conflict
 // proximity cost (conflicting units / shared-program fixed occupants placed close in
-// time). Ties are broken to COMPACT: an already-occupied slot before an empty one, then
-// best-fit (least leftover capacity) — so disjoint-program exams share slots and the rest
-// stay free for cancellation. A conflict always outweighs compaction, so exams sharing a
-// study program still land in separate (ideally empty) slots.
+// time). Ties are broken to COMPACT: a slot we already booked before one that would have to
+// be booked first (only the proposal marks that), then an already-occupied slot before an
+// empty one, then best-fit (least leftover capacity) — so disjoint-program exams share slots
+// and the rest stay free for cancellation. A conflict always outweighs compaction, so exams
+// sharing a study program still land in separate (ideally empty) slots.
 func chooseSlot(u int, feasibleSlots []int, assign []int, units []*preplanUnit, slots []*preplanSlot,
 	used []int, fixedProgs []map[string]bool) int {
-	best, bestPenalty, bestOpen, bestFree := -1, math.MaxInt, false, math.MaxInt
+	best, bestPenalty, bestBooked, bestOpen, bestFree := -1, math.MaxInt, false, false, math.MaxInt
 	for _, s := range feasibleSlots {
 		penalty := conflictCostAt(u, s, assign, units, slots, fixedProgs)
+		booked := slots[s].alreadyBooked
 		open := used[s] > 0
 		free := slots[s].capacity - used[s]
 		better := false
@@ -349,13 +357,15 @@ func chooseSlot(u int, feasibleSlots []int, assign []int, units []*preplanUnit, 
 			better = true
 		case penalty != bestPenalty:
 			better = penalty < bestPenalty
+		case booked != bestBooked:
+			better = booked // prefer a slot that needs no new Anny booking
 		case open != bestOpen:
 			better = open // prefer an already-open slot (fill it up before opening another)
 		default:
 			better = free < bestFree // best-fit: least leftover capacity
 		}
 		if better {
-			best, bestPenalty, bestOpen, bestFree = s, penalty, open, free
+			best, bestPenalty, bestBooked, bestOpen, bestFree = s, penalty, booked, open, free
 		}
 	}
 	return best

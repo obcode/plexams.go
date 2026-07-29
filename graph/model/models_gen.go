@@ -1138,6 +1138,34 @@ type PrePlannedRoom struct {
 	Seats *int `json:"seats,omitempty"`
 }
 
+type PreplanBookingProposal struct {
+	// The rooms to book, merged per room and contiguous time window, sorted by time.
+	Suggestions []*PreplanBookingSuggestion `json:"suggestions"`
+	// How many pre-exams have no slot right now.
+	UnplacedNow int `json:"unplacedNow"`
+	// Pre-exams that would get a slot with the proposed bookings.
+	NewlyPlaced []*PreplanPlacement `json:"newlyPlaced"`
+	// Pre-exams that stay without a slot even when every free Anny room is booked.
+	StillUnplacedIDs []int `json:"stillUnplacedIDs"`
+	// Graded summary (same levels as the pre-plan validation).
+	Findings []*PreplanFinding `json:"findings"`
+}
+
+// One room to book in Anny, with the time window it is needed for.
+type PreplanBookingSuggestion struct {
+	Room  string    `json:"room"`
+	From  time.Time `json:"from"`
+	Until time.Time `json:"until"`
+	// Seats of the room (EXaHM/physical).
+	Seats int `json:"seats"`
+	// Slot start times this booking covers.
+	Starttimes []*time.Time `json:"starttimes"`
+	// Modules the room is needed for.
+	Modules []string `json:"modules"`
+	// Exam kinds in these slots (EXaHM/SEB).
+	Kinds []string `json:"kinds"`
+}
+
 type PreplanExamInput struct {
 	ExamKind         string   `json:"examKind"`
 	ExamerID         int      `json:"examerID"`
@@ -1173,6 +1201,15 @@ type PreplanKindNeed struct {
 
 type PreplanOverview struct {
 	Slots []*PreplanSlotNeed `json:"slots"`
+}
+
+// A proposed slot for a pre-exam (not persisted).
+type PreplanPlacement struct {
+	ID               int       `json:"id"`
+	Module           string    `json:"module"`
+	ExamKind         string    `json:"examKind"`
+	ExpectedStudents int       `json:"expectedStudents"`
+	Starttime        time.Time `json:"starttime"`
 }
 
 type PreplanProgramConflict struct {

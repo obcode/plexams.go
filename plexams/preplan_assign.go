@@ -373,13 +373,6 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	if len(preExams) == 0 {
 		return skippedPreplanValidation(), nil
 	}
-	// candidate slots = ALL regular exam slots (not only the MUC.DAI slots): the
-	// pre-exams go wherever we have booked Anny rooms, and those bookings sit on the
-	// normal slot grid (08:30/10:30/12:30/14:30/16:30), not just the MUC.DAI pattern.
-	regularSlots := p.semesterConfig.Slots
-	if len(regularSlots) == 0 {
-		return nil, fmt.Errorf("no slots configured for this semester")
-	}
 	exahmRooms, sebRooms, err := p.preplanRoomCapacities(ctx)
 	if err != nil {
 		return nil, err
@@ -392,6 +385,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	}
 
 	// booked Anny capacity per regular slot
+	regularSlots := p.semesterConfig.Slots
 	allStarts := make([]time.Time, 0, len(regularSlots))
 	for _, s := range regularSlots {
 		allStarts = append(allStarts, s.Starttime)
@@ -399,6 +393,12 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	booked, err := p.annyBookedByTime(ctx, allStarts)
 	if err != nil {
 		return nil, err
+	}
+	seatsByStart := make(map[time.Time]int, len(booked))
+	for start, sb := range booked {
+		if sb != nil {
+			seatsByStart[start] = sb.seats
+		}
 	}
 	// booked T-building rooms as time intervals, to gate each EXaHM exam to slots where a
 	// booked EXaHM room actually covers its real window (duration + setup/teardown buffer),
@@ -409,7 +409,96 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 	}
 	blockDur := slotBlockDuration(p.semesterConfig.Starttimes)
 
-	// candidate slots: only those with booked Anny rooms; usable capacity = 90%
+	plan, err := p.solvePreplanAssignment(ctx, preExams, keepAssigned,
+		preplanCapacity{seatsByStart: seatsByStart, intervals: exahmIntervals}, rBauSebThreshold, blockDur)
+	if err != nil {
+		return nil, err
+	}
+
+	// persist
+	for i, pe := range preExams {
+		if ps := plan.finalSlot[i]; ps != nil {
+			start := ps.start
+			pe.PlannedStarttime = &start
+		} else {
+			pe.PlannedStarttime = nil
+		}
+		pe.IsFixed = plan.finalFixed[i]
+		if _, err := p.dbClient.ReplacePreplanExam(ctx, pe); err != nil {
+			return nil, err
+		}
+	}
+
+	starts := make([]time.Time, 0)
+	for _, pe := range preExams {
+		if pe.PlannedStarttime != nil {
+			starts = append(starts, *pe.PlannedStarttime)
+		}
+	}
+	bookedAfter, err := p.annyBookedByTime(ctx, starts)
+	if err != nil {
+		return nil, err
+	}
+	// validatePreplan reports the small-SEB R-building notes and the genuinely-unplaced
+	// must-place exams (threshold-aware), so no extra messages are added here.
+	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter, rBauSebThreshold, exahmIntervals, blockDur)
+	// pre-planning goal: surface which booked Anny slots are now unused and can be cancelled.
+	usedStarts := make(map[time.Time]bool)
+	for _, pe := range preExams {
+		if pe.PlannedStarttime != nil {
+			usedStarts[*pe.PlannedStarttime] = true
+		}
+	}
+	if f := cancellableSlotsFinding(regularSlots, booked, usedStarts); f != nil {
+		result.Findings = append(result.Findings, f)
+		result.Messages = append(result.Messages, f.Message)
+	}
+	if len(plan.slots) == 0 {
+		msg := "keine Anny-Räume gebucht — nichts zugeordnet (zuerst Anny-Räume buchen und importieren)"
+		result.Findings = append([]*model.PreplanFinding{{Level: model.ValidationLevelError, Message: msg}}, result.Findings...)
+		result.Messages = append([]string{msg}, result.Messages...)
+		result.Ok = false
+	}
+	return result, nil
+}
+
+// preplanPlan is the outcome of one assignment run: the candidate slots it could use and,
+// per pre-exam (same order as the input), the slot it was placed in (nil = none) and
+// whether that placement is a fixed one. Nothing is persisted — the caller decides whether
+// to write it (GeneratePreplanAssignment) or only report it (the booking proposal).
+type preplanPlan struct {
+	slots      []*preplanSlot
+	finalSlot  []*preplanSlot
+	finalFixed []bool
+}
+
+// preplanCapacity is the room capacity one assignment run may use: the physical seats per
+// slot start, the matching room time windows, and (proposal only) the slots we already hold
+// bookings for. It is what makes the same solver serve the real assignment (capacity = what
+// WE have booked in Anny) and the booking proposal (capacity = what is still FREE in Anny).
+type preplanCapacity struct {
+	seatsByStart map[time.Time]int
+	intervals    []bookedRoomInterval
+	// alreadyBooked marks slot starts covered by our own bookings; those are free to open
+	// (see preplanSlot.alreadyBooked). nil in the real assignment, where all slots are booked.
+	alreadyBooked map[time.Time]bool
+}
+
+// solvePreplanAssignment builds the units (same-slot groups, drop costs, allowed slots) and
+// distributes them over the candidate slots with the given capacity. Nothing is persisted.
+func (p *Plexams) solvePreplanAssignment(ctx context.Context, preExams []*model.PreplanExam, keepAssigned bool,
+	capacity preplanCapacity, rBauSebThreshold int, blockDur time.Duration,
+) (*preplanPlan, error) {
+	seatsByStart, intervals := capacity.seatsByStart, capacity.intervals
+	// candidate slots = ALL regular exam slots (not only the MUC.DAI slots): the
+	// pre-exams go wherever Anny rooms are available, and those sit on the normal slot
+	// grid (08:30/10:30/12:30/14:30/16:30), not just the MUC.DAI pattern.
+	regularSlots := p.semesterConfig.Slots
+	if len(regularSlots) == 0 {
+		return nil, fmt.Errorf("no slots configured for this semester")
+	}
+
+	// candidate slots: only those with usable Anny seats; usable capacity = 90%
 	slots := make([]*preplanSlot, 0)
 	slotIdxByStart := make(map[time.Time]int)
 	// usable fraction of each slot's booked Anny seats (GUI-editable, default 1.0)
@@ -418,16 +507,15 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		capacityFactor = cfg.PreplanCapacityFactor
 	}
 	for _, s := range regularSlots {
-		sb := booked[s.Starttime]
-		if sb == nil {
-			continue
-		}
-		capacity := int(float64(sb.seats) * capacityFactor)
-		if capacity <= 0 {
+		usable := int(float64(seatsByStart[s.Starttime]) * capacityFactor)
+		if usable <= 0 {
 			continue
 		}
 		slotIdxByStart[s.Starttime] = len(slots)
-		slots = append(slots, &preplanSlot{start: s.Starttime, capacity: capacity})
+		slots = append(slots, &preplanSlot{
+			start: s.Starttime, capacity: usable,
+			alreadyBooked: capacity.alreadyBooked[s.Starttime],
+		})
 	}
 
 	// Joint-program slots are reserved: a pre-exam of a joint program (e.g. MUC.DAI
@@ -636,7 +724,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		if !hasExahm {
 			maxWin := 0
 			for _, ps := range slots {
-				if w := exahmWindowSeats(exahmIntervals, false, ps.start, uDur, uPre, uPost); w > maxWin {
+				if w := exahmWindowSeats(intervals, false, ps.start, uDur, uPre, uPost); w > maxWin {
 					maxWin = w
 				}
 			}
@@ -647,7 +735,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 		windowOK := make(map[int]bool)
 		for idx, ps := range slots {
-			if exahmWindowSeats(exahmIntervals, hasExahm, ps.start, uDur, uPre, uPost) >= footprint {
+			if exahmWindowSeats(intervals, hasExahm, ps.start, uDur, uPre, uPost) >= footprint {
 				windowOK[idx] = true
 			}
 		}
@@ -713,7 +801,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 	}
 
-	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs, exahmIntervals)
+	assign := solvePreplan(solveUnits, slots, fixedUsed, fixedProgs, intervals)
 	for u, members := range solveMembers {
 		var ps *preplanSlot
 		if assign[u] >= 0 {
@@ -725,51 +813,7 @@ func (p *Plexams) GeneratePreplanAssignment(ctx context.Context, keepAssigned bo
 		}
 	}
 
-	// persist
-	for i, pe := range preExams {
-		if ps := finalSlot[i]; ps != nil {
-			start := ps.start
-			pe.PlannedStarttime = &start
-		} else {
-			pe.PlannedStarttime = nil
-		}
-		pe.IsFixed = finalFixed[i]
-		if _, err := p.dbClient.ReplacePreplanExam(ctx, pe); err != nil {
-			return nil, err
-		}
-	}
-
-	starts := make([]time.Time, 0)
-	for _, pe := range preExams {
-		if pe.PlannedStarttime != nil {
-			starts = append(starts, *pe.PlannedStarttime)
-		}
-	}
-	bookedAfter, err := p.annyBookedByTime(ctx, starts)
-	if err != nil {
-		return nil, err
-	}
-	// validatePreplan reports the small-SEB R-building notes and the genuinely-unplaced
-	// must-place exams (threshold-aware), so no extra messages are added here.
-	result := validatePreplan(preExams, exahmRooms, sebRooms, bookedAfter, rBauSebThreshold, exahmIntervals, blockDur)
-	// pre-planning goal: surface which booked Anny slots are now unused and can be cancelled.
-	usedStarts := make(map[time.Time]bool)
-	for _, pe := range preExams {
-		if pe.PlannedStarttime != nil {
-			usedStarts[*pe.PlannedStarttime] = true
-		}
-	}
-	if f := cancellableSlotsFinding(regularSlots, booked, usedStarts); f != nil {
-		result.Findings = append(result.Findings, f)
-		result.Messages = append(result.Messages, f.Message)
-	}
-	if len(slots) == 0 {
-		msg := "keine Anny-Räume gebucht — nichts zugeordnet (zuerst Anny-Räume buchen und importieren)"
-		result.Findings = append([]*model.PreplanFinding{{Level: model.ValidationLevelError, Message: msg}}, result.Findings...)
-		result.Messages = append([]string{msg}, result.Messages...)
-		result.Ok = false
-	}
-	return result, nil
+	return &preplanPlan{slots: slots, finalSlot: finalSlot, finalFixed: finalFixed}, nil
 }
 
 // commonSlotKey returns the start time shared by all members, or nil when they are not

@@ -182,6 +182,31 @@ kompakt und in sich geschlossen. Eine generische „items→slots"-Engine ist er
 geplant, wenn der Terminplan-Generator als zweiter echter Abnehmer dazukommt (siehe
 [cli-to-gui-migration-plan.md](cli-to-gui-migration-plan.md)).
 
+### Derselbe Solver rückwärts: der Buchungsvorschlag
+
+Die Zuordnung kann nur verteilen, was **schon gebucht** ist. Die umgekehrte Frage — *wo
+sollte ich noch buchen?* — beantwortet
+[preplan_suggest.go](../plexams/preplan_suggest.go) mit **demselben** Solver, nur mit
+anderer Kapazität:
+
+1. **Freie Fenster bilden.** Je Anny-Raum und Prüfungstag wird das Komplement der
+   **fremden** bestätigten Buchungen gebildet (`subtractWindows`). Eigene Buchungen
+   blockieren nicht — sie sind ja unsere.
+2. **Damit lösen.** `solvePreplanAssignment` läuft mit dieser Kapazität
+   (`preplanCapacity`); Slots, für die wir bereits Buchungen halten, sind als
+   `alreadyBooked` markiert und kosten kein `preplanSlotOpenCost` — der Solver bevorzugt
+   sie also, weil sie keine neue Buchung brauchen.
+3. **Räume ableiten.** Je belegtem Slot wird das Fenster (Dauer + Vor-/Nachlauf über alle
+   dort liegenden Prüfungen) gebildet und greedy mit den größten freien Räumen gedeckt —
+   EXaHM-Bedarf nur aus EXaHM-Räumen. Was wir für dieses Fenster schon gebucht haben,
+   zählt zuerst und taucht nicht als Vorschlag auf.
+4. **Zusammenfassen.** Vorschläge desselben Raums in angrenzenden Fenstern werden zu
+   einer Buchung gemergt.
+
+Der Lauf **schreibt nichts** — weder Vorplanung noch Anny. `keepAssigned=true` hält die
+bereits gesetzten Prüfungen fest (minimale Ergänzung), `false` denkt alles neu (der Fall
+„noch gar nichts gebucht"). Query: `preplanBookingSuggestions(keepAssigned:)`.
+
 ### Vertrag mit dem künftigen Terminplan-Generator: „fix = gesperrt"
 
 Alle drei Planer trennen *fix* von *zu optimieren*: die Aufsichtenplanung über
@@ -228,6 +253,7 @@ neues Modell nötig.
 | `preplanSAStartTemp`            | 20 000    | Anfangstemperatur. |
 | `preplanSAEndTemp`              | 1         | Endtemperatur. |
 | `preplanEjectDepth`             | 3         | Max. Einheiten, die ein Relocate-Move aus einem Slot wirft. |
+| `preplanSlotOpenCost`           | 15        | Kosten, einen weiteren Slot zu öffnen (packt disjunkte Prüfungen zusammen; entfällt für schon gebuchte Slots im Buchungsvorschlag). |
 
 Und in [preplan_assign.go](../plexams/preplan_assign.go):
 

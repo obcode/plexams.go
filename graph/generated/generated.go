@@ -1032,6 +1032,24 @@ type ComplexityRoot struct {
 		Seats    func(childComplexity int) int
 	}
 
+	PreplanBookingProposal struct {
+		Findings         func(childComplexity int) int
+		NewlyPlaced      func(childComplexity int) int
+		StillUnplacedIDs func(childComplexity int) int
+		Suggestions      func(childComplexity int) int
+		UnplacedNow      func(childComplexity int) int
+	}
+
+	PreplanBookingSuggestion struct {
+		From       func(childComplexity int) int
+		Kinds      func(childComplexity int) int
+		Modules    func(childComplexity int) int
+		Room       func(childComplexity int) int
+		Seats      func(childComplexity int) int
+		Starttimes func(childComplexity int) int
+		Until      func(childComplexity int) int
+	}
+
 	PreplanExam struct {
 		Ancode           func(childComplexity int) int
 		CanShareSlot     func(childComplexity int) int
@@ -1067,6 +1085,14 @@ type ComplexityRoot struct {
 
 	PreplanOverview struct {
 		Slots func(childComplexity int) int
+	}
+
+	PreplanPlacement struct {
+		ExamKind         func(childComplexity int) int
+		ExpectedStudents func(childComplexity int) int
+		ID               func(childComplexity int) int
+		Module           func(childComplexity int) int
+		Starttime        func(childComplexity int) int
 	}
 
 	PreplanProgramConflict struct {
@@ -1232,6 +1258,7 @@ type ComplexityRoot struct {
 		PreExamsAt                    func(childComplexity int, starttime time.Time) int
 		PrePlannedInvigilations       func(childComplexity int) int
 		PrePlannedRooms               func(childComplexity int) int
+		PreplanBookingSuggestions     func(childComplexity int, keepAssigned bool) int
 		PreplanConstraints            func(childComplexity int) int
 		PreplanExam                   func(childComplexity int, id int) int
 		PreplanExamAncodeSuggestions  func(childComplexity int, id int) int
@@ -1981,6 +2008,7 @@ type QueryResolver interface {
 	DryRunTestMail(ctx context.Context) (*model.DryRunTestMailStatus, error)
 	PlanningState(ctx context.Context) (*model.PlanningState, error)
 	ValidatePreplanAssignment(ctx context.Context) (*model.PreplanValidation, error)
+	PreplanBookingSuggestions(ctx context.Context, keepAssigned bool) (*model.PreplanBookingProposal, error)
 	PreplanConstraints(ctx context.Context) ([]*model.PreplanRule, error)
 	PreplanExams(ctx context.Context) ([]*model.PreplanExam, error)
 	PreplanExam(ctx context.Context, id int) (*model.PreplanExam, error)
@@ -7278,6 +7306,90 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PrePlannedRoom.Seats(childComplexity), true
 
+	case "PreplanBookingProposal.findings":
+		if e.complexity.PreplanBookingProposal.Findings == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingProposal.Findings(childComplexity), true
+
+	case "PreplanBookingProposal.newlyPlaced":
+		if e.complexity.PreplanBookingProposal.NewlyPlaced == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingProposal.NewlyPlaced(childComplexity), true
+
+	case "PreplanBookingProposal.stillUnplacedIDs":
+		if e.complexity.PreplanBookingProposal.StillUnplacedIDs == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingProposal.StillUnplacedIDs(childComplexity), true
+
+	case "PreplanBookingProposal.suggestions":
+		if e.complexity.PreplanBookingProposal.Suggestions == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingProposal.Suggestions(childComplexity), true
+
+	case "PreplanBookingProposal.unplacedNow":
+		if e.complexity.PreplanBookingProposal.UnplacedNow == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingProposal.UnplacedNow(childComplexity), true
+
+	case "PreplanBookingSuggestion.from":
+		if e.complexity.PreplanBookingSuggestion.From == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingSuggestion.From(childComplexity), true
+
+	case "PreplanBookingSuggestion.kinds":
+		if e.complexity.PreplanBookingSuggestion.Kinds == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingSuggestion.Kinds(childComplexity), true
+
+	case "PreplanBookingSuggestion.modules":
+		if e.complexity.PreplanBookingSuggestion.Modules == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingSuggestion.Modules(childComplexity), true
+
+	case "PreplanBookingSuggestion.room":
+		if e.complexity.PreplanBookingSuggestion.Room == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingSuggestion.Room(childComplexity), true
+
+	case "PreplanBookingSuggestion.seats":
+		if e.complexity.PreplanBookingSuggestion.Seats == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingSuggestion.Seats(childComplexity), true
+
+	case "PreplanBookingSuggestion.starttimes":
+		if e.complexity.PreplanBookingSuggestion.Starttimes == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingSuggestion.Starttimes(childComplexity), true
+
+	case "PreplanBookingSuggestion.until":
+		if e.complexity.PreplanBookingSuggestion.Until == nil {
+			break
+		}
+
+		return e.complexity.PreplanBookingSuggestion.Until(childComplexity), true
+
 	case "PreplanExam.ancode":
 		if e.complexity.PreplanExam.Ancode == nil {
 			break
@@ -7452,6 +7564,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PreplanOverview.Slots(childComplexity), true
+
+	case "PreplanPlacement.examKind":
+		if e.complexity.PreplanPlacement.ExamKind == nil {
+			break
+		}
+
+		return e.complexity.PreplanPlacement.ExamKind(childComplexity), true
+
+	case "PreplanPlacement.expectedStudents":
+		if e.complexity.PreplanPlacement.ExpectedStudents == nil {
+			break
+		}
+
+		return e.complexity.PreplanPlacement.ExpectedStudents(childComplexity), true
+
+	case "PreplanPlacement.id":
+		if e.complexity.PreplanPlacement.ID == nil {
+			break
+		}
+
+		return e.complexity.PreplanPlacement.ID(childComplexity), true
+
+	case "PreplanPlacement.module":
+		if e.complexity.PreplanPlacement.Module == nil {
+			break
+		}
+
+		return e.complexity.PreplanPlacement.Module(childComplexity), true
+
+	case "PreplanPlacement.starttime":
+		if e.complexity.PreplanPlacement.Starttime == nil {
+			break
+		}
+
+		return e.complexity.PreplanPlacement.Starttime(childComplexity), true
 
 	case "PreplanProgramConflict.modules":
 		if e.complexity.PreplanProgramConflict.Modules == nil {
@@ -8475,6 +8622,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.PrePlannedRooms(childComplexity), true
+
+	case "Query.preplanBookingSuggestions":
+		if e.complexity.Query.PreplanBookingSuggestions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_preplanBookingSuggestions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.PreplanBookingSuggestions(childComplexity, args["keepAssigned"].(bool)), true
 
 	case "Query.preplanConstraints":
 		if e.complexity.Query.PreplanConstraints == nil {
@@ -13549,6 +13708,55 @@ type PreplanValidation {
 type PreplanFinding {
   level: ValidationLevel!
   message: String!
+}
+`, BuiltIn: false},
+	{Name: "../preplan_booking.graphqls", Input: `extend type Query {
+  """
+  Proposes the Anny bookings still missing so that every SEB/EXaHM pre-exam can be
+  planned. It computes with the rooms that are still FREE in Anny (a foreign booking
+  blocks a room, our own bookings do not) and changes nothing — neither the pre-exams
+  nor Anny. With keepAssigned the exams that already have a slot keep it and only the
+  unplaced ones are placed (minimal additional bookings); without it everything is
+  re-planned from scratch, so a proposal can also be made before booking anything.
+  """
+  preplanBookingSuggestions(keepAssigned: Boolean! = true): PreplanBookingProposal!
+}
+
+type PreplanBookingProposal {
+  "The rooms to book, merged per room and contiguous time window, sorted by time."
+  suggestions: [PreplanBookingSuggestion!]!
+  "How many pre-exams have no slot right now."
+  unplacedNow: Int!
+  "Pre-exams that would get a slot with the proposed bookings."
+  newlyPlaced: [PreplanPlacement!]!
+  "Pre-exams that stay without a slot even when every free Anny room is booked."
+  stillUnplacedIDs: [Int!]!
+  "Graded summary (same levels as the pre-plan validation)."
+  findings: [PreplanFinding!]!
+}
+
+"One room to book in Anny, with the time window it is needed for."
+type PreplanBookingSuggestion {
+  room: String!
+  from: Time!
+  until: Time!
+  "Seats of the room (EXaHM/physical)."
+  seats: Int!
+  "Slot start times this booking covers."
+  starttimes: [Time!]!
+  "Modules the room is needed for."
+  modules: [String!]!
+  "Exam kinds in these slots (EXaHM/SEB)."
+  kinds: [String!]!
+}
+
+"A proposed slot for a pre-exam (not persisted)."
+type PreplanPlacement {
+  id: Int!
+  module: String!
+  examKind: String!
+  expectedStudents: Int!
+  starttime: Time!
 }
 `, BuiltIn: false},
 	{Name: "../preplan_constraints.graphqls", Input: `extend type Query {
@@ -20392,6 +20600,34 @@ func (ec *executionContext) field_Query_preExamsAt_argsStarttime(
 	}
 
 	var zeroVal time.Time
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_preplanBookingSuggestions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_preplanBookingSuggestions_argsKeepAssigned(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["keepAssigned"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_preplanBookingSuggestions_argsKeepAssigned(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (bool, error) {
+	if _, ok := rawArgs["keepAssigned"]; !ok {
+		var zeroVal bool
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("keepAssigned"))
+	if tmp, ok := rawArgs["keepAssigned"]; ok {
+		return ec.unmarshalNBoolean2bool(ctx, tmp)
+	}
+
+	var zeroVal bool
 	return zeroVal, nil
 }
 
@@ -55581,6 +55817,568 @@ func (ec *executionContext) fieldContext_PrePlannedRoom_seats(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _PreplanBookingProposal_suggestions(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingProposal) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingProposal_suggestions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Suggestions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PreplanBookingSuggestion)
+	fc.Result = res
+	return ec.marshalNPreplanBookingSuggestion2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanBookingSuggestionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingProposal_suggestions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingProposal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "room":
+				return ec.fieldContext_PreplanBookingSuggestion_room(ctx, field)
+			case "from":
+				return ec.fieldContext_PreplanBookingSuggestion_from(ctx, field)
+			case "until":
+				return ec.fieldContext_PreplanBookingSuggestion_until(ctx, field)
+			case "seats":
+				return ec.fieldContext_PreplanBookingSuggestion_seats(ctx, field)
+			case "starttimes":
+				return ec.fieldContext_PreplanBookingSuggestion_starttimes(ctx, field)
+			case "modules":
+				return ec.fieldContext_PreplanBookingSuggestion_modules(ctx, field)
+			case "kinds":
+				return ec.fieldContext_PreplanBookingSuggestion_kinds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanBookingSuggestion", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingProposal_unplacedNow(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingProposal) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingProposal_unplacedNow(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnplacedNow, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingProposal_unplacedNow(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingProposal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingProposal_newlyPlaced(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingProposal) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingProposal_newlyPlaced(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NewlyPlaced, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PreplanPlacement)
+	fc.Result = res
+	return ec.marshalNPreplanPlacement2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanPlacementᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingProposal_newlyPlaced(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingProposal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_PreplanPlacement_id(ctx, field)
+			case "module":
+				return ec.fieldContext_PreplanPlacement_module(ctx, field)
+			case "examKind":
+				return ec.fieldContext_PreplanPlacement_examKind(ctx, field)
+			case "expectedStudents":
+				return ec.fieldContext_PreplanPlacement_expectedStudents(ctx, field)
+			case "starttime":
+				return ec.fieldContext_PreplanPlacement_starttime(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanPlacement", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingProposal_stillUnplacedIDs(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingProposal) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingProposal_stillUnplacedIDs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StillUnplacedIDs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingProposal_stillUnplacedIDs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingProposal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingProposal_findings(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingProposal) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingProposal_findings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Findings, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.PreplanFinding)
+	fc.Result = res
+	return ec.marshalNPreplanFinding2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanFindingᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingProposal_findings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingProposal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "level":
+				return ec.fieldContext_PreplanFinding_level(ctx, field)
+			case "message":
+				return ec.fieldContext_PreplanFinding_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanFinding", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingSuggestion_room(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingSuggestion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingSuggestion_room(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Room, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingSuggestion_room(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingSuggestion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingSuggestion_from(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingSuggestion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingSuggestion_from(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.From, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingSuggestion_from(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingSuggestion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingSuggestion_until(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingSuggestion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingSuggestion_until(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Until, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingSuggestion_until(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingSuggestion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingSuggestion_seats(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingSuggestion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingSuggestion_seats(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Seats, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingSuggestion_seats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingSuggestion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingSuggestion_starttimes(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingSuggestion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingSuggestion_starttimes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Starttimes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*time.Time)
+	fc.Result = res
+	return ec.marshalNTime2ᚕᚖtimeᚐTimeᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingSuggestion_starttimes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingSuggestion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingSuggestion_modules(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingSuggestion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingSuggestion_modules(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Modules, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingSuggestion_modules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingSuggestion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanBookingSuggestion_kinds(ctx context.Context, field graphql.CollectedField, obj *model.PreplanBookingSuggestion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanBookingSuggestion_kinds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Kinds, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanBookingSuggestion_kinds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanBookingSuggestion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreplanExam_id(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreplanExam_id(ctx, field)
 	if err != nil {
@@ -56691,6 +57489,226 @@ func (ec *executionContext) fieldContext_PreplanOverview_slots(_ context.Context
 				return ec.fieldContext_PreplanSlotNeed_conflicts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanSlotNeed", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanPlacement_id(ctx context.Context, field graphql.CollectedField, obj *model.PreplanPlacement) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanPlacement_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanPlacement_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanPlacement",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanPlacement_module(ctx context.Context, field graphql.CollectedField, obj *model.PreplanPlacement) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanPlacement_module(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Module, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanPlacement_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanPlacement",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanPlacement_examKind(ctx context.Context, field graphql.CollectedField, obj *model.PreplanPlacement) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanPlacement_examKind(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExamKind, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanPlacement_examKind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanPlacement",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanPlacement_expectedStudents(ctx context.Context, field graphql.CollectedField, obj *model.PreplanPlacement) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanPlacement_expectedStudents(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExpectedStudents, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanPlacement_expectedStudents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanPlacement",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PreplanPlacement_starttime(ctx context.Context, field graphql.CollectedField, obj *model.PreplanPlacement) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PreplanPlacement_starttime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Starttime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PreplanPlacement_starttime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PreplanPlacement",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -63876,6 +64894,73 @@ func (ec *executionContext) fieldContext_Query_validatePreplanAssignment(_ conte
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PreplanValidation", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_preplanBookingSuggestions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_preplanBookingSuggestions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().PreplanBookingSuggestions(rctx, fc.Args["keepAssigned"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.PreplanBookingProposal)
+	fc.Result = res
+	return ec.marshalNPreplanBookingProposal2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanBookingProposal(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_preplanBookingSuggestions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "suggestions":
+				return ec.fieldContext_PreplanBookingProposal_suggestions(ctx, field)
+			case "unplacedNow":
+				return ec.fieldContext_PreplanBookingProposal_unplacedNow(ctx, field)
+			case "newlyPlaced":
+				return ec.fieldContext_PreplanBookingProposal_newlyPlaced(ctx, field)
+			case "stillUnplacedIDs":
+				return ec.fieldContext_PreplanBookingProposal_stillUnplacedIDs(ctx, field)
+			case "findings":
+				return ec.fieldContext_PreplanBookingProposal_findings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PreplanBookingProposal", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_preplanBookingSuggestions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -94929,6 +96014,134 @@ func (ec *executionContext) _PrePlannedRoom(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var preplanBookingProposalImplementors = []string{"PreplanBookingProposal"}
+
+func (ec *executionContext) _PreplanBookingProposal(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanBookingProposal) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanBookingProposalImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanBookingProposal")
+		case "suggestions":
+			out.Values[i] = ec._PreplanBookingProposal_suggestions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unplacedNow":
+			out.Values[i] = ec._PreplanBookingProposal_unplacedNow(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "newlyPlaced":
+			out.Values[i] = ec._PreplanBookingProposal_newlyPlaced(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stillUnplacedIDs":
+			out.Values[i] = ec._PreplanBookingProposal_stillUnplacedIDs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "findings":
+			out.Values[i] = ec._PreplanBookingProposal_findings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var preplanBookingSuggestionImplementors = []string{"PreplanBookingSuggestion"}
+
+func (ec *executionContext) _PreplanBookingSuggestion(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanBookingSuggestion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanBookingSuggestionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanBookingSuggestion")
+		case "room":
+			out.Values[i] = ec._PreplanBookingSuggestion_room(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "from":
+			out.Values[i] = ec._PreplanBookingSuggestion_from(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "until":
+			out.Values[i] = ec._PreplanBookingSuggestion_until(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seats":
+			out.Values[i] = ec._PreplanBookingSuggestion_seats(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "starttimes":
+			out.Values[i] = ec._PreplanBookingSuggestion_starttimes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modules":
+			out.Values[i] = ec._PreplanBookingSuggestion_modules(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kinds":
+			out.Values[i] = ec._PreplanBookingSuggestion_kinds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var preplanExamImplementors = []string{"PreplanExam"}
 
 func (ec *executionContext) _PreplanExam(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanExam) graphql.Marshaler {
@@ -95143,6 +96356,65 @@ func (ec *executionContext) _PreplanOverview(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("PreplanOverview")
 		case "slots":
 			out.Values[i] = ec._PreplanOverview_slots(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var preplanPlacementImplementors = []string{"PreplanPlacement"}
+
+func (ec *executionContext) _PreplanPlacement(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanPlacement) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanPlacementImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanPlacement")
+		case "id":
+			out.Values[i] = ec._PreplanPlacement_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._PreplanPlacement_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examKind":
+			out.Values[i] = ec._PreplanPlacement_examKind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expectedStudents":
+			out.Values[i] = ec._PreplanPlacement_expectedStudents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "starttime":
+			out.Values[i] = ec._PreplanPlacement_starttime(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -97435,6 +98707,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_validatePreplanAssignment(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "preplanBookingSuggestions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_preplanBookingSuggestions(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -105544,6 +106838,74 @@ func (ec *executionContext) marshalNPrePlannedRoom2ᚖgithubᚗcomᚋobcodeᚋpl
 	return ec._PrePlannedRoom(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPreplanBookingProposal2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanBookingProposal(ctx context.Context, sel ast.SelectionSet, v model.PreplanBookingProposal) graphql.Marshaler {
+	return ec._PreplanBookingProposal(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPreplanBookingProposal2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanBookingProposal(ctx context.Context, sel ast.SelectionSet, v *model.PreplanBookingProposal) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanBookingProposal(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPreplanBookingSuggestion2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanBookingSuggestionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreplanBookingSuggestion) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPreplanBookingSuggestion2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanBookingSuggestion(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPreplanBookingSuggestion2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanBookingSuggestion(ctx context.Context, sel ast.SelectionSet, v *model.PreplanBookingSuggestion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanBookingSuggestion(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPreplanExam2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanExam(ctx context.Context, sel ast.SelectionSet, v model.PreplanExam) graphql.Marshaler {
 	return ec._PreplanExam(ctx, sel, &v)
 }
@@ -105683,6 +107045,60 @@ func (ec *executionContext) marshalNPreplanOverview2ᚖgithubᚗcomᚋobcodeᚋp
 		return graphql.Null
 	}
 	return ec._PreplanOverview(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPreplanPlacement2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanPlacementᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreplanPlacement) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPreplanPlacement2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanPlacement(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPreplanPlacement2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanPlacement(ctx context.Context, sel ast.SelectionSet, v *model.PreplanPlacement) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PreplanPlacement(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPreplanProgramConflict2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanProgramConflictᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PreplanProgramConflict) graphql.Marshaler {

@@ -1,0 +1,48 @@
+extend type Query {
+  """
+  Proposes the Anny bookings still missing so that every SEB/EXaHM pre-exam can be
+  planned. It computes with the rooms that are still FREE in Anny (a foreign booking
+  blocks a room, our own bookings do not) and changes nothing — neither the pre-exams
+  nor Anny. With keepAssigned the exams that already have a slot keep it and only the
+  unplaced ones are placed (minimal additional bookings); without it everything is
+  re-planned from scratch, so a proposal can also be made before booking anything.
+  """
+  preplanBookingSuggestions(keepAssigned: Boolean! = true): PreplanBookingProposal!
+}
+
+type PreplanBookingProposal {
+  "The rooms to book, merged per room and contiguous time window, sorted by time."
+  suggestions: [PreplanBookingSuggestion!]!
+  "How many pre-exams have no slot right now."
+  unplacedNow: Int!
+  "Pre-exams that would get a slot with the proposed bookings."
+  newlyPlaced: [PreplanPlacement!]!
+  "Pre-exams that stay without a slot even when every free Anny room is booked."
+  stillUnplacedIDs: [Int!]!
+  "Graded summary (same levels as the pre-plan validation)."
+  findings: [PreplanFinding!]!
+}
+
+"One room to book in Anny, with the time window it is needed for."
+type PreplanBookingSuggestion {
+  room: String!
+  from: Time!
+  until: Time!
+  "Seats of the room (EXaHM/physical)."
+  seats: Int!
+  "Slot start times this booking covers."
+  starttimes: [Time!]!
+  "Modules the room is needed for."
+  modules: [String!]!
+  "Exam kinds in these slots (EXaHM/SEB)."
+  kinds: [String!]!
+}
+
+"A proposed slot for a pre-exam (not persisted)."
+type PreplanPlacement {
+  id: Int!
+  module: String!
+  examKind: String!
+  expectedStudents: Int!
+  starttime: Time!
+}

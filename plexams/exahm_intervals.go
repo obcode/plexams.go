@@ -115,13 +115,29 @@ func (p *Plexams) bookedExahmIntervals(ctx context.Context) ([]bookedRoomInterva
 	return result, nil
 }
 
-// preplanExamDuration returns a pre-exam's exam duration, falling back to a full slot
-// block when none has been entered yet (so an un-sized pre-exam is gated conservatively).
-func preplanExamDuration(pe *model.PreplanExam, fallback time.Duration) time.Duration {
+// preplanExamDuration returns a pre-exam's exam duration, falling back to the slot block
+// MINUS its setup/teardown buffers when none has been entered yet — see
+// blockExamDuration for why the buffers must not be added on top of a full block.
+func preplanExamDuration(pe *model.PreplanExam, block time.Duration) time.Duration {
 	if pe.Duration != nil && *pe.Duration > 0 {
 		return time.Duration(*pe.Duration) * time.Minute
 	}
-	return fallback
+	pre, post := exahmRoomBuffers(pe.Constraints)
+	return blockExamDuration(block, pre, post)
+}
+
+// blockExamDuration returns the exam duration a full slot block holds once the exam's
+// setup/teardown buffers are taken out of it: a 150-min block holds a 90-min exam plus
+// 30/30. It is the fallback for an exam whose real duration is unknown. Using the whole
+// block instead would count the buffers TWICE — the window checked against the Anny
+// booking is duration + pre + post, so a 150-min block would ask for 210 min and no
+// ordinary booking could ever cover it. Degenerate blocks (not longer than the buffers)
+// keep the full block.
+func blockExamDuration(block, pre, post time.Duration) time.Duration {
+	if d := block - pre - post; d > 0 {
+		return d
+	}
+	return block
 }
 
 // intersectSlotSet intersects two slot-index allow-sets, treating nil as "no restriction"

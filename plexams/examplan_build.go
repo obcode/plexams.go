@@ -691,10 +691,6 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		if len(ntaExt[u]) > 0 {
 			exahmWithNTA = append(exahmWithNTA, units[u].ID)
 		}
-		dur := time.Duration(unitBaseDur[u]) * time.Minute
-		if dur == 0 {
-			dur = blockDur
-		}
 		preMin, postMin := unitPreMin[u], unitPostMin[u]
 		if preMin == 0 {
 			preMin = int(exahmDefaultBuffer.Minutes())
@@ -704,6 +700,14 @@ func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPh
 		}
 		pre := time.Duration(preMin) * time.Minute
 		post := time.Duration(postMin) * time.Minute
+		dur := time.Duration(unitBaseDur[u]) * time.Minute
+		if dur == 0 {
+			// unknown duration: what a slot block holds BESIDES the buffers — the block
+			// already contains them (150 min = 90 + 30/30), so taking the full block here
+			// would demand duration + pre + post = 210 min of booking and gate the exam out
+			// of every slot.
+			dur = blockExamDuration(blockDur, pre, post)
+		}
 		base := units[u].Allowed
 		if len(base) == 0 {
 			base = allSlotIdx // empty Allowed means "all slots"; make it explicit before filtering

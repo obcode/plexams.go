@@ -43,6 +43,51 @@ func TestExahmRoomBuffers(t *testing.T) {
 	}
 }
 
+// TestPreplanExamDurationBufferNotCountedTwice pins the un-sized pre-exam fallback: a slot
+// block ALREADY contains the setup/teardown buffers (150 min = 90 + 30/30), so an exam with
+// no entered duration must fall back to block − pre − post. Taking the whole block instead
+// asked for 150 + 30/30 = 210 min of booking and made the exam unplaceable everywhere.
+func TestPreplanExamDurationBufferNotCountedTwice(t *testing.T) {
+	const block = 150 * time.Minute
+
+	tests := []struct {
+		name string
+		pe   *model.PreplanExam
+		want time.Duration
+	}{
+		{"entered duration wins", &model.PreplanExam{Duration: min2(90)}, 90 * time.Minute},
+		{"no duration → block minus 30/30", &model.PreplanExam{}, 90 * time.Minute},
+		{"zero duration → block minus 30/30", &model.PreplanExam{Duration: min2(0)}, 90 * time.Minute},
+		{
+			"override 60/60 → block minus 60/60",
+			&model.PreplanExam{Constraints: &model.Constraints{
+				RoomConstraints: &model.RoomConstraints{PreExamMinutes: min2(60), PostExamMinutes: min2(60)},
+			}},
+			30 * time.Minute,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := preplanExamDuration(tt.pe, block); got != tt.want {
+				t.Errorf("preplanExamDuration() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
+	// the fallback fits a booking of exactly one block around the slot start …
+	booking := []bookedRoomInterval{{from: day(8, 0), until: day(10, 30), exahm: true, seats: 30}}
+	dur := preplanExamDuration(&model.PreplanExam{}, block)
+	pre, post := exahmRoomBuffers(nil)
+	if !exahmWindowCovered(booking, true, day(8, 30), dur, pre, post) {
+		t.Errorf("un-sized pre-exam (%v + %v/%v) not covered by its own 150-min block booking", dur, pre, post)
+	}
+
+	// … and a degenerate block not longer than the buffers keeps the block itself.
+	if got := blockExamDuration(45*time.Minute, 30*time.Minute, 30*time.Minute); got != 45*time.Minute {
+		t.Errorf("blockExamDuration(45, 30, 30) = %v, want 45m", got)
+	}
+}
+
 // day builds a local time for 2026-07-21 at hh:mm (the Embedded Computing day).
 func day(hh, mm int) time.Time {
 	return time.Date(2026, 7, 21, hh, mm, 0, 0, time.Local)

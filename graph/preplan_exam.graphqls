@@ -89,6 +89,7 @@ type PreplanExam {
   "StudyProgram shortnames."
   programs: [String!]!
   expectedStudents: Int!
+  "Exam duration in minutes. Always set: left empty on input it defaults to 90."
   duration: Int
   "Absolute start time the pre-exam is assigned to (null = not yet assigned)."
   plannedStarttime: Time
@@ -120,6 +121,10 @@ input PreplanExamInput {
   module: String!
   programs: [String!]!
   expectedStudents: Int!
+  """
+  Exam duration in minutes. Optional: empty (or <= 0) stores the standard 90 minutes,
+  so a pre-exam is never gated with a guessed duration.
+  """
   duration: Int
   notes: String
 }

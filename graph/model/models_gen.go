@@ -1144,8 +1144,10 @@ type PreplanExamInput struct {
 	Module           string   `json:"module"`
 	Programs         []string `json:"programs"`
 	ExpectedStudents int      `json:"expectedStudents"`
-	Duration         *int     `json:"duration,omitempty"`
-	Notes            *string  `json:"notes,omitempty"`
+	// Exam duration in minutes. Optional: empty (or <= 0) stores the standard 90 minutes,
+	// so a pre-exam is never gated with a guessed duration.
+	Duration *int    `json:"duration,omitempty"`
+	Notes    *string `json:"notes,omitempty"`
 }
 
 // One graded finding of the pre-plan validation (same levels as ValidationFinding).

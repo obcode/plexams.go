@@ -115,8 +115,9 @@ func (p *Plexams) bookedExahmIntervals(ctx context.Context) ([]bookedRoomInterva
 	return result, nil
 }
 
-// preplanExamDuration returns a pre-exam's exam duration, falling back to the slot block
-// MINUS its setup/teardown buffers when none has been entered yet — see
+// preplanExamDuration returns a pre-exam's exam duration. New pre-exams always carry one
+// (preplanInputDuration defaults it to 90 min at creation), so the fallback only applies to
+// older records: the slot block MINUS the exam's setup/teardown buffers — see
 // blockExamDuration for why the buffers must not be added on top of a full block.
 func preplanExamDuration(pe *model.PreplanExam, block time.Duration) time.Duration {
 	if pe.Duration != nil && *pe.Duration > 0 {

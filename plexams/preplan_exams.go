@@ -14,6 +14,22 @@ import (
 // validPreplanExamKinds are the allowed examKind values.
 var validPreplanExamKinds = map[string]bool{"EXaHM": true, "SEB": true}
 
+// preplanDefaultDurationMinutes is the exam duration stored when none was entered: the
+// ordinary 90-minute exam. Writing it down at creation time keeps the whole pre-planning
+// (booking-window gate, capacity-over-time, findings) working on a real number instead of
+// a derived guess — and the GUI shows the planner what is assumed, so they can correct it.
+const preplanDefaultDurationMinutes = 90
+
+// preplanInputDuration returns the duration to store for a pre-exam: the entered value, or
+// the standard 90 minutes when nothing (or a nonsensical value) was entered.
+func preplanInputDuration(entered *int) *int {
+	if entered != nil && *entered > 0 {
+		return entered
+	}
+	d := preplanDefaultDurationMinutes
+	return &d
+}
+
 // PreplanExams returns all SEB/EXaHM pre-planning pseudo-exams of this semester.
 func (p *Plexams) PreplanExams(ctx context.Context) ([]*model.PreplanExam, error) {
 	return p.dbClient.PreplanExams(ctx)
@@ -273,7 +289,7 @@ func (p *Plexams) preplanExamFromInput(ctx context.Context, input *model.Preplan
 		Module:           strings.TrimSpace(input.Module),
 		Programs:         programs,
 		ExpectedStudents: input.ExpectedStudents,
-		Duration:         input.Duration,
+		Duration:         preplanInputDuration(input.Duration),
 		Notes:            notes,
 	}, nil
 }

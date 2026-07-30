@@ -19,3 +19,11 @@ PLEXAMS_TEST_MONGO_URI="mongodb://127.0.0.1:27099" go test ./...
 ```
 
 **How to apply:** do this in the scratchpad dir; `pkill -9 -f "mongod --dbpath"` when done. Beware: `pgrep -f "mongod --dbpath"` also matches the pgrep shell wrapper itself — confirm with `ps aux | grep mongod` instead.
+
+## Prefer a throwaway mongod over the dev MongoDB — history
+
+Pointing `PLEXAMS_TEST_MONGO_URI` at the **dev MongoDB** (`$MONGODB_URI`, port 27013) used to corrupt real data, because `mongotest` isolated only the *semester* database while the master data (rooms, NTAs, study programs, users, templates) lived in a hardcoded global one. `AddRoom` in `plexams/anny_integration_test.go` added four rooms per run without cleanup and `SetAnnyConfig` overwrote the real config; ~50 runs left 200 junk rooms in `plexams.rooms` and wiped the real `personalizationnames`. It also made `TestAnnyBookedBySlot` flaky (~1 in 20) because the test read the previous runs' leftover rooms.
+
+Fixed on 2026-07-30: the global database name is a field on `db.DB`, reached via `db.globalDatabase()`, and `mongotest` points it at `<testdb>_global` and drops it in cleanup. `TestGlobalDatabaseIsIsolated` in `internal/mongotest/mongotest_test.go` guards it (verified to fail when the isolation is removed). See [db-indexes.md](db-indexes.md) for the other place that touches the global DB.
+
+Running against the dev MongoDB is safe again, but a throwaway mongod is still the better default — it also keeps `plexams_test_*` databases off the dev server.

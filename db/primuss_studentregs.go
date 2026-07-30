@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"fmt"
+	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -64,12 +64,6 @@ func (db *DB) GetPrimussStudentRegsPerAncode(ctx context.Context, program string
 
 		studentRegs[studentReg.PrimussAncode] = append(regs, &studentReg)
 
-	}
-
-	for k, v := range studentRegs {
-		if !db.CheckStudentRegsCount(ctx, program, k, len(v)) {
-			return nil, fmt.Errorf("problem with studentregs, ancode = %d, #studentregs = %d", k, len(v))
-		}
 	}
 
 	if err := cur.Err(); err != nil {
@@ -184,22 +178,72 @@ type Count struct {
 	Sum    int `bson:"Sum"`
 }
 
-func (db *DB) CheckStudentRegsCount(ctx context.Context, program string, ancode, studentRegsCount int) bool {
-	collection := db.getCollection(program, Counts)
-	var result Count
-	err := collection.FindOne(ctx, bson.D{{Key: "AnCo", Value: ancode}}).Decode(&result)
+// StudentRegsCountMismatch is one exam whose recorded sum in count_<program>
+// disagrees with the registrations actually stored in studentregs_<program>.
+type StudentRegsCountMismatch struct {
+	Program string
+	Ancode  int
+	// Stored is the number of registration documents; Recorded is the Sum in the
+	// count collection, or NoCountDocument when the exam has no count document.
+	Stored   int
+	Recorded int
+}
+
+// NoCountDocument marks a mismatch where the count document is missing entirely.
+const NoCountDocument = -1
+
+// StudentRegsCountMismatches compares the stored registrations of a program against
+// the counts Primuss delivered alongside them. The two drift apart when a single
+// registration is added or removed, because that writes both collections without a
+// transaction (AddStudentReg / RemoveStudentReg).
+//
+// Reported, never enforced: this used to abort GetPrimussStudentRegsPerAncode with an
+// error, which took the whole exam generation down until someone repaired the counter
+// by hand. A drift is a data-quality finding for the validation report.
+func (db *DB) StudentRegsCountMismatches(ctx context.Context, program string) ([]StudentRegsCountMismatch, error) {
+	stored := make(map[int]int)
+	cur, err := db.getCollection(program, StudentRegs).Find(ctx, bson.M{})
 	if err != nil {
-		log.Error().Err(err).Str("semester", db.semester).Str("program", program).
-			Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).Msg("error finding count")
-		return false
+		return nil, err
 	}
-	if result.Sum != studentRegsCount {
-		log.Debug().Str("semester", db.semester).Str("program", program).
-			Int("ancode", ancode).Int("studentRegsCount", studentRegsCount).Int("result.Sum", result.Sum).
-			Msg("sum != student registrations")
-		return false
+	var regs []model.StudentReg
+	if err := cur.All(ctx, &regs); err != nil {
+		return nil, err
 	}
-	return true
+	for _, reg := range regs {
+		stored[reg.PrimussAncode]++
+	}
+
+	recorded := make(map[int]int)
+	cur, err = db.getCollection(program, Counts).Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	var counts []Count
+	if err := cur.All(ctx, &counts); err != nil {
+		return nil, err
+	}
+	for _, c := range counts {
+		recorded[c.AnCode] = c.Sum
+	}
+
+	mismatches := make([]StudentRegsCountMismatch, 0)
+	for ancode, n := range stored {
+		sum, ok := recorded[ancode]
+		if !ok {
+			mismatches = append(mismatches, StudentRegsCountMismatch{
+				Program: program, Ancode: ancode, Stored: n, Recorded: NoCountDocument,
+			})
+			continue
+		}
+		if sum != n {
+			mismatches = append(mismatches, StudentRegsCountMismatch{
+				Program: program, Ancode: ancode, Stored: n, Recorded: sum,
+			})
+		}
+	}
+	sort.Slice(mismatches, func(i, j int) bool { return mismatches[i].Ancode < mismatches[j].Ancode })
+	return mismatches, nil
 }
 
 func (db *DB) GetStudentRegsCount(ctx context.Context, program string, ancode int) (int, error) {

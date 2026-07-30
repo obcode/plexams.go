@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
@@ -402,6 +403,33 @@ func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationRepo
 				v.warnf(ref{Ancode: ptr(ancode), RelatedAncodes: []int{pair[0], pair[1]}},
 					"canShareSlot pair (%d, %d) references ancode %d, but no such exam", pair[0], pair[1], ancode)
 			}
+		}
+	}
+
+	v.step("validating student registration counts")
+	programs, err := p.dbClient.GetPrograms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get programs")
+		return nil, err
+	}
+	for _, program := range programs {
+		mismatches, err := p.dbClient.StudentRegsCountMismatches(ctx, program)
+		if err != nil {
+			log.Error().Err(err).Str("program", program).Msg("cannot compare student registration counts")
+			return nil, err
+		}
+		for _, m := range mismatches {
+			// Report text is rendered in the GUI, so it is German like the rest of the
+			// planner-facing output.
+			if m.Recorded == db.NoCountDocument {
+				v.warnf(ref{Ancode: ptr(m.Ancode)},
+					"%s/%d: %d Anmeldungen gespeichert, aber kein Zähler-Dokument von Primuss",
+					m.Program, m.Ancode, m.Stored)
+				continue
+			}
+			v.warnf(ref{Ancode: ptr(m.Ancode)},
+				"%s/%d: %d Anmeldungen gespeichert, Primuss-Zähler sagt %d — nach einzelnem Hinzufügen/Entfernen auseinandergelaufen?",
+				m.Program, m.Ancode, m.Stored, m.Recorded)
 		}
 	}
 

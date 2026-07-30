@@ -34,6 +34,7 @@
 - [GraphQL interface cleanup](graphql-interface-cleanup.md) — schema audited vs GUI usage & fully trimmed (all unused queries+mutations gone, 3 validators wired into GUI); done, on main.
 - [validation conflict severity](validation-conflict-severity.md) — ValidateConflicts graded (sameSlot=error/adjacent=warn/sameDay=info), sorted most-severe-first; accepted decisions (DB+YAML) shown as info not hidden.
 - [DB integrity validation](db-integrity-validation.md) — old ValidateDB split into 5 referential-integrity validators (plan/constraints/rooms/ntas/references); closes FixedDay + NTA-mtknr + planned_rooms-slot TODOs; GUI needs 5 new subscriptions.
+- [DB indexes](db-indexes.md) — EnsureIndexes at startup/switch; plan(ancode) must stay a PARTIAL index (pre-slotless DBs have no ancode) and studentregs is deliberately NOT unique (real duplicate in Primuss source data); best-effort, never fatal.
 - [preplan validation severity](preplan-validation-severity.md) — EXaHM/SEB Anny pre-plan validation now graded (findings+level); small SEB in R-building = warning not failure; ok = no errors.
 - [validation skip gating](validation-skip-gating.md) — validators skip (not fail) when planned data absent (data-driven); ValidationReport gained skipped/skipReason; GUI renders "übersprungen".
 - [semester dump/restore](semester-dump-restore.md) — download whole semester ZIP + per-page dataset up/download; restore into fresh workspace DB; refuse-if-non-empty; canonical ext JSON.

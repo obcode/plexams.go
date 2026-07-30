@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"strings"
-	"sync"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -17,10 +16,6 @@ type DB struct {
 	uri          string
 	semester     string
 	databaseName string
-	// todosMu serializes the drop+insert in CacheInvigilatorTodos so concurrent
-	// callers (e.g. parallel validation subscriptions) cannot interleave their
-	// drops and inserts and leave more than one todos document behind.
-	todosMu sync.Mutex
 }
 
 // decorateInvigilation wraps the persisted Starttime in the Slot the API exposes

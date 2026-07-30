@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func (db *DB) GetInvigilatorRequirements(ctx context.Context, teacherID int) (*zpa.SupervisorRequirements, error) {
@@ -46,56 +47,53 @@ func (db *DB) AllInvigilatorRequirements(ctx context.Context) ([]*zpa.Supervisor
 	return reqs, nil
 }
 
+// invigilatorTodosID is the fixed _id of the single todos document. Writing against
+// it makes the cache write idempotent: concurrent writers overwrite the same document
+// instead of racing a drop against an insert.
+const invigilatorTodosID = "todos"
+
 func (db *DB) CacheInvigilatorTodos(ctx context.Context, todos *model.InvigilationTodos) error {
 	collection := db.Client.Database(db.databaseName).Collection(collectionInvigilatorTodos)
 
-	// Serialize the drop+insert: GetInvigilationTodos re-caches on every read, so
-	// parallel validation subscriptions call this concurrently. Without the lock
-	// their drops and inserts can interleave (A drop, B drop, A insert, B insert)
-	// and leave two documents behind, which then breaks every reader.
-	db.todosMu.Lock()
-	defer db.todosMu.Unlock()
-
-	err := collection.Drop(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot drop invigilator todos collection")
-		return err
-	}
-	_, err = collection.InsertOne(ctx, todos)
+	// GetInvigilationTodos re-caches on every read, so parallel validation
+	// subscriptions call this concurrently. A drop followed by an insert can
+	// interleave (A drop, B drop, A insert, B insert) and leave two documents behind,
+	// which then breaks every reader. Replacing one document under a fixed _id cannot
+	// interleave that way, so no lock is needed.
+	_, err := collection.ReplaceOne(ctx,
+		bson.M{"_id": invigilatorTodosID}, todos, options.Replace().SetUpsert(true))
 	if err != nil {
 		log.Error().Err(err).Msg("cannot cache invigilator todos")
 		return err
 	}
 
-	return err
+	// Heal documents written before the fixed _id (and any left over from an earlier
+	// interleaved write).
+	if _, err := collection.DeleteMany(ctx,
+		bson.M{"_id": bson.M{"$ne": invigilatorTodosID}}); err != nil {
+		log.Warn().Err(err).Msg("cannot remove stale invigilator todos documents")
+	}
+
+	return nil
 }
 
 func (db *DB) GetInvigilationTodos(ctx context.Context) (*model.InvigilationTodos, error) {
 	collection := db.Client.Database(db.databaseName).Collection(collectionInvigilatorTodos)
 
-	cur, err := collection.Find(ctx, bson.M{})
+	var todos model.InvigilationTodos
+	err := collection.FindOne(ctx, bson.M{"_id": invigilatorTodosID}).Decode(&todos)
+	if err == mongo.ErrNoDocuments {
+		// Written before the fixed _id: fall back to any document. The next
+		// CacheInvigilatorTodos moves the collection to the canonical one.
+		err = collection.FindOne(ctx, bson.M{}).Decode(&todos)
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+	}
 	if err != nil {
 		log.Error().Err(err).Msg("cannot find invigilator todos")
 		return nil, err
 	}
 
-	todos := make([]*model.InvigilationTodos, 0)
-
-	err = cur.All(ctx, &todos)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot decode invigilator todos")
-		return nil, err
-	}
-
-	if len(todos) == 0 {
-		return nil, nil
-	}
-	if len(todos) > 1 {
-		// Stale duplicates from an earlier interleaved cache write. Tolerate them
-		// and return the first; the caller re-caches (drop+insert) and thereby
-		// heals the collection back to a single document.
-		log.Warn().Int("count", len(todos)).Msg("found more than one invigilator todos document, using the first and healing on next cache")
-	}
-
-	return todos[0], nil
+	return &todos, nil
 }

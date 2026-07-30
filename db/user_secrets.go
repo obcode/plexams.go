@@ -23,7 +23,7 @@ type UserSecret struct {
 
 // GetUserSecret returns the stored secrets for a user, or nil when none exist.
 func (db *DB) GetUserSecret(ctx context.Context, email string) (*UserSecret, error) {
-	collection := db.Client.Database("plexams").Collection(collectionUserSecrets)
+	collection := db.globalDatabase().Collection(collectionUserSecrets)
 	var s UserSecret
 	err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&s)
 	if err != nil {
@@ -39,7 +39,7 @@ func (db *DB) GetUserSecret(ctx context.Context, email string) (*UserSecret, err
 // SaveUserJiraToken upserts the sealed Jira PAT for a user (only touches the jira
 // fields, so it never clobbers other secrets on the document).
 func (db *DB) SaveUserJiraToken(ctx context.Context, email string, sealed secrets.SealedValue, updatedAt time.Time) error {
-	collection := db.Client.Database("plexams").Collection(collectionUserSecrets)
+	collection := db.globalDatabase().Collection(collectionUserSecrets)
 	_, err := collection.UpdateOne(ctx, bson.M{"email": email},
 		bson.M{"$set": bson.M{"email": email, "jira": sealed, "jiraUpdatedAt": updatedAt}},
 		options.Update().SetUpsert(true))
@@ -51,7 +51,7 @@ func (db *DB) SaveUserJiraToken(ctx context.Context, email string, sealed secret
 
 // DeleteUserJiraToken removes only the Jira PAT from a user's secrets.
 func (db *DB) DeleteUserJiraToken(ctx context.Context, email string) error {
-	collection := db.Client.Database("plexams").Collection(collectionUserSecrets)
+	collection := db.globalDatabase().Collection(collectionUserSecrets)
 	_, err := collection.UpdateOne(ctx, bson.M{"email": email},
 		bson.M{"$unset": bson.M{"jira": "", "jiraUpdatedAt": ""}})
 	if err != nil {

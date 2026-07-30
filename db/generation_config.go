@@ -13,7 +13,7 @@ import (
 // GetGenerationConfig returns the (single, global) generation config, or nil when
 // none is stored yet.
 func (db *DB) GetGenerationConfig(ctx context.Context) (*model.GenerationConfig, error) {
-	collection := db.Client.Database("plexams").Collection(collectionGenerationConfig)
+	collection := db.globalDatabase().Collection(collectionGenerationConfig)
 	var cfg model.GenerationConfig
 	err := collection.FindOne(ctx, bson.M{}).Decode(&cfg)
 	if err == mongo.ErrNoDocuments {
@@ -28,7 +28,7 @@ func (db *DB) GetGenerationConfig(ctx context.Context) (*model.GenerationConfig,
 
 // SetGenerationConfig upserts the (single, global) generation config.
 func (db *DB) SetGenerationConfig(ctx context.Context, cfg *model.GenerationConfig) error {
-	collection := db.Client.Database("plexams").Collection(collectionGenerationConfig)
+	collection := db.globalDatabase().Collection(collectionGenerationConfig)
 	_, err := collection.ReplaceOne(ctx, bson.M{}, cfg, options.Replace().SetUpsert(true))
 	if err != nil {
 		log.Error().Err(err).Msg("cannot set generation config")

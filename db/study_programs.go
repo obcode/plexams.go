@@ -13,7 +13,7 @@ import (
 // StudyPrograms returns all study programs (Studiengänge). This list lives in
 // the global "plexams" database and carries over between semesters.
 func (db *DB) StudyPrograms(ctx context.Context) ([]*model.StudyProgram, error) {
-	collection := db.Client.Database("plexams").Collection(collectionStudyPrograms)
+	collection := db.globalDatabase().Collection(collectionStudyPrograms)
 
 	cur, err := collection.Find(ctx, bson.M{}, options.Find().SetSort(bson.D{{Key: "shortname", Value: 1}}))
 	if err != nil {
@@ -31,7 +31,7 @@ func (db *DB) StudyPrograms(ctx context.Context) ([]*model.StudyProgram, error) 
 
 // StudyProgram returns one study program by its shortname, or nil when none.
 func (db *DB) StudyProgram(ctx context.Context, shortname string) (*model.StudyProgram, error) {
-	collection := db.Client.Database("plexams").Collection(collectionStudyPrograms)
+	collection := db.globalDatabase().Collection(collectionStudyPrograms)
 
 	var program model.StudyProgram
 	err := collection.FindOne(ctx, bson.M{"shortname": shortname}).Decode(&program)
@@ -47,7 +47,7 @@ func (db *DB) StudyProgram(ctx context.Context, shortname string) (*model.StudyP
 
 // UpsertStudyProgram creates or replaces one study program (key: shortname).
 func (db *DB) UpsertStudyProgram(ctx context.Context, program *model.StudyProgram) error {
-	collection := db.Client.Database("plexams").Collection(collectionStudyPrograms)
+	collection := db.globalDatabase().Collection(collectionStudyPrograms)
 
 	_, err := collection.ReplaceOne(ctx,
 		bson.M{"shortname": program.Shortname},
@@ -62,7 +62,7 @@ func (db *DB) UpsertStudyProgram(ctx context.Context, program *model.StudyProgra
 
 // DeleteStudyProgram removes one study program. Returns false if there was none.
 func (db *DB) DeleteStudyProgram(ctx context.Context, shortname string) (bool, error) {
-	collection := db.Client.Database("plexams").Collection(collectionStudyPrograms)
+	collection := db.globalDatabase().Collection(collectionStudyPrograms)
 
 	res, err := collection.DeleteOne(ctx, bson.M{"shortname": shortname})
 	if err != nil {

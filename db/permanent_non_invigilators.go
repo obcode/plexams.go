@@ -13,7 +13,7 @@ import (
 // again. This list lives in the global "plexams" database and carries over
 // between semesters.
 func (db *DB) PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentNonInvigilator, error) {
-	collection := db.Client.Database("plexams").Collection(collectionPermanentNonInvigilators)
+	collection := db.globalDatabase().Collection(collectionPermanentNonInvigilators)
 
 	cur, err := collection.Find(ctx, bson.M{})
 	if err != nil {
@@ -33,7 +33,7 @@ func (db *DB) PermanentNonInvigilators(ctx context.Context) ([]*model.PermanentN
 // UpsertPermanentNonInvigilator creates or replaces one permanent non-invigilator
 // (key: teacherID).
 func (db *DB) UpsertPermanentNonInvigilator(ctx context.Context, nonInvigilator *model.PermanentNonInvigilator) error {
-	collection := db.Client.Database("plexams").Collection(collectionPermanentNonInvigilators)
+	collection := db.globalDatabase().Collection(collectionPermanentNonInvigilators)
 
 	_, err := collection.ReplaceOne(ctx,
 		bson.M{"teacherid": nonInvigilator.TeacherID},
@@ -49,7 +49,7 @@ func (db *DB) UpsertPermanentNonInvigilator(ctx context.Context, nonInvigilator 
 // DeletePermanentNonInvigilator removes one permanent non-invigilator. Returns
 // false if there was none.
 func (db *DB) DeletePermanentNonInvigilator(ctx context.Context, teacherID int) (bool, error) {
-	collection := db.Client.Database("plexams").Collection(collectionPermanentNonInvigilators)
+	collection := db.globalDatabase().Collection(collectionPermanentNonInvigilators)
 
 	res, err := collection.DeleteOne(ctx, bson.M{"teacherid": teacherID})
 	if err != nil {

@@ -83,7 +83,7 @@ func (db *DB) EnsureIndexes(ctx context.Context) {
 	}
 
 	// Global database: one NTA per student.
-	db.ensureIndex(ctx, db.Client.Database("plexams").Collection(collectionNameNTAs),
+	db.ensureIndex(ctx, db.globalDatabase().Collection(collectionNameNTAs),
 		uniqueIndex(bson.D{{Key: "mtknr", Value: 1}}, ""))
 }
 

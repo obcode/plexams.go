@@ -11,8 +11,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// systemDatabases are never plexams workspaces.
-var systemDatabases = map[string]bool{"admin": true, "local": true, "config": true, "plexams": true}
+// mongoSystemDatabases are never plexams workspaces.
+var mongoSystemDatabases = map[string]bool{"admin": true, "local": true, "config": true}
+
+// isNotAWorkspace reports whether a database can never be a semester workspace: a
+// MongoDB system database, or the global master-data one.
+func (db *DB) isNotAWorkspace(name string) bool {
+	return mongoSystemDatabases[name] || name == db.globalDatabaseName
+}
 
 // DatabaseName returns the name of the database the client is currently pointed at.
 func (db *DB) DatabaseName() string {
@@ -30,7 +36,7 @@ func (db *DB) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 
 	semester := make([]*model.Semester, 0, len(dbs))
 	for _, dbName := range dbs {
-		if systemDatabases[dbName] {
+		if db.isNotAWorkspace(dbName) {
 			continue
 		}
 		config, _ := db.getSemesterConfigInputFrom(ctx, dbName)

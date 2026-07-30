@@ -18,7 +18,7 @@ type ActiveSemester struct {
 
 // SaveActiveSemester remembers the current semester/database as the last active one.
 func (db *DB) SaveActiveSemester(ctx context.Context) error {
-	collection := db.Client.Database("plexams").Collection(collectionActiveSemester)
+	collection := db.globalDatabase().Collection(collectionActiveSemester)
 	_, err := collection.ReplaceOne(ctx, bson.M{},
 		&ActiveSemester{Semester: db.semester, Database: db.databaseName},
 		options.Replace().SetUpsert(true))
@@ -30,7 +30,7 @@ func (db *DB) SaveActiveSemester(ctx context.Context) error {
 
 // GetActiveSemester returns the last active semester, or nil when none is stored.
 func (db *DB) GetActiveSemester(ctx context.Context) (*ActiveSemester, error) {
-	collection := db.Client.Database("plexams").Collection(collectionActiveSemester)
+	collection := db.globalDatabase().Collection(collectionActiveSemester)
 	var active ActiveSemester
 	err := collection.FindOne(ctx, bson.M{}).Decode(&active)
 	if err == mongo.ErrNoDocuments {

@@ -35,10 +35,16 @@ func NewDB(t *testing.T) *db.DB {
 	if err != nil {
 		t.Fatalf("cannot connect to test MongoDB: %v", err)
 	}
+	// The global master data (rooms, NTAs, study programs, …) is shared by every
+	// semester, so it must be isolated too — otherwise fixtures land in the real one
+	// and tests see each other's leftovers.
+	global := name + "_global"
+	dbClient.WithGlobalDatabase(global)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = dbClient.Client.Database(name).Drop(ctx)
+		_ = dbClient.Client.Database(global).Drop(ctx)
 		_ = dbClient.Client.Disconnect(ctx)
 	})
 	return dbClient

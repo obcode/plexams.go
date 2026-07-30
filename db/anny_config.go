@@ -12,7 +12,7 @@ import (
 
 // GetAnnyConfig returns the global Anny config, or nil when none is stored yet.
 func (db *DB) GetAnnyConfig(ctx context.Context) (*model.AnnyConfig, error) {
-	collection := db.Client.Database("plexams").Collection(collectionAnnyConfig)
+	collection := db.globalDatabase().Collection(collectionAnnyConfig)
 	var cfg model.AnnyConfig
 	err := collection.FindOne(ctx, bson.M{}).Decode(&cfg)
 	if err == mongo.ErrNoDocuments {
@@ -27,7 +27,7 @@ func (db *DB) GetAnnyConfig(ctx context.Context) (*model.AnnyConfig, error) {
 
 // SetAnnyConfig upserts the (single, global) Anny config.
 func (db *DB) SetAnnyConfig(ctx context.Context, cfg *model.AnnyConfig) error {
-	collection := db.Client.Database("plexams").Collection(collectionAnnyConfig)
+	collection := db.globalDatabase().Collection(collectionAnnyConfig)
 	_, err := collection.ReplaceOne(ctx, bson.M{}, cfg, options.Replace().SetUpsert(true))
 	if err != nil {
 		log.Error().Err(err).Msg("cannot set anny config")

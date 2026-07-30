@@ -19,7 +19,7 @@ import (
 
 // GetUsers returns all known users (the allow-list), sorted by email.
 func (db *DB) GetUsers(ctx context.Context) ([]*model.User, error) {
-	collection := db.Client.Database("plexams").Collection(collectionUsers)
+	collection := db.globalDatabase().Collection(collectionUsers)
 	cur, err := collection.Find(ctx, bson.M{}, options.Find().SetSort(bson.D{{Key: "email", Value: 1}}))
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get users")
@@ -37,7 +37,7 @@ func (db *DB) GetUsers(ctx context.Context) ([]*model.User, error) {
 
 // GetUserByEmail returns the user with the given email, or nil when none is stored.
 func (db *DB) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	collection := db.Client.Database("plexams").Collection(collectionUsers)
+	collection := db.globalDatabase().Collection(collectionUsers)
 	var user model.User
 	err := collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
@@ -52,7 +52,7 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string) (*model.User, er
 
 // SaveUser upserts a user keyed by email.
 func (db *DB) SaveUser(ctx context.Context, user *model.User) error {
-	collection := db.Client.Database("plexams").Collection(collectionUsers)
+	collection := db.globalDatabase().Collection(collectionUsers)
 	if _, err := collection.ReplaceOne(ctx, bson.M{"email": user.Email}, user,
 		options.Replace().SetUpsert(true)); err != nil {
 		log.Error().Err(err).Str("email", user.Email).Msg("cannot save user")
@@ -63,7 +63,7 @@ func (db *DB) SaveUser(ctx context.Context, user *model.User) error {
 
 // DeleteUser removes the user with the given email.
 func (db *DB) DeleteUser(ctx context.Context, email string) error {
-	collection := db.Client.Database("plexams").Collection(collectionUsers)
+	collection := db.globalDatabase().Collection(collectionUsers)
 	if _, err := collection.DeleteOne(ctx, bson.M{"email": email}); err != nil {
 		log.Error().Err(err).Str("email", email).Msg("cannot delete user")
 		return err

@@ -28,7 +28,7 @@ type SchedulerState struct {
 // GetSchedulerState returns the persisted scheduler state, or nil when none is stored yet
 // (fresh deploy → no catch-up).
 func (db *DB) GetSchedulerState(ctx context.Context) (*SchedulerState, error) {
-	collection := db.Client.Database("plexams").Collection(collectionSchedulerState)
+	collection := db.globalDatabase().Collection(collectionSchedulerState)
 	var state SchedulerState
 	err := collection.FindOne(ctx, bson.M{}).Decode(&state)
 	if err == mongo.ErrNoDocuments {
@@ -46,7 +46,7 @@ func (db *DB) GetSchedulerState(ctx context.Context) (*SchedulerState, error) {
 // same day do not re-trigger the catch-up against a stale anchor. It only $sets those fields,
 // leaving the previous run's outcome fields intact until SaveSchedulerState overwrites them.
 func (db *DB) TouchSchedulerFire(ctx context.Context, at time.Time, trigger, semester string) error {
-	collection := db.Client.Database("plexams").Collection(collectionSchedulerState)
+	collection := db.globalDatabase().Collection(collectionSchedulerState)
 	_, err := collection.UpdateOne(ctx, bson.M{},
 		bson.M{"$set": bson.M{
 			"lastFireAt":  at,
@@ -62,7 +62,7 @@ func (db *DB) TouchSchedulerFire(ctx context.Context, at time.Time, trigger, sem
 
 // SaveSchedulerState overwrites the scheduler state with the outcome of a finished run.
 func (db *DB) SaveSchedulerState(ctx context.Context, state *SchedulerState) error {
-	collection := db.Client.Database("plexams").Collection(collectionSchedulerState)
+	collection := db.globalDatabase().Collection(collectionSchedulerState)
 	_, err := collection.ReplaceOne(ctx, bson.M{}, state, options.Replace().SetUpsert(true))
 	if err != nil {
 		log.Error().Err(err).Msg("cannot save scheduler state")

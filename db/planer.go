@@ -14,7 +14,7 @@ import (
 // planner lives in the global "plexams" database (not a secret, carries over
 // between semesters).
 func (db *DB) GetPlaner(ctx context.Context) (*model.Planer, error) {
-	collection := db.Client.Database("plexams").Collection(collectionPlaner)
+	collection := db.globalDatabase().Collection(collectionPlaner)
 	var planer model.Planer
 	err := collection.FindOne(ctx, bson.M{}).Decode(&planer)
 	if err != nil {
@@ -29,7 +29,7 @@ func (db *DB) GetPlaner(ctx context.Context) (*model.Planer, error) {
 
 // SavePlaner stores the planner (single document, replaced on upsert).
 func (db *DB) SavePlaner(ctx context.Context, planer *model.Planer) error {
-	collection := db.Client.Database("plexams").Collection(collectionPlaner)
+	collection := db.globalDatabase().Collection(collectionPlaner)
 	if _, err := collection.ReplaceOne(ctx, bson.M{}, planer, options.Replace().SetUpsert(true)); err != nil {
 		log.Error().Err(err).Msg("cannot save planer")
 		return err

@@ -11,7 +11,7 @@ import (
 )
 
 func (db *DB) AddNta(ctx context.Context, nta *model.NTA) (*model.NTA, error) {
-	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+	collection := db.globalDatabase().Collection(collectionNameNTAs)
 
 	_, err := collection.InsertOne(ctx, nta)
 	if err != nil {
@@ -25,7 +25,7 @@ func (db *DB) AddNta(ctx context.Context, nta *model.NTA) (*model.NTA, error) {
 // ReplaceNta replaces the NTA document identified by its mtknr. It does not
 // upsert: if no document matches, nothing is changed.
 func (db *DB) ReplaceNta(ctx context.Context, nta *model.NTA) (*model.NTA, error) {
-	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+	collection := db.globalDatabase().Collection(collectionNameNTAs)
 
 	_, err := collection.ReplaceOne(ctx, bson.D{{Key: "mtknr", Value: nta.Mtknr}}, nta)
 	if err != nil {
@@ -39,7 +39,7 @@ func (db *DB) ReplaceNta(ctx context.Context, nta *model.NTA) (*model.NTA, error
 // SetNtaDeactivated sets the deactivated flag of the NTA identified by mtknr.
 // Returns nil if no NTA with that mtknr exists.
 func (db *DB) SetNtaDeactivated(ctx context.Context, mtknr string, deactivated bool) (*model.NTA, error) {
-	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+	collection := db.globalDatabase().Collection(collectionNameNTAs)
 
 	res, err := collection.UpdateOne(ctx,
 		bson.D{{Key: "mtknr", Value: mtknr}},
@@ -55,7 +55,7 @@ func (db *DB) SetNtaDeactivated(ctx context.Context, mtknr string, deactivated b
 }
 
 func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTA, error) {
-	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+	collection := db.globalDatabase().Collection(collectionNameNTAs)
 
 	res := collection.FindOne(ctx, bson.D{{Key: "mtknr", Value: mtknr}})
 	if res.Err() == mongo.ErrNoDocuments {
@@ -74,7 +74,7 @@ func (db *DB) Nta(ctx context.Context, mtknr string) (*model.NTA, error) {
 }
 
 func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
-	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+	collection := db.globalDatabase().Collection(collectionNameNTAs)
 
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{Key: "name", Value: 1}})
@@ -97,7 +97,7 @@ func (db *DB) Ntas(ctx context.Context) ([]*model.NTA, error) {
 }
 
 func (db *DB) SetSemesterOnNTAs(ctx context.Context, studentRegs []interface{}) error {
-	collection := db.Client.Database("plexams").Collection(collectionNameNTAs)
+	collection := db.globalDatabase().Collection(collectionNameNTAs)
 
 	for _, regRaw := range studentRegs {
 		reg := regRaw.(*model.Student)

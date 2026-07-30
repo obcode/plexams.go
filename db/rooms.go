@@ -13,7 +13,7 @@ import (
 )
 
 func (db *DB) RoomByName(ctx context.Context, roomName string) (*model.Room, error) {
-	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	collection := db.globalDatabase().Collection(collectionGlobalRooms)
 
 	res := collection.FindOne(ctx, bson.M{"name": roomName})
 	if res.Err() != nil {
@@ -39,7 +39,7 @@ func (db *DB) RoomByName(ctx context.Context, roomName string) (*model.Room, err
 
 // HasRoom reports whether a room with the given name exists.
 func (db *DB) HasRoom(ctx context.Context, name string) (bool, error) {
-	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	collection := db.globalDatabase().Collection(collectionGlobalRooms)
 	count, err := collection.CountDocuments(ctx, bson.M{"name": name})
 	if err != nil {
 		return false, err
@@ -49,7 +49,7 @@ func (db *DB) HasRoom(ctx context.Context, name string) (bool, error) {
 
 // AddRoom inserts a new room and returns it.
 func (db *DB) AddRoom(ctx context.Context, room *model.Room) (*model.Room, error) {
-	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	collection := db.globalDatabase().Collection(collectionGlobalRooms)
 	if _, err := collection.InsertOne(ctx, room); err != nil {
 		log.Error().Err(err).Str("room", room.Name).Msg("cannot insert room")
 		return nil, err
@@ -60,7 +60,7 @@ func (db *DB) AddRoom(ctx context.Context, room *model.Room) (*model.Room, error
 // ReplaceRoom replaces the room identified by its name (no upsert) and returns
 // it. Errors if no room with that name exists.
 func (db *DB) ReplaceRoom(ctx context.Context, room *model.Room) (*model.Room, error) {
-	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	collection := db.globalDatabase().Collection(collectionGlobalRooms)
 	res, err := collection.ReplaceOne(ctx, bson.M{"name": room.Name}, room)
 	if err != nil {
 		log.Error().Err(err).Str("room", room.Name).Msg("cannot replace room")
@@ -75,7 +75,7 @@ func (db *DB) ReplaceRoom(ctx context.Context, room *model.Room) (*model.Room, e
 // SetRoomRequestWith sets the requestWith and (derived) needsRequest fields of
 // the room identified by name.
 func (db *DB) SetRoomRequestWith(ctx context.Context, name, requestWith string, needsRequest bool) error {
-	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	collection := db.globalDatabase().Collection(collectionGlobalRooms)
 	_, err := collection.UpdateOne(ctx,
 		bson.M{"name": name},
 		bson.D{{Key: "$set", Value: bson.D{
@@ -91,7 +91,7 @@ func (db *DB) SetRoomRequestWith(ctx context.Context, name, requestWith string, 
 // SetRoomDeactivated sets the deactivated flag of the room identified by name.
 // Returns an error if no room with that name exists.
 func (db *DB) SetRoomDeactivated(ctx context.Context, name string, deactivated bool) (*model.Room, error) {
-	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	collection := db.globalDatabase().Collection(collectionGlobalRooms)
 
 	res, err := collection.UpdateOne(ctx,
 		bson.M{"name": name},
@@ -107,7 +107,7 @@ func (db *DB) SetRoomDeactivated(ctx context.Context, name string, deactivated b
 }
 
 func (db *DB) Rooms(ctx context.Context) ([]*model.Room, error) {
-	collection := db.Client.Database("plexams").Collection(collectionGlobalRooms)
+	collection := db.globalDatabase().Collection(collectionGlobalRooms)
 
 	findOptions := options.Find()
 	findOptions.SetSort(bson.D{{Key: "name", Value: 1}})

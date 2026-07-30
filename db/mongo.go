@@ -11,11 +11,38 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+// defaultGlobalDatabase holds the master data that carries over between semesters
+// (rooms, NTAs, study programs, users, templates).
+const defaultGlobalDatabase = "plexams"
+
 type DB struct {
-	Client       *mongo.Client
-	uri          string
-	semester     string
-	databaseName string
+	Client   *mongo.Client
+	uri      string
+	semester string
+	// databaseName is the current semester's database; globalDatabaseName holds the
+	// cross-semester master data. Both are names, not handles, because the semester
+	// one is repointed at runtime by SwitchTo.
+	databaseName       string
+	globalDatabaseName string
+}
+
+// globalDatabase is the cross-semester master-data database. Always go through this
+// instead of naming it literally, so tests can isolate it.
+func (db *DB) globalDatabase() *mongo.Database {
+	return db.Client.Database(db.globalDatabaseName)
+}
+
+// WithGlobalDatabase overrides the name of the global master-data database and returns
+// db. Only meant for tests: without it they write their fixtures into the real master
+// data, which is shared by every semester.
+func (db *DB) WithGlobalDatabase(name string) *DB {
+	db.globalDatabaseName = name
+	return db
+}
+
+// GlobalDatabaseName returns the name of the master-data database.
+func (db *DB) GlobalDatabaseName() string {
+	return db.globalDatabaseName
 }
 
 // decorateInvigilation wraps the persisted Starttime in the Slot the API exposes
@@ -52,10 +79,11 @@ func NewDB(uri, semester string, dbName *string) (*DB, error) {
 	log.Debug().Str("database name", databaseName).Msg("using database")
 
 	return &DB{
-		Client:       client,
-		uri:          uri,
-		semester:     semester,
-		databaseName: databaseName,
+		Client:             client,
+		uri:                uri,
+		semester:           semester,
+		databaseName:       databaseName,
+		globalDatabaseName: defaultGlobalDatabase,
 	}, nil
 }
 

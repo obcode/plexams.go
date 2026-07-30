@@ -51,7 +51,9 @@ func NewDB(t *testing.T) *db.DB {
 }
 
 // mongoURI returns a connection string to an ephemeral MongoDB, or skips the test when
-// none can be provided.
+// none can be provided — unless PLEXAMS_TEST_MONGO_REQUIRED is set, in which case the
+// absence is a failure. Set that in CI: a silent skip makes "green" and "never ran"
+// indistinguishable, which is how a broken test setup stays invisible.
 func mongoURI(t *testing.T) string {
 	t.Helper()
 	if uri := os.Getenv("PLEXAMS_TEST_MONGO_URI"); uri != "" {
@@ -61,6 +63,9 @@ func mongoURI(t *testing.T) string {
 	ctx := context.Background()
 	ctr, err := mongodb.Run(ctx, "mongo:7")
 	if err != nil {
+		if os.Getenv("PLEXAMS_TEST_MONGO_REQUIRED") != "" {
+			t.Fatalf("no test MongoDB, but PLEXAMS_TEST_MONGO_REQUIRED is set: %v", err)
+		}
 		t.Skipf("no test MongoDB: set PLEXAMS_TEST_MONGO_URI or start Docker for testcontainers (%v)", err)
 	}
 	t.Cleanup(func() {

@@ -9,6 +9,8 @@ metadata:
 
 `internal/mongotest.NewDB(t)` uses testcontainers (needs Docker) OR `PLEXAMS_TEST_MONGO_URI`, else the test skips. This sandbox has **no Docker**, so integration tests skip by default.
 
+Set **`PLEXAMS_TEST_MONGO_REQUIRED=1`** to turn that skip into a failure. CI does both: `.github/workflows/ci.yml` runs a `mongo:8` service container, points `PLEXAMS_TEST_MONGO_URI` at it and sets `REQUIRED`, so a MongoDB that fails to come up breaks the build instead of quietly skipping every integration test. Without it "green" and "never ran" are indistinguishable.
+
 To verify them green anyway: download a standalone `mongod` (network works, arch aarch64), run it, point the env var at it:
 
 ```

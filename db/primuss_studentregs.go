@@ -345,7 +345,20 @@ func (db *DB) GetRegsWithErrors(ctx context.Context) ([]*model.RegWithError, err
 	return regWithErrors, nil
 }
 
+// RemoveStudentReg deletes one registration and decrements the Primuss counter. Both
+// writes run in one transaction where the deployment allows it, so the counter cannot
+// drift when the second one fails (see StudentRegsCountMismatches for the symptom).
 func (db *DB) RemoveStudentReg(ctx context.Context, program string, ancode int, mtknr string) (int, error) {
+	var deleted int
+	err := db.withTransaction(ctx, func(ctx context.Context) error {
+		var err error
+		deleted, err = db.removeStudentReg(ctx, program, ancode, mtknr)
+		return err
+	})
+	return deleted, err
+}
+
+func (db *DB) removeStudentReg(ctx context.Context, program string, ancode int, mtknr string) (int, error) {
 	collection := db.getCollection(program, StudentRegs)
 
 	filter := bson.M{
@@ -385,7 +398,16 @@ func (db *DB) RemoveStudentReg(ctx context.Context, program string, ancode int, 
 	return int(res.DeletedCount), nil
 }
 
+// AddStudentReg inserts one registration and increments the Primuss counter. Both
+// writes run in one transaction where the deployment allows it, so the counter cannot
+// drift when the second one fails (see StudentRegsCountMismatches for the symptom).
 func (db *DB) AddStudentReg(ctx context.Context, program string, ancode int, mtknr string) error {
+	return db.withTransaction(ctx, func(ctx context.Context) error {
+		return db.addStudentReg(ctx, program, ancode, mtknr)
+	})
+}
+
+func (db *DB) addStudentReg(ctx context.Context, program string, ancode int, mtknr string) error {
 	collection := db.getCollection(program, StudentRegs)
 
 	student, err := db.StudentByMtknr(ctx, mtknr)

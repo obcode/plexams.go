@@ -331,26 +331,34 @@ func (db *DB) ResetPlannedRooms(ctx context.Context) error {
 	return nil
 }
 
+// ReplacePlannedRooms swaps the whole room plan for a new one, atomically where the
+// deployment allows it — a failing insert used to leave the room plan empty.
+//
+// It empties the collection with DeleteMany rather than dropping it, for two reasons:
+// dropping is not allowed inside a transaction, and a drop would also throw away the
+// indexes EnsureIndexes created, which would only come back on the next start.
 func (db *DB) ReplacePlannedRooms(ctx context.Context, plannedRooms []*model.PlannedRoom) error {
-	collection := db.getCollectionSemester(collectionRoomsPlanned)
+	return db.withTransaction(ctx, func(ctx context.Context) error {
+		collection := db.getCollectionSemester(collectionRoomsPlanned)
 
-	err := collection.Drop(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot drop planned rooms")
-		return err
-	}
+		if _, err := collection.DeleteMany(ctx, bson.M{}); err != nil {
+			log.Error().Err(err).Msg("cannot clear planned rooms")
+			return err
+		}
 
-	roomsInterface := make([]interface{}, 0, len(plannedRooms))
+		if len(plannedRooms) == 0 {
+			return nil
+		}
 
-	for _, room := range plannedRooms {
-		roomsInterface = append(roomsInterface, room)
-	}
+		roomsInterface := make([]interface{}, 0, len(plannedRooms))
+		for _, room := range plannedRooms {
+			roomsInterface = append(roomsInterface, room)
+		}
 
-	_, err = collection.InsertMany(ctx, roomsInterface)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot insert non NTA rooms")
-		return err
-	}
-
-	return nil
+		if _, err := collection.InsertMany(ctx, roomsInterface); err != nil {
+			log.Error().Err(err).Msg("cannot insert non NTA rooms")
+			return err
+		}
+		return nil
+	})
 }

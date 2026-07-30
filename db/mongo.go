@@ -24,6 +24,9 @@ type DB struct {
 	// one is repointed at runtime by SwitchTo.
 	databaseName       string
 	globalDatabaseName string
+	// supportsTransactions is false against a standalone mongod, which cannot run
+	// multi-document transactions. Writes then fall back to being non-atomic.
+	supportsTransactions bool
 }
 
 // globalDatabase is the cross-semester master-data database. Always go through this
@@ -78,12 +81,18 @@ func NewDB(uri, semester string, dbName *string) (*DB, error) {
 
 	log.Debug().Str("database name", databaseName).Msg("using database")
 
+	supportsTransactions := detectTransactionSupport(context.Background(), client)
+	if !supportsTransactions {
+		log.Warn().Msg("MongoDB is not a replica set: multi-document writes are not atomic")
+	}
+
 	return &DB{
-		Client:             client,
-		uri:                uri,
-		semester:           semester,
-		databaseName:       databaseName,
-		globalDatabaseName: defaultGlobalDatabase,
+		Client:               client,
+		uri:                  uri,
+		semester:             semester,
+		databaseName:         databaseName,
+		globalDatabaseName:   defaultGlobalDatabase,
+		supportsTransactions: supportsTransactions,
 	}, nil
 }
 

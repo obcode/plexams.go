@@ -19,24 +19,29 @@ func timeOrZero(t *time.Time) time.Time {
 	return *t
 }
 
+// AddExamToSlot places an exam by replacing its plan entry: the old one is removed and
+// the new one inserted. Both run in one transaction where the deployment allows it, so
+// a failing insert cannot leave the exam unplanned.
 func (db *DB) AddExamToSlot(ctx context.Context, planEntry *model.PlanEntry) (bool, error) {
-	collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
+	err := db.withTransaction(ctx, func(ctx context.Context) error {
+		collection := db.Client.Database(db.databaseName).Collection(collectionNamePlan)
 
-	_, err := collection.DeleteMany(ctx, bson.D{{Key: "ancode", Value: planEntry.Ancode}})
+		if _, err := collection.DeleteMany(ctx, bson.D{{Key: "ancode", Value: planEntry.Ancode}}); err != nil {
+			log.Error().Err(err).Time("starttime", timeOrZero(planEntry.Starttime)).Int("ancode", planEntry.Ancode).
+				Msg("cannot rm exam from plan")
+			return err
+		}
+
+		if _, err := collection.InsertOne(ctx, planEntry); err != nil {
+			log.Error().Err(err).Time("starttime", timeOrZero(planEntry.Starttime)).Int("ancode", planEntry.Ancode).
+				Msg("cannot add exam to slot")
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		log.Error().Err(err).Time("starttime", timeOrZero(planEntry.Starttime)).Int("ancode", planEntry.Ancode).
-			Msg("cannot rm exam from plan")
 		return false, err
 	}
-
-	_, err = collection.InsertOne(ctx, planEntry)
-
-	if err != nil {
-		log.Error().Err(err).Time("starttime", timeOrZero(planEntry.Starttime)).Int("ancode", planEntry.Ancode).
-			Msg("cannot add exam to slot")
-		return false, err
-	}
-
 	return true, nil
 }
 

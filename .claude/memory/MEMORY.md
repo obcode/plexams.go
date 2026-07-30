@@ -35,6 +35,7 @@
 - [validation conflict severity](validation-conflict-severity.md) — ValidateConflicts graded (sameSlot=error/adjacent=warn/sameDay=info), sorted most-severe-first; accepted decisions (DB+YAML) shown as info not hidden.
 - [DB integrity validation](db-integrity-validation.md) — old ValidateDB split into 5 referential-integrity validators (plan/constraints/rooms/ntas/references); closes FixedDay + NTA-mtknr + planned_rooms-slot TODOs; GUI needs 5 new subscriptions.
 - [DB indexes](db-indexes.md) — EnsureIndexes at startup/switch; studentregs is deliberately NOT unique (real duplicate in current Primuss source data); pre-slotless archives may be ignored; best-effort, never fatal.
+- [DB transactions](db-transactions.md) — withTransaction makes 3 multi-document writes atomic; FALLS BACK on standalone mongod (do not make it fatal); prod replica set needs a keyfile, compose lines intentionally commented out.
 - [DB migrations](db-migrations.md) — schema migration framework (idempotent, stamped per step, skips meta-less/read-only/newer DBs); how to add one; version 2 recovered collections orphaned by earlier renames.
 - [preplan validation severity](preplan-validation-severity.md) — EXaHM/SEB Anny pre-plan validation now graded (findings+level); small SEB in R-building = warning not failure; ok = no errors.
 - [validation skip gating](validation-skip-gating.md) — validators skip (not fail) when planned data absent (data-driven); ValidationReport gained skipped/skipReason; GUI renders "übersprungen".

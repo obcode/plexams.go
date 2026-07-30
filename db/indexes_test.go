@@ -10,6 +10,7 @@ import (
 	"github.com/obcode/plexams.go/internal/mongotest"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func planCollection(d *db.DB) *mongo.Collection {
@@ -122,5 +123,59 @@ func TestIndexesSurviveResetAndReimport(t *testing.T) {
 	}
 	if got := len(indexNames(t, d, "studentregs_WT")); got != regsBefore {
 		t.Errorf("studentregs_WT has %d indexes after the re-import, want %d", got, regsBefore)
+	}
+}
+
+// TestEnsureIndexesReplacesOutdatedDefinition reproduces what happened in the field: an
+// earlier version created plan(ancode) as a PARTIAL unique index. The simplified plain
+// unique index carries the same auto-generated name, so MongoDB rejected it with
+// IndexKeySpecsConflict on every single start.
+func TestEnsureIndexesReplacesOutdatedDefinition(t *testing.T) {
+	d := mongotest.NewDB(t)
+	ctx := context.Background()
+
+	// The index definition of the earlier version.
+	if _, err := planCollection(d).Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{{Key: "ancode", Value: 1}},
+		Options: options.Index().SetUnique(true).
+			SetPartialFilterExpression(bson.M{"ancode": bson.M{"$exists": true}}),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	d.EnsureIndexes(ctx)
+
+	cur, err := planCollection(d).Indexes().List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var specs []bson.M
+	if err := cur.All(ctx, &specs); err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, s := range specs {
+		if s["name"] != "ancode_1" {
+			continue
+		}
+		found = true
+		if _, stillPartial := s["partialFilterExpression"]; stillPartial {
+			t.Error("ancode_1 is still the outdated partial index")
+		}
+		if s["unique"] != true {
+			t.Errorf("ancode_1 is not unique: %v", s)
+		}
+	}
+	if !found {
+		t.Fatalf("ancode_1 is gone entirely: %v", specs)
+	}
+
+	// And it constrains, so the replacement really took effect.
+	st := time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local)
+	if _, err := planCollection(d).InsertOne(ctx, model.PlanEntry{Ancode: 7, Starttime: &st}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := planCollection(d).InsertOne(ctx, model.PlanEntry{Ancode: 7, Starttime: &st}); err == nil {
+		t.Error("duplicate ancode accepted after the index replacement")
 	}
 }

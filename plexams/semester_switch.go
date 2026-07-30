@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
@@ -13,9 +14,10 @@ import (
 // currentSchemaVersion is the data/schema version this code writes; bump it on a
 // breaking change to a semester database's layout. minSupportedSchemaVersion is the
 // oldest version this code can still work with.
+// They live next to the migrations that define them ([db/migrations.go]).
 const (
-	currentSchemaVersion      = 1
-	minSupportedSchemaVersion = 1
+	currentSchemaVersion      = db.CurrentSchemaVersion
+	minSupportedSchemaVersion = db.MinSupportedSchemaVersion
 )
 
 // IsReadOnly reports whether the current semester database is protected.
@@ -34,6 +36,12 @@ func (p *Plexams) loadSemesterMeta(ctx context.Context) {
 		if err := p.dbClient.EnsureMeta(ctx, currentSchemaVersion); err != nil {
 			log.Error().Err(err).Msg("cannot ensure semester meta")
 		}
+	}
+	// Migrate before indexing so the indexes land on the migrated collections. A
+	// failed migration is logged and retried on the next start rather than being
+	// fatal — the planner still needs to reach the GUI to diagnose it.
+	if err := p.dbClient.Migrate(ctx); err != nil {
+		log.Error().Err(err).Msg("cannot migrate database")
 	}
 	// Best-effort: an index the existing data violates is logged, never fatal.
 	p.dbClient.EnsureIndexes(ctx)

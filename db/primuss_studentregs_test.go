@@ -97,3 +97,30 @@ func TestStudentRegsPerAncodeSurvivesCountDrift(t *testing.T) {
 		t.Errorf("got %d registrations for ancode 100, want 3", len(regs[100]))
 	}
 }
+
+func TestDuplicateStudentRegs(t *testing.T) {
+	d := mongotest.NewDB(t)
+	ctx := context.Background()
+	database := d.Client.Database(d.DatabaseName())
+
+	docs := []any{
+		bson.M{"AnCode": 100, "MTKNR": "a", "Stg": "WT"},
+		bson.M{"AnCode": 100, "MTKNR": "a", "Stg": "WT"}, // the duplicate
+		bson.M{"AnCode": 100, "MTKNR": "b", "Stg": "WT"},
+		bson.M{"AnCode": 101, "MTKNR": "a", "Stg": "WT"}, // same student, other exam
+	}
+	if _, err := database.Collection("studentregs_WT").InsertMany(ctx, docs); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := d.DuplicateStudentRegs(ctx, "WT")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %+v, want exactly one duplicate", got)
+	}
+	if got[0].Ancode != 100 || got[0].Mtknr != "a" || got[0].Count != 2 {
+		t.Errorf("got %+v, want ancode 100, mtknr a, count 2", got[0])
+	}
+}

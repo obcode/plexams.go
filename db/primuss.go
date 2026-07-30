@@ -41,6 +41,10 @@ func (db *DB) GetPrograms(ctx context.Context) ([]string, error) {
 // studentregs_/exams_/count_/conflicts_ that ImportZip writes). The manually maintained
 // ancode overlay (primuss_ancodes) is NOT touched. Returns the programs whose data was
 // dropped (from GetPrograms, i.e. those with an exams_<program> collection).
+//
+// This really does drop, unlike ReplaceRawCollection: program discovery works by
+// collection name, so emptying them would keep every program visible. Their indexes go
+// with them and are recreated on the next start or semester switch.
 func (db *DB) DropPrimussData(ctx context.Context) ([]string, error) {
 	programs, err := db.GetPrograms(ctx)
 	if err != nil {

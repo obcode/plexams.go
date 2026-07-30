@@ -41,7 +41,7 @@ var dumpBookkeepingCollections = map[string]bool{
 // collectionDump is the envelope for one collection's documents in a semester ZIP.
 // Extended JSON cannot be a top-level array, so the documents are wrapped here.
 type collectionDump struct {
-	Documents []bson.M `bson:"documents"`
+	Documents []map[string]any `bson:"documents"`
 }
 
 // semesterDumpManifest describes a whole-semester dump (one entry in the ZIP).
@@ -190,7 +190,7 @@ func (p *Plexams) RestoreSemesterDump(ctx context.Context, zipData []byte) (*Res
 	return result, nil
 }
 
-func readExtJSONDocs(zf *zip.File) ([]bson.M, error) {
+func readExtJSONDocs(zf *zip.File) ([]map[string]any, error) {
 	rc, err := zf.Open()
 	if err != nil {
 		return nil, err
@@ -205,7 +205,7 @@ func readExtJSONDocs(zf *zip.File) ([]bson.M, error) {
 		return nil, err
 	}
 	if envelope.Documents == nil {
-		return []bson.M{}, nil
+		return []map[string]any{}, nil
 	}
 	return envelope.Documents, nil
 }
@@ -256,9 +256,9 @@ type datasetManifest struct {
 // accept the bare {documents:[...]} envelope used by the per-collection files inside
 // a semester ZIP, so those can be uploaded directly on the matching page.
 type datasetDump struct {
-	Manifest    datasetManifest     `bson:"manifest" json:"manifest"`
-	Collections map[string][]bson.M `bson:"collections" json:"collections"`
-	Documents   []bson.M            `bson:"documents,omitempty" json:"documents,omitempty"`
+	Manifest    datasetManifest             `bson:"manifest" json:"manifest"`
+	Collections map[string][]map[string]any `bson:"collections" json:"collections"`
+	Documents   []map[string]any            `bson:"documents,omitempty" json:"documents,omitempty"`
 }
 
 // DatasetDumpJSON builds the extended-JSON export of a single dataset and a
@@ -277,7 +277,7 @@ func (p *Plexams) DatasetDumpJSON(ctx context.Context, name string) ([]byte, str
 			ExportedAt: time.Now(),
 			Counts:     make(map[string]int),
 		},
-		Collections: make(map[string][]bson.M),
+		Collections: make(map[string][]map[string]any),
 	}
 
 	if spec.external {
@@ -337,7 +337,7 @@ func (p *Plexams) RestoreDataset(ctx context.Context, name string, data []byte) 
 	// resolve the documents for a collection from the file, accepting both the dataset
 	// envelope ({collections:{<coll>:[...]}}) and — for a single-collection dataset —
 	// the bare per-collection envelope ({documents:[...]}) used inside a semester ZIP.
-	resolve := func(coll string) ([]bson.M, bool) {
+	resolve := func(coll string) ([]map[string]any, bool) {
 		if dump.Collections != nil {
 			if docs, ok := dump.Collections[coll]; ok {
 				return docs, true
@@ -382,7 +382,7 @@ func (p *Plexams) RestoreDataset(ctx context.Context, name string, data []byte) 
 	} else {
 		// resolve every collection first so a mismatched file errors out BEFORE any
 		// collection is dropped (a drop-then-insert-nothing would silently wipe data).
-		resolved := make(map[string][]bson.M, len(spec.Collections))
+		resolved := make(map[string][]map[string]any, len(spec.Collections))
 		for _, coll := range spec.Collections {
 			docs, ok := resolve(coll)
 			if !ok {
@@ -403,7 +403,7 @@ func (p *Plexams) RestoreDataset(ctx context.Context, name string, data []byte) 
 	return result, nil
 }
 
-func ancodeSet(docs []bson.M) map[int]bool {
+func ancodeSet(docs []map[string]any) map[int]bool {
 	s := make(map[int]bool, len(docs))
 	for _, d := range docs {
 		if a, ok := toInt(d["ancode"]); ok {
@@ -413,8 +413,8 @@ func ancodeSet(docs []bson.M) map[int]bool {
 	return s
 }
 
-func filterByAncode(docs []bson.M, ancodes map[int]bool) []bson.M {
-	out := make([]bson.M, 0)
+func filterByAncode(docs []map[string]any, ancodes map[int]bool) []map[string]any {
+	out := make([]map[string]any, 0)
 	for _, d := range docs {
 		if a, ok := toInt(d["ancode"]); ok && ancodes[a] {
 			out = append(out, d)

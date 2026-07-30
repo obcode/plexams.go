@@ -14,7 +14,7 @@ import (
 func TestExtJSONRoundTripPreservesTypes(t *testing.T) {
 	oid := primitive.NewObjectID()
 	now := primitive.NewDateTimeFromTime(time.Date(2026, 7, 6, 10, 30, 0, 0, time.UTC))
-	orig := []bson.M{
+	orig := []map[string]any{
 		{
 			"_id":    oid,
 			"ancode": int32(1234),
@@ -53,10 +53,13 @@ func TestExtJSONRoundTripPreservesTypes(t *testing.T) {
 	if v, ok := d["date"].(primitive.DateTime); !ok || v != now {
 		t.Errorf("date not preserved as DateTime: %T %v", d["date"], d["date"])
 	}
-	if nested, ok := d["nested"].(bson.M); !ok {
-		t.Errorf("nested not preserved as bson.M: %T", d["nested"])
+	// Nested documents decode as plain maps, matching the outer document type. What
+	// matters is that the BSON types of the values inside survive — that is what makes a
+	// restore write back identical data. bson.M and map[string]any marshal identically.
+	if nested, ok := d["nested"].(map[string]any); !ok {
+		t.Errorf("nested not preserved as a map: %T", d["nested"])
 	} else if v, ok := nested["slot"].(int32); !ok || v != 3 {
-		t.Errorf("nested.slot not preserved: %T %v", nested["slot"], nested["slot"])
+		t.Errorf("nested.slot not preserved as int32: %T %v", nested["slot"], nested["slot"])
 	}
 }
 
@@ -64,7 +67,7 @@ func TestExtJSONRoundTripPreservesTypes(t *testing.T) {
 func TestDatasetDumpRoundTrip(t *testing.T) {
 	orig := datasetDump{
 		Manifest: datasetManifest{Dataset: "external-exams", Semester: "2026 SS", Format: 1, Counts: map[string]int{"non_zpaexams": 1, "plan": 1}},
-		Collections: map[string][]bson.M{
+		Collections: map[string][]map[string]any{
 			"non_zpaexams": {{"ancode": int32(9001), "module": "Extern"}},
 			"plan":         {{"ancode": int32(9001), "daynumber": int32(0), "slotnumber": int32(0)}},
 		},
@@ -93,7 +96,7 @@ func TestDatasetDumpRoundTrip(t *testing.T) {
 // envelope used inside a semester ZIP.
 func TestDatasetDumpAcceptsDocumentsEnvelope(t *testing.T) {
 	// bare per-collection envelope (as extracted from a semester ZIP)
-	env := collectionDump{Documents: []bson.M{{"ancode": int32(112)}, {"ancode": int32(113)}}}
+	env := collectionDump{Documents: []map[string]any{{"ancode": int32(112)}, {"ancode": int32(113)}}}
 	data, err := bson.MarshalExtJSON(env, true, false)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
@@ -114,7 +117,7 @@ func TestDatasetDumpAcceptsDocumentsEnvelope(t *testing.T) {
 }
 
 func TestAncodeHelpers(t *testing.T) {
-	docs := []bson.M{
+	docs := []map[string]any{
 		{"ancode": int32(1)},
 		{"ancode": int64(2)},
 		{"ancode": 3.0},
@@ -130,7 +133,7 @@ func TestAncodeHelpers(t *testing.T) {
 		t.Errorf("expected 3 ancodes, got %d", len(set))
 	}
 
-	plan := []bson.M{{"ancode": int32(1)}, {"ancode": int32(99)}, {"ancode": int32(2)}}
+	plan := []map[string]any{{"ancode": int32(1)}, {"ancode": int32(99)}, {"ancode": int32(2)}}
 	filtered := filterByAncode(plan, set)
 	if len(filtered) != 2 {
 		t.Errorf("expected 2 filtered docs, got %d", len(filtered))

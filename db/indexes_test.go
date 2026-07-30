@@ -75,11 +75,52 @@ func TestEnsureIndexesIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var idx []bson.M
+	var idx []map[string]any
 	if err := cur.All(ctx, &idx); err != nil {
 		t.Fatal(err)
 	}
 	if len(idx) != 2 { // _id_ plus our ancode index
 		t.Errorf("got %d indexes on plan, want 2 (_id_ and ancode)", len(idx))
+	}
+}
+
+// TestIndexesSurviveResetAndReimport guards the paths that clear a collection instead of
+// dropping it: a drop would also discard the indexes EnsureIndexes created, which would
+// only come back on the next start.
+func TestIndexesSurviveResetAndReimport(t *testing.T) {
+	d := mongotest.NewDB(t)
+	ctx := context.Background()
+
+	if _, err := d.ReplaceRawCollection(ctx, "studentregs_WT", []map[string]any{
+		{"AnCode": 100, "MTKNR": "a"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.ReplaceRawCollection(ctx, "exams_WT", []map[string]any{{"AnCode": 100}}); err != nil {
+		t.Fatal(err)
+	}
+	d.EnsureIndexes(ctx)
+
+	regsBefore := len(indexNames(t, d, "studentregs_WT"))
+	roomsBefore := len(indexNames(t, d, "rooms_planned"))
+	if regsBefore < 2 || roomsBefore < 2 {
+		t.Fatalf("precondition: expected indexes, got %d on studentregs_WT and %d on rooms_planned",
+			regsBefore, roomsBefore)
+	}
+
+	if err := d.ResetPlannedRooms(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.ReplaceRawCollection(ctx, "studentregs_WT", []map[string]any{
+		{"AnCode": 101, "MTKNR": "b"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := len(indexNames(t, d, "rooms_planned")); got != roomsBefore {
+		t.Errorf("rooms_planned has %d indexes after the reset, want %d", got, roomsBefore)
+	}
+	if got := len(indexNames(t, d, "studentregs_WT")); got != regsBefore {
+		t.Errorf("studentregs_WT has %d indexes after the re-import, want %d", got, regsBefore)
 	}
 }

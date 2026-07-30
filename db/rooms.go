@@ -320,12 +320,15 @@ func (db *DB) PlannedRoomsForAncode(ctx context.Context, ancode int) ([]*model.P
 	return plannedRooms, nil
 }
 
-// ResetPlannedRooms drops the generated planned rooms (planned_rooms). The
+// ResetPlannedRooms clears the generated planned rooms (rooms_planned). The
 // pre-planning (rooms_pre_planned) is not touched.
+//
+// Clears with DeleteMany rather than dropping, so the indexes EnsureIndexes created
+// survive a reset instead of only coming back on the next start.
 func (db *DB) ResetPlannedRooms(ctx context.Context) error {
 	collection := db.getCollectionSemester(collectionRoomsPlanned)
-	if err := collection.Drop(ctx); err != nil {
-		log.Error().Err(err).Msg("cannot drop planned rooms")
+	if _, err := collection.DeleteMany(ctx, bson.M{}); err != nil {
+		log.Error().Err(err).Msg("cannot clear planned rooms")
 		return err
 	}
 	return nil

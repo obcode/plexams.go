@@ -38,27 +38,27 @@ func TestChangedAncodes(t *testing.T) {
 		return bson.M{"AnCode": ancode, "MTKNR": mtknr, "Note": note, "Stgru": "", "gebucht": "", "nicht_zul": ""}
 	}
 
-	old := []bson.M{reg(100, "a", ""), reg(100, "b", ""), reg(200, "c", "")}
+	old := []map[string]any{reg(100, "a", ""), reg(100, "b", ""), reg(200, "c", "")}
 
 	t.Run("no change", func(t *testing.T) {
-		if got := changedAncodes(old, []bson.M{reg(100, "b", ""), reg(100, "a", ""), reg(200, "c", "")}); len(got) != 0 {
+		if got := changedAncodes(old, []map[string]any{reg(100, "b", ""), reg(100, "a", ""), reg(200, "c", "")}); len(got) != 0 {
 			t.Errorf("got %v, want none (order within ancode must not matter)", got)
 		}
 	})
 	t.Run("added student flags ancode", func(t *testing.T) {
-		got := changedAncodes(old, []bson.M{reg(100, "a", ""), reg(100, "b", ""), reg(100, "x", ""), reg(200, "c", "")})
+		got := changedAncodes(old, []map[string]any{reg(100, "a", ""), reg(100, "b", ""), reg(100, "x", ""), reg(200, "c", "")})
 		if !reflect.DeepEqual(got, []int{100}) {
 			t.Errorf("got %v, want [100]", got)
 		}
 	})
 	t.Run("removed ancode flagged", func(t *testing.T) {
-		got := changedAncodes(old, []bson.M{reg(100, "a", ""), reg(100, "b", "")})
+		got := changedAncodes(old, []map[string]any{reg(100, "a", ""), reg(100, "b", "")})
 		if !reflect.DeepEqual(got, []int{200}) {
 			t.Errorf("got %v, want [200]", got)
 		}
 	})
 	t.Run("changed field flags ancode", func(t *testing.T) {
-		got := changedAncodes(old, []bson.M{reg(100, "a", "1.0"), reg(100, "b", ""), reg(200, "c", "")})
+		got := changedAncodes(old, []map[string]any{reg(100, "a", "1.0"), reg(100, "b", ""), reg(200, "c", "")})
 		if !reflect.DeepEqual(got, []int{100}) {
 			t.Errorf("got %v, want [100]", got)
 		}

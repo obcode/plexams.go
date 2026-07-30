@@ -26,7 +26,7 @@ func (db *DB) CountCollection(ctx context.Context, name string) (int64, error) {
 // InsertRawDocs inserts the given documents into a collection without dropping it
 // first (used to merge external-exam plan entries back into the shared plan
 // collection). Returns the number of inserted documents.
-func (db *DB) InsertRawDocs(ctx context.Context, name string, docs []bson.M) (int, error) {
+func (db *DB) InsertRawDocs(ctx context.Context, name string, docs []map[string]any) (int, error) {
 	if len(docs) == 0 {
 		return 0, nil
 	}

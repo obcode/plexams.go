@@ -406,13 +406,27 @@ func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationRepo
 		}
 	}
 
-	v.step("validating student registration counts")
+	v.step("validating student registrations")
 	programs, err := p.dbClient.GetPrograms(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get programs")
 		return nil, err
 	}
 	for _, program := range programs {
+		// The database does not constrain this: the Primuss source data contains a real
+		// duplicate, so a unique index would reject the import. Reporting it here is
+		// what makes the missing constraint acceptable.
+		duplicates, err := p.dbClient.DuplicateStudentRegs(ctx, program)
+		if err != nil {
+			log.Error().Err(err).Str("program", program).Msg("cannot check for duplicate registrations")
+			return nil, err
+		}
+		for _, d := range duplicates {
+			v.warnf(ref{Ancode: ptr(d.Ancode)},
+				"%s/%d: Matrikelnummer %s ist %dx zur selben Prüfung angemeldet (aus den Primuss-Daten)",
+				d.Program, d.Ancode, d.Mtknr, d.Count)
+		}
+
 		mismatches, err := p.dbClient.StudentRegsCountMismatches(ctx, program)
 		if err != nil {
 			log.Error().Err(err).Str("program", program).Msg("cannot compare student registration counts")

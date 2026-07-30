@@ -8,14 +8,12 @@ package primuss
 
 import (
 	"context"
-
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // DB is the persistence the Primuss import needs; *db.DB satisfies it.
 type DB interface {
-	RawCollection(ctx context.Context, name string) ([]bson.M, error)
-	ReplaceRawCollection(ctx context.Context, name string, docs []bson.M) (int, error)
+	RawCollection(ctx context.Context, name string) ([]map[string]any, error)
+	ReplaceRawCollection(ctx context.Context, name string, docs []map[string]any) (int, error)
 }
 
 // Service imports Primuss XLSX data.

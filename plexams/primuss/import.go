@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/xuri/excelize/v2"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // ImportResult summarizes a Primuss XLSX ZIP import.
@@ -252,15 +251,15 @@ func xlsxRows(data []byte) ([][]string, error) {
 
 // parsePrimussStudentregs maps the Prüfungsanmeldungen rows to docs with the fixed typing
 // (AnCode int, everything else — incl. MTKNR — string).
-func parsePrimussStudentregs(data []byte) ([]bson.M, error) {
+func parsePrimussStudentregs(data []byte) ([]map[string]any, error) {
 	rows, err := xlsxRows(data)
 	if err != nil {
 		return nil, err
 	}
 	header := trimmedHeader(rows[0], false)
-	docs := make([]bson.M, 0, len(rows)-1)
+	docs := make([]map[string]any, 0, len(rows)-1)
 	for _, row := range rows[1:] {
-		doc := bson.M{}
+		doc := map[string]any{}
 		for i, name := range header {
 			if name == "" {
 				continue
@@ -282,15 +281,15 @@ func parsePrimussStudentregs(data []byte) ([]bson.M, error) {
 // parsePrimussAutoTyped maps rows to docs with mongoimport-like auto typing: integer cells
 // become ints, others strings. With sumFix the header "Sum." becomes "Sum"; with
 // ignoreBlanks empty cells are omitted (else kept as "").
-func parsePrimussAutoTyped(data []byte, sumFix, ignoreBlanks bool) ([]bson.M, error) {
+func parsePrimussAutoTyped(data []byte, sumFix, ignoreBlanks bool) ([]map[string]any, error) {
 	rows, err := xlsxRows(data)
 	if err != nil {
 		return nil, err
 	}
 	header := trimmedHeader(rows[0], sumFix)
-	docs := make([]bson.M, 0, len(rows)-1)
+	docs := make([]map[string]any, 0, len(rows)-1)
 	for _, row := range rows[1:] {
-		doc := bson.M{}
+		doc := map[string]any{}
 		for i, name := range header {
 			if name == "" {
 				continue
@@ -327,7 +326,7 @@ func trimmedHeader(row []string, sumFix bool) []string {
 
 // changedAncodes compares the old and new studentreg docs and returns the ancodes whose
 // registration set changed (added/removed students or changed registration fields).
-func changedAncodes(oldDocs, newDocs []bson.M) []int {
+func changedAncodes(oldDocs, newDocs []map[string]any) []int {
 	oldSig := studentregSignatures(oldDocs)
 	newSig := studentregSignatures(newDocs)
 	changedSet := make(map[int]bool)
@@ -350,7 +349,7 @@ func changedAncodes(oldDocs, newDocs []bson.M) []int {
 }
 
 // studentregSignatures builds, per ancode, a stable signature of its registrations.
-func studentregSignatures(docs []bson.M) map[int]string {
+func studentregSignatures(docs []map[string]any) map[int]string {
 	rowsByAncode := make(map[int][]string)
 	for _, d := range docs {
 		ancode := toInt(d["AnCode"])

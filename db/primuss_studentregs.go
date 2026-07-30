@@ -192,6 +192,55 @@ type StudentRegsCountMismatch struct {
 // NoCountDocument marks a mismatch where the count document is missing entirely.
 const NoCountDocument = -1
 
+// DuplicateStudentReg is one student registered more than once for the same exam.
+type DuplicateStudentReg struct {
+	Program string
+	Ancode  int
+	Mtknr   string
+	Count   int
+}
+
+// DuplicateStudentRegs finds students registered several times for the same exam.
+//
+// Reported, never enforced: the Primuss source data really does contain such a
+// duplicate, so a unique index on (AnCode, MTKNR) would reject the import instead of
+// protecting it. Surfacing it here is what makes the missing constraint acceptable.
+func (db *DB) DuplicateStudentRegs(ctx context.Context, program string) ([]DuplicateStudentReg, error) {
+	cur, err := db.getCollection(program, StudentRegs).Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	var regs []model.StudentReg
+	if err := cur.All(ctx, &regs); err != nil {
+		return nil, err
+	}
+
+	type key struct {
+		ancode int
+		mtknr  string
+	}
+	seen := make(map[key]int)
+	for _, reg := range regs {
+		seen[key{reg.PrimussAncode, reg.Mtknr}]++
+	}
+
+	duplicates := make([]DuplicateStudentReg, 0)
+	for k, n := range seen {
+		if n > 1 {
+			duplicates = append(duplicates, DuplicateStudentReg{
+				Program: program, Ancode: k.ancode, Mtknr: k.mtknr, Count: n,
+			})
+		}
+	}
+	sort.Slice(duplicates, func(i, j int) bool {
+		if duplicates[i].Ancode != duplicates[j].Ancode {
+			return duplicates[i].Ancode < duplicates[j].Ancode
+		}
+		return duplicates[i].Mtknr < duplicates[j].Mtknr
+	})
+	return duplicates, nil
+}
+
 // StudentRegsCountMismatches compares the stored registrations of a program against
 // the counts Primuss delivered alongside them. The two drift apart when a single
 // registration is added or removed, because that writes both collections without a

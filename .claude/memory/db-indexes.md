@@ -10,10 +10,11 @@ Until 2026-07-30 **no collection had any index except `_id`**. Uniqueness was ca
 
 Unique: `plan(ancode)`, `joint_links(program, primussancode)`, `primuss_ancodes(ancode, primussancode.program)`, and `nta(mtknr)` in the global `plexams` DB. Lookup-only: `rooms_planned(ancode)`, `rooms_planned(starttime)`, `mutation_log(time desc)`.
 
-Two decisions that came out of scanning the real databases — **do not "fix" either one**:
+One decision that came out of scanning the real databases — **do not "fix" it**:
 
-- **`plan(ancode)` is a PARTIAL index** on `ancode: {$exists: true}`. Databases from before the slotless refactor (2022-WS, 2023-SS) store plan entries as `daynumber/slotnumber/examgroupcode` with **no `ancode` field at all**. Without the filter every one of those documents collides on `null` and the index can never be created there. With it, the index builds on all existing semester databases. See [slotless-timebased-redesign.md](slotless-timebased-redesign.md).
-- **`studentregs_<PROG>(AnCode, MTKNR)` is deliberately NOT unique**, only a lookup index. The Primuss source data really does contain a student registered twice for the same exam; it has been carried along across several semesters. A unique index would make the Primuss import *fail* instead of protecting it. Such duplicates belong in the validation report, not in a constraint. See [primuss-xlsx-import.md](primuss-xlsx-import.md).
+**`studentregs_<PROG>(AnCode, MTKNR)` is deliberately NOT unique**, only a lookup index. The Primuss source data really does contain a student registered twice for the same exam. This is *not* a legacy artefact: it is present in the current semester and in the freshly imported workspace, so it would come straight back with newly imported data. A unique index would make the Primuss import *fail* instead of protecting it. Such duplicates belong in the validation report, not in a constraint. See [primuss-xlsx-import.md](primuss-xlsx-import.md).
+
+Scope decision (2026-07-30, from the maintainer): the optimizations only have to work with **newly imported data** — pre-slotless archives (2022-WS, 2023-SS, whose plan entries carry `daynumber/slotnumber/examgroupcode` and no `ancode`) may be ignored. `plan(ancode)` is therefore a plain unique index; on those archives its creation fails and is logged, which is fine because they are never written to. Do not reintroduce a partial filter to accommodate them. See [slotless-timebased-redesign.md](slotless-timebased-redesign.md).
 
 `EnsureIndexes` is **best-effort and never fatal**: an index contradicted by existing data is logged as a warning naming the collection and retried on the next start. This is required — the server must start even against a database whose data is inconsistent, which is exactly when the planner needs `validate db` to diagnose it. Creating an existing index is a no-op.
 

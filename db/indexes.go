@@ -15,15 +15,9 @@ type indexSpec struct {
 	model      mongo.IndexModel
 }
 
-// uniqueIndex builds a unique index over keys. onlyIfPresent limits it to documents
-// that actually have the first key — needed because pre-slotless semester databases
-// still hold plan entries without an "ancode" field, which would all collide on null.
-func uniqueIndex(keys bson.D, onlyIfPresent string) mongo.IndexModel {
-	opts := options.Index().SetUnique(true)
-	if onlyIfPresent != "" {
-		opts.SetPartialFilterExpression(bson.M{onlyIfPresent: bson.M{"$exists": true}})
-	}
-	return mongo.IndexModel{Keys: keys, Options: opts}
+// uniqueIndex builds a unique index over keys.
+func uniqueIndex(keys bson.D) mongo.IndexModel {
+	return mongo.IndexModel{Keys: keys, Options: options.Index().SetUnique(true)}
 }
 
 // lookupIndex builds a plain non-unique index used to speed up a read path.
@@ -34,23 +28,24 @@ func lookupIndex(keys bson.D) mongo.IndexModel {
 // semesterIndexes are the indexes of the current semester database.
 //
 // Deliberately NOT unique: studentregs_<PROG> on {AnCode, MTKNR}. The Primuss source
-// data really does contain a student registered twice for the same exam (seen in
-// 2025-WS, carried into 2026-SS), so a unique index there would reject the import
-// rather than protect it. The duplicate belongs in the validation report instead.
+// data really does contain a student registered twice for the same exam — present in
+// the current semester and in the freshly imported workspace, so it is not a legacy
+// artefact. A unique index there would reject the import rather than protect it; the
+// duplicate belongs in the validation report instead.
 func (db *DB) semesterIndexes() []indexSpec {
 	return []indexSpec{
 		// One plan entry per exam — the invariant ValidateDB checks by hand.
-		{collectionNamePlan, uniqueIndex(bson.D{{Key: "ancode", Value: 1}}, "ancode")},
+		{collectionNamePlan, uniqueIndex(bson.D{{Key: "ancode", Value: 1}})},
 		// Matches the upsert filter in UpsertJointLink.
 		{collectionJointLinks, uniqueIndex(bson.D{
 			{Key: "program", Value: 1},
 			{Key: "primussancode", Value: 1},
-		}, "")},
+		})},
 		// Matches the upsert filter in AddAncode.
 		{collectionPrimussAncodes, uniqueIndex(bson.D{
 			{Key: "ancode", Value: 1},
 			{Key: "primussancode.program", Value: 1},
-		}, "")},
+		})},
 		// Read paths: rooms of one exam, and all rooms at one time.
 		{collectionRoomsPlanned, lookupIndex(bson.D{{Key: "ancode", Value: 1}})},
 		{collectionRoomsPlanned, lookupIndex(bson.D{{Key: "starttime", Value: 1}})},
@@ -84,7 +79,7 @@ func (db *DB) EnsureIndexes(ctx context.Context) {
 
 	// Global database: one NTA per student.
 	db.ensureIndex(ctx, db.globalDatabase().Collection(collectionNameNTAs),
-		uniqueIndex(bson.D{{Key: "mtknr", Value: 1}}, ""))
+		uniqueIndex(bson.D{{Key: "mtknr", Value: 1}}))
 }
 
 func (db *DB) ensureIndex(ctx context.Context, collection *mongo.Collection, model mongo.IndexModel) {

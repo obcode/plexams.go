@@ -36,34 +36,6 @@ func TestEnsureIndexesRejectsDuplicatePlanEntries(t *testing.T) {
 	}
 }
 
-// TestEnsureIndexesToleratesLegacyPlanEntries covers the pre-slotless databases
-// (2022-WS, 2023-SS), whose plan entries have no ancode at all. Without a partial
-// filter they would all collide on null and the index could never be created.
-func TestEnsureIndexesToleratesLegacyPlanEntries(t *testing.T) {
-	d := mongotest.NewDB(t)
-	ctx := context.Background()
-
-	legacy := []any{
-		bson.M{"daynumber": 1, "slotnumber": 2, "examgroupcode": 101, "locked": false},
-		bson.M{"daynumber": 1, "slotnumber": 3, "examgroupcode": 102, "locked": false},
-	}
-	if _, err := planCollection(d).InsertMany(ctx, legacy); err != nil {
-		t.Fatal(err)
-	}
-
-	d.EnsureIndexes(ctx)
-
-	// The index must exist despite the legacy documents, and still constrain
-	// entries that do carry an ancode.
-	st := time.Date(2026, 7, 6, 8, 30, 0, 0, time.Local)
-	if _, err := planCollection(d).InsertOne(ctx, model.PlanEntry{Ancode: 7, Starttime: &st}); err != nil {
-		t.Fatalf("insert alongside legacy entries: %v", err)
-	}
-	if _, err := planCollection(d).InsertOne(ctx, model.PlanEntry{Ancode: 7, Starttime: &st}); err == nil {
-		t.Error("duplicate ancode accepted, the partial index did not take effect")
-	}
-}
-
 // TestEnsureIndexesToleratesViolatingData verifies the best-effort contract: a
 // collection that already holds duplicates must not keep the server from starting.
 func TestEnsureIndexesToleratesViolatingData(t *testing.T) {

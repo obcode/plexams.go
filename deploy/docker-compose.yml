@@ -29,6 +29,22 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     volumes:
       - mongo-data:/data/db
+    # --- Replica set (multi-document transactions) -----------------------------------
+    # plexams.go writes several documents at once in a few places (student registration
+    # + Primuss counter, plan entry replace, room plan replace). Those are only atomic
+    # against a replica set; against this standalone the code falls back to sequential
+    # writes, so a failure in the middle can leave a partial state.
+    #
+    # DELIBERATELY NOT ENABLED. mongod REFUSES TO START with --replSet while auth is on
+    # unless a keyfile exists ("security.keyFile is required when authorization is
+    # enabled with replica sets"). Since a release deploys this file automatically,
+    # enabling it here without the keyfile already on the host takes production down.
+    #
+    # Enable it in a maintenance window by following "MongoDB Replica Set aktivieren" in
+    # README.md, which creates the keyfile first, then uncomment these two lines:
+    #   command: ["--replSet", "rs0", "--keyFile", "/etc/mongo/keyfile"]
+    # and add to the volumes above:
+    #   - ./mongo-keyfile:/etc/mongo/keyfile:ro
     # Published ONLY on the host loopback (127.0.0.1), never 0.0.0.0. That keeps Mongo
     # unreachable from the network/firewall — the only way in from outside is an SSH
     # tunnel onto the host (see README "Von außen an die MongoDB (SSH-Tunnel)"):

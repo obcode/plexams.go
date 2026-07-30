@@ -294,6 +294,74 @@ Läuft schon lokal etwas auf 27017, einen anderen lokalen Port wählen, z. B.
 > `127.0.0.1:`-Präfix) würde Mongo dagegen an der Firewall vorbei ins Netz stellen — **nie
 > tun.**
 
+### MongoDB Replica Set aktivieren
+
+`plexams.go` schreibt an einigen Stellen mehrere Dokumente zusammen: Anmeldung +
+Primuss-Zähler (`AddStudentReg`/`RemoveStudentReg`), Plan-Eintrag ersetzen
+(`AddExamToSlot`), Raumplan ersetzen (`ReplacePlannedRooms`). Atomar sind die nur gegen
+ein **Replica Set**. Gegen den Standalone fällt der Code auf nacheinander ausgeführte
+Schreibvorgänge zurück — ein Fehler in der Mitte hinterlässt dann einen Teilzustand
+(genau die Ursache der Zählerdrift, die `validate db` als Warnung meldet). Beim Start
+protokolliert das Backend, welcher Modus gilt:
+
+```
+MongoDB is not a replica set: multi-document writes are not atomic
+```
+
+**Warum das nicht schon in der `docker-compose.yml` steht:** mit aktivierter
+Authentifizierung **verweigert mongod den Start**, wenn `--replSet` ohne Keyfile gesetzt
+ist (`security.keyFile is required when authorization is enabled with replica sets`). Ein
+Release deployt die Compose-Datei automatisch — die Zeilen dort scharf zu schalten, ohne
+dass der Keyfile schon auf dem Host liegt, nimmt die Produktion herunter. Deshalb ist der
+Block auskommentiert und wird bewusst in einem Wartungsfenster aktiviert.
+
+Ablauf auf dem Host (`/home/plexams/plexams.go/deploy`), **in dieser Reihenfolge**:
+
+```sh
+# 0) Frisches Backup, bevor irgendetwas an Mongo geändert wird.
+./backup/mongo-backup.sh
+
+# 1) Keyfile anlegen. Inhalt ist ein Shared Secret; Rechte MÜSSEN 400 sein, sonst
+#    verweigert mongod den Start. UID 999 = User "mongodb" im offiziellen Image.
+openssl rand -base64 756 > mongo-keyfile
+chmod 400 mongo-keyfile
+sudo chown 999:999 mongo-keyfile
+
+# 2) In docker-compose.yml die beiden markierten Zeilen einkommentieren
+#    (command: --replSet/--keyFile und den mongo-keyfile-Mount).
+
+# 3) Nur Mongo neu starten. Es läuft dann, nimmt aber noch keine Schreibvorgänge an.
+docker compose up -d mongo
+docker compose logs --tail=30 mongo     # darf keinen keyFile-Fehler zeigen
+
+# 4) Replica Set einmalig initiieren. Der Host-Name muss der bleiben, unter dem die
+#    anderen Container Mongo erreichen (Servicename "mongo").
+docker compose exec mongo mongosh -u "$MONGO_USER" -p "$MONGO_PASSWORD" \
+  --authenticationDatabase admin --quiet --eval \
+  'rs.initiate({_id:"rs0",members:[{_id:0,host:"mongo:27017"}]})'
+
+# 5) Prüfen, dass der Knoten PRIMARY ist (dauert ein paar Sekunden).
+docker compose exec mongo mongosh -u "$MONGO_USER" -p "$MONGO_PASSWORD" \
+  --authenticationDatabase admin --quiet --eval 'rs.status().members[0].stateStr'
+
+# 6) Backend neu starten, damit es die Topologie neu erkennt, und Log prüfen —
+#    die Warnung aus oben darf nicht mehr erscheinen.
+docker compose restart plexams
+docker compose logs --tail=30 plexams
+```
+
+Die Daten bleiben dabei erhalten: `rs.initiate()` legt nur das Oplog an, es wird nichts
+neu geschrieben. Zwischen Schritt 3 und 4 sind Schreibvorgänge blockiert — das ist das
+Wartungsfenster, üblicherweise unter einer Minute.
+
+**Zurückrollen:** Compose-Zeilen wieder auskommentieren und `docker compose up -d mongo`.
+Ein einmal initiiertes Replica Set als Standalone zu starten funktioniert; das Oplog
+bleibt ungenutzt liegen.
+
+**Wichtig für den SSH-Tunnel** (Abschnitt oben): nach der Umstellung meldet Mongo sich als
+Replica-Set-Member `mongo:27017`, was vom Host aus nicht auflösbar ist. Compass und
+`mongosh` brauchen dann `?directConnection=true` in der Verbindungs-URI.
+
 ### MongoDB-Backup
 
 Zwei komplementäre Ebenen:

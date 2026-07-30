@@ -32,6 +32,18 @@ func (db *DB) SupportsTransactions() bool {
 	return db.supportsTransactions
 }
 
+// InTransaction runs fn atomically where the deployment allows it, for callers outside
+// this package that need several database calls to succeed or fail together.
+//
+// Two rules for fn:
+//   - every database call inside it MUST use the context fn receives, which carries the
+//     session; a call using the outer context silently runs outside the transaction;
+//   - fn may be RETRIED on a transient error, so it must not accumulate side effects
+//     outside the database — build any result fresh on each invocation.
+func (db *DB) InTransaction(ctx context.Context, fn func(context.Context) error) error {
+	return db.withTransaction(ctx, fn)
+}
+
 // withTransaction runs fn atomically when the deployment allows it, and plainly when it
 // does not. fn MUST use the context it is handed for every database call — that context
 // carries the session, and an operation using the outer context would silently run

@@ -349,40 +349,21 @@ func (p *Plexams) RestoreDataset(ctx context.Context, name string, data []byte) 
 		return nil, false
 	}
 
-	result := newRestoreResult()
-
+	// Validate and resolve everything BEFORE touching the database, so a mismatched file
+	// errors out without changing anything. This guard predates the transaction and is
+	// kept: it still protects the standalone deployment, where the writes below are not
+	// atomic.
+	var resolved map[string][]map[string]any
+	var incoming, planDocs []map[string]any
 	if spec.external {
-		incoming, hasExt := dump.Collections["non_zpaexams"]
-		planDocs, hasPlan := dump.Collections["plan"]
-		// guard: never wipe when the file doesn't look like this dataset's export.
+		var hasExt, hasPlan bool
+		incoming, hasExt = dump.Collections["non_zpaexams"]
+		planDocs, hasPlan = dump.Collections["plan"]
 		if !hasExt && !hasPlan {
 			return nil, fmt.Errorf("file does not look like an %q export (expected collections non_zpaexams/plan) — nothing changed", name)
 		}
-
-		// clear the external plan entries before re-inserting them, so no stale
-		// external time survives; never touch the regular (non-external) schedule.
-		current, err := p.dbClient.RawCollection(ctx, "non_zpaexams")
-		if err != nil {
-			return nil, err
-		}
-		clear := unionAncodes(ancodeSet(current), ancodeSet(incoming), ancodeSet(planDocs))
-		if _, err := p.dbClient.DeleteDocsByAncodes(ctx, "plan", clear); err != nil {
-			return nil, err
-		}
-		n, err := p.dbClient.ReplaceRawCollection(ctx, "non_zpaexams", incoming)
-		if err != nil {
-			return nil, err
-		}
-		result.add("non_zpaexams", n)
-		m, err := p.dbClient.InsertRawDocs(ctx, "plan", planDocs)
-		if err != nil {
-			return nil, err
-		}
-		result.add("plan (Zeiten)", m)
 	} else {
-		// resolve every collection first so a mismatched file errors out BEFORE any
-		// collection is dropped (a drop-then-insert-nothing would silently wipe data).
-		resolved := make(map[string][]map[string]any, len(spec.Collections))
+		resolved = make(map[string][]map[string]any, len(spec.Collections))
 		for _, coll := range spec.Collections {
 			docs, ok := resolve(coll)
 			if !ok {
@@ -390,13 +371,52 @@ func (p *Plexams) RestoreDataset(ctx context.Context, name string, data []byte) 
 			}
 			resolved[coll] = docs
 		}
-		for _, coll := range spec.Collections {
-			n, err := p.dbClient.ReplaceRawCollection(ctx, coll, resolved[coll])
+	}
+
+	// All writes in one transaction where the deployment allows it: a restore that fails
+	// half-way used to leave the workspace partly overwritten. The result is built inside
+	// the callback because a transient error re-runs it, and a shared accumulator would
+	// then double-count.
+	var result *RestoreResult
+	err := p.dbClient.InTransaction(ctx, func(ctx context.Context) error {
+		res := newRestoreResult()
+
+		if spec.external {
+			// clear the external plan entries before re-inserting them, so no stale
+			// external time survives; never touch the regular (non-external) schedule.
+			current, err := p.dbClient.RawCollection(ctx, "non_zpaexams")
 			if err != nil {
-				return nil, fmt.Errorf("cannot restore collection %q: %w", coll, err)
+				return err
 			}
-			result.add(coll, n)
+			clear := unionAncodes(ancodeSet(current), ancodeSet(incoming), ancodeSet(planDocs))
+			if _, err := p.dbClient.DeleteDocsByAncodes(ctx, "plan", clear); err != nil {
+				return err
+			}
+			n, err := p.dbClient.ReplaceRawCollection(ctx, "non_zpaexams", incoming)
+			if err != nil {
+				return err
+			}
+			res.add("non_zpaexams", n)
+			m, err := p.dbClient.InsertRawDocs(ctx, "plan", planDocs)
+			if err != nil {
+				return err
+			}
+			res.add("plan (Zeiten)", m)
+		} else {
+			for _, coll := range spec.Collections {
+				n, err := p.dbClient.ReplaceRawCollection(ctx, coll, resolved[coll])
+				if err != nil {
+					return fmt.Errorf("cannot restore collection %q: %w", coll, err)
+				}
+				res.add(coll, n)
+			}
 		}
+
+		result = res
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	log.Info().Str("dataset", name).Int("documents", result.Total).Msg("restored dataset")

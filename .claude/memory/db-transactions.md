@@ -6,7 +6,11 @@ metadata:
   type: project
 ---
 
-Three write paths touch several documents and were not atomic ([db/transaction.go](db/transaction.go), added 2026-07-30): `AddStudentReg`/`RemoveStudentReg` (registration + Primuss counter — the documented cause of the drift [db-indexes.md](db-indexes.md) and `ValidateDBReferences` report), `AddExamToSlot` (delete + insert the plan entry), `ReplacePlannedRooms` (clear + refill the room plan). They now go through `db.withTransaction`.
+Several write paths touch multiple documents and were not atomic ([db/transaction.go](db/transaction.go), added 2026-07-30): `AddStudentReg`/`RemoveStudentReg` (registration + Primuss counter — the documented cause of the drift [db-indexes.md](db-indexes.md) and `ValidateDBReferences` report), `AddExamToSlot` (delete + insert the plan entry), `ReplacePlannedRooms` (clear + refill the room plan), `ReplaceAll` (wholesale collection swap, see [db-collection-targets.md](db-collection-targets.md)) and `RestoreDataset` in `plexams/dump.go`. They go through `db.withTransaction`, or `db.InTransaction` when the orchestration lives outside the db package.
+
+**`InTransaction` has two traps.** The callback may be **retried** on a transient error, so it must not accumulate side effects outside the database — `RestoreDataset` therefore builds its `RestoreResult` inside the callback, because a shared accumulator would double-count. And every call inside must use the context the callback receives.
+
+The **full semester restore** is deliberately not wrapped: it already refuses to write into a non-empty database, and up to 81 collections would run against the 60-second transaction lifetime limit.
 
 **The fallback is deliberate, do not turn it into an error.** Transactions require a replica set; a standalone mongod cannot run them. `detectTransactionSupport` checks `hello().setName` once at connect and logs `MongoDB is not a replica set: multi-document writes are not atomic`. Without the fallback, every standalone deployment — including production before the replica-set rollout, and any developer machine — would break.
 

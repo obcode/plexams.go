@@ -542,7 +542,7 @@ func (p *Plexams) PrepareSelfInvigilation() error {
 
 	log.Debug().Interface("ivigilations", toSave).Msg("saving invigilations")
 
-	return p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "invigilations_self"), toSave)
+	return p.dbClient.ReplaceAll(ctx, db.TargetSelfInvigilations, toSave)
 }
 
 func (p *Plexams) MakeSelfInvigilations(ctx context.Context) ([]*model.Invigilation, error) {

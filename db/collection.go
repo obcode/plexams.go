@@ -1,13 +1,10 @@
 package db
 
 import (
-	"context"
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
-type CollectionName string
 
 const (
 	collectionNameSemesterConfig      = "semester_config"
@@ -88,10 +85,6 @@ func (db *DB) getCollection(program string, primussType PrimussType) *mongo.Coll
 
 func (db *DB) getCollectionSemester(collectionName string) *mongo.Collection {
 	return db.Client.Database(db.databaseName).Collection(collectionName)
-}
-
-func (db *DB) getCollectionSemesterFromContext(ctx context.Context) *mongo.Collection {
-	return db.Client.Database(db.databaseName).Collection(ctx.Value(CollectionName("collectionName")).(string))
 }
 
 func (db *DB) getJointCollection(program string) *mongo.Collection {

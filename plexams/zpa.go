@@ -76,7 +76,7 @@ func (p *Plexams) GetStudentsFromZPA(ctx context.Context, reporter Reporter) (st
 	}
 
 	reporter.Step(fmt.Sprintf("saving %d students...", len(toSave)))
-	err = p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "zpastudents"), toSave)
+	err = p.dbClient.ReplaceAll(ctx, db.TargetZPAStudents, toSave)
 	if err != nil {
 		return studentsFound, studentsNotFound, err
 	}

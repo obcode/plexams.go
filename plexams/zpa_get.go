@@ -254,7 +254,7 @@ func (p *Plexams) GetSupervisorRequirements(ctx context.Context) ([]*zpa.Supervi
 		reqInterface = append(reqInterface, req)
 	}
 
-	err = p.dbClient.DropAndSave(context.WithValue(ctx, db.CollectionName("collectionName"), "invigilator_requirements"), reqInterface)
+	err = p.dbClient.ReplaceAll(ctx, db.TargetInvigilatorRequirements, reqInterface)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot save invigilator requirements")
 		return supervisorRequirements, err

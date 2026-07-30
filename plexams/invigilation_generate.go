@@ -106,8 +106,7 @@ func (p *Plexams) AssignInvigilations(ctx context.Context, dryRun bool, opts inv
 		})
 	}
 
-	otherCtx := context.WithValue(ctx, db.CollectionName("collectionName"), "invigilations_other")
-	if err := p.dbClient.DropAndSave(otherCtx, toSave); err != nil {
+	if err := p.dbClient.ReplaceAll(ctx, db.TargetOtherInvigilations, toSave); err != nil {
 		return report, fmt.Errorf("cannot save generated invigilations: %w", err)
 	}
 	reporter.Printf("wrote %d invigilations to invigilations_other\n", len(toSave))

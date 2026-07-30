@@ -24,7 +24,8 @@ func (p *Plexams) IsReadOnly() bool {
 }
 
 // loadSemesterMeta stamps the schema version and logical semester (when the DB has
-// a config) and loads the read-only flag of the current database into p.readOnly.
+// a config), makes sure the indexes exist, and loads the read-only flag of the
+// current database into p.readOnly.
 func (p *Plexams) loadSemesterMeta(ctx context.Context) {
 	if p.dbClient == nil {
 		return
@@ -34,6 +35,8 @@ func (p *Plexams) loadSemesterMeta(ctx context.Context) {
 			log.Error().Err(err).Msg("cannot ensure semester meta")
 		}
 	}
+	// Best-effort: an index the existing data violates is logged, never fatal.
+	p.dbClient.EnsureIndexes(ctx)
 	p.readOnly = false
 	if meta, err := p.dbClient.GetSemesterMeta(ctx); err != nil {
 		log.Error().Err(err).Msg("cannot read semester meta")

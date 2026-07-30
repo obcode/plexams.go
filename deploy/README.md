@@ -308,14 +308,16 @@ protokolliert das Backend, welcher Modus gilt:
 MongoDB is not a replica set: multi-document writes are not atomic
 ```
 
-**Warum das nicht schon in der `docker-compose.yml` steht:** mit aktivierter
-Authentifizierung **verweigert mongod den Start**, wenn `--replSet` ohne Keyfile gesetzt
-ist (`security.keyFile is required when authorization is enabled with replica sets`). Ein
-Release deployt die Compose-Datei automatisch — die Zeilen dort scharf zu schalten, ohne
-dass der Keyfile schon auf dem Host liegt, nimmt die Produktion herunter. Deshalb ist der
-Block auskommentiert und wird bewusst in einem Wartungsfenster aktiviert.
+**Seit 2026-07-30 ist das Replica Set in der `docker-compose.yml` aktiv** (`--replSet rs0
+--keyFile /etc/mongo/keyfile`). Damit gilt: **der Keyfile muss auf jedem Host liegen, auf
+dem dieser Stack startet** — mit aktivierter Authentifizierung verweigert mongod sonst den
+Start (`security.keyFile is required when authorization is enabled with replica sets`),
+und Docker legt an der Stelle des fehlenden Mounts ein Verzeichnis an. Da ein Release die
+Compose-Datei automatisch ausrollt, ist das keine Option, sondern eine Voraussetzung.
 
-Ablauf auf dem Host (`/home/plexams/plexams.go/deploy`), **in dieser Reihenfolge**:
+Die folgende Anleitung ist deshalb sowohl die Erstinstallation als auch das, was bei einem
+Umzug oder einem neu aufgesetzten Host nachzuholen ist. Ablauf auf dem Host
+(`/home/plexams/plexams.go/deploy`), **in dieser Reihenfolge**:
 
 ```sh
 # 0) Frisches Backup, bevor irgendetwas an Mongo geändert wird.
@@ -327,8 +329,8 @@ openssl rand -base64 756 > mongo-keyfile
 chmod 400 mongo-keyfile
 sudo chown 999:999 mongo-keyfile
 
-# 2) In docker-compose.yml die beiden markierten Zeilen einkommentieren
-#    (command: --replSet/--keyFile und den mongo-keyfile-Mount).
+# 2) (nur falls noch nicht geschehen) In docker-compose.yml sind command: --replSet/--keyFile
+#    und der mongo-keyfile-Mount bereits aktiv.
 
 # 3) Nur Mongo neu starten. Es läuft dann, nimmt aber noch keine Schreibvorgänge an.
 docker compose up -d mongo

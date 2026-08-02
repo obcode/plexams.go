@@ -5,14 +5,14 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: aa4db750-7c9f-46e3-9217-79bb0789c0b8
-  modified: 2026-08-02T21:19:42.954Z
+  modified: 2026-08-02T21:28:15.299Z
 ---
 
 Für die PostgreSQL-Migration ([[postgres-migration]]). Der DevContainer hat **kein Docker**
 — dieselbe Lage wie beim Standalone-`mongod` in [[mongotest-without-docker]]. Solange
 `plexams.dev` keinen Postgres-Service mitbringt, läuft er direkt im Container.
 
-**Server:** PostgreSQL 17 aus dem PGDG-Repo (Debians eigene Quelle hat nur 15):
+**Server:** PostgreSQL 18 aus dem PGDG-Repo (Debians eigene Quelle hat nur 15):
 
 ```
 sudo install -d /usr/share/postgresql-common/pgdg
@@ -21,7 +21,7 @@ sudo curl -sS -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail
 echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
       https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
   | sudo tee /etc/apt/sources.list.d/pgdg.list
-sudo apt-get update && sudo apt-get install -y postgresql-17
+sudo apt-get update && sudo apt-get install -y postgresql-18
 ```
 
 Wegwerf-Instanz auf **:5433** (nicht 5432, damit ein späterer Compose-Service nicht
@@ -37,6 +37,15 @@ Das Cluster liegt unter `~/.local/share/plexams-pgdev` (überschreibbar via
 **`reset`** legt die Datenbank neu an; das braucht man, solange Migrationen noch editiert
 werden, weil `goose down` dann den *neuen* Down-Abschnitt gegen das *alte* Schema fährt und
 scheitert.
+
+**Major-Version 18** (Stand 2026-08-02 aktuell, 18.4). Das Schema braucht nichts oberhalb
+von 15 — `unique nulls not distinct` ist das Anspruchsvollste — der Wechsel von der zuerst
+ungeprüft gesetzten 17 kostete daher nichts und wurde im Greenfield gemacht statt später als
+Major-Upgrade im Betrieb. `needs_request` bleibt bewusst `stored`: PG 18 könnte die Spalte
+`virtual` berechnen, aber virtuelle Spalten sind dort **nicht indizierbar**, und bei 37
+Räumen ist der Speichergewinn null. **Ein Cluster gehört zu seiner Major-Version** —
+`pg-dev.sh` prüft `PG_VERSION` und sagt beim Wechsel, dass das Verzeichnis wegzuwerfen ist,
+statt mit einer irreführenden Meldung zu scheitern.
 
 ```
 PLEXAMS_TEST_PG_URI="postgres://plexams@127.0.0.1:5433/plexams?sslmode=disable"

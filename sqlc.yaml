@@ -1,0 +1,37 @@
+version: "2"
+sql:
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries
+    gen:
+      go:
+        package: sqlc
+        out: db/sqlc
+        sql_package: pgx/v5
+        # Nullable columns become *string / *time.Time instead of pgtype.Text /
+        # pgtype.Timestamptz. That matches the pointer style graph/model already
+        # uses (e.g. NTA.Email *string), so the mappers stay one-liners.
+        emit_pointers_for_null_types: true
+        # A query returning no rows must yield []T{}, not nil: several db methods
+        # deliberately return make([]*T, 0) because GraphQL non-null lists would
+        # otherwise serialise to null.
+        emit_empty_slices: true
+        # The GraphQL contract lives on graph/model, not on the scan targets.
+        emit_json_tags: false
+        # sqlc singularises table names to derive struct names, which mangles the
+        # German/acronym ones: table `nta` is read as a Latin plural and becomes
+        # `Ntum`. NOTE the key here is the name sqlc *computed*, not the table
+        # name -- `nta: ...` silently does nothing.
+        rename:
+          ntum: "NTARow"
+        overrides:
+          # Ancodes, durations and percentages are plain `int` throughout
+          # graph/model. Without these two the generated code is int32 and every
+          # mapper needs an int() conversion.
+          - db_type: "pg_catalog.int4"
+            go_type: "int"
+          - db_type: "pg_catalog.int4"
+            nullable: true
+            go_type:
+              type: "int"
+              pointer: true

@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: aa4db750-7c9f-46e3-9217-79bb0789c0b8
-  modified: 2026-08-02T13:36:53.518Z
+  modified: 2026-08-02T21:19:42.954Z
 ---
 
 Für die PostgreSQL-Migration ([[postgres-migration]]). Der DevContainer hat **kein Docker**
@@ -25,7 +25,18 @@ sudo apt-get update && sudo apt-get install -y postgresql-17
 ```
 
 Wegwerf-Instanz auf **:5433** (nicht 5432, damit ein späterer Compose-Service nicht
-kollidiert), Startskript im Scratchpad: `pg-dev.sh start|stop|status|psql`.
+kollidiert). Startskript liegt versioniert in
+**`/workspace/plexams.dev/scripts/pg-dev.sh`**:
+
+```
+scripts/pg-dev.sh start|stop|status|reset|psql
+```
+
+Das Cluster liegt unter `~/.local/share/plexams-pgdev` (überschreibbar via
+`PLEXAMS_PGDEV_HOME`), also außerhalb des Repos — es ist Maschinenzustand, kein Quelltext.
+**`reset`** legt die Datenbank neu an; das braucht man, solange Migrationen noch editiert
+werden, weil `goose down` dann den *neuen* Down-Abschnitt gegen das *alte* Schema fährt und
+scheitert.
 
 ```
 PLEXAMS_TEST_PG_URI="postgres://plexams@127.0.0.1:5433/plexams?sslmode=disable"

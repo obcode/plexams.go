@@ -18,6 +18,52 @@ type ActiveSemester struct {
 	SemesterID string
 }
 
+type AdditionalExam struct {
+	SemesterID string
+	Ancode     int
+	ExamDate   string
+	ExamTime   string
+}
+
+type AdditionalExamRoom struct {
+	SemesterID    string
+	Ancode        int
+	RoomName      string
+	InvigilatorID int
+	DurationMin   int
+	IsReserve     bool
+	IsHandicap    bool
+	StudentCount  int
+}
+
+type AnnyBooking struct {
+	SemesterID             string
+	Number                 string
+	StartDate              pgtype.Timestamptz
+	EndDate                pgtype.Timestamptz
+	BlockerStartDate       pgtype.Timestamptz
+	BlockerEndDate         pgtype.Timestamptz
+	ChargedDuration        int
+	Description            string
+	Note                   string
+	Room                   string
+	Status                 string
+	StatusReason           []byte
+	IsBlocker              bool
+	CanEdit                bool
+	IsEditable             bool
+	ManuallyCreated        bool
+	HasCustomDescription   bool
+	SelfUrl                string
+	PersonalizationName    string
+	BookingGroupIdentifier string
+	ResourceID             string
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	CanceledAt             pgtype.Timestamptz
+	CancelableUntil        pgtype.Timestamptz
+}
+
 type AnnyConfig struct {
 	ID                   int
 	PersonalizationNames []string
@@ -30,11 +76,34 @@ type AppUser struct {
 	Shortname string
 }
 
+type AssembledExam struct {
+	SemesterID    string
+	Ancode        int
+	Exam          []byte
+	FormatVersion int
+}
+
+type AssembledExamsState struct {
+	SemesterID string
+	Dirty      bool
+}
+
 type BlockedRoom struct {
 	SemesterID string
 	RoomName   string
 	Starttime  pgtype.Timestamptz
 	Reason     *string
+}
+
+type EmailAttachment struct {
+	SemesterID  string
+	Kind        string
+	Key         string
+	Filename    string
+	ContentType string
+	Size        int
+	Data        []byte
+	UploadedAt  pgtype.Timestamptz
 }
 
 type EmailTemplate struct {
@@ -142,6 +211,58 @@ type GenerationConfig struct {
 	FormatVersion int
 }
 
+type Invigilation struct {
+	ID                 int64
+	SemesterID         string
+	InvigilatorID      int
+	Starttime          pgtype.Timestamptz
+	RoomName           *string
+	DurationMin        int
+	IsReserve          bool
+	IsSelfInvigilation bool
+	PrePlanned         bool
+}
+
+type InvigilationTodo struct {
+	SemesterID    string
+	Todos         []byte
+	FormatVersion int
+}
+
+type InvigilatorConstraint struct {
+	SemesterID       string
+	TeacherID        int
+	IsNotInvigilator bool
+}
+
+type InvigilatorExcludedDate struct {
+	SemesterID string
+	TeacherID  int
+	ExcludedOn pgtype.Timestamptz
+}
+
+type InvigilatorRequirement struct {
+	SemesterID             string
+	InvigilatorID          int
+	Invigilator            string
+	ExcludedDates          []string
+	PartTime               float64
+	OralExamsContribution  int
+	LivecodingContribution int
+	MasterContribution     int
+	FreeSemester           float64
+	OvertimeLastSemester   float64
+	OvertimeThisSemester   float64
+}
+
+type InvigilatorTimeWindow struct {
+	SemesterID     string
+	TeacherID      int
+	WindowDate     pgtype.Timestamptz
+	AvailableFrom  pgtype.Timestamptz
+	AvailableUntil pgtype.Timestamptz
+}
+
 type JointExam struct {
 	SemesterID     string
 	Program        string
@@ -166,6 +287,19 @@ type JointLink struct {
 	Source        string
 	Module        string
 	MainExamer    string
+}
+
+type MutationLog struct {
+	ID         int64
+	SemesterID string
+	LoggedAt   pgtype.Timestamptz
+	Name       string
+	Type       string
+	UserEmail  *string
+	Args       []byte
+	Ancodes    []int
+	Error      *string
+	DurationMs int
 }
 
 type NTARow struct {
@@ -247,6 +381,19 @@ type PlannedRoomV struct {
 	NtaMtknr          *string
 	PrePlanned        bool
 	Starttime         pgtype.Timestamptz
+}
+
+type PlanningState struct {
+	SemesterID   string
+	ConditionKey string
+}
+
+type PrePlannedInvigilation struct {
+	SemesterID    string
+	InvigilatorID int
+	Starttime     pgtype.Timestamptz
+	RoomName      *string
+	IsReserve     bool
 }
 
 type PrePlannedRoom struct {
@@ -367,6 +514,13 @@ type SemesterConfigInput struct {
 	FormatVersion int
 }
 
+type SpecialInterest struct {
+	SemesterID string
+	Name       string
+	Filename   string
+	Ancodes    []int
+}
+
 type StudentPrepared struct {
 	SemesterID    string
 	Mtknr         string
@@ -392,6 +546,14 @@ type Studentreg struct {
 	Raw           []byte
 }
 
+type StudentregUploadError struct {
+	ID            int64
+	SemesterID    string
+	Registration  []byte
+	Error         []byte
+	FormatVersion int
+}
+
 type StudyProgram struct {
 	Shortname         string
 	Name              string
@@ -402,6 +564,38 @@ type StudyProgram struct {
 	Retired           bool
 	ExternalExamsBase *int
 	JointFaculty      *string
+}
+
+type SyncLog struct {
+	ID            int64
+	SemesterID    string
+	LoggedAt      pgtype.Timestamptz
+	Operation     string
+	Label         string
+	Direction     string
+	System        string
+	Ok            bool
+	Summary       string
+	Added         int
+	Changed       int
+	Removed       int
+	Entries       []byte
+	FormatVersion int
+}
+
+type Teacher struct {
+	SemesterID   string
+	ID           int
+	Shortname    string
+	Fullname     string
+	Email        string
+	IsProf       bool
+	IsLba        bool
+	IsProfHc     bool
+	IsStaff      bool
+	IsActive     bool
+	LastSemester string
+	Fk           string
 }
 
 type UnplacedExam struct {
@@ -417,4 +611,15 @@ type UserSecret struct {
 	JiraNonce      []byte
 	JiraCiphertext []byte
 	JiraUpdatedAt  pgtype.Timestamptz
+}
+
+type ZpaStudent struct {
+	SemesterID string
+	Mtknr      string
+	Greeting   string
+	FirstName  string
+	LastName   string
+	Email      string
+	Gender     string
+	GroupName  string
 }

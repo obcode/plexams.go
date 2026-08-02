@@ -8,6 +8,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AaspfDegree struct {
+	Aaspf  int
+	Degree string
+}
+
 type ActiveSemester struct {
 	ID         int
 	SemesterID string
@@ -130,6 +135,32 @@ type GenerationConfig struct {
 	FormatVersion int
 }
 
+type JointExam struct {
+	SemesterID     string
+	Program        string
+	PrimussAncode  int
+	Module         string
+	ExamType       string
+	Grading        string
+	DurationMin    int
+	MainExamer     string
+	SecondExamer   string
+	IsRepeaterExam string
+	Planer         string
+}
+
+type JointLink struct {
+	SemesterID    string
+	Program       string
+	PrimussAncode int
+	Kind          string
+	Ancode        *int
+	Status        string
+	Source        string
+	Module        string
+	MainExamer    string
+}
+
 type NTARow struct {
 	Mtknr                string
 	Name                 string
@@ -161,6 +192,33 @@ type Planer struct {
 	Cc          *string
 	NoreplyMail *string
 	NoreplyName *string
+}
+
+type PrimussConflict struct {
+	SemesterID  string
+	Program     string
+	Ancode      int
+	OtherAncode int
+	NumStudents int
+}
+
+type PrimussCount struct {
+	SemesterID string
+	Program    string
+	Ancode     int
+	Total      int
+	Raw        []byte
+}
+
+type PrimussExam struct {
+	SemesterID string
+	Program    string
+	Ancode     int
+	Module     string
+	MainExamer string
+	ExamType   string
+	Presence   string
+	Raw        []byte
 }
 
 type Room struct {
@@ -203,6 +261,31 @@ type SemesterConfigInput struct {
 	SemesterID    string
 	Config        []byte
 	FormatVersion int
+}
+
+type StudentPrepared struct {
+	SemesterID    string
+	Mtknr         string
+	Student       []byte
+	FormatVersion int
+}
+
+type StudentRegsState struct {
+	SemesterID string
+	Dirty      bool
+}
+
+type Studentreg struct {
+	ID            int64
+	SemesterID    string
+	Program       string
+	PrimussAncode int
+	Mtknr         string
+	GroupName     string
+	Name          string
+	Presence      string
+	Aaspf         *int
+	Raw           []byte
 }
 
 type StudyProgram struct {

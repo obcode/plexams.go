@@ -1,0 +1,17 @@
+# Linter configuration. The enabled set is deliberately left at the golangci-lint
+# default (errcheck, govet, ineffassign, staticcheck, unused) -- this file exists
+# only to bound resource use.
+#
+# Why: the analysis workers each hold the package ASTs of a 173k-LOC repo, 111k of
+# which is graph/generated/generated.go. With the worker count left at GOMAXPROCS
+# a container with few GiB per core gets the linter OOM-killed -- and that failure
+# is silent in a nasty way: the process dies with signal 9 and NO output, which
+# reads exactly like "0 issues". Via the pre-commit hook it then aborts the commit
+# while a following `git push` still reports success, on the old state.
+#
+# Four workers keep a full run at a handful of seconds while fitting comfortably
+# into a small container. Raise it if you have RAM to spare and want the seconds.
+version: "2"
+
+run:
+  concurrency: 4

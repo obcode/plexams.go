@@ -4,6 +4,33 @@
 
 package sqlc
 
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+type AnnyConfig struct {
+	ID                   int
+	PersonalizationNames []string
+}
+
+type AppUser struct {
+	Email     string
+	Name      string
+	Role      string
+	Shortname string
+}
+
+type EmailTemplate struct {
+	Name     string
+	Markdown string
+}
+
+type GenerationConfig struct {
+	ID            int
+	Config        []byte
+	FormatVersion int
+}
+
 type NTARow struct {
 	Mtknr                string
 	Name                 string
@@ -17,4 +44,59 @@ type NTARow struct {
 	ValidUntil           string
 	LastSemester         *string
 	Deactivated          bool
+}
+
+type PermanentNonInvigilator struct {
+	TeacherID  int
+	Name       string
+	Reason     string
+	ValidFrom  *string
+	ValidUntil *string
+}
+
+type Planer struct {
+	ID          int
+	Name        string
+	Email       string
+	TestMail    *string
+	Cc          *string
+	NoreplyMail *string
+	NoreplyName *string
+}
+
+type Room struct {
+	Name             string
+	Seats            int
+	Handicap         bool
+	Lab              bool
+	PlacesWithSocket bool
+	RequestWith      string
+	NeedsRequest     bool
+	RequestPriority  int
+	Exahm            bool
+	Seb              bool
+	SebSeats         *int
+	HmebSeats        *int
+	Deactivated      bool
+	Hitzewert        *int
+}
+
+type StudyProgram struct {
+	Shortname         string
+	Name              string
+	Degree            *string
+	ZpaCode           string
+	Category          string
+	Active            bool
+	Retired           bool
+	ExternalExamsBase *int
+	JointFaculty      *string
+}
+
+type UserSecret struct {
+	Email          string
+	JiraKeyVersion *int
+	JiraNonce      []byte
+	JiraCiphertext []byte
+	JiraUpdatedAt  pgtype.Timestamptz
 }

@@ -2,8 +2,11 @@ package db
 
 import (
 	"context"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"fmt"
+	"io/fs"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -19,6 +22,31 @@ import (
 //
 //go:embed migrations/*.sql
 var pgMigrationsFS embed.FS
+
+// MigrationsChecksum identifies the schema this binary carries. Two binaries with
+// the same checksum expect the same tables.
+//
+// Used by the test harness to name its template database, so that editing a
+// migration produces a fresh template instead of silently reusing a stale one.
+func MigrationsChecksum() (string, error) {
+	entries, err := fs.ReadDir(pgMigrationsFS, "migrations")
+	if err != nil {
+		return "", fmt.Errorf("cannot read migrations: %w", err)
+	}
+
+	sum := sha256.New()
+	for _, entry := range entries {
+		content, err := fs.ReadFile(pgMigrationsFS, "migrations/"+entry.Name())
+		if err != nil {
+			return "", fmt.Errorf("cannot read %s: %w", entry.Name(), err)
+		}
+		// The name matters as much as the content: a rename reorders the run.
+		sum.Write([]byte(entry.Name()))
+		sum.Write(content)
+	}
+
+	return hex.EncodeToString(sum.Sum(nil))[:12], nil
+}
 
 // MigratePG brings the database up to the schema this binary was built with.
 //

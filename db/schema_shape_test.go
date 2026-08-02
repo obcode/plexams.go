@@ -1,8 +1,10 @@
-package db
+package db_test
 
 import (
 	"slices"
 	"testing"
+
+	"github.com/obcode/plexams.go/internal/pgtest"
 )
 
 // tablesWithoutSemesterID are the ones that legitimately have no semester_id
@@ -50,9 +52,9 @@ var tablesWithoutSemesterID = []string{
 // rows silently belong to every semester at once. The mistake is invisible until
 // two semesters are in the database.
 func TestEverySemesterScopedTableHasSemesterID(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 
-	rows, err := db.pool.Query(t.Context(), `
+	rows, err := pg.PoolForTest().Query(t.Context(), `
 		select t.tablename
 		from pg_tables t
 		where t.schemaname = 'public'
@@ -110,9 +112,9 @@ func TestEverySemesterScopedTableHasSemesterID(t *testing.T) {
 //
 // Verified to fail on a deliberately bad constraint before being trusted.
 func TestSemesterScopedForeignKeysCarrySemesterID(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 
-	rows, err := db.pool.Query(t.Context(), `
+	rows, err := pg.PoolForTest().Query(t.Context(), `
 		select con.conname, src.relname, tgt.relname
 		from pg_constraint con
 		join pg_class src on src.oid = con.conrelid

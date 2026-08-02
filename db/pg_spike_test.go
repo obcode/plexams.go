@@ -1,80 +1,14 @@
-package db
+package db_test
 
 import (
 	"context"
 	"errors"
-	"fmt"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/internal/pgtest"
 )
-
-// newTestPG gives each test its own throwaway database, migrated to the current
-// schema. Phase 2 replaces this with internal/pgtest and a template database; for
-// the spike a plain CREATE DATABASE is fast enough.
-//
-// Mirrors the mongotest contract: skip when no server is configured, but fail
-// instead of skipping when PLEXAMS_TEST_PG_REQUIRED is set, so that "never ran"
-// cannot look like "green" in CI.
-func newTestPG(t *testing.T) *PG {
-	t.Helper()
-
-	uri := os.Getenv("PLEXAMS_TEST_PG_URI")
-	if uri == "" {
-		if os.Getenv("PLEXAMS_TEST_PG_REQUIRED") != "" {
-			t.Fatal("PLEXAMS_TEST_PG_REQUIRED is set but PLEXAMS_TEST_PG_URI is empty")
-		}
-		t.Skip("set PLEXAMS_TEST_PG_URI to run postgres integration tests")
-	}
-
-	ctx := t.Context()
-	name := fmt.Sprintf("plexams_test_%d", time.Now().UnixNano())
-
-	admin, err := pgxpool.New(ctx, uri)
-	if err != nil {
-		t.Fatalf("cannot connect to %s: %v", uri, err)
-	}
-	defer admin.Close()
-
-	if _, err := admin.Exec(ctx, "create database "+name); err != nil {
-		t.Fatalf("cannot create test database: %v", err)
-	}
-
-	cfg, err := pgx.ParseConfig(uri)
-	if err != nil {
-		t.Fatalf("cannot parse uri: %v", err)
-	}
-	cfg.Database = name
-	testURI := fmt.Sprintf("postgres://%s@%s:%d/%s?sslmode=disable",
-		cfg.User, cfg.Host, cfg.Port, name)
-
-	db, err := NewPG(ctx, testURI, "2026-WS")
-	if err != nil {
-		t.Fatalf("cannot connect to test database: %v", err)
-	}
-	if err := MigratePG(ctx, db.pool); err != nil {
-		t.Fatalf("cannot migrate test database: %v", err)
-	}
-
-	t.Cleanup(func() {
-		db.Close()
-		cleanup, err := pgxpool.New(context.Background(), uri)
-		if err != nil {
-			t.Logf("cannot connect for cleanup: %v", err)
-			return
-		}
-		defer cleanup.Close()
-		if _, err := cleanup.Exec(context.Background(), "drop database "+name+" with (force)"); err != nil {
-			t.Logf("cannot drop test database %s: %v", name, err)
-		}
-	})
-
-	return db
-}
 
 func strptr(s string) *string { return &s }
 
@@ -146,12 +80,12 @@ func testNta(mtknr, name string) *model.NTA {
 // -- including the two nullable pointers, which are exactly what the
 // emit_pointers_for_null_types setting exists for.
 func TestNtaRoundTrip(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
 	want := testNta("00012345", "Andrea Beispiel")
 
-	got, err := db.AddNta(ctx, want)
+	got, err := pg.AddNta(ctx, want)
 	if err != nil {
 		t.Fatalf("AddNta: %v", err)
 	}
@@ -162,7 +96,7 @@ func TestNtaRoundTrip(t *testing.T) {
 		t.Errorf("mtknr = %q, want %q -- leading zeros lost", got.Mtknr, "00012345")
 	}
 
-	read, err := db.Nta(ctx, "00012345")
+	read, err := pg.Nta(ctx, "00012345")
 	if err != nil {
 		t.Fatalf("Nta: %v", err)
 	}
@@ -170,18 +104,18 @@ func TestNtaRoundTrip(t *testing.T) {
 }
 
 func TestNtaNilPointersSurvive(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
 	want := testNta("00012345", "Andrea Beispiel")
 	want.Email = nil
 	want.LastSemester = nil
 
-	if _, err := db.AddNta(ctx, want); err != nil {
+	if _, err := pg.AddNta(ctx, want); err != nil {
 		t.Fatalf("AddNta: %v", err)
 	}
 
-	got, err := db.Nta(ctx, "00012345")
+	got, err := pg.Nta(ctx, "00012345")
 	if err != nil {
 		t.Fatalf("Nta: %v", err)
 	}
@@ -197,10 +131,10 @@ func TestNtaNilPointersSurvive(t *testing.T) {
 // error. Several callers rely on it (a nil NTA means "no compensation"), so turning
 // it into pgx.ErrNoRows would change behaviour far away from here.
 func TestNtaMissingReturnsNilNil(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	nta, err := db.Nta(ctx, "does-not-exist")
+	nta, err := pg.Nta(ctx, "does-not-exist")
 	if err != nil {
 		t.Fatalf("Nta: %v", err)
 	}
@@ -208,7 +142,7 @@ func TestNtaMissingReturnsNilNil(t *testing.T) {
 		t.Errorf("Nta = %v, want nil", nta)
 	}
 
-	replaced, err := db.ReplaceNta(ctx, testNta("does-not-exist", "Nobody"))
+	replaced, err := pg.ReplaceNta(ctx, testNta("does-not-exist", "Nobody"))
 	if err != nil {
 		t.Fatalf("ReplaceNta: %v", err)
 	}
@@ -216,7 +150,7 @@ func TestNtaMissingReturnsNilNil(t *testing.T) {
 		t.Errorf("ReplaceNta inserted a row -- it must not upsert")
 	}
 
-	deactivated, err := db.SetNtaDeactivated(ctx, "does-not-exist", true)
+	deactivated, err := pg.SetNtaDeactivated(ctx, "does-not-exist", true)
 	if err != nil {
 		t.Fatalf("SetNtaDeactivated: %v", err)
 	}
@@ -229,9 +163,9 @@ func TestNtaMissingReturnsNilNil(t *testing.T) {
 // returned make([]*model.NTA, 0), and a GraphQL non-null list would serialise a nil
 // slice as null.
 func TestNtasEmptyIsNotNil(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 
-	ntas, err := db.Ntas(t.Context())
+	ntas, err := pg.Ntas(t.Context())
 	if err != nil {
 		t.Fatalf("Ntas: %v", err)
 	}
@@ -244,7 +178,7 @@ func TestNtasEmptyIsNotNil(t *testing.T) {
 }
 
 func TestNtasSortedByName(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
 	for _, n := range []struct{ mtknr, name string }{
@@ -252,12 +186,12 @@ func TestNtasSortedByName(t *testing.T) {
 		{"00000001", "Anna Anfang"},
 		{"00000002", "Martin Mitte"},
 	} {
-		if _, err := db.AddNta(ctx, testNta(n.mtknr, n.name)); err != nil {
+		if _, err := pg.AddNta(ctx, testNta(n.mtknr, n.name)); err != nil {
 			t.Fatalf("AddNta(%s): %v", n.name, err)
 		}
 	}
 
-	ntas, err := db.Ntas(ctx)
+	ntas, err := pg.Ntas(ctx)
 	if err != nil {
 		t.Fatalf("Ntas: %v", err)
 	}
@@ -277,17 +211,17 @@ func TestNtasSortedByName(t *testing.T) {
 // InTransaction must run on the transaction, so a failure undoes it. Under Mongo
 // this only held on a replica set; here it is unconditional.
 func TestInTransactionRollsBack(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
 	sentinel := errors.New("rollback please")
 
-	err := db.InTransaction(ctx, func(ctx context.Context) error {
-		if _, err := db.AddNta(ctx, testNta("00000001", "Wird Zurueckgerollt")); err != nil {
+	err := pg.InTransaction(ctx, func(ctx context.Context) error {
+		if _, err := pg.AddNta(ctx, testNta("00000001", "Wird Zurueckgerollt")); err != nil {
 			return err
 		}
 		// Visible inside the transaction ...
-		nta, err := db.Nta(ctx, "00000001")
+		nta, err := pg.Nta(ctx, "00000001")
 		if err != nil {
 			return err
 		}
@@ -301,7 +235,7 @@ func TestInTransactionRollsBack(t *testing.T) {
 	}
 
 	// ... and gone afterwards.
-	nta, err := db.Nta(ctx, "00000001")
+	nta, err := pg.Nta(ctx, "00000001")
 	if err != nil {
 		t.Fatalf("Nta: %v", err)
 	}
@@ -311,17 +245,17 @@ func TestInTransactionRollsBack(t *testing.T) {
 }
 
 func TestInTransactionCommits(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	if err := db.InTransaction(ctx, func(ctx context.Context) error {
-		_, err := db.AddNta(ctx, testNta("00000001", "Bleibt Erhalten"))
+	if err := pg.InTransaction(ctx, func(ctx context.Context) error {
+		_, err := pg.AddNta(ctx, testNta("00000001", "Bleibt Erhalten"))
 		return err
 	}); err != nil {
 		t.Fatalf("InTransaction: %v", err)
 	}
 
-	nta, err := db.Nta(ctx, "00000001")
+	nta, err := pg.Nta(ctx, "00000001")
 	if err != nil {
 		t.Fatalf("Nta: %v", err)
 	}
@@ -345,22 +279,22 @@ func TestInTransactionCommits(t *testing.T) {
 // time.LoadLocation("Europe/Berlin") in plexams/invigilators.go:225 is currently
 // harmless only because datesToDay compares Month/Day field-wise.
 func TestTimestamptzKeepsLocation(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	if _, err := db.pool.Exec(ctx, "create table tz_probe (t timestamptz not null)"); err != nil {
+	if _, err := pg.PoolForTest().Exec(ctx, "create table tz_probe (t timestamptz not null)"); err != nil {
 		t.Fatalf("create probe table: %v", err)
 	}
 
 	// A summer date, so a wrong zone shows up as CET (+01:00) instead of CEST.
 	want := time.Date(2026, 7, 15, 8, 30, 0, 0, time.Local)
 
-	if _, err := db.pool.Exec(ctx, "insert into tz_probe (t) values ($1)", want); err != nil {
+	if _, err := pg.PoolForTest().Exec(ctx, "insert into tz_probe (t) values ($1)", want); err != nil {
 		t.Fatalf("insert: %v", err)
 	}
 
 	var got time.Time
-	if err := db.pool.QueryRow(ctx, "select t from tz_probe").Scan(&got); err != nil {
+	if err := pg.PoolForTest().QueryRow(ctx, "select t from tz_probe").Scan(&got); err != nil {
 		t.Fatalf("select: %v", err)
 	}
 

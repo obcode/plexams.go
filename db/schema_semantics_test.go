@@ -1,20 +1,23 @@
-package db
+package db_test
 
 import (
 	"testing"
+
+	"github.com/obcode/plexams.go/db"
+	"github.com/obcode/plexams.go/internal/pgtest"
 )
 
 // seedExamFixtures creates a semester, a study program and the given ZPA exams.
-func seedExamFixtures(t *testing.T, db *PG, ancodes ...int) {
+func seedExamFixtures(t *testing.T, pg *db.PG, ancodes ...int) {
 	t.Helper()
 	ctx := t.Context()
 
-	exec(t, db, `insert into semester (id, semester, schema_version)
+	exec(t, pg, `insert into semester (id, semester, schema_version)
 	             values ('2026-WS', '2026 WS', 2)`)
-	exec(t, db, `insert into study_program (shortname, name, category)
+	exec(t, pg, `insert into study_program (shortname, name, category)
 	             values ('IF-B', 'Informatik', 'fk07')`)
 	for _, ancode := range ancodes {
-		if _, err := db.pool.Exec(ctx, `
+		if _, err := pg.PoolForTest().Exec(ctx, `
 			insert into exam (semester_id, ancode, source, module, main_examer,
 			                  main_examer_id, exam_type, exam_type_full, duration_min)
 			values ('2026-WS', $1, 'zpa', 'Modul', 'Braun', 1, 'schriftlich', 'schriftliche Prüfung', 90)`,
@@ -24,17 +27,17 @@ func seedExamFixtures(t *testing.T, db *PG, ancodes ...int) {
 	}
 }
 
-func exec(t *testing.T, db *PG, sql string, args ...any) {
+func exec(t *testing.T, pg *db.PG, sql string, args ...any) {
 	t.Helper()
-	if _, err := db.pool.Exec(t.Context(), sql, args...); err != nil {
+	if _, err := pg.PoolForTest().Exec(t.Context(), sql, args...); err != nil {
 		t.Fatalf("%s: %v", sql, err)
 	}
 }
 
-func count(t *testing.T, db *PG, sql string, args ...any) int {
+func count(t *testing.T, pg *db.PG, sql string, args ...any) int {
 	t.Helper()
 	var n int
-	if err := db.pool.QueryRow(t.Context(), sql, args...).Scan(&n); err != nil {
+	if err := pg.PoolForTest().QueryRow(t.Context(), sql, args...).Scan(&n); err != nil {
 		t.Fatalf("%s: %v", sql, err)
 	}
 	return n
@@ -50,20 +53,20 @@ func count(t *testing.T, db *PG, sql string, args ...any) int {
 // documents survived as orphans and ValidateDBReferences reported them; this keeps
 // them and additionally records why.
 func TestZPAReimportPreservesPlannerOverlay(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
 	// Before: three exams, and the planner has done real work on 300.
-	seedExamFixtures(t, db, 100, 200, 300)
-	exec(t, db, `insert into exam_constraint (semester_id, ancode, online, exclude_days)
+	seedExamFixtures(t, pg, 100, 200, 300)
+	exec(t, pg, `insert into exam_constraint (semester_id, ancode, online, exclude_days)
 	             values ('2026-WS', 300, true, array['2027-01-15 00:00+01'::timestamptz])`)
-	exec(t, db, `insert into exam_room_constraint (semester_id, ancode, exahm) values ('2026-WS', 300, true)`)
-	exec(t, db, `insert into exam_duration_override (semester_id, ancode, duration_min) values ('2026-WS', 300, 120)`)
-	exec(t, db, `insert into exam_to_plan (semester_id, ancode, to_plan) values ('2026-WS', 300, true)`)
+	exec(t, pg, `insert into exam_room_constraint (semester_id, ancode, exahm) values ('2026-WS', 300, true)`)
+	exec(t, pg, `insert into exam_duration_override (semester_id, ancode, duration_min) values ('2026-WS', 300, 120)`)
+	exec(t, pg, `insert into exam_to_plan (semester_id, ancode, to_plan) values ('2026-WS', 300, true)`)
 
 	// The re-import: 100 and 200 come again (upsert, module changed on 100),
 	// 400 and 500 are new, 300 is gone from ZPA.
-	exec(t, db, `
+	exec(t, pg, `
 		insert into exam (semester_id, ancode, source, module, main_examer, main_examer_id,
 		                  exam_type, exam_type_full, duration_min)
 		values ('2026-WS', 100, 'zpa', 'Analysis (neu)', 'Braun', 1, 'schriftlich', 'schriftliche Prüfung', 90),
@@ -73,21 +76,21 @@ func TestZPAReimportPreservesPlannerOverlay(t *testing.T) {
 		on conflict (semester_id, ancode) do update set
 		    module = excluded.module, duration_min = excluded.duration_min,
 		    withdrawn_at = null`)
-	exec(t, db, `
+	exec(t, pg, `
 		update exam set withdrawn_at = now()
 		where semester_id = '2026-WS' and source = 'zpa'
 		  and ancode <> all($1::int[])`, []int{100, 200, 400, 500})
 
 	// The two new ones arrived, the update took, nothing was lost.
-	if n := count(t, db, `select count(*) from exam where semester_id='2026-WS'`); n != 5 {
+	if n := count(t, pg, `select count(*) from exam where semester_id='2026-WS'`); n != 5 {
 		t.Errorf("exam count = %d, want 5", n)
 	}
-	if n := count(t, db, `select count(*) from exam
+	if n := count(t, pg, `select count(*) from exam
 	                      where semester_id='2026-WS' and withdrawn_at is null`); n != 4 {
 		t.Errorf("active exam count = %d, want 4", n)
 	}
 	var module string
-	if err := db.pool.QueryRow(ctx,
+	if err := pg.PoolForTest().QueryRow(ctx,
 		`select module from exam where semester_id='2026-WS' and ancode=100`).Scan(&module); err != nil {
 		t.Fatalf("read module: %v", err)
 	}
@@ -96,7 +99,7 @@ func TestZPAReimportPreservesPlannerOverlay(t *testing.T) {
 	}
 
 	// The withdrawn exam is marked, not gone ...
-	if n := count(t, db, `select count(*) from exam
+	if n := count(t, pg, `select count(*) from exam
 	                      where semester_id='2026-WS' and ancode=300 and withdrawn_at is not null`); n != 1 {
 		t.Error("exam 300 should be marked withdrawn, not deleted")
 	}
@@ -105,7 +108,7 @@ func TestZPAReimportPreservesPlannerOverlay(t *testing.T) {
 	for _, table := range []string{
 		"exam_constraint", "exam_room_constraint", "exam_duration_override", "exam_to_plan",
 	} {
-		if n := count(t, db,
+		if n := count(t, pg,
 			`select count(*) from `+table+` where semester_id='2026-WS' and ancode=300`); n != 1 {
 			t.Errorf("%s for the withdrawn exam is gone -- the import destroyed planner input", table)
 		}
@@ -121,20 +124,20 @@ func TestZPAReimportPreservesPlannerOverlay(t *testing.T) {
 // pointing at the old time, and a hand-written detector looked for the damage
 // afterwards (plexams/validate_db.go:261). The column no longer exists.
 func TestMovingAnExamCannotStaleTheRoomPlan(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	seedExamFixtures(t, db, 225)
-	exec(t, db, `insert into room (name, seats) values ('R1.046', 60)`)
-	exec(t, db, `insert into plan_entry (semester_id, ancode, starttime)
+	seedExamFixtures(t, pg, 225)
+	exec(t, pg, `insert into room (name, seats) values ('R1.046', 60)`)
+	exec(t, pg, `insert into plan_entry (semester_id, ancode, starttime)
 	             values ('2026-WS', 225, '2027-01-20 08:30+01')`)
-	exec(t, db, `insert into planned_room (semester_id, ancode, room_name, duration_min)
+	exec(t, pg, `insert into planned_room (semester_id, ancode, room_name, duration_min)
 	             values ('2026-WS', 225, 'R1.046', 90)`)
 
 	readRoomTime := func() string {
 		t.Helper()
 		var wall string
-		if err := db.pool.QueryRow(ctx,
+		if err := pg.PoolForTest().QueryRow(ctx,
 			`select to_char(starttime, 'DD.MM.YYYY HH24:MI') from planned_room_v
 			 where semester_id='2026-WS' and ancode=225`).Scan(&wall); err != nil {
 			t.Fatalf("read planned_room_v: %v", err)
@@ -148,7 +151,7 @@ func TestMovingAnExamCannotStaleTheRoomPlan(t *testing.T) {
 
 	// Move the exam. Only the plan entry is touched -- exactly what SetExamTime
 	// does today, and exactly what used to leave the room plan behind.
-	exec(t, db, `update plan_entry set starttime = '2027-01-22 14:00+01'
+	exec(t, pg, `update plan_entry set starttime = '2027-01-22 14:00+01'
 	             where semester_id='2026-WS' and ancode=225`)
 
 	if got := readRoomTime(); got != "22.01.2027 14:00" {
@@ -165,31 +168,31 @@ func TestMovingAnExamCannotStaleTheRoomPlan(t *testing.T) {
 // minutes plus three single students at 99. What must still be impossible is the
 // same booking twice.
 func TestOneRoomHoldsSeveralNTABookings(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 
-	seedExamFixtures(t, db, 225)
-	exec(t, db, `insert into room (name, seats) values ('R1.046', 60)`)
-	exec(t, db, `insert into nta (mtknr, name, compensation, delta_duration_percent,
+	seedExamFixtures(t, pg, 225)
+	exec(t, pg, `insert into room (name, seats) values ('R1.046', 60)`)
+	exec(t, pg, `insert into nta (mtknr, name, compensation, delta_duration_percent,
 	                              program, valid_from, valid_until)
 	             values ('39644321', 'A', 'Zeitverlängerung', 10, 'IF-B', '2026-WS', '2027-SS'),
 	                    ('21384524', 'B', 'Zeitverlängerung', 10, 'IF-B', '2026-WS', '2027-SS')`)
-	exec(t, db, `insert into plan_entry (semester_id, ancode, starttime)
+	exec(t, pg, `insert into plan_entry (semester_id, ancode, starttime)
 	             values ('2026-WS', 225, '2027-01-20 08:30+01')`)
 
-	exec(t, db, `insert into planned_room (semester_id, ancode, room_name, duration_min)
+	exec(t, pg, `insert into planned_room (semester_id, ancode, room_name, duration_min)
 	             values ('2026-WS', 225, 'R1.046', 90)`)
-	exec(t, db, `insert into planned_room (semester_id, ancode, room_name, duration_min, handicap, nta_mtknr)
+	exec(t, pg, `insert into planned_room (semester_id, ancode, room_name, duration_min, handicap, nta_mtknr)
 	             values ('2026-WS', 225, 'R1.046', 99, true, '39644321'),
 	                    ('2026-WS', 225, 'R1.046', 99, true, '21384524')`)
 
-	if n := count(t, db, `select count(*) from planned_room where semester_id='2026-WS'`); n != 3 {
+	if n := count(t, pg, `select count(*) from planned_room where semester_id='2026-WS'`); n != 3 {
 		t.Fatalf("planned_room count = %d, want 3", n)
 	}
 
 	// The ordinary booking a second time must fail -- which only works because the
 	// unique constraint is NULLS NOT DISTINCT. PostgreSQL's default would treat
 	// every NULL nta_mtknr as unique and let this through.
-	if _, err := db.pool.Exec(t.Context(),
+	if _, err := pg.PoolForTest().Exec(t.Context(),
 		`insert into planned_room (semester_id, ancode, room_name, duration_min)
 		 values ('2026-WS', 225, 'R1.046', 90)`); err == nil {
 		t.Error("a duplicate non-NTA booking was accepted -- NULLS NOT DISTINCT is missing")
@@ -201,14 +204,14 @@ func TestOneRoomHoldsSeveralNTABookings(t *testing.T) {
 // correct for a deliberate act (dropping a semester, removing an external exam the
 // planner created) and catastrophic for an import.
 func TestDeletingAnExamCascades(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 
-	seedExamFixtures(t, db, 300)
-	exec(t, db, `insert into exam_constraint (semester_id, ancode, online) values ('2026-WS', 300, true)`)
+	seedExamFixtures(t, pg, 300)
+	exec(t, pg, `insert into exam_constraint (semester_id, ancode, online) values ('2026-WS', 300, true)`)
 
-	exec(t, db, `delete from exam where semester_id='2026-WS' and ancode=300`)
+	exec(t, pg, `delete from exam where semester_id='2026-WS' and ancode=300`)
 
-	if n := count(t, db, `select count(*) from exam_constraint where semester_id='2026-WS'`); n != 0 {
+	if n := count(t, pg, `select count(*) from exam_constraint where semester_id='2026-WS'`); n != 0 {
 		t.Errorf("constraint count = %d, want 0 -- the cascade did not fire", n)
 	}
 }
@@ -216,16 +219,16 @@ func TestDeletingAnExamCascades(t *testing.T) {
 // TestSemesterDeletionCascades: dropping a workspace must take its whole contents
 // with it, since nothing outside it can reference them.
 func TestSemesterDeletionCascades(t *testing.T) {
-	db := newTestPG(t)
+	pg := pgtest.NewDB(t)
 
-	seedExamFixtures(t, db, 100)
-	exec(t, db, `insert into exam_constraint (semester_id, ancode, online) values ('2026-WS', 100, true)`)
-	exec(t, db, `insert into semester_config_input (semester_id, config) values ('2026-WS', '{}')`)
+	seedExamFixtures(t, pg, 100)
+	exec(t, pg, `insert into exam_constraint (semester_id, ancode, online) values ('2026-WS', 100, true)`)
+	exec(t, pg, `insert into semester_config_input (semester_id, config) values ('2026-WS', '{}')`)
 
-	exec(t, db, `delete from semester where id='2026-WS'`)
+	exec(t, pg, `delete from semester where id='2026-WS'`)
 
 	for _, table := range []string{"exam", "exam_constraint", "semester_config_input"} {
-		if n := count(t, db, `select count(*) from `+table); n != 0 {
+		if n := count(t, pg, `select count(*) from `+table); n != 0 {
 			t.Errorf("%s still has %d rows after the semester was deleted", table, n)
 		}
 	}

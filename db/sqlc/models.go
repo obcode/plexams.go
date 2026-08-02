@@ -8,6 +8,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ActiveSemester struct {
+	ID         int
+	SemesterID string
+}
+
 type AnnyConfig struct {
 	ID                   int
 	PersonalizationNames []string
@@ -23,6 +28,100 @@ type AppUser struct {
 type EmailTemplate struct {
 	Name     string
 	Markdown string
+}
+
+type Exam struct {
+	SemesterID     string
+	Ancode         int
+	Source         string
+	ZpaID          *int
+	Module         string
+	MainExamer     string
+	MainExamerID   int
+	ExamType       string
+	ExamTypeFull   string
+	ZpaDate        string
+	ZpaStarttime   string
+	DurationMin    int
+	IsRepeaterExam bool
+	Groups         []string
+	Faculty        string
+	WithdrawnAt    pgtype.Timestamptz
+}
+
+type ExamAllowedRoom struct {
+	SemesterID string
+	Ancode     int
+	RoomName   string
+}
+
+type ExamCanShareSlot struct {
+	SemesterID  string
+	Ancode      int
+	OtherAncode int
+}
+
+type ExamConflictRating struct {
+	SemesterID  string
+	Ancode      int
+	OtherAncode int
+	Mtknr       string
+	Decision    string
+}
+
+type ExamConstraint struct {
+	SemesterID       string
+	Ancode           int
+	NotPlannedByMe   bool
+	NotPlannedByMeFk *string
+	DoNotPublish     bool
+	Online           bool
+	Location         *string
+	ExcludeDays      []pgtype.Timestamptz
+	PossibleDays     []pgtype.Timestamptz
+	FixedDay         pgtype.Timestamptz
+	FixedTime        pgtype.Timestamptz
+}
+
+type ExamDurationOverride struct {
+	SemesterID  string
+	Ancode      int
+	DurationMin int
+}
+
+type ExamPrimussAncode struct {
+	SemesterID    string
+	Ancode        int
+	Program       string
+	PrimussAncode int
+	Source        string
+}
+
+type ExamRoomConstraint struct {
+	SemesterID       string
+	Ancode           int
+	PlacesWithSocket bool
+	Lab              bool
+	Exahm            bool
+	Seb              bool
+	KdpJiraUrl       *string
+	MaxStudents      *int
+	AdditionalSeats  *int
+	PreExamMinutes   *int
+	PostExamMinutes  *int
+	Comments         *string
+}
+
+type ExamSameSlot struct {
+	SemesterID  string
+	Ancode      int
+	OtherAncode int
+}
+
+type ExamToPlan struct {
+	SemesterID string
+	Ancode     int
+	ToPlan     bool
 }
 
 type GenerationConfig struct {
@@ -79,6 +178,31 @@ type Room struct {
 	HmebSeats        *int
 	Deactivated      bool
 	Hitzewert        *int
+}
+
+type SchedulerState struct {
+	ID           int
+	LastFireAt   pgtype.Timestamptz
+	LastFinished pgtype.Timestamptz
+	LastStatus   string
+	LastTrigger  string
+	SemesterID   *string
+	TotalChanges int
+}
+
+type Semester struct {
+	ID            string
+	Semester      string
+	SchemaVersion int
+	ReadOnly      bool
+	LastDumpAt    pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+}
+
+type SemesterConfigInput struct {
+	SemesterID    string
+	Config        []byte
+	FormatVersion int
 }
 
 type StudyProgram struct {

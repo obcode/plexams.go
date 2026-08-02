@@ -20,10 +20,16 @@
 -- retires the hand-maintained knownAncodes set in plexams/validate_db.go:17 and
 -- the "ancode is not a real exam" check at :117.
 --
--- The ZPA import must UPSERT (insert ... on conflict do update, then delete the
--- ancodes ZPA no longer knows), not drop+insert as CacheZPAExams does today: the
--- local overlay tables reference these rows, and wiping the table would cascade
--- the planner's decisions away with it.
+-- The ZPA import must UPSERT (insert ... on conflict do update), not drop+insert
+-- as CacheZPAExams does today: the local overlay tables reference these rows, and
+-- wiping the table would cascade the planner's decisions away with it.
+--
+-- And it must NOT delete the exams ZPA stopped delivering -- it sets withdrawn_at.
+-- The asymmetry is the point: ZPA data can be re-imported at any time, the
+-- planner's constraints cannot. A cascade from the volatile side to the
+-- hand-entered side is backwards, and a single flaky import would destroy work.
+-- Today those overlay rows survive as orphans and ValidateDBReferences reports
+-- them; withdrawn_at keeps them AND says why they are orphaned.
 create table exam (
     semester_id      text not null references semester(id) on delete cascade,
     ancode           int  not null,
@@ -45,10 +51,19 @@ create table exam (
     -- child table: they carry no referential meaning, they are parsed.
     groups           text[] not null default '{}',
     faculty          text not null default '',
+    -- Set when ZPA stopped delivering this exam; cleared when it reappears. The
+    -- row and everything hanging off it stay, so a cancelled -- or briefly
+    -- missing -- exam never costs the planner their hand-entered constraints.
+    -- Reads that drive planning filter on `withdrawn_at is null`.
+    withdrawn_at     timestamptz,
 
     primary key (semester_id, ancode),
     constraint exam_duration_positive check (duration_min > 0)
 );
+
+-- ON DELETE CASCADE on the overlay tables below is still right, but only fires on
+-- a deliberate deletion: dropping a whole semester, or removing an external exam
+-- the planner created. The ZPA import must never be the thing that triggers it.
 
 -- model.ZPAExam.Semester is deliberately NOT a column: it duplicated
 -- semester.semester and could drift from it. Read it through the join.

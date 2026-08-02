@@ -38,7 +38,7 @@ jobs:
       # test from a template, so the user needs CREATEDB — the superuser the image
       # sets up has it.
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_USER: plexams
           POSTGRES_PASSWORD: plexams

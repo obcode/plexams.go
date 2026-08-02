@@ -30,6 +30,13 @@ type AppUser struct {
 	Shortname string
 }
 
+type BlockedRoom struct {
+	SemesterID string
+	RoomName   string
+	Starttime  pgtype.Timestamptz
+	Reason     *string
+}
+
 type EmailTemplate struct {
 	Name     string
 	Markdown string
@@ -176,12 +183,28 @@ type NTARow struct {
 	Deactivated          bool
 }
 
+type NtaRoomAloneWaiver struct {
+	SemesterID string
+	Ancode     int
+	Mtknr      string
+	Reason     string
+}
+
 type PermanentNonInvigilator struct {
 	TeacherID  int
 	Name       string
 	Reason     string
 	ValidFrom  *string
 	ValidUntil *string
+}
+
+type PlanEntry struct {
+	SemesterID string
+	Ancode     int
+	Starttime  pgtype.Timestamptz
+	Locked     bool
+	PhaseFixed bool
+	External   bool
 }
 
 type Planer struct {
@@ -192,6 +215,77 @@ type Planer struct {
 	Cc          *string
 	NoreplyMail *string
 	NoreplyName *string
+}
+
+type PlannedRoom struct {
+	ID                int64
+	SemesterID        string
+	Ancode            int
+	RoomName          string
+	DurationMin       int
+	Handicap          bool
+	HandicapRoomAlone bool
+	Reserve           bool
+	NtaMtknr          *string
+	PrePlanned        bool
+}
+
+type PlannedRoomStudent struct {
+	PlannedRoomID int64
+	Mtknr         string
+}
+
+type PlannedRoomV struct {
+	ID                int64
+	SemesterID        string
+	Ancode            int
+	RoomName          string
+	DurationMin       int
+	Handicap          bool
+	HandicapRoomAlone bool
+	Reserve           bool
+	NtaMtknr          *string
+	PrePlanned        bool
+	Starttime         pgtype.Timestamptz
+}
+
+type PrePlannedRoom struct {
+	SemesterID string
+	Ancode     int
+	RoomName   string
+	Mtknr      *string
+	Reserve    bool
+	Seats      *int
+}
+
+type PreplanCanShareSlot struct {
+	SemesterID string
+	ID         int
+	OtherID    int
+}
+
+type PreplanExam struct {
+	SemesterID       string
+	ID               int
+	ExamKind         string
+	ExamerID         int
+	ExamerName       string
+	Module           string
+	Programs         []string
+	ExpectedStudents int
+	DurationMin      *int
+	PlannedStarttime pgtype.Timestamptz
+	IsFixed          bool
+	Ancode           *int
+	Notes            string
+	Constraints      []byte
+	FormatVersion    int
+}
+
+type PreplanNotSameSlot struct {
+	SemesterID string
+	ID         int
+	OtherID    int
 }
 
 type PrimussConflict struct {
@@ -236,6 +330,16 @@ type Room struct {
 	HmebSeats        *int
 	Deactivated      bool
 	Hitzewert        *int
+}
+
+type RoomRequest struct {
+	SemesterID string
+	RoomName   string
+	Starttime  pgtype.Timestamptz
+	ValidFrom  pgtype.Timestamptz
+	ValidUntil pgtype.Timestamptz
+	Approved   bool
+	Active     bool
 }
 
 type SchedulerState struct {
@@ -298,6 +402,13 @@ type StudyProgram struct {
 	Retired           bool
 	ExternalExamsBase *int
 	JointFaculty      *string
+}
+
+type UnplacedExam struct {
+	SemesterID string
+	Ancode     int
+	Mtknrs     []string
+	NtaMtknr   *string
 }
 
 type UserSecret struct {

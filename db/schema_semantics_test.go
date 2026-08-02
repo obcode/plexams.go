@@ -112,6 +112,90 @@ func TestZPAReimportPreservesPlannerOverlay(t *testing.T) {
 	}
 }
 
+// TestMovingAnExamCannotStaleTheRoomPlan is the point of the whole migration in
+// one test.
+//
+// rooms_planned used to carry its own copy of the exam's start time, and nothing
+// kept it in sync: SetExamTime (plexams/plan.go:29) writes the plan entry and
+// never touches the room plan. Moving an exam left every one of its rooms
+// pointing at the old time, and a hand-written detector looked for the damage
+// afterwards (plexams/validate_db.go:261). The column no longer exists.
+func TestMovingAnExamCannotStaleTheRoomPlan(t *testing.T) {
+	db := newTestPG(t)
+	ctx := t.Context()
+
+	seedExamFixtures(t, db, 225)
+	exec(t, db, `insert into room (name, seats) values ('R1.046', 60)`)
+	exec(t, db, `insert into plan_entry (semester_id, ancode, starttime)
+	             values ('2026-WS', 225, '2027-01-20 08:30+01')`)
+	exec(t, db, `insert into planned_room (semester_id, ancode, room_name, duration_min)
+	             values ('2026-WS', 225, 'R1.046', 90)`)
+
+	readRoomTime := func() string {
+		t.Helper()
+		var wall string
+		if err := db.pool.QueryRow(ctx,
+			`select to_char(starttime, 'DD.MM.YYYY HH24:MI') from planned_room_v
+			 where semester_id='2026-WS' and ancode=225`).Scan(&wall); err != nil {
+			t.Fatalf("read planned_room_v: %v", err)
+		}
+		return wall
+	}
+
+	if got := readRoomTime(); got != "20.01.2027 08:30" {
+		t.Fatalf("room time = %q before the move", got)
+	}
+
+	// Move the exam. Only the plan entry is touched -- exactly what SetExamTime
+	// does today, and exactly what used to leave the room plan behind.
+	exec(t, db, `update plan_entry set starttime = '2027-01-22 14:00+01'
+	             where semester_id='2026-WS' and ancode=225`)
+
+	if got := readRoomTime(); got != "22.01.2027 14:00" {
+		t.Errorf("room time = %q after the move, want the new time -- the room plan went stale", got)
+	}
+}
+
+// TestOneRoomHoldsSeveralNTABookings pins the natural key of planned_room, which
+// is (ancode, room, nta_mtknr) and NOT (ancode, room).
+//
+// One physical room legitimately holds several bookings for the same exam,
+// because every NTA student sitting there needs their own row for their own
+// extended duration -- ancode 225 in R1.046 in 2026-SS is 43 students at 90
+// minutes plus three single students at 99. What must still be impossible is the
+// same booking twice.
+func TestOneRoomHoldsSeveralNTABookings(t *testing.T) {
+	db := newTestPG(t)
+
+	seedExamFixtures(t, db, 225)
+	exec(t, db, `insert into room (name, seats) values ('R1.046', 60)`)
+	exec(t, db, `insert into nta (mtknr, name, compensation, delta_duration_percent,
+	                              program, valid_from, valid_until)
+	             values ('39644321', 'A', 'Zeitverlängerung', 10, 'IF-B', '2026-WS', '2027-SS'),
+	                    ('21384524', 'B', 'Zeitverlängerung', 10, 'IF-B', '2026-WS', '2027-SS')`)
+	exec(t, db, `insert into plan_entry (semester_id, ancode, starttime)
+	             values ('2026-WS', 225, '2027-01-20 08:30+01')`)
+
+	exec(t, db, `insert into planned_room (semester_id, ancode, room_name, duration_min)
+	             values ('2026-WS', 225, 'R1.046', 90)`)
+	exec(t, db, `insert into planned_room (semester_id, ancode, room_name, duration_min, handicap, nta_mtknr)
+	             values ('2026-WS', 225, 'R1.046', 99, true, '39644321'),
+	                    ('2026-WS', 225, 'R1.046', 99, true, '21384524')`)
+
+	if n := count(t, db, `select count(*) from planned_room where semester_id='2026-WS'`); n != 3 {
+		t.Fatalf("planned_room count = %d, want 3", n)
+	}
+
+	// The ordinary booking a second time must fail -- which only works because the
+	// unique constraint is NULLS NOT DISTINCT. PostgreSQL's default would treat
+	// every NULL nta_mtknr as unique and let this through.
+	if _, err := db.pool.Exec(t.Context(),
+		`insert into planned_room (semester_id, ancode, room_name, duration_min)
+		 values ('2026-WS', 225, 'R1.046', 90)`); err == nil {
+		t.Error("a duplicate non-NTA booking was accepted -- NULLS NOT DISTINCT is missing")
+	}
+}
+
 // TestDeletingAnExamCascades is the other half of the contract, and the reason the
 // import must not delete: a real DELETE does take the overlay with it. That is
 // correct for a deliberate act (dropping a semester, removing an external exam the

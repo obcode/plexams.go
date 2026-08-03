@@ -21,6 +21,11 @@ var jsonbTypes = []struct {
 	{"student_prepared", model.Student{}},
 	{"studentreg_upload_error", model.ZPAStudentReg{}},
 	{"studentreg_upload_error", model.ZPAStudentRegError{}},
+	{"assembled_exam", model.AssembledExam{}},
+	// preplan_exam.constraints -- the same model type the relational
+	// exam_constraint tables hold, stored as a document here because it hangs off
+	// a pre-exam, is read and written whole, and nothing joins it.
+	{"preplan_exam", model.Constraints{}},
 }
 
 // knownJSONBOmissions lists fields that are deliberately not persisted, with the

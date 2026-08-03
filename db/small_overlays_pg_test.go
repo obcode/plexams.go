@@ -291,12 +291,19 @@ func TestTheTwoInvigilationTargetsDoNotClearEachOther(t *testing.T) {
 	start := berlin(t, "2027-01-20 08:30")
 	room := "R1.046"
 
-	// A self-invigilation carries no duration -- all 43 in 2026-SS have 0, which
-	// is why the check is >= 0 and not > 0.
+	// A self-invigilation is stored with duration 0 deliberately: it must not
+	// count towards the invigilator's duty (invigcalc.Todos excludes it by the
+	// flag). All 43 in 2026-SS carry 0, which is why the check is >= 0.
 	if err := pg.ReplaceAll(ctx, db.TargetSelfInvigilations, []interface{}{
 		&model.Invigilation{InvigilatorID: 180, Starttime: &start, Duration: 0},
 	}); err != nil {
 		t.Fatalf("ReplaceAll(self): %v", err)
+	}
+	if n := count(t, pg, `select count(*) from invigilation
+	                      where semester_id='2026-WS' and is_self_invigilation
+	                        and duration_min = 0`); n != 1 {
+		t.Errorf("the self-invigilation did not keep its duration 0 -- it would "+
+			"start counting towards the todos (%d rows with 0)", n)
 	}
 	if err := pg.ReplaceAll(ctx, db.TargetOtherInvigilations, []interface{}{
 		&model.Invigilation{InvigilatorID: 181, Starttime: &start, Duration: 90, RoomName: &room},

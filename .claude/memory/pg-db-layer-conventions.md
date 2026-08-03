@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d81ac9c2-6f6d-4c12-8032-4109f6e4a807
-  modified: 2026-08-03T15:08:04.032Z
+  modified: 2026-08-03T15:23:30.352Z
 ---
 
 Die Konventionen, nach denen die 41 globalen Methoden in Phase 3a portiert wurden
@@ -127,7 +127,11 @@ Feldnamen stimmen fast immer überein.
 - **`check`-Constraints auf Dauern immer gegen die Echtdaten prüfen.** Zweimal
   hätte `> 0` legitime Daten abgelehnt: `planned_room.duration_min` (der
   Generator kopiert `MaxDuration`, und eine Prüfung ohne gesetzte Dauer liefert
-  0) und `invigilation.duration_min` (**jede** Selbstaufsicht hat 0). Ein Check,
+  0) und `invigilation.duration_min` — **Selbstaufsichten haben Dauer 0, und das
+  ist so gewollt** (2026-08-03 von Oliver bestätigt): die eigene Prüfung zu
+  beaufsichtigen darf nicht auf die Aufsichtspflicht angerechnet werden.
+  `invigcalc.Todos:139` schließt sie über das Flag aus, die 0 ist der dazu
+  konsistente Wert. Eine Dauer ≠ 0 wäre hier der Fehler, nicht die 0. Ein Check,
   der nicht schlechte Daten fängt, sondern einen Erzeugungslauf scheitern lässt,
   ist schlimmer als keiner.
 - **Nie eine Spalte in den Schlüssel nehmen, die eine Methode ändert.**

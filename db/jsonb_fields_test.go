@@ -18,6 +18,9 @@ var jsonbTypes = []struct {
 }{
 	{"generation_config", model.GenerationConfig{}},
 	{"semester_config_input", model.SemesterConfigInput{}},
+	{"student_prepared", model.Student{}},
+	{"studentreg_upload_error", model.ZPAStudentReg{}},
+	{"studentreg_upload_error", model.ZPAStudentRegError{}},
 }
 
 // knownJSONBOmissions lists fields that are deliberately not persisted, with the

@@ -209,9 +209,17 @@ create table student_prepared (
 );
 
 -- Whether student_prepared needs rebuilding. One row per semester.
+--
+-- reason and changed_at are what the GUI renders in the "registrations are stale"
+-- banner: which operation invalidated them and when. Both are nullable because
+-- model.StudentRegsState has them as pointers and a state written without a
+-- reason is a real case (SetStudentRegsDirty is called with "" after a
+-- regeneration).
 create table student_regs_state (
     semester_id text primary key references semester(id) on delete cascade,
-    dirty       boolean not null default true
+    dirty       boolean not null default true,
+    reason      text,
+    changed_at  timestamptz
 );
 
 -- +goose Down

@@ -531,6 +531,8 @@ type StudentPrepared struct {
 type StudentRegsState struct {
 	SemesterID string
 	Dirty      bool
+	Reason     *string
+	ChangedAt  *time.Time
 }
 
 type Studentreg struct {

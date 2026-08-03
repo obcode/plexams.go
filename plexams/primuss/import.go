@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -32,6 +32,9 @@ type ImportProgram struct {
 	Missing        []string // file types not present for this program
 	FirstImport    bool     // no prior studentregs for this program (initial import, not an update)
 	ChangedAncodes []int    // ancodes whose registrations changed vs before (empty on first import)
+	// Problems are the rows and cells the converters could not use. They used to
+	// be silent: an unparseable ancode became 0 with a log.Debug for company.
+	Problems []string
 }
 
 // primussGroupRE extracts the degree-suffixed program code from a Sammellisten
@@ -40,10 +43,6 @@ type ImportProgram struct {
 // (e.g. DC-B vs DC-M) distinct programs / collections instead of colliding in a
 // single "DC".
 var primussGroupRE = regexp.MustCompile(`-([A-Z]{2,4}-[BM])-`)
-
-// primussStudentregNumeric marks the numeric columns of the Prüfungsanmeldungen file.
-// Only AnCode is numeric; everything else (incl. MTKNR) stays a string.
-var primussStudentregNumeric = map[string]bool{"AnCode": true}
 
 // detectPrimussFile returns the program and the collection kind (studentregs | exams |
 // count | conflicts) for a Sammellisten filename, or empty kind if it is not one of the
@@ -164,26 +163,53 @@ func (s *Service) ImportDir(ctx context.Context, dir string) (*ImportResult, err
 }
 
 func (s *Service) importProgram(ctx context.Context, program string, byKind map[string][]byte) (*ImportProgram, error) {
-	res := &ImportProgram{Program: program, ChangedAncodes: []int{}, Missing: []string{}}
+	res := &ImportProgram{Program: program, ChangedAncodes: []int{}, Missing: []string{}, Problems: []string{}}
 
-	// studentregs first (with change detection against the existing collection)
-	if data, ok := byKind["studentregs"]; ok {
-		old, err := s.db.RawCollection(ctx, "studentregs_"+program)
+	addProblems := func(errs []ConvertError) {
+		for _, e := range errs {
+			res.Problems = append(res.Problems, e.String())
+		}
+	}
+
+	// The exam catalogue goes first: the counts and the conflicts reference it,
+	// and with foreign keys that order is no longer a matter of taste.
+	if data, ok := byKind["exams"]; ok {
+		sh, err := parseSheet(data)
+		if err != nil {
+			return nil, fmt.Errorf("exams: %w", err)
+		}
+		rows, errs := convertExams(sh)
+		addProblems(errs)
+		n, err := s.db.ReplacePrimussExams(ctx, program, rows)
 		if err != nil {
 			return nil, err
 		}
-		docs, err := parsePrimussStudentregs(data)
+		res.ExamsImported = n
+	} else {
+		res.Missing = append(res.Missing, "exams")
+	}
+
+	if data, ok := byKind["studentregs"]; ok {
+		old, err := s.db.PrimussStudentRegRows(ctx, program)
+		if err != nil {
+			return nil, err
+		}
+		sh, err := parseSheet(data)
 		if err != nil {
 			return nil, fmt.Errorf("studentregs: %w", err)
 		}
+		rows, errs := convertStudentRegs(sh)
+		addProblems(errs)
+
 		// changed ancodes only make sense as an update against prior data; the first
 		// import of a program is the initial data, not an update.
 		if len(old) == 0 {
 			res.FirstImport = true
 		} else {
-			res.ChangedAncodes = changedAncodes(old, docs)
+			res.ChangedAncodes = changedAncodes(old, rows)
 		}
-		n, err := s.db.ReplaceRawCollection(ctx, "studentregs_"+program, docs)
+
+		n, err := s.db.ReplacePrimussStudentRegs(ctx, program, rows)
 		if err != nil {
 			return nil, err
 		}
@@ -192,32 +218,67 @@ func (s *Service) importProgram(ctx context.Context, program string, byKind map[
 		res.Missing = append(res.Missing, "studentregs")
 	}
 
-	imports := []struct {
-		kind, collection     string
-		sumFix, ignoreBlanks bool
-		set                  *int
-	}{
-		{"exams", "exams_" + program, false, false, &res.ExamsImported},
-		{"count", "count_" + program, true, false, &res.CountRows},
-		{"conflicts", "conflicts_" + program, false, true, &res.ConflictRows},
-	}
-	for _, imp := range imports {
-		data, ok := byKind[imp.kind]
-		if !ok {
-			res.Missing = append(res.Missing, imp.kind)
-			continue
-		}
-		docs, err := parsePrimussAutoTyped(data, imp.sumFix, imp.ignoreBlanks)
+	if data, ok := byKind["count"]; ok {
+		sh, err := parseSheet(data)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", imp.kind, err)
+			return nil, fmt.Errorf("count: %w", err)
 		}
-		n, err := s.db.ReplaceRawCollection(ctx, imp.collection, docs)
+		rows, errs := convertCounts(sh)
+		addProblems(errs)
+		n, err := s.db.ReplacePrimussCounts(ctx, program, rows)
 		if err != nil {
 			return nil, err
 		}
-		*imp.set = n
+		res.CountRows = n
+	} else {
+		res.Missing = append(res.Missing, "count")
 	}
+
+	if data, ok := byKind["conflicts"]; ok {
+		sh, err := parseSheet(data)
+		if err != nil {
+			return nil, fmt.Errorf("conflicts: %w", err)
+		}
+		rows, errs := convertConflicts(sh)
+		addProblems(errs)
+
+		// A conflict may only name exams the catalogue of this program has. The
+		// foreign keys would reject the whole write; dropping and reporting turns
+		// that into a line the planner can act on.
+		if examRows, ok := byKind["exams"]; ok {
+			known, err := knownAncodes(examRows)
+			if err != nil {
+				return nil, fmt.Errorf("conflicts: %w", err)
+			}
+			var dropped []ConvertError
+			rows, dropped = dropConflictsWithUnknownExams(rows, known)
+			addProblems(dropped)
+		}
+
+		n, err := s.db.ReplacePrimussConflicts(ctx, program, rows)
+		if err != nil {
+			return nil, err
+		}
+		res.ConflictRows = n
+	} else {
+		res.Missing = append(res.Missing, "conflicts")
+	}
+
 	return res, nil
+}
+
+// knownAncodes is the set of ancodes in a program's exam catalogue.
+func knownAncodes(examData []byte) (map[int]bool, error) {
+	sh, err := parseSheet(examData)
+	if err != nil {
+		return nil, err
+	}
+	rows, _ := convertExams(sh)
+	known := make(map[int]bool, len(rows))
+	for _, row := range rows {
+		known[row.Ancode] = true
+	}
+	return known, nil
 }
 
 // xlsxRows opens an in-memory xlsx and returns the rows of its first sheet, each padded
@@ -249,86 +310,25 @@ func xlsxRows(data []byte) ([][]string, error) {
 	return rows, nil
 }
 
-// parsePrimussStudentregs maps the Prüfungsanmeldungen rows to docs with the fixed typing
-// (AnCode int, everything else — incl. MTKNR — string).
-func parsePrimussStudentregs(data []byte) ([]map[string]any, error) {
+// parseSheet reads the first sheet of an in-memory xlsx into a trimmed header
+// plus its rows, every row padded to the header's width.
+func parseSheet(data []byte) (*sheet, error) {
 	rows, err := xlsxRows(data)
 	if err != nil {
 		return nil, err
 	}
-	header := trimmedHeader(rows[0], false)
-	docs := make([]map[string]any, 0, len(rows)-1)
-	for _, row := range rows[1:] {
-		doc := map[string]any{}
-		for i, name := range header {
-			if name == "" {
-				continue
-			}
-			val := strings.TrimSpace(row[i])
-			if primussStudentregNumeric[name] {
-				if n, err := strconv.Atoi(val); err == nil {
-					doc[name] = n
-					continue
-				}
-			}
-			doc[name] = val
-		}
-		docs = append(docs, doc)
+	header := make([]string, len(rows[0]))
+	for i, h := range rows[0] {
+		header[i] = strings.TrimSpace(h)
 	}
-	return docs, nil
+	return &sheet{header: header, rows: rows[1:]}, nil
 }
 
-// parsePrimussAutoTyped maps rows to docs with mongoimport-like auto typing: integer cells
-// become ints, others strings. With sumFix the header "Sum." becomes "Sum"; with
-// ignoreBlanks empty cells are omitted (else kept as "").
-func parsePrimussAutoTyped(data []byte, sumFix, ignoreBlanks bool) ([]map[string]any, error) {
-	rows, err := xlsxRows(data)
-	if err != nil {
-		return nil, err
-	}
-	header := trimmedHeader(rows[0], sumFix)
-	docs := make([]map[string]any, 0, len(rows)-1)
-	for _, row := range rows[1:] {
-		doc := map[string]any{}
-		for i, name := range header {
-			if name == "" {
-				continue
-			}
-			val := strings.TrimSpace(row[i])
-			if val == "" {
-				if !ignoreBlanks {
-					doc[name] = ""
-				}
-				continue
-			}
-			if n, err := strconv.Atoi(val); err == nil {
-				doc[name] = n
-			} else {
-				doc[name] = val
-			}
-		}
-		docs = append(docs, doc)
-	}
-	return docs, nil
-}
-
-func trimmedHeader(row []string, sumFix bool) []string {
-	header := make([]string, len(row))
-	for i, h := range row {
-		h = strings.TrimSpace(h)
-		if sumFix && h == "Sum." {
-			h = "Sum"
-		}
-		header[i] = h
-	}
-	return header
-}
-
-// changedAncodes compares the old and new studentreg docs and returns the ancodes whose
-// registration set changed (added/removed students or changed registration fields).
-func changedAncodes(oldDocs, newDocs []map[string]any) []int {
-	oldSig := studentregSignatures(oldDocs)
-	newSig := studentregSignatures(newDocs)
+// changedAncodes compares the old and new registrations and returns the ancodes
+// whose registration set changed (added/removed students or changed fields).
+func changedAncodes(oldRows, newRows []db.PrimussStudentRegRow) []int {
+	oldSig := studentregSignatures(oldRows)
+	newSig := studentregSignatures(newRows)
 	changedSet := make(map[int]bool)
 	for ancode, sig := range newSig {
 		if oldSig[ancode] != sig {
@@ -348,37 +348,36 @@ func changedAncodes(oldDocs, newDocs []map[string]any) []int {
 	return changed
 }
 
-// studentregSignatures builds, per ancode, a stable signature of its registrations.
-func studentregSignatures(docs []map[string]any) map[int]string {
+// studentregSignatures builds, per ancode, a stable signature of its
+// registrations.
+//
+// Note, gebucht and nicht_zul are not modelled columns, so they come out of Raw
+// -- they are exactly the fields that say a registration changed without the
+// student changing, and leaving them out would make a re-import look quiet when
+// it is not.
+func studentregSignatures(rows []db.PrimussStudentRegRow) map[int]string {
 	rowsByAncode := make(map[int][]string)
-	for _, d := range docs {
-		ancode := toInt(d["AnCode"])
-		row := fmt.Sprintf("%v|%v|%v|%v|%v",
-			d["MTKNR"], d["Note"], d["Stgru"], d["gebucht"], d["nicht_zul"])
-		rowsByAncode[ancode] = append(rowsByAncode[ancode], row)
+	for _, r := range rows {
+		line := fmt.Sprintf("%v|%v|%v|%v|%v",
+			r.Mtknr, rawValue(r.Raw, "Note"), r.Group,
+			rawValue(r.Raw, "gebucht"), rawValue(r.Raw, "nicht_zul"))
+		rowsByAncode[r.PrimussAncode] = append(rowsByAncode[r.PrimussAncode], line)
 	}
 	sigs := make(map[int]string, len(rowsByAncode))
-	for ancode, rows := range rowsByAncode {
-		sort.Strings(rows)
-		sigs[ancode] = strings.Join(rows, "\n")
+	for ancode, lines := range rowsByAncode {
+		sort.Strings(lines)
+		sigs[ancode] = strings.Join(lines, "\n")
 	}
 	return sigs
 }
 
-func toInt(v any) int {
-	switch n := v.(type) {
-	case int:
-		return n
-	case int32:
-		return int(n)
-	case int64:
-		return int(n)
-	case float64:
-		return int(n)
-	case string:
-		i, _ := strconv.Atoi(strings.TrimSpace(n))
-		return i
-	default:
-		return 0
+// rawValue renders an unmodelled column for the signature. A missing column and
+// an empty one have to look the same, or a Primuss export that stops sending a
+// column would mark every exam as changed.
+func rawValue(raw map[string]any, key string) string {
+	v, ok := raw[key]
+	if !ok || v == nil {
+		return ""
 	}
+	return fmt.Sprintf("%v", v)
 }

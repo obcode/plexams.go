@@ -254,12 +254,6 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 	}
 
 	plexams.loadSemesterConfig(context.Background())
-	if plexams.semesterConfig != nil && plexams.dbClient != nil {
-		// keep the derived snapshot in the DB for the GUI to read directly
-		if err := plexams.dbClient.SaveSemesterConfig(context.Background(), plexams.semesterConfig); err != nil {
-			log.Error().Err(err).Msg("cannot save semester config")
-		}
-	}
 	plexams.loadSemesterMeta(context.Background())
 
 	plexams.setRoomInfo()

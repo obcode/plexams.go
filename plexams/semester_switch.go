@@ -97,11 +97,7 @@ func (p *Plexams) SwitchSemester(ctx context.Context, name, semesterOverride str
 	log.Info().Str("database", name).Str("semester", p.semester).Msg("switched semester")
 
 	p.loadSemesterConfig(ctx)
-	if p.semesterConfig != nil {
-		if err := p.dbClient.SaveSemesterConfig(ctx, p.semesterConfig); err != nil {
-			log.Error().Err(err).Msg("cannot save semester config after switch")
-		}
-	} else {
+	if p.semesterConfig == nil {
 		log.Warn().Str("semester", p.semester).Msg("switched to a semester/database without config (needs setup or import)")
 	}
 	p.loadSemesterMeta(ctx)

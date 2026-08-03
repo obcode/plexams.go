@@ -111,9 +111,6 @@ func (p *Plexams) SetSemesterConfigInput(ctx context.Context, data *model.Semest
 	}
 
 	p.deriveSemesterConfig(input)
-	if err := p.dbClient.SaveSemesterConfig(ctx, p.semesterConfig); err != nil {
-		log.Error().Err(err).Msg("cannot save derived semester config")
-	}
 
 	return &model.SaveSemesterConfigResult{Ok: true, Warnings: warnings}, nil
 }

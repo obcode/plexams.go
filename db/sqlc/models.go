@@ -483,7 +483,7 @@ type Room struct {
 type RoomRequest struct {
 	SemesterID string
 	RoomName   string
-	Starttime  *time.Time
+	Starttime  time.Time
 	ValidFrom  time.Time
 	ValidUntil time.Time
 	Approved   bool

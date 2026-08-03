@@ -114,18 +114,30 @@ create table blocked_room (
     primary key (semester_id, room_name, starttime)
 );
 
--- Rooms requested from Gebäudemanagement. from/until are the request's own
--- window; starttime relates it to the exam slot it was requested for.
+-- Rooms requested from Gebäudemanagement. valid_from/valid_until are the
+-- request's own window; starttime relates it to the exam slot it was requested
+-- for, and is what identifies the request.
+--
+-- The key is (room, starttime), not (room, valid_from): every db method addresses
+-- a request that way -- GetRoomRequest, SetRoomRequestApproved/Active,
+-- UpdateRoomRequestTime -- and UpdateRoomRequestTime *changes* valid_from, so a
+-- key containing it would have moved the row out from under the caller that just
+-- edited it. The two really are different values: in Test26SS-v2 all 57 requests
+-- have valid_from 15 minutes before starttime, the setup buffer.
+--
+-- starttime is therefore NOT NULL. Every construction site sets it
+-- (plexams/room_requests.go:75,101, room_requests_generate.go:194,
+-- csv_export.go:732); a row without one could be neither approved nor deleted.
 create table room_request (
     semester_id text not null references semester(id) on delete cascade,
     room_name   text not null references room(name),
-    starttime   timestamptz,
+    starttime   timestamptz not null,
     valid_from  timestamptz not null,
     valid_until timestamptz not null,
     approved    boolean not null default false,
     active      boolean not null default true,
 
-    primary key (semester_id, room_name, valid_from),
+    primary key (semester_id, room_name, starttime),
     constraint room_request_window_ordered check (valid_until > valid_from)
 );
 

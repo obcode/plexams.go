@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: reference
   originSessionId: aa4db750-7c9f-46e3-9217-79bb0789c0b8
-  modified: 2026-08-02T21:28:15.299Z
+  modified: 2026-08-03T16:13:55.014Z
 ---
 
 Für die PostgreSQL-Migration ([[postgres-migration]]). Der DevContainer hat **kein Docker**
@@ -72,6 +72,25 @@ Der Container hat 7,7 GiB, wovon `gopls` allein ~800 MB hält. Drei Dinge werden
    `GOGC=40 GOMAXPROCS=1 golangci-lint-v2 run`. Dieselben Variablen vor `git commit`
    setzen, sonst stirbt der pre-commit-Hook mit `exit code -9` — der Commit findet dann
    **nicht** statt, ein nachfolgendes `git push` schiebt aber klaglos den alten Stand.
+
+## Die Zeitzonen-Falle im CI
+
+**Der GitHub-Runner läuft in UTC, der DevContainer in Europe/Berlin.** `main.go:22`
+setzt `time.Local` zur Laufzeit auf Europe/Berlin — Tests gehen aber nicht durch
+`main` und erben die Zone des Hosts. Ergebnis: `TestTimestamptzKeepsLocation` und
+`TestSeparatelyLoadedLocationIsADifferentMapKey` waren lokal grün und im CI seit
+ihrer Entstehung rot (`offset = +0 s, want +7200 s`).
+
+Behoben mit einem `TestMain` in `db/timezone_test.go`, das dasselbe tut wie
+`main.go`. Bewusst **nicht** über `TZ` im Workflow: so bleibt die Suite auch auf
+einem Rechner korrekt, der nicht auf deutscher Zeit steht. `package db` und
+`package db_test` landen im selben Testbinary, ein `TestMain` deckt beide ab.
+
+**Reproduzieren:** `TZ=UTC go test ./db/` — das sind die Runner-Bedingungen.
+Bei jedem neuen zeitabhängigen Test einmal so laufen lassen.
+
+**Und: nach dem Pushen `gh run list --branch pg` schauen.** Lokal grün heißt hier
+nachweislich nicht CI-grün.
 
 ## Werkzeuge
 

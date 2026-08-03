@@ -7,7 +7,34 @@ package sqlc
 
 import (
 	"context"
+	"time"
 )
+
+const deleteInvigilations = `-- name: DeleteInvigilations :exec
+delete from invigilation
+where semester_id = $1 and is_self_invigilation = $2
+`
+
+type DeleteInvigilationsParams struct {
+	SemesterID         string
+	IsSelfInvigilation bool
+}
+
+// The two invigilation targets share one table and are told apart by
+// is_self_invigilation, so each replaces only its own half.
+func (q *Queries) DeleteInvigilations(ctx context.Context, arg DeleteInvigilationsParams) error {
+	_, err := q.db.Exec(ctx, deleteInvigilations, arg.SemesterID, arg.IsSelfInvigilation)
+	return err
+}
+
+const deleteInvigilatorRequirements = `-- name: DeleteInvigilatorRequirements :exec
+delete from invigilator_requirement where semester_id = $1
+`
+
+func (q *Queries) DeleteInvigilatorRequirements(ctx context.Context, semesterID string) error {
+	_, err := q.db.Exec(ctx, deleteInvigilatorRequirements, semesterID)
+	return err
+}
 
 const deleteTeachers = `-- name: DeleteTeachers :exec
 delete from teacher where semester_id = $1
@@ -15,6 +42,21 @@ delete from teacher where semester_id = $1
 
 func (q *Queries) DeleteTeachers(ctx context.Context, semesterID string) error {
 	_, err := q.db.Exec(ctx, deleteTeachers, semesterID)
+	return err
+}
+
+const deleteZPAStudents = `-- name: DeleteZPAStudents :exec
+
+delete from zpa_student where semester_id = $1
+`
+
+// ---------------------------------------------------------------------------
+// The four ReplaceAll targets (db/save.go). Each is source data replaced
+// wholesale by an import or a generation run, and nothing references any of
+// them -- which is why replacing is safe here and would not be for the exams.
+// ---------------------------------------------------------------------------
+func (q *Queries) DeleteZPAStudents(ctx context.Context, semesterID string) error {
+	_, err := q.db.Exec(ctx, deleteZPAStudents, semesterID)
 	return err
 }
 
@@ -124,6 +166,87 @@ func (q *Queries) GetZPAStudent(ctx context.Context, arg GetZPAStudentParams) (Z
 	return i, err
 }
 
+const insertInvigilation = `-- name: InsertInvigilation :exec
+insert into invigilation (
+    semester_id, invigilator_id, starttime, room_name, duration_min,
+    is_reserve, is_self_invigilation, pre_planned
+) values ($1, $2, $3, $4, $5, $6, $7, $8)
+`
+
+type InsertInvigilationParams struct {
+	SemesterID         string
+	InvigilatorID      int
+	Starttime          time.Time
+	RoomName           *string
+	DurationMin        int
+	IsReserve          bool
+	IsSelfInvigilation bool
+	PrePlanned         bool
+}
+
+func (q *Queries) InsertInvigilation(ctx context.Context, arg InsertInvigilationParams) error {
+	_, err := q.db.Exec(ctx, insertInvigilation,
+		arg.SemesterID,
+		arg.InvigilatorID,
+		arg.Starttime,
+		arg.RoomName,
+		arg.DurationMin,
+		arg.IsReserve,
+		arg.IsSelfInvigilation,
+		arg.PrePlanned,
+	)
+	return err
+}
+
+const insertInvigilatorRequirement = `-- name: InsertInvigilatorRequirement :exec
+insert into invigilator_requirement (
+    semester_id, invigilator_id, invigilator, excluded_dates, part_time,
+    oral_exams_contribution, livecoding_contribution, master_contribution,
+    free_semester, overtime_last_semester, overtime_this_semester
+) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+on conflict (semester_id, invigilator_id) do update set
+    invigilator             = excluded.invigilator,
+    excluded_dates          = excluded.excluded_dates,
+    part_time               = excluded.part_time,
+    oral_exams_contribution = excluded.oral_exams_contribution,
+    livecoding_contribution = excluded.livecoding_contribution,
+    master_contribution     = excluded.master_contribution,
+    free_semester           = excluded.free_semester,
+    overtime_last_semester  = excluded.overtime_last_semester,
+    overtime_this_semester  = excluded.overtime_this_semester
+`
+
+type InsertInvigilatorRequirementParams struct {
+	SemesterID             string
+	InvigilatorID          int
+	Invigilator            string
+	ExcludedDates          []string
+	PartTime               float64
+	OralExamsContribution  int
+	LivecodingContribution int
+	MasterContribution     int
+	FreeSemester           float64
+	OvertimeLastSemester   float64
+	OvertimeThisSemester   float64
+}
+
+func (q *Queries) InsertInvigilatorRequirement(ctx context.Context, arg InsertInvigilatorRequirementParams) error {
+	_, err := q.db.Exec(ctx, insertInvigilatorRequirement,
+		arg.SemesterID,
+		arg.InvigilatorID,
+		arg.Invigilator,
+		arg.ExcludedDates,
+		arg.PartTime,
+		arg.OralExamsContribution,
+		arg.LivecodingContribution,
+		arg.MasterContribution,
+		arg.FreeSemester,
+		arg.OvertimeLastSemester,
+		arg.OvertimeThisSemester,
+	)
+	return err
+}
+
 const insertTeacher = `-- name: InsertTeacher :exec
 insert into teacher (
     semester_id, id, shortname, fullname, email, is_prof, is_lba, is_prof_hc,
@@ -173,6 +296,44 @@ func (q *Queries) InsertTeacher(ctx context.Context, arg InsertTeacherParams) er
 		arg.IsActive,
 		arg.LastSemester,
 		arg.Fk,
+	)
+	return err
+}
+
+const insertZPAStudent = `-- name: InsertZPAStudent :exec
+insert into zpa_student (
+    semester_id, mtknr, greeting, first_name, last_name, email, gender, group_name
+) values ($1, $2, $3, $4, $5, $6, $7, $8)
+on conflict (semester_id, mtknr) do update set
+    greeting   = excluded.greeting,
+    first_name = excluded.first_name,
+    last_name  = excluded.last_name,
+    email      = excluded.email,
+    gender     = excluded.gender,
+    group_name = excluded.group_name
+`
+
+type InsertZPAStudentParams struct {
+	SemesterID string
+	Mtknr      string
+	Greeting   string
+	FirstName  string
+	LastName   string
+	Email      string
+	Gender     string
+	GroupName  string
+}
+
+func (q *Queries) InsertZPAStudent(ctx context.Context, arg InsertZPAStudentParams) error {
+	_, err := q.db.Exec(ctx, insertZPAStudent,
+		arg.SemesterID,
+		arg.Mtknr,
+		arg.Greeting,
+		arg.FirstName,
+		arg.LastName,
+		arg.Email,
+		arg.Gender,
+		arg.GroupName,
 	)
 	return err
 }

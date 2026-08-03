@@ -23,7 +23,12 @@ create table invigilation (
     starttime            timestamptz not null,
     -- Null for a reserve duty that is not tied to one room.
     room_name            text references room(name),
-    duration_min         int  not null check (duration_min > 0),
+    -- >= 0, not > 0. A self-invigilation carries no duration at all: the examer
+    -- supervises their own exam and nothing counts the minutes. Every one of the
+    -- 43 self-invigilations in 2026-SS has duration 0, and 39 of 39 in 2025-WS,
+    -- so `> 0` would have rejected the entire result of MakeSelfInvigilations.
+    -- The generated invigilations of other people's exams all carry a real one.
+    duration_min         int  not null check (duration_min >= 0),
     is_reserve           boolean not null default false,
     is_self_invigilation boolean not null default false,
     pre_planned          boolean not null default false

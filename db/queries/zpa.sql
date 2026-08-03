@@ -46,3 +46,56 @@ select * from zpa_student where semester_id = $1 order by last_name, first_name;
 
 -- name: GetZPAStudent :one
 select * from zpa_student where semester_id = $1 and mtknr = $2;
+
+-- ---------------------------------------------------------------------------
+-- The four ReplaceAll targets (db/save.go). Each is source data replaced
+-- wholesale by an import or a generation run, and nothing references any of
+-- them -- which is why replacing is safe here and would not be for the exams.
+-- ---------------------------------------------------------------------------
+
+-- name: DeleteZPAStudents :exec
+delete from zpa_student where semester_id = $1;
+
+-- name: InsertZPAStudent :exec
+insert into zpa_student (
+    semester_id, mtknr, greeting, first_name, last_name, email, gender, group_name
+) values ($1, $2, $3, $4, $5, $6, $7, $8)
+on conflict (semester_id, mtknr) do update set
+    greeting   = excluded.greeting,
+    first_name = excluded.first_name,
+    last_name  = excluded.last_name,
+    email      = excluded.email,
+    gender     = excluded.gender,
+    group_name = excluded.group_name;
+
+-- name: DeleteInvigilatorRequirements :exec
+delete from invigilator_requirement where semester_id = $1;
+
+-- name: InsertInvigilatorRequirement :exec
+insert into invigilator_requirement (
+    semester_id, invigilator_id, invigilator, excluded_dates, part_time,
+    oral_exams_contribution, livecoding_contribution, master_contribution,
+    free_semester, overtime_last_semester, overtime_this_semester
+) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+on conflict (semester_id, invigilator_id) do update set
+    invigilator             = excluded.invigilator,
+    excluded_dates          = excluded.excluded_dates,
+    part_time               = excluded.part_time,
+    oral_exams_contribution = excluded.oral_exams_contribution,
+    livecoding_contribution = excluded.livecoding_contribution,
+    master_contribution     = excluded.master_contribution,
+    free_semester           = excluded.free_semester,
+    overtime_last_semester  = excluded.overtime_last_semester,
+    overtime_this_semester  = excluded.overtime_this_semester;
+
+-- The two invigilation targets share one table and are told apart by
+-- is_self_invigilation, so each replaces only its own half.
+-- name: DeleteInvigilations :exec
+delete from invigilation
+where semester_id = $1 and is_self_invigilation = $2;
+
+-- name: InsertInvigilation :exec
+insert into invigilation (
+    semester_id, invigilator_id, starttime, room_name, duration_min,
+    is_reserve, is_self_invigilation, pre_planned
+) values ($1, $2, $3, $4, $5, $6, $7, $8);

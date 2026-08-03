@@ -108,7 +108,8 @@ create table primuss_count (
 
     primary key (semester_id, program, ancode),
     foreign key (semester_id, program, ancode)
-        references primuss_exam(semester_id, program, ancode) on delete cascade
+        references primuss_exam(semester_id, program, ancode)
+        on delete cascade on update cascade
 );
 
 -- THE ancode-keyed document, unrolled.
@@ -136,11 +137,19 @@ create table primuss_conflict (
     other_ancode int  not null,
     num_students int  not null,
 
+-- ON UPDATE CASCADE on both keys is what retires the $rename. Renumbering a
+-- Primuss exam used to be three steps -- $set AnCo in exams, $set AnCo in count,
+-- then a $rename of one FIELD NAME across every document of the conflicts
+-- collection -- with the data inconsistent between them. Here the single UPDATE
+-- of primuss_exam.ancode propagates to the counter, to the conflicts of that exam
+-- and to every conflict that names it as a counterpart, atomically.
     primary key (semester_id, program, ancode, other_ancode),
     foreign key (semester_id, program, ancode)
-        references primuss_exam(semester_id, program, ancode) on delete cascade,
+        references primuss_exam(semester_id, program, ancode)
+        on delete cascade on update cascade,
     foreign key (semester_id, program, other_ancode)
-        references primuss_exam(semester_id, program, ancode) on delete cascade
+        references primuss_exam(semester_id, program, ancode)
+        on delete cascade on update cascade
 );
 
 -- Exams of joint study programs (MUC.DAI, MUC.HEALTH), imported from their CSV.

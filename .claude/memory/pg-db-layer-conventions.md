@@ -87,6 +87,30 @@ Feldnamen stimmen fast immer überein.
   die das Programm nennt, weil sie unverändert in der GUI landet
   (SQLSTATE `23503` abfangen, nicht den nackten Constraint-Fehler durchreichen).
 
+## Was in 3b dazukam
+
+- **`SELECT DISTINCT` und `collate "C"` vertragen sich nicht.** Weder als
+  `order by x collate "C"` (Fehler 42P10) noch mit dem Collate in der Select-Liste
+  (sqlc verliert dann den Spaltentyp und liefert `[]interface{}`). Lösung: das
+  `distinct` in eine Unterabfrage, sortieren außen.
+- **`ON UPDATE CASCADE`, wo der Schlüssel ein fachlicher Wert ist.** Der
+  Ancode-Rename ist damit ein `UPDATE` statt dreier Schritte. Gilt nur für
+  abgeleitete Quelldaten (`primuss_count`, `primuss_conflict`) — für
+  handgepflegte Tabellen bleibt es bei der Regel aus [[postgres-migration]].
+- **`DeleteOne` ist nicht `DELETE … WHERE`.** Wo Mongo genau ein Dokument
+  gelöscht hat, muss PG genau eine Zeile löschen
+  (`delete … where id = (select id … limit 1)`). Bei `RemoveStudentReg` ist das
+  der Unterschied zwischen „Dublette entfernen" und „beide Anmeldungen weg".
+- **Sortierung über das jsonb-Dokument** (`order by student ->> 'name'`) statt
+  über eine duplizierte Spalte — dann kann nichts auseinanderlaufen.
+- **Zwei gleichnamige Felder sind nicht dasselbe Feld.** Siehe
+  `studentreg.program` vs. `student_program`. Beim Portieren jeder Methode
+  prüfen, woher der Wert in Mongo *wirklich* kam: Collection-Name oder
+  Dokumentfeld.
+- Testnamen kollidieren mit den Mongo-Tests im selben Package
+  (`db_test`) — die PG-Variante bekommt einen inhaltlich anderen Namen, kein
+  `…PG`-Suffix.
+
 ## Nicht portiert — und warum
 
 - `EnsureIndexes` — stirbt mit Mongo, goose besitzt die Struktur.

@@ -9,20 +9,24 @@ metadata:
 ---
 
 Für die PostgreSQL-Migration ([[postgres-migration]]). Der DevContainer hat **kein Docker**
-— dieselbe Lage wie beim Standalone-`mongod` in [[mongotest-without-docker]]. Solange
-`plexams.dev` keinen Postgres-Service mitbringt, läuft er direkt im Container.
+— dieselbe Lage wie beim Standalone-`mongod` in [[mongotest-without-docker]]. Der Server
+läuft deshalb direkt im Container, nicht als Compose-Dienst.
 
-**Server:** PostgreSQL 18 aus dem PGDG-Repo (Debians eigene Quelle hat nur 15):
+**Server:** PostgreSQL 18 aus dem PGDG-Repo (Debians eigene Quelle hat nur 15).
+**Seit 2026-08-03 liegt er samt `sqlc` und `goose` im `plexams.dev`-Image** (`PG_MAJOR`,
+`SQLC_VERSION`, `GOOSE_VERSION` im Dockerfile) — von Hand nachinstallieren muss man
+nichts mehr. Vorher steckten alle drei nur im laufenden Container und waren nach jedem
+Rebuild weg.
 
-```
-sudo install -d /usr/share/postgresql-common/pgdg
-sudo curl -sS -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail \
-     https://www.postgresql.org/media/keys/ACCC4CF8.asc
-echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
-      https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
-  | sudo tee /etc/apt/sources.list.d/pgdg.list
-sudo apt-get update && sudo apt-get install -y postgresql-18
-```
+Zwei Dinge, die beim Backen aufgefallen sind und bei einer Wiederholung Zeit sparen:
+
+- Das Paket legt einen Default-Cluster an, den hier niemand braucht. Er wird **nach**
+  der Installation per `pg_dropcluster --stop 18 main` entfernt, nicht vorab per
+  `create_main_cluster = false`: diese Datei geht durch `ucf`, und ob eine vorab
+  hingelegte Fassung überlebt, hängt am Debconf-Frontend. Löschen ist deterministisch.
+- `/shared/bin` steht im `PATH` **vor** `/usr/local/bin`. Eine dort von Hand abgelegte
+  `sqlc`/`goose`-Kopie überdeckt die Image-Version still und driftet irgendwann von
+  `ci.yml` weg. `post-create.sh` räumt beide auf, wenn das Image sie mitbringt.
 
 Wegwerf-Instanz auf **:5433** (nicht 5432, damit ein späterer Compose-Service nicht
 kollidiert). Startskript liegt versioniert in

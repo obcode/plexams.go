@@ -4,6 +4,8 @@ description: "Wie eine db-Methode auf PostgreSQL portiert wird: Dateilayout, Feh
 metadata:
   node_type: memory
   type: project
+  originSessionId: d81ac9c2-6f6d-4c12-8032-4109f6e4a807
+  modified: 2026-08-03T15:08:04.032Z
 ---
 
 Die Konventionen, nach denen die 41 globalen Methoden in Phase 3a portiert wurden
@@ -111,12 +113,65 @@ Feldnamen stimmen fast immer überein.
   (`db_test`) — die PG-Variante bekommt einen inhaltlich anderen Namen, kein
   `…PG`-Suffix.
 
+## Was in 3c dazukam
+
+- **Kanonische Paare sind das Muster für jede symmetrische Relation.**
+  `exam_same_slot`, `exam_can_share_slot`, `exam_conflict_rating`,
+  `preplan_not_same_slot`, `preplan_can_share_slot`: ein Paar, eine Zeile,
+  `check (a < b)`. Gelesen wird beidseitig
+  (`where a = $1 or b = $1`, plus `case` für die Gegenseite), geschrieben mit
+  `least()`/`greatest()` **in der Query**. Nicht darauf verlassen, dass der
+  Aufrufer normalisiert — `plexams` tut es, der CSV-Import nicht.
+  Wer eine Seite ersetzt, löscht *alle* Paare, in denen sie vorkommt, und legt
+  sie neu an: das ist genau, was das Ersetzen des Mongo-Dokuments tat.
+- **`check`-Constraints auf Dauern immer gegen die Echtdaten prüfen.** Zweimal
+  hätte `> 0` legitime Daten abgelehnt: `planned_room.duration_min` (der
+  Generator kopiert `MaxDuration`, und eine Prüfung ohne gesetzte Dauer liefert
+  0) und `invigilation.duration_min` (**jede** Selbstaufsicht hat 0). Ein Check,
+  der nicht schlechte Daten fängt, sondern einen Erzeugungslauf scheitern lässt,
+  ist schlimmer als keiner.
+- **Nie eine Spalte in den Schlüssel nehmen, die eine Methode ändert.**
+  `room_request` war über `valid_from` verschlüsselt, und
+  `UpdateRoomRequestTime` schreibt genau darauf. Beim Entwurf jedes Schlüssels
+  die schreibenden Methoden durchgehen, nicht nur die lesenden.
+- **`case`-Ausdrücke und `max()` brauchen einen expliziten Cast**, sonst liefert
+  sqlc `[]interface{}` bzw. `int32` (der `int`-Override greift nur auf
+  `pg_catalog.int4`). Vierte lautlose sqlc-Falle, gleiche Familie wie die
+  Positionsparameter.
+- **Ein Zeiger im Modell ist die Existenz der Zeile.**
+  `model.Constraints.RoomConstraints` ist `*RoomConstraints`, deshalb ist
+  `exam_room_constraint` eine eigene Tabelle und keine Nullable-Spalten:
+  Constraints ohne Raumteil zu schreiben löscht die Zeile (und kaskadiert die
+  erlaubten Räume weg), genau wie das Ersetzen des Dokuments.
+- **Ein Aggregat über mehrere Tabellen liest mit einer Query pro Tabelle, nicht
+  pro Prüfung.** `GetConstraints` holt vier Listen und setzt sie in Maps
+  zusammen. Das ist dieselbe Antwort wie ein Dokument pro Prüfung, nur andersrum
+  gebaut — und es ist *kein* Join-Pass (Phase 7), weil sich die Signatur nicht
+  ändert.
+- **Vor-slotless-Daten sind eine Falle bei der Datenprüfung.** Die Plan- und
+  Raum-Collections von 2026-SS tragen noch `daynumber`/`slotnumber`. Für die
+  Form der heutigen Daten ist **Test26SS-v2** die Referenz, für Schlüssel und
+  Mengen weiterhin 2026-SS.
+- **Zeiten in Tests mit `time.Local` bauen**, nie mit
+  `time.LoadLocation("Europe/Berlin")` — das ist ein anderer
+  `*time.Location`-Zeiger und damit ein anderer Map-Key. Siehe
+  `TestSeparatelyLoadedLocationIsADifferentMapKey`.
+
 ## Nicht portiert — und warum
 
 - `EnsureIndexes` — stirbt mit Mongo, goose besitzt die Struktur.
 - `SetRoomRequestWith` — **toter Code**, kein Aufrufer im ganzen Repo, und sein
   `needsRequest`-Parameter hätte in PG nichts mehr zu schreiben.
 - `globalDatabase()` — Mongo-Interna.
+- `RawCollection` / `ReplaceRawCollection` — der untypisierte
+  `map[string]any`-Round-Trip (3b). Blockiert `plexams/primuss/import.go` und
+  `plexams/dump.go` bis zu den typisierten Konvertierern (Plan Abschnitt 8).
+- `SavePlanEntries`, `SavePlanEntriesToBackup`, `BackupPlan` — die
+  **plan_backup-Kette**, toter Code: die drei rufen nur einander auf, kein
+  Aufrufer im Repo, die Collection ist in jedem Semester leer. Keine Tabelle
+  dafür angelegt.
+- `AnnyBookingsCollection` — gab ein `*mongo.Collection` nach außen, kein
+  Aufrufer; laut Plan durch konkrete Queries ersetzt.
 
 Vollständigkeitsprüfung, die das belegt hat: alle `func (db *DB)` mit
 `globalDatabase()` im Rumpf gegen alle `func (db *PG)` diffen. Für 3b–3e dasselbe

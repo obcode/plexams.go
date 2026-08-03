@@ -53,7 +53,14 @@ create table planned_room (
     ancode              int  not null,
     room_name           text not null references room(name),
     -- Longer than the exam for NTA bookings (time compensation).
-    duration_min        int  not null check (duration_min > 0),
+    --
+    -- >= 0, not > 0: the value is the exam's MaxDuration copied verbatim by the
+    -- room generator (plexams/roomplan_build.go:388), and an exam whose duration
+    -- nobody has set yet contributes a 0. 2026-SS has one such row -- ancode 543
+    -- in R2.007, pre-planned, eleven students, not a reserve room. A `> 0` check
+    -- would not have caught bad data; it would have made room generation fail on
+    -- data the planner considers fine.
+    duration_min        int  not null check (duration_min >= 0),
     handicap            boolean not null default false,
     handicap_room_alone boolean not null default false,
     reserve             boolean not null default false,
@@ -124,7 +131,21 @@ create table room_request (
 
 -- Rooms the planner assigned by hand before generation. Hand-entered, so it hangs
 -- off exam rather than plan_entry: it exists before anything is scheduled.
+--
+-- The key is (ancode, room, mtknr), not (ancode, room) -- the same shape as
+-- planned_room above, and for the same reason: the planner pre-assigns a room for
+-- the exam as a whole (mtknr NULL) and additionally pins individual NTA students
+-- into rooms of their own. AddPrePlannedRoomToExam / RemovePrePlannedRoomFromExam
+-- (db/rooms.go) have always addressed the document by all three fields. Checked
+-- against the data before fixing this: in 2026-SS ancode 355 has four rows in
+-- T3.017 (three mtknrs plus the NULL one) and 2025-WS has the same pattern, so
+-- (semester_id, ancode, room_name) would have rejected the real room plan on
+-- import.
+--
+-- NULLS NOT DISTINCT for the same reason as planned_room: without it the row with
+-- no mtknr could be inserted twice.
 create table pre_planned_room (
+    id          bigint generated always as identity primary key,
     semester_id text not null,
     ancode      int  not null,
     room_name   text not null references room(name),
@@ -132,8 +153,9 @@ create table pre_planned_room (
     reserve     boolean not null default false,
     seats       int,
 
-    primary key (semester_id, ancode, room_name),
-    foreign key (semester_id, ancode) references exam(semester_id, ancode) on delete cascade
+    foreign key (semester_id, ancode) references exam(semester_id, ancode) on delete cascade,
+    constraint pre_planned_room_one_per_room_and_student
+        unique nulls not distinct (semester_id, ancode, room_name, mtknr)
 );
 
 -- Exemptions from an NTA's "needs a room alone" entitlement, for one exam.

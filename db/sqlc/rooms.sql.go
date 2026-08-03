@@ -7,7 +7,44 @@ package sqlc
 
 import (
 	"context"
+	"time"
 )
+
+const deletePlannedRooms = `-- name: DeletePlannedRooms :exec
+delete from planned_room where semester_id = $1
+`
+
+// The students go with the rooms: planned_room_student cascades on planned_room.
+func (q *Queries) DeletePlannedRooms(ctx context.Context, semesterID string) error {
+	_, err := q.db.Exec(ctx, deletePlannedRooms, semesterID)
+	return err
+}
+
+const deletePrePlannedRoom = `-- name: DeletePrePlannedRoom :execrows
+delete from pre_planned_room
+where semester_id = $1 and ancode = $2 and room_name = $3
+  and mtknr is not distinct from $4
+`
+
+type DeletePrePlannedRoomParams struct {
+	SemesterID string
+	Ancode     int
+	RoomName   string
+	Mtknr      *string
+}
+
+func (q *Queries) DeletePrePlannedRoom(ctx context.Context, arg DeletePrePlannedRoomParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletePrePlannedRoom,
+		arg.SemesterID,
+		arg.Ancode,
+		arg.RoomName,
+		arg.Mtknr,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
 
 const getRoom = `-- name: GetRoom :one
 select name, seats, handicap, lab, places_with_socket, request_with, needs_request, request_priority, exahm, seb, seb_seats, hmeb_seats, deactivated, hitzewert from room where name = $1
@@ -33,6 +70,59 @@ func (q *Queries) GetRoom(ctx context.Context, name string) (Room, error) {
 		&i.Hitzewert,
 	)
 	return i, err
+}
+
+const insertPlannedRoom = `-- name: InsertPlannedRoom :one
+insert into planned_room (
+    semester_id, ancode, room_name, duration_min, handicap,
+    handicap_room_alone, reserve, nta_mtknr, pre_planned
+) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+returning id
+`
+
+type InsertPlannedRoomParams struct {
+	SemesterID        string
+	Ancode            int
+	RoomName          string
+	DurationMin       int
+	Handicap          bool
+	HandicapRoomAlone bool
+	Reserve           bool
+	NtaMtknr          *string
+	PrePlanned        bool
+}
+
+func (q *Queries) InsertPlannedRoom(ctx context.Context, arg InsertPlannedRoomParams) (int64, error) {
+	row := q.db.QueryRow(ctx, insertPlannedRoom,
+		arg.SemesterID,
+		arg.Ancode,
+		arg.RoomName,
+		arg.DurationMin,
+		arg.Handicap,
+		arg.HandicapRoomAlone,
+		arg.Reserve,
+		arg.NtaMtknr,
+		arg.PrePlanned,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertPlannedRoomStudent = `-- name: InsertPlannedRoomStudent :exec
+insert into planned_room_student (planned_room_id, mtknr)
+values ($1, $2)
+on conflict do nothing
+`
+
+type InsertPlannedRoomStudentParams struct {
+	PlannedRoomID int64
+	Mtknr         string
+}
+
+func (q *Queries) InsertPlannedRoomStudent(ctx context.Context, arg InsertPlannedRoomStudentParams) error {
+	_, err := q.db.Exec(ctx, insertPlannedRoomStudent, arg.PlannedRoomID, arg.Mtknr)
+	return err
 }
 
 const insertRoom = `-- name: InsertRoom :one
@@ -98,6 +188,341 @@ func (q *Queries) InsertRoom(ctx context.Context, arg InsertRoomParams) (Room, e
 		&i.Hitzewert,
 	)
 	return i, err
+}
+
+const listPlannedRoomNames = `-- name: ListPlannedRoomNames :many
+select room_name from (
+    select distinct room_name from planned_room where semester_id = $1
+) r order by room_name collate "C"
+`
+
+// Room names, not rooms: the distinct has to happen before the ordering,
+// because `select distinct ... order by x collate "C"` is error 42P10.
+func (q *Queries) ListPlannedRoomNames(ctx context.Context, semesterID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listPlannedRoomNames, semesterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var room_name string
+		if err := rows.Scan(&room_name); err != nil {
+			return nil, err
+		}
+		items = append(items, room_name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlannedRoomNamesAt = `-- name: ListPlannedRoomNamesAt :many
+select room_name from (
+    select distinct room_name from planned_room_v
+    where semester_id = $1 and starttime = $2
+) r order by room_name collate "C"
+`
+
+type ListPlannedRoomNamesAtParams struct {
+	SemesterID string
+	Starttime  *time.Time
+}
+
+func (q *Queries) ListPlannedRoomNamesAt(ctx context.Context, arg ListPlannedRoomNamesAtParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listPlannedRoomNamesAt, arg.SemesterID, arg.Starttime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var room_name string
+		if err := rows.Scan(&room_name); err != nil {
+			return nil, err
+		}
+		items = append(items, room_name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlannedRooms = `-- name: ListPlannedRooms :many
+
+select v.id, v.semester_id, v.ancode, v.room_name, v.duration_min, v.handicap, v.handicap_room_alone, v.reserve, v.nta_mtknr, v.pre_planned, v.starttime, coalesce(s.mtknrs, '{}')::text[] as mtknrs
+from planned_room_v v
+left join lateral (
+    select array_agg(prs.mtknr order by prs.mtknr) as mtknrs
+    from planned_room_student prs where prs.planned_room_id = v.id
+) s on true
+where v.semester_id = $1
+order by v.ancode, v.room_name collate "C", v.id
+`
+
+type ListPlannedRoomsRow struct {
+	ID                int64
+	SemesterID        string
+	Ancode            int
+	RoomName          string
+	DurationMin       int
+	Handicap          bool
+	HandicapRoomAlone bool
+	Reserve           bool
+	NtaMtknr          *string
+	PrePlanned        bool
+	Starttime         *time.Time
+	Mtknrs            []string
+}
+
+// ---------------------------------------------------------------------------
+// The room plan.
+//
+// Every read goes through planned_room_v, which joins the exam's plan entry for
+// the start time. The column that used to hold a copy of it is gone, so there is
+// no longer a version of this data that can disagree with the schedule.
+//
+// The students are their own table; the reads fold them back into the array the
+// model has always carried, ordered so the answer is stable.
+// ---------------------------------------------------------------------------
+func (q *Queries) ListPlannedRooms(ctx context.Context, semesterID string) ([]ListPlannedRoomsRow, error) {
+	rows, err := q.db.Query(ctx, listPlannedRooms, semesterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlannedRoomsRow{}
+	for rows.Next() {
+		var i ListPlannedRoomsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SemesterID,
+			&i.Ancode,
+			&i.RoomName,
+			&i.DurationMin,
+			&i.Handicap,
+			&i.HandicapRoomAlone,
+			&i.Reserve,
+			&i.NtaMtknr,
+			&i.PrePlanned,
+			&i.Starttime,
+			&i.Mtknrs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlannedRoomsAt = `-- name: ListPlannedRoomsAt :many
+select v.id, v.semester_id, v.ancode, v.room_name, v.duration_min, v.handicap, v.handicap_room_alone, v.reserve, v.nta_mtknr, v.pre_planned, v.starttime, coalesce(s.mtknrs, '{}')::text[] as mtknrs
+from planned_room_v v
+left join lateral (
+    select array_agg(prs.mtknr order by prs.mtknr) as mtknrs
+    from planned_room_student prs where prs.planned_room_id = v.id
+) s on true
+where v.semester_id = $1 and v.starttime = $2
+order by v.ancode, v.room_name collate "C", v.id
+`
+
+type ListPlannedRoomsAtParams struct {
+	SemesterID string
+	Starttime  *time.Time
+}
+
+type ListPlannedRoomsAtRow struct {
+	ID                int64
+	SemesterID        string
+	Ancode            int
+	RoomName          string
+	DurationMin       int
+	Handicap          bool
+	HandicapRoomAlone bool
+	Reserve           bool
+	NtaMtknr          *string
+	PrePlanned        bool
+	Starttime         *time.Time
+	Mtknrs            []string
+}
+
+func (q *Queries) ListPlannedRoomsAt(ctx context.Context, arg ListPlannedRoomsAtParams) ([]ListPlannedRoomsAtRow, error) {
+	rows, err := q.db.Query(ctx, listPlannedRoomsAt, arg.SemesterID, arg.Starttime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlannedRoomsAtRow{}
+	for rows.Next() {
+		var i ListPlannedRoomsAtRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SemesterID,
+			&i.Ancode,
+			&i.RoomName,
+			&i.DurationMin,
+			&i.Handicap,
+			&i.HandicapRoomAlone,
+			&i.Reserve,
+			&i.NtaMtknr,
+			&i.PrePlanned,
+			&i.Starttime,
+			&i.Mtknrs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlannedRoomsForAncode = `-- name: ListPlannedRoomsForAncode :many
+select v.id, v.semester_id, v.ancode, v.room_name, v.duration_min, v.handicap, v.handicap_room_alone, v.reserve, v.nta_mtknr, v.pre_planned, v.starttime, coalesce(s.mtknrs, '{}')::text[] as mtknrs
+from planned_room_v v
+left join lateral (
+    select array_agg(prs.mtknr order by prs.mtknr) as mtknrs
+    from planned_room_student prs where prs.planned_room_id = v.id
+) s on true
+where v.semester_id = $1 and v.ancode = $2
+order by v.room_name collate "C", v.id
+`
+
+type ListPlannedRoomsForAncodeParams struct {
+	SemesterID string
+	Ancode     int
+}
+
+type ListPlannedRoomsForAncodeRow struct {
+	ID                int64
+	SemesterID        string
+	Ancode            int
+	RoomName          string
+	DurationMin       int
+	Handicap          bool
+	HandicapRoomAlone bool
+	Reserve           bool
+	NtaMtknr          *string
+	PrePlanned        bool
+	Starttime         *time.Time
+	Mtknrs            []string
+}
+
+func (q *Queries) ListPlannedRoomsForAncode(ctx context.Context, arg ListPlannedRoomsForAncodeParams) ([]ListPlannedRoomsForAncodeRow, error) {
+	rows, err := q.db.Query(ctx, listPlannedRoomsForAncode, arg.SemesterID, arg.Ancode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPlannedRoomsForAncodeRow{}
+	for rows.Next() {
+		var i ListPlannedRoomsForAncodeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SemesterID,
+			&i.Ancode,
+			&i.RoomName,
+			&i.DurationMin,
+			&i.Handicap,
+			&i.HandicapRoomAlone,
+			&i.Reserve,
+			&i.NtaMtknr,
+			&i.PrePlanned,
+			&i.Starttime,
+			&i.Mtknrs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPrePlannedRooms = `-- name: ListPrePlannedRooms :many
+
+select id, semester_id, ancode, room_name, mtknr, reserve, seats from pre_planned_room
+where semester_id = $1
+order by ancode, room_name collate "C", mtknr
+`
+
+// ---------------------------------------------------------------------------
+// The pre-planning: rooms the planner pinned by hand, before generation.
+// ---------------------------------------------------------------------------
+func (q *Queries) ListPrePlannedRooms(ctx context.Context, semesterID string) ([]PrePlannedRoom, error) {
+	rows, err := q.db.Query(ctx, listPrePlannedRooms, semesterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PrePlannedRoom{}
+	for rows.Next() {
+		var i PrePlannedRoom
+		if err := rows.Scan(
+			&i.ID,
+			&i.SemesterID,
+			&i.Ancode,
+			&i.RoomName,
+			&i.Mtknr,
+			&i.Reserve,
+			&i.Seats,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPrePlannedRoomsForExam = `-- name: ListPrePlannedRoomsForExam :many
+select id, semester_id, ancode, room_name, mtknr, reserve, seats from pre_planned_room
+where semester_id = $1 and ancode = $2
+order by room_name collate "C", mtknr
+`
+
+type ListPrePlannedRoomsForExamParams struct {
+	SemesterID string
+	Ancode     int
+}
+
+func (q *Queries) ListPrePlannedRoomsForExam(ctx context.Context, arg ListPrePlannedRoomsForExamParams) ([]PrePlannedRoom, error) {
+	rows, err := q.db.Query(ctx, listPrePlannedRoomsForExam, arg.SemesterID, arg.Ancode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PrePlannedRoom{}
+	for rows.Next() {
+		var i PrePlannedRoom
+		if err := rows.Scan(
+			&i.ID,
+			&i.SemesterID,
+			&i.Ancode,
+			&i.RoomName,
+			&i.Mtknr,
+			&i.Reserve,
+			&i.Seats,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRooms = `-- name: ListRooms :many
@@ -254,4 +679,36 @@ func (q *Queries) SetRoomDeactivated(ctx context.Context, arg SetRoomDeactivated
 		&i.Hitzewert,
 	)
 	return i, err
+}
+
+const upsertPrePlannedRoom = `-- name: UpsertPrePlannedRoom :exec
+insert into pre_planned_room (semester_id, ancode, room_name, mtknr, reserve, seats)
+values ($1, $2, $3, $4, $5, $6)
+on conflict (semester_id, ancode, room_name, mtknr) do update set
+    reserve = excluded.reserve,
+    seats   = excluded.seats
+`
+
+type UpsertPrePlannedRoomParams struct {
+	SemesterID string
+	Ancode     int
+	RoomName   string
+	Mtknr      *string
+	Reserve    bool
+	Seats      *int
+}
+
+// Mongo deleted the document with the same (ancode, room, mtknr) and inserted the
+// new one. The unique constraint spells that key out, so this is one upsert --
+// and `is not distinct from` is how a NULL mtknr matches the row that has none.
+func (q *Queries) UpsertPrePlannedRoom(ctx context.Context, arg UpsertPrePlannedRoomParams) error {
+	_, err := q.db.Exec(ctx, upsertPrePlannedRoom,
+		arg.SemesterID,
+		arg.Ancode,
+		arg.RoomName,
+		arg.Mtknr,
+		arg.Reserve,
+		arg.Seats,
+	)
+	return err
 }

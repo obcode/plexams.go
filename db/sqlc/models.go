@@ -397,6 +397,7 @@ type PrePlannedInvigilation struct {
 }
 
 type PrePlannedRoom struct {
+	ID         int64
 	SemesterID string
 	Ancode     int
 	RoomName   string

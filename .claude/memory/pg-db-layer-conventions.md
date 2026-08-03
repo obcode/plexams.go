@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d81ac9c2-6f6d-4c12-8032-4109f6e4a807
-  modified: 2026-08-03T16:08:57.257Z
+  modified: 2026-08-03T16:19:41.632Z
 ---
 
 Die Konventionen, nach denen die 41 globalen Methoden in Phase 3a portiert wurden
@@ -208,10 +208,21 @@ Feldnamen stimmen fast immer überein.
   dafür angelegt.
 - `AnnyBookingsCollection` — gab ein `*mongo.Collection` nach außen, kein
   Aufrufer; laut Plan durch konkrete Queries ersetzt.
-- `NtaWithRegs` — **kaputt, nicht nur ungenutzt**: filtert die globale
-  `nta`-Collection mit `nta.mtknr`, aber die 86 Dokumente tragen `mtknr` flach.
-  Liefert seit jeher immer `(nil, nil)`, die deprecated GraphQL-Query
-  `nta(mtknr)` also immer `null`. Gehört zum Resolver entschieden, nicht hier.
+- `NtaWithRegs` — **ein verwaister Lesepfad**. Als einzige Methode in
+  `db/nta.go` liest sie **nicht** `globalDatabase()`, sondern die
+  *Semester*-Collection `<semester>.nta`. Deren Form (`{nta: {...},
+  regs: {...}}`) passt exakt zum Filter `nta.mtknr` — der Code war richtig, als
+  er geschrieben wurde. Aber die Collection wird **seit 2023-SS nicht mehr
+  befüllt** (2022-WS: 20 Dokumente, 2023-SS: 19, ab 2023-WS: 0 in jedem
+  Semester), weil die vorbereitete Studierendensicht
+  `studentregs_per_student_planned` sie abgelöst hat — daher auch das
+  `// Deprecated: use StudentByMtknr` am Aufrufer. Der Erzeuger wurde entfernt,
+  der Leser blieb stehen.
+  **Folge: die GUI-Seite `/nta/<mtknr>` ist seit ~3 Jahren tot** — sie ist aus
+  `/nta/all` über jede Matrikelnummer verlinkt (`NtaTR.svelte:22`) und zeigt
+  immer „Kein NTA mit dieser Matrikelnummer gefunden".
+  Die Reparatur gehört nicht in `db/`: die Seite muss auf `StudentByMtknr` /
+  die vorbereitete Sicht zeigen (beides portiert), dann kann die Query weg.
 
 Vollständigkeitsprüfung, die das belegt hat: alle `func (db *DB)` mit
 `globalDatabase()` im Rumpf gegen alle `func (db *PG)` diffen. Für 3b–3e dasselbe

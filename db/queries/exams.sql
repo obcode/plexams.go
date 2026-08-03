@@ -88,3 +88,55 @@ on conflict (semester_id, ancode) do update set to_plan = excluded.to_plan;
 
 -- name: DeleteExamsToPlan :exec
 delete from exam_to_plan where semester_id = $1;
+
+-- ---------------------------------------------------------------------------
+-- Externally owned exams: joint programs and other faculties. Same table as the
+-- ZPA ones, told apart by `source` -- plan entries and constraints reference
+-- "an exam that exists", and SQL cannot key into the union of two tables.
+-- ---------------------------------------------------------------------------
+
+-- name: ListExternalExams :many
+select * from exam
+where semester_id = $1 and source = 'external'
+order by ancode;
+
+-- name: GetExternalExam :one
+select * from exam
+where semester_id = $1 and ancode = $2 and source = 'external';
+
+-- name: InsertExternalExam :exec
+insert into exam (
+    semester_id, ancode, source, zpa_id, module, main_examer, main_examer_id,
+    exam_type, exam_type_full, zpa_date, zpa_starttime, duration_min,
+    is_repeater_exam, groups, faculty
+) values (
+    $1, $2, 'external', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+);
+
+-- Only an external exam: deleting a ZPA one by hand is not what this method is
+-- for, and the ZPA import must never delete at all.
+-- name: DeleteExternalExam :exec
+delete from exam
+where semester_id = $1 and ancode = $2 and source = 'external';
+
+-- name: SetExternalExamFaculty :exec
+update exam set faculty = $3
+where semester_id = $1 and ancode = $2 and source = 'external';
+
+-- name: ListPrimussAncodesForExternalExams :many
+select ancode, program, primuss_ancode from exam_primuss_ancode
+where semester_id = $1 and source = 'external'
+order by ancode, program collate "C";
+
+-- name: ListPrimussAncodesForExternalExam :many
+select program, primuss_ancode from exam_primuss_ancode
+where semester_id = $1 and ancode = $2 and source = 'external'
+order by program collate "C";
+
+-- name: InsertExternalPrimussAncode :exec
+insert into exam_primuss_ancode (semester_id, ancode, program, primuss_ancode, source)
+values ($1, $2, $3, $4, 'external')
+on conflict (semester_id, ancode, program, primuss_ancode) do nothing;
+
+-- name: DeletePlanEntry :exec
+delete from plan_entry where semester_id = $1 and ancode = $2;

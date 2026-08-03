@@ -79,7 +79,12 @@ create table exam_primuss_ancode (
     ancode         int  not null,
     program        text not null references study_program(shortname),
     primuss_ancode int  not null,
-    source         text not null check (source in ('zpa', 'added')),
+    -- Three provenances, and they must stay apart: 'zpa' is replaced wholesale on
+    -- every ZPA import, 'added' is the planner's hand-made link that has to
+    -- survive one, and 'external' belongs to an externally owned exam and is
+    -- written and removed with that exam (db/external_exams.go). Merging
+    -- 'external' into 'zpa' would put it in the path of the import's delete.
+    source         text not null check (source in ('zpa', 'added', 'external')),
 
     primary key (semester_id, ancode, program, primuss_ancode),
     foreign key (semester_id, ancode) references exam(semester_id, ancode) on delete cascade

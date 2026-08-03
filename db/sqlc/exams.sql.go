@@ -19,6 +19,37 @@ func (q *Queries) DeleteExamsToPlan(ctx context.Context, semesterID string) erro
 	return err
 }
 
+const deleteExternalExam = `-- name: DeleteExternalExam :exec
+delete from exam
+where semester_id = $1 and ancode = $2 and source = 'external'
+`
+
+type DeleteExternalExamParams struct {
+	SemesterID string
+	Ancode     int
+}
+
+// Only an external exam: deleting a ZPA one by hand is not what this method is
+// for, and the ZPA import must never delete at all.
+func (q *Queries) DeleteExternalExam(ctx context.Context, arg DeleteExternalExamParams) error {
+	_, err := q.db.Exec(ctx, deleteExternalExam, arg.SemesterID, arg.Ancode)
+	return err
+}
+
+const deletePlanEntry = `-- name: DeletePlanEntry :exec
+delete from plan_entry where semester_id = $1 and ancode = $2
+`
+
+type DeletePlanEntryParams struct {
+	SemesterID string
+	Ancode     int
+}
+
+func (q *Queries) DeletePlanEntry(ctx context.Context, arg DeletePlanEntryParams) error {
+	_, err := q.db.Exec(ctx, deletePlanEntry, arg.SemesterID, arg.Ancode)
+	return err
+}
+
 const deleteZPAPrimussAncodesForExam = `-- name: DeleteZPAPrimussAncodesForExam :exec
 delete from exam_primuss_ancode
 where semester_id = $1 and ancode = $2 and source = 'zpa'
@@ -66,6 +97,110 @@ func (q *Queries) GetExam(ctx context.Context, arg GetExamParams) (Exam, error) 
 		&i.WithdrawnAt,
 	)
 	return i, err
+}
+
+const getExternalExam = `-- name: GetExternalExam :one
+select semester_id, ancode, source, zpa_id, module, main_examer, main_examer_id, exam_type, exam_type_full, zpa_date, zpa_starttime, duration_min, is_repeater_exam, groups, faculty, withdrawn_at from exam
+where semester_id = $1 and ancode = $2 and source = 'external'
+`
+
+type GetExternalExamParams struct {
+	SemesterID string
+	Ancode     int
+}
+
+func (q *Queries) GetExternalExam(ctx context.Context, arg GetExternalExamParams) (Exam, error) {
+	row := q.db.QueryRow(ctx, getExternalExam, arg.SemesterID, arg.Ancode)
+	var i Exam
+	err := row.Scan(
+		&i.SemesterID,
+		&i.Ancode,
+		&i.Source,
+		&i.ZpaID,
+		&i.Module,
+		&i.MainExamer,
+		&i.MainExamerID,
+		&i.ExamType,
+		&i.ExamTypeFull,
+		&i.ZpaDate,
+		&i.ZpaStarttime,
+		&i.DurationMin,
+		&i.IsRepeaterExam,
+		&i.Groups,
+		&i.Faculty,
+		&i.WithdrawnAt,
+	)
+	return i, err
+}
+
+const insertExternalExam = `-- name: InsertExternalExam :exec
+insert into exam (
+    semester_id, ancode, source, zpa_id, module, main_examer, main_examer_id,
+    exam_type, exam_type_full, zpa_date, zpa_starttime, duration_min,
+    is_repeater_exam, groups, faculty
+) values (
+    $1, $2, 'external', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+)
+`
+
+type InsertExternalExamParams struct {
+	SemesterID     string
+	Ancode         int
+	ZpaID          *int
+	Module         string
+	MainExamer     string
+	MainExamerID   int
+	ExamType       string
+	ExamTypeFull   string
+	ZpaDate        string
+	ZpaStarttime   string
+	DurationMin    int
+	IsRepeaterExam bool
+	Groups         []string
+	Faculty        string
+}
+
+func (q *Queries) InsertExternalExam(ctx context.Context, arg InsertExternalExamParams) error {
+	_, err := q.db.Exec(ctx, insertExternalExam,
+		arg.SemesterID,
+		arg.Ancode,
+		arg.ZpaID,
+		arg.Module,
+		arg.MainExamer,
+		arg.MainExamerID,
+		arg.ExamType,
+		arg.ExamTypeFull,
+		arg.ZpaDate,
+		arg.ZpaStarttime,
+		arg.DurationMin,
+		arg.IsRepeaterExam,
+		arg.Groups,
+		arg.Faculty,
+	)
+	return err
+}
+
+const insertExternalPrimussAncode = `-- name: InsertExternalPrimussAncode :exec
+insert into exam_primuss_ancode (semester_id, ancode, program, primuss_ancode, source)
+values ($1, $2, $3, $4, 'external')
+on conflict (semester_id, ancode, program, primuss_ancode) do nothing
+`
+
+type InsertExternalPrimussAncodeParams struct {
+	SemesterID    string
+	Ancode        int
+	Program       string
+	PrimussAncode int
+}
+
+func (q *Queries) InsertExternalPrimussAncode(ctx context.Context, arg InsertExternalPrimussAncodeParams) error {
+	_, err := q.db.Exec(ctx, insertExternalPrimussAncode,
+		arg.SemesterID,
+		arg.Ancode,
+		arg.Program,
+		arg.PrimussAncode,
+	)
+	return err
 }
 
 const insertZPAPrimussAncode = `-- name: InsertZPAPrimussAncode :exec
@@ -205,6 +340,123 @@ func (q *Queries) ListExamsToPlanFiltered(ctx context.Context, arg ListExamsToPl
 	return items, nil
 }
 
+const listExternalExams = `-- name: ListExternalExams :many
+
+select semester_id, ancode, source, zpa_id, module, main_examer, main_examer_id, exam_type, exam_type_full, zpa_date, zpa_starttime, duration_min, is_repeater_exam, groups, faculty, withdrawn_at from exam
+where semester_id = $1 and source = 'external'
+order by ancode
+`
+
+// ---------------------------------------------------------------------------
+// Externally owned exams: joint programs and other faculties. Same table as the
+// ZPA ones, told apart by `source` -- plan entries and constraints reference
+// "an exam that exists", and SQL cannot key into the union of two tables.
+// ---------------------------------------------------------------------------
+func (q *Queries) ListExternalExams(ctx context.Context, semesterID string) ([]Exam, error) {
+	rows, err := q.db.Query(ctx, listExternalExams, semesterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Exam{}
+	for rows.Next() {
+		var i Exam
+		if err := rows.Scan(
+			&i.SemesterID,
+			&i.Ancode,
+			&i.Source,
+			&i.ZpaID,
+			&i.Module,
+			&i.MainExamer,
+			&i.MainExamerID,
+			&i.ExamType,
+			&i.ExamTypeFull,
+			&i.ZpaDate,
+			&i.ZpaStarttime,
+			&i.DurationMin,
+			&i.IsRepeaterExam,
+			&i.Groups,
+			&i.Faculty,
+			&i.WithdrawnAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPrimussAncodesForExternalExam = `-- name: ListPrimussAncodesForExternalExam :many
+select program, primuss_ancode from exam_primuss_ancode
+where semester_id = $1 and ancode = $2 and source = 'external'
+order by program collate "C"
+`
+
+type ListPrimussAncodesForExternalExamParams struct {
+	SemesterID string
+	Ancode     int
+}
+
+type ListPrimussAncodesForExternalExamRow struct {
+	Program       string
+	PrimussAncode int
+}
+
+func (q *Queries) ListPrimussAncodesForExternalExam(ctx context.Context, arg ListPrimussAncodesForExternalExamParams) ([]ListPrimussAncodesForExternalExamRow, error) {
+	rows, err := q.db.Query(ctx, listPrimussAncodesForExternalExam, arg.SemesterID, arg.Ancode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPrimussAncodesForExternalExamRow{}
+	for rows.Next() {
+		var i ListPrimussAncodesForExternalExamRow
+		if err := rows.Scan(&i.Program, &i.PrimussAncode); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPrimussAncodesForExternalExams = `-- name: ListPrimussAncodesForExternalExams :many
+select ancode, program, primuss_ancode from exam_primuss_ancode
+where semester_id = $1 and source = 'external'
+order by ancode, program collate "C"
+`
+
+type ListPrimussAncodesForExternalExamsRow struct {
+	Ancode        int
+	Program       string
+	PrimussAncode int
+}
+
+func (q *Queries) ListPrimussAncodesForExternalExams(ctx context.Context, semesterID string) ([]ListPrimussAncodesForExternalExamsRow, error) {
+	rows, err := q.db.Query(ctx, listPrimussAncodesForExternalExams, semesterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPrimussAncodesForExternalExamsRow{}
+	for rows.Next() {
+		var i ListPrimussAncodesForExternalExamsRow
+		if err := rows.Scan(&i.Ancode, &i.Program, &i.PrimussAncode); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listZPAPrimussAncodes = `-- name: ListZPAPrimussAncodes :many
 select ancode, program, primuss_ancode from exam_primuss_ancode
 where semester_id = $1 and source = 'zpa'
@@ -287,6 +539,22 @@ type SetExamToPlanParams struct {
 
 func (q *Queries) SetExamToPlan(ctx context.Context, arg SetExamToPlanParams) error {
 	_, err := q.db.Exec(ctx, setExamToPlan, arg.SemesterID, arg.Ancode, arg.ToPlan)
+	return err
+}
+
+const setExternalExamFaculty = `-- name: SetExternalExamFaculty :exec
+update exam set faculty = $3
+where semester_id = $1 and ancode = $2 and source = 'external'
+`
+
+type SetExternalExamFacultyParams struct {
+	SemesterID string
+	Ancode     int
+	Faculty    string
+}
+
+func (q *Queries) SetExternalExamFaculty(ctx context.Context, arg SetExternalExamFacultyParams) error {
+	_, err := q.db.Exec(ctx, setExternalExamFaculty, arg.SemesterID, arg.Ancode, arg.Faculty)
 	return err
 }
 

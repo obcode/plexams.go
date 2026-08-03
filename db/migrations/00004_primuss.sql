@@ -40,20 +40,40 @@ create table primuss_exam (
 -- would make the import FAIL rather than protect anything, so the duplicate
 -- belongs in the validation report instead (db/indexes.go:33-37 documents the
 -- same decision for the Mongo index).
+--
+-- TWO programs, and they are NOT the same thing. Under MongoDB one of them was
+-- the collection name (studentregs_IF) and the other a field inside the document
+-- (Stg), so nothing forced them together; a single `program` column here would
+-- have quietly merged them.
+--
+--   program         the EXAM's program -- the former collection suffix, and the
+--                   lookup key: "who is registered for (program, ancode)".
+--   student_program the STUDENT's own program, Primuss column Stg. This is what
+--                   model.StudentReg.Program carries, and it feeds the NTA
+--                   program check (plexams/prepare.go:132), model.Student.Program
+--                   and the FK07 statistic.
+--
+-- In 2026-SS they differ for 178 of 10794 registrations (1.6 %) -- exactly the
+-- cross-program cases those consumers exist for. student_program deliberately has
+-- NO foreign key: 14 of its values (AR, BW, CH, DF, DS, DT, EI, GD, ME, MN, PN,
+-- RS, TP, WI) are other faculties' programs and are not in study_program.
 create table studentreg (
-    id             bigint generated always as identity primary key,
-    semester_id    text not null references semester(id) on delete cascade,
-    program        text not null references study_program(shortname),
-    primuss_ancode int  not null,
-    mtknr          text not null,
-    group_name     text not null default '',
-    name           text not null default '',
-    presence       text not null default '',
+    id              bigint generated always as identity primary key,
+    semester_id     text not null references semester(id) on delete cascade,
+    program         text not null references study_program(shortname),
+    student_program text not null default '',
+    primuss_ancode  int  not null,
+    mtknr           text not null,
+    group_name      text not null default '',
+    name            text not null default '',
+    presence        text not null default '',
     -- AASPF is the Primuss field that says which degree a registration belongs
     -- to (84 = Bachelor, 90 = Master). It is the key to telling a DC-B student
     -- from a DC-M one where the study group alone cannot: see aaspf_degree.
-    aaspf          int,
-    raw            jsonb not null default '{}'
+    -- INT here, although the XLSX delivers it as the string "84" -- the importer
+    -- parses it, exactly like every other numeric Primuss column.
+    aaspf           int,
+    raw             jsonb not null default '{}'
 );
 
 create index studentreg_by_exam_idx on studentreg (semester_id, program, primuss_ancode, mtknr);

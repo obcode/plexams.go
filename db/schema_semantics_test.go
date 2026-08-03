@@ -233,3 +233,61 @@ func TestSemesterDeletionCascades(t *testing.T) {
 		}
 	}
 }
+
+// TestStudentRegKeepsBothPrograms pins the distinction the live data forced into
+// the schema.
+//
+// Under MongoDB one program was the collection name (studentregs_IF) and the
+// other a field in the document (Stg), so nothing pushed them together. A single
+// `program` column would have merged them, and the merge would have been
+// invisible: both are strings, both are called Program, and 98 % of the rows
+// agree. The 2 % that do not are precisely the cross-program registrations that
+// the NTA program check, model.Student.Program and the FK07 statistic exist for.
+func TestStudentRegKeepsBothPrograms(t *testing.T) {
+	pg := pgtest.NewDB(t)
+
+	exec(t, pg, `insert into semester (id, semester, schema_version)
+	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into study_program (shortname, name, category)
+	             values ('IF-B', 'Informatik', 'fk07')`)
+
+	// A student of another faculty's programme registered for one of our exams:
+	// the exam is IF-B, the student is an EI (Elektrotechnik) one.
+	exec(t, pg, `insert into studentreg (semester_id, program, student_program, primuss_ancode, mtknr, name)
+	             values ('2026-WS', 'IF-B', 'EI', 100, '00012345', 'Eine Person')`)
+
+	var examProgram, studentProgram string
+	if err := pg.PoolForTest().QueryRow(t.Context(),
+		`select program, student_program from studentreg where mtknr = '00012345'`).
+		Scan(&examProgram, &studentProgram); err != nil {
+		t.Fatalf("read programs: %v", err)
+	}
+	if examProgram != "IF-B" {
+		t.Errorf("program = %q, want the exam's program IF-B", examProgram)
+	}
+	if studentProgram != "EI" {
+		t.Errorf("student_program = %q, want the student's own programme EI", studentProgram)
+	}
+}
+
+// TestStudentProgramNeedsNoStudyProgramRow is the other half: student_program
+// must NOT reference study_program. 14 of its values in 2026-SS are other
+// faculties' codes, and a foreign key there would reject the import rather than
+// protect anything -- the same reasoning as the missing unique index on
+// (ancode, mtknr).
+func TestStudentProgramNeedsNoStudyProgramRow(t *testing.T) {
+	pg := pgtest.NewDB(t)
+
+	exec(t, pg, `insert into semester (id, semester, schema_version)
+	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into study_program (shortname, name, category)
+	             values ('IF-B', 'Informatik', 'fk07')`)
+
+	for _, foreign := range []string{"AR", "BW", "CH", "DF", "DS", "DT", "EI", "GD", "ME", "MN", "PN", "RS", "TP", "WI"} {
+		if _, err := pg.PoolForTest().Exec(t.Context(),
+			`insert into studentreg (semester_id, program, student_program, primuss_ancode, mtknr)
+			 values ('2026-WS', 'IF-B', $1, 100, '00012345')`, foreign); err != nil {
+			t.Errorf("a registration from programme %s was rejected: %v", foreign, err)
+		}
+	}
+}

@@ -534,16 +534,17 @@ type StudentRegsState struct {
 }
 
 type Studentreg struct {
-	ID            int64
-	SemesterID    string
-	Program       string
-	PrimussAncode int
-	Mtknr         string
-	GroupName     string
-	Name          string
-	Presence      string
-	Aaspf         *int
-	Raw           []byte
+	ID             int64
+	SemesterID     string
+	Program        string
+	StudentProgram string
+	PrimussAncode  int
+	Mtknr          string
+	GroupName      string
+	Name           string
+	Presence       string
+	Aaspf          *int
+	Raw            []byte
 }
 
 type StudentregUploadError struct {

@@ -153,9 +153,20 @@ create table assembled_exam (
 );
 
 -- Whether the cache above needs rebuilding. One row per semester.
+--
+-- reason and changed_at are not decoration: SetAssembledExamsDirty writes all
+-- three, and plexams.gui renders exactly this pair in the stale banner
+-- (src/lib/Nav.svelte:1024,1027) -- "stale since <changed_at> because of
+-- <reason>". Storing only `dirty` would have emptied the banner's text without
+-- breaking anything visibly enough to notice. Same omission, same fix, as
+-- student_regs_state in phase 3b.
 create table assembled_exams_state (
     semester_id text primary key references semester(id) on delete cascade,
-    dirty       boolean not null default true
+    dirty       boolean not null default true,
+    -- The operation that last marked them stale (mutation/subscription name).
+    reason      text,
+    -- When they were last marked stale or regenerated.
+    changed_at  timestamptz
 );
 
 -- Files uploaded for a mail (cover pages, invigilator plans). The bytes live in

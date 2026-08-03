@@ -234,6 +234,40 @@ func (q *Queries) ListStudentsPreparedByMtknr(ctx context.Context, arg ListStude
 	return items, nil
 }
 
+const listStudentsWithNta = `-- name: ListStudentsWithNta :many
+select student, format_version from student_prepared
+where semester_id = $1 and student -> 'nta' is not null
+order by student -> 'nta' ->> 'name'
+`
+
+type ListStudentsWithNtaRow struct {
+	Student       []byte
+	FormatVersion int
+}
+
+// The students that have an NTA, for the NTA mails. `nta` is an optional
+// sub-document of model.Student, so "has one" is jsonb key presence -- the same
+// question Mongo asked with {nta: {$ne: null}}.
+func (q *Queries) ListStudentsWithNta(ctx context.Context, semesterID string) ([]ListStudentsWithNtaRow, error) {
+	rows, err := q.db.Query(ctx, listStudentsWithNta, semesterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStudentsWithNtaRow{}
+	for rows.Next() {
+		var i ListStudentsWithNtaRow
+		if err := rows.Scan(&i.Student, &i.FormatVersion); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setStudentRegsState = `-- name: SetStudentRegsState :exec
 insert into student_regs_state (semester_id, dirty, reason, changed_at)
 values ($1, $2, $3, $4)

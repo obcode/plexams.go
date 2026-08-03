@@ -86,6 +86,8 @@ type AssembledExam struct {
 type AssembledExamsState struct {
 	SemesterID string
 	Dirty      bool
+	Reason     *string
+	ChangedAt  *time.Time
 }
 
 type BlockedRoom struct {

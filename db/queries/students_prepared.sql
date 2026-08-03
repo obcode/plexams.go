@@ -57,3 +57,11 @@ values ($1, $2, $3, $4);
 select registration, error, format_version from studentreg_upload_error
 where semester_id = $1
 order by id;
+
+-- The students that have an NTA, for the NTA mails. `nta` is an optional
+-- sub-document of model.Student, so "has one" is jsonb key presence -- the same
+-- question Mongo asked with {nta: {$ne: null}}.
+-- name: ListStudentsWithNta :many
+select student, format_version from student_prepared
+where semester_id = $1 and student -> 'nta' is not null
+order by student -> 'nta' ->> 'name';

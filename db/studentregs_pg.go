@@ -249,3 +249,28 @@ func (db *PG) GetRegsWithErrors(ctx context.Context) ([]*model.RegWithError, err
 	}
 	return regsWithErrors, nil
 }
+
+// NtasWithRegs returns the prepared students that have an NTA, sorted by the
+// NTA's name -- the mailing list for the NTA notifications.
+//
+// Reads the prepared per-student view, as the Mongo version did: the NTA there
+// is the one resolved for this semester, together with the student's actual
+// registrations.
+func (db *PG) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
+	rows, err := db.q(ctx).ListStudentsWithNta(ctx, db.semesterID)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get ntas with regs")
+		return nil, err
+	}
+
+	students := make([]*model.Student, 0, len(rows))
+	for _, row := range rows {
+		student, err := studentFromJSON(row.Student, row.FormatVersion)
+		if err != nil {
+			log.Error().Err(err).Msg("cannot decode ntas with regs")
+			return nil, err
+		}
+		students = append(students, student)
+	}
+	return students, nil
+}

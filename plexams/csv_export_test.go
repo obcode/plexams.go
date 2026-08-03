@@ -7,6 +7,40 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// TestCSVDatasetRegistryIsComplete guards the two places a dataset must be
+// registered: csvDatasets() builds it, csvDatasetOrder lists it. A dataset missing
+// from the order is invisible in the GUI and absent from the "my inputs" ZIP
+// without anything failing -- and one missing from csvDatasets() would make the
+// listed name unresolvable.
+func TestCSVDatasetRegistryIsComplete(t *testing.T) {
+	// building the datasets does not touch the DB: the closures are not called here
+	built := (&Plexams{}).csvDatasets()
+
+	for _, name := range csvDatasetOrder {
+		ds, ok := built[name]
+		if !ok {
+			t.Errorf("%q is in csvDatasetOrder but not in csvDatasets()", name)
+			continue
+		}
+		if ds.Title == "" || ds.File == "" || len(ds.Header) == 0 {
+			t.Errorf("%q has an incomplete definition: %+v", name, ds)
+		}
+		if ds.exportRows == nil || ds.importRows == nil {
+			t.Errorf("%q is missing exportRows/importRows", name)
+		}
+	}
+
+	inOrder := make(map[string]bool, len(csvDatasetOrder))
+	for _, name := range csvDatasetOrder {
+		inOrder[name] = true
+	}
+	for name := range built {
+		if !inOrder[name] {
+			t.Errorf("%q is in csvDatasets() but not in csvDatasetOrder", name)
+		}
+	}
+}
+
 func TestEncodeDecodeCSVRoundTrip(t *testing.T) {
 	header := []string{"ancode", "toPlan"}
 	rows := [][]string{{"112", "true"}, {"130", "false"}}

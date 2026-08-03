@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
@@ -68,6 +69,7 @@ var csvDatasetOrder = []string{
 	"duration-overrides",
 	"conflict-ratings",
 	"can-share-slot",
+	"joint-links",
 }
 
 // CSVDatasetNames returns the known CSV dataset keys in a stable order.
@@ -326,6 +328,7 @@ func (p *Plexams) csvDatasets() map[string]csvDataset {
 		"duration-overrides": p.csvDurationOverrides(),
 		"conflict-ratings":   p.csvConflictRatings(),
 		"can-share-slot":     p.csvCanShareSlot(),
+		"joint-links":        p.csvJointLinks(),
 	}
 }
 
@@ -907,6 +910,95 @@ func (p *Plexams) csvCanShareSlot() csvDataset {
 				}
 				if err := p.dbClient.UpsertCanShareSlot(ctx, a1, a2); err != nil {
 					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d: %v", i+2, err))
+					continue
+				}
+				res.Applied++
+			}
+			return res, nil
+		},
+	}
+}
+
+// ---- joint links --------------------------------------------------------------
+
+// csvJointLinks exports the explicit MUC.DAI links (program + primussAncode → our
+// exam). Module and mainExamer are display snapshots taken at link time; they are
+// carried through so the round trip is lossless, not because the import needs them.
+//
+// Unlike the other datasets this one is normally rebuilt by relinkJointExams on
+// every joint import. Exporting it is what makes a manual link (source=manual)
+// survivable outside the database — those are the rows relinking preserves.
+func (p *Plexams) csvJointLinks() csvDataset {
+	header := []string{"program", "primussAncode", "kind", "ancode", "status", "source", "module", "mainExamer"}
+	return csvDataset{
+		Title:  "Verknüpfungen gemeinsamer Studiengänge",
+		File:   "joint-links.csv",
+		Header: header,
+		exportRows: func(ctx context.Context) ([][]string, error) {
+			links, err := p.dbClient.JointLinks(ctx)
+			if err != nil {
+				return nil, err
+			}
+			rows := make([][]string, 0, len(links))
+			for _, l := range links {
+				rows = append(rows, []string{
+					l.Program, strconv.Itoa(l.PrimussAncode), l.Kind, intPtr2s(l.Ancode),
+					l.Status, l.Source, l.Module, l.MainExamer,
+				})
+			}
+			// stable order for a diffable file -- the query does not sort by both keys
+			sort.Slice(rows, func(i, j int) bool {
+				if rows[i][0] != rows[j][0] {
+					return rows[i][0] < rows[j][0]
+				}
+				return rows[i][1] < rows[j][1]
+			})
+			return rows, nil
+		},
+		importRows: func(ctx context.Context, rows [][]string) (*CSVImportResult, error) {
+			res := newCSVImportResult("joint-links")
+			for i, row := range rows {
+				program := strings.TrimSpace(cell(row, 0))
+				primussAncode, err := strconv.Atoi(cell(row, 1))
+				if err != nil {
+					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d: %v", i+2, err))
+					continue
+				}
+				if program == "" {
+					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d: leeres Programm", i+2))
+					continue
+				}
+				kind := strings.ToLower(strings.TrimSpace(cell(row, 2)))
+				if kind != jointLinkExternal && kind != jointLinkZPA {
+					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d: ungültige kind %q (external/zpa)", i+2, cell(row, 2)))
+					continue
+				}
+				ancode, err := s2intPtr(cell(row, 3))
+				if err != nil {
+					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d: %v", i+2, err))
+					continue
+				}
+				status := strings.ToLower(strings.TrimSpace(cell(row, 4)))
+				if status != "linked" && status != jointLinkUnresolved {
+					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d: ungültiger status %q (linked/unresolved)", i+2, cell(row, 4)))
+					continue
+				}
+				// a link that claims to be resolved but names no exam would survive the
+				// import and then fail at display time, far from here
+				if status == "linked" && ancode == nil {
+					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d: status linked ohne ancode", i+2))
+					continue
+				}
+				source := strings.ToLower(strings.TrimSpace(cell(row, 5)))
+				if source != "auto" && source != "manual" {
+					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d: ungültige source %q (auto/manual)", i+2, cell(row, 5)))
+					continue
+				}
+				if err := p.dbClient.UpsertJointLink(ctx, &db.JointLink{
+					Program: program, PrimussAncode: primussAncode, Kind: kind, Ancode: ancode,
+					Status: status, Source: source, Module: cell(row, 6), MainExamer: cell(row, 7),
+				}); err != nil {
+					res.Skipped = append(res.Skipped, fmt.Sprintf("Zeile %d (%s/%d): %v", i+2, program, primussAncode, err))
 					continue
 				}
 				res.Applied++

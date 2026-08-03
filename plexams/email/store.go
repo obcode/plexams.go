@@ -9,7 +9,7 @@ package email
 import "context"
 
 // TemplateStore persists per-template Markdown overrides (the editable layer over the
-// embedded defaults). *db.DB satisfies it.
+// embedded defaults). *db.DB satisfies it, and so does *db.PG.
 type TemplateStore interface {
 	EmailTemplateOverride(ctx context.Context, name string) (string, bool, error)
 	EmailTemplateOverrides(ctx context.Context) (map[string]string, error)

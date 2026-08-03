@@ -102,16 +102,9 @@ func semesterName(semester string) string {
 
 // MongoHost returns the host:port the client is connected to, with any
 // credentials (user:pass@) and path/query stripped, so it is safe to display.
+//
+// Shares its implementation with PG.DBHost, its successor: both feed the same
+// admin view, and two copies of a credential-stripping rule is one too many.
 func (db *DB) MongoHost() string {
-	s := db.uri
-	if i := strings.Index(s, "://"); i >= 0 {
-		s = s[i+3:]
-	}
-	if at := strings.LastIndex(s, "@"); at >= 0 {
-		s = s[at+1:]
-	}
-	if i := strings.IndexAny(s, "/?"); i >= 0 {
-		s = s[:i]
-	}
-	return s
+	return hostOf(db.uri)
 }

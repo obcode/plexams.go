@@ -18,9 +18,17 @@ import (
 // still process-global (SwitchTo assigns it), so the concurrency semantics are
 // unchanged -- de-globalising Plexams is a separate project.
 type PG struct {
-	pool       *pgxpool.Pool
-	queries    *sqlc.Queries
+	pool    *pgxpool.Pool
+	queries *sqlc.Queries
+	// uri is kept for DBHost, which shows the host in the admin view.
+	uri string
+	// semesterID is the workspace key -- what used to be the database name.
 	semesterID string
+	// semester is the logical semester of that workspace, as ZPA knows it.
+	// SwitchTo resolves it (an explicit override wins over the stored label), so
+	// a clone can be planned against without lying to ZPA about which semester
+	// it is.
+	semester string
 }
 
 // txKey carries a pgx.Tx through the context so that every db method picks up an
@@ -56,6 +64,7 @@ func NewPG(ctx context.Context, uri, semesterID string) (*PG, error) {
 	return &PG{
 		pool:       pool,
 		queries:    sqlc.New(pool),
+		uri:        uri,
 		semesterID: semesterID,
 	}, nil
 }

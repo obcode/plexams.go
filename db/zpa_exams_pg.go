@@ -58,7 +58,16 @@ func (db *PG) newProgramResolver(ctx context.Context) *programResolver {
 
 // semesterLabel is the logical semester of this workspace, for the model field
 // that used to be a stored column.
+//
+// The resolved label from SwitchTo wins over the stored one. That is what makes
+// an explicit override work: a clone planned against with `--semester "2026 SS"`
+// must report the real semester to ZPA and not its workspace id, and the
+// override is deliberately not persisted (only SetMetaSemester writes one).
+// Falls back to the registry for a PG built directly, as the tests do.
 func (db *PG) semesterLabel(ctx context.Context) (string, error) {
+	if db.semester != "" {
+		return db.semester, nil
+	}
 	return db.q(ctx).GetSemesterLabel(ctx, db.semesterID)
 }
 

@@ -42,14 +42,29 @@ create index invigilation_by_time_idx on invigilation (semester_id, starttime);
 
 -- Duties the planner assigned by hand before generation. Hand-entered, so the
 -- generator must read it rather than overwrite it.
+--
+-- The key is (starttime, room_name), NOT (invigilator_id, starttime). Both
+-- methods address a row that way: AddPrePlannedInvigilation deletes by start
+-- time and room before inserting -- "only one invigilator per room (or reserve)
+-- at a time" (db/invigilation.go:341) -- and RemovePrePlannedInvigilationAt
+-- takes exactly those two. Keying on the invigilator instead would have got both
+-- halves wrong: assigning a second person to the same room and slot would insert
+-- rather than replace, and one person covering two rooms in one slot would have
+-- been rejected. The live data cannot tell the two apart (2026-SS holds two rows,
+-- and those still carry day/slot), so this comes from what the methods do.
+--
+-- NULLS NOT DISTINCT: a NULL room_name is the reserve, and there is one reserve
+-- per slot -- without it the same reserve duty could be stored twice.
 create table pre_planned_invigilation (
+    id             bigint generated always as identity primary key,
     semester_id    text not null references semester(id) on delete cascade,
     invigilator_id int  not null,
     starttime      timestamptz not null,
     room_name      text references room(name),
     is_reserve     boolean not null default false,
 
-    primary key (semester_id, invigilator_id, starttime)
+    constraint pre_planned_invigilation_one_per_room_and_slot
+        unique nulls not distinct (semester_id, starttime, room_name)
 );
 
 -- What ZPA says about an invigilator's availability and workload. Source data,

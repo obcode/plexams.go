@@ -389,6 +389,7 @@ type PlanningState struct {
 }
 
 type PrePlannedInvigilation struct {
+	ID            int64
 	SemesterID    string
 	InvigilatorID int
 	Starttime     time.Time

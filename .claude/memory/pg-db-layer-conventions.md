@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d81ac9c2-6f6d-4c12-8032-4109f6e4a807
-  modified: 2026-08-03T16:19:41.632Z
+  modified: 2026-08-03T17:25:44.896Z
 ---
 
 Die Konventionen, nach denen die 41 globalen Methoden in Phase 3a portiert wurden
@@ -192,6 +192,29 @@ Feldnamen stimmen fast immer überein.
   `CacheInvigilatorTodos` brauchte in Mongo eine feste `_id` plus ein heilendes
   `DeleteMany`, weil parallele Leser Drop und Insert verschränken konnten. Eine
   Zeile pro Semester ist genau das, was der Workaround herstellen wollte.
+
+## Was Abschnitt 8 (Primuss-Import) dazukam
+
+- **Fremde Spaltennamen gehören in den Leser, nicht in den Speicher.** Die
+  XLSX-Header stehen jetzt als ein `const`-Block in `plexams/primuss/convert.go`.
+  Die realen Header (geprüft, nicht geraten): Anmeldungen `MTKNR AnCode … Stg
+  AASPF Stgru … praesenz_fern`, Katalog `AnCode … Titel … pruefer … sonst
+  ist_praesenz`, Planung `AnCo … Prüfer Sum.` (Punkt!), Überschneidungen
+  `AnCo Titel Prüfer <je Ancode eine Spalte>`. **Der Prüfer heißt im Katalog
+  `pruefer`, in den anderen beiden `Prüfer`**, und nur der Katalog schreibt
+  `AnCode` statt `AnCo`.
+- **Unmodellierte Spalten in `raw jsonb`.** Mongo speicherte Unbekanntes
+  implizit; ein fester Spaltensatz ohne `raw` wäre ein stiller Verlust.
+- **Der Signaturvergleich für „geänderte Ancodes" liest aus `raw`**
+  (`Note`, `gebucht`, `nicht_zul`) — und fehlende Spalte muss dort wie leere
+  Spalte aussehen, sonst markiert ein Primuss-Export ohne diese Spalte jede
+  Prüfung als geändert.
+- **Echte Quelldateien liegen im `semester`-Repo**
+  (`past/<sem>/Sammellisten/<PROG>/*.xlsx`). Test dagegen:
+  `TestConvertRealSammellisten`, übersprungen ohne
+  `PLEXAMS_TEST_SAMMELLISTEN` — die Dateien enthalten Matrikelnummern und
+  Namen und dürfen nicht ins öffentliche Repo. Fixtures in Tests deshalb
+  synthetisch erzeugen.
 
 ## Nicht portiert — und warum
 

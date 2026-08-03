@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d81ac9c2-6f6d-4c12-8032-4109f6e4a807
-  modified: 2026-08-03T15:23:30.352Z
+  modified: 2026-08-03T16:08:57.257Z
 ---
 
 Die Konventionen, nach denen die 41 globalen Methoden in Phase 3a portiert wurden
@@ -161,6 +161,38 @@ Feldnamen stimmen fast immer überein.
   `*time.Location`-Zeiger und damit ein anderer Map-Key. Siehe
   `TestSeparatelyLoadedLocationIsADifferentMapKey`.
 
+## Was in 3d/3e dazukam
+
+- **Der Schlüssel muss der sein, über den die Methoden adressieren** — nicht der,
+  der fachlich naheliegt. Zweimal falsch geraten: `room_request` (über
+  `valid_from` statt `starttime`) und `pre_planned_invigilation` (über
+  `invigilator_id` statt `room_name`). Beim Entwurf jeder Tabelle die
+  `Get`-/`Delete`-/`Set`-Methoden durchgehen und schauen, welche Spalten in
+  deren Filter stehen.
+- **State-Tabellen: den Schreiber und die GUI prüfen, nicht den Lesenamen.**
+  `student_regs_state` (3b) und `assembled_exams_state` (3e) hatten beide nur
+  `dirty`, obwohl der Schreiber `reason` und `changedAt` mitschreibt und die GUI
+  beide im Stale-Banner rendert. Fehlende Spalten leeren dort nur einen Text —
+  nichts scheitert, niemand merkt es.
+- **Optionale Filter brauchen `sqlc.narg`, nicht `@name`.**
+  `emit_pointers_for_null_types` erreicht nullable *Spalten*, nicht Parameter.
+  Mit `@op_type` kommt ein `string` an, und aus „nicht filtern" wird „auf den
+  Leerstring filtern". Fünfte lautlose sqlc-Falle.
+- **Mongos `$elemMatch` über ein Array von Objekten ist jsonb-Containment**
+  (`args @> '[{"key":…,"value":…}]'`). Sagt dasselbe und ist später indizierbar.
+- **Zwei Collections, die sich nur durch eine Eigenschaft unterscheiden, werden
+  eine Tabelle mit Prädikat** (`invigilations_self`/`_other` →
+  `is_self_invigilation`). Dann aber daran denken: „alles ersetzen" muss auf
+  *seine Hälfte* eingeschränkt werden, sonst löscht der eine Erzeugungslauf die
+  Daten des anderen.
+- **Ein Check kann sagen, was ein Dokument nicht sagen konnte.**
+  `email_attachment.size = length(data)`: ein abgeschnittener Upload wurde in
+  Mongo mit der behaupteten Größe gespeichert und fiel erst beim Mailbau auf.
+- **Fixed-`_id`-Workarounds verschwinden mit dem Primärschlüssel.**
+  `CacheInvigilatorTodos` brauchte in Mongo eine feste `_id` plus ein heilendes
+  `DeleteMany`, weil parallele Leser Drop und Insert verschränken konnten. Eine
+  Zeile pro Semester ist genau das, was der Workaround herstellen wollte.
+
 ## Nicht portiert — und warum
 
 - `EnsureIndexes` — stirbt mit Mongo, goose besitzt die Struktur.
@@ -176,6 +208,10 @@ Feldnamen stimmen fast immer überein.
   dafür angelegt.
 - `AnnyBookingsCollection` — gab ein `*mongo.Collection` nach außen, kein
   Aufrufer; laut Plan durch konkrete Queries ersetzt.
+- `NtaWithRegs` — **kaputt, nicht nur ungenutzt**: filtert die globale
+  `nta`-Collection mit `nta.mtknr`, aber die 86 Dokumente tragen `mtknr` flach.
+  Liefert seit jeher immer `(nil, nil)`, die deprecated GraphQL-Query
+  `nta(mtknr)` also immer `null`. Gehört zum Resolver entschieden, nicht hier.
 
 Vollständigkeitsprüfung, die das belegt hat: alle `func (db *DB)` mit
 `globalDatabase()` im Rumpf gegen alle `func (db *PG)` diffen. Für 3b–3e dasselbe

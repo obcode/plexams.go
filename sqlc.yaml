@@ -35,3 +35,22 @@ sql:
             go_type:
               type: "int"
               pointer: true
+          # emit_pointers_for_null_types does NOT reach timestamptz: with the
+          # pgx/v5 driver sqlc maps it to pgtype.Timestamptz regardless, nullable
+          # or not. graph/model uses time.Time / *time.Time throughout, and the
+          # whole point of the Europe/Berlin session time zone is that a scanned
+          # time.Time carries time.Local and stays usable as a map key -- see
+          # TestTimestamptzKeepsLocation. Going through pgtype would mean an
+          # unwrapping step in every single mapper, i.e. ~40 more places to get
+          # the location wrong.
+          #
+          # NOTE the db_type is "timestamptz", not "pg_catalog.timestamptz" --
+          # the qualified spelling matches nothing and fails silently, the same
+          # trap as the `rename` key above.
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+          - db_type: "timestamptz"
+            nullable: true
+            go_type:
+              type: "time.Time"
+              pointer: true

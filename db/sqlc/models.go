@@ -5,7 +5,7 @@
 package sqlc
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 type AaspfDegree struct {
@@ -39,10 +39,10 @@ type AdditionalExamRoom struct {
 type AnnyBooking struct {
 	SemesterID             string
 	Number                 string
-	StartDate              pgtype.Timestamptz
-	EndDate                pgtype.Timestamptz
-	BlockerStartDate       pgtype.Timestamptz
-	BlockerEndDate         pgtype.Timestamptz
+	StartDate              time.Time
+	EndDate                time.Time
+	BlockerStartDate       time.Time
+	BlockerEndDate         time.Time
 	ChargedDuration        int
 	Description            string
 	Note                   string
@@ -58,10 +58,10 @@ type AnnyBooking struct {
 	PersonalizationName    string
 	BookingGroupIdentifier string
 	ResourceID             string
-	CreatedAt              pgtype.Timestamptz
-	UpdatedAt              pgtype.Timestamptz
-	CanceledAt             pgtype.Timestamptz
-	CancelableUntil        pgtype.Timestamptz
+	CreatedAt              *time.Time
+	UpdatedAt              *time.Time
+	CanceledAt             *time.Time
+	CancelableUntil        *time.Time
 }
 
 type AnnyConfig struct {
@@ -91,7 +91,7 @@ type AssembledExamsState struct {
 type BlockedRoom struct {
 	SemesterID string
 	RoomName   string
-	Starttime  pgtype.Timestamptz
+	Starttime  time.Time
 	Reason     *string
 }
 
@@ -103,7 +103,7 @@ type EmailAttachment struct {
 	ContentType string
 	Size        int
 	Data        []byte
-	UploadedAt  pgtype.Timestamptz
+	UploadedAt  time.Time
 }
 
 type EmailTemplate struct {
@@ -127,7 +127,7 @@ type Exam struct {
 	IsRepeaterExam bool
 	Groups         []string
 	Faculty        string
-	WithdrawnAt    pgtype.Timestamptz
+	WithdrawnAt    *time.Time
 }
 
 type ExamAllowedRoom struct {
@@ -158,10 +158,10 @@ type ExamConstraint struct {
 	DoNotPublish     bool
 	Online           bool
 	Location         *string
-	ExcludeDays      []pgtype.Timestamptz
-	PossibleDays     []pgtype.Timestamptz
-	FixedDay         pgtype.Timestamptz
-	FixedTime        pgtype.Timestamptz
+	ExcludeDays      []time.Time
+	PossibleDays     []time.Time
+	FixedDay         *time.Time
+	FixedTime        *time.Time
 }
 
 type ExamDurationOverride struct {
@@ -215,7 +215,7 @@ type Invigilation struct {
 	ID                 int64
 	SemesterID         string
 	InvigilatorID      int
-	Starttime          pgtype.Timestamptz
+	Starttime          time.Time
 	RoomName           *string
 	DurationMin        int
 	IsReserve          bool
@@ -238,7 +238,7 @@ type InvigilatorConstraint struct {
 type InvigilatorExcludedDate struct {
 	SemesterID string
 	TeacherID  int
-	ExcludedOn pgtype.Timestamptz
+	ExcludedOn time.Time
 }
 
 type InvigilatorRequirement struct {
@@ -258,9 +258,9 @@ type InvigilatorRequirement struct {
 type InvigilatorTimeWindow struct {
 	SemesterID     string
 	TeacherID      int
-	WindowDate     pgtype.Timestamptz
-	AvailableFrom  pgtype.Timestamptz
-	AvailableUntil pgtype.Timestamptz
+	WindowDate     time.Time
+	AvailableFrom  *time.Time
+	AvailableUntil *time.Time
 }
 
 type JointExam struct {
@@ -292,7 +292,7 @@ type JointLink struct {
 type MutationLog struct {
 	ID         int64
 	SemesterID string
-	LoggedAt   pgtype.Timestamptz
+	LoggedAt   time.Time
 	Name       string
 	Type       string
 	UserEmail  *string
@@ -335,7 +335,7 @@ type PermanentNonInvigilator struct {
 type PlanEntry struct {
 	SemesterID string
 	Ancode     int
-	Starttime  pgtype.Timestamptz
+	Starttime  *time.Time
 	Locked     bool
 	PhaseFixed bool
 	External   bool
@@ -380,7 +380,7 @@ type PlannedRoomV struct {
 	Reserve           bool
 	NtaMtknr          *string
 	PrePlanned        bool
-	Starttime         pgtype.Timestamptz
+	Starttime         *time.Time
 }
 
 type PlanningState struct {
@@ -391,7 +391,7 @@ type PlanningState struct {
 type PrePlannedInvigilation struct {
 	SemesterID    string
 	InvigilatorID int
-	Starttime     pgtype.Timestamptz
+	Starttime     time.Time
 	RoomName      *string
 	IsReserve     bool
 }
@@ -421,7 +421,7 @@ type PreplanExam struct {
 	Programs         []string
 	ExpectedStudents int
 	DurationMin      *int
-	PlannedStarttime pgtype.Timestamptz
+	PlannedStarttime *time.Time
 	IsFixed          bool
 	Ancode           *int
 	Notes            string
@@ -482,17 +482,17 @@ type Room struct {
 type RoomRequest struct {
 	SemesterID string
 	RoomName   string
-	Starttime  pgtype.Timestamptz
-	ValidFrom  pgtype.Timestamptz
-	ValidUntil pgtype.Timestamptz
+	Starttime  *time.Time
+	ValidFrom  time.Time
+	ValidUntil time.Time
 	Approved   bool
 	Active     bool
 }
 
 type SchedulerState struct {
 	ID           int
-	LastFireAt   pgtype.Timestamptz
-	LastFinished pgtype.Timestamptz
+	LastFireAt   time.Time
+	LastFinished time.Time
 	LastStatus   string
 	LastTrigger  string
 	SemesterID   *string
@@ -504,8 +504,8 @@ type Semester struct {
 	Semester      string
 	SchemaVersion int
 	ReadOnly      bool
-	LastDumpAt    pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
+	LastDumpAt    *time.Time
+	CreatedAt     time.Time
 }
 
 type SemesterConfigInput struct {
@@ -569,7 +569,7 @@ type StudyProgram struct {
 type SyncLog struct {
 	ID            int64
 	SemesterID    string
-	LoggedAt      pgtype.Timestamptz
+	LoggedAt      time.Time
 	Operation     string
 	Label         string
 	Direction     string
@@ -610,7 +610,7 @@ type UserSecret struct {
 	JiraKeyVersion *int
 	JiraNonce      []byte
 	JiraCiphertext []byte
-	JiraUpdatedAt  pgtype.Timestamptz
+	JiraUpdatedAt  *time.Time
 }
 
 type ZpaStudent struct {

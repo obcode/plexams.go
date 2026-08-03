@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/obcode/plexams.go/db/sqlc"
@@ -128,4 +129,64 @@ func (db *PG) Ntas(ctx context.Context) ([]*model.NTA, error) {
 	}
 
 	return ntasFromRows(rows), nil
+}
+
+// SetSemesterOnNTAs stamps the current semester onto every NTA that appears in
+// this semester's registrations, so a compensation that has not been used for a
+// while can be spotted.
+//
+// The label written is the LOGICAL semester ("2026 SS"), not the workspace id
+// ("2026-WS") -- all 63 stored values have that shape. PG carries only the
+// workspace id, so the label is resolved through the registry rather than by
+// adding a second process-global field.
+//
+// The Mongo version issued one FindOneAndUpdate per student; this is one
+// statement, and `returning` still names the students who have no NTA row, which
+// is what the per-student log message was for.
+func (db *PG) SetSemesterOnNTAs(ctx context.Context, studentRegs []interface{}) error {
+	mtknrs := make([]string, 0, len(studentRegs))
+	for _, regRaw := range studentRegs {
+		reg := regRaw.(*model.Student)
+		if reg.Nta == nil {
+			continue
+		}
+		mtknrs = append(mtknrs, reg.Mtknr)
+	}
+	if len(mtknrs) == 0 {
+		return nil
+	}
+
+	label, err := db.q(ctx).GetSemesterLabel(ctx, db.semesterID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Mongo wrote db.semester unconditionally; here a workspace missing from
+		// the registry has to be loud rather than silently stamping nothing.
+		return fmt.Errorf("cannot set semester on ntas: %s is not in the semester registry", db.semesterID)
+	}
+	if err != nil {
+		log.Error().Err(err).Str("semesterID", db.semesterID).Msg("cannot resolve the semester label")
+		return err
+	}
+
+	updated, err := db.q(ctx).SetLastSemesterOnNtas(ctx, sqlc.SetLastSemesterOnNtasParams{
+		LastSemester: &label,
+		Mtknrs:       mtknrs,
+	})
+	if err != nil {
+		log.Error().Err(err).Str("semester", label).Msg("error when setting semester on ntas")
+		return err
+	}
+
+	found := make(map[string]bool, len(updated))
+	for _, mtknr := range updated {
+		found[mtknr] = true
+	}
+	for _, mtknr := range mtknrs {
+		if !found[mtknr] {
+			log.Error().Str("mtknr", mtknr).Msg("nta with mtknr not found")
+		}
+	}
+	log.Debug().Str("last semester", label).Int("ntas", len(updated)).
+		Msg("last semester set on ntas")
+
+	return nil
 }

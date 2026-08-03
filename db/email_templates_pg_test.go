@@ -39,7 +39,7 @@ func TestEmailTemplateOverrideRoundTrip(t *testing.T) {
 }
 
 // A missing override is the normal case -- the compiled-in template is the
-// default -- so it must be (\"\", false, nil) and never an error.
+// default -- so it must be an empty string with ok=false and no error.
 func TestEmailTemplateOverrideMissing(t *testing.T) {
 	pg := pgtest.NewDB(t)
 

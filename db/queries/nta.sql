@@ -34,3 +34,17 @@ returning *;
 
 -- name: SetNtaDeactivated :one
 update nta set deactivated = $2 where mtknr = $1 returning *;
+
+-- SetSemesterOnNTAs marks the NTAs that appear in this semester's registrations.
+-- The Mongo version issued one FindOneAndUpdate per student; this is the same
+-- work as a single statement, and `returning` still tells the caller which mtknr
+-- had no NTA so the log message survives.
+-- name: SetLastSemesterOnNtas :many
+update nta set last_semester = @last_semester
+where mtknr = any(@mtknrs::text[])
+returning mtknr;
+
+-- The label written into nta.last_semester is the LOGICAL semester ("2026 SS"),
+-- not the workspace id ("2026-WS") -- verified against the 63 stored values.
+-- name: GetSemesterLabel :one
+select semester from semester where id = $1;

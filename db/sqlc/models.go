@@ -492,8 +492,8 @@ type RoomRequest struct {
 type SchedulerState struct {
 	ID           int
 	LastFireAt   time.Time
-	LastFinished time.Time
-	LastStatus   string
+	LastFinished *time.Time
+	LastStatus   *string
 	LastTrigger  string
 	SemesterID   *string
 	TotalChanges int

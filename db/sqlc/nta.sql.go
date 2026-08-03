@@ -33,6 +33,19 @@ func (q *Queries) GetNta(ctx context.Context, mtknr string) (NTARow, error) {
 	return i, err
 }
 
+const getSemesterLabel = `-- name: GetSemesterLabel :one
+select semester from semester where id = $1
+`
+
+// The label written into nta.last_semester is the LOGICAL semester ("2026 SS"),
+// not the workspace id ("2026-WS") -- verified against the 63 stored values.
+func (q *Queries) GetSemesterLabel(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, getSemesterLabel, id)
+	var semester string
+	err := row.Scan(&semester)
+	return semester, err
+}
+
 const insertNta = `-- name: InsertNta :one
 insert into nta (
     mtknr, name, email, compensation, delta_duration_percent,
@@ -194,6 +207,41 @@ func (q *Queries) ReplaceNta(ctx context.Context, arg ReplaceNtaParams) (NTARow,
 		&i.Deactivated,
 	)
 	return i, err
+}
+
+const setLastSemesterOnNtas = `-- name: SetLastSemesterOnNtas :many
+update nta set last_semester = $1
+where mtknr = any($2::text[])
+returning mtknr
+`
+
+type SetLastSemesterOnNtasParams struct {
+	LastSemester *string
+	Mtknrs       []string
+}
+
+// SetSemesterOnNTAs marks the NTAs that appear in this semester's registrations.
+// The Mongo version issued one FindOneAndUpdate per student; this is the same
+// work as a single statement, and `returning` still tells the caller which mtknr
+// had no NTA so the log message survives.
+func (q *Queries) SetLastSemesterOnNtas(ctx context.Context, arg SetLastSemesterOnNtasParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, setLastSemesterOnNtas, arg.LastSemester, arg.Mtknrs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var mtknr string
+		if err := rows.Scan(&mtknr); err != nil {
+			return nil, err
+		}
+		items = append(items, mtknr)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setNtaDeactivated = `-- name: SetNtaDeactivated :one

@@ -40,12 +40,18 @@ create table active_semester (
 --
 -- semester_id is a log field, not a reference: it records which workspace the
 -- last run touched and must survive that workspace being deleted.
+-- last_finished and last_status are NULLABLE, and that is load-bearing.
+-- TouchSchedulerFire writes the anchor BEFORE the run executes, precisely so a
+-- crash cannot re-trigger the catch-up against a stale anchor. Between that write
+-- and the first SaveSchedulerState there genuinely is no outcome yet -- NOT NULL
+-- would have forced a fabricated one, and '' is not in the status check anyway.
+-- db.SchedulerState keeps expressing it as the zero time and the empty string.
 create table scheduler_state (
     id            int  primary key check (id = 1),
     -- Catch-up anchor: when the run was due, not when it finished.
     last_fire_at  timestamptz not null,
-    last_finished timestamptz not null,
-    last_status   text not null check (last_status in ('ok', 'errors', 'skipped', 'panic')),
+    last_finished timestamptz,
+    last_status   text check (last_status in ('ok', 'errors', 'skipped', 'panic')),
     last_trigger  text not null check (last_trigger in ('nightly', 'catchup', 'manual')),
     semester_id   text,
     total_changes int  not null default 0

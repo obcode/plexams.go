@@ -121,7 +121,7 @@ func TestCleanupPrimussAncodesMapsStoredZpaCode(t *testing.T) {
 		// ZPA tags the primuss ancode with the raw 2-letter code:
 		PrimussAncodes: []model.ZPAPrimussAncodes{{Program: "DA", Ancode: 815}},
 	}
-	(&DB{}).cleanupPrimussAncodes(exam, resolver)
+	cleanupPrimussAncodes(exam, resolver)
 
 	if len(exam.PrimussAncodes) != 1 {
 		t.Fatalf("got %d primuss ancodes, want 1: %+v", len(exam.PrimussAncodes), exam.PrimussAncodes)

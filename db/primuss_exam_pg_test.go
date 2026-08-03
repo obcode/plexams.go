@@ -12,14 +12,23 @@ import (
 // seedPrimussFixtures creates the semester and the study programs the Primuss
 // tests reference. The programs are the internal, possibly degree-suffixed
 // shortnames -- primuss_exam.program references study_program(shortname).
+//
+// zpa_code is the leading two letters, which is what the live master data holds
+// (IF-B carries "IF"): the program resolver maps a ZPA study group like "IF4B"
+// through it, so a fixture without it would silently exercise the fallback path
+// for old un-suffixed semesters instead of the real one.
 func seedPrimussFixtures(t *testing.T, pg *db.PG, programs ...string) {
 	t.Helper()
 
 	exec(t, pg, `insert into semester (id, semester, schema_version)
 	             values ('2026-WS', '2026 WS', 2)`)
 	for _, program := range programs {
-		exec(t, pg, `insert into study_program (shortname, name, category)
-		             values ($1, $1, 'fk07')`, program)
+		zpaCode := program
+		if len(zpaCode) > 2 {
+			zpaCode = zpaCode[:2]
+		}
+		exec(t, pg, `insert into study_program (shortname, name, zpa_code, category)
+		             values ($1, $1, $2, 'fk07')`, program, zpaCode)
 	}
 }
 

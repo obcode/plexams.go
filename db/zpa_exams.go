@@ -45,7 +45,7 @@ func (db *DB) GetZPAExams(ctx context.Context) ([]*model.ZPAExam, error) {
 			return exams, err
 		}
 
-		db.cleanupPrimussAncodes(&exam, resolver)
+		cleanupPrimussAncodes(&exam, resolver)
 		addedAncodesForAncode, ok := addedAncodes[exam.AnCode]
 
 		if ok {
@@ -80,7 +80,7 @@ func (db *DB) GetZpaExamByAncode(ctx context.Context, ancode int) (*model.ZPAExa
 		return nil, err
 	}
 
-	db.cleanupPrimussAncodes(&result, db.newProgramResolver(ctx))
+	cleanupPrimussAncodes(&result, db.newProgramResolver(ctx))
 	addedAncodes, err := db.GetAddedAncodesForAncode(ctx, result.AnCode)
 	if err != nil {
 		log.Error().Err(err).Str("semester", db.semester).
@@ -245,7 +245,7 @@ func (db *DB) getZPAExamsPlannedOrNot(ctx context.Context, toPlan *bool) ([]*mod
 
 	for _, zpaExam := range zpaExams {
 		if (*ancodeSet).Contains(zpaExam.AnCode) {
-			db.cleanupPrimussAncodes(zpaExam, resolver)
+			cleanupPrimussAncodes(zpaExam, resolver)
 			addedAncodesForAncode, ok := addedAncodes[zpaExam.AnCode]
 
 			if ok {
@@ -327,13 +327,24 @@ type programResolver struct {
 // newProgramResolver builds a resolver for the current semester. Errors reading the
 // master data or the semester's programs degrade to raw ZPA codes (legacy behaviour).
 func (db *DB) newProgramResolver(ctx context.Context) *programResolver {
-	r := &programResolver{
-		candidatesByCode: make(map[string][]*model.StudyProgram),
-		realized:         make(map[string]bool),
-	}
 	programs, err := db.StudyPrograms(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("program resolver: cannot read study programs; falling back to raw ZPA codes")
+	}
+	realized, err := db.GetPrograms(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("program resolver: cannot list semester programs")
+	}
+	return newProgramResolverFrom(programs, realized)
+}
+
+// newProgramResolverFrom builds the resolver from data rather than from a
+// connection, so the Mongo and PostgreSQL layers share it instead of each
+// carrying a copy of this resolution logic.
+func newProgramResolverFrom(programs []*model.StudyProgram, realized []string) *programResolver {
+	r := &programResolver{
+		candidatesByCode: make(map[string][]*model.StudyProgram),
+		realized:         make(map[string]bool),
 	}
 	for _, prog := range programs {
 		code := prog.ZpaCode
@@ -341,10 +352,6 @@ func (db *DB) newProgramResolver(ctx context.Context) *programResolver {
 			code = prog.Shortname
 		}
 		r.candidatesByCode[code] = append(r.candidatesByCode[code], prog)
-	}
-	realized, err := db.GetPrograms(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("program resolver: cannot list semester programs")
 	}
 	for _, prog := range realized {
 		r.realized[prog] = true
@@ -422,7 +429,7 @@ func degreeSuffixedForGroup(_ string, _ []*model.StudyProgram) (string, bool) {
 	return "", false
 }
 
-func (db *DB) cleanupPrimussAncodes(zpaExam *model.ZPAExam, resolver *programResolver) {
+func cleanupPrimussAncodes(zpaExam *model.ZPAExam, resolver *programResolver) {
 	programs := set.NewSet[string]()
 
 	ancodesMap := make(map[string]int)
@@ -470,11 +477,17 @@ func (db *DB) addAddedAncodesToExam(ctx context.Context, zpaExam *model.ZPAExam,
 		}
 	}
 
-	allPrimussAncodes := append(zpaExam.PrimussAncodes, addedAncodesForAncode...)
+	mergePrimussAncodes(zpaExam, addedAncodesForAncode)
 
+	return nil
+}
+
+// mergePrimussAncodes folds the manually added ancodes into the ones ZPA
+// delivered, one per program, sorted. Pure, and shared by both db layers.
+func mergePrimussAncodes(zpaExam *model.ZPAExam, added []model.ZPAPrimussAncodes) {
 	ancodesMap := make(map[string]int)
 	programs := set.NewSet[string]()
-	for _, primussAncode := range allPrimussAncodes {
+	for _, primussAncode := range append(zpaExam.PrimussAncodes, added...) {
 		ancodesMap[primussAncode.Program] = primussAncode.Ancode
 		programs.Add(primussAncode.Program)
 	}
@@ -483,7 +496,6 @@ func (db *DB) addAddedAncodesToExam(ctx context.Context, zpaExam *model.ZPAExam,
 	sort.Strings(programSlice)
 
 	newPrimussAncodes := make([]model.ZPAPrimussAncodes, 0, len(ancodesMap))
-
 	for _, program := range programSlice {
 		newPrimussAncodes = append(newPrimussAncodes, model.ZPAPrimussAncodes{
 			Program: program,
@@ -492,6 +504,4 @@ func (db *DB) addAddedAncodesToExam(ctx context.Context, zpaExam *model.ZPAExam,
 	}
 
 	zpaExam.PrimussAncodes = newPrimussAncodes
-
-	return nil
 }

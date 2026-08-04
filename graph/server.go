@@ -158,13 +158,6 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	router.Get("/download/csv/{kind}", plexams.HTTPDownloadCSVDraft)
 	router.Get("/download/ics/{program}", plexams.HTTPDownloadICS)
 
-	// Backup/restore: whole-semester clone (ZIP) and per-page datasets (JSON), so a
-	// semester can be dumped and re-uploaded into a fresh workspace for testing.
-	router.Get("/download/semester-dump.zip", plexams.HTTPDownloadSemesterDump)
-	router.Post("/upload/semester-dump.zip", plexams.HTTPUploadSemesterDump)
-	router.Get("/download/dataset", plexams.HTTPDownloadDataset)
-	router.Post("/upload/dataset", plexams.HTTPUploadDataset)
-
 	// Human-readable CSV of the manually entered data (absolute date/time, robust
 	// against exam-period shifts): per-dataset and a combined "my inputs" ZIP.
 	router.Get("/download/dataset-csv", plexams.HTTPDownloadDatasetCSV)

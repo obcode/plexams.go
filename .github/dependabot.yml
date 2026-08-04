@@ -1,0 +1,27 @@
+# Dependency-Updates aktuell halten (nativ in GitHub, kein App-Setup nötig).
+# Wöchentliche PRs, gruppiert, damit es nicht zerfasert.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: '/'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      go-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Dockerfile-Base-Images. Der Builder `golang:1.25-alpine` bekommt PRs; die finale
+  # Stage `alpine:latest` ist unpinned und wird von Dependabot NICHT angefasst -- ein
+  # fester Tag (z. B. alpine:3.24) wäre nötig, damit auch sie überwacht würde.
+  - package-ecosystem: docker
+    directory: '/'
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly

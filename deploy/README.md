@@ -12,7 +12,7 @@ Internet ──443/TLS──> Caddy (forward_auth → oauth2-proxy → sso.hm.ed
                         ├── /oauth2/*    → oauth2-proxy (Login/Callback)
                         ├── /            → gui (plexams.gui-Container)
                         └── /query,/upload,/download → plexams.go:8080
-plexams.go / gui / mongo / oauth2-proxy ── nur im compose-Netz (nicht veröffentlicht)
+plexams.go / gui / postgres / oauth2-proxy ── nur im compose-Netz (nicht veröffentlicht)
 ```
 
 Backend **und** GUI laufen als **fertige Images von `ghcr.io`** (`plexams.go` bzw.
@@ -68,7 +68,7 @@ Die kommen in `.env` (`ACME_*`); Caddy holt und erneuert das Zertifikat damit se
 1. **Konfig anlegen** (nichts davon wird committet):
    ```bash
    cd deploy
-   cp .env.example        .env            # Mongo-Creds, SERVER_NAME, ACME_*/EAB, OIDC-Client, Cookie-Secret
+   cp .env.example        .env            # PG-Creds, SERVER_NAME, ACME_*/EAB, OIDC-Client, Cookie-Secret
    cp .plexams.yaml.example .plexams.yaml # db.uri, auth.seedusers (die zwei ADMINs), zpa/smtp/…
    ```
    In `.env` die `ACME_*`-Werte (Directory-URL + EAB `kid`/`hmac-key`, von der IT) eintragen —
@@ -76,7 +76,7 @@ Die kommen in `.env` (`ACME_*`); Caddy holt und erneuert das Zertifikat damit se
    `OAUTH2_PROXY_COOKIE_SECRET` z. B. mit `openssl rand -base64 24` (ergibt 32 Zeichen;
    oauth2-proxy verlangt 16/24/32 Zeichen, `-base64 32` liefert 44 und schlägt fehl). Denselben Host in
    `.env` `SERVER_NAME` ↔ `.plexams.yaml` `server.allowedorigins` verwenden, dieselbe
-   Mongo-Passphrase in `.env` `MONGO_PASSWORD` ↔ `.plexams.yaml` `db.uri`.
+   Passphrase in `.env` `POSTGRES_PASSWORD` ↔ `.plexams.yaml` `db.uri`.
    `.env`: `PUBLIC_PLEXAMS_SERVER=https://<SERVER_NAME>/query` (Browser) und
    `PLEXAMS_SERVER=http://plexams:8080/query` (SSR, intern) — **zwei verschiedene URLs**,
    weil nur der Browser-Hop das OIDC-Cookie trägt (Details unten,
@@ -155,7 +155,7 @@ User auch bei SSR — ohne dass die öffentliche URL involviert ist.
 
 - **Backend nie veröffentlichen.** `plexams` und `oauth2-proxy` haben bewusst kein
   `ports:` — nur über Caddy **und** den internen `gui`-Container erreichbar. Sonst könnte
-  jeder den `X-Remote-User`-Header selbst setzen. `mongo` ist ausschließlich auf
+  jeder den `X-Remote-User`-Header selbst setzen. `postgres` ist ausschließlich auf
   `127.0.0.1` veröffentlicht (nur Host-Loopback, für den SSH-Tunnel oben) — **nie** auf
   `0.0.0.0`.
 - Caddy verwirft eingehende `X-Remote-*`-Header (`request_header -X-Remote-User`) und setzt
@@ -266,118 +266,68 @@ in ein `not found`. `latest` zeigt auf den jeweils neuesten Release.
 - Zertifikat: Caddy erneuert automatisch (~30 Tage vor Ablauf). Status in den `caddy`-Logs;
   Cert-Metadaten liegen im `caddy-data`-Volume unter `caddy/certificates/`.
 
-### Von außen an die MongoDB (SSH-Tunnel)
+### Von außen an die Datenbank (SSH-Tunnel)
 
-Mongo ist bewusst **nur auf dem Host-Loopback** veröffentlicht
-(`127.0.0.1:27017:27017` in `docker-compose.yml`) — **nicht** auf `0.0.0.0`. Damit ist der
-Port aus dem Netz **nicht** erreichbar (die Firewall braucht keinen offenen 27017), aber
+PostgreSQL ist bewusst **nur auf dem Host-Loopback** veröffentlicht
+(`127.0.0.1:5432:5432` in `docker-compose.yml`) — **nicht** auf `0.0.0.0`. Damit ist der
+Port aus dem Netz **nicht** erreichbar (die Firewall braucht keinen offenen 5432), aber
 lokal auf dem Host schon. Der einzige Weg von außen ist deshalb ein **SSH-Tunnel**:
 
 ```sh
-# Lokaler Port 27017 → Host-Loopback → Mongo-Container
-ssh -N -L 27017:127.0.0.1:27017 plexams@plexams.cs.hm.edu
+# Lokaler Port 5432 → Host-Loopback → postgres-Container
+ssh -N -L 5432:127.0.0.1:5432 plexams@plexams.cs.hm.edu
 ```
 
-Dann in **MongoDB Compass** (oder `mongosh`) auf `localhost` verbinden:
+Dann mit `psql`, DBeaver oder pgAdmin auf `localhost` verbinden:
 
 ```
-mongodb://<MONGO_USER>:<MONGO_PASSWORD>@localhost:27017/?authSource=admin
+postgres://<POSTGRES_USER>:<POSTGRES_PASSWORD>@localhost:5432/plexams
 ```
 
-(`MONGO_USER`/`MONGO_PASSWORD` aus `.env`; `authSource=admin`, weil es der Root-User ist.)
-Läuft schon lokal etwas auf 27017, einen anderen lokalen Port wählen, z. B.
-`-L 27018:127.0.0.1:27017` und dann `localhost:27018`.
+(`POSTGRES_USER`/`POSTGRES_PASSWORD` aus `.env`.) Läuft schon lokal etwas auf 5432, einen
+anderen lokalen Port wählen, z. B. `-L 5433:127.0.0.1:5432` und dann `localhost:5433`.
 
 > **Warum das sicher ist:** Der `127.0.0.1`-Bind gilt auch dann, wenn Docker die
 > awall-INPUT-Regeln umgeht — Dockers DNAT greift nur für Pakete mit Ziel `127.0.0.1`, und
 > die kann von außen niemand erzeugen. Ein `0.0.0.0`-Bind (oder ein `ports:`-Eintrag ohne
-> `127.0.0.1:`-Präfix) würde Mongo dagegen an der Firewall vorbei ins Netz stellen — **nie
-> tun.**
+> `127.0.0.1:`-Präfix) würde die Datenbank dagegen an der Firewall vorbei ins Netz stellen
+> — **nie tun.**
 
-### MongoDB Replica Set aktivieren
 
-`plexams.go` schreibt an einigen Stellen mehrere Dokumente zusammen: Anmeldung +
-Primuss-Zähler (`AddStudentReg`/`RemoveStudentReg`), Plan-Eintrag ersetzen
-(`AddExamToSlot`), Raumplan ersetzen (`ReplacePlannedRooms`). Atomar sind die nur gegen
-ein **Replica Set**. Gegen den Standalone fällt der Code auf nacheinander ausgeführte
-Schreibvorgänge zurück — ein Fehler in der Mitte hinterlässt dann einen Teilzustand
-(genau die Ursache der Zählerdrift, die `validate db` als Warnung meldet). Beim Start
-protokolliert das Backend, welcher Modus gilt:
+### Backup & Restore
 
-```
-MongoDB is not a replica set: multi-document writes are not atomic
-```
+Alle Semester liegen in **einer** Datenbank (unterschieden über `semester_id`), deshalb
+arbeiten beide Skripte auf der **ganzen Datenbank** — es gibt bewusst keinen
+Semesterfilter. Ein einzelnes Semester herauszunehmen und wieder einzuspielen ist eine
+Zeilen-Operation über ~64 Tabellen und kommt später.
 
-**Seit 2026-07-30 ist das Replica Set in der `docker-compose.yml` aktiv** (`--replSet rs0
---keyFile /etc/mongo/keyfile`). Damit gilt: **der Keyfile muss auf jedem Host liegen, auf
-dem dieser Stack startet** — mit aktivierter Authentifizierung verweigert mongod sonst den
-Start (`security.keyFile is required when authorization is enabled with replica sets`),
-und Docker legt an der Stelle des fehlenden Mounts ein Verzeichnis an. Da ein Release die
-Compose-Datei automatisch ausrollt, ist das keine Option, sondern eine Voraussetzung.
-
-Die folgende Anleitung ist deshalb sowohl die Erstinstallation als auch das, was bei einem
-Umzug oder einem neu aufgesetzten Host nachzuholen ist. Ablauf auf dem Host
-(`/home/plexams/plexams.go/deploy`), **in dieser Reihenfolge**:
-
-```sh
-# 0) Frisches Backup, bevor irgendetwas an Mongo geändert wird.
-./backup/mongo-backup.sh
-
-# 1) Keyfile anlegen. Inhalt ist ein Shared Secret; Rechte MÜSSEN 400 sein, sonst
-#    verweigert mongod den Start. UID 999 = User "mongodb" im offiziellen Image.
-openssl rand -base64 756 > mongo-keyfile
-chmod 400 mongo-keyfile
-sudo chown 999:999 mongo-keyfile
-
-# 2) (nur falls noch nicht geschehen) In docker-compose.yml sind command: --replSet/--keyFile
-#    und der mongo-keyfile-Mount bereits aktiv.
-
-# 3) Nur Mongo neu starten. Es läuft dann, nimmt aber noch keine Schreibvorgänge an.
-docker compose up -d mongo
-docker compose logs --tail=30 mongo     # darf keinen keyFile-Fehler zeigen
-
-# 4) Replica Set einmalig initiieren. Der Host-Name muss der bleiben, unter dem die
-#    anderen Container Mongo erreichen (Servicename "mongo").
-docker compose exec mongo mongosh -u "$MONGO_USER" -p "$MONGO_PASSWORD" \
-  --authenticationDatabase admin --quiet --eval \
-  'rs.initiate({_id:"rs0",members:[{_id:0,host:"mongo:27017"}]})'
-
-# 5) Prüfen, dass der Knoten PRIMARY ist (dauert ein paar Sekunden).
-docker compose exec mongo mongosh -u "$MONGO_USER" -p "$MONGO_PASSWORD" \
-  --authenticationDatabase admin --quiet --eval 'rs.status().members[0].stateStr'
-
-# 6) Backend neu starten, damit es die Topologie neu erkennt, und Log prüfen —
-#    die Warnung aus oben darf nicht mehr erscheinen.
-docker compose restart plexams
-docker compose logs --tail=30 plexams
-```
-
-Die Daten bleiben dabei erhalten: `rs.initiate()` legt nur das Oplog an, es wird nichts
-neu geschrieben. Zwischen Schritt 3 und 4 sind Schreibvorgänge blockiert — das ist das
-Wartungsfenster, üblicherweise unter einer Minute.
-
-**Zurückrollen:** Compose-Zeilen wieder auskommentieren und `docker compose up -d mongo`.
-Ein einmal initiiertes Replica Set als Standalone zu starten funktioniert; das Oplog
-bleibt ungenutzt liegen.
-
-**Wichtig für den SSH-Tunnel** (Abschnitt oben): nach der Umstellung meldet Mongo sich als
-Replica-Set-Member `mongo:27017`, was vom Host aus nicht auflösbar ist. Compass und
-`mongosh` brauchen dann `?directConnection=true` in der Verbindungs-URI.
-
-### MongoDB-Backup
-
-Zwei komplementäre Ebenen:
-
-1. **Lokale rotierende Dumps (Host).** [`backup/mongo-backup.sh`](backup/mongo-backup.sh)
-   dumpt via `docker compose exec mongo mongodump` **alle** Datenbanken (jedes Semester +
-   die globale `plexams`-DB) in ein gzip-Archiv nach `/home/plexams/backups/` und rotiert
-   (Default 14 täglich + 8 wöchentlich). Als User `plexams` per busybox-`crond` einplanen:
+1. **Lokale rotierende Dumps (Host).** [`backup/pg-backup.sh`](backup/pg-backup.sh)
+   dumpt via `docker compose exec postgres pg_dump -Fc` die komplette Datenbank nach
+   `/home/plexams/backups/` und rotiert (Default 14 täglich + 8 wöchentlich). Als User
+   `plexams` per busybox-`crond` einplanen:
    ```sh
    crontab -e   # als plexams:
-   30 2 * * *  /home/plexams/plexams.go/deploy/backup/mongo-backup.sh >> /home/plexams/backups/backup.log 2>&1
+   30 2 * * *  /home/plexams/plexams.go/deploy/backup/pg-backup.sh >> /home/plexams/backups/backup.log 2>&1
    ```
-   Restore-Kommando steht im Skript-Kopf. Schützt gegen versehentliches Löschen / kaputte
-   Restores, **nicht** gegen Hostverlust — für off-site am Skriptende ein `scp`/`rclone` anhängen.
-2. **Planer-ZIP über die GUI.** Der Planer kann jederzeit einen Semester-Dump als ZIP
-   herunterladen (`/download/...`); die GUI bietet das prominent an, sobald sich seit dem
-   letzten Dump etwas in der DB geändert hat. Gut vor riskanten Aktionen / zum Mitnehmen.
+   Schützt gegen versehentliches Löschen / kaputte Restores, **nicht** gegen Hostverlust
+   — für off-site am Skriptende ein `scp`/`rclone` anhängen.
+
+2. **Restore.** [`backup/pg-restore.sh`](backup/pg-restore.sh) spielt so ein Archiv
+   zurück. **Er stoppt vorher den `plexams`-Container und startet ihn danach wieder** —
+   `pg_restore --clean` kann nicht arbeiten, solange die Anwendung ihren Verbindungspool
+   auf der Datenbank hält. Genau deshalb läuft der Restore auf dem Host und nicht als
+   Route im Server:
+   ```sh
+   ./backup/pg-restore.sh /home/plexams/backups/plexams-daily-20260804-0230.dump.gz
+   ```
+   Das Skript fragt nach einer Bestätigung, weil es den vorhandenen Stand ersetzt.
+   Vorher an einer Wegwerf-Instanz testen.
+
+3. **Eigene Eingaben als CSV (GUI).** Der Planer kann jederzeit alle handgepflegten
+   Daten als ZIP mit je einer CSV pro Datensatz ziehen (`/download/my-inputs-csv.zip`).
+   Das ist die einzige *lesbare* und *semesterweise* Sicherung und ergänzt die Dumps —
+   die Daten aus ZPA, Primuss und Anny sind ohnehin nachimportierbar.
+
+> **Major-Upgrade:** PostgreSQL liest das Datenverzeichnis einer älteren Major-Version
+> nicht. Ein Wechsel von 18 auf 19 ist deshalb: dumpen, Volume wegwerfen, Image-Tag
+> ändern, restoren — kein reines Retag des Images.

@@ -1,5 +1,5 @@
 # Smoke test — Step 1: TLS/ACME only. Caddy serves a static "Hello World" over HTTPS.
-# No OIDC, no plexams, no mongo. Proves the DNS name, the certificate (Caddy's built-in
+# No OIDC, no plexams, no database. Proves the DNS name, the certificate (Caddy's built-in
 # ACME client against the HM ACME CA, EAB) and the reverse-proxy host all work.
 #
 # Setup: cp .env.example .env (fill in SERVER_NAME + ACME_*), then: docker compose up -d

@@ -7,7 +7,7 @@
 #                           ├── sets X-Remote-User from the verified email claim
 #                           ├── /            → gui (plexams.gui container)
 #                           └── /query,/upload,/download → plexams.go:8080
-#   plexams / gui / mongo / oauth2-proxy ── internal only (never published)
+#   plexams / gui / postgres / oauth2-proxy ── internal only (never published)
 #
 # Only caddy publishes ports. plexams.go trusts the X-Remote-User header caddy sets,
 # so it MUST NOT be reachable except through caddy — hence no `ports:`.
@@ -21,41 +21,37 @@
 # (Caddy fetches the TLS certificate itself on first start — see README.md.)
 
 services:
-  mongo:
-    image: mongo:8
+  postgres:
+    # Pinned to the major the schema is developed and tested against. A major upgrade
+    # is a deliberate step (dump + restore into the new major), never an image retag:
+    # PostgreSQL does not read the previous major's data directory.
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-plexams}
+      # C.UTF-8 collation, matching the dev cluster: ordering must not depend on the
+      # locale of whatever host this runs on. Where human-friendly sorting is wanted
+      # the queries ask for it explicitly (see pg-db-layer-conventions).
+      POSTGRES_INITDB_ARGS: "--locale=C.UTF-8"
     volumes:
-      - mongo-data:/data/db
-      # Shared secret for the replica set's internal authentication (see command: below).
-      # MUST exist on the host before this container starts, with mode 400 and owned by
-      # uid 999 — otherwise Docker creates a directory here and mongod refuses to start.
-      - ./mongo-keyfile:/etc/mongo/keyfile:ro
-    # Published ONLY on the host loopback (127.0.0.1), never 0.0.0.0. That keeps Mongo
-    # unreachable from the network/firewall — the only way in from outside is an SSH
-    # tunnel onto the host (see README "Von außen an die MongoDB (SSH-Tunnel)"):
-    #   ssh -L 27017:127.0.0.1:27017 plexams@<host>
-    #   then connect Compass to mongodb://<MONGO_USER>:<pw>@localhost:27017/?authSource=admin
-    # The 127.0.0.1 bind is safe even with Docker bypassing awall's INPUT chain: Docker's
-    # DNAT only matches packets destined for 127.0.0.1, which external traffic never is.
+      - postgres-data:/var/lib/postgresql/data
+    # Published ONLY on the host loopback (127.0.0.1), never 0.0.0.0. That keeps
+    # PostgreSQL unreachable from the network/firewall — the only way in from outside
+    # is an SSH tunnel onto the host (see README "Von außen an die Datenbank"):
+    #   ssh -L 5432:127.0.0.1:5432 plexams@<host>
+    # The 127.0.0.1 bind is safe even with Docker bypassing awall's INPUT chain:
+    # Docker's DNAT only matches packets destined for 127.0.0.1, which external
+    # traffic never is.
     ports:
-      - "127.0.0.1:27017:27017"
-    # Single-node replica set, so plexams.go can run multi-document writes in
-    # transactions (student registration + Primuss counter, plan entry replace, room plan
-    # replace, dataset restore). A standalone mongod cannot, and the code then falls back
-    # to sequential writes — a failure in the middle leaves a partial state.
-    #
-    # --keyFile is not optional: with authorization enabled mongod REFUSES TO START
-    # without it. The keyfile must already exist on the host (mode 400, uid 999) before
-    # this file is deployed, and the set has to be initiated once with rs.initiate().
-    # Full procedure: "MongoDB Replica Set aktivieren" in README.md.
-    command: ["--replSet", "rs0", "--keyFile", "/etc/mongo/keyfile"]
-    # So plexams can wait for Mongo to be *ready* (not just started) — avoids the
-    # boot race where plexams fatals on DB connect and crash-loops until Mongo is up.
+      - "127.0.0.1:5432:5432"
+    # So plexams can wait for the database to be *ready* (not just started) — avoids
+    # the boot race where plexams fatals on connect and crash-loops until it is up.
+    # -U/-d because pg_isready otherwise probes the "postgres" user/database, which
+    # POSTGRES_USER may not be.
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB:-plexams}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,7 +61,7 @@ services:
     image: ghcr.io/obcode/plexams.go:${PLEXAMS_TAG:-latest}
     restart: unless-stopped
     depends_on:
-      mongo:
+      postgres:
         condition: service_healthy
     volumes:
       - ./.plexams.yaml:/app/.plexams.yaml:ro
@@ -223,6 +219,6 @@ services:
       - /tmp/runner-gui:/tmp/runner-gui
 
 volumes:
-  mongo-data:
+  postgres-data:
   caddy-data:
   caddy-config:

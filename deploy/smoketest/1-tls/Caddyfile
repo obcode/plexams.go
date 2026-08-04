@@ -1,5 +1,5 @@
 # Smoke test — Step 1: TLS/ACME only. Caddy serves a static "Hello World" over HTTPS and
-# fetches the certificate itself from the HM ACME CA (EAB). No OIDC, no plexams, no mongo.
+# fetches the certificate itself from the HM ACME CA (EAB). No OIDC, no plexams, no database.
 # Proves the DNS name, the certificate and the reverse-proxy host all work, before login.
 #
 # {$VAR} placeholders come from the environment (docker-compose.yml caddy env).

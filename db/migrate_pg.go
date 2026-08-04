@@ -68,3 +68,16 @@ func MigratePG(ctx context.Context, pool *pgxpool.Pool) error {
 
 	return nil
 }
+
+// MigrateSchema brings the connected database up to the schema this binary
+// carries. It is what the server calls at startup.
+//
+// The migrations travel inside the binary for exactly this reason: the release
+// image is alpine with nothing but the executable in it -- no goose, no psql --
+// so nobody else *can* run them. Whoever deploys a new tag applies its schema by
+// starting it.
+//
+// Repeating it is a no-op: goose applies only what is missing.
+func (db *PG) MigrateSchema(ctx context.Context) error {
+	return MigratePG(ctx, db.pool)
+}

@@ -108,6 +108,13 @@ func newPlexams() *plexams.Plexams {
 	if semester == "" {
 		semester = viper.GetString("semester")
 	}
+	// Bring the schema up before anything reads it. Against an empty database the
+	// registry table does not exist yet, and the auto-selection below would report
+	// "no usable semester" -- a wrong diagnosis for a database that is merely new.
+	if err := migrateSchema(dbURI); err != nil {
+		log.Fatal().Err(err).Msg("cannot migrate the database schema (check db.uri / network)")
+	}
+
 	// No semester pinned: auto-select the last active / newest compatible one.
 	//
 	// There is no db.database any more. It named the MongoDB database, which was
@@ -153,6 +160,22 @@ func newPlexams() *plexams.Plexams {
 
 	plexams.PrintInfo()
 	return plexams
+}
+
+// migrateSchema applies the migrations the binary carries, on a connection of its
+// own that is closed again right away.
+//
+// Its own connection because this runs before the Plexams client exists: the
+// semester it would be constructed with is only known after the registry has been
+// read, and reading the registry is what needs the schema.
+func migrateSchema(dbURI string) error {
+	ctx := context.Background()
+	client, err := db.NewPG(ctx, dbURI, "")
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	return client.MigrateSchema(ctx)
 }
 
 // resolveStartSemester opens a temporary DB connection to pick the start semester

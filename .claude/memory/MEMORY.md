@@ -33,6 +33,7 @@
 - [mongotest without docker](mongotest-without-docker.md) — run integration tests via a downloaded standalone mongod + PLEXAMS_TEST_MONGO_URI when Docker is absent.
 - [PostgreSQL dev setup](pg-dev-setup.md) — run PG 18 locally without Docker (:5433, C.UTF-8), sqlc/goose as release binaries, and the three OOM traps — two of which look like success.
 - [PG db-layer conventions](pg-db-layer-conventions.md) — how a db method is ported: file layout, (nil,nil)-vs-error per the Mongo original, the three silent sqlc traps, collation, singletons, jsonb+format_version. Settled in phase 3a, applies to 3b–3e.
+- [PG global master data import](pg-global-master-data-import.md) — tools/mongo2pg: the 150 hand-maintained documents nobody can re-import, why nta.group must NOT be dropped, and the primitive.A trap that silently emptied a list.
 - [PG backup/restore](pg-backup-restore.md) — decided 2026-08-04: whole-database pg_dump/pg_restore only; per-semester export comes later and may be expensive. Plus the restore-into-your-own-pool problem.
 - [GraphQL interface cleanup](graphql-interface-cleanup.md) — schema audited vs GUI usage & fully trimmed (all unused queries+mutations gone, 3 validators wired into GUI); done, on main.
 - [validation conflict severity](validation-conflict-severity.md) — ValidateConflicts graded (sameSlot=error/adjacent=warn/sameDay=info), sorted most-severe-first; accepted decisions (DB+YAML) shown as info not hidden.

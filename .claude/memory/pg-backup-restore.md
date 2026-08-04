@@ -28,24 +28,51 @@ teurer sein** (Laufzeit wie Implementierungsaufwand) — es ist der seltene Fall
 (Testworkspace bauen, ein Semester auf eine andere Instanz ziehen), nicht der
 Alltagsfall.
 
-## Was beim Bauen von Stufe 1 zu bedenken ist
+## Stufe 1 ist gebaut (2026-08-04)
 
-- **Der Restore der ganzen Datenbank kann nicht aus dem laufenden Prozess in die
-  eigene Verbindung hinein passieren.** `pg_restore` braucht die Zieldatenbank
-  exklusiv; der Server hält aber einen `pgxpool` darauf. Entweder läuft der Restore
-  außerhalb der Anwendung (Skript/Host), oder die Anwendung muss ihren Pool schließen,
-  neu anlegen lassen und sich danach neu verbinden. **Vor der Implementierung
-  entscheiden** — das ist die eigentliche Schwierigkeit, nicht das Dumpen.
-- `pg_dump`/`pg_restore` sind Binaries, keine Bibliothek. Sie liegen im
-  `plexams.dev`-Image (`/usr/lib/postgresql/18/bin`) und müssen auch im
-  Produktions-Image liegen, wenn die Route serverseitig ausgeführt wird — siehe
-  [[deploy-topology]].
-- **Versionsregel:** `pg_restore` darf neuer sein als der Server, umgekehrt nicht.
-  Client und Server auf demselben Major halten (aktuell 18, siehe [[pg-dev-setup]]).
-- `SetLastDumpAt` ist portiert und hat seit dem Löschen von `plexams/dump.go`
-  **keinen Aufrufer**. Der Download der Gesamtsicherung ist die Stelle, an der der
-  Stempel wieder gesetzt gehört — bis dahin steht die Backup-Erinnerung in der GUI
-  dauerhaft, weil `hasUnsavedChanges` nie zurückgesetzt wird.
+**Beides läuft als Skript auf dem Host**, nicht als Route im Server —
+`deploy/backup/pg-backup.sh` und `deploy/backup/pg-restore.sh`. Der Grund ist nicht
+Bequemlichkeit: **`pg_restore` braucht die Datenbank ohne den Verbindungspool der
+Anwendung.** Das Restore-Skript stoppt deshalb den `plexams`-Container, spielt ein
+und startet ihn wieder. Eine Route im laufenden Server hätte ihren eigenen Pool
+schließen und sich danach neu verbinden müssen — mehr bewegliche Teile für eine
+seltene, ohnehin manuelle Operation.
+
+Damit ist auch die Frage nach `pg_dump` im Produktions-Image **erledigt**: das
+`plexams.go`-Image (alpine, nur ca-certificates + tzdata) braucht die Binaries
+**nicht**. Beide Skripte rufen sie über `docker compose exec postgres` im
+`postgres:18-alpine`-Container auf, wo sie zur Major-Version des Servers passen —
+die Versionsregel (`pg_restore` darf neuer sein als der Server, nie älter) ist damit
+automatisch erfüllt.
+
+**Der Restore droppt die Datenbank und legt sie neu an**, statt `pg_restore --clean`
+zu benutzen. Mit `--clean` plus `--exit-on-error` bricht ein harmloses „cannot drop"
+den ganzen Lauf ab; ohne `--exit-on-error` sieht ein halb fehlgeschlagener Restore aus
+wie ein gelungener. In eine frische Datenbank ist das Archiv entweder vollständig drin
+oder es scheitert laut. Vorher nimmt das Skript einen Sicherheits-Dump des aktuellen
+Standes — das falsche Archiv einzuspielen ist damit selbst rückgängig zu machen.
+
+Gegen einen echten Cluster verifiziert: ein Ziel mit anderen Zeilen *und* einer
+zusätzlichen Tabelle kommt als exakt das Archiv zurück, und `--force` beendet
+tatsächlich eine offen gelassene Verbindung.
+
+**Der Replica-Set-Aufwand entfällt ersatzlos** (Keyfile, `rs.initiate()`, uid 999,
+~70 Zeilen README) — PostgreSQL kann Transaktionen ohne Zeremonie.
+
+## Die offene Folge: `lastDumpAt` stempelt niemand mehr
+
+`SetLastDumpAt` ist portiert und hat **keinen Aufrufer**. Früher stempelte der
+Semester-Dump-Download in der GUI; den gibt es nicht mehr, und ein Cron-Job auf dem
+Host kann es nicht (er müsste durch oauth2-proxy).
+
+**Folge: die Backup-Erinnerung in der GUI (`hasUnsavedChanges`) leuchtet dauerhaft**
+und lässt sich durch nichts zurücksetzen. Das ist jetzt ein Dauerzustand, kein
+Übergang mehr. Zwei sinnvolle Auflösungen, noch nicht entschieden:
+1. Die Erinnerung aus der GUI entfernen — sichern macht ohnehin die Maschine.
+2. `lastDumpAt` beim **CSV-Export** stempeln (`/download/my-inputs-csv.zip`). Das ist
+   die Sicherungshandlung, die dem *Planer* gehört, und damit wird der Hinweis wieder
+   handlungsfähig: „seit deiner letzten Sicherung geändert". Der `pg_dump` ist die
+   Sicherung der *Maschine* und ein anderer Vorgang.
 - Die typisierten **CSV-Datensätze bleiben unabhängig davon bestehen**
   (`plexams/csv_export.go`, 10 Datensätze). Sie sind der einzige Weg, der die
   handgepflegten Eingaben *lesbar* und *semesterweise* sichert, und sie haben den

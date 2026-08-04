@@ -24,6 +24,11 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
+// healthPath is the liveness endpoint the container health check calls. It is
+// exempt from authentication (graph/auth.go) and is not routed to this backend
+// by the reverse proxy, so it is only reachable from inside the compose network.
+const healthPath = "/healthz"
+
 // defaultAllowedOrigins are the local dev frontends permitted for CORS and
 // websocket upgrades when none are configured. plexams is a local single-user
 // tool, so only localhost is allowed by default. Override via the config key
@@ -142,6 +147,19 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	}
 	router.Handle("/query", srv)
+
+	// Liveness for the container health check, which is what makes a deploy fail
+	// loudly instead of quietly: the server migrates the schema at startup and
+	// exits on a migration error, `restart: unless-stopped` turns that into a
+	// crash loop, and `docker compose up -d` alone would still report success.
+	//
+	// Deliberately unauthenticated (see authMiddleware) and deliberately NOT a
+	// readiness check: the process is only listening once the database is up, so
+	// there is nothing left to probe that a 200 does not already say.
+	router.Get(healthPath, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("ok\n"))
+	})
 
 	// Binary uploads (browser-generated PNGs, cover-page PDF ZIPs) for email
 	// attachments; the send subscriptions read them back from the DB.

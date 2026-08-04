@@ -107,6 +107,28 @@ func TestAuthEnabled_NoHeader_401(t *testing.T) {
 	}
 }
 
+// The container health check carries no identity header. If the middleware ever
+// stops exempting it, every deployed container turns unhealthy the moment auth is
+// on -- and the deploy job that waits for healthy would fail on a server that is
+// working perfectly.
+func TestHealthzPassesWithoutIdentity(t *testing.T) {
+	viper.Reset()
+	viper.Set("auth.enabled", true)
+	p := &fakeAuthProvider{} // no users at all: fail-closed would reject
+
+	var seen *model.User
+	h := authMiddleware(p)(capture(&seen))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, healthPath, nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 for %s", rec.Code, healthPath)
+	}
+	if seen != nil {
+		t.Errorf("the health check must not get a principal, got %+v", seen)
+	}
+}
+
 func TestAuthEnabled_UnknownUser_403(t *testing.T) {
 	viper.Reset()
 	viper.Set("auth.enabled", true)

@@ -60,6 +60,19 @@ func authMiddleware(p authProvider) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// The container health check runs INSIDE the container and carries no
+			// identity header -- fail-closed would answer it with 401, and Docker
+			// would call a perfectly healthy server unhealthy. It is exempt here
+			// rather than mounted before this middleware because chi requires all
+			// middleware to be declared before any route.
+			//
+			// Nothing leaks by it: the handler answers a constant, and the reverse
+			// proxy does not route /healthz to this backend at all.
+			if r.URL.Path == healthPath {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			var user *model.User
 
 			if !enabled {

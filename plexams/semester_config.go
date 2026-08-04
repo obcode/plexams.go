@@ -306,13 +306,24 @@ func (p *Plexams) createSemesterWithInput(ctx context.Context, semester string, 
 		return nil, fmt.Errorf("semester %q already has a config — edit it instead of creating it", semester)
 	}
 
-	if err := p.dbClient.SaveSemesterConfigInputForSemester(ctx, semester, input); err != nil {
-		return nil, fmt.Errorf("cannot save config for new semester: %w", err)
-	}
-	// stamp the new database with its (authoritative) logical semester
+	// Register the workspace BEFORE writing its config: semester_config_input has a
+	// foreign key to semester(id), so the other order fails outright. Under Mongo the
+	// insert created the database as a side effect, which is exactly the behaviour
+	// that was removed -- a typo used to produce a second, empty workspace.
+	//
+	// Both in one transaction, so a failing config does not leave the empty workspace
+	// behind that the same rule exists to prevent.
 	logical := strings.Replace(semester, "-", " ", 1)
-	if err := p.dbClient.SetMetaSemesterForSemester(ctx, logical, currentSchemaVersion); err != nil {
-		log.Error().Err(err).Str("semester", logical).Msg("cannot stamp semester on new database")
+	if err := p.dbClient.InTransaction(ctx, func(ctx context.Context) error {
+		if err := p.dbClient.SetMetaSemesterForSemester(ctx, logical, currentSchemaVersion); err != nil {
+			return fmt.Errorf("cannot register new semester: %w", err)
+		}
+		if err := p.dbClient.SaveSemesterConfigInputForSemester(ctx, semester, input); err != nil {
+			return fmt.Errorf("cannot save config for new semester: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 	return &model.SaveSemesterConfigResult{Ok: true, Warnings: []string{}}, nil
 }

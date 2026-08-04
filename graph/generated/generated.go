@@ -11848,7 +11848,7 @@ type AdminOverview {
   generatedAt: Time!
   "Build-Version und verbundene Datenbank des laufenden Servers."
   server: ServerInfo!
-  "Das aktuell aktive Semester, z. B. \"2026 SS\"."
+  "Das aktuell aktive Semester, z. B. \"2026-SS\"."
   activeSemester: String!
   "Alle bekannten Semester mit Read-only-/Schema-Stand."
   semesters: [Semester!]!

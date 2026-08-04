@@ -64,7 +64,7 @@ type AdminOverview struct {
 	GeneratedAt time.Time `json:"generatedAt"`
 	// Build-Version und verbundene Datenbank des laufenden Servers.
 	Server *ServerInfo `json:"server"`
-	// Das aktuell aktive Semester, z. B. "2026 SS".
+	// Das aktuell aktive Semester, z. B. "2026-SS".
 	ActiveSemester string `json:"activeSemester"`
 	// Alle bekannten Semester mit Read-only-/Schema-Stand.
 	Semesters []*Semester `json:"semesters"`

@@ -59,6 +59,35 @@ tatsächlich eine offen gelassene Verbindung.
 **Der Replica-Set-Aufwand entfällt ersatzlos** (Keyfile, `rs.initiate()`, uid 999,
 ~70 Zeilen README) — PostgreSQL kann Transaktionen ohne Zeremonie.
 
+## Die dritte Richtung: Produktion → Entwicklungsrechner
+
+Ergänzt am **2026-08-04**. Neben „sichern" und „zurückspielen" gibt es den Fall, um
+den es im Alltag wirklich geht: *etwas stimmt in der Produktion nicht, und ich will
+denselben Stand lokal unter dem Debugger haben.* Dafür gibt es
+`plexams.dev/scripts/pg-prod.sh` (privates Repo, weil dort der Hostname steht):
+
+```
+pg-prod.sh pull    # pg_dump über ssh, restore in eine frische lokale DB, db.uri umstellen
+```
+
+**`pg_dump` läuft im postgres-Container auf dem Host, nicht durch einen Tunnel.**
+`ssh … docker compose exec -T postgres pg_dump` löst die Zugangsdaten im Container
+auf — sie erreichen keine lokale Prozessliste —, braucht keinen weitergeleiteten
+Port, und die `pg_dump`-Version passt per Konstruktion zur Server-Major. Genau die
+Bauform, die `pg-backup.sh` auf dem Host schon hat. Der Tunnel bleibt richtig für
+interaktives Arbeiten (psql, DBeaver).
+
+Eingespielt wird **immer in eine frische Datenbank**, aus demselben Grund, aus dem
+`pg-restore.sh` droppt und neu anlegt: ein Restore über bestehende Daten sieht auch
+dann gelungen aus, wenn er halb fehlschlug. Lokal ist das billig — eine Datenbank
+mehr im Cluster, und `pg-dev.sh use` zeigt das Backend darauf (siehe
+[[pg-dev-setup]]).
+
+Die Archive liegen im privaten `semester`-Repo unter `pg-dumps/` und sind
+**gitignored**: sie enthalten Matrikelnummern, Namen und NTA-Angaben. Das ist die
+Lehre aus den eingecheckten Mongo-Dumps, die genau das in voller Historie stehen
+haben ([[semester-repo]]).
+
 ## Zwei Sicherungen, zwei Adressaten
 
 **Das ist die Unterscheidung, die den Entwurf trägt** (2026-08-04 entschieden):

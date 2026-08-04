@@ -56,6 +56,26 @@ PLEXAMS_TEST_PG_URI="postgres://plexams@127.0.0.1:5433/plexams?sslmode=disable"
 PLEXAMS_TEST_PG_REQUIRED=1   # macht aus "übersprungen" ein "fehlgeschlagen"
 ```
 
+## Ein Cluster, mehrere Datenbanken
+
+Seit 2026-08-04 kann `pg-dev.sh` mehr als eine Datenbank verwalten
+(`list|new|drop|clone|restore|use|uri`). Der Grund ist der Schemawechsel selbst:
+unter Mongo war ein Semester eine Datenbank, in PG teilen sich alle Semester ein
+Schema — ein zweites Szenario (eingespielter Produktionsstand, Was-wäre-wenn,
+leere Ausgangslage) ist deshalb eine zweite **Datenbank**, kein zweites Semester.
+
+- **`use <db>` schreibt `db.uri` in `plexams.go/.plexams.yaml`** statt einen eigenen
+  Zustand zu führen — das ist die Datei, die das Backend ohnehin liest. Sie wird beim
+  **Start** gelesen, `gowatch` muss also neu.
+- **`clone <src> <dst>`** ist `createdb -T`: ein Schnappschuss in Bruchteilen einer
+  Sekunde, damit etwas Destruktives ausprobiert und zurückgenommen werden kann.
+  Scheitert, solange jemand mit der Quelle verbunden ist — also das Backend vorher
+  umstellen oder stoppen.
+- **`goose up` von Hand entfällt**: der Server migriert beim Start (siehe
+  [[pg-first-boot]]), `mongo2pg` ebenso. `new` + `use` + starten genügt.
+- Einen Produktionsstand holt `plexams.dev/scripts/pg-prod.sh pull` (siehe
+  [[pg-backup-restore]]).
+
 **Locale bewusst `C.UTF-8`** beim `initdb`: Byte-Ordnung wie Mongos Binärvergleich, damit
 die Migration nichts still umsortiert. Wo menschenfreundliche Sortierung gewollt ist,
 explizit `COLLATE` anfordern.

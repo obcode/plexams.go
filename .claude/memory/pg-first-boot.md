@@ -28,14 +28,26 @@ dieses Pfads sein wird** — und niemand soll dabei rätseln, ob die Migration k
 
 Die Reihenfolge, die funktioniert und beim Cut-over gilt:
 
-1. `goose ... up` gegen die leere DB,
-2. Server mit `--semester <YYYY-SS>` starten (Registry noch leer, das ist in Ordnung),
-3. `createSemester` — registriert Semester **und** Config in einer Transaktion,
-4. `setSemester` — der laufende Server bindet seine Config beim Start, ein frisch
+1. Server mit `--semester <YYYY-SS>` starten (Registry noch leer, das ist in Ordnung).
+   **Er migriert selbst** — `goose` von Hand entfällt seit 2026-08-04, siehe unten.
+2. `createSemester` — registriert Semester **und** Config in einer Transaktion,
+3. `setSemester` — der laufende Server bindet seine Config beim Start, ein frisch
    angelegtes Semester ist ihm sonst `compatible: false` mit `semesterConfig: null`,
    während `allSemesterNames` es schon als kompatibel führt. Kein Fehler, nur zwei
    verschiedene Quellen: die eine liest die DB, die andere den Prozesszustand.
-5. Ab dem nächsten Start entfällt der Pin — `ResolveStartSemester` findet es selbst.
+4. Ab dem nächsten Start entfällt der Pin — `ResolveStartSemester` findet es selbst.
+
+**Der Server migriert beim Start** (`bootstrap.migrateSchema` → `PG.MigrateSchema`,
+2026-08-04). Vorher rief `db.MigratePG` **niemand** außer dem Testharness — und im
+Release-Image liegt außer dem Binary nichts, kein `goose`, kein `psql`. Auf dem
+Produktionshost hätte die Migration also gar nicht laufen *können*; genau dafür sind
+sie eingebettet. Wer ein neues Tag deployt, wendet sein Schema an, indem er es startet.
+
+Das passiert **vor** der Semester-Auflösung: gegen eine leere Datenbank gibt es die
+Registry-Tabelle noch nicht, und die Automatik hätte „kein brauchbares Semester"
+gemeldet — eine falsche Diagnose für eine Datenbank, die nur neu ist. Ein
+Wiederholungslauf ist ein No-op (`TestMigrateSchemaIsRepeatable`), sonst wäre jeder
+Container-Neustart einer.
 
 **Nebenbefund, gleiche Sitzung, eigener Commit (`023a727`):** `.gitignore` enthielt
 `plexams.yaml`, die Datei heißt aber `.plexams.yaml` — das Muster hat sie nie

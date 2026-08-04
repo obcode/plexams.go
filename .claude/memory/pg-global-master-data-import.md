@@ -1,6 +1,6 @@
 ---
 name: pg-global-master-data-import
-description: "Wie die globale Mongo-DB `plexams` nach PostgreSQL kommt: tools/mongo2pg, was drinsteckt, und die drei Stellen, an denen die Echtdaten nicht zum Modell passen"
+description: "Wie die globale Mongo-DB `plexams` und die zwei getippten Collections eines Semesters nach PostgreSQL kommen: tools/mongo2pg, was drinsteckt, und wo die Echtdaten nicht zum Modell passen"
 metadata:
   node_type: memory
   type: project
@@ -90,6 +90,49 @@ Sitzplatzsumme (704) stimmen exakt mit den unabhängig aus dem BSON gerechneten 
 **Der Bericht nennt Matrikelnummern**, damit die betroffenen Datensätze in der GUI
 auffindbar sind — er gehört nicht in Issues, Commits oder Chats. Echte Dumpdateien
 bleiben im privaten `semester`-Repo ([[semester-repo]]).
+
+## Ein Semester kommt doch mit — die zwei getippten Collections
+
+Ergänzt am **2026-08-04**. Die Regel „Semester werden nicht migriert" bleibt richtig,
+hat aber eine Ausnahme, die dieselbe Begründung hat wie die globalen Stammdaten:
+**`semester_config_input` und `preplan_exams` hat jemand getippt.** Prüfungen,
+Lehrende, Anmeldungen, Konflikte und Anny-Buchungen kommen durch einen erneuten
+Import zurück, diese beiden nicht. Aufruf: `-semester-dump <dir>` (Semester aus dem
+Verzeichnisnamen, sonst `-semester`).
+
+`mongo2pg` **registriert das Semester dabei selbst** (`EnsureSemester`) — das ist der
+Teil, den sonst `createSemester` macht; die Config danach in der GUI anzulegen würde
+sie zweimal schreiben.
+
+**Der Bericht listet jede nicht importierte, nicht leere Collection auf.** Das ist die
+Kontrolle für die Annahme, auf der der ganze Cut-over steht: steht dort etwas
+Handgepflegtes (`constraints`, `connected_exams`, ein fertiger Plan), stimmt sie für
+dieses Semester nicht — sichtbar **vor** dem Umschalten, nicht erst, wenn es in der
+GUI fehlt.
+
+Drei Dinge, die die Form der Daten erzwingt:
+
+- **`mucDaiAllowedTimes` verschwindet lautlos, wenn man nichts tut.** Das Feld trägt
+  `json:"-"`, die Spalte ist `jsonb` — das Modell zu serialisieren wirft die
+  reservierten Zeiten wortlos weg. Sie werden beim Import auf alle
+  joint-Studiengänge verteilt, wie `applyLegacyJointTimes` es zur Laufzeit tut.
+  **Deshalb müssen die Studiengänge vorher drin sein** (im selben Lauf automatisch).
+  Der Schemakommentar in `00002` verlangt genau das; 2026-WS hat 30 Einträge dort
+  und keine `jointProgramAllowedTimes`.
+- **Vor-slotless-Dokumente werden gemeldet, nicht geraten.** Eine Konfiguration mit
+  `slots` statt `startTimes`, eine Vorplanungs-Prüfung mit `planneddaynumber` — die
+  absoluten Zeiten lagen im Code jener Version, nicht in den Daten. Die Prüfung kommt
+  **ungeplant** an statt gar nicht; Modul, Prüfer, Erwartungszahl und Constraints
+  sind ja weiterhin gültig. Der archivierte `Test26SS`-Dump ist genau so ein
+  Bestand und damit die Generalprobe für diesen Zweig — **nicht** für die Form, die
+  2026-WS haben wird.
+- **Einseitige Paare.** `notSameSlot`/`canShareSlot` trugen in Mongo beide Seiten
+  ihre eigene Liste, ohne Zwang zur Übereinstimmung. In PG ist ein Paar **eine**
+  kanonische Zeile, und das Schreiben einer Prüfung ersetzt ihre ganze Seite — ein
+  einseitiges Paar würde vom Schreiben der Gegenseite wieder gelöscht. Der Import
+  ergänzt die Gegenrichtung vorher und meldet jede Ergänzung. Aus demselben Grund
+  läuft er in **zwei Durchgängen**: erst alle Prüfungen ohne Paare (der Fremdschlüssel
+  zeigt auf die andere Prüfung), dann die Paare.
 
 ## Nachzuarbeiten nach dem Import
 

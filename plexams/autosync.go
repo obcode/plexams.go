@@ -111,7 +111,7 @@ func ScheduledSyncConfigFromViper() ScheduledSyncConfig {
 }
 
 // RunScheduledSync pulls the configured sources (ZPA exams/teachers/invigilator
-// requirements and Anny bookings) for the active workspace, records what changed and
+// requirements and Anny bookings) for the active semester, records what changed and
 // mails the result: a change mail to ChangesRecipient when anything differs, and a
 // heartbeat mail to DebugRecipient on every run. It holds the exclusive-op guard for the
 // whole run so it never collides with a manual transfer; if that guard cannot be

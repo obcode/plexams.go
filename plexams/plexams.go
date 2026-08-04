@@ -124,6 +124,9 @@ type Email struct {
 	envelopeFrom string
 }
 
+// NewPlexams builds the instance. semester is the semester to plan, "2026-SS" --
+// which is also the semester_id every query filters on. p.semester keeps the
+// logical form ZPA uses ("2026 SS").
 func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken string, fk07programs, oldprograms []string) (*Plexams, error) {
 
 	var client *db.PG
@@ -131,22 +134,14 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 	if dbUri == "" {
 		log.Info().Msg("starting without DB!")
 	} else {
-		// The semester id -- what used to be the name of the per-semester
-		// database. It now only selects rows (semester_id), so db.database keeps
-		// its meaning without there being a database per semester.
-		semesterID := viper.GetString("db.database")
-		if semesterID == "" {
-			semesterID = strings.Replace(semester, " ", "-", 1)
-		}
-
-		client, err = db.NewPG(context.Background(), dbUri, semesterID)
+		client, err = db.NewPG(context.Background(), dbUri, semester)
 		if err != nil {
 			log.Fatal().Err(err).Msg("cannot connect to plexams.db")
 		}
 	}
 
 	plexams := Plexams{
-		semester: semester,
+		semester: strings.Replace(semester, "-", " ", 1),
 		dbClient: client,
 		zpa: &ZPA{
 			client:       nil,

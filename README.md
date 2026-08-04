@@ -70,7 +70,7 @@ Key sections consumed by the code:
 | Section | Purpose |
 |---------|---------|
 | `semester` | optional pin of the active semester, e.g. `2026-SS` (else auto-selected from the DB) |
-| `db.uri`, `db.database` | MongoDB connection |
+| `db.uri` | PostgreSQL connection |
 | `zpa.*` | `baseurl`, `username`, `password`/`token`, `fk07programs`, `oldprograms` |
 | `smtp.*` | mail server + `testmail` (dry-run recipient) |
 | `jira.*` | on-prem Jira (`jira.cc.hm.edu`) integration: `baseurl`, `token` (PAT), `project` (default key `FK07PP`); `url` feeds the `jiraURL` email helper |

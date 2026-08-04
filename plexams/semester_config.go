@@ -3,11 +3,11 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -250,8 +250,6 @@ func validateSemesterConfigInput(input *model.SemesterConfigInput) error {
 	return nil
 }
 
-var semesterNameRE = regexp.MustCompile(`^\d{4}-(SS|WS)$`)
-
 // NewSemesterConfigDefaults returns a template for creating a new semester,
 // based on the current semester's stored config (slots, emails, joint-program
 // reserved times and — as a starting point — the dates carry over; the planner
@@ -291,7 +289,7 @@ func (p *Plexams) CreateSemesterFromInput(ctx context.Context, semester string, 
 // init command.
 func (p *Plexams) createSemesterWithInput(ctx context.Context, semester string, input *model.SemesterConfigInput) (*model.SaveSemesterConfigResult, error) {
 	semester = strings.TrimSpace(semester)
-	if !semesterNameRE.MatchString(semester) {
+	if !db.IsSemester(semester) {
 		return nil, fmt.Errorf("invalid semester %q (expected YYYY-SS or YYYY-WS)", semester)
 	}
 	if err := validateSemesterConfigInput(input); err != nil {

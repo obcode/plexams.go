@@ -1,6 +1,7 @@
 package db
 
 import (
+	"regexp"
 	"strings"
 	"time"
 
@@ -193,12 +194,25 @@ const (
 	TargetOtherInvigilations      ReplaceTarget = "invigilations_other"
 )
 
-// semesterName maps a semester id to the logical semester external systems use
+// semesterRE is the Go copy of the semester_id_format check constraint
+// (00002_semester_registry.sql). Keep the two identical.
+var semesterRE = regexp.MustCompile(`^\d{4}-(SS|WS)$`)
+
+// IsSemester reports whether s is a well-formed semester, "2026-WS".
+//
+// The database enforces the same thing, but a caller that asks first gets to say
+// which value was wrong instead of surfacing a constraint violation from three
+// layers down. It is also what makes semesterName total.
+func IsSemester(s string) bool {
+	return semesterRE.MatchString(s)
+}
+
+// semesterName maps a semester to the logical form external systems use
 // ("2026-WS" -> "2026 WS").
 //
-// This is total because semester.id is constrained to YYYY-SS/YYYY-WS. It used to
-// be a fallback for a database whose stored label was empty; now it IS the label,
-// which is why there is no second column for it.
+// This is total for anything IsSemester accepts. It used to be the fallback for a
+// database whose stored label was empty; now it IS the label, which is why there
+// is no second column for it.
 func semesterName(semester string) string {
 	return strings.Replace(semester, "-", " ", 1)
 }

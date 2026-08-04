@@ -4,8 +4,8 @@
 # Only the deployment-relevant keys are shown here. The full reference (zpa, smtp,
 # anny, jira, operational keys) is in ../docs/configuration.md — add what you use.
 
-# Pin the semester on a fresh/empty database so the workspace can bootstrap; once a
-# workspace exists you can drop this and switch semesters through the GUI (setSemester).
+# Pin the semester on a fresh/empty database so the server can start; once a
+# semester exists you can drop this and switch through the GUI (setSemester).
 semester: 2026-SS
 
 db:
@@ -13,10 +13,6 @@ db:
   # from .env (POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB). sslmode=disable is
   # correct here: the connection never leaves the internal compose network.
   uri: postgres://plexams:change-me-strong-password@postgres:5432/plexams?sslmode=disable
-  # Optional: pin the workspace (semester_id). All semesters share one database now,
-  # so this selects rows rather than a database. Leave unset to let the server pick
-  # the last active workspace.
-  # database: 2026-SS
 
 server:
   port: "8080"

@@ -70,11 +70,31 @@ func TestEnsureSemesterRegistersAnotherSemester(t *testing.T) {
 
 // The id format is a constraint, not a convention: the logical semester ZPA sees
 // is derived from it, so a name it cannot be derived from must not get in.
+//
+// db.IsSemester is the Go copy of that constraint, so the two are asserted
+// together -- a drift between them would show up as a raw SQLSTATE in the GUI
+// instead of a message naming the bad value.
 func TestSemesterIDFormatIsEnforced(t *testing.T) {
 	pg := pgtest.NewDB(t)
 
-	for _, id := range []string{"Test26SS-v2", "2026-XX", "", "2026-SS-Test"} {
-		if err := pg.EnsureSemester(t.Context(), id, 2); err == nil {
+	cases := map[string]bool{
+		"2026-WS":      true,
+		"2026-SS":      true,
+		"Test26SS-v2":  false, // the clone name this whole change removes
+		"2026-XX":      false,
+		"2026 SS":      false, // the logical form, not the id
+		"":             false,
+		"2026-SS-Test": false,
+	}
+	for id, want := range cases {
+		if got := db.IsSemester(id); got != want {
+			t.Errorf("IsSemester(%q) = %v, want %v", id, got, want)
+		}
+		err := pg.EnsureSemester(t.Context(), id, 2)
+		if want && err != nil {
+			t.Errorf("EnsureSemester(%q): %v", id, err)
+		}
+		if !want && err == nil {
 			t.Errorf("EnsureSemester(%q) was accepted", id)
 		}
 	}

@@ -19,8 +19,8 @@ var semesterYearRE = regexp.MustCompile(`\d{4}`)
 // the create-form ("2026-SS") and "2026SS"; the summer semester (SS) sorts
 // before the winter semester (WS) of the same year (WS starts the academic
 // year, e.g. "2025 WS" < "2026 SS" < "2026 WS"). ok is false when the label is
-// not a recognizable semester (e.g. a workspace clone name without an SS/WS
-// suffix).
+// not a recognizable semester -- it also reads stored labels (nta.last_semester),
+// which go back further than today's format.
 func semesterOrdinal(label string) (int, bool) {
 	s := strings.ToUpper(strings.TrimSpace(label))
 	var season int

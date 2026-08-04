@@ -72,6 +72,9 @@ func (p *Plexams) SwitchSemester(ctx context.Context, name string) (*model.Semes
 	if !p.WritesAllowed() {
 		return nil, fmt.Errorf("cannot switch semester while an operation (validation/import/email/upload) is running")
 	}
+	if !db.IsSemester(name) {
+		return nil, fmt.Errorf("invalid semester %q (expected YYYY-SS or YYYY-WS)", name)
+	}
 
 	p.semester = p.dbClient.SwitchTo(ctx, name)
 	// force the ZPA client to be recreated with the new semester

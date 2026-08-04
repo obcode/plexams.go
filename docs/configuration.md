@@ -20,15 +20,14 @@ semester: 2026-SS              # optional (Pin); ohne Angabe wird beim Start das
                                # zuletzt aktive bzw. neueste kompatible Semester gewählt
 
 db:
-  uri: mongodb://localhost:27013   # Pflicht
-  database: ""                 # optional, Default = Semestername (z. B. "2026-SS");
-                               # als Pin/Override z. B. für einen Replay-Klon "2026-SS-Test"
+  uri: postgres://plexams@localhost:5432/plexams?sslmode=disable   # Pflicht
 ```
 
 > Einzige echte Pflicht ist `db.uri`. `semester` ist nur noch ein optionaler Pin:
-> ist es nicht gesetzt (und kein `db.database`-Pin), startet plexams mit dem zuletzt
-> im GUI aktiven Semester, sonst mit dem neuesten kompatiblen. Umschalten geht zur
-> Laufzeit über `setSemester` (GUI).
+> ist es nicht gesetzt, startet plexams mit dem zuletzt im GUI aktiven Semester,
+> sonst mit dem neuesten kompatiblen. Umschalten geht zur Laufzeit über
+> `setSemester` (GUI). Alle Semester liegen in *einer* Datenbank; das frühere
+> `db.database` (der MongoDB-Datenbankname) gibt es nicht mehr.
 
 Der **Planer** (`planer.name`/`planer.email`) liegt inzwischen in der DB (global,
 GUI-editierbar über `setPlaner`); der Config-Block ist nur noch Bootstrap/Fallback

@@ -108,31 +108,33 @@ func newPlexams() *plexams.Plexams {
 	if semester == "" {
 		semester = viper.GetString("semester")
 	}
-	dbOverride := viper.GetString("db.database")
-
-	// No semester pinned: take the pinned database's semester, else auto-select the
-	// last active / newest compatible semester from the database.
-	if strings.TrimSpace(semester) == "" {
-		if strings.TrimSpace(dbOverride) != "" {
-			semester = dbOverride
-		} else {
-			resolved, ok, connErr := resolveStartSemester(dbURI)
-			if connErr != nil {
-				log.Fatal().Err(connErr).Msg("cannot connect to the database (check db.uri / network)")
-			}
-			if !ok {
-				log.Fatal().Msg("database has no usable (compatible) semester yet — " +
-					"pin one with --semester <YYYY-SS> (e.g. --semester 2026-SS), " +
-					"or create one through the GUI (createSemester)")
-			}
-			semester = resolved
-			viper.Set("db.database", resolved)
-			log.Info().Str("semester", semester).Msg("auto-selected start semester")
+	// No semester pinned: auto-select the last active / newest compatible one.
+	//
+	// There is no db.database any more. It named the MongoDB database, which was
+	// what let a clone be planned against under another name; a semester is a
+	// semester_id now, and --semester says which.
+	semester = strings.TrimSpace(semester)
+	if semester == "" {
+		resolved, ok, connErr := resolveStartSemester(dbURI)
+		if connErr != nil {
+			log.Fatal().Err(connErr).Msg("cannot connect to the database (check db.uri / network)")
 		}
+		if !ok {
+			log.Fatal().Msg("database has no usable (compatible) semester yet — " +
+				"pin one with --semester <YYYY-SS> (e.g. --semester 2026-SS), " +
+				"or create one through the GUI (createSemester)")
+		}
+		semester = resolved
+		log.Info().Str("semester", semester).Msg("auto-selected start semester")
+	} else if !db.IsSemester(semester) {
+		// Fail here rather than on the check constraint the first time anything
+		// writes: a typo in the pin used to create a second, empty semester.
+		log.Fatal().Str("semester", semester).
+			Msg("not a semester (expected YYYY-SS or YYYY-WS, e.g. 2026-SS)")
 	}
 
 	plexams, err := plexams.NewPlexams(
-		strings.Replace(semester, "-", " ", 1),
+		semester,
 		dbURI,
 		viper.GetString("zpa.baseurl"),
 		viper.GetString("zpa.username"),
@@ -143,7 +145,7 @@ func newPlexams() *plexams.Plexams {
 	)
 
 	if err != nil {
-		panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
+		panic(fmt.Errorf("fatal cannot create db client: %w", err))
 	}
 
 	// remember what we started with, so the next start can resume it

@@ -1,7 +1,7 @@
 ### Plexams Admin-Digest
 
-**Workspace:** 2026 SS
-**Server:** Version 1.99.0 · postgres:5432 / 2026-SS
+**Semester:** 2026-SS
+**Server:** Version 1.99.0 · postgres:5432
 **Stand:** 22.07.2026 06:00 Uhr
 
 #### Zugriff
@@ -13,7 +13,7 @@ Admins: oliver.braun@hm.edu.
 
 ✅ Letzter Lauf 22.07.2026 03:00 Uhr (nightly): **ok**, 3 Änderungen. Geplant täglich 03:00 Uhr.
 
-#### Aktivität (Audit-Log, aktiver Workspace)
+#### Aktivität (Audit-Log, aktives Semester)
 
 - **4** Änderungen in 24 h · **27** in 7 Tagen
 - **2** aktive Nutzer · **1** Fehler (7 Tage)
@@ -38,10 +38,10 @@ Häufigste Operationen (7 Tage):
 Schreiben möglich.
 Täglicher Digest: aktiv, 06:00 Uhr.
 
-#### Workspaces
+#### Semester
 
-- 2026 SS (aktiv)
-- 2025 WS · read-only
+- 2026-SS (aktiv)
+- 2025-WS · read-only
 
 
 #### Letzte Transfers (ZPA/Anny)

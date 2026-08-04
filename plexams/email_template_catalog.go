@@ -143,7 +143,7 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 		Description: "Automatischer Nacht-Abgleich mit ZPA/Anny: Ergebnisbericht (Änderungen je Quelle, Fehler, Heartbeat). Versendet als „Plexams“ ohne Antwortadresse.",
 		Jira:        false,
 		Variables: []emailTemplateVar{
-			v("{{ .Semester }}", "Semester des abgeglichenen Workspace.", "2026-SS"),
+			v("{{ .Semester }}", "Abgeglichenes Semester.", "2026-SS"),
 			v("{{ .Started }} / {{ .Finished }}", "Start- und Endzeit des Laufs.", "22.07.2026 03:00 / 03:02"),
 			v("{{ .Skipped }} / {{ .SkipReason }}", "Ob der Lauf übersprungen wurde und warum.", "false"),
 			v("{{ .HasErrors }}", "Ob eine Quelle beim Abruf fehlschlug.", "false"),
@@ -180,10 +180,10 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 	},
 
 	"adminDigest.md.tmpl": {
-		Description: "Täglicher Plattform-Digest an alle Admin-Accounts: Zugriff/Rollen, Auto-Sync-Status, Aktivität/Audit, Fehler, Backup-Fälligkeit, Workspaces und letzte Transfers. Versendet als „Plexams“ ohne Antwortadresse.",
+		Description: "Täglicher Plattform-Digest an alle Admin-Accounts: Zugriff/Rollen, Auto-Sync-Status, Aktivität/Audit, Fehler, Backup-Fälligkeit, Semester und letzte Transfers. Versendet als „Plexams“ ohne Antwortadresse.",
 		Jira:        false,
 		Variables: []emailTemplateVar{
-			v("{{ .Semester }}", "Aktiver Workspace (Semester).", "2026 SS"),
+			v("{{ .Semester }}", "Aktives Semester.", "2026-SS"),
 			v("{{ .GeneratedAt }}", "Zeitpunkt der Erhebung.", "22.07.2026 06:00"),
 			v("{{ .Server.Version }}", "Build-Version des Servers.", "1.99.0"),
 			v("{{ .Users.Total }}", "Gesamtzahl der Nutzer, plus .Admins/.Planer/.Viewer.", "3"),
@@ -195,15 +195,15 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 			v("{{ range .Activity.TopOperations }}", "Häufigste Operationen (Name/Count).", "3 Operationen"),
 			v("{{ range .RecentError }}", "Letzte fehlgeschlagene Operationen (Zeit/Name/User/Error).", "1 Fehler"),
 			v("{{ .Backup.HasUnsavedChanges }}", "Ob ein Backup fällig ist (Änderungen seit letztem Dump).", "true"),
-			v("{{ .Live.WritesAllowed }} / {{ .Live.ReadOnly }}", "Ob gerade geschrieben werden darf / Workspace read-only.", "true / false"),
-			v("{{ range .Workspaces }}", "Alle Workspaces (Name/Active/ReadOnly).", "2 Workspaces"),
+			v("{{ .Live.WritesAllowed }} / {{ .Live.ReadOnly }}", "Ob gerade geschrieben werden darf / Semester read-only.", "true / false"),
+			v("{{ range .Semesters }}", "Alle Semester (Name/Active/ReadOnly).", "2 Semester"),
 			v("{{ range .RecentSync }}", "Letzte externe Transfers (Zeit/System/Label/Summary/OK).", "3 Transfers"),
 			v("{{ .Recipients }}", "Empfängerliste (für die Fußzeile).", "oliver.braun@hm.edu"),
 		},
 		Sample: adminDigestView{
-			Semester:    "2026 SS",
+			Semester:    "2026-SS",
 			GeneratedAt: "22.07.2026 06:00",
-			Server:      adminServerView{Version: "1.99.0", DBHost: "postgres:5432", Workspace: "2026-SS"},
+			Server:      adminServerView{Version: "1.99.0", DBHost: "postgres:5432"},
 			Users: adminUsersView{
 				Total: 3, Admins: 1, Planer: 1, Viewer: 1,
 				Emails: []string{"oliver.braun@hm.edu"},
@@ -225,9 +225,9 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 			RecentError: []adminErrorView{
 				{Time: "21.07. 14:32", Name: "uploadExamsToZPA", User: "oliver.braun@hm.edu", Error: "ZPA: 500 Internal Server Error"},
 			},
-			Backup:     adminBackupView{HasUnsavedChanges: true, LastDump: "20.07.2026 18:00", LastChange: "22.07.2026 05:12"},
-			Live:       adminLiveView{WritesAllowed: true, ReadOnly: false},
-			Workspaces: []adminWorkspaceView{{Name: "2026 SS", Active: true, ReadOnly: false}, {Name: "2025 WS", Active: false, ReadOnly: true}},
+			Backup:    adminBackupView{HasUnsavedChanges: true, LastDump: "20.07.2026 18:00", LastChange: "22.07.2026 05:12"},
+			Live:      adminLiveView{WritesAllowed: true, ReadOnly: false},
+			Semesters: []adminSemesterView{{Name: "2026-SS", Active: true, ReadOnly: false}, {Name: "2025-WS", Active: false, ReadOnly: true}},
 			RecentSync: []adminSyncView{
 				{Time: "22.07. 03:00", System: "ZPA", Label: "Prüfungen", Summary: "3 geändert", OK: true},
 				{Time: "22.07. 03:00", System: "Anny", Label: "Buchungen", Summary: "keine Änderungen", OK: true},

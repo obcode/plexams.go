@@ -213,9 +213,6 @@ func TestAllSemesterNames(t *testing.T) {
 	if !byID["2026-SS"].ReadOnly {
 		t.Error("the read-only flag was lost")
 	}
-	if byID["2026-WS"].Semester == nil || *byID["2026-WS"].Semester != "2026 WS" {
-		t.Errorf("Semester = %v, want the derived label", byID["2026-WS"].Semester)
-	}
 }
 
 // A config for a semester that is not registered is rejected. Under MongoDB the

@@ -124,15 +124,13 @@ type SaveSemesterConfigResult {
 }
 
 type Semester {
-  "the database label (e.g. '2026 SS' or a clone '2026 SS-Test'); selects the database."
+  "the semester, e.g. '2026-SS'. There is no second, logical semester next to it any more: the form external systems use ('2026 SS') is this one with the dash replaced."
   id: String!
-  "the logical semester used against external systems (ZPA), e.g. '2026 SS' — for a clone this stays the real semester, not the database name."
-  semester: String
-  "false for databases that cannot be used with this code (no semester config)."
+  "false for semesters that cannot be used with this code (no semester config)."
   compatible: Boolean!
-  "true when the database is protected: it can be selected, but all mutations fail."
+  "true when the semester is protected: it can be selected, but all mutations fail."
   readOnly: Boolean!
-  "data schema version of the database (null when unknown/never stamped)."
+  "data schema version of the semester's rows (null when unknown/never stamped)."
   schemaVersion: Int
 }
 

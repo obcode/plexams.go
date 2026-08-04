@@ -152,10 +152,8 @@ func (db *PG) AllSemesterNames(ctx context.Context) ([]*model.Semester, error) {
 	semesters := make([]*model.Semester, 0, len(rows))
 	for _, row := range rows {
 		version := row.SchemaVersion
-		label := semesterName(row.ID)
 		semesters = append(semesters, &model.Semester{
 			ID:            row.ID,
-			Semester:      &label,
 			Compatible:    row.HasConfig,
 			ReadOnly:      row.ReadOnly,
 			SchemaVersion: &version,

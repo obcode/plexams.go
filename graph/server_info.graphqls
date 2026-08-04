@@ -1,7 +1,7 @@
 extend type Query {
   """
   Runtime information about the running plexams.go server: its build version
-  and the MongoDB it is connected to. Used e.g. for the GUI footer.
+  and the database it is connected to. Used e.g. for the GUI footer.
   """
   serverInfo: ServerInfo!
 }
@@ -22,9 +22,4 @@ type ServerInfo {
   releaseURL: String
   "The database host:port the server is connected to (credentials redacted)."
   dbHost: String!
-  """
-  The workspace currently in use, e.g. "2026-SS". All semesters live in one
-  PostgreSQL database, so this is a semester_id and no longer a database name.
-  """
-  workspace: String!
 }

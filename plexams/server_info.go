@@ -12,14 +12,15 @@ const githubRepoURL = "https://github.com/obcode/plexams.go"
 
 // ServerInfo reports the running server's build version and the database it is
 // connected to, e.g. for the GUI footer.
+//
+// Which semester is active is NOT here: it is the `semester` query, and having it
+// in two places is what let the GUI footer disagree with the switcher.
 func (p *Plexams) ServerInfo(ctx context.Context) (*model.ServerInfo, error) {
 	version := viper.GetString("Version")
 
 	dbHost := ""
-	workspace := ""
 	if p.dbClient != nil {
 		dbHost = p.dbClient.DBHost()
-		workspace = p.dbClient.Semester()
 	}
 
 	return &model.ServerInfo{
@@ -29,7 +30,6 @@ func (p *Plexams) ServerInfo(ctx context.Context) (*model.ServerInfo, error) {
 		BuiltBy:    viper.GetString("BuiltBy"),
 		ReleaseURL: releaseURL(version),
 		DbHost:     dbHost,
-		Workspace:  workspace,
 	}, nil
 }
 

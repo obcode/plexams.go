@@ -29,9 +29,9 @@ const (
 
 // AdminOverview composes a platform-operations snapshot for admins: who has access,
 // what changed, whether the nightly auto-sync ran, whether a backup is due, which
-// workspaces exist and which build is running. It is pure composition of existing
-// *Plexams methods (activity/audit + sync details for the active workspace; users,
-// scheduler state and the workspace list are global) plus the activity summary derived
+// semesters exist and which build is running. It is pure composition of existing
+// *Plexams methods (activity/audit + sync details for the active semester; users,
+// scheduler state and the semester list are global) plus the activity summary derived
 // in Go from a single audit-log read. The resolver gates this on role ADMIN.
 func (p *Plexams) AdminOverview(ctx context.Context) (*model.AdminOverview, error) {
 	now := time.Now()
@@ -41,7 +41,7 @@ func (p *Plexams) AdminOverview(ctx context.Context) (*model.AdminOverview, erro
 		return nil, err
 	}
 
-	workspaces, err := p.GetAllSemesterNames(ctx)
+	semesters, err := p.GetAllSemesterNames(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -77,8 +77,8 @@ func (p *Plexams) AdminOverview(ctx context.Context) (*model.AdminOverview, erro
 	return &model.AdminOverview{
 		GeneratedAt:    now,
 		Server:         server,
-		ActiveSemester: p.semester,
-		Workspaces:     workspaces,
+		ActiveSemester: p.dbClient.Semester(),
+		Semesters:      semesters,
 		Users:          users,
 		RoleCounts:     roleCounts(users),
 		Scheduler:      scheduler,

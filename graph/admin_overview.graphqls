@@ -1,6 +1,6 @@
 # Admin-Übersicht: ein Plattform-Betriebsblick für Admins (nicht Prüfungsplanung).
 # Komponiert vorhandene Datenquellen (Audit-Log, Sync-Historie, Users/Rollen,
-# Scheduler-Zustand, Backup-Status, Server-Info, Workspaces) zu einem Überblick und
+# Scheduler-Zustand, Backup-Status, Server-Info, Semester) zu einem Überblick und
 # füllt zwei bisher nicht exponierte Lücken: den Scheduler-Zustand und den Live-Op-Status.
 #
 # WICHTIG: Reine Queries sind für jede authentifizierte Rolle erreichbar (die
@@ -8,7 +8,7 @@
 # Beide Resolver erzwingen daher selbst die Rolle ADMIN (requireAdmin).
 
 extend type Query {
-  "Plattform-Überblick für Admins (Zugriff/Rollen, Auto-Sync, Aktivität/Audit, Backup, Workspaces). Erfordert Rolle ADMIN."
+  "Plattform-Überblick für Admins (Zugriff/Rollen, Auto-Sync, Aktivität/Audit, Backup, Semester). Erfordert Rolle ADMIN."
   adminOverview: AdminOverview!
   "Zustand des nächtlichen Auto-Syncs und des Admin-Digest-Versands. Erfordert Rolle ADMIN."
   schedulerStatus: SchedulerStatus!
@@ -27,29 +27,29 @@ extend type Subscription {
 type AdminOverview {
   "Zeitpunkt, zu dem diese Übersicht erhoben wurde."
   generatedAt: Time!
-  "Build-Version und verbundene MongoDB des laufenden Servers."
+  "Build-Version und verbundene Datenbank des laufenden Servers."
   server: ServerInfo!
-  "Das aktuell aktive Semester (Workspace), z. B. \"2026 SS\"."
+  "Das aktuell aktive Semester, z. B. \"2026-SS\"."
   activeSemester: String!
-  "Alle bekannten Workspaces (Semester-Datenbanken) mit Read-only-/Schema-Stand."
-  workspaces: [Semester!]!
+  "Alle bekannten Semester mit Read-only-/Schema-Stand."
+  semesters: [Semester!]!
   "Die Zugriffsliste (alle bekannten Login-Identitäten)."
   users: [User!]!
   "Anzahl der Nutzer je Rolle."
   roleCounts: RoleCounts!
   "Zustand des Auto-Syncs und des Admin-Digests."
   scheduler: SchedulerStatus!
-  "Backup-Fälligkeit des aktiven Workspace (Änderungen seit dem letzten Dump)."
+  "Backup-Fälligkeit des aktiven Semesters (Änderungen seit dem letzten Dump)."
   backup: BackupStatus!
-  "Laufzeit-Status: ob gerade geschrieben werden darf und ob der Workspace schreibgeschützt ist."
+  "Laufzeit-Status: ob gerade geschrieben werden darf und ob das Semester schreibgeschützt ist."
   live: LiveStatus!
-  "Aktivitäts-Kennzahlen aus dem Audit-Log des aktiven Workspace (24h/7d/Fehler/aktive Nutzer + Top-Operationen)."
+  "Aktivitäts-Kennzahlen aus dem Audit-Log des aktiven Semesters (24h/7d/Fehler/aktive Nutzer + Top-Operationen)."
   activity: ActivitySummary!
-  "Die jüngsten Audit-Einträge (neueste zuerst) des aktiven Workspace."
+  "Die jüngsten Audit-Einträge (neueste zuerst) des aktiven Semesters."
   recentActivity: [MutationLogEntry!]!
-  "Die jüngsten fehlgeschlagenen Operationen (neueste zuerst) des aktiven Workspace."
+  "Die jüngsten fehlgeschlagenen Operationen (neueste zuerst) des aktiven Semesters."
   recentErrors: [MutationLogEntry!]!
-  "Die jüngsten externen Transfers (ZPA/Anny) des aktiven Workspace."
+  "Die jüngsten externen Transfers (ZPA/Anny) des aktiven Semesters."
   recentSyncs: [SyncLogEntry!]!
 }
 
@@ -97,7 +97,7 @@ type SchedulerStatus {
   lastStatus: String!
   "Auslöser des letzten Laufs: nightly | catchup | manual (leer wenn nie gelaufen)."
   lastTrigger: String!
-  "Workspace, den der letzte Lauf abgeglichen hat."
+  "Semester, das der letzte Lauf abgeglichen hat."
   lastSemester: String!
   "Anzahl der im letzten Lauf gefundenen Änderungen."
   lastTotalChanges: Int!
@@ -111,6 +111,6 @@ type SchedulerStatus {
 type LiveStatus {
   "Ob Schreiboperationen aktuell erlaubt sind (keine Validierung/kein exklusiver Transfer läuft)."
   writesAllowed: Boolean!
-  "Ob der aktive Workspace schreibgeschützt ist (read-only)."
+  "Ob das aktive Semester schreibgeschützt ist (read-only)."
   readOnly: Boolean!
 }

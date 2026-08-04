@@ -62,29 +62,29 @@ type AdditionalExamRoomInput struct {
 type AdminOverview struct {
 	// Zeitpunkt, zu dem diese Übersicht erhoben wurde.
 	GeneratedAt time.Time `json:"generatedAt"`
-	// Build-Version und verbundene MongoDB des laufenden Servers.
+	// Build-Version und verbundene Datenbank des laufenden Servers.
 	Server *ServerInfo `json:"server"`
-	// Das aktuell aktive Semester (Workspace), z. B. "2026 SS".
+	// Das aktuell aktive Semester, z. B. "2026 SS".
 	ActiveSemester string `json:"activeSemester"`
-	// Alle bekannten Workspaces (Semester-Datenbanken) mit Read-only-/Schema-Stand.
-	Workspaces []*Semester `json:"workspaces"`
+	// Alle bekannten Semester mit Read-only-/Schema-Stand.
+	Semesters []*Semester `json:"semesters"`
 	// Die Zugriffsliste (alle bekannten Login-Identitäten).
 	Users []*User `json:"users"`
 	// Anzahl der Nutzer je Rolle.
 	RoleCounts *RoleCounts `json:"roleCounts"`
 	// Zustand des Auto-Syncs und des Admin-Digests.
 	Scheduler *SchedulerStatus `json:"scheduler"`
-	// Backup-Fälligkeit des aktiven Workspace (Änderungen seit dem letzten Dump).
+	// Backup-Fälligkeit des aktiven Semesters (Änderungen seit dem letzten Dump).
 	Backup *BackupStatus `json:"backup"`
-	// Laufzeit-Status: ob gerade geschrieben werden darf und ob der Workspace schreibgeschützt ist.
+	// Laufzeit-Status: ob gerade geschrieben werden darf und ob das Semester schreibgeschützt ist.
 	Live *LiveStatus `json:"live"`
-	// Aktivitäts-Kennzahlen aus dem Audit-Log des aktiven Workspace (24h/7d/Fehler/aktive Nutzer + Top-Operationen).
+	// Aktivitäts-Kennzahlen aus dem Audit-Log des aktiven Semesters (24h/7d/Fehler/aktive Nutzer + Top-Operationen).
 	Activity *ActivitySummary `json:"activity"`
-	// Die jüngsten Audit-Einträge (neueste zuerst) des aktiven Workspace.
+	// Die jüngsten Audit-Einträge (neueste zuerst) des aktiven Semesters.
 	RecentActivity []*MutationLogEntry `json:"recentActivity"`
-	// Die jüngsten fehlgeschlagenen Operationen (neueste zuerst) des aktiven Workspace.
+	// Die jüngsten fehlgeschlagenen Operationen (neueste zuerst) des aktiven Semesters.
 	RecentErrors []*MutationLogEntry `json:"recentErrors"`
-	// Die jüngsten externen Transfers (ZPA/Anny) des aktiven Workspace.
+	// Die jüngsten externen Transfers (ZPA/Anny) des aktiven Semesters.
 	RecentSyncs []*SyncLogEntry `json:"recentSyncs"`
 }
 
@@ -945,7 +945,7 @@ type JointProgramTimesInput struct {
 type LiveStatus struct {
 	// Ob Schreiboperationen aktuell erlaubt sind (keine Validierung/kein exklusiver Transfer läuft).
 	WritesAllowed bool `json:"writesAllowed"`
-	// Ob der aktive Workspace schreibgeschützt ist (read-only).
+	// Ob das aktive Semester schreibgeschützt ist (read-only).
 	ReadOnly bool `json:"readOnly"`
 }
 
@@ -1466,7 +1466,7 @@ type SchedulerStatus struct {
 	LastStatus string `json:"lastStatus"`
 	// Auslöser des letzten Laufs: nightly | catchup | manual (leer wenn nie gelaufen).
 	LastTrigger string `json:"lastTrigger"`
-	// Workspace, den der letzte Lauf abgeglichen hat.
+	// Semester, das der letzte Lauf abgeglichen hat.
 	LastSemester string `json:"lastSemester"`
 	// Anzahl der im letzten Lauf gefundenen Änderungen.
 	LastTotalChanges int `json:"lastTotalChanges"`
@@ -1477,15 +1477,13 @@ type SchedulerStatus struct {
 }
 
 type Semester struct {
-	// the database label (e.g. '2026 SS' or a clone '2026 SS-Test'); selects the database.
+	// the semester, e.g. '2026-SS'. There is no second, logical semester next to it any more: the form external systems use ('2026 SS') is this one with the dash replaced.
 	ID string `json:"id"`
-	// the logical semester used against external systems (ZPA), e.g. '2026 SS' — for a clone this stays the real semester, not the database name.
-	Semester *string `json:"semester,omitempty"`
-	// false for databases that cannot be used with this code (no semester config).
+	// false for semesters that cannot be used with this code (no semester config).
 	Compatible bool `json:"compatible"`
-	// true when the database is protected: it can be selected, but all mutations fail.
+	// true when the semester is protected: it can be selected, but all mutations fail.
 	ReadOnly bool `json:"readOnly"`
-	// data schema version of the database (null when unknown/never stamped).
+	// data schema version of the semester's rows (null when unknown/never stamped).
 	SchemaVersion *int `json:"schemaVersion,omitempty"`
 }
 
@@ -1547,9 +1545,6 @@ type ServerInfo struct {
 	ReleaseURL *string `json:"releaseURL,omitempty"`
 	// The database host:port the server is connected to (credentials redacted).
 	DbHost string `json:"dbHost"`
-	// The workspace currently in use, e.g. "2026-SS". All semesters live in one
-	// PostgreSQL database, so this is a semester_id and no longer a database name.
-	Workspace string `json:"workspace"`
 }
 
 type SoftCostItem struct {

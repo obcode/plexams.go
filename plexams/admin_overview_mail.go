@@ -127,15 +127,14 @@ type adminDigestView struct {
 	RecentError []adminErrorView
 	Backup      adminBackupView
 	Live        adminLiveView
-	Workspaces  []adminWorkspaceView
+	Semesters   []adminSemesterView
 	RecentSync  []adminSyncView
 	Recipients  string // comma-joined, for the mail footer
 }
 
 type adminServerView struct {
-	Version   string
-	DBHost    string
-	Workspace string
+	Version string
+	DBHost  string
 }
 
 type adminUsersView struct {
@@ -194,7 +193,7 @@ type adminLiveView struct {
 	ReadOnly      bool
 }
 
-type adminWorkspaceView struct {
+type adminSemesterView struct {
 	Name     string
 	ReadOnly bool
 	Active   bool
@@ -214,9 +213,8 @@ func newAdminDigestView(o *model.AdminOverview, recipients []string) adminDigest
 		Semester:    strings.TrimSpace(o.ActiveSemester),
 		GeneratedAt: o.GeneratedAt.Format("02.01.2006 15:04"),
 		Server: adminServerView{
-			Version:   o.Server.Version,
-			DBHost:    o.Server.DbHost,
-			Workspace: o.Server.Workspace,
+			Version: o.Server.Version,
+			DBHost:  o.Server.DbHost,
 		},
 		Users: adminUsersView{
 			Total:  o.RoleCounts.Total,
@@ -237,7 +235,7 @@ func newAdminDigestView(o *model.AdminOverview, recipients []string) adminDigest
 		RecentError: newErrorViews(o.RecentErrors),
 		Backup:      newBackupView(o.Backup),
 		Live:        adminLiveView{WritesAllowed: o.Live.WritesAllowed, ReadOnly: o.Live.ReadOnly},
-		Workspaces:  newWorkspaceViews(o.Workspaces, o.ActiveSemester),
+		Semesters:   newSemesterViews(o.Semesters, o.ActiveSemester),
 		RecentSync:  newSyncViews(o.RecentSyncs),
 		Recipients:  strings.Join(recipients, ", "),
 	}
@@ -314,18 +312,13 @@ func newBackupView(b *model.BackupStatus) adminBackupView {
 	return view
 }
 
-func newWorkspaceViews(workspaces []*model.Semester, active string) []adminWorkspaceView {
-	out := make([]adminWorkspaceView, 0, len(workspaces))
-	for _, w := range workspaces {
-		name := w.ID
-		semester := ""
-		if w.Semester != nil {
-			semester = *w.Semester
-		}
-		out = append(out, adminWorkspaceView{
-			Name:     name,
-			ReadOnly: w.ReadOnly,
-			Active:   name == active || semester == active,
+func newSemesterViews(semesters []*model.Semester, active string) []adminSemesterView {
+	out := make([]adminSemesterView, 0, len(semesters))
+	for _, s := range semesters {
+		out = append(out, adminSemesterView{
+			Name:     s.ID,
+			ReadOnly: s.ReadOnly,
+			Active:   s.ID == active,
 		})
 	}
 	return out

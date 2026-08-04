@@ -1,7 +1,7 @@
 ### Plexams Admin-Digest
 
-**Workspace:** {{ .Semester }}
-**Server:** Version {{ .Server.Version }} · {{ .Server.DBHost }} / {{ .Server.Workspace }}
+**Semester:** {{ .Semester }}
+**Server:** Version {{ .Server.Version }} · {{ .Server.DBHost }}
 **Stand:** {{ .GeneratedAt }} Uhr
 
 #### Zugriff
@@ -19,7 +19,7 @@ Aktiviert für {{ .AutoSync.Time }} Uhr, aber noch nie gelaufen.
 {{ .AutoSync.StatusSymbol }} Letzter Lauf {{ .AutoSync.LastRun }} Uhr ({{ .AutoSync.LastTrigger }}): **{{ .AutoSync.LastStatus }}**, {{ .AutoSync.LastChanges }} Änderungen. Geplant täglich {{ .AutoSync.Time }} Uhr.
 {{- end }}
 
-#### Aktivität (Audit-Log, aktiver Workspace)
+#### Aktivität (Audit-Log, aktives Semester)
 
 - **{{ .Activity.Last24h }}** Änderungen in 24 h · **{{ .Activity.Last7d }}** in 7 Tagen
 - **{{ .Activity.DistinctUsers7d }}** aktive Nutzer · **{{ .Activity.Errors7d }}** Fehler (7 Tage)
@@ -43,12 +43,12 @@ Häufigste Operationen (7 Tage):
 
 #### Laufzeit
 
-Schreiben {{ if .Live.WritesAllowed }}möglich{{ else }}gesperrt (Operation läuft){{ end }}{{ if .Live.ReadOnly }} · Workspace schreibgeschützt{{ end }}.
+Schreiben {{ if .Live.WritesAllowed }}möglich{{ else }}gesperrt (Operation läuft){{ end }}{{ if .Live.ReadOnly }} · Semester schreibgeschützt{{ end }}.
 Täglicher Digest: {{ if .AdminMail.Enabled }}aktiv, {{ .AdminMail.Time }} Uhr{{ else }}deaktiviert{{ end }}.
-{{ if .Workspaces }}
-#### Workspaces
+{{ if .Semesters }}
+#### Semester
 
-{{ range .Workspaces }}- {{ .Name }}{{ if .Active }} (aktiv){{ end }}{{ if .ReadOnly }} · read-only{{ end }}
+{{ range .Semesters }}- {{ .Name }}{{ if .Active }} (aktiv){{ end }}{{ if .ReadOnly }} · read-only{{ end }}
 {{ end }}{{- end }}
 {{ if .RecentSync }}
 #### Letzte Transfers (ZPA/Anny)

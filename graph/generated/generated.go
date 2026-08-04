@@ -88,9 +88,9 @@ type ComplexityRoot struct {
 		RecentSyncs    func(childComplexity int) int
 		RoleCounts     func(childComplexity int) int
 		Scheduler      func(childComplexity int) int
+		Semesters      func(childComplexity int) int
 		Server         func(childComplexity int) int
 		Users          func(childComplexity int) int
-		Workspaces     func(childComplexity int) int
 	}
 
 	AnCode struct {
@@ -1451,7 +1451,6 @@ type ComplexityRoot struct {
 		ID            func(childComplexity int) int
 		ReadOnly      func(childComplexity int) int
 		SchemaVersion func(childComplexity int) int
-		Semester      func(childComplexity int) int
 	}
 
 	SemesterConfig struct {
@@ -1492,7 +1491,6 @@ type ComplexityRoot struct {
 		DbHost     func(childComplexity int) int
 		ReleaseURL func(childComplexity int) int
 		Version    func(childComplexity int) int
-		Workspace  func(childComplexity int) int
 	}
 
 	Slot struct {
@@ -2312,6 +2310,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AdminOverview.Scheduler(childComplexity), true
 
+	case "AdminOverview.semesters":
+		if e.complexity.AdminOverview.Semesters == nil {
+			break
+		}
+
+		return e.complexity.AdminOverview.Semesters(childComplexity), true
+
 	case "AdminOverview.server":
 		if e.complexity.AdminOverview.Server == nil {
 			break
@@ -2325,13 +2330,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AdminOverview.Users(childComplexity), true
-
-	case "AdminOverview.workspaces":
-		if e.complexity.AdminOverview.Workspaces == nil {
-			break
-		}
-
-		return e.complexity.AdminOverview.Workspaces(childComplexity), true
 
 	case "AnCode.zpaAncode":
 		if e.complexity.AnCode.ZpaAncode == nil {
@@ -9716,13 +9714,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Semester.SchemaVersion(childComplexity), true
 
-	case "Semester.semester":
-		if e.complexity.Semester.Semester == nil {
-			break
-		}
-
-		return e.complexity.Semester.Semester(childComplexity), true
-
 	case "SemesterConfig.crossCampusGapMinutes":
 		if e.complexity.SemesterConfig.CrossCampusGapMinutes == nil {
 			break
@@ -9939,13 +9930,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServerInfo.Version(childComplexity), true
-
-	case "ServerInfo.workspace":
-		if e.complexity.ServerInfo.Workspace == nil {
-			break
-		}
-
-		return e.complexity.ServerInfo.Workspace(childComplexity), true
 
 	case "Slot.starttime":
 		if e.complexity.Slot.Starttime == nil {
@@ -11835,7 +11819,7 @@ input AdditionalExamRoomInput {
 `, BuiltIn: false},
 	{Name: "../admin_overview.graphqls", Input: `# Admin-Übersicht: ein Plattform-Betriebsblick für Admins (nicht Prüfungsplanung).
 # Komponiert vorhandene Datenquellen (Audit-Log, Sync-Historie, Users/Rollen,
-# Scheduler-Zustand, Backup-Status, Server-Info, Workspaces) zu einem Überblick und
+# Scheduler-Zustand, Backup-Status, Server-Info, Semester) zu einem Überblick und
 # füllt zwei bisher nicht exponierte Lücken: den Scheduler-Zustand und den Live-Op-Status.
 #
 # WICHTIG: Reine Queries sind für jede authentifizierte Rolle erreichbar (die
@@ -11843,7 +11827,7 @@ input AdditionalExamRoomInput {
 # Beide Resolver erzwingen daher selbst die Rolle ADMIN (requireAdmin).
 
 extend type Query {
-  "Plattform-Überblick für Admins (Zugriff/Rollen, Auto-Sync, Aktivität/Audit, Backup, Workspaces). Erfordert Rolle ADMIN."
+  "Plattform-Überblick für Admins (Zugriff/Rollen, Auto-Sync, Aktivität/Audit, Backup, Semester). Erfordert Rolle ADMIN."
   adminOverview: AdminOverview!
   "Zustand des nächtlichen Auto-Syncs und des Admin-Digest-Versands. Erfordert Rolle ADMIN."
   schedulerStatus: SchedulerStatus!
@@ -11862,29 +11846,29 @@ extend type Subscription {
 type AdminOverview {
   "Zeitpunkt, zu dem diese Übersicht erhoben wurde."
   generatedAt: Time!
-  "Build-Version und verbundene MongoDB des laufenden Servers."
+  "Build-Version und verbundene Datenbank des laufenden Servers."
   server: ServerInfo!
-  "Das aktuell aktive Semester (Workspace), z. B. \"2026 SS\"."
+  "Das aktuell aktive Semester, z. B. \"2026 SS\"."
   activeSemester: String!
-  "Alle bekannten Workspaces (Semester-Datenbanken) mit Read-only-/Schema-Stand."
-  workspaces: [Semester!]!
+  "Alle bekannten Semester mit Read-only-/Schema-Stand."
+  semesters: [Semester!]!
   "Die Zugriffsliste (alle bekannten Login-Identitäten)."
   users: [User!]!
   "Anzahl der Nutzer je Rolle."
   roleCounts: RoleCounts!
   "Zustand des Auto-Syncs und des Admin-Digests."
   scheduler: SchedulerStatus!
-  "Backup-Fälligkeit des aktiven Workspace (Änderungen seit dem letzten Dump)."
+  "Backup-Fälligkeit des aktiven Semesters (Änderungen seit dem letzten Dump)."
   backup: BackupStatus!
-  "Laufzeit-Status: ob gerade geschrieben werden darf und ob der Workspace schreibgeschützt ist."
+  "Laufzeit-Status: ob gerade geschrieben werden darf und ob das Semester schreibgeschützt ist."
   live: LiveStatus!
-  "Aktivitäts-Kennzahlen aus dem Audit-Log des aktiven Workspace (24h/7d/Fehler/aktive Nutzer + Top-Operationen)."
+  "Aktivitäts-Kennzahlen aus dem Audit-Log des aktiven Semesters (24h/7d/Fehler/aktive Nutzer + Top-Operationen)."
   activity: ActivitySummary!
-  "Die jüngsten Audit-Einträge (neueste zuerst) des aktiven Workspace."
+  "Die jüngsten Audit-Einträge (neueste zuerst) des aktiven Semesters."
   recentActivity: [MutationLogEntry!]!
-  "Die jüngsten fehlgeschlagenen Operationen (neueste zuerst) des aktiven Workspace."
+  "Die jüngsten fehlgeschlagenen Operationen (neueste zuerst) des aktiven Semesters."
   recentErrors: [MutationLogEntry!]!
-  "Die jüngsten externen Transfers (ZPA/Anny) des aktiven Workspace."
+  "Die jüngsten externen Transfers (ZPA/Anny) des aktiven Semesters."
   recentSyncs: [SyncLogEntry!]!
 }
 
@@ -11932,7 +11916,7 @@ type SchedulerStatus {
   lastStatus: String!
   "Auslöser des letzten Laufs: nightly | catchup | manual (leer wenn nie gelaufen)."
   lastTrigger: String!
-  "Workspace, den der letzte Lauf abgeglichen hat."
+  "Semester, das der letzte Lauf abgeglichen hat."
   lastSemester: String!
   "Anzahl der im letzten Lauf gefundenen Änderungen."
   lastTotalChanges: Int!
@@ -11946,7 +11930,7 @@ type SchedulerStatus {
 type LiveStatus {
   "Ob Schreiboperationen aktuell erlaubt sind (keine Validierung/kein exklusiver Transfer läuft)."
   writesAllowed: Boolean!
-  "Ob der aktive Workspace schreibgeschützt ist (read-only)."
+  "Ob das aktive Semester schreibgeschützt ist (read-only)."
   readOnly: Boolean!
 }
 `, BuiltIn: false},
@@ -14453,15 +14437,13 @@ type SaveSemesterConfigResult {
 }
 
 type Semester {
-  "the database label (e.g. '2026 SS' or a clone '2026 SS-Test'); selects the database."
+  "the semester, e.g. '2026-SS'. There is no second, logical semester next to it any more: the form external systems use ('2026 SS') is this one with the dash replaced."
   id: String!
-  "the logical semester used against external systems (ZPA), e.g. '2026 SS' — for a clone this stays the real semester, not the database name."
-  semester: String
-  "false for databases that cannot be used with this code (no semester config)."
+  "false for semesters that cannot be used with this code (no semester config)."
   compatible: Boolean!
-  "true when the database is protected: it can be selected, but all mutations fail."
+  "true when the semester is protected: it can be selected, but all mutations fail."
   readOnly: Boolean!
-  "data schema version of the database (null when unknown/never stamped)."
+  "data schema version of the semester's rows (null when unknown/never stamped)."
   schemaVersion: Int
 }
 
@@ -14496,7 +14478,7 @@ type SemesterConfig {
 	{Name: "../server_info.graphqls", Input: `extend type Query {
   """
   Runtime information about the running plexams.go server: its build version
-  and the MongoDB it is connected to. Used e.g. for the GUI footer.
+  and the database it is connected to. Used e.g. for the GUI footer.
   """
   serverInfo: ServerInfo!
 }
@@ -14517,11 +14499,6 @@ type ServerInfo {
   releaseURL: String
   "The database host:port the server is connected to (credentials redacted)."
   dbHost: String!
-  """
-  The workspace currently in use, e.g. "2026-SS". All semesters live in one
-  PostgreSQL database, so this is a semester_id and no longer a database name.
-  """
-  workspace: String!
 }
 `, BuiltIn: false},
 	{Name: "../special_interest.graphqls", Input: `extend type Query {
@@ -23249,8 +23226,6 @@ func (ec *executionContext) fieldContext_AdminOverview_server(_ context.Context,
 				return ec.fieldContext_ServerInfo_releaseURL(ctx, field)
 			case "dbHost":
 				return ec.fieldContext_ServerInfo_dbHost(ctx, field)
-			case "workspace":
-				return ec.fieldContext_ServerInfo_workspace(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServerInfo", field.Name)
 		},
@@ -23302,8 +23277,8 @@ func (ec *executionContext) fieldContext_AdminOverview_activeSemester(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _AdminOverview_workspaces(ctx context.Context, field graphql.CollectedField, obj *model.AdminOverview) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AdminOverview_workspaces(ctx, field)
+func (ec *executionContext) _AdminOverview_semesters(ctx context.Context, field graphql.CollectedField, obj *model.AdminOverview) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminOverview_semesters(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -23316,7 +23291,7 @@ func (ec *executionContext) _AdminOverview_workspaces(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Workspaces, nil
+		return obj.Semesters, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -23333,7 +23308,7 @@ func (ec *executionContext) _AdminOverview_workspaces(ctx context.Context, field
 	return ec.marshalNSemester2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemesterᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_AdminOverview_workspaces(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AdminOverview_semesters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AdminOverview",
 		Field:      field,
@@ -23343,8 +23318,6 @@ func (ec *executionContext) fieldContext_AdminOverview_workspaces(_ context.Cont
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Semester_id(ctx, field)
-			case "semester":
-				return ec.fieldContext_Semester_semester(ctx, field)
 			case "compatible":
 				return ec.fieldContext_Semester_compatible(ctx, field)
 			case "readOnly":
@@ -49659,8 +49632,6 @@ func (ec *executionContext) fieldContext_Mutation_setSemester(ctx context.Contex
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Semester_id(ctx, field)
-			case "semester":
-				return ec.fieldContext_Semester_semester(ctx, field)
 			case "compatible":
 				return ec.fieldContext_Semester_compatible(ctx, field)
 			case "readOnly":
@@ -49726,8 +49697,6 @@ func (ec *executionContext) fieldContext_Mutation_setSemesterReadOnly(ctx contex
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Semester_id(ctx, field)
-			case "semester":
-				return ec.fieldContext_Semester_semester(ctx, field)
 			case "compatible":
 				return ec.fieldContext_Semester_compatible(ctx, field)
 			case "readOnly":
@@ -59951,8 +59920,6 @@ func (ec *executionContext) fieldContext_Query_allSemesterNames(_ context.Contex
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Semester_id(ctx, field)
-			case "semester":
-				return ec.fieldContext_Semester_semester(ctx, field)
 			case "compatible":
 				return ec.fieldContext_Semester_compatible(ctx, field)
 			case "readOnly":
@@ -60007,8 +59974,6 @@ func (ec *executionContext) fieldContext_Query_semester(_ context.Context, field
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Semester_id(ctx, field)
-			case "semester":
-				return ec.fieldContext_Semester_semester(ctx, field)
 			case "compatible":
 				return ec.fieldContext_Semester_compatible(ctx, field)
 			case "readOnly":
@@ -60385,8 +60350,8 @@ func (ec *executionContext) fieldContext_Query_adminOverview(_ context.Context, 
 				return ec.fieldContext_AdminOverview_server(ctx, field)
 			case "activeSemester":
 				return ec.fieldContext_AdminOverview_activeSemester(ctx, field)
-			case "workspaces":
-				return ec.fieldContext_AdminOverview_workspaces(ctx, field)
+			case "semesters":
+				return ec.fieldContext_AdminOverview_semesters(ctx, field)
 			case "users":
 				return ec.fieldContext_AdminOverview_users(ctx, field)
 			case "roleCounts":
@@ -66400,8 +66365,6 @@ func (ec *executionContext) fieldContext_Query_serverInfo(_ context.Context, fie
 				return ec.fieldContext_ServerInfo_releaseURL(ctx, field)
 			case "dbHost":
 				return ec.fieldContext_ServerInfo_dbHost(ctx, field)
-			case "workspace":
-				return ec.fieldContext_ServerInfo_workspace(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServerInfo", field.Name)
 		},
@@ -72228,47 +72191,6 @@ func (ec *executionContext) fieldContext_Semester_id(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Semester_semester(ctx context.Context, field graphql.CollectedField, obj *model.Semester) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Semester_semester(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Semester, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Semester_semester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Semester",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Semester_compatible(ctx context.Context, field graphql.CollectedField, obj *model.Semester) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Semester_compatible(ctx, field)
 	if err != nil {
@@ -73794,50 +73716,6 @@ func (ec *executionContext) _ServerInfo_dbHost(ctx context.Context, field graphq
 }
 
 func (ec *executionContext) fieldContext_ServerInfo_dbHost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ServerInfo",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ServerInfo_workspace(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ServerInfo_workspace(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Workspace, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ServerInfo_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ServerInfo",
 		Field:      field,
@@ -89173,8 +89051,8 @@ func (ec *executionContext) _AdminOverview(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "workspaces":
-			out.Values[i] = ec._AdminOverview_workspaces(ctx, field, obj)
+		case "semesters":
+			out.Values[i] = ec._AdminOverview_semesters(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -100553,8 +100431,6 @@ func (ec *executionContext) _Semester(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "semester":
-			out.Values[i] = ec._Semester_semester(ctx, field, obj)
 		case "compatible":
 			out.Values[i] = ec._Semester_compatible(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -100791,11 +100667,6 @@ func (ec *executionContext) _ServerInfo(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._ServerInfo_releaseURL(ctx, field, obj)
 		case "dbHost":
 			out.Values[i] = ec._ServerInfo_dbHost(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "workspace":
-			out.Values[i] = ec._ServerInfo_workspace(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

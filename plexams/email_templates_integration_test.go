@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/obcode/plexams.go/internal/mongotest"
+	"github.com/obcode/plexams.go/internal/pgtest"
 )
 
 // TestEmailTemplateOverrideRoundTrip exercises the DB-backed, editable email templates
 // against a real MongoDB: default → set override (used at render) → validate → reset.
 func TestEmailTemplateOverrideRoundTrip(t *testing.T) {
-	p := &Plexams{dbClient: mongotest.NewDB(t)}
+	p := &Plexams{dbClient: pgtest.NewDB(t)}
 	ctx := context.Background()
 	const name = "exahmEmail.md.tmpl"
 

@@ -18,7 +18,7 @@ func (p *Plexams) ServerInfo(ctx context.Context) (*model.ServerInfo, error) {
 	mongoHost := ""
 	mongoDatabase := ""
 	if p.dbClient != nil {
-		mongoHost = p.dbClient.MongoHost()
+		mongoHost = p.dbClient.DBHost()
 		mongoDatabase = p.dbClient.DatabaseName()
 	}
 

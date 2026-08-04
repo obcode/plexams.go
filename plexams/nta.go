@@ -60,9 +60,22 @@ func (p *Plexams) NtasWithRegs(ctx context.Context) ([]*model.Student, error) {
 	return p.dbClient.NtasWithRegs(ctx)
 }
 
+// Nta always returns (nil, nil) -- there is nothing left to read.
+//
+// It read the per-semester `nta` collection, which nothing has written since
+// 2023-SS: the prepared student view (studentregs_per_student_planned) replaced
+// it, the producer was removed and this reader stayed. So it has answered "not
+// found" for about three years, and the GUI page /nta/<mtknr> -- linked from
+// /nta/all for every mtknr -- has shown "Kein NTA mit dieser Matrikelnummer
+// gefunden" for just as long.
+//
+// Kept, rather than deleted, so the flip changes no behaviour and no GraphQL
+// field. Fixing it belongs in the GUI: point the page at StudentByMtknr (which
+// is ported), then this, its resolver and its query can go.
+//
 // Deprecated: use StudentByMtknr
 func (p *Plexams) Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error) {
-	return p.dbClient.NtaWithRegs(ctx, mtknr)
+	return nil, nil
 }
 
 func (p *Plexams) NtaByMtknr(ctx context.Context, mtknr string) (*model.NTA, error) {

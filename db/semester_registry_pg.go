@@ -108,7 +108,7 @@ func (db *PG) SetMetaSemester(ctx context.Context, semester string, version int)
 // SetMetaSemesterForSemester force-writes the logical semester into the
 // workspace derived from that semester's name (used when creating one).
 func (db *PG) SetMetaSemesterForSemester(ctx context.Context, semester string, version int) error {
-	return db.setMetaSemesterIn(ctx, databaseNameForSemester(semester), semester, version)
+	return db.setMetaSemesterIn(ctx, semesterIDForSemester(semester), semester, version)
 }
 
 // SetMetaSemesterForDatabase force-writes the logical semester into a specific
@@ -250,7 +250,7 @@ func (db *PG) GetSemesterConfigInput(ctx context.Context) (*model.SemesterConfig
 // or nil. Used to seed a new semester from a previous one and to guard
 // createSemester against overwriting.
 func (db *PG) GetSemesterConfigInputForSemester(ctx context.Context, semester string) (*model.SemesterConfigInput, error) {
-	return db.semesterConfigInputOf(ctx, databaseNameForSemester(semester))
+	return db.semesterConfigInputOf(ctx, semesterIDForSemester(semester))
 }
 
 // SemesterConfigInputForDatabase returns the raw config of a specific workspace
@@ -292,7 +292,7 @@ func (db *PG) SaveSemesterConfigInput(ctx context.Context, input *model.Semester
 // SaveSemesterConfigInputForSemester writes the raw config into the workspace
 // derived from that semester's name (used when creating a new semester).
 func (db *PG) SaveSemesterConfigInputForSemester(ctx context.Context, semester string, input *model.SemesterConfigInput) error {
-	return db.SaveSemesterConfigInputToDatabase(ctx, databaseNameForSemester(semester), input)
+	return db.SaveSemesterConfigInputToDatabase(ctx, semesterIDForSemester(semester), input)
 }
 
 // SaveSemesterConfigInputToDatabase writes the raw config into a specific

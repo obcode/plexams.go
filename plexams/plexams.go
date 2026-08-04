@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/logrusorgru/aurora"
@@ -20,7 +21,7 @@ import (
 
 type Plexams struct {
 	semester       string
-	dbClient       *db.DB
+	dbClient       *db.PG
 	zpa            *ZPA
 	jira           *Jira
 	sealer         *secrets.Sealer
@@ -125,24 +126,29 @@ type Email struct {
 
 func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken string, fk07programs, oldprograms []string) (*Plexams, error) {
 
-	var client *db.DB
+	var client *db.PG
 	var err error
 	if dbUri == "" {
 		log.Info().Msg("starting without DB!")
 	} else {
-		dbName := viper.GetString("db.database")
-		var databaseName *string
-		if dbName == "" {
-			databaseName = nil
-		} else {
-			databaseName = &dbName
+		// The workspace key -- what used to be the name of the per-semester
+		// database. It now only selects rows (semester_id), so db.database keeps
+		// its meaning without there being a database per semester.
+		semesterID := viper.GetString("db.database")
+		if semesterID == "" {
+			semesterID = strings.Replace(semester, " ", "-", 1)
 		}
 
-		client, err = db.NewDB(dbUri, semester, databaseName)
-
+		client, err = db.NewPG(context.Background(), dbUri, semesterID)
 		if err != nil {
 			log.Fatal().Err(err).Msg("cannot connect to plexams.db")
 		}
+
+		// Resolve the logical semester the same way a runtime switch does: an
+		// explicit --semester wins over the workspace's stored label and is not
+		// persisted. NewPG only takes the id, so without this a pinned semester
+		// would be lost the first time anything asked for the label.
+		client.SwitchTo(context.Background(), semesterID, semester)
 	}
 
 	plexams := Plexams{

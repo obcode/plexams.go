@@ -43,8 +43,6 @@ func (p *Plexams) loadSemesterMeta(ctx context.Context) {
 	if err := p.dbClient.Migrate(ctx); err != nil {
 		log.Error().Err(err).Msg("cannot migrate database")
 	}
-	// Best-effort: an index the existing data violates is logged, never fatal.
-	p.dbClient.EnsureIndexes(ctx)
 	p.readOnly = false
 	if meta, err := p.dbClient.GetSemesterMeta(ctx); err != nil {
 		log.Error().Err(err).Msg("cannot read semester meta")

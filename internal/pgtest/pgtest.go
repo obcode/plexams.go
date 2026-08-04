@@ -1,6 +1,6 @@
 // Package pgtest gives each test its own PostgreSQL database.
 //
-// It mirrors the contract of internal/mongotest: without PLEXAMS_TEST_PG_URI the
+// Without PLEXAMS_TEST_PG_URI the
 // tests skip, unless PLEXAMS_TEST_PG_REQUIRED is set, which turns the skip into a
 // failure. CI sets both, so a database that fails to come up breaks the build
 // instead of quietly skipping every integration test -- without that, "green" and
@@ -244,4 +244,19 @@ func lockKey(name string) int64 {
 	h := fnv.New64a()
 	h.Write([]byte(name))
 	return int64(h.Sum64()) //nolint:gosec // wraparound is fine for a lock key
+}
+
+// NewDBWithSemester is NewDB plus the workspace row the client is pointed at.
+//
+// Every semester-scoped table carries a foreign key to `semester`. Mongo never
+// enforced that -- a write into a semester simply created its database -- so a
+// ported test that writes semester data fails on the foreign key rather than on
+// anything it means to assert.
+func NewDBWithSemester(t *testing.T) *db.PG {
+	t.Helper()
+	pg := NewDB(t)
+	if err := pg.EnsureMeta(t.Context(), db.CurrentSchemaVersion); err != nil {
+		t.Fatalf("cannot create the test workspace: %v", err)
+	}
+	return pg
 }

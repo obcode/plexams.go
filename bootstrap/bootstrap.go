@@ -125,7 +125,7 @@ func newPlexams() *plexams.Plexams {
 			if !ok {
 				log.Fatal().Msg("database has no usable (compatible) workspace yet — " +
 					"pin a semester with --semester <YYYY-SS> (e.g. --semester 2026-SS), " +
-					"or create/restore one through the GUI (createSemester / semester-dump upload)")
+					"or create one through the GUI (createSemester)")
 			}
 			semester = resolved
 			if database != "" {
@@ -166,15 +166,13 @@ func newPlexams() *plexams.Plexams {
 // (last active, else newest compatible). connErr is non-nil when the database is
 // unreachable; ok=false with connErr==nil means connected but no usable workspace.
 func resolveStartSemester(dbURI string) (semester, database string, ok bool, connErr error) {
-	client, err := db.NewDB(dbURI, "plexams", nil)
+	// The workspace is irrelevant here: the registry is one table, so this reads
+	// across all of them. Under Mongo it had to connect to a named database first.
+	client, err := db.NewPG(context.Background(), dbURI, "")
 	if err != nil {
 		return "", "", false, err
 	}
-	defer func() {
-		if err := client.Client.Disconnect(context.Background()); err != nil {
-			log.Debug().Err(err).Msg("cannot disconnect temporary client")
-		}
-	}()
+	defer client.Close()
 	semester, database, ok = client.ResolveStartSemester(context.Background())
 	return semester, database, ok, nil
 }
@@ -182,15 +180,11 @@ func resolveStartSemester(dbURI string) (semester, database string, ok bool, con
 // logicalSemesterForDatabase opens a temporary DB connection to read the logical
 // semester stored in a specific database (else derives it from the name).
 func logicalSemesterForDatabase(dbURI, database string) string {
-	client, err := db.NewDB(dbURI, "plexams", nil)
+	client, err := db.NewPG(context.Background(), dbURI, "")
 	if err != nil {
 		log.Error().Err(err).Msg("cannot connect to read database semester")
 		return database
 	}
-	defer func() {
-		if err := client.Client.Disconnect(context.Background()); err != nil {
-			log.Debug().Err(err).Msg("cannot disconnect temporary client")
-		}
-	}()
+	defer client.Close()
 	return client.SemesterForDatabase(context.Background(), database)
 }

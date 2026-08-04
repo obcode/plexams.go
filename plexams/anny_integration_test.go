@@ -2,11 +2,12 @@ package plexams
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
-	"github.com/obcode/plexams.go/internal/mongotest"
+	"github.com/obcode/plexams.go/internal/pgtest"
 	"github.com/obcode/plexams.go/plexams/anny"
 )
 
@@ -21,7 +22,7 @@ func intPtr(i int) *int { return &i }
 // (day 1 / slot 1) starting 2026-01-20 08:30, so a booking window can cover it.
 func annyTestPlexams(t *testing.T) (*Plexams, context.Context, time.Time) {
 	t.Helper()
-	dbClient := mongotest.NewDB(t)
+	dbClient := pgtest.NewDBWithSemester(t)
 	ctx := context.Background()
 
 	slotStart := time.Date(2026, 1, 20, 8, 30, 0, 0, time.Local)
@@ -56,8 +57,14 @@ func TestAnnyBookedBySlot(t *testing.T) {
 		t.Fatalf("SetAnnyConfig: %v", err)
 	}
 
+	// Number is the booking's identity in Anny and the primary key here, so every
+	// fixture needs its own. Under Mongo these were six appended documents; sharing
+	// a number now means six upserts into one row, and only the last survives.
+	n := 0
 	covers := func(room, who string) *model.AnnyBooking {
+		n++
 		return &model.AnnyBooking{
+			Number:              fmt.Sprintf("B%03d", n),
 			Room:                room,
 			PersonalizationName: who,
 			StartDate:           slotStart.Add(-30 * time.Minute), // 08:00
@@ -72,7 +79,8 @@ func TestAnnyBookedBySlot(t *testing.T) {
 		covers("T3.099", "Braun"), // ours, Anny, but deactivated -> ignored
 		covers("T3.014", "Meier"), // someone else's -> ignored
 		{ // ours but window ends before the slot block finishes -> ignored
-			Room: "T3.014", PersonalizationName: "Braun",
+			Number: "B006",
+			Room:   "T3.014", PersonalizationName: "Braun",
 			StartDate: slotStart.Add(-30 * time.Minute), EndDate: slotStart.Add(60 * time.Minute), // ends 09:30
 			Status: "accepted",
 		},
@@ -128,9 +136,9 @@ func TestExahmRoomsFromAnnyBookings(t *testing.T) {
 		t.Fatalf("SetAnnyConfig: %v", err)
 	}
 	if err := p.dbClient.SaveAnnyBookings(ctx, []*model.AnnyBooking{
-		{Room: "T3.014", PersonalizationName: "Braun", StartDate: slotStart, EndDate: slotStart.Add(2 * time.Hour), Status: "accepted"},
-		{Room: "T3.014", PersonalizationName: "Meier", StartDate: slotStart, EndDate: slotStart.Add(2 * time.Hour), Status: "accepted"}, // not ours
-		{Room: "R9.999", PersonalizationName: "Braun", StartDate: slotStart, EndDate: slotStart.Add(2 * time.Hour), Status: "accepted"}, // unknown room
+		{Number: "B001", Room: "T3.014", PersonalizationName: "Braun", StartDate: slotStart, EndDate: slotStart.Add(2 * time.Hour), Status: "accepted"},
+		{Number: "B002", Room: "T3.014", PersonalizationName: "Meier", StartDate: slotStart, EndDate: slotStart.Add(2 * time.Hour), Status: "accepted"}, // not ours
+		{Number: "B003", Room: "R9.999", PersonalizationName: "Braun", StartDate: slotStart, EndDate: slotStart.Add(2 * time.Hour), Status: "accepted"}, // unknown room
 	}); err != nil {
 		t.Fatalf("SaveAnnyBookings: %v", err)
 	}
@@ -183,8 +191,8 @@ func TestMarkMineAnnyBookings(t *testing.T) {
 		t.Fatalf("SetAnnyConfig: %v", err)
 	}
 	if err := p.dbClient.SaveAnnyBookings(ctx, []*model.AnnyBooking{
-		{Room: "T3.014", PersonalizationName: "Braun", StartDate: slotStart, EndDate: slotStart.Add(time.Hour), Status: "accepted"},
-		{Room: "T3.014", PersonalizationName: "Meier", StartDate: slotStart, EndDate: slotStart.Add(time.Hour), Status: "accepted"},
+		{Number: "B001", Room: "T3.014", PersonalizationName: "Braun", StartDate: slotStart, EndDate: slotStart.Add(time.Hour), Status: "accepted"},
+		{Number: "B002", Room: "T3.014", PersonalizationName: "Meier", StartDate: slotStart, EndDate: slotStart.Add(time.Hour), Status: "accepted"},
 	}); err != nil {
 		t.Fatalf("SaveAnnyBookings: %v", err)
 	}

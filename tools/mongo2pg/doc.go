@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -18,6 +19,10 @@ import (
 type doc struct {
 	m    map[string]any
 	seen map[string]bool
+	// children are sub-documents handed out by sub(); their leftovers are reported
+	// with this document's, so an unread key inside `emails` or `constraints` is as
+	// visible as one at the top level.
+	children map[string]*doc
 }
 
 func newDoc(m map[string]any) *doc {
@@ -137,6 +142,144 @@ func (d *doc) strings(names ...string) []string {
 	return out
 }
 
+// timeVal reads a BSON datetime.
+//
+// The driver decodes it as primitive.DateTime (milliseconds since the epoch),
+// whose Time() carries the UTC location. Everything downstream does day and slot
+// arithmetic in Europe/Berlin and keys maps by time.Time -- where the same
+// instant with a UTC location is a DIFFERENT key. The location is therefore
+// converted here, once, instead of at every use. See TestTimestamptzKeepsLocation
+// in db/ for the same rule on the other side.
+func (d *doc) timeVal(names ...string) (time.Time, bool) {
+	v, ok := d.get(names...)
+	if !ok {
+		return time.Time{}, false
+	}
+	switch t := v.(type) {
+	case primitive.DateTime:
+		return t.Time().Local(), true
+	case time.Time:
+		return t.Local(), true
+	}
+	return time.Time{}, false
+}
+
+func (d *doc) timePtr(names ...string) *time.Time {
+	if t, ok := d.timeVal(names...); ok {
+		return &t
+	}
+	return nil
+}
+
+// timeSlice reads an array of BSON datetimes, skipping entries that are not one.
+func (d *doc) timeSlice(names ...string) []time.Time {
+	v, ok := d.get(names...)
+	if !ok {
+		return nil
+	}
+	arr, ok := asSlice(v)
+	if !ok {
+		return nil
+	}
+	out := make([]time.Time, 0, len(arr))
+	for _, e := range arr {
+		switch t := e.(type) {
+		case primitive.DateTime:
+			out = append(out, t.Time().Local())
+		case time.Time:
+			out = append(out, t.Local())
+		}
+	}
+	return out
+}
+
+// timePtrSlice is timeSlice for the model fields that hold []*time.Time.
+func (d *doc) timePtrSlice(names ...string) []*time.Time {
+	times := d.timeSlice(names...)
+	if len(times) == 0 {
+		return nil
+	}
+	out := make([]*time.Time, 0, len(times))
+	for i := range times {
+		out = append(out, &times[i])
+	}
+	return out
+}
+
+// ints reads an array of BSON numbers.
+func (d *doc) ints(names ...string) []int {
+	v, ok := d.get(names...)
+	if !ok {
+		return nil
+	}
+	arr, ok := asSlice(v)
+	if !ok {
+		return nil
+	}
+	out := make([]int, 0, len(arr))
+	for _, e := range arr {
+		switch n := e.(type) {
+		case int32:
+			out = append(out, int(n))
+		case int64:
+			out = append(out, int(n))
+		case int:
+			out = append(out, n)
+		case float64:
+			out = append(out, int(n))
+		}
+	}
+	return out
+}
+
+// sub returns an embedded document, or nil when there is none.
+//
+// The result is a doc of its own, so the same read-tracking applies one level
+// down: `emails` and `constraints` are sub-documents with a dozen keys each, and
+// a converter that forgets one of them would otherwise drop it without a word.
+func (d *doc) sub(names ...string) *doc {
+	v, ok := d.get(names...)
+	if !ok {
+		return nil
+	}
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	child := newDoc(m)
+	if d.children == nil {
+		d.children = map[string]*doc{}
+	}
+	d.children[names[0]] = child
+	return child
+}
+
+// subSlice returns an array of embedded documents (e.g. jointProgramAllowedTimes).
+func (d *doc) subSlice(names ...string) []*doc {
+	v, ok := d.get(names...)
+	if !ok {
+		return nil
+	}
+	arr, ok := asSlice(v)
+	if !ok {
+		return nil
+	}
+	out := make([]*doc, 0, len(arr))
+	for i, e := range arr {
+		m, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		child := newDoc(m)
+		if d.children == nil {
+			d.children = map[string]*doc{}
+		}
+		d.children[fmt.Sprintf("%s[%d]", names[0], i)] = child
+		out = append(out, child)
+	}
+	return out
+}
+
 // ignore marks keys as consumed without reading them: fields the model
 // deliberately no longer has. Naming them here rather than letting them fall
 // into the leftovers report is the difference between "we decided to drop this"
@@ -147,12 +290,18 @@ func (d *doc) ignore(names ...string) {
 	}
 }
 
-// leftovers lists the keys nobody asked for, sorted.
+// leftovers lists the keys nobody asked for, sorted. Keys of sub-documents are
+// qualified with their parent ("emails.bcc"), so the report says where to look.
 func (d *doc) leftovers() []string {
 	var out []string
 	for k, v := range d.m {
 		if !d.seen[k] && v != nil {
 			out = append(out, k)
+		}
+	}
+	for name, child := range d.children {
+		for _, k := range child.leftovers() {
+			out = append(out, name+"."+k)
 		}
 	}
 	sort.Strings(out)

@@ -1,4 +1,5 @@
-// Command mongo2pg imports the global MongoDB master data into PostgreSQL.
+// Command mongo2pg imports the MongoDB data that nobody can fetch again into
+// PostgreSQL.
 //
 // It is a ONE-OFF for the cut-over and is meant to be deleted afterwards. It
 // lives in its own module so that go.mongodb.org/mongo-driver does not return to
@@ -8,17 +9,29 @@
 // makes a rehearsal reproducible and possible without VPN or a running mongod,
 // and the dump is the artifact the migration plan keeps anyway.
 //
-// Only the global database matters. Semesters are not migrated: they are
-// archived as Mongo dumps and re-imported from ZPA/Primuss/Anny.
+// Two things are imported, and the rule for both is the same: a person typed
+// them, so nothing can bring them back.
 //
-//	go run ./tools/mongo2pg \
-//	    -dump /workspace/semester/mongo-backup/plexams \
-//	    -uri "postgres://plexams@127.0.0.1:5433/plexams?sslmode=disable" \
-//	    -dry-run
+//   - -dump: the global `plexams` database -- rooms, study programs, NTAs,
+//     permanent non-invigilators, the planner and the Anny config.
+//
+//   - -semester-dump: ONE semester database, of which exactly two collections are
+//     read: semester_config_input and preplan_exams. Exams, teachers, student
+//     registrations, conflicts and Anny bookings are deliberately NOT imported --
+//     they come back by importing them from ZPA/Primuss/Anny. The report lists
+//     what was left behind, so a collection nobody expected to be full is
+//     visible instead of silently dropped.
+//
+//     go run ./tools/mongo2pg \
+//     -dump          /workspace/semester/mongo-backup/plexams \
+//     -semester-dump /workspace/semester/mongo-backup/2026-WS \
+//     -uri "postgres://plexams@127.0.0.1:5433/plexams?sslmode=disable" \
+//     -dry-run
 //
 // Writes go through the same typed db.PG methods the application uses, so the
 // rows land exactly as the running code expects -- the reason this is a Go
-// program and not a pile of hand-written INSERTs.
+// program and not a pile of hand-written INSERTs. It brings the schema up first,
+// so the target may be a completely empty database.
 //
 // It is idempotent: every writer upserts, so a rehearsal can be repeated and a
 // half-finished run can simply be run again.
@@ -38,18 +51,31 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// options is what the operator asked for on the command line.
+type options struct {
+	globalDump   string
+	semesterDump string
+	semester     string
+	uri          string
+	dryRun       bool
+}
+
 func main() {
-	dumpDir := flag.String("dump", "", "directory holding the mongodump .bson files of the global `plexams` database")
-	uri := flag.String("uri", "", "PostgreSQL connection string")
-	dryRun := flag.Bool("dry-run", false, "convert and report, but write nothing")
+	var o options
+	flag.StringVar(&o.globalDump, "dump", "", "directory holding the mongodump .bson files of the global `plexams` database")
+	flag.StringVar(&o.semesterDump, "semester-dump", "", "directory holding the mongodump .bson files of ONE semester database")
+	flag.StringVar(&o.semester, "semester", "", "the semester -semester-dump belongs to (default: the directory's name)")
+	flag.StringVar(&o.uri, "uri", "", "PostgreSQL connection string")
+	flag.BoolVar(&o.dryRun, "dry-run", false, "convert and report, but write nothing")
 	flag.Parse()
 
-	if *dumpDir == "" || *uri == "" {
-		fmt.Fprintln(os.Stderr, "usage: mongo2pg -dump <dir> -uri <postgres-uri> [-dry-run]")
+	if (o.globalDump == "" && o.semesterDump == "") || o.uri == "" {
+		fmt.Fprintln(os.Stderr,
+			"usage: mongo2pg -uri <postgres-uri> [-dump <dir>] [-semester-dump <dir> [-semester <YYYY-SS>]] [-dry-run]")
 		os.Exit(2)
 	}
 
-	if err := run(context.Background(), *dumpDir, *uri, *dryRun); err != nil {
+	if err := run(context.Background(), o); err != nil {
 		fmt.Fprintf(os.Stderr, "\nFEHLER: %v\n", err)
 		os.Exit(1)
 	}
@@ -61,6 +87,12 @@ type report struct {
 	skipped  map[string]int
 	notes    []note
 	dropped  map[string]map[string]int // collection -> field -> count
+	// jointPrograms are the joint study programs seen in the global dump. Only a
+	// dry run uses them; a real one asks the database, which is the authority.
+	jointPrograms []string
+	// untouched lists the non-empty collections of the semester dump that are
+	// deliberately not imported.
+	untouched []string
 }
 
 func newReport() *report {
@@ -85,10 +117,13 @@ func (r *report) drop(collection string, fields []string) {
 	}
 }
 
-func run(ctx context.Context, dumpDir, uri string, dryRun bool) error {
-	// The semester is irrelevant: everything here is global master data, and none
-	// of the writers involved reads semesterID.
-	pg, err := db.NewPG(ctx, uri, "")
+func run(ctx context.Context, o options) error {
+	semester, err := resolveSemester(o)
+	if err != nil {
+		return err
+	}
+
+	pg, err := db.NewPG(ctx, o.uri, semester)
 	if err != nil {
 		return fmt.Errorf("cannot reach postgres: %w", err)
 	}
@@ -96,10 +131,56 @@ func run(ctx context.Context, dumpDir, uri string, dryRun bool) error {
 
 	rep := newReport()
 
-	if dryRun {
+	if o.dryRun {
 		fmt.Println("== TROCKENLAUF -- es wird nichts geschrieben ==")
+	} else {
+		// The target may be an empty database: the point of the tool is to fill a
+		// fresh one, and nothing else would have created the tables.
+		if err := pg.MigrateSchema(ctx); err != nil {
+			return fmt.Errorf("cannot migrate the schema: %w", err)
+		}
 	}
-	fmt.Printf("Dump: %s\n\n", dumpDir)
+
+	if o.globalDump != "" {
+		if err := importGlobal(ctx, pg, o, rep); err != nil {
+			return err
+		}
+	}
+	if o.semesterDump != "" {
+		if err := importSemester(ctx, pg, o, semester, rep); err != nil {
+			return err
+		}
+	}
+
+	printReport(rep)
+	return nil
+}
+
+// resolveSemester determines which semester -semester-dump belongs to. The
+// directory name is the default because mongodump names it after the database,
+// which was the semester.
+//
+// The format is checked here rather than left to the check constraint: a typo
+// would otherwise surface as a raw SQLSTATE in the middle of an import, after the
+// global master data has already been written.
+func resolveSemester(o options) (string, error) {
+	if o.semesterDump == "" {
+		return "", nil
+	}
+	semester := o.semester
+	if semester == "" {
+		semester = filepath.Base(filepath.Clean(o.semesterDump))
+	}
+	if !db.IsSemester(semester) {
+		return "", fmt.Errorf("%q is not a semester (expected YYYY-SS or YYYY-WS) -- say which one with -semester", semester)
+	}
+	return semester, nil
+}
+
+// importGlobal moves the global master data: the collections no import can
+// recreate because they are hand-maintained.
+func importGlobal(ctx context.Context, pg *db.PG, o options, rep *report) error {
+	fmt.Printf("Globaler Dump: %s\n\n", o.globalDump)
 
 	steps := []struct {
 		file string
@@ -114,7 +195,7 @@ func run(ctx context.Context, dumpDir, uri string, dryRun bool) error {
 	}
 
 	for _, s := range steps {
-		docs, err := readBSON(filepath.Join(dumpDir, s.file+".bson"))
+		docs, err := readBSON(filepath.Join(o.globalDump, s.file+".bson"))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				fmt.Printf("  %-28s nicht im Dump -- uebersprungen\n", s.file)
@@ -124,7 +205,7 @@ func run(ctx context.Context, dumpDir, uri string, dryRun bool) error {
 		}
 		for _, m := range docs {
 			d := newDoc(m)
-			if err := s.fn(ctx, pg, d, dryRun, rep); err != nil {
+			if err := s.fn(ctx, pg, d, o.dryRun, rep); err != nil {
 				return fmt.Errorf("%s: %w", s.file, err)
 			}
 			rep.drop(s.file, d.leftovers())
@@ -137,7 +218,6 @@ func run(ctx context.Context, dumpDir, uri string, dryRun bool) error {
 	// active_semester rebuilds itself on the next start, and email_templates holds
 	// only planner-authored overrides -- empty in the dump.
 
-	printReport(rep)
 	return nil
 }
 
@@ -158,6 +238,15 @@ func printReport(rep *report) {
 			for _, f := range fields {
 				fmt.Printf("  %-28s %-22s in %d Dokument(en)\n", c, f, rep.dropped[c][f])
 			}
+		}
+	}
+
+	if len(rep.untouched) > 0 {
+		fmt.Println("\n== Nicht importiert (kommt aus ZPA/Primuss/Anny zurueck) ==")
+		fmt.Println("   Steht hier etwas Handgepflegtes -- Constraints, verbundene Pruefungen, ein fertiger Plan --,")
+		fmt.Println("   dann ist die Annahme des Cut-overs fuer dieses Semester falsch. Vorher klaeren.")
+		for _, line := range rep.untouched {
+			fmt.Printf("  %s\n", line)
 		}
 	}
 
@@ -208,6 +297,9 @@ func importStudyProgram(ctx context.Context, pg *db.PG, d *doc, dry bool, rep *r
 		if err := pg.UpsertStudyProgram(ctx, p); err != nil {
 			return fmt.Errorf("study program %s: %w", p.Shortname, err)
 		}
+	}
+	if p.Category == "joint" {
+		rep.jointPrograms = append(rep.jointPrograms, p.Shortname)
 	}
 	rep.imported["study_programs"]++
 	return nil

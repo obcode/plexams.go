@@ -1,25 +1,30 @@
-# mongo2pg — Einmal-Import der globalen Stammdaten
+# mongo2pg — Einmal-Import dessen, was niemand neu holen kann
 
-Holt die **globale** MongoDB-Datenbank `plexams` nach PostgreSQL. Einmalwerkzeug für
-den Cut-over; danach löschen.
+Holt die **globale** MongoDB-Datenbank `plexams` und aus **einem** Semester die beiden
+handgetippten Collections nach PostgreSQL. Einmalwerkzeug für den Cut-over; danach
+löschen.
 
-Semester werden **nicht** migriert — sie werden als Mongo-Dumps archiviert und aus
-ZPA/Primuss/Anny neu importiert. Nur die globalen Stammdaten sind handgepflegt und
-damit unersetzlich.
+Der Rest eines Semesters wird **nicht** migriert — Prüfungen, Lehrende, Anmeldungen,
+Konflikte und Anny-Buchungen kommen durch einen erneuten Import aus ZPA/Primuss/Anny
+zurück. Unersetzlich ist nur, was jemand eingegeben hat.
 
 ## Aufruf
 
 ```sh
 # immer erst trocken
-go run . -dump /pfad/zu/mongo-backup/plexams \
-         -uri "postgres://plexams@127.0.0.1:5433/plexams?sslmode=disable" \
+go run . -uri "postgres://plexams@127.0.0.1:5433/plexams?sslmode=disable" \
+         -dump          /pfad/zu/mongo-backup/plexams \
+         -semester-dump /pfad/zu/mongo-backup/2026-WS \
          -dry-run
 
 # dann echt
-go run . -dump ... -uri ...
+go run . -uri ... -dump ... -semester-dump ...
 ```
 
-Die Zieldatenbank muss migriert sein (`goose -dir db/migrations postgres "$URI" up`).
+Beide Dumps sind einzeln optional; das Semester wird aus dem Verzeichnisnamen
+abgeleitet (`-semester 2026-WS`, wenn er nicht passt).
+
+Die Zieldatenbank darf **leer** sein: das Werkzeug migriert sie zuerst.
 
 Der Lauf ist **idempotent**: jede Collection wird pro Datensatz upgesertet, ein
 Wiederholungslauf ändert nichts. Ein abgebrochener Lauf kann einfach wiederholt werden.
@@ -45,7 +50,41 @@ das laut Migrationsplan aufgehoben wird. Eine Generalprobe kostet damit nichts.
 `users`, `user_secrets`, `generation_config` und `scheduler_state` gibt es in der
 globalen DB gar nicht — die Allow-Liste kommt aus `auth.seedusers`.
 
-## Die drei Stellen, an denen die Daten nicht zum Modell passen
+Aus dem **Semester-Dump** (`-semester-dump`):
+
+| Collection | Bemerkung |
+| --- | --- |
+| `semester_config_input` | registriert nebenbei das Semester (das macht sonst `createSemester`) |
+| `preplan_exams` | inklusive Constraints und der beiden Paar-Relationen |
+
+Alles andere im Semester-Verzeichnis wird im Bericht unter **„Nicht importiert"**
+aufgelistet, sofern es nicht leer ist. Das ist die Kontrolle für die Annahme, auf der
+der Cut-over beruht: steht dort etwas Handgepflegtes (`constraints`,
+`connected_exams`, ein fertiger Plan), stimmt sie für dieses Semester nicht.
+
+### Zwei Formfehler, die nur die alten Daten zeigen
+
+**Vor-slotless-Dokumente.** Eine Konfiguration mit `slots` statt `startTimes` und eine
+Vorplanungs-Prüfung mit `planneddaynumber`/`plannedslotnumber` stammen aus der Zeit vor
+dem slotless-Refactor. Die absoluten Zeiten stehen dort nirgends — sie lagen im Code
+jener Version. Beides wird **gemeldet, nicht geraten**: die Prüfung kommt ungeplant an,
+die Startzeiten fehlen und müssen in der GUI eingetragen werden.
+
+**Einseitige Paare.** In MongoDB trug jede Seite von `notSameSlot`/`canShareSlot` ihre
+eigene Liste, und nichts erzwang, dass beide übereinstimmen. In PostgreSQL ist ein Paar
+**eine** kanonische Zeile, und das Schreiben einer Prüfung ersetzt ihre ganze Seite der
+Relation — ein einseitiges Paar würde also vom Schreiben der Gegenseite wieder gelöscht.
+Der Import ergänzt die Gegenrichtung vorher und meldet jede Ergänzung.
+
+## Die vier Stellen, an denen die Daten nicht zum Modell passen
+
+**`mucDaiAllowedTimes` würde stillschweigend verschwinden.** Das Feld trägt `json:"-"`,
+die Spalte ist `jsonb` — das Modell zu serialisieren würde die reservierten Zeiten
+wortlos wegwerfen. Der Import verteilt sie deshalb vorher auf alle joint-Studiengänge,
+so wie `applyLegacyJointTimes` es zur Laufzeit tut. Deshalb müssen die Studiengänge
+**vor** der Semesterkonfiguration importiert sein (im selben Lauf ist das automatisch
+die richtige Reihenfolge).
+
 
 **`nta.group` ist der alte Name von `program`, kein unbekanntes Feld.** Kein Dokument
 hat beide; 21 von 86 haben nur `group`. Es als unbekannt zu verwerfen würde bei einem

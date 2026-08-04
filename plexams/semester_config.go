@@ -378,7 +378,17 @@ func (p *Plexams) loadSemesterConfig(ctx context.Context) {
 	}
 
 	if input == nil {
-		log.Error().Msg("no semester config found (neither in db nor in yaml)")
+		// Not an error either: a semester without a config is exactly what the
+		// GraphQL schema calls a fresh/empty database, and semesterConfig is
+		// documented to be null until createSemester has run.
+		// p.semester is the logical form ("2026 WS"); the id is what createSemester
+		// wants. dbClient may be nil here -- the branch above allows it.
+		semester := p.semester
+		if p.dbClient != nil {
+			semester = p.dbClient.Semester()
+		}
+		log.Warn().Str("semester", semester).
+			Msg("semester has no config yet — create it in the GUI (createSemester)")
 		return
 	}
 

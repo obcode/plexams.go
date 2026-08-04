@@ -12,9 +12,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// pgErrForeignKeyViolation is SQLSTATE 23503.
-const pgErrForeignKeyViolation = "23503"
-
 func studyProgramFromRow(row sqlc.StudyProgram) *model.StudyProgram {
 	return &model.StudyProgram{
 		Shortname:         row.Shortname,

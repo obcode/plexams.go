@@ -1,8 +1,11 @@
 package db_test
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/internal/pgtest"
 )
 
@@ -45,11 +48,23 @@ func TestActiveSemesterMissingReturnsNilNil(t *testing.T) {
 // TestActiveSemesterUnregisteredSemesterIsRejected pins the difference to Mongo:
 // the document there could name a database that had since been dropped, and the
 // next start would try to resume into it.
+//
+// It is reported as ErrSemesterNotRegistered, not as a generic write failure:
+// every first boot against an empty database hits this path, because --semester
+// pins a semester so that createSemester can be called at all. Telling the two
+// apart is what keeps a normal bootstrap from logging errors.
 func TestActiveSemesterUnregisteredSemesterIsRejected(t *testing.T) {
 	pg := pgtest.NewDB(t)
 
-	if err := pg.SaveActiveSemester(t.Context()); err == nil {
-		t.Error("SaveActiveSemester accepted a semester that is not in the registry")
+	err := pg.SaveActiveSemester(t.Context())
+	if err == nil {
+		t.Fatal("SaveActiveSemester accepted a semester that is not in the registry")
+	}
+	if !errors.Is(err, db.ErrSemesterNotRegistered) {
+		t.Errorf("SaveActiveSemester = %v, want ErrSemesterNotRegistered", err)
+	}
+	if !strings.Contains(err.Error(), "2026-WS") {
+		t.Errorf("error %q does not name the semester it refused", err)
 	}
 }
 

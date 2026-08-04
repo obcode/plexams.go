@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/obcode/plexams.go/db"
@@ -108,11 +109,19 @@ func (p *Plexams) SwitchSemester(ctx context.Context, name string) (*model.Semes
 
 // RememberActiveSemester records the current semester as the last active one, so
 // the next start can resume it (best-effort).
+//
+// A semester that is not registered yet is not a failure: --semester pins one on
+// an empty database precisely so the server can start and createSemester can be
+// called. There is simply nothing to resume until it exists.
 func (p *Plexams) RememberActiveSemester(ctx context.Context) {
 	if p.dbClient == nil {
 		return
 	}
 	if err := p.dbClient.SaveActiveSemester(ctx); err != nil {
+		if errors.Is(err, db.ErrSemesterNotRegistered) {
+			log.Debug().Err(err).Msg("no active semester to remember yet")
+			return
+		}
 		log.Error().Err(err).Msg("cannot remember active semester")
 	}
 }

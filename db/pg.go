@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -27,6 +28,16 @@ type PG struct {
 	// ever differ for a test clone, and those are gone.
 	semesterID string
 }
+
+// pgErrForeignKeyViolation is SQLSTATE 23503. Shared by the methods that turn a
+// rejected reference into a meaningful answer instead of a raw SQLSTATE.
+const pgErrForeignKeyViolation = "23503"
+
+// ErrSemesterNotRegistered is returned when a write references a semester that
+// has no row in the registry yet. That is an expected state at first boot -- the
+// semester is pinned with --semester before createSemester has run -- so callers
+// can tell it apart from a genuine write failure instead of logging both alike.
+var ErrSemesterNotRegistered = errors.New("semester is not registered")
 
 // txKey carries a pgx.Tx through the context so that every db method picks up an
 // enclosing transaction automatically. This is the whole reason db methods call

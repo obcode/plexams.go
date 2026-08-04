@@ -1121,7 +1121,7 @@ func (p *Plexams) HTTPDownloadMyInputsCSV(w http.ResponseWriter, r *http.Request
 	//
 	// It used to be stamped by the semester-dump ZIP download, which is gone with the
 	// Mongo layer. The whole-database pg_dump replacing it runs as a cron job on the
-	// host (deploy/backup/pg-backup.sh) and cannot reach this: it would have to come
+	// host (plexams.dev, deploy/backup/pg-backup.sh) and cannot reach this: it would have to come
 	// through oauth2-proxy. That is the machine's backup; this is the planner's, and
 	// the reminder is aimed at the planner.
 	//

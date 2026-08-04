@@ -1,3 +1,0 @@
-# Secrets and deployment-local artifacts — never commit these.
-.env
-.plexams.yaml

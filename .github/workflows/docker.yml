@@ -61,53 +61,35 @@ jobs:
                       GIT_COMMIT=${{ steps.version.outputs.GIT_COMMIT }}
                       BUILD_TIME=${{ steps.version.outputs.BUILD_TIME }}
 
-    # Ship the freshly pushed image to the on-host compose stack. The runner lives ON the
-    # deploy host (outbound-only long-poll to GitHub; the host is VPN-internal, so no
-    # inbound is possible). It operates on the persistent on-host deploy dir where the
-    # secrets live (.env, .plexams.yaml) plus the caddy-data volume (TLS certs) — those are
-    # never touched; only the non-secret infra (compose file + Caddyfile) is synced from the repo.
-    deploy:
+    # Hand the freshly pushed image over to the deploy workflow.
+    #
+    # The deploy artefacts (compose file, Caddyfile, deploy.sh, the on-host paths and the
+    # host's name) live in the PRIVATE repository obcode/plexams.dev — this one is public.
+    # They used to live here, together with a self-hosted runner per public repo; the
+    # dispatch replaces both with one runner registered to the private repo.
+    #
+    # This job runs on ubuntu-latest: it is an OUTBOUND call to api.github.com, which needs
+    # no access to the VPN-internal host.
+    dispatch-deploy:
         needs: build-and-push-image
-        # Gate: only runs once the self-hosted runner on the deploy host exists — set the
-        # repo variable AUTO_DEPLOY=true then. Until then the image is still built & pushed
-        # above; this job is simply skipped (no stuck queue waiting for a missing runner).
-        if: ${{ vars.AUTO_DEPLOY == 'true' }}
-        runs-on: [self-hosted, plexams-deploy]
-        env:
-            # On-host deploy dir; override via repo variable DEPLOY_DIR if different.
-            DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/home/plexams/plexams.go/deploy' }}
+        # Gate, like AUTO_DEPLOY in plexams.dev: without DISPATCH_TOKEN `gh api` aborts on
+        # an empty GH_TOKEN and turns the release run red. Arm the two together.
+        if: ${{ vars.DEPLOY_DISPATCH_ENABLED == 'true' }}
+        runs-on: ubuntu-latest
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Sync infra + deploy pinned image
+            - name: Deploy in plexams.dev auslösen
+              env:
+                  # A fine-grained PAT with nothing but "contents: write" on
+                  # obcode/plexams.dev — the permission repository_dispatch requires. It
+                  # cannot read this repository and it is never exposed to a fork: secrets
+                  # are not passed to workflows from forked pull requests.
+                  GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
               run: |
                   set -euo pipefail
                   # Keep the leading "v": docker/metadata-action tags the image with the raw
                   # git ref (v3.21.1), matching the whole registry's v-prefixed history — so
                   # PLEXAMS_TAG must carry the v too, else the pull 404s. (Only the build job
                   # above strips it, for the bare ldflags version.)
-                  VERSION="${GITHUB_REF#refs/tags/}"
-
-                  # Sync non-secret infra into the on-host deploy dir. Secrets (.env,
-                  # .plexams.yaml) and the caddy-data volume (certs) stay put.
-                  cp deploy/docker-compose.yml "$DEPLOY_DIR/"
-                  CADDY_CHANGED=0
-                  if ! diff deploy/Caddyfile "$DEPLOY_DIR/Caddyfile" >/dev/null 2>&1; then
-                      cp deploy/Caddyfile "$DEPLOY_DIR/"
-                      CADDY_CHANGED=1
-                  fi
-
-                  cd "$DEPLOY_DIR"
-                  # Pin the backend tag so the host reflects the running version
-                  # (manual rollback = edit .env + `docker compose up -d plexams`).
-                  sed -i "s/^PLEXAMS_TAG=.*/PLEXAMS_TAG=$VERSION/" .env
-
-                  docker compose pull plexams
-                  # Reconcile the stack: only plexams (new tag) + any changed service is recreated.
-                  docker compose up -d
-                  # Caddy re-reads its Caddyfile only on container (re)start.
-                  if [ "$CADDY_CHANGED" = "1" ]; then
-                      docker compose up -d --force-recreate caddy
-                  fi
-                  docker image prune -f
+                  gh api repos/obcode/plexams.dev/dispatches \
+                    -f event_type=deploy-backend \
+                    -F "client_payload[tag]=${GITHUB_REF#refs/tags/}"

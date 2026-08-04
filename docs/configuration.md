@@ -239,7 +239,7 @@ server:
 Beim Betrieb hinter einem Auth-Proxy (nginx + `oauth2-proxy`, OIDC gegen
 `sso.hm.edu`) authentifiziert das Backend **nicht** selbst — es vertraut der
 Identität, die der Proxy als Header setzt, und erzwingt die **Autorisierung** (Rollen)
-selbst. Details + fertige Vorlagen: [`../deploy/`](../deploy/).
+selbst. Details + fertige Vorlagen: `deploy/` im privaten Repo `plexams.dev`.
 
 ```yaml
 auth:

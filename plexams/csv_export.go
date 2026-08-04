@@ -1033,7 +1033,7 @@ func (p *Plexams) DatasetCSV(ctx context.Context, name string) ([]byte, string, 
 	if err != nil {
 		return nil, "", err
 	}
-	filename := fmt.Sprintf("%s_%s", strings.ReplaceAll(p.dbClient.DatabaseName(), " ", "_"), ds.File)
+	filename := fmt.Sprintf("%s_%s", strings.ReplaceAll(p.dbClient.Semester(), " ", "_"), ds.File)
 	return data, filename, nil
 }
 
@@ -1109,7 +1109,7 @@ func (p *Plexams) HTTPDownloadMyInputsCSV(w http.ResponseWriter, r *http.Request
 		http.Error(w, "cannot build csv zip: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	filename := fmt.Sprintf("%s_meine-eingaben-csv.zip", strings.ReplaceAll(p.dbClient.DatabaseName(), " ", "_"))
+	filename := fmt.Sprintf("%s_meine-eingaben-csv.zip", strings.ReplaceAll(p.dbClient.Semester(), " ", "_"))
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	if _, err := w.Write(data); err != nil {

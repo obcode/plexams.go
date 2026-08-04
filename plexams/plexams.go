@@ -131,7 +131,7 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 	if dbUri == "" {
 		log.Info().Msg("starting without DB!")
 	} else {
-		// The workspace key -- what used to be the name of the per-semester
+		// The semester id -- what used to be the name of the per-semester
 		// database. It now only selects rows (semester_id), so db.database keeps
 		// its meaning without there being a database per semester.
 		semesterID := viper.GetString("db.database")
@@ -143,12 +143,6 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		if err != nil {
 			log.Fatal().Err(err).Msg("cannot connect to plexams.db")
 		}
-
-		// Resolve the logical semester the same way a runtime switch does: an
-		// explicit --semester wins over the workspace's stored label and is not
-		// persisted. NewPG only takes the id, so without this a pinned semester
-		// would be lost the first time anything asked for the label.
-		client.SwitchTo(context.Background(), semesterID, semester)
 	}
 
 	plexams := Plexams{
@@ -301,7 +295,7 @@ func (p *Plexams) GetSemester(ctx context.Context) *model.Semester {
 	v := currentSchemaVersion
 	s := p.semester
 	return &model.Semester{
-		ID:            p.dbClient.DatabaseName(),
+		ID:            p.dbClient.Semester(),
 		Semester:      &s,
 		Compatible:    p.semesterConfig != nil,
 		ReadOnly:      p.readOnly,

@@ -12,8 +12,7 @@ func seedExamFixtures(t *testing.T, pg *db.PG, ancodes ...int) {
 	t.Helper()
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into study_program (shortname, name, category)
 	             values ('IF-B', 'Informatik', 'fk07')`)
 	for _, ancode := range ancodes {
@@ -216,7 +215,7 @@ func TestDeletingAnExamCascades(t *testing.T) {
 	}
 }
 
-// TestSemesterDeletionCascades: dropping a workspace must take its whole contents
+// TestSemesterDeletionCascades: dropping a semester must take its whole contents
 // with it, since nothing outside it can reference them.
 func TestSemesterDeletionCascades(t *testing.T) {
 	pg := pgtest.NewDB(t)
@@ -246,8 +245,7 @@ func TestSemesterDeletionCascades(t *testing.T) {
 func TestStudentRegKeepsBothPrograms(t *testing.T) {
 	pg := pgtest.NewDB(t)
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into study_program (shortname, name, category)
 	             values ('IF-B', 'Informatik', 'fk07')`)
 
@@ -278,8 +276,7 @@ func TestStudentRegKeepsBothPrograms(t *testing.T) {
 func TestStudentProgramNeedsNoStudyProgramRow(t *testing.T) {
 	pg := pgtest.NewDB(t)
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into study_program (shortname, name, category)
 	             values ('IF-B', 'Informatik', 'fk07')`)
 

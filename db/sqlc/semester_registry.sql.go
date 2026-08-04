@@ -11,8 +11,8 @@ import (
 )
 
 const ensureSemester = `-- name: EnsureSemester :exec
-insert into semester (id, semester, schema_version)
-values ($1, '', $2)
+insert into semester (id, schema_version)
+values ($1, $2)
 on conflict (id) do update set
     schema_version = case
         when semester.schema_version = 0 then excluded.schema_version
@@ -25,9 +25,9 @@ type EnsureSemesterParams struct {
 	SchemaVersion int
 }
 
-// Creating a workspace and stamping its schema version. The semester label is
-// NOT written here: a derived or guessed label must not be persisted, only an
-// explicit one (SetMetaSemester) -- the same rule EnsureMeta had.
+// Registering a semester and stamping the schema version of a fresh row. An
+// already registered semester keeps its version: this is called on every start,
+// and the version is only ever moved by Migrate.
 func (q *Queries) EnsureSemester(ctx context.Context, arg EnsureSemesterParams) error {
 	_, err := q.db.Exec(ctx, ensureSemester, arg.ID, arg.SchemaVersion)
 	return err
@@ -35,22 +35,21 @@ func (q *Queries) EnsureSemester(ctx context.Context, arg EnsureSemesterParams) 
 
 const getSemester = `-- name: GetSemester :one
 
-select id, semester, schema_version, read_only, last_dump_at, created_at from semester where id = $1
+select id, schema_version, read_only, last_dump_at, created_at from semester where id = $1
 `
 
-// The semester registry: what used to be one MongoDB database per workspace is
+// The semester registry: what used to be one MongoDB database per semester is
 // one row here.
 //
 // SemesterMeta was a single document in each database's `semester_meta`
-// collection. Its four fields are columns of `semester` now, which is why the
-// registry can answer "which workspaces exist, and are they compatible?" with
-// one query instead of a ListDatabaseNames plus two probes per database.
+// collection. Its fields are columns of `semester` now, which is why the registry
+// can answer "which semesters exist, and are they compatible?" with one query
+// instead of a ListDatabaseNames plus two probes per database.
 func (q *Queries) GetSemester(ctx context.Context, id string) (Semester, error) {
 	row := q.db.QueryRow(ctx, getSemester, id)
 	var i Semester
 	err := row.Scan(
 		&i.ID,
-		&i.Semester,
 		&i.SchemaVersion,
 		&i.ReadOnly,
 		&i.LastDumpAt,
@@ -69,7 +68,7 @@ type GetSemesterConfigInputRow struct {
 	FormatVersion int
 }
 
-// The per-semester planning config. One row per workspace, jsonb: it is an
+// The per-semester planning config. One row per semester, jsonb: it is an
 // editable document read and written whole, and the GUI form is its shape.
 func (q *Queries) GetSemesterConfigInput(ctx context.Context, semesterID string) (GetSemesterConfigInputRow, error) {
 	row := q.db.QueryRow(ctx, getSemesterConfigInput, semesterID)
@@ -79,15 +78,14 @@ func (q *Queries) GetSemesterConfigInput(ctx context.Context, semesterID string)
 }
 
 const listSemesters = `-- name: ListSemesters :many
-select s.id, s.semester, s.schema_version, s.read_only, s.last_dump_at, s.created_at, (c.semester_id is not null)::bool as has_config
+select s.id, s.schema_version, s.read_only, s.last_dump_at, s.created_at, (c.semester_id is not null)::bool as has_config
 from semester s
 left join semester_config_input c on c.semester_id = s.id
-order by s.semester desc, s.id collate "C"
+order by s.id collate "C" desc
 `
 
 type ListSemestersRow struct {
 	ID            string
-	Semester      string
 	SchemaVersion int
 	ReadOnly      bool
 	LastDumpAt    *time.Time
@@ -95,12 +93,13 @@ type ListSemestersRow struct {
 	HasConfig     bool
 }
 
-// Every workspace, with whether it carries a config. `compatible` was "has a
+// Every semester, with whether it carries a config. `compatible` was "has a
 // semester_config_input document"; the left join says the same thing.
 //
-// The ordering is the Mongo one, spelled in SQL: newest logical semester first,
-// then the id, so the canonical workspace comes before test clones of the same
-// semester.
+// Newest first. That used to sort by the stored label with the id as tie-break,
+// so the canonical database came before a test clone of the same semester; the
+// clones are gone and the id sorts identically ("2026-WS" > "2026-SS" > "2025-WS"
+// both as a label and as an id).
 //
 // The ::bool cast is not decoration: without it sqlc types has_config as
 // interface{}.
@@ -115,7 +114,6 @@ func (q *Queries) ListSemesters(ctx context.Context) ([]ListSemestersRow, error)
 		var i ListSemestersRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Semester,
 			&i.SchemaVersion,
 			&i.ReadOnly,
 			&i.LastDumpAt,
@@ -159,23 +157,6 @@ type SetSemesterConfigInputParams struct {
 
 func (q *Queries) SetSemesterConfigInput(ctx context.Context, arg SetSemesterConfigInputParams) error {
 	_, err := q.db.Exec(ctx, setSemesterConfigInput, arg.SemesterID, arg.Config, arg.FormatVersion)
-	return err
-}
-
-const setSemesterLabel = `-- name: SetSemesterLabel :exec
-insert into semester (id, semester, schema_version)
-values ($1, $2, $3)
-on conflict (id) do update set semester = excluded.semester
-`
-
-type SetSemesterLabelParams struct {
-	ID            string
-	Semester      string
-	SchemaVersion int
-}
-
-func (q *Queries) SetSemesterLabel(ctx context.Context, arg SetSemesterLabelParams) error {
-	_, err := q.db.Exec(ctx, setSemesterLabel, arg.ID, arg.Semester, arg.SchemaVersion)
 	return err
 }
 

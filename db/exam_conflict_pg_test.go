@@ -129,8 +129,7 @@ func TestExternalExamsRoundTrip(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	// A joint program must name the faculty that plans it -- the check in
 	// 00001 makes joint_faculty and category = 'joint' the same statement.
 	exec(t, pg, `insert into study_program (shortname, name, category, joint_faculty)
@@ -212,8 +211,7 @@ func TestRemovingAnExternalExamTakesItsPlacementWithIt(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into room (name, seats) values ('R1.046', 60)`)
 
 	if err := pg.AddExternalExam(ctx, &model.ZPAExam{

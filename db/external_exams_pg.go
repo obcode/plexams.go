@@ -113,13 +113,7 @@ func (db *PG) ExternalExam(ctx context.Context, ancode int) (*model.ZPAExam, err
 		return nil, err
 	}
 
-	semester, err := db.semesterLabel(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot resolve the semester label")
-		return nil, err
-	}
-
-	exam := zpaExamFromRow(row, semester)
+	exam := zpaExamFromRow(row, semesterName(db.semesterID))
 
 	links, err := db.q(ctx).ListPrimussAncodesForExternalExam(ctx, sqlc.ListPrimussAncodesForExternalExamParams{
 		SemesterID: db.semesterID,
@@ -146,11 +140,7 @@ func (db *PG) ExternalExams(ctx context.Context) ([]*model.ZPAExam, error) {
 		return nil, err
 	}
 
-	semester, err := db.semesterLabel(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot resolve the semester label")
-		return nil, err
-	}
+	semester := semesterName(db.semesterID)
 
 	links, err := db.q(ctx).ListPrimussAncodesForExternalExams(ctx, db.semesterID)
 	if err != nil {

@@ -229,8 +229,7 @@ func TestStudyProgramDeleteRefusedWhileReferenced(t *testing.T) {
 	if err := pg.UpsertStudyProgram(ctx, testStudyProgram("IF-B")); err != nil {
 		t.Fatalf("UpsertStudyProgram: %v", err)
 	}
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into primuss_exam (semester_id, program, ancode)
 	             values ('2026-WS', 'IF-B', 4711)`)
 

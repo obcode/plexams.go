@@ -18,22 +18,19 @@ import (
 // its json tags are the storage contract -- see the format_version check in
 // pg-db-layer-conventions.
 
-// SemesterMeta is per-database metadata (not planning config): the data schema
-// version (compatibility), the read-only flag, the logical semester (used
-// against external systems like ZPA, so a clone keeps the real semester instead of
-// its database name) and the time the last full semester dump was downloaded.
+// SemesterMeta is per-semester metadata (not planning config): the data schema
+// version (compatibility), the read-only flag and the time the last full semester
+// dump was downloaded.
 type SemesterMeta struct {
 	SchemaVersion int
 	ReadOnly      bool
-	Semester      string
 	LastDumpAt    *time.Time
 }
 
-// ActiveSemester records the last activated semester (and the database it lived in),
-// stored globally so the next start can resume it.
+// ActiveSemester records the last activated semester, stored globally so the next
+// start can resume it.
 type ActiveSemester struct {
 	Semester string
-	Database string
 }
 
 // SchedulerState is the persisted state of the nightly auto-sync scheduler. It is a
@@ -47,7 +44,7 @@ type SchedulerState struct {
 	LastFinished time.Time // when the last run finished
 	LastStatus   string    // ok|errors|skipped|panic
 	LastTrigger  string    // nightly|catchup|manual
-	Semester     string    // which workspace the last run synced
+	Semester     string    // which semester the last run synced
 	TotalChanges int       // changes found in the last run
 }
 
@@ -196,16 +193,14 @@ const (
 	TargetOtherInvigilations      ReplaceTarget = "invigilations_other"
 )
 
-// semesterName maps a workspace id to its logical semester ("2026-WS" -> "2026 WS").
+// semesterName maps a semester id to the logical semester external systems use
+// ("2026-WS" -> "2026 WS").
+//
+// This is total because semester.id is constrained to YYYY-SS/YYYY-WS. It used to
+// be a fallback for a database whose stored label was empty; now it IS the label,
+// which is why there is no second column for it.
 func semesterName(semester string) string {
 	return strings.Replace(semester, "-", " ", 1)
-}
-
-// semesterIDForSemester maps a logical semester ("2026 WS" or "2026-WS") to its
-// workspace id ("2026-WS"). Under Mongo this named a database; now it is the
-// semester_id value.
-func semesterIDForSemester(semester string) string {
-	return strings.Replace(semester, " ", "-", 1)
 }
 
 // timeOrZero dereferences t or returns the zero time, for logging.

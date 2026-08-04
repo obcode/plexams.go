@@ -10,8 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// PG is the PostgreSQL persistence layer. It is being grown into the replacement
-// for the Mongo-backed DB; during the migration both exist side by side.
+// PG is the PostgreSQL persistence layer.
 //
 // Unlike the Mongo DB struct there is no databaseName to repoint: a semester is a
 // semesterID value carried into the queries, not a physical database. The field is
@@ -22,13 +21,11 @@ type PG struct {
 	queries *sqlc.Queries
 	// uri is kept for DBHost, which shows the host in the admin view.
 	uri string
-	// semesterID is the workspace key -- what used to be the database name.
+	// semesterID is the semester being planned, "2026-WS" -- the value every
+	// semester-scoped query filters on. There is no second field for the logical
+	// semester ZPA knows ("2026 WS"): semesterName derives it. The two could only
+	// ever differ for a test clone, and those are gone.
 	semesterID string
-	// semester is the logical semester of that workspace, as ZPA knows it.
-	// SwitchTo resolves it (an explicit override wins over the stored label), so
-	// a clone can be planned against without lying to ZPA about which semester
-	// it is.
-	semester string
 }
 
 // txKey carries a pgx.Tx through the context so that every db method picks up an

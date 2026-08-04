@@ -135,10 +135,12 @@ func (db *PG) Ntas(ctx context.Context) ([]*model.NTA, error) {
 // this semester's registrations, so a compensation that has not been used for a
 // while can be spotted.
 //
-// The label written is the LOGICAL semester ("2026 SS"), not the workspace id
-// ("2026-WS") -- all 63 stored values have that shape. PG carries only the
-// workspace id, so the label is resolved through the registry rather than by
-// adding a second process-global field.
+// What is written is the LOGICAL semester ("2026 SS"), not the id ("2026-WS") --
+// all 63 stored values have that shape.
+//
+// `nta` is global, so no foreign key catches a write for a semester nobody
+// registered; this is the one place that has to check by hand. Mongo wrote
+// db.semester unconditionally and could not tell the difference.
 //
 // The Mongo version issued one FindOneAndUpdate per student; this is one
 // statement, and `returning` still names the students who have no NTA row, which
@@ -156,16 +158,15 @@ func (db *PG) SetSemesterOnNTAs(ctx context.Context, studentRegs []interface{}) 
 		return nil
 	}
 
-	label, err := db.q(ctx).GetSemesterLabel(ctx, db.semesterID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		// Mongo wrote db.semester unconditionally; here a workspace missing from
-		// the registry has to be loud rather than silently stamping nothing.
-		return fmt.Errorf("cannot set semester on ntas: %s is not in the semester registry", db.semesterID)
-	}
+	registered, err := db.q(ctx).SemesterExists(ctx, db.semesterID)
 	if err != nil {
-		log.Error().Err(err).Str("semesterID", db.semesterID).Msg("cannot resolve the semester label")
+		log.Error().Err(err).Str("semesterID", db.semesterID).Msg("cannot look up the semester")
 		return err
 	}
+	if !registered {
+		return fmt.Errorf("cannot set semester on ntas: %s is not in the semester registry", db.semesterID)
+	}
+	label := semesterName(db.semesterID)
 
 	updated, err := db.q(ctx).SetLastSemesterOnNtas(ctx, sqlc.SetLastSemesterOnNtasParams{
 		LastSemester: &label,

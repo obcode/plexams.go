@@ -271,8 +271,8 @@ func (p *Plexams) NewSemesterConfigDefaults(ctx context.Context) (*model.Semeste
 	}, nil
 }
 
-// CreateSemester stores the config for a new semester in its own database. It
-// refuses an invalid semester name or a semester that already has a config.
+// CreateSemester stores the config for a new semester. It refuses an invalid
+// semester name or a semester that already has a config.
 func (p *Plexams) CreateSemester(ctx context.Context, semester string, data *model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error) {
 	input, err := semesterConfigInputFromData(data)
 	if err != nil {
@@ -298,7 +298,7 @@ func (p *Plexams) createSemesterWithInput(ctx context.Context, semester string, 
 		return nil, err
 	}
 
-	existing, err := p.dbClient.GetSemesterConfigInputForSemester(ctx, semester)
+	existing, err := p.dbClient.GetSemesterConfigInputFor(ctx, semester)
 	if err != nil {
 		return nil, err
 	}
@@ -306,19 +306,18 @@ func (p *Plexams) createSemesterWithInput(ctx context.Context, semester string, 
 		return nil, fmt.Errorf("semester %q already has a config — edit it instead of creating it", semester)
 	}
 
-	// Register the workspace BEFORE writing its config: semester_config_input has a
+	// Register the semester BEFORE writing its config: semester_config_input has a
 	// foreign key to semester(id), so the other order fails outright. Under Mongo the
 	// insert created the database as a side effect, which is exactly the behaviour
-	// that was removed -- a typo used to produce a second, empty workspace.
+	// that was removed -- a typo used to produce a second, empty database.
 	//
-	// Both in one transaction, so a failing config does not leave the empty workspace
+	// Both in one transaction, so a failing config does not leave the empty semester
 	// behind that the same rule exists to prevent.
-	logical := strings.Replace(semester, "-", " ", 1)
 	if err := p.dbClient.InTransaction(ctx, func(ctx context.Context) error {
-		if err := p.dbClient.SetMetaSemesterForSemester(ctx, logical, currentSchemaVersion); err != nil {
+		if err := p.dbClient.EnsureSemester(ctx, semester, currentSchemaVersion); err != nil {
 			return fmt.Errorf("cannot register new semester: %w", err)
 		}
-		if err := p.dbClient.SaveSemesterConfigInputForSemester(ctx, semester, input); err != nil {
+		if err := p.dbClient.SaveSemesterConfigInputFor(ctx, semester, input); err != nil {
 			return fmt.Errorf("cannot save config for new semester: %w", err)
 		}
 		return nil

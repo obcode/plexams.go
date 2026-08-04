@@ -19,7 +19,7 @@ func (p *Plexams) ServerInfo(ctx context.Context) (*model.ServerInfo, error) {
 	workspace := ""
 	if p.dbClient != nil {
 		dbHost = p.dbClient.DBHost()
-		workspace = p.dbClient.DatabaseName()
+		workspace = p.dbClient.Semester()
 	}
 
 	return &model.ServerInfo{

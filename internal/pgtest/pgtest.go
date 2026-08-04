@@ -246,7 +246,8 @@ func lockKey(name string) int64 {
 	return int64(h.Sum64()) //nolint:gosec // wraparound is fine for a lock key
 }
 
-// NewDBWithSemester is NewDB plus the workspace row the client is pointed at.
+// NewDBWithSemester is NewDB plus the registry row for the semester the client
+// is pointed at.
 //
 // Every semester-scoped table carries a foreign key to `semester`. Mongo never
 // enforced that -- a write into a semester simply created its database -- so a
@@ -256,7 +257,7 @@ func NewDBWithSemester(t *testing.T) *db.PG {
 	t.Helper()
 	pg := NewDB(t)
 	if err := pg.EnsureMeta(t.Context(), db.CurrentSchemaVersion); err != nil {
-		t.Fatalf("cannot create the test workspace: %v", err)
+		t.Fatalf("cannot register the test semester: %v", err)
 	}
 	return pg
 }

@@ -108,30 +108,26 @@ func newPlexams() *plexams.Plexams {
 	if semester == "" {
 		semester = viper.GetString("semester")
 	}
-	// an explicitly pinned semester is authoritative for its database (persisted below)
-	semesterPinned := strings.TrimSpace(semester) != ""
 	dbOverride := viper.GetString("db.database")
 
-	// No semester pinned: take the logical semester of a pinned database, else
-	// auto-select the last active / newest compatible workspace from the database.
+	// No semester pinned: take the pinned database's semester, else auto-select the
+	// last active / newest compatible semester from the database.
 	if strings.TrimSpace(semester) == "" {
 		if strings.TrimSpace(dbOverride) != "" {
-			semester = logicalSemesterForDatabase(dbURI, dbOverride)
+			semester = dbOverride
 		} else {
-			resolved, database, ok, connErr := resolveStartSemester(dbURI)
+			resolved, ok, connErr := resolveStartSemester(dbURI)
 			if connErr != nil {
 				log.Fatal().Err(connErr).Msg("cannot connect to the database (check db.uri / network)")
 			}
 			if !ok {
-				log.Fatal().Msg("database has no usable (compatible) workspace yet — " +
-					"pin a semester with --semester <YYYY-SS> (e.g. --semester 2026-SS), " +
+				log.Fatal().Msg("database has no usable (compatible) semester yet — " +
+					"pin one with --semester <YYYY-SS> (e.g. --semester 2026-SS), " +
 					"or create one through the GUI (createSemester)")
 			}
 			semester = resolved
-			if database != "" {
-				viper.Set("db.database", database)
-			}
-			log.Info().Str("database", database).Str("semester", semester).Msg("auto-selected start workspace")
+			viper.Set("db.database", resolved)
+			log.Info().Str("semester", semester).Msg("auto-selected start semester")
 		}
 	}
 
@@ -150,11 +146,6 @@ func newPlexams() *plexams.Plexams {
 		panic(fmt.Errorf("fatal cannot create mongo client: %w", err))
 	}
 
-	// a pinned semester is authoritative for its database (e.g. a replay clone with
-	// semester=2026-SS + db.database=2026-SS-Test): remember the real semester there.
-	if semesterPinned {
-		plexams.PersistSemester(context.Background())
-	}
 	// remember what we started with, so the next start can resume it
 	plexams.RememberActiveSemester(context.Background())
 
@@ -164,27 +155,15 @@ func newPlexams() *plexams.Plexams {
 
 // resolveStartSemester opens a temporary DB connection to pick the start semester
 // (last active, else newest compatible). connErr is non-nil when the database is
-// unreachable; ok=false with connErr==nil means connected but no usable workspace.
-func resolveStartSemester(dbURI string) (semester, database string, ok bool, connErr error) {
-	// The workspace is irrelevant here: the registry is one table, so this reads
+// unreachable; ok=false with connErr==nil means connected but nothing usable.
+func resolveStartSemester(dbURI string) (semester string, ok bool, connErr error) {
+	// Which semester is irrelevant here: the registry is one table, so this reads
 	// across all of them. Under Mongo it had to connect to a named database first.
 	client, err := db.NewPG(context.Background(), dbURI, "")
 	if err != nil {
-		return "", "", false, err
+		return "", false, err
 	}
 	defer client.Close()
-	semester, database, ok = client.ResolveStartSemester(context.Background())
-	return semester, database, ok, nil
-}
-
-// logicalSemesterForDatabase opens a temporary DB connection to read the logical
-// semester stored in a specific database (else derives it from the name).
-func logicalSemesterForDatabase(dbURI, database string) string {
-	client, err := db.NewPG(context.Background(), dbURI, "")
-	if err != nil {
-		log.Error().Err(err).Msg("cannot connect to read database semester")
-		return database
-	}
-	defer client.Close()
-	return client.SemesterForDatabase(context.Background(), database)
+	semester, ok = client.ResolveStartSemester(context.Background())
+	return semester, ok, nil
 }

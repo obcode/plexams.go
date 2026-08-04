@@ -22,17 +22,8 @@ func (r *mutationResolver) CreateSemester(ctx context.Context, semester string, 
 }
 
 // SetSemester is the resolver for the setSemester field.
-func (r *mutationResolver) SetSemester(ctx context.Context, name string, semester *string) (*model.Semester, error) {
-	override := ""
-	if semester != nil {
-		override = *semester
-	}
-	return r.plexams.SwitchSemester(ctx, name, override)
-}
-
-// CreateWorkspace is the resolver for the createWorkspace field.
-func (r *mutationResolver) CreateWorkspace(ctx context.Context, database string, fromSemester string) (*model.Semester, error) {
-	return r.plexams.CreateWorkspace(ctx, database, fromSemester)
+func (r *mutationResolver) SetSemester(ctx context.Context, name string) (*model.Semester, error) {
+	return r.plexams.SwitchSemester(ctx, name)
 }
 
 // SetSemesterReadOnly is the resolver for the setSemesterReadOnly field.

@@ -18,7 +18,7 @@ import (
 //
 // goose owns the *structure*. It is deliberately NOT merged with the existing
 // per-semester SchemaVersion (db/migrations.go), which versions the *shape of the
-// data* inside a workspace -- two different questions with two different lifetimes.
+// data* inside a semester -- two different questions with two different lifetimes.
 //
 //go:embed migrations/*.sql
 var pgMigrationsFS embed.FS

@@ -28,8 +28,7 @@ func TestARoomRequestStaysAddressableAfterItsWindowMoves(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into room (name, seats) values ('R1.006', 30)`)
 	start := berlin(t, "2027-01-20 08:30")
 
@@ -73,8 +72,7 @@ func TestMissingRoomRequestIsNil(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into room (name, seats) values ('R1.006', 30)`)
 	start := berlin(t, "2027-01-20 08:30")
 
@@ -111,8 +109,7 @@ func TestReplaceAllRoomRequests(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into room (name, seats) values ('R1.006', 30), ('R1.046', 60)`)
 	start := berlin(t, "2027-01-20 08:30")
 
@@ -155,8 +152,7 @@ func TestBlockAndUnblockRoom(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into room (name, seats) values ('R1.008', 24)`)
 	start := berlin(t, "2027-01-20 08:30")
 	reason := "Werkstatt"
@@ -211,8 +207,7 @@ func TestBlockingARoomWithoutATimeFails(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	exec(t, pg, `insert into room (name, seats) values ('R1.008', 24)`)
 
 	if err := pg.BlockRoomForSlot(ctx, &model.BlockedRoom{Room: "R1.008"}); err == nil {

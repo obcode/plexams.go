@@ -86,7 +86,7 @@ func (r *report) drop(collection string, fields []string) {
 }
 
 func run(ctx context.Context, dumpDir, uri string, dryRun bool) error {
-	// The workspace is irrelevant: everything here is global master data, and none
+	// The semester is irrelevant: everything here is global master data, and none
 	// of the writers involved reads semesterID.
 	pg, err := db.NewPG(ctx, uri, "")
 	if err != nil {

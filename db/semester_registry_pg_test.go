@@ -8,10 +8,10 @@ import (
 	"github.com/obcode/plexams.go/internal/pgtest"
 )
 
-// TestEnsureMetaDoesNotInventALabel pins the rule EnsureMeta always had: it
-// stamps the schema version but must not write a semester label, because a
-// derived or guessed one would then look authoritative.
-func TestEnsureMetaDoesNotInventALabel(t *testing.T) {
+// EnsureMeta registers the current semester and stamps a fresh row's schema
+// version. It must not move the version of a semester that already has one --
+// only Migrate does that.
+func TestEnsureMetaStampsOnlyAFreshSemester(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
@@ -29,32 +29,60 @@ func TestEnsureMetaDoesNotInventALabel(t *testing.T) {
 	if meta.SchemaVersion != 2 {
 		t.Errorf("SchemaVersion = %d, want 2", meta.SchemaVersion)
 	}
-	if meta.Semester != "" {
-		t.Errorf("Semester = %q, want empty -- EnsureMeta must not persist a label", meta.Semester)
-	}
 	if meta.ReadOnly {
-		t.Error("a fresh workspace is read-only")
+		t.Error("a fresh semester is read-only")
 	}
 
-	// Calling it again must not reset an explicit label or the version.
-	if err := pg.SetMetaSemester(ctx, "2026 WS", 2); err != nil {
-		t.Fatalf("SetMetaSemester: %v", err)
-	}
-	if err := pg.EnsureMeta(ctx, 2); err != nil {
+	if err := pg.EnsureMeta(ctx, 3); err != nil {
 		t.Fatalf("EnsureMeta again: %v", err)
 	}
 	meta, err = pg.GetSemesterMeta(ctx)
 	if err != nil {
 		t.Fatalf("GetSemesterMeta: %v", err)
 	}
-	if meta.Semester != "2026 WS" {
-		t.Errorf("Semester = %q, want the explicit label to survive", meta.Semester)
+	if meta.SchemaVersion != 2 {
+		t.Errorf("SchemaVersion = %d, want the stamped 2 to survive", meta.SchemaVersion)
 	}
 }
 
-// A workspace that does not exist has no meta -- (nil, nil), which is how
-// Migrate and AllSemesterNames tell "not a workspace" from "a broken one".
-func TestMetaOfAnUnknownWorkspaceIsNil(t *testing.T) {
+// EnsureSemester registers a semester other than the current one -- what
+// createSemester does, and what the three SetMetaSemester* variants collapsed
+// into once the label stopped being stored.
+func TestEnsureSemesterRegistersAnotherSemester(t *testing.T) {
+	pg := pgtest.NewDB(t)
+	ctx := t.Context()
+
+	if err := pg.EnsureSemester(ctx, "2027-SS", 2); err != nil {
+		t.Fatalf("EnsureSemester: %v", err)
+	}
+	if n := count(t, pg, `select count(*) from semester where id = '2027-SS'`); n != 1 {
+		t.Errorf("rows for 2027-SS = %d, want 1", n)
+	}
+	// ...and the current one is untouched by it.
+	meta, err := pg.GetSemesterMeta(ctx)
+	if err != nil {
+		t.Fatalf("GetSemesterMeta: %v", err)
+	}
+	if meta != nil {
+		t.Errorf("GetSemesterMeta = %#v, want nil -- 2026-WS was never registered", meta)
+	}
+}
+
+// The id format is a constraint, not a convention: the logical semester ZPA sees
+// is derived from it, so a name it cannot be derived from must not get in.
+func TestSemesterIDFormatIsEnforced(t *testing.T) {
+	pg := pgtest.NewDB(t)
+
+	for _, id := range []string{"Test26SS-v2", "2026-XX", "", "2026-SS-Test"} {
+		if err := pg.EnsureSemester(t.Context(), id, 2); err == nil {
+			t.Errorf("EnsureSemester(%q) was accepted", id)
+		}
+	}
+}
+
+// A semester that is not registered has no meta -- (nil, nil), which is how
+// Migrate and AllSemesterNames tell "not a semester" from "a broken one".
+func TestMetaOfAnUnregisteredSemesterIsNil(t *testing.T) {
 	pg := pgtest.NewDB(t)
 
 	meta, err := pg.GetSemesterMeta(t.Context())
@@ -97,46 +125,23 @@ func TestSemesterMetaFlags(t *testing.T) {
 	}
 }
 
-// SwitchTo is where "one database per semester" becomes "one column". The
-// override wins over the stored label and is deliberately not persisted.
-func TestSwitchToResolvesTheLogicalSemester(t *testing.T) {
+// SwitchTo is where "one database per semester" became "one column". The logical
+// semester it returns is derived, not looked up -- the stored label and the
+// override for test clones are both gone.
+func TestSwitchToDerivesTheLogicalSemester(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2), ('Test26SS-v2', '2026 SS', 2),
-	                    ('nolabel', '', 2)`)
-
-	if got := pg.SwitchTo(ctx, "Test26SS-v2", ""); got != "2026 SS" {
-		t.Errorf("SwitchTo without override = %q, want the stored label", got)
+	if got := pg.SwitchTo(ctx, "2026-SS"); got != "2026 SS" {
+		t.Errorf("SwitchTo = %q, want the derived label", got)
 	}
-	if got := pg.DatabaseName(); got != "Test26SS-v2" {
-		t.Errorf("DatabaseName = %q, want the workspace id", got)
+	if got := pg.Semester(); got != "2026-SS" {
+		t.Errorf("Semester = %q, want the id", got)
 	}
-
-	// An override wins -- that is the whole point of a clone.
-	if got := pg.SwitchTo(ctx, "Test26SS-v2", "2027 SS"); got != "2027 SS" {
-		t.Errorf("SwitchTo with override = %q, want the override", got)
-	}
-	// ...and is not written back.
-	meta, err := pg.GetSemesterMeta(ctx)
-	if err != nil {
-		t.Fatalf("GetSemesterMeta: %v", err)
-	}
-	if meta.Semester != "2026 SS" {
-		t.Errorf("the override was persisted: stored label is now %q", meta.Semester)
-	}
-
-	// A workspace without a stored label falls back to its id.
-	if got := pg.SwitchTo(ctx, "nolabel", ""); got != "nolabel" {
-		t.Errorf("SwitchTo = %q, want the id derived label", got)
-	}
-	if got := pg.SemesterForDatabase(ctx, "2026-WS"); got != "2026 WS" {
-		t.Errorf("SemesterForDatabase = %q, want the stored label", got)
-	}
-	// The id-to-label derivation replaces the first dash with a space.
-	if got := pg.SemesterForDatabase(ctx, "2025-SS"); got != "2025 SS" {
-		t.Errorf("SemesterForDatabase of an unknown workspace = %q, want 2025 SS", got)
+	// It does not read anything, so an unregistered semester is not an error here
+	// -- switching to one that has no config yet is how a new semester is set up.
+	if got := pg.SwitchTo(ctx, "2027-WS"); got != "2027 WS" {
+		t.Errorf("SwitchTo = %q, want 2027 WS", got)
 	}
 }
 
@@ -146,16 +151,16 @@ func TestAllSemesterNames(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version, read_only)
-	             values ('2026-WS', '2026 WS', 2, false),
-	                    ('2026-SS', '2026 SS', 2, true),
-	                    ('Test26SS-v2', '2026 SS', 2, false)`)
+	exec(t, pg, `insert into semester (id, schema_version, read_only)
+	             values ('2026-WS', 2, false),
+	                    ('2026-SS', 2, true),
+	                    ('2025-WS', 2, false)`)
 
 	// Only two of them get a config.
-	for _, id := range []string{"2026-WS", "Test26SS-v2"} {
-		if err := pg.SaveSemesterConfigInputToDatabase(ctx, id,
+	for _, id := range []string{"2026-WS", "2025-WS"} {
+		if err := pg.SaveSemesterConfigInputFor(ctx, id,
 			&model.SemesterConfigInput{}); err != nil {
-			t.Fatalf("SaveSemesterConfigInputToDatabase(%s): %v", id, err)
+			t.Fatalf("SaveSemesterConfigInputFor(%s): %v", id, err)
 		}
 	}
 
@@ -164,17 +169,15 @@ func TestAllSemesterNames(t *testing.T) {
 		t.Fatalf("AllSemesterNames: %v", err)
 	}
 	if len(semesters) != 3 {
-		t.Fatalf("got %d workspaces, want 3", len(semesters))
+		t.Fatalf("got %d semesters, want 3", len(semesters))
 	}
 
-	// Newest logical semester first, then the id -- so the canonical workspace
-	// comes before a test clone of the same semester.
-	if semesters[0].ID != "2026-WS" {
-		t.Errorf("first = %s, want 2026-WS (newest)", semesters[0].ID)
-	}
-	if semesters[1].ID != "2026-SS" || semesters[2].ID != "Test26SS-v2" {
-		t.Errorf("order = %s, %s; want 2026-SS before Test26SS-v2",
-			semesters[1].ID, semesters[2].ID)
+	// Newest first. The id sorts like the label it is derived from, so WS comes
+	// before the SS of the same year.
+	for i, want := range []string{"2026-WS", "2026-SS", "2025-WS"} {
+		if semesters[i].ID != want {
+			t.Errorf("semesters[%d] = %s, want %s", i, semesters[i].ID, want)
+		}
 	}
 
 	byID := map[string]*model.Semester{}
@@ -191,19 +194,19 @@ func TestAllSemesterNames(t *testing.T) {
 		t.Error("the read-only flag was lost")
 	}
 	if byID["2026-WS"].Semester == nil || *byID["2026-WS"].Semester != "2026 WS" {
-		t.Errorf("Semester = %v, want the stored label", byID["2026-WS"].Semester)
+		t.Errorf("Semester = %v, want the derived label", byID["2026-WS"].Semester)
 	}
 }
 
-// A config for a workspace that does not exist is rejected. Under MongoDB the
+// A config for a semester that is not registered is rejected. Under MongoDB the
 // insert created the database as a side effect, so a typo produced a second,
-// empty workspace that then appeared in the switcher.
-func TestAConfigNeedsItsWorkspace(t *testing.T) {
+// empty database that then appeared in the switcher.
+func TestAConfigNeedsItsSemester(t *testing.T) {
 	pg := pgtest.NewDB(t)
 
-	if err := pg.SaveSemesterConfigInputToDatabase(t.Context(), "tpyo-2026",
+	if err := pg.SaveSemesterConfigInputFor(t.Context(), "2027-SS",
 		&model.SemesterConfigInput{}); err == nil {
-		t.Error("a config for a workspace that does not exist was accepted")
+		t.Error("a config for a semester that is not registered was accepted")
 	}
 }
 
@@ -211,16 +214,15 @@ func TestSemesterConfigInputRoundTrip(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 
 	if config, err := pg.GetSemesterConfigInput(ctx); err != nil {
 		t.Fatalf("GetSemesterConfigInput: %v", err)
 	} else if config != nil {
 		t.Errorf("GetSemesterConfigInput = %#v, want nil before anything is stored", config)
 	}
-	if pg.DatabaseHasConfig(ctx, "2026-WS") {
-		t.Error("DatabaseHasConfig = true before a config was stored")
+	if pg.SemesterHasConfig(ctx, "2026-WS") {
+		t.Error("SemesterHasConfig = true before a config was stored")
 	}
 
 	from, until := berlin(t, "2027-02-01 00:00"), berlin(t, "2027-02-20 00:00")
@@ -236,8 +238,8 @@ func TestSemesterConfigInputRoundTrip(t *testing.T) {
 	if got == nil || !got.From.Equal(from) {
 		t.Errorf("config = %#v, want the stored one", got)
 	}
-	if !pg.DatabaseHasConfig(ctx, "2026-WS") {
-		t.Error("DatabaseHasConfig = false after a config was stored")
+	if !pg.SemesterHasConfig(ctx, "2026-WS") {
+		t.Error("SemesterHasConfig = false after a config was stored")
 	}
 
 	// Saving again replaces rather than accumulating -- it was a drop and insert.
@@ -262,55 +264,52 @@ func TestResolveStartSemester(t *testing.T) {
 	ctx := t.Context()
 
 	// Nothing at all.
-	if _, _, ok := pg.ResolveStartSemester(ctx); ok {
+	if _, ok := pg.ResolveStartSemester(ctx); ok {
 		t.Error("ResolveStartSemester found something in an empty database")
 	}
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2), ('2026-SS', '2026 SS', 2)`)
-	if err := pg.SaveSemesterConfigInputToDatabase(ctx, "2026-SS",
+	exec(t, pg, `insert into semester (id, schema_version)
+	             values ('2026-WS', 2), ('2026-SS', 2)`)
+	if err := pg.SaveSemesterConfigInputFor(ctx, "2026-SS",
 		&model.SemesterConfigInput{}); err != nil {
-		t.Fatalf("SaveSemesterConfigInputToDatabase: %v", err)
+		t.Fatalf("SaveSemesterConfigInputFor: %v", err)
 	}
 
 	// No active semester: the newest compatible one wins -- 2026-WS is newer but
 	// has no config, so 2026-SS it is.
-	semester, database, ok := pg.ResolveStartSemester(ctx)
-	if !ok || database != "2026-SS" || semester != "2026 SS" {
-		t.Errorf("ResolveStartSemester = %q, %q, %v; want the newest compatible one",
-			semester, database, ok)
+	semester, ok := pg.ResolveStartSemester(ctx)
+	if !ok || semester != "2026-SS" {
+		t.Errorf("ResolveStartSemester = %q, %v; want the newest compatible one", semester, ok)
 	}
 
 	// An active semester wins, as long as it still has a config.
-	if err := pg.SaveSemesterConfigInputToDatabase(ctx, "2026-WS",
+	if err := pg.SaveSemesterConfigInputFor(ctx, "2026-WS",
 		&model.SemesterConfigInput{}); err != nil {
-		t.Fatalf("SaveSemesterConfigInputToDatabase: %v", err)
+		t.Fatalf("SaveSemesterConfigInputFor: %v", err)
 	}
-	pg.SwitchTo(ctx, "2026-WS", "")
+	pg.SwitchTo(ctx, "2026-WS")
 	if err := pg.SaveActiveSemester(ctx); err != nil {
 		t.Fatalf("SaveActiveSemester: %v", err)
 	}
-	semester, database, ok = pg.ResolveStartSemester(ctx)
-	if !ok || database != "2026-WS" || semester != "2026 WS" {
-		t.Errorf("ResolveStartSemester = %q, %q, %v; want the active one",
-			semester, database, ok)
+	semester, ok = pg.ResolveStartSemester(ctx)
+	if !ok || semester != "2026-WS" {
+		t.Errorf("ResolveStartSemester = %q, %v; want the active one", semester, ok)
 	}
 }
 
 // Migrate no longer migrates -- there are no pre-cut-over data shapes in
-// PostgreSQL. It is the version guard: a workspace written by a newer binary is
-// left alone rather than downgraded.
+// PostgreSQL. It is the version guard: data written by a newer binary is left
+// alone rather than downgraded.
 func TestMigrateIsTheVersionGuard(t *testing.T) {
 	pg := pgtest.NewDB(t)
 	ctx := t.Context()
 
-	// No workspace: nothing to do, no error.
+	// Not registered: nothing to do, no error.
 	if err := pg.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate on nothing: %v", err)
 	}
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 1)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 1)`)
 	if err := pg.Migrate(ctx); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
@@ -323,7 +322,7 @@ func TestMigrateIsTheVersionGuard(t *testing.T) {
 			meta.SchemaVersion, db.CurrentSchemaVersion)
 	}
 
-	// A workspace from the future is left exactly as it is.
+	// Data from the future is left exactly as it is.
 	exec(t, pg, `update semester set schema_version = $1 where id = '2026-WS'`,
 		db.CurrentSchemaVersion+1)
 	if err := pg.Migrate(ctx); err != nil {
@@ -337,7 +336,7 @@ func TestMigrateIsTheVersionGuard(t *testing.T) {
 		t.Errorf("SchemaVersion = %d, want the newer version untouched", meta.SchemaVersion)
 	}
 
-	// A read-only workspace is not stamped either -- migrating it would defeat
+	// A read-only semester is not stamped either -- migrating it would defeat
 	// the protection.
 	exec(t, pg, `update semester set schema_version = 1, read_only = true where id = '2026-WS'`)
 	if err := pg.Migrate(ctx); err != nil {
@@ -348,6 +347,6 @@ func TestMigrateIsTheVersionGuard(t *testing.T) {
 		t.Fatalf("GetSemesterMeta: %v", err)
 	}
 	if meta.SchemaVersion != 1 {
-		t.Errorf("SchemaVersion = %d, want a read-only workspace left alone", meta.SchemaVersion)
+		t.Errorf("SchemaVersion = %d, want a read-only semester left alone", meta.SchemaVersion)
 	}
 }

@@ -1,10 +1,10 @@
--- The semester registry: what used to be one MongoDB database per workspace is
+-- The semester registry: what used to be one MongoDB database per semester is
 -- one row here.
 --
 -- SemesterMeta was a single document in each database's `semester_meta`
--- collection. Its four fields are columns of `semester` now, which is why the
--- registry can answer "which workspaces exist, and are they compatible?" with
--- one query instead of a ListDatabaseNames plus two probes per database.
+-- collection. Its fields are columns of `semester` now, which is why the registry
+-- can answer "which semesters exist, and are they compatible?" with one query
+-- instead of a ListDatabaseNames plus two probes per database.
 
 -- name: GetSemester :one
 select * from semester where id = $1;
@@ -12,12 +12,13 @@ select * from semester where id = $1;
 -- name: SemesterExists :one
 select exists (select 1 from semester where id = $1);
 
--- Every workspace, with whether it carries a config. `compatible` was "has a
+-- Every semester, with whether it carries a config. `compatible` was "has a
 -- semester_config_input document"; the left join says the same thing.
 --
--- The ordering is the Mongo one, spelled in SQL: newest logical semester first,
--- then the id, so the canonical workspace comes before test clones of the same
--- semester.
+-- Newest first. That used to sort by the stored label with the id as tie-break,
+-- so the canonical database came before a test clone of the same semester; the
+-- clones are gone and the id sorts identically ("2026-WS" > "2026-SS" > "2025-WS"
+-- both as a label and as an id).
 --
 -- The ::bool cast is not decoration: without it sqlc types has_config as
 -- interface{}.
@@ -25,24 +26,19 @@ select exists (select 1 from semester where id = $1);
 select s.*, (c.semester_id is not null)::bool as has_config
 from semester s
 left join semester_config_input c on c.semester_id = s.id
-order by s.semester desc, s.id collate "C";
+order by s.id collate "C" desc;
 
--- Creating a workspace and stamping its schema version. The semester label is
--- NOT written here: a derived or guessed label must not be persisted, only an
--- explicit one (SetMetaSemester) -- the same rule EnsureMeta had.
+-- Registering a semester and stamping the schema version of a fresh row. An
+-- already registered semester keeps its version: this is called on every start,
+-- and the version is only ever moved by Migrate.
 -- name: EnsureSemester :exec
-insert into semester (id, semester, schema_version)
-values ($1, '', $2)
+insert into semester (id, schema_version)
+values ($1, $2)
 on conflict (id) do update set
     schema_version = case
         when semester.schema_version = 0 then excluded.schema_version
         else semester.schema_version
     end;
-
--- name: SetSemesterLabel :exec
-insert into semester (id, semester, schema_version)
-values ($1, $2, $3)
-on conflict (id) do update set semester = excluded.semester;
 
 -- name: SetSemesterSchemaVersion :exec
 update semester set schema_version = $2 where id = $1;
@@ -53,7 +49,7 @@ update semester set read_only = $2 where id = $1;
 -- name: SetSemesterLastDumpAt :exec
 update semester set last_dump_at = $2 where id = $1;
 
--- The per-semester planning config. One row per workspace, jsonb: it is an
+-- The per-semester planning config. One row per semester, jsonb: it is an
 -- editable document read and written whole, and the GUI form is its shape.
 
 -- name: GetSemesterConfigInput :one

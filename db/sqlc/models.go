@@ -505,7 +505,6 @@ type SchedulerState struct {
 
 type Semester struct {
 	ID            string
-	Semester      string
 	SchemaVersion int
 	ReadOnly      bool
 	LastDumpAt    *time.Time

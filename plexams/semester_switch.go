@@ -3,8 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
@@ -20,14 +18,13 @@ const (
 	minSupportedSchemaVersion = db.MinSupportedSchemaVersion
 )
 
-// IsReadOnly reports whether the current semester database is protected.
+// IsReadOnly reports whether the current semester is protected.
 func (p *Plexams) IsReadOnly() bool {
 	return p.readOnly
 }
 
-// loadSemesterMeta stamps the schema version and logical semester (when the DB has
-// a config), makes sure the indexes exist, and loads the read-only flag of the
-// current database into p.readOnly.
+// loadSemesterMeta registers the current semester and stamps its schema version
+// (when it has a config), and loads its read-only flag into p.readOnly.
 func (p *Plexams) loadSemesterMeta(ctx context.Context) {
 	if p.dbClient == nil {
 		return
@@ -51,19 +48,7 @@ func (p *Plexams) loadSemesterMeta(ctx context.Context) {
 	}
 }
 
-// PersistSemester force-stores the current logical semester as the database's own
-// (authoritative) semester. Use only for explicit values (a pin or override), never
-// for a derived guess.
-func (p *Plexams) PersistSemester(ctx context.Context) {
-	if p.dbClient == nil {
-		return
-	}
-	if err := p.dbClient.SetMetaSemester(ctx, p.semester, currentSchemaVersion); err != nil {
-		log.Error().Err(err).Msg("cannot persist semester")
-	}
-}
-
-// SetSemesterReadOnly protects/unprotects the current semester database.
+// SetSemesterReadOnly protects/unprotects the current semester.
 func (p *Plexams) SetSemesterReadOnly(ctx context.Context, readOnly bool) (*model.Semester, error) {
 	if err := p.dbClient.SetSemesterReadOnly(ctx, readOnly); err != nil {
 		return nil, err
@@ -73,36 +58,31 @@ func (p *Plexams) SetSemesterReadOnly(ctx context.Context, readOnly bool) (*mode
 	return p.GetSemester(ctx), nil
 }
 
-// SwitchSemester repoints the running instance to another database at runtime.
+// SwitchSemester repoints the running instance to another semester at runtime.
 //
-// name identifies the target database (an allSemesterNames label, e.g. "2026 SS" or
-// a clone "2026 SS-Test"). The logical semester used against external systems (ZPA)
-// is the database's own stored semester, so a clone keeps the real semester (e.g.
-// "2026 SS") instead of its database name. semesterOverride is only needed for an
-// empty database that has no stored semester yet (it is then remembered).
+// name is a semester id from allSemesterNames, e.g. "2026-SS"; the logical
+// semester used against external systems (ZPA) is derived from it. There is no
+// override any more: it existed for test clones, whose whole point was a database
+// name that was not the semester.
 //
 // Single-user only: refused while an operation (validation/import/email/upload) is
 // running; the GUI must refetch all data afterwards. The target may be empty (no
 // config yet) — the config is then nil until created/imported.
-func (p *Plexams) SwitchSemester(ctx context.Context, name, semesterOverride string) (*model.Semester, error) {
+func (p *Plexams) SwitchSemester(ctx context.Context, name string) (*model.Semester, error) {
 	if !p.WritesAllowed() {
 		return nil, fmt.Errorf("cannot switch semester while an operation (validation/import/email/upload) is running")
 	}
 
-	p.semester = p.dbClient.SwitchTo(ctx, name, semesterOverride)
+	p.semester = p.dbClient.SwitchTo(ctx, name)
 	// force the ZPA client to be recreated with the new semester
 	p.zpa.client = nil
-	log.Info().Str("database", name).Str("semester", p.semester).Msg("switched semester")
+	log.Info().Str("semester", p.semester).Msg("switched semester")
 
 	p.loadSemesterConfig(ctx)
 	if p.semesterConfig == nil {
-		log.Warn().Str("semester", p.semester).Msg("switched to a semester/database without config (needs setup or import)")
+		log.Warn().Str("semester", p.semester).Msg("switched to a semester without config (needs setup or import)")
 	}
 	p.loadSemesterMeta(ctx)
-	// an explicit override is authoritative for this database — remember it.
-	if strings.TrimSpace(semesterOverride) != "" {
-		p.PersistSemester(ctx)
-	}
 	p.setRoomInfo()
 
 	// keep the DB-derived globals consistent with the new semester's data
@@ -123,58 +103,8 @@ func (p *Plexams) SwitchSemester(ctx context.Context, name, semesterOverride str
 	return p.GetSemester(ctx), nil
 }
 
-// workspaceNameRE restricts workspace database names to safe characters.
-var workspaceNameRE = regexp.MustCompile(`^[A-Za-z0-9 _-]+$`)
-
-// CreateWorkspace creates a new, independent database (a workspace) for the logical
-// semester of fromSemester, copying that semester's config so dates/slots match.
-// The data stays empty — import it (e.g. from ZPA, which uses the logical semester).
-func (p *Plexams) CreateWorkspace(ctx context.Context, database, fromSemester string) (*model.Semester, error) {
-	database = strings.TrimSpace(database)
-	if !workspaceNameRE.MatchString(database) {
-		return nil, fmt.Errorf("invalid database name %q (use letters, digits, space, - and _)", database)
-	}
-	if systemDB(database) {
-		return nil, fmt.Errorf("%q is a reserved database name", database)
-	}
-	if existing, err := p.dbClient.SemesterConfigInputForDatabase(ctx, database); err != nil {
-		return nil, err
-	} else if existing != nil {
-		return nil, fmt.Errorf("database %q already exists as a workspace", database)
-	}
-
-	srcDB := strings.Replace(fromSemester, " ", "-", 1)
-	srcConfig, err := p.dbClient.SemesterConfigInputForDatabase(ctx, srcDB)
-	if err != nil {
-		return nil, err
-	}
-	if srcConfig == nil {
-		return nil, fmt.Errorf("source semester %q has no config to copy from", fromSemester)
-	}
-	logical := p.dbClient.SemesterForDatabase(ctx, srcDB)
-
-	if err := p.dbClient.SaveSemesterConfigInputToDatabase(ctx, database, srcConfig); err != nil {
-		return nil, err
-	}
-	if err := p.dbClient.SetMetaSemesterForDatabase(ctx, database, logical, currentSchemaVersion); err != nil {
-		return nil, err
-	}
-	log.Info().Str("database", database).Str("semester", logical).Msg("created workspace")
-
-	v := currentSchemaVersion
-	return &model.Semester{ID: database, Semester: &logical, Compatible: true, SchemaVersion: &v}, nil
-}
-
-func systemDB(name string) bool {
-	switch name {
-	case "admin", "local", "config", "plexams":
-		return true
-	}
-	return false
-}
-
-// RememberActiveSemester records the current semester/database as the last active
-// one, so the next start can resume it (best-effort).
+// RememberActiveSemester records the current semester as the last active one, so
+// the next start can resume it (best-effort).
 func (p *Plexams) RememberActiveSemester(ctx context.Context) {
 	if p.dbClient == nil {
 		return

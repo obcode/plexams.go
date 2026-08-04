@@ -1,11 +1,7 @@
--- The stored answer is only the workspace id; the logical semester comes from the
--- registry rather than being duplicated here. Under MongoDB both were written
--- into the same document and could disagree after a workspace was renamed.
+-- Only the semester is stored. Under MongoDB the document carried the database
+-- name AND a logical semester next to it, and the two could disagree.
 -- name: GetActiveSemester :one
-select a.semester_id, s.semester
-from active_semester a
-join semester s on s.id = a.semester_id
-where a.id = 1;
+select semester_id from active_semester where id = 1;
 
 -- name: SaveActiveSemester :exec
 insert into active_semester (id, semester_id)

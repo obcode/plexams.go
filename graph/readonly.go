@@ -7,13 +7,13 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-// readOnlyExemptMutations are mutations allowed even on a read-only database: they
-// don't change the active database's data — only which database is active, its
-// protection, or they create a separate new database.
+// readOnlyExemptMutations are mutations allowed even on a read-only semester: they
+// don't change the active semester's data — only which semester is active, its
+// protection, or they create a separate new one.
 var readOnlyExemptMutations = map[string]bool{
 	"setSemester":         true,
 	"setSemesterReadOnly": true,
-	"createWorkspace":     true, // writes into a new, separate database
+	"createSemester":      true, // writes into a new, separate semester
 }
 
 // isDataChangingOperation reports whether the operation would change the semester's

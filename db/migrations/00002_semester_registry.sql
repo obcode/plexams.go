@@ -1,32 +1,32 @@
 -- The semester registry: what used to be "one MongoDB database per semester",
--- discovered by listing database names.
---
--- semester.id is the workspace key -- the former physical database name, which is
--- NOT always the logical semester: clones like "Test26SS-v2" carry semester
--- "2026 SS" so ZPA still sees the real one. Every semester-scoped table from here
--- on references this id.
+-- discovered by listing database names. Every semester-scoped table from here on
+-- references semester.id.
 
 -- +goose Up
 
 create table semester (
-    -- Workspace key: "2026-WS", "Test26SS-v2". Was the MongoDB database name.
-    id             text primary key,
-    -- Logical semester as ZPA knows it, e.g. "2026 SS". Deliberately separate
-    -- from id so a clone can be planned against without lying to ZPA.
-    semester       text not null,
-    -- Shape-of-the-data version for this workspace, the successor of
+    -- The semester, "2026-WS". Was the MongoDB database name.
+    --
+    -- The format is enforced rather than merely expected, because the logical
+    -- semester ZPA knows ("2026 WS") is DERIVED from it -- replace the dash with
+    -- a space -- instead of being stored a second time. Under MongoDB there was a
+    -- second column for it, so that a test clone ("Test26SS-v2") could be planned
+    -- against without lying to ZPA about which semester it was. Testing happens in
+    -- the dev container now, the clones are gone, and with them the only case
+    -- where the two could differ.
+    id             text primary key
+                   constraint semester_id_format check (id ~ '^[0-9]{4}-(SS|WS)$'),
+    -- Shape-of-the-data version for this semester, the successor of
     -- SemesterMeta.SchemaVersion. NOT the same thing as the goose version: goose
     -- owns the structure of the whole database, this owns what the rows mean.
     schema_version int  not null,
     -- Protects finished semesters from being written to.
     read_only      boolean not null default false,
     last_dump_at   timestamptz,
-    created_at     timestamptz not null default now(),
-
-    constraint semester_id_not_blank check (id <> '')
+    created_at     timestamptz not null default now()
 );
 
--- Which workspace the server is currently working in. Exactly one row.
+-- Which semester the server is currently working in. Exactly one row.
 --
 -- This is the successor of the global `active_semester` document, and it is also
 -- what replaces db.databaseName as the *stored* answer. The process-global
@@ -38,8 +38,8 @@ create table active_semester (
 
 -- Anchor and outcome of the nightly ZPA/Anny sync. Exactly one row.
 --
--- semester_id is a log field, not a reference: it records which workspace the
--- last run touched and must survive that workspace being deleted.
+-- semester_id is a log field, not a reference: it records which semester the
+-- last run touched and must survive that semester being deleted.
 -- last_finished and last_status are NULLABLE, and that is load-bearing.
 -- TouchSchedulerFire writes the anchor BEFORE the run executes, precisely so a
 -- crash cannot re-trigger the catch-up against a stale anchor. Between that write

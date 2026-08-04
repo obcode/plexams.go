@@ -44,7 +44,6 @@ update nta set last_semester = @last_semester
 where mtknr = any(@mtknrs::text[])
 returning mtknr;
 
--- The label written into nta.last_semester is the LOGICAL semester ("2026 SS"),
--- not the workspace id ("2026-WS") -- verified against the 63 stored values.
--- name: GetSemesterLabel :one
-select semester from semester where id = $1;
+-- What goes into nta.last_semester is the LOGICAL semester ("2026 SS"), not the
+-- id ("2026-WS") -- verified against the 63 stored values. db.semesterName does
+-- the conversion; see semesterName and db/nta_pg.go.

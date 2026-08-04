@@ -10,25 +10,16 @@ import (
 )
 
 const getActiveSemester = `-- name: GetActiveSemester :one
-select a.semester_id, s.semester
-from active_semester a
-join semester s on s.id = a.semester_id
-where a.id = 1
+select semester_id from active_semester where id = 1
 `
 
-type GetActiveSemesterRow struct {
-	SemesterID string
-	Semester   string
-}
-
-// The stored answer is only the workspace id; the logical semester comes from the
-// registry rather than being duplicated here. Under MongoDB both were written
-// into the same document and could disagree after a workspace was renamed.
-func (q *Queries) GetActiveSemester(ctx context.Context) (GetActiveSemesterRow, error) {
+// Only the semester is stored. Under MongoDB the document carried the database
+// name AND a logical semester next to it, and the two could disagree.
+func (q *Queries) GetActiveSemester(ctx context.Context) (string, error) {
 	row := q.db.QueryRow(ctx, getActiveSemester)
-	var i GetActiveSemesterRow
-	err := row.Scan(&i.SemesterID, &i.Semester)
-	return i, err
+	var semester_id string
+	err := row.Scan(&semester_id)
+	return semester_id, err
 }
 
 const saveActiveSemester = `-- name: SaveActiveSemester :exec

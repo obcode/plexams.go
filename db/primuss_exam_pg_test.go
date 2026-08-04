@@ -20,8 +20,7 @@ import (
 func seedPrimussFixtures(t *testing.T, pg *db.PG, programs ...string) {
 	t.Helper()
 
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 	for _, program := range programs {
 		zpaCode := program
 		if len(zpaCode) > 2 {

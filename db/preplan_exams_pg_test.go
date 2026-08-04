@@ -11,8 +11,7 @@ import (
 
 func seedSemester(t *testing.T, pg *db.PG) {
 	t.Helper()
-	exec(t, pg, `insert into semester (id, semester, schema_version)
-	             values ('2026-WS', '2026 WS', 2)`)
+	exec(t, pg, `insert into semester (id, schema_version) values ('2026-WS', 2)`)
 }
 
 func testPreplanExam(id int, module string) *model.PreplanExam {

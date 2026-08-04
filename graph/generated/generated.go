@@ -763,7 +763,6 @@ type ComplexityRoot struct {
 		ConnectPreplanExamToAncode    func(childComplexity int, id int, ancode int) int
 		CreateJiraIssue               func(childComplexity int, project *string, issueType *string, summary string, description *string) int
 		CreateSemester                func(childComplexity int, semester string, input model.SemesterConfigInputData) int
-		CreateWorkspace               func(childComplexity int, database string, fromSemester string) int
 		DeleteAdditionalExam          func(childComplexity int, ancode int) int
 		DeleteInvigilatorConstraints  func(childComplexity int, teacherID int) int
 		DeletePreplanExam             func(childComplexity int, id int) int
@@ -831,7 +830,7 @@ type ComplexityRoot struct {
 		SetRoomActive                 func(childComplexity int, name string, active bool) int
 		SetRoomRequestActive          func(childComplexity int, room string, starttime time.Time, active bool) int
 		SetRoomRequestApproved        func(childComplexity int, room string, starttime time.Time, approved bool) int
-		SetSemester                   func(childComplexity int, name string, semester *string) int
+		SetSemester                   func(childComplexity int, name string) int
 		SetSemesterConfigInput        func(childComplexity int, input model.SemesterConfigInputData) int
 		SetSemesterReadOnly           func(childComplexity int, readOnly bool) int
 		SetStudentConflictDecision    func(childComplexity int, ancode1 int, ancode2 int, mtknr string, decision model.ConflictDecision) int
@@ -1912,8 +1911,7 @@ type MutationResolver interface {
 	UpdateRoomRequestTime(ctx context.Context, room string, starttime time.Time, from time.Time, until time.Time) (*model.RoomRequest, error)
 	SetSemesterConfigInput(ctx context.Context, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
 	CreateSemester(ctx context.Context, semester string, input model.SemesterConfigInputData) (*model.SaveSemesterConfigResult, error)
-	SetSemester(ctx context.Context, name string, semester *string) (*model.Semester, error)
-	CreateWorkspace(ctx context.Context, database string, fromSemester string) (*model.Semester, error)
+	SetSemester(ctx context.Context, name string) (*model.Semester, error)
 	SetSemesterReadOnly(ctx context.Context, readOnly bool) (*model.Semester, error)
 	UpsertSpecialInterest(ctx context.Context, input model.SpecialInterestInput) (*model.SpecialInterest, error)
 	DeleteSpecialInterest(ctx context.Context, name string) (bool, error)
@@ -5549,18 +5547,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.CreateSemester(childComplexity, args["semester"].(string), args["input"].(model.SemesterConfigInputData)), true
 
-	case "Mutation.createWorkspace":
-		if e.complexity.Mutation.CreateWorkspace == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_createWorkspace_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.CreateWorkspace(childComplexity, args["database"].(string), args["fromSemester"].(string)), true
-
 	case "Mutation.deleteAdditionalExam":
 		if e.complexity.Mutation.DeleteAdditionalExam == nil {
 			break
@@ -6310,7 +6296,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.SetSemester(childComplexity, args["name"].(string), args["semester"].(*string)), true
+		return e.complexity.Mutation.SetSemester(childComplexity, args["name"].(string)), true
 
 	case "Mutation.setSemesterConfigInput":
 		if e.complexity.Mutation.SetSemesterConfigInput == nil {
@@ -14363,34 +14349,22 @@ extend type Mutation {
   """
   setSemesterConfigInput(input: SemesterConfigInputData!): SaveSemesterConfigResult!
   """
-  Create a new semester (in its own database) with the given config. The
-  semester must match YYYY-SS / YYYY-WS and must not already have a config.
-  Use setSemester to switch the running server to it afterwards.
+  Create a new semester with the given config. The semester must match
+  YYYY-SS / YYYY-WS and must not already have a config. Use setSemester to switch
+  the running server to it afterwards.
   """
   createSemester(semester: String!, input: SemesterConfigInputData!): SaveSemesterConfigResult!
   """
-  Switch the running server to another database (workspace) at runtime. ` + "`" + `name` + "`" + ` is
-  the database name from allSemesterNames (id), e.g. "2026-SS" or "test-v2". The
-  logical semester used against external systems (ZPA) is the database's own stored
-  semester — independent of the database name. ` + "`" + `semester` + "`" + ` is an optional override,
-  only needed for a database that has no stored semester yet (then it is
-  remembered). The target may be empty (config null until created/imported).
-  Refused while an operation is running. The GUI must refetch all data afterwards.
+  Switch the running server to another semester at runtime. ` + "`" + `name` + "`" + ` is a semester
+  id from allSemesterNames, e.g. "2026-SS". The target may have no config yet
+  (then it is null until created/imported). Refused while an operation is running.
+  The GUI must refetch all data afterwards.
   """
-  setSemester(name: String!, semester: String): Semester!
+  setSemester(name: String!): Semester!
   """
-  Create a new, independent database (workspace) for the logical semester of
-  ` + "`" + `fromSemester` + "`" + ` (e.g. "2026-SS"), copying that semester's config (dates/slots/
-  emails) so it matches. ` + "`" + `database` + "`" + ` is the new database name (e.g. "test-v2"); it
-  must not exist yet. The data stays empty — switch to it and import (e.g. from ZPA,
-  which uses the logical semester). Returns the new workspace.
-  """
-  createWorkspace(database: String!, fromSemester: String!): Semester!
-  """
-  Protect or unprotect the current database: when read-only, all data-changing
+  Protect or unprotect the current semester: when read-only, all data-changing
   operations (mutations and imports/generation/uploads) are rejected, but the
-  semester can still be viewed and validated, and you can switch away. Useful to
-  guard the real semester while replaying in a clone.
+  semester can still be viewed and validated, and you can switch away.
   """
   setSemesterReadOnly(readOnly: Boolean!): Semester!
 }
@@ -16175,57 +16149,6 @@ func (ec *executionContext) field_Mutation_createSemester_argsInput(
 	}
 
 	var zeroVal model.SemesterConfigInputData
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_createWorkspace_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_createWorkspace_argsDatabase(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["database"] = arg0
-	arg1, err := ec.field_Mutation_createWorkspace_argsFromSemester(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["fromSemester"] = arg1
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_createWorkspace_argsDatabase(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["database"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("database"))
-	if tmp, ok := rawArgs["database"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_createWorkspace_argsFromSemester(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["fromSemester"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("fromSemester"))
-	if tmp, ok := rawArgs["fromSemester"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -19024,11 +18947,6 @@ func (ec *executionContext) field_Mutation_setSemester_args(ctx context.Context,
 		return nil, err
 	}
 	args["name"] = arg0
-	arg1, err := ec.field_Mutation_setSemester_argsSemester(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["semester"] = arg1
 	return args, nil
 }
 func (ec *executionContext) field_Mutation_setSemester_argsName(
@@ -19046,24 +18964,6 @@ func (ec *executionContext) field_Mutation_setSemester_argsName(
 	}
 
 	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_setSemester_argsSemester(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*string, error) {
-	if _, ok := rawArgs["semester"]; !ok {
-		var zeroVal *string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("semester"))
-	if tmp, ok := rawArgs["semester"]; ok {
-		return ec.unmarshalOString2ᚖstring(ctx, tmp)
-	}
-
-	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -49732,7 +49632,7 @@ func (ec *executionContext) _Mutation_setSemester(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetSemester(rctx, fc.Args["name"].(string), fc.Args["semester"].(*string))
+		return ec.resolvers.Mutation().SetSemester(rctx, fc.Args["name"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -49779,73 +49679,6 @@ func (ec *executionContext) fieldContext_Mutation_setSemester(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setSemester_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_createWorkspace(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_createWorkspace(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateWorkspace(rctx, fc.Args["database"].(string), fc.Args["fromSemester"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.Semester)
-	fc.Result = res
-	return ec.marshalNSemester2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐSemester(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_createWorkspace(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Semester_id(ctx, field)
-			case "semester":
-				return ec.fieldContext_Semester_semester(ctx, field)
-			case "compatible":
-				return ec.fieldContext_Semester_compatible(ctx, field)
-			case "readOnly":
-				return ec.fieldContext_Semester_readOnly(ctx, field)
-			case "schemaVersion":
-				return ec.fieldContext_Semester_schemaVersion(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Semester", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_createWorkspace_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -94606,13 +94439,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setSemester":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setSemester(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "createWorkspace":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_createWorkspace(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

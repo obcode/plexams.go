@@ -17,16 +17,16 @@ func minimalConfigInput() *model.SemesterConfigInput {
 	}
 }
 
-// TestCreateSemesterCreatesTheWorkspaceFirst is the regression test for an
+// TestCreateSemesterRegistersTheSemesterFirst is the regression test for an
 // ordering that only PostgreSQL could reject: semester_config_input references
-// semester(id), so writing the config before registering the workspace fails with
+// semester(id), so writing the config before registering the semester fails with
 // a foreign key violation.
 //
 // Under MongoDB the insert created the database as a side effect, so the order did
 // not matter and nothing here was ever exercised against an empty database --
 // which is why creating the very first semester was broken without anyone noticing.
-func TestCreateSemesterCreatesTheWorkspaceFirst(t *testing.T) {
-	// deliberately NOT NewDBWithSemester: the workspace must not exist yet
+func TestCreateSemesterRegistersTheSemesterFirst(t *testing.T) {
+	// deliberately NOT NewDBWithSemester: the semester must not exist yet
 	pg := pgtest.NewDB(t)
 	p := &Plexams{dbClient: pg}
 	ctx := context.Background()
@@ -39,15 +39,15 @@ func TestCreateSemesterCreatesTheWorkspaceFirst(t *testing.T) {
 		t.Fatalf("result = %+v, want Ok", res)
 	}
 
-	// the workspace exists and carries its logical semester
-	meta, err := pg.SemesterConfigInputForDatabase(ctx, "2027-SS")
+	// the semester is registered and carries its config
+	config, err := pg.GetSemesterConfigInputFor(ctx, "2027-SS")
 	if err != nil {
 		t.Fatalf("cannot read back the config: %v", err)
 	}
-	if meta == nil {
+	if config == nil {
 		t.Fatal("the new semester has no config")
 	}
-	if got := pg.SemesterForDatabase(ctx, "2027-SS"); got != "2027 SS" {
+	if got := pg.SwitchTo(ctx, "2027-SS"); got != "2027 SS" {
 		t.Errorf("logical semester = %q, want %q", got, "2027 SS")
 	}
 }
@@ -68,7 +68,7 @@ func TestCreateSemesterRefusesAnExistingOne(t *testing.T) {
 }
 
 // An invalid config must leave nothing behind. Without the transaction the
-// workspace row would survive as an empty entry in the switcher -- the very thing
+// registry row would survive as an empty entry in the switcher -- the very thing
 // the foreign key was introduced to prevent, only from the other side.
 func TestCreateSemesterLeavesNothingBehindOnFailure(t *testing.T) {
 	pg := pgtest.NewDB(t)
@@ -87,7 +87,7 @@ func TestCreateSemesterLeavesNothingBehindOnFailure(t *testing.T) {
 	}
 	for _, s := range names {
 		if s.ID == "2027-WS" {
-			t.Errorf("a failed create left the workspace %q behind", s.ID)
+			t.Errorf("a failed create left the semester %q behind", s.ID)
 		}
 	}
 }

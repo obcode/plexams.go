@@ -12,10 +12,10 @@ import (
 
 // zpaExamFromRow maps an exam row onto the model.
 //
-// model.ZPAExam.Semester is filled by the caller from the registry, not from a
-// column: storing it here would duplicate semester.semester and could drift from
-// it. Groups is a text[] because study-group codes carry no referential meaning;
-// they are parsed, not joined.
+// model.ZPAExam.Semester is filled by the caller, not from a column: it is the
+// semester every one of these rows is in, so storing it per row would be a
+// duplicate that could drift. Groups is a text[] because study-group codes carry
+// no referential meaning; they are parsed, not joined.
 func zpaExamFromRow(row sqlc.Exam, semester string) *model.ZPAExam {
 	exam := &model.ZPAExam{
 		Semester:       semester,
@@ -56,21 +56,6 @@ func (db *PG) newProgramResolver(ctx context.Context) *programResolver {
 	return newProgramResolverFrom(programs, realized)
 }
 
-// semesterLabel is the logical semester of this workspace, for the model field
-// that used to be a stored column.
-//
-// The resolved label from SwitchTo wins over the stored one. That is what makes
-// an explicit override work: a clone planned against with `--semester "2026 SS"`
-// must report the real semester to ZPA and not its workspace id, and the
-// override is deliberately not persisted (only SetMetaSemester writes one).
-// Falls back to the registry for a PG built directly, as the tests do.
-func (db *PG) semesterLabel(ctx context.Context) (string, error) {
-	if db.semester != "" {
-		return db.semester, nil
-	}
-	return db.q(ctx).GetSemesterLabel(ctx, db.semesterID)
-}
-
 // GetZPAExams returns the ZPA-imported exams with their Primuss ancodes resolved
 // and the manually added ones folded in.
 //
@@ -87,11 +72,7 @@ func (db *PG) GetZPAExams(ctx context.Context) ([]*model.ZPAExam, error) {
 		return nil, err
 	}
 
-	semester, err := db.semesterLabel(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot resolve the semester label")
-		return nil, err
-	}
+	semester := semesterName(db.semesterID)
 
 	primussAncodes, err := db.zpaPrimussAncodesPerExam(ctx)
 	if err != nil {
@@ -150,13 +131,7 @@ func (db *PG) GetZpaExamByAncode(ctx context.Context, ancode int) (*model.ZPAExa
 		return nil, err
 	}
 
-	semester, err := db.semesterLabel(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot resolve the semester label")
-		return nil, err
-	}
-
-	exam := zpaExamFromRow(row, semester)
+	exam := zpaExamFromRow(row, semesterName(db.semesterID))
 
 	links, err := db.q(ctx).ListZPAPrimussAncodesForExam(ctx, sqlc.ListZPAPrimussAncodesForExamParams{
 		SemesterID: db.semesterID,

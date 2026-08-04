@@ -2,7 +2,7 @@
 select * from scheduler_state where id = 1;
 
 -- TouchSchedulerFire records the start of a fire: the catch-up anchor, the
--- trigger and the workspace, before the run executes. It must not touch the
+-- trigger and the semester, before the run executes. It must not touch the
 -- previous run's outcome, so the ON CONFLICT branch lists only these three
 -- columns -- the same reason the Mongo version used $set rather than a replace.
 -- name: TouchSchedulerFire :exec

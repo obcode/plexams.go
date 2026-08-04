@@ -21,22 +21,13 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
-    # A real MongoDB so the integration tests actually run. Without it they fall back
-    # to testcontainers and, if Docker is unhappy, silently skip — "green" and "never
-    # ran" then look the same. PLEXAMS_TEST_MONGO_REQUIRED turns a skip into a failure.
+    # A real PostgreSQL so the integration tests actually run rather than skip:
+    # without PLEXAMS_TEST_PG_URI they skip themselves, and "green" and "never ran"
+    # then look the same. PLEXAMS_TEST_PG_REQUIRED turns a skip into a failure.
+    #
+    # internal/pgtest creates one database per test from a template, so the user
+    # needs CREATEDB — the superuser the image sets up has it.
     services:
-      mongo:
-        image: mongo:8
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1})'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-      # The same reasoning for PostgreSQL. internal/pgtest creates one database per
-      # test from a template, so the user needs CREATEDB — the superuser the image
-      # sets up has it.
       postgres:
         image: postgres:18
         env:
@@ -58,8 +49,6 @@ jobs:
       - name: Test
         run: go test -v ./...
         env:
-          PLEXAMS_TEST_MONGO_URI: mongodb://127.0.0.1:27017
-          PLEXAMS_TEST_MONGO_REQUIRED: "1"
           PLEXAMS_TEST_PG_URI: postgres://plexams:plexams@127.0.0.1:5432/plexams?sslmode=disable
           PLEXAMS_TEST_PG_REQUIRED: "1"
 

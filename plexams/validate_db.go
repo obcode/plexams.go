@@ -334,7 +334,8 @@ func (p *Plexams) regsPerAncode(ctx context.Context) (map[int]map[string]bool, e
 }
 
 // ValidateDBNtas checks the sanity of the NTA collection: every NTA has a Matrikelnummer
-// (the TODO in validate.go), a plausible duration delta, and no duplicate Matrikelnummer.
+// (the TODO in validate.go), a plausible duration delta, no duplicate Matrikelnummer, and
+// that no NTA is silently dropped because its program disagrees with the registration.
 func (p *Plexams) ValidateDBNtas(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
 	v := newValidation(reporter, "db-ntas", "validating ntas")
@@ -364,7 +365,89 @@ func (p *Plexams) ValidateDBNtas(reporter Reporter) (*model.ValidationReport, er
 		}
 	}
 
+	if err := p.validateNtasApplied(ctx, v, ntas); err != nil {
+		return nil, err
+	}
+
 	return v.finish(), nil
+}
+
+// validateNtasApplied reports NTAs that exist but do not reach the student.
+//
+// prepare.go only applies an NTA when its program equals the program of the
+// student's registration; otherwise it logs a warning and drops it. A warning in
+// the server log is invisible to the planner, so an NTA with a stale or mistyped
+// program silently costs a student their Nachteilsausgleich -- and the planner
+// only finds out if someone complains.
+//
+// It checks the RESULT rather than repeating the rule: the prepared student view
+// carries the NTA that was actually applied, so a student whose NTA is missing is
+// exactly a student who lost it. That cannot drift away from prepare.go the way a
+// second copy of the comparison would.
+//
+// Deliberately not solved with a foreign key on nta.program: it holds the same
+// values as the student's program, which legitimately includes programs of other
+// faculties (a student of LR sat an FK07 exam with an NTA in 2024 SS). A foreign
+// key would reject those outright, and it would still not catch this case -- the
+// program can exist and still be the wrong one for this person.
+func (p *Plexams) validateNtasApplied(ctx context.Context, v *validation, ntas []*model.NTA) error {
+	if ok, err := p.hasStudentRegs(ctx); err != nil {
+		return err
+	} else if !ok {
+		// No registrations yet -- nothing to compare against. The checks above still ran.
+		return nil
+	}
+
+	students, err := p.dbClient.StudentRegsPerStudentPlanned(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get prepared student regs")
+		return err
+	}
+	v.step("validating that ntas reach their student")
+	for _, f := range ntasNotApplied(ntas, students) {
+		program := f.Nta.Program
+		if program == "" {
+			program = "(leer)"
+		}
+		v.warnf(ref{StudentMtknr: ptr(f.Nta.Mtknr)},
+			"NTA für Matrikelnummer %s (%s) wird NICHT angewandt: im NTA steht Studiengang %s, "+
+				"in der Anmeldung %s. Der Nachteilsausgleich greift dadurch nicht — "+
+				"Studiengang im NTA korrigieren.",
+			f.Nta.Mtknr, f.Nta.Name, program, f.StudentProgram)
+	}
+	return nil
+}
+
+// ntaNotApplied is one NTA that exists but did not reach its student.
+type ntaNotApplied struct {
+	Nta            *model.NTA
+	StudentProgram string
+}
+
+// ntasNotApplied is the decision behind validateNtasApplied, kept free of IO so it
+// can be tested without a database.
+func ntasNotApplied(ntas []*model.NTA, students []*model.Student) []ntaNotApplied {
+	byMtknr := make(map[string]*model.Student, len(students))
+	for _, s := range students {
+		byMtknr[s.Mtknr] = s
+	}
+
+	out := make([]ntaNotApplied, 0)
+	for _, n := range ntas {
+		// A deactivated NTA is meant not to apply, so its absence is not a finding.
+		if n.Deactivated || n.Mtknr == "" {
+			continue
+		}
+		student, registered := byMtknr[n.Mtknr]
+		// Not registered this semester: a stale entry, not this semester's problem.
+		// Reporting those would put the old, incomplete entries in every report of
+		// every semester, which is how a report stops being read.
+		if !registered || student.Nta != nil {
+			continue
+		}
+		out = append(out, ntaNotApplied{Nta: n, StudentProgram: student.Program})
+	}
+	return out
 }
 
 // ValidateDBReferences checks that the per-exam auxiliary collections only reference

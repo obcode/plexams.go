@@ -129,6 +129,10 @@ func (p *Plexams) PrepareStudentRegs() error {
 
 			nta, ok := ntaMap[mtknr]
 			if ok {
+				// Dropping the NTA here costs the student their Nachteilsausgleich, and a
+				// log line does not reach the planner. ValidateDBNtas reports it -- it
+				// detects the result (a registered student without an NTA), so it stays
+				// correct if this rule changes.
 				if regs[0].studentReg.Program != nta.Program {
 					log.Warn().Str("mtknr", mtknr).
 						Str("name", regs[0].studentReg.Name).

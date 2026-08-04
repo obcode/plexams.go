@@ -15,6 +15,9 @@
 # vendor/
 
 plexams.yaml
+# The real name of the local config is the dotfile -- "plexams.yaml" above does
+# not match it. It holds secrets.key, the ZPA password and the SMTP credentials.
+.plexams.yaml
 *.pdf
 
 plan*.json

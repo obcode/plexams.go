@@ -59,20 +59,24 @@ tatsächlich eine offen gelassene Verbindung.
 **Der Replica-Set-Aufwand entfällt ersatzlos** (Keyfile, `rs.initiate()`, uid 999,
 ~70 Zeilen README) — PostgreSQL kann Transaktionen ohne Zeremonie.
 
-## Die offene Folge: `lastDumpAt` stempelt niemand mehr
+## Zwei Sicherungen, zwei Adressaten
 
-`SetLastDumpAt` ist portiert und hat **keinen Aufrufer**. Früher stempelte der
-Semester-Dump-Download in der GUI; den gibt es nicht mehr, und ein Cron-Job auf dem
-Host kann es nicht (er müsste durch oauth2-proxy).
+**Das ist die Unterscheidung, die den Entwurf trägt** (2026-08-04 entschieden):
 
-**Folge: die Backup-Erinnerung in der GUI (`hasUnsavedChanges`) leuchtet dauerhaft**
-und lässt sich durch nichts zurücksetzen. Das ist jetzt ein Dauerzustand, kein
-Übergang mehr. Zwei sinnvolle Auflösungen, noch nicht entschieden:
-1. Die Erinnerung aus der GUI entfernen — sichern macht ohnehin die Maschine.
-2. `lastDumpAt` beim **CSV-Export** stempeln (`/download/my-inputs-csv.zip`). Das ist
-   die Sicherungshandlung, die dem *Planer* gehört, und damit wird der Hinweis wieder
-   handlungsfähig: „seit deiner letzten Sicherung geändert". Der `pg_dump` ist die
-   Sicherung der *Maschine* und ein anderer Vorgang.
+| | wer sichert | was | wo |
+| --- | --- | --- | --- |
+| **Maschine** | Cronjob auf dem Host | ganze Datenbank, alle Semester | `pg-backup.sh` |
+| **Planer** | Klick in der GUI | die handgepflegten Eingaben, lesbar als CSV | `/download/my-inputs-csv.zip` |
+
+`lastDumpAt` wird beim **CSV-Export** gestempelt, nicht beim `pg_dump`. Nicht als
+Notlösung: der Cronjob *könnte* es gar nicht — er müsste durch oauth2-proxy. Und die
+Backup-Erinnerung in der GUI (`hasUnsavedChanges`) richtet sich seit jeher an den
+Planer. Sie bedeutet damit wieder etwas, worauf er reagieren kann: „seit *deiner*
+letzten Sicherung geändert".
+
+Wer den Stempel je an den `pg_dump` hängen will, verschiebt still die Bedeutung des
+Hinweises — dann meldet er „gesichert", obwohl der Planer nichts getan hat und seine
+Eingaben nirgends lesbar liegen.
 - Die typisierten **CSV-Datensätze bleiben unabhängig davon bestehen**
   (`plexams/csv_export.go`, 10 Datensätze). Sie sind der einzige Weg, der die
   handgepflegten Eingaben *lesbar* und *semesterweise* sichert, und sie haben den

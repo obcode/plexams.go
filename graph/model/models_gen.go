@@ -1545,10 +1545,11 @@ type ServerInfo struct {
 	// Link to the GitHub release for this version, or null for dev/unreleased
 	// builds where no matching release exists.
 	ReleaseURL *string `json:"releaseURL,omitempty"`
-	// The MongoDB host:port the server is connected to (credentials redacted).
-	MongoHost string `json:"mongoHost"`
-	// The MongoDB database (workspace) currently in use, e.g. "2026-SS".
-	MongoDatabase string `json:"mongoDatabase"`
+	// The database host:port the server is connected to (credentials redacted).
+	DbHost string `json:"dbHost"`
+	// The workspace currently in use, e.g. "2026-SS". All semesters live in one
+	// PostgreSQL database, so this is a semester_id and no longer a database name.
+	Workspace string `json:"workspace"`
 }
 
 type SoftCostItem struct {

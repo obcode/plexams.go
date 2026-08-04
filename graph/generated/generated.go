@@ -1487,13 +1487,13 @@ type ComplexityRoot struct {
 	}
 
 	ServerInfo struct {
-		BuiltBy       func(childComplexity int) int
-		Commit        func(childComplexity int) int
-		Date          func(childComplexity int) int
-		MongoDatabase func(childComplexity int) int
-		MongoHost     func(childComplexity int) int
-		ReleaseURL    func(childComplexity int) int
-		Version       func(childComplexity int) int
+		BuiltBy    func(childComplexity int) int
+		Commit     func(childComplexity int) int
+		Date       func(childComplexity int) int
+		DbHost     func(childComplexity int) int
+		ReleaseURL func(childComplexity int) int
+		Version    func(childComplexity int) int
+		Workspace  func(childComplexity int) int
 	}
 
 	Slot struct {
@@ -9933,19 +9933,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ServerInfo.Date(childComplexity), true
 
-	case "ServerInfo.mongoDatabase":
-		if e.complexity.ServerInfo.MongoDatabase == nil {
+	case "ServerInfo.dbHost":
+		if e.complexity.ServerInfo.DbHost == nil {
 			break
 		}
 
-		return e.complexity.ServerInfo.MongoDatabase(childComplexity), true
-
-	case "ServerInfo.mongoHost":
-		if e.complexity.ServerInfo.MongoHost == nil {
-			break
-		}
-
-		return e.complexity.ServerInfo.MongoHost(childComplexity), true
+		return e.complexity.ServerInfo.DbHost(childComplexity), true
 
 	case "ServerInfo.releaseURL":
 		if e.complexity.ServerInfo.ReleaseURL == nil {
@@ -9960,6 +9953,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ServerInfo.Version(childComplexity), true
+
+	case "ServerInfo.workspace":
+		if e.complexity.ServerInfo.Workspace == nil {
+			break
+		}
+
+		return e.complexity.ServerInfo.Workspace(childComplexity), true
 
 	case "Slot.starttime":
 		if e.complexity.Slot.Starttime == nil {
@@ -12110,10 +12110,13 @@ extend type Mutation {
 `, BuiltIn: false},
 	{Name: "../backup.graphqls", Input: `extend type Query {
   """
-  Whether the current semester has changes that are not yet captured in a
-  downloaded full ZIP dump, plus the relevant timestamps. Used by the GUI to
-  prominently offer the semester-dump download once something changed since the
-  last backup.
+  Whether the current semester has changes the planner has not yet downloaded a
+  backup of, plus the relevant timestamps. Used by the GUI to prominently offer
+  the CSV export once something changed since the last one.
+
+  lastDumpAt is stamped by /download/my-inputs-csv.zip. The whole-database
+  pg_dump is a cron job on the host and deliberately does not touch this: it is
+  the machine's backup, while this hint is aimed at the planner.
   """
   backupStatus: BackupStatus!
 }
@@ -14538,10 +14541,13 @@ type ServerInfo {
   builds where no matching release exists.
   """
   releaseURL: String
-  "The MongoDB host:port the server is connected to (credentials redacted)."
-  mongoHost: String!
-  "The MongoDB database (workspace) currently in use, e.g. \"2026-SS\"."
-  mongoDatabase: String!
+  "The database host:port the server is connected to (credentials redacted)."
+  dbHost: String!
+  """
+  The workspace currently in use, e.g. "2026-SS". All semesters live in one
+  PostgreSQL database, so this is a semester_id and no longer a database name.
+  """
+  workspace: String!
 }
 `, BuiltIn: false},
 	{Name: "../special_interest.graphqls", Input: `extend type Query {
@@ -23341,10 +23347,10 @@ func (ec *executionContext) fieldContext_AdminOverview_server(_ context.Context,
 				return ec.fieldContext_ServerInfo_builtBy(ctx, field)
 			case "releaseURL":
 				return ec.fieldContext_ServerInfo_releaseURL(ctx, field)
-			case "mongoHost":
-				return ec.fieldContext_ServerInfo_mongoHost(ctx, field)
-			case "mongoDatabase":
-				return ec.fieldContext_ServerInfo_mongoDatabase(ctx, field)
+			case "dbHost":
+				return ec.fieldContext_ServerInfo_dbHost(ctx, field)
+			case "workspace":
+				return ec.fieldContext_ServerInfo_workspace(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServerInfo", field.Name)
 		},
@@ -66559,10 +66565,10 @@ func (ec *executionContext) fieldContext_Query_serverInfo(_ context.Context, fie
 				return ec.fieldContext_ServerInfo_builtBy(ctx, field)
 			case "releaseURL":
 				return ec.fieldContext_ServerInfo_releaseURL(ctx, field)
-			case "mongoHost":
-				return ec.fieldContext_ServerInfo_mongoHost(ctx, field)
-			case "mongoDatabase":
-				return ec.fieldContext_ServerInfo_mongoDatabase(ctx, field)
+			case "dbHost":
+				return ec.fieldContext_ServerInfo_dbHost(ctx, field)
+			case "workspace":
+				return ec.fieldContext_ServerInfo_workspace(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ServerInfo", field.Name)
 		},
@@ -73923,8 +73929,8 @@ func (ec *executionContext) fieldContext_ServerInfo_releaseURL(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _ServerInfo_mongoHost(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ServerInfo_mongoHost(ctx, field)
+func (ec *executionContext) _ServerInfo_dbHost(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ServerInfo_dbHost(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -73937,7 +73943,7 @@ func (ec *executionContext) _ServerInfo_mongoHost(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MongoHost, nil
+		return obj.DbHost, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -73954,7 +73960,7 @@ func (ec *executionContext) _ServerInfo_mongoHost(ctx context.Context, field gra
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ServerInfo_mongoHost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ServerInfo_dbHost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ServerInfo",
 		Field:      field,
@@ -73967,8 +73973,8 @@ func (ec *executionContext) fieldContext_ServerInfo_mongoHost(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _ServerInfo_mongoDatabase(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ServerInfo_mongoDatabase(ctx, field)
+func (ec *executionContext) _ServerInfo_workspace(ctx context.Context, field graphql.CollectedField, obj *model.ServerInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ServerInfo_workspace(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -73981,7 +73987,7 @@ func (ec *executionContext) _ServerInfo_mongoDatabase(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MongoDatabase, nil
+		return obj.Workspace, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -73998,7 +74004,7 @@ func (ec *executionContext) _ServerInfo_mongoDatabase(ctx context.Context, field
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ServerInfo_mongoDatabase(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ServerInfo_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ServerInfo",
 		Field:      field,
@@ -100957,13 +100963,13 @@ func (ec *executionContext) _ServerInfo(ctx context.Context, sel ast.SelectionSe
 			}
 		case "releaseURL":
 			out.Values[i] = ec._ServerInfo_releaseURL(ctx, field, obj)
-		case "mongoHost":
-			out.Values[i] = ec._ServerInfo_mongoHost(ctx, field, obj)
+		case "dbHost":
+			out.Values[i] = ec._ServerInfo_dbHost(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "mongoDatabase":
-			out.Values[i] = ec._ServerInfo_mongoDatabase(ctx, field, obj)
+		case "workspace":
+			out.Values[i] = ec._ServerInfo_workspace(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

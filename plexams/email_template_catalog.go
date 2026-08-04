@@ -203,7 +203,7 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 		Sample: adminDigestView{
 			Semester:    "2026 SS",
 			GeneratedAt: "22.07.2026 06:00",
-			Server:      adminServerView{Version: "1.99.0", MongoHost: "localhost:27017", MongoDatabase: "2026-SS"},
+			Server:      adminServerView{Version: "1.99.0", DBHost: "postgres:5432", Workspace: "2026-SS"},
 			Users: adminUsersView{
 				Total: 3, Admins: 1, Planer: 1, Viewer: 1,
 				Emails: []string{"oliver.braun@hm.edu"},

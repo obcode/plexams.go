@@ -1,7 +1,7 @@
 ### Plexams Admin-Digest
 
 **Workspace:** 2026 SS
-**Server:** Version 1.99.0 · localhost:27017 / 2026-SS
+**Server:** Version 1.99.0 · postgres:5432 / 2026-SS
 **Stand:** 22.07.2026 06:00 Uhr
 
 #### Zugriff

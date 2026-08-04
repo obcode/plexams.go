@@ -1114,6 +1114,20 @@ func (p *Plexams) HTTPDownloadMyInputsCSV(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	if _, err := w.Write(data); err != nil {
 		log.Error().Err(err).Msg("cannot write csv zip download")
+		return
+	}
+	// This is the backup that belongs to the planner, so this is where lastDumpAt is
+	// stamped -- the GUI's "changed since your last backup" hint clears from here.
+	//
+	// It used to be stamped by the semester-dump ZIP download, which is gone with the
+	// Mongo layer. The whole-database pg_dump replacing it runs as a cron job on the
+	// host (deploy/backup/pg-backup.sh) and cannot reach this: it would have to come
+	// through oauth2-proxy. That is the machine's backup; this is the planner's, and
+	// the reminder is aimed at the planner.
+	//
+	// Best-effort: the download already succeeded.
+	if err := p.dbClient.SetLastDumpAt(r.Context(), time.Now()); err != nil {
+		log.Error().Err(err).Msg("cannot record last dump time")
 	}
 }
 

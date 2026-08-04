@@ -133,9 +133,9 @@ type adminDigestView struct {
 }
 
 type adminServerView struct {
-	Version       string
-	MongoHost     string
-	MongoDatabase string
+	Version   string
+	DBHost    string
+	Workspace string
 }
 
 type adminUsersView struct {
@@ -214,9 +214,9 @@ func newAdminDigestView(o *model.AdminOverview, recipients []string) adminDigest
 		Semester:    strings.TrimSpace(o.ActiveSemester),
 		GeneratedAt: o.GeneratedAt.Format("02.01.2006 15:04"),
 		Server: adminServerView{
-			Version:       o.Server.Version,
-			MongoHost:     o.Server.MongoHost,
-			MongoDatabase: o.Server.MongoDatabase,
+			Version:   o.Server.Version,
+			DBHost:    o.Server.DbHost,
+			Workspace: o.Server.Workspace,
 		},
 		Users: adminUsersView{
 			Total:  o.RoleCounts.Total,

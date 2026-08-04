@@ -20,8 +20,11 @@ type ServerInfo {
   builds where no matching release exists.
   """
   releaseURL: String
-  "The MongoDB host:port the server is connected to (credentials redacted)."
-  mongoHost: String!
-  "The MongoDB database (workspace) currently in use, e.g. \"2026-SS\"."
-  mongoDatabase: String!
+  "The database host:port the server is connected to (credentials redacted)."
+  dbHost: String!
+  """
+  The workspace currently in use, e.g. "2026-SS". All semesters live in one
+  PostgreSQL database, so this is a semester_id and no longer a database name.
+  """
+  workspace: String!
 }

@@ -32,10 +32,9 @@ func (db *PG) DatabaseName() string {
 // DBHost returns the host:port of the connection, with credentials and any
 // path/query stripped, so it is safe to display.
 //
-// This is MongoHost renamed -- the one symbol of this migration that reaches
-// plexams.gui, through serverInfo.mongoHost. The rename of the GraphQL field,
-// its resolver, the admin digest mail template and the GUI belongs in the
-// coordinated commit pair at cut-over, not here.
+// This is MongoHost renamed -- the one symbol of this migration that reached
+// plexams.gui. The GraphQL field is now serverInfo.dbHost, renamed together
+// with its resolver, the admin digest mail template and the GUI.
 func (db *PG) DBHost() string {
 	return hostOf(db.uri)
 }

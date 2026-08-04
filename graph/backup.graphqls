@@ -1,9 +1,12 @@
 extend type Query {
   """
-  Whether the current semester has changes that are not yet captured in a
-  downloaded full ZIP dump, plus the relevant timestamps. Used by the GUI to
-  prominently offer the semester-dump download once something changed since the
-  last backup.
+  Whether the current semester has changes the planner has not yet downloaded a
+  backup of, plus the relevant timestamps. Used by the GUI to prominently offer
+  the CSV export once something changed since the last one.
+
+  lastDumpAt is stamped by /download/my-inputs-csv.zip. The whole-database
+  pg_dump is a cron job on the host and deliberately does not touch this: it is
+  the machine's backup, while this hint is aimed at the planner.
   """
   backupStatus: BackupStatus!
 }

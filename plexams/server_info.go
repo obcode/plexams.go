@@ -10,26 +10,26 @@ import (
 
 const githubRepoURL = "https://github.com/obcode/plexams.go"
 
-// ServerInfo reports the running server's build version and the MongoDB it is
+// ServerInfo reports the running server's build version and the database it is
 // connected to, e.g. for the GUI footer.
 func (p *Plexams) ServerInfo(ctx context.Context) (*model.ServerInfo, error) {
 	version := viper.GetString("Version")
 
-	mongoHost := ""
-	mongoDatabase := ""
+	dbHost := ""
+	workspace := ""
 	if p.dbClient != nil {
-		mongoHost = p.dbClient.DBHost()
-		mongoDatabase = p.dbClient.DatabaseName()
+		dbHost = p.dbClient.DBHost()
+		workspace = p.dbClient.DatabaseName()
 	}
 
 	return &model.ServerInfo{
-		Version:       version,
-		Commit:        viper.GetString("Commit"),
-		Date:          viper.GetString("Date"),
-		BuiltBy:       viper.GetString("BuiltBy"),
-		ReleaseURL:    releaseURL(version),
-		MongoHost:     mongoHost,
-		MongoDatabase: mongoDatabase,
+		Version:    version,
+		Commit:     viper.GetString("Commit"),
+		Date:       viper.GetString("Date"),
+		BuiltBy:    viper.GetString("BuiltBy"),
+		ReleaseURL: releaseURL(version),
+		DbHost:     dbHost,
+		Workspace:  workspace,
 	}, nil
 }
 

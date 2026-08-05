@@ -12,6 +12,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph"
+	"github.com/obcode/plexams.go/obs"
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -46,9 +48,15 @@ func Serve() error {
 		return err
 	}
 
+	// Error reporting before the logger is rebuilt, and both before newPlexams:
+	// its four log.Fatal calls (unreachable database, no usable semester, ...)
+	// are exactly the failures worth knowing about, and they only reach the
+	// backend if the writer is already hanging in the logger when they fire.
+	sentryWriter := initErrorReporting()
+
 	// Only now can the logger honour log.format -- setupLogging runs first so that
 	// a config error above is still logged like everything else.
-	reconfigureLogging()
+	reconfigureLogging(sentryWriter)
 
 	plexams := newPlexams()
 	graph.StartServer(plexams, viper.GetString("server.port"))
@@ -62,16 +70,24 @@ func Serve() error {
 func setupLogging() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
+	if verbose {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+	log.Logger = zerolog.New(consoleWriter()).With().Caller().Timestamp().Logger()
+}
+
+// consoleWriter is the human-readable writer, shared by setupLogging and
+// reconfigureLogging so the two cannot disagree about what "console" looks like.
+func consoleWriter() zerolog.ConsoleWriter {
 	output := zerolog.ConsoleWriter{Out: os.Stdout}
 	if verbose {
 		output.FormatLevel = func(i interface{}) string {
 			return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
 		}
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-	log.Logger = zerolog.New(output).With().Caller().Timestamp().Logger()
+	return output
 }
 
 // reconfigureLogging rebuilds the global logger from the config, once it has
@@ -87,11 +103,62 @@ func setupLogging() {
 // has to strip student data out of these lines can match `"mtknr":"..."` exactly
 // in JSON, whereas on console text it would be reduced to guessing at digit runs
 // -- and a rule like \b\d{7,10}\b eats epoch timestamps and durations too.
-func reconfigureLogging() {
-	if !jsonLogging() {
-		return // console, already installed by setupLogging
+//
+// sentryWriter, when non-nil, is hung alongside the local one: a log line at
+// Error level or above then goes to the terminal AND to the error tracker.
+// Note that this is independent of log.format -- zerolog hands both writers the
+// same JSON, and the console writer is the one that reformats it.
+func reconfigureLogging(sentryWriter zerolog.LevelWriter) {
+	if !jsonLogging() && sentryWriter == nil {
+		return // console only, exactly what setupLogging already installed
 	}
-	log.Logger = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+
+	var out io.Writer = os.Stdout
+	if !jsonLogging() {
+		out = consoleWriter()
+	}
+	if sentryWriter != nil {
+		out = zerolog.MultiLevelWriter(out, sentryWriter)
+	}
+	log.Logger = zerolog.New(out).With().Caller().Timestamp().Logger()
+}
+
+// initErrorReporting starts the error tracker and returns the log writer that
+// feeds it, or nil when sentry.dsn is unset -- which is the default, and the
+// whole of local development.
+//
+// A failure here is logged and swallowed on purpose: not being able to REPORT
+// errors is not a reason to refuse to plan exams. It is also the one startup
+// step whose own failure cannot be reported.
+//
+//	sentry:
+//	  dsn: ""              # normally from $SENTRY_DSN, this is the rotated value
+//	  environment: prod
+//	  senduseremail: false # true sends the real address instead of a pseudonym
+//	  ignoreerrors: []     # message patterns to drop; fill after a week of traffic
+//	  debug: false
+func initErrorReporting() zerolog.LevelWriter {
+	writer, err := obs.Init(obs.Config{
+		DSN:           viper.GetString("sentry.dsn"),
+		Environment:   viper.GetString("sentry.environment"),
+		Release:       viper.GetString("Version"),
+		IgnoreErrors:  viper.GetStringSlice("sentry.ignoreerrors"),
+		SendUserEmail: viper.GetBool("sentry.senduseremail"),
+		// The KEK that already wraps the per-user Jira tokens, reused to key the
+		// user pseudonym (obs/user.go). No key, no user -- see there for why
+		// that is better than an unkeyed hash.
+		UserKey: viper.GetString("secrets.key"),
+		Debug:   viper.GetBool("sentry.debug"),
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("error reporting is disabled: cannot initialise it")
+		return nil
+	}
+	if writer != nil {
+		log.Info().Str("environment", viper.GetString("sentry.environment")).
+			Msg("error reporting enabled")
+	}
+	return writer
 }
 
 // jsonLogging reports whether log.format selects machine-readable output.

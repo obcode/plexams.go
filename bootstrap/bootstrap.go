@@ -76,6 +76,14 @@ func initConfig() error {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath(home)
+	// Map nested keys onto legal environment variable names: without this replacer
+	// AutomaticEnv looks up db.uri as $DB.URI, which no shell can set -- so every
+	// nested key was silently un-overridable and only the flat ones (semester,
+	// verbose) ever worked. With it, db.uri reads $DB_URI.
+	//
+	// No SetEnvPrefix on purpose: a prefix would rename the flat keys too and break
+	// the existing $SEMESTER / $VERBOSE lookups.
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {

@@ -23,3 +23,8 @@ plexams.yaml
 plan*.json
 
 Sammellisten/
+
+# Binary from the documented build (go build -o plexams.go .): it lands in the
+# repo root with a .go suffix, so every later go build/vet/lint tries to parse it
+# as source and fails with "illegal character U+007F".
+/plexams.go

@@ -234,6 +234,29 @@ server:
     - http://localhost:5173
 ```
 
+## 5a-bis. Logging (`log.*`)
+
+```yaml
+log:
+  format: console              # console (Default, für Menschen) | json (für den Server)
+```
+
+Die **Stufe** hängt weiterhin am `--verbose`-Flag, nicht an der Konfiguration.
+
+`console` ist der bisherige, farbige `zerolog.ConsoleWriter`. Für den Serverbetrieb
+gehört `json` gesetzt, aus zwei Gründen:
+
+- zerolog prüft **nicht**, ob es auf ein Terminal schreibt — die Container-Logs
+  enthalten sonst ANSI-Escapes.
+- Ein Log-Versender kann Studierendendaten nur dann **exakt** herausfiltern, wenn
+  er nach Feldnamen (`"mtknr":"…"`) suchen kann. Auf Fließtext bliebe nur das Raten
+  nach Wertformen, und eine Regel wie `\b\d{7,10}\b` erwischt genauso
+  Epoch-Zeitstempel und Dauern.
+
+Der Schlüssel wird erst **nach** dem Lesen der Konfigurationsdatei ausgewertet; die
+paar Zeilen davor (inkl. eines Konfigurationsfehlers) erscheinen immer im
+Console-Format.
+
 ## 5b. Auth / Rollen (Server-Deployment)
 
 Beim Betrieb hinter einem Auth-Proxy (nginx + `oauth2-proxy`, OIDC gegen

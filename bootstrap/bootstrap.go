@@ -46,11 +46,19 @@ func Serve() error {
 		return err
 	}
 
+	// Only now can the logger honour log.format -- setupLogging runs first so that
+	// a config error above is still logged like everything else.
+	reconfigureLogging()
+
 	plexams := newPlexams()
 	graph.StartServer(plexams, viper.GetString("server.port"))
 	return nil
 }
 
+// setupLogging installs the human-readable console logger for the bootstrap
+// window -- everything up to and including reading the config file. It cannot
+// consult the config, because the config has not been read yet; that is
+// reconfigureLogging's job.
 func setupLogging() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
@@ -64,6 +72,31 @@ func setupLogging() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 	log.Logger = zerolog.New(output).With().Caller().Timestamp().Logger()
+}
+
+// reconfigureLogging rebuilds the global logger from the config, once it has
+// been read. Only log.format is honoured; the level stays on the --verbose flag.
+//
+//	log:
+//	  format: json     # or console (the default)
+//
+// Why JSON is worth having: ConsoleWriter is for humans and does not check
+// whether it writes to a terminal (zerolog does not test isatty), so production
+// container logs are ANSI-escaped prose. That is awkward to read back and, more
+// importantly, can only be filtered by the SHAPE of a value. A log shipper that
+// has to strip student data out of these lines can match `"mtknr":"..."` exactly
+// in JSON, whereas on console text it would be reduced to guessing at digit runs
+// -- and a rule like \b\d{7,10}\b eats epoch timestamps and durations too.
+func reconfigureLogging() {
+	if !jsonLogging() {
+		return // console, already installed by setupLogging
+	}
+	log.Logger = zerolog.New(os.Stdout).With().Caller().Timestamp().Logger()
+}
+
+// jsonLogging reports whether log.format selects machine-readable output.
+func jsonLogging() bool {
+	return strings.EqualFold(viper.GetString("log.format"), "json")
 }
 
 func initConfig() error {
@@ -108,7 +141,14 @@ func initConfig() error {
 }
 
 func newPlexams() *plexams.Plexams {
-	fmt.Println(aurora.Sprintf(aurora.Cyan("Plexams.go version: %s\n"), viper.GetString("Version")))
+	// The version banner is a courtesy for a human at a terminal. In json mode it
+	// would be the one line in the stream that no parser can read, so make it a
+	// record like everything else.
+	if jsonLogging() {
+		log.Info().Str("version", viper.GetString("Version")).Msg("starting plexams.go")
+	} else {
+		fmt.Println(aurora.Sprintf(aurora.Cyan("Plexams.go version: %s\n"), viper.GetString("Version")))
+	}
 
 	if dbURI == "" {
 		dbURI = viper.GetString("db.uri")

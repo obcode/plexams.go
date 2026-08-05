@@ -8,6 +8,9 @@ metadata:
 Beim Entwurf der Fehler-Telemetrie (2026-08-05, siehe den Plan in `plexams.dev`) sind drei
 Leckwege aufgefallen, die alle vor der ersten gesendeten Zeile geschlossen sein müssen.
 
+**Backend-seitig sind alle drei zu.** Die Umsetzung steht in [[error-reporting-obs]]; der
+Scrubber ist `obs/scrub.go` und war der erste Commit der Reihe, vor allem, was senden kann.
+
 **1. Der zerolog→Sentry-Writer macht jedes Logfeld zu einem Tag.**
 `sentryzerolog` schreibt unbekannte Felder ungeprüft nach `event.Tags`. Der Bestand loggt
 `mtknr` 33×, `name` 24×, `email` 10× — darunter auf **Error**-Ebene, z. B.
@@ -19,8 +22,10 @@ ewig nachpflegen; es braucht eine **fail-closed Positivliste** (`caller`, `semes
 `src/routes/nta/[mtknr=string]`, verlinkt aus `src/lib/nta/NtaTR.svelte:22`. Nicht über
 die NavBar erreichbar, aber von beiden NTA-Übersichten einen Klick entfernt. SvelteKit
 schickt URLs in Transaktionsnamen und Breadcrumbs mit, also braucht es `beforeSend`
-**und** `beforeBreadcrumb`. Offen: ob die Detailseite überhaupt noch gebraucht wird —
-sie zu löschen wäre besser als jede Redaktion.
+**und** `beforeBreadcrumb`. *Erledigt: die Detailseite ist gelöscht* (`f7da2d5` in
+`plexams.gui`), damit entfällt der Sonderfall statt an drei Stellen redigiert zu werden.
+Im Backend redigiert `redactURL` trotzdem jede Request-URL — zweite Verteidigungslinie,
+und die Query-String-Sammlung ist ganz aus.
 
 **3. GraphQL-Argumente.** `graph/mutation_logging.go` `flattenArgs` erzeugt genau die
 mtknr/name/email-Paare, die in der DB richtig aufgehoben sind und in einem Fehlerbericht

@@ -40,7 +40,25 @@ A typical run requires PostgreSQL and config (see below). Everything that used t
 
 ## Configuration
 
-Config is loaded via **viper** from a single file `.plexams.yaml` (in `.` or `$HOME`) by the `bootstrap` package (`initConfig`); it may optionally pin a `semester` (e.g. `2026-SS`). There is **no** per-semester `<semester>.yaml` merge anymore — the per-semester config (`semesterConfig.*` incl. per-joint-program reserved times) lives in and is loaded from the database (table `semester_config_input`), edited through the GUI. Without a pinned semester the active one is auto-selected from the DB (switchable at runtime via the `setSemester` GUI mutation). Key config sections consumed in code: `db.uri` (there is no `db.database` any more — a semester is a `semester_id`, and `--semester` says which), `zpa.*` (baseurl, username, password, fk07programs, oldprograms), `smtp.*`, `planer.*` (the server-wide DEFAULT planner — the email sender identity; a semester overrides it in the DB table `semester_planer`, edited in the GUI), `operator.*` (local identity of the person running this instance — stamped onto the `mutation_log` for the audit "who did what"), `server.port`/`server.allowedorigins`/`server.production` (production turns off the GraphQL playground + introspection); `auth.*` (server deployment behind an auth proxy — see below); the per-semester `semesterConfig.*` (from/until/slots/forbiddenDays/emails/per-joint-program reserved times) comes from the DB (YAML still works as a fallback/seed); `scheduler.*` (server-only nightly auto-sync — see below). Secrets stay in the file, never in the DB.
+Config is loaded via **viper** from a single file `.plexams.yaml` (in `.` or `$HOME`) by the `bootstrap` package (`initConfig`); it may optionally pin a `semester` (e.g. `2026-SS`). There is **no** per-semester `<semester>.yaml` merge anymore — the per-semester config (`semesterConfig.*` incl. per-joint-program reserved times) lives in and is loaded from the database (table `semester_config_input`), edited through the GUI. Without a pinned semester the active one is auto-selected from the DB (switchable at runtime via the `setSemester` GUI mutation). Key config sections consumed in code: `db.uri` (there is no `db.database` any more — a semester is a `semester_id`, and `--semester` says which), `zpa.*` (baseurl, username, password, fk07programs, oldprograms), `smtp.*`, `planer.*` (the server-wide DEFAULT planner — the email sender identity; a semester overrides it in the DB table `semester_planer`, edited in the GUI), `operator.*` (local identity of the person running this instance — stamped onto the `mutation_log` for the audit "who did what"), `server.port`/`server.allowedorigins`/`server.production` (production turns off the GraphQL playground + introspection); `auth.*` (server deployment behind an auth proxy — see below); the per-semester `semesterConfig.*` (from/until/slots/forbiddenDays/emails/per-joint-program reserved times) comes from the DB (YAML still works as a fallback/seed); `scheduler.*` (server-only nightly auto-sync — see below); `log.format` (`console`|`json`) and `sentry.*` (error reporting — see below). Secrets stay in the file, never in the DB.
+
+### Error reporting (`sentry.*`)
+
+With `sentry.dsn` set, every log line at Error level or above — plus resolver and
+HTTP-handler panics — is reported to a Sentry-compatible backend (GlitchTip). Unset (the
+default, and all of local development) it is a complete no-op. The DSN normally comes from
+`$SENTRY_DSN`; `sentry.environment`, `sentry.senduseremail`, `sentry.ignoreerrors` and
+`sentry.debug` live in `.plexams.yaml`.
+
+Everything sending goes through the fail-closed scrubber in [obs/scrub.go](obs/scrub.go).
+**Read it before adding anything that reports**: the zerolog→Sentry writer turns *every*
+log field into a tag, and this code base logs `mtknr`, `name` and `email` at Error level,
+so tags, headers and contexts are allow-lists — a field nobody anticipated is dropped, not
+sent. Log lines are fingerprinted on `caller` (the writer's own stack traces are identical
+zerolog internals for all ~640 call sites). The acting user is a keyed HMAC of the mail
+address, using the existing `secrets.key`; without that key no user is sent at all.
+`obs.SkipField` on a log line keeps it out of the report. See
+[.claude/memory/error-reporting-obs.md](.claude/memory/error-reporting-obs.md).
 
 ### Nightly auto-sync (`scheduler.*`)
 

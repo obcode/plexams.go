@@ -803,6 +803,7 @@ type ComplexityRoot struct {
 		ResetPreplanTimes             func(childComplexity int) int
 		ResetPrimussData              func(childComplexity int) int
 		ResetRoomsForExams            func(childComplexity int) int
+		ResetSemesterPlaner           func(childComplexity int) int
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
 		Seb                           func(childComplexity int, ancode int) int
 		SeedStudyProgramsFromConfig   func(childComplexity int) int
@@ -820,7 +821,6 @@ type ComplexityRoot struct {
 		SetMyShortname                func(childComplexity int, shortname string) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string, validFrom *string, validUntil *string) int
-		SetPlaner                     func(childComplexity int, name string, email string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) int
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
 		SetPreplanExamCanShareSlot    func(childComplexity int, id int, otherID int, canShare bool) int
 		SetPreplanExamConstraints     func(childComplexity int, id int, constraints model.ConstraintsInput) int
@@ -832,6 +832,7 @@ type ComplexityRoot struct {
 		SetRoomRequestApproved        func(childComplexity int, room string, starttime time.Time, approved bool) int
 		SetSemester                   func(childComplexity int, name string) int
 		SetSemesterConfigInput        func(childComplexity int, input model.SemesterConfigInputData) int
+		SetSemesterPlaner             func(childComplexity int, name *string, email *string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) int
 		SetSemesterReadOnly           func(childComplexity int, readOnly bool) int
 		SetStudentConflictDecision    func(childComplexity int, ancode1 int, ancode2 int, mtknr string, decision model.ConflictDecision) int
 		SetUser                       func(childComplexity int, email string, name string, role model.Role) int
@@ -950,12 +951,15 @@ type ComplexityRoot struct {
 
 	Planer struct {
 		Cc                   func(childComplexity int) int
+		DefaultEmail         func(childComplexity int) int
 		DefaultMail          func(childComplexity int) int
+		DefaultName          func(childComplexity int) int
 		EffectiveCc          func(childComplexity int) int
 		EffectiveNoreplyMail func(childComplexity int) int
 		EffectiveNoreplyName func(childComplexity int) int
 		EffectiveTestMail    func(childComplexity int) int
 		Email                func(childComplexity int) int
+		Inherited            func(childComplexity int) int
 		Name                 func(childComplexity int) int
 		NoreplyMail          func(childComplexity int) int
 		NoreplyName          func(childComplexity int) int
@@ -1872,7 +1876,8 @@ type MutationResolver interface {
 	AddNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int, reason string) (*model.NtaRoomAloneWaiver, error)
 	RemoveNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int) (bool, error)
 	SetExamTime(ctx context.Context, ancode int, starttime time.Time) (bool, error)
-	SetPlaner(ctx context.Context, name string, email string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) (*model.Planer, error)
+	SetSemesterPlaner(ctx context.Context, name *string, email *string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) (*model.Planer, error)
+	ResetSemesterPlaner(ctx context.Context) (*model.Planer, error)
 	SetDryRunTestMail(ctx context.Context, email string) (*model.DryRunTestMailStatus, error)
 	ResetDryRunTestMail(ctx context.Context) (*model.DryRunTestMailStatus, error)
 	SetPlanningCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error)
@@ -5965,6 +5970,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.ResetRoomsForExams(childComplexity), true
 
+	case "Mutation.resetSemesterPlaner":
+		if e.complexity.Mutation.ResetSemesterPlaner == nil {
+			break
+		}
+
+		return e.complexity.Mutation.ResetSemesterPlaner(childComplexity), true
+
 	case "Mutation.rmZpaExamFromPlan":
 		if e.complexity.Mutation.RmZpaExamFromPlan == nil {
 			break
@@ -6164,18 +6176,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.SetPermanentNonInvigilator(childComplexity, args["teacherID"].(int), args["name"].(string), args["reason"].(string), args["validFrom"].(*string), args["validUntil"].(*string)), true
 
-	case "Mutation.setPlaner":
-		if e.complexity.Mutation.SetPlaner == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_setPlaner_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.SetPlaner(childComplexity, args["name"].(string), args["email"].(string), args["testMail"].(*string), args["cc"].(*string), args["noreplyMail"].(*string), args["noreplyName"].(*string)), true
-
 	case "Mutation.setPlanningCondition":
 		if e.complexity.Mutation.SetPlanningCondition == nil {
 			break
@@ -6307,6 +6307,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SetSemesterConfigInput(childComplexity, args["input"].(model.SemesterConfigInputData)), true
+
+	case "Mutation.setSemesterPlaner":
+		if e.complexity.Mutation.SetSemesterPlaner == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setSemesterPlaner_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetSemesterPlaner(childComplexity, args["name"].(*string), args["email"].(*string), args["testMail"].(*string), args["cc"].(*string), args["noreplyMail"].(*string), args["noreplyName"].(*string)), true
 
 	case "Mutation.setSemesterReadOnly":
 		if e.complexity.Mutation.SetSemesterReadOnly == nil {
@@ -6905,12 +6917,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Planer.Cc(childComplexity), true
 
+	case "Planer.defaultEmail":
+		if e.complexity.Planer.DefaultEmail == nil {
+			break
+		}
+
+		return e.complexity.Planer.DefaultEmail(childComplexity), true
+
 	case "Planer.defaultMail":
 		if e.complexity.Planer.DefaultMail == nil {
 			break
 		}
 
 		return e.complexity.Planer.DefaultMail(childComplexity), true
+
+	case "Planer.defaultName":
+		if e.complexity.Planer.DefaultName == nil {
+			break
+		}
+
+		return e.complexity.Planer.DefaultName(childComplexity), true
 
 	case "Planer.effectiveCc":
 		if e.complexity.Planer.EffectiveCc == nil {
@@ -6946,6 +6972,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Planer.Email(childComplexity), true
+
+	case "Planer.inherited":
+		if e.complexity.Planer.Inherited == nil {
+			break
+		}
+
+		return e.complexity.Planer.Inherited(childComplexity), true
 
 	case "Planer.name":
 		if e.complexity.Planer.Name == nil {
@@ -13510,7 +13543,11 @@ type PlanEntry {
 }
 `, BuiltIn: false},
 	{Name: "../planer.graphqls", Input: `extend type Query {
-  "The planner (name + email + sender-identity overrides). Stored globally in the DB; the config is only a fallback."
+  """
+  The planner in force for the current semester: the resolved name + email plus the
+  semester's sender-identity overrides. The server config (planer.*) supplies the
+  default; a semester may override it (setSemesterPlaner).
+  """
   planer: Planer!
   "The current dry-run recipient status (session override vs. configured default) for the Probeläufe page."
   dryRunTestMail: DryRunTestMailStatus!
@@ -13518,19 +13555,27 @@ type PlanEntry {
 
 extend type Mutation {
   """
-  Set the planner, stored in the global DB. name + email are required; the remaining
-  fields are optional sender-identity overrides — pass null/empty to fall back to the
-  derived default (testMail/cc = email with +plexams, noreplyMail = noreply+plexams@hm.edu,
-  noreplyName = "Prüfungsplanung FK07 (NOREPLY)").
+  Set the planner of the CURRENT semester.
+
+  name and email are one identity: pass both to give this semester its own planner, or
+  neither to inherit the one configured on the server. Passing only one is an error.
+
+  The remaining fields are optional sender-identity overrides — pass null/empty to fall
+  back to the configured value and then to the derived default (testMail/cc = email with
+  +plexams, noreplyMail = noreply+plexams@hm.edu, noreplyName = "Prüfungsplanung FK07
+  (NOREPLY)").
   """
-  setPlaner(
-    name: String!
-    email: String!
+  setSemesterPlaner(
+    name: String
+    email: String
     testMail: String
     cc: String
     noreplyMail: String
     noreplyName: String
   ): Planer!
+
+  "Drop this semester's planner override, so the server default applies again."
+  resetSemesterPlaner: Planer!
 
   "Override the dry-run recipient for this session only (Probeläufe page). Empty string resets to the default."
   setDryRunTestMail(email: String!): DryRunTestMailStatus!
@@ -13539,8 +13584,16 @@ extend type Mutation {
 }
 
 type Planer {
+  "Resolved name: this semester's own, or the server default when inherited."
   name: String!
+  "Resolved email: this semester's own, or the server default when inherited."
   email: String!
+  "True when this semester has no planner of its own and name/email come from the server config."
+  inherited: Boolean!
+  "The server default name (planer.name) — the GUI shows it as the placeholder."
+  defaultName: String!
+  "The server default email (planer.email) — the GUI shows it as the placeholder."
+  defaultEmail: String!
   "Override for the dry-run recipient; null/empty => defaultMail."
   testMail: String
   "Override for the Cc added to every real send; null/empty => defaultMail."
@@ -18166,149 +18219,6 @@ func (ec *executionContext) field_Mutation_setPermanentNonInvigilator_argsValidU
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Mutation_setPlaner_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := ec.field_Mutation_setPlaner_argsName(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["name"] = arg0
-	arg1, err := ec.field_Mutation_setPlaner_argsEmail(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["email"] = arg1
-	arg2, err := ec.field_Mutation_setPlaner_argsTestMail(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["testMail"] = arg2
-	arg3, err := ec.field_Mutation_setPlaner_argsCc(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["cc"] = arg3
-	arg4, err := ec.field_Mutation_setPlaner_argsNoreplyMail(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["noreplyMail"] = arg4
-	arg5, err := ec.field_Mutation_setPlaner_argsNoreplyName(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["noreplyName"] = arg5
-	return args, nil
-}
-func (ec *executionContext) field_Mutation_setPlaner_argsName(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["name"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-	if tmp, ok := rawArgs["name"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_setPlaner_argsEmail(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	if _, ok := rawArgs["email"]; !ok {
-		var zeroVal string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
-	if tmp, ok := rawArgs["email"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_setPlaner_argsTestMail(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*string, error) {
-	if _, ok := rawArgs["testMail"]; !ok {
-		var zeroVal *string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("testMail"))
-	if tmp, ok := rawArgs["testMail"]; ok {
-		return ec.unmarshalOString2ᚖstring(ctx, tmp)
-	}
-
-	var zeroVal *string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_setPlaner_argsCc(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*string, error) {
-	if _, ok := rawArgs["cc"]; !ok {
-		var zeroVal *string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("cc"))
-	if tmp, ok := rawArgs["cc"]; ok {
-		return ec.unmarshalOString2ᚖstring(ctx, tmp)
-	}
-
-	var zeroVal *string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_setPlaner_argsNoreplyMail(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*string, error) {
-	if _, ok := rawArgs["noreplyMail"]; !ok {
-		var zeroVal *string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("noreplyMail"))
-	if tmp, ok := rawArgs["noreplyMail"]; ok {
-		return ec.unmarshalOString2ᚖstring(ctx, tmp)
-	}
-
-	var zeroVal *string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_setPlaner_argsNoreplyName(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*string, error) {
-	if _, ok := rawArgs["noreplyName"]; !ok {
-		var zeroVal *string
-		return zeroVal, nil
-	}
-
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("noreplyName"))
-	if tmp, ok := rawArgs["noreplyName"]; ok {
-		return ec.unmarshalOString2ᚖstring(ctx, tmp)
-	}
-
-	var zeroVal *string
-	return zeroVal, nil
-}
-
 func (ec *executionContext) field_Mutation_setPlanningCondition_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -18885,6 +18795,149 @@ func (ec *executionContext) field_Mutation_setSemesterConfigInput_argsInput(
 	}
 
 	var zeroVal model.SemesterConfigInputData
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemesterPlaner_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_setSemesterPlaner_argsName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	arg1, err := ec.field_Mutation_setSemesterPlaner_argsEmail(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg1
+	arg2, err := ec.field_Mutation_setSemesterPlaner_argsTestMail(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["testMail"] = arg2
+	arg3, err := ec.field_Mutation_setSemesterPlaner_argsCc(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["cc"] = arg3
+	arg4, err := ec.field_Mutation_setSemesterPlaner_argsNoreplyMail(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["noreplyMail"] = arg4
+	arg5, err := ec.field_Mutation_setSemesterPlaner_argsNoreplyName(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["noreplyName"] = arg5
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_setSemesterPlaner_argsName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["name"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+	if tmp, ok := rawArgs["name"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemesterPlaner_argsEmail(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["email"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+	if tmp, ok := rawArgs["email"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemesterPlaner_argsTestMail(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["testMail"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("testMail"))
+	if tmp, ok := rawArgs["testMail"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemesterPlaner_argsCc(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["cc"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("cc"))
+	if tmp, ok := rawArgs["cc"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemesterPlaner_argsNoreplyMail(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["noreplyMail"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("noreplyMail"))
+	if tmp, ok := rawArgs["noreplyMail"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_setSemesterPlaner_argsNoreplyName(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["noreplyName"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("noreplyName"))
+	if tmp, ok := rawArgs["noreplyName"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -47077,8 +47130,8 @@ func (ec *executionContext) fieldContext_Mutation_setExamTime(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_setPlaner(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_setPlaner(ctx, field)
+func (ec *executionContext) _Mutation_setSemesterPlaner(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setSemesterPlaner(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -47091,7 +47144,7 @@ func (ec *executionContext) _Mutation_setPlaner(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().SetPlaner(rctx, fc.Args["name"].(string), fc.Args["email"].(string), fc.Args["testMail"].(*string), fc.Args["cc"].(*string), fc.Args["noreplyMail"].(*string), fc.Args["noreplyName"].(*string))
+		return ec.resolvers.Mutation().SetSemesterPlaner(rctx, fc.Args["name"].(*string), fc.Args["email"].(*string), fc.Args["testMail"].(*string), fc.Args["cc"].(*string), fc.Args["noreplyMail"].(*string), fc.Args["noreplyName"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -47108,7 +47161,7 @@ func (ec *executionContext) _Mutation_setPlaner(ctx context.Context, field graph
 	return ec.marshalNPlaner2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlaner(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_setPlaner(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_setSemesterPlaner(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -47120,6 +47173,12 @@ func (ec *executionContext) fieldContext_Mutation_setPlaner(ctx context.Context,
 				return ec.fieldContext_Planer_name(ctx, field)
 			case "email":
 				return ec.fieldContext_Planer_email(ctx, field)
+			case "inherited":
+				return ec.fieldContext_Planer_inherited(ctx, field)
+			case "defaultName":
+				return ec.fieldContext_Planer_defaultName(ctx, field)
+			case "defaultEmail":
+				return ec.fieldContext_Planer_defaultEmail(ctx, field)
 			case "testMail":
 				return ec.fieldContext_Planer_testMail(ctx, field)
 			case "cc":
@@ -47149,9 +47208,83 @@ func (ec *executionContext) fieldContext_Mutation_setPlaner(ctx context.Context,
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_setPlaner_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_setSemesterPlaner_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetSemesterPlaner(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetSemesterPlaner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetSemesterPlaner(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Planer)
+	fc.Result = res
+	return ec.marshalNPlaner2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlaner(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetSemesterPlaner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Planer_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Planer_email(ctx, field)
+			case "inherited":
+				return ec.fieldContext_Planer_inherited(ctx, field)
+			case "defaultName":
+				return ec.fieldContext_Planer_defaultName(ctx, field)
+			case "defaultEmail":
+				return ec.fieldContext_Planer_defaultEmail(ctx, field)
+			case "testMail":
+				return ec.fieldContext_Planer_testMail(ctx, field)
+			case "cc":
+				return ec.fieldContext_Planer_cc(ctx, field)
+			case "noreplyMail":
+				return ec.fieldContext_Planer_noreplyMail(ctx, field)
+			case "noreplyName":
+				return ec.fieldContext_Planer_noreplyName(ctx, field)
+			case "defaultMail":
+				return ec.fieldContext_Planer_defaultMail(ctx, field)
+			case "effectiveTestMail":
+				return ec.fieldContext_Planer_effectiveTestMail(ctx, field)
+			case "effectiveCc":
+				return ec.fieldContext_Planer_effectiveCc(ctx, field)
+			case "effectiveNoreplyMail":
+				return ec.fieldContext_Planer_effectiveNoreplyMail(ctx, field)
+			case "effectiveNoreplyName":
+				return ec.fieldContext_Planer_effectiveNoreplyName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Planer", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -53005,6 +53138,138 @@ func (ec *executionContext) _Planer_email(ctx context.Context, field graphql.Col
 }
 
 func (ec *executionContext) fieldContext_Planer_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_inherited(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_inherited(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Inherited, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_inherited(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_defaultName(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_defaultName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefaultName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_defaultName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Planer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Planer_defaultEmail(ctx context.Context, field graphql.CollectedField, obj *model.Planer) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Planer_defaultEmail(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DefaultEmail, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Planer_defaultEmail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Planer",
 		Field:      field,
@@ -64513,6 +64778,12 @@ func (ec *executionContext) fieldContext_Query_planer(_ context.Context, field g
 				return ec.fieldContext_Planer_name(ctx, field)
 			case "email":
 				return ec.fieldContext_Planer_email(ctx, field)
+			case "inherited":
+				return ec.fieldContext_Planer_inherited(ctx, field)
+			case "defaultName":
+				return ec.fieldContext_Planer_defaultName(ctx, field)
+			case "defaultEmail":
+				return ec.fieldContext_Planer_defaultEmail(ctx, field)
 			case "testMail":
 				return ec.fieldContext_Planer_testMail(ctx, field)
 			case "cc":
@@ -94055,9 +94326,16 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "setPlaner":
+		case "setSemesterPlaner":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_setPlaner(ctx, field)
+				return ec._Mutation_setSemesterPlaner(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetSemesterPlaner":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetSemesterPlaner(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -95142,6 +95420,21 @@ func (ec *executionContext) _Planer(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "email":
 			out.Values[i] = ec._Planer_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "inherited":
+			out.Values[i] = ec._Planer_inherited(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "defaultName":
+			out.Values[i] = ec._Planer_defaultName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "defaultEmail":
+			out.Values[i] = ec._Planer_defaultEmail(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

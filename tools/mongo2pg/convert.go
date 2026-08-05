@@ -176,17 +176,6 @@ func convertNonInvigilator(d *doc) (*model.PermanentNonInvigilator, []note) {
 	return n, notes
 }
 
-func convertPlaner(d *doc) *model.Planer {
-	return &model.Planer{
-		Name:        d.str("name"),
-		Email:       d.str("email"),
-		TestMail:    d.strPtr("testMail", "testmail"),
-		Cc:          d.strPtr("cc"),
-		NoreplyMail: d.strPtr("noreplyMail", "noreplymail"),
-		NoreplyName: d.strPtr("noreplyName", "noreplyname"),
-	}
-}
-
 func convertAnnyConfig(d *doc) *model.AnnyConfig {
 	return &model.AnnyConfig{
 		PersonalizationNames: d.strings("personalizationnames", "personalizationNames"),

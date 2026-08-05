@@ -96,11 +96,10 @@ func (p *Plexams) SwitchSemester(ctx context.Context, name string) (*model.Semes
 		p.zpa.fk07programs = current
 		p.zpa.oldprograms = old
 	}
-	if planer, err := p.dbClient.GetPlaner(ctx); err != nil {
-		log.Error().Err(err).Msg("cannot reload planer after switch")
-	} else if planer != nil {
-		p.applyPlaner(planer)
-	}
+	// The planner hangs off the semester, so switching semester switches sender
+	// identity too -- this is what keeps a finished semester's mails signed by the
+	// planner who planned it.
+	p.resolvePlaner(ctx)
 
 	p.RememberActiveSemester(ctx)
 

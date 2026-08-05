@@ -343,16 +343,6 @@ type PlanEntry struct {
 	External   bool
 }
 
-type Planer struct {
-	ID          int
-	Name        string
-	Email       string
-	TestMail    *string
-	Cc          *string
-	NoreplyMail *string
-	NoreplyName *string
-}
-
 type PlannedRoom struct {
 	ID                int64
 	SemesterID        string
@@ -515,6 +505,16 @@ type SemesterConfigInput struct {
 	SemesterID    string
 	Config        []byte
 	FormatVersion int
+}
+
+type SemesterPlaner struct {
+	SemesterID  string
+	Name        *string
+	Email       *string
+	TestMail    *string
+	Cc          *string
+	NoreplyMail *string
+	NoreplyName *string
 }
 
 type SpecialInterest struct {

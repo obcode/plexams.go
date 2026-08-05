@@ -10,9 +10,14 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
-// SetPlaner is the resolver for the setPlaner field.
-func (r *mutationResolver) SetPlaner(ctx context.Context, name string, email string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) (*model.Planer, error) {
-	return r.plexams.SetPlaner(ctx, name, email, testMail, cc, noreplyMail, noreplyName)
+// SetSemesterPlaner is the resolver for the setSemesterPlaner field.
+func (r *mutationResolver) SetSemesterPlaner(ctx context.Context, name *string, email *string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) (*model.Planer, error) {
+	return r.plexams.SetSemesterPlaner(ctx, name, email, testMail, cc, noreplyMail, noreplyName)
+}
+
+// ResetSemesterPlaner is the resolver for the resetSemesterPlaner field.
+func (r *mutationResolver) ResetSemesterPlaner(ctx context.Context) (*model.Planer, error) {
+	return r.plexams.ResetSemesterPlaner(ctx)
 }
 
 // SetDryRunTestMail is the resolver for the setDryRunTestMail field.

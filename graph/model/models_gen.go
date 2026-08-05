@@ -1077,8 +1077,16 @@ type OptimizerProgress struct {
 }
 
 type Planer struct {
-	Name  string `json:"name"`
+	// Resolved name: this semester's own, or the server default when inherited.
+	Name string `json:"name"`
+	// Resolved email: this semester's own, or the server default when inherited.
 	Email string `json:"email"`
+	// True when this semester has no planner of its own and name/email come from the server config.
+	Inherited bool `json:"inherited"`
+	// The server default name (planer.name) — the GUI shows it as the placeholder.
+	DefaultName string `json:"defaultName"`
+	// The server default email (planer.email) — the GUI shows it as the placeholder.
+	DefaultEmail string `json:"defaultEmail"`
 	// Override for the dry-run recipient; null/empty => defaultMail.
 	TestMail *string `json:"testMail,omitempty"`
 	// Override for the Cc added to every real send; null/empty => defaultMail.

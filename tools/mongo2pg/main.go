@@ -190,7 +190,6 @@ func importGlobal(ctx context.Context, pg *db.PG, o options, rep *report) error 
 		{"study_programs", importStudyProgram},
 		{"nta", importNta},
 		{"permanent_non_invigilators", importNonInvigilator},
-		{"planer", importPlaner},
 		{"anny_config", importAnnyConfig},
 	}
 
@@ -343,17 +342,6 @@ func importNonInvigilator(ctx context.Context, pg *db.PG, d *doc, dry bool, rep 
 		}
 	}
 	rep.imported["permanent_non_invigilators"]++
-	return nil
-}
-
-func importPlaner(ctx context.Context, pg *db.PG, d *doc, dry bool, rep *report) error {
-	p := convertPlaner(d)
-	if !dry {
-		if err := pg.SavePlaner(ctx, p); err != nil {
-			return fmt.Errorf("planer: %w", err)
-		}
-	}
-	rep.imported["planer"]++
 	return nil
 }
 

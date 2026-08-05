@@ -1,5 +1,9 @@
 extend type Query {
-  "The planner (name + email + sender-identity overrides). Stored globally in the DB; the config is only a fallback."
+  """
+  The planner in force for the current semester: the resolved name + email plus the
+  semester's sender-identity overrides. The server config (planer.*) supplies the
+  default; a semester may override it (setSemesterPlaner).
+  """
   planer: Planer!
   "The current dry-run recipient status (session override vs. configured default) for the Probeläufe page."
   dryRunTestMail: DryRunTestMailStatus!
@@ -7,19 +11,27 @@ extend type Query {
 
 extend type Mutation {
   """
-  Set the planner, stored in the global DB. name + email are required; the remaining
-  fields are optional sender-identity overrides — pass null/empty to fall back to the
-  derived default (testMail/cc = email with +plexams, noreplyMail = noreply+plexams@hm.edu,
-  noreplyName = "Prüfungsplanung FK07 (NOREPLY)").
+  Set the planner of the CURRENT semester.
+
+  name and email are one identity: pass both to give this semester its own planner, or
+  neither to inherit the one configured on the server. Passing only one is an error.
+
+  The remaining fields are optional sender-identity overrides — pass null/empty to fall
+  back to the configured value and then to the derived default (testMail/cc = email with
+  +plexams, noreplyMail = noreply+plexams@hm.edu, noreplyName = "Prüfungsplanung FK07
+  (NOREPLY)").
   """
-  setPlaner(
-    name: String!
-    email: String!
+  setSemesterPlaner(
+    name: String
+    email: String
     testMail: String
     cc: String
     noreplyMail: String
     noreplyName: String
   ): Planer!
+
+  "Drop this semester's planner override, so the server default applies again."
+  resetSemesterPlaner: Planer!
 
   "Override the dry-run recipient for this session only (Probeläufe page). Empty string resets to the default."
   setDryRunTestMail(email: String!): DryRunTestMailStatus!
@@ -28,8 +40,16 @@ extend type Mutation {
 }
 
 type Planer {
+  "Resolved name: this semester's own, or the server default when inherited."
   name: String!
+  "Resolved email: this semester's own, or the server default when inherited."
   email: String!
+  "True when this semester has no planner of its own and name/email come from the server config."
+  inherited: Boolean!
+  "The server default name (planer.name) — the GUI shows it as the placeholder."
+  defaultName: String!
+  "The server default email (planer.email) — the GUI shows it as the placeholder."
+  defaultEmail: String!
   "Override for the dry-run recipient; null/empty => defaultMail."
   testMail: String
   "Override for the Cc added to every real send; null/empty => defaultMail."

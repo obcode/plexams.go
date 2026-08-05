@@ -42,11 +42,12 @@ das laut Migrationsplan aufgehoben wird. Eine Generalprobe kostet damit nichts.
 | `study_programs` | Altkategorie `mucdai` → `joint` + `jointFaculty` |
 | `nta` | `group` → `program` (siehe unten) |
 | `permanent_non_invigilators` | |
-| `planer` | |
 | `anny_config` | |
 
-**Nicht importiert:** `active_semester` (baut sich beim nächsten Start neu auf) und
-`email_templates` (enthält nur Überschreibungen des Planers, im Dump leer).
+**Nicht importiert:** `active_semester` (baut sich beim nächsten Start neu auf),
+`email_templates` (enthält nur Überschreibungen des Planers, im Dump leer) und
+`planer` — den globalen Planer gibt es nicht mehr: der Default steht in `planer.*`
+in der Serverkonfiguration, das Semester überschreibt ihn in der GUI.
 `users`, `user_secrets`, `generation_config` und `scheduler_state` gibt es in der
 globalen DB gar nicht — die Allow-Liste kommt aus `auth.seedusers`.
 

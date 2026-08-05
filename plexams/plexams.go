@@ -20,12 +20,19 @@ import (
 )
 
 type Plexams struct {
-	semester       string
-	dbClient       *db.PG
-	zpa            *ZPA
-	jira           *Jira
-	sealer         *secrets.Sealer
-	planer         *Planer
+	semester string
+	dbClient *db.PG
+	zpa      *ZPA
+	jira     *Jira
+	sealer   *secrets.Sealer
+	// planer is the RESOLVED planner of the current semester: defaultPlaner with
+	// the semester's override merged on top (see resolvePlaner). Everything that
+	// signs a mail or a draft PDF reads this one.
+	planer *Planer
+	// defaultPlaner is the server-wide default from the config (planer.*). It is
+	// the fallback for semesters that carry no planner of their own, and it is not
+	// editable at runtime -- changing it is a deployment change.
+	defaultPlaner  *Planer
 	operator       *Operator
 	email          *Email
 	sender         *email.Sender
@@ -67,6 +74,11 @@ type Jira struct {
 	project string
 }
 
+// Planer is the identity every mail and every draft PDF is signed with. It hangs
+// off the SEMESTER: the server config supplies the default (planer.*), and a
+// semester may override it (table semester_planer, edited in the GUI). That way a
+// finished semester keeps the planner who planned it instead of being relabelled
+// by whoever holds the job now.
 type Planer struct {
 	Name  string
 	Email string
@@ -76,11 +88,15 @@ type Planer struct {
 	Cc          string
 	NoreplyMail string
 	NoreplyName string
+	// Inherited reports that Name/Email come from the config because the semester
+	// has no identity of its own. Only meaningful on the resolved planner; the GUI
+	// shows the default as a placeholder rather than as a filled-in value.
+	Inherited bool
 }
 
 // Operator is the local person running this plexams.go instance (one of the
-// Prüfungsplaner). Unlike Planer — the shared email-sender identity that lives in
-// the global plexams DB and is identical for everyone — the operator comes solely
+// Prüfungsplaner). Unlike Planer — the email-sender identity, which hangs off the
+// semester and is the same for everyone working in it — the operator comes solely
 // from this instance's local config (operator.name/operator.email), so each planner
 // stamps their own identity onto the audit log ("who did what"). This is the
 // forward-compatible seam: once the server runs behind Shibboleth, the auth
@@ -140,6 +156,16 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 		}
 	}
 
+	// The server-wide default planner. resolvePlaner below merges the current
+	// semester's override on top of the running copy; until then the default is the
+	// planner, which is also what a run without a DB keeps.
+	configPlaner := Planer{
+		Name:      viper.GetString("planer.name"),
+		Email:     viper.GetString("planer.email"),
+		Inherited: true,
+	}
+	runningPlaner := configPlaner
+
 	plexams := Plexams{
 		semester: strings.Replace(semester, "-", " ", 1),
 		dbClient: client,
@@ -156,10 +182,8 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			baseurl: viper.GetString("jira.baseurl"),
 			project: viper.GetString("jira.project"),
 		},
-		planer: &Planer{
-			Name:  viper.GetString("planer.name"),
-			Email: viper.GetString("planer.email"),
-		},
+		planer:        &runningPlaner,
+		defaultPlaner: &configPlaner,
 		operator: &Operator{
 			Name:  viper.GetString("operator.name"),
 			Email: viper.GetString("operator.email"),
@@ -237,12 +261,9 @@ func NewPlexams(semester, dbUri, zpaBaseurl, zpaUsername, zpaPassword, zpaToken 
 			plexams.zpa.fk07programs = current
 			plexams.zpa.oldprograms = old
 		}
-		// The planner is read from the DB when present (config is the fallback).
-		if planer, err := plexams.dbClient.GetPlaner(ctx); err != nil {
-			log.Error().Err(err).Msg("cannot read planer from db")
-		} else if planer != nil {
-			plexams.applyPlaner(planer)
-		}
+		// The planner of the semester being started in: the config default with the
+		// semester's own override merged on top.
+		plexams.resolvePlaner(ctx)
 		// Seed the auth allow-list from config (auth.seedusers) when still empty — the
 		// planners for the first deployment. No-op locally without that config.
 		plexams.SeedUsers(ctx)

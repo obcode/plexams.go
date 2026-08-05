@@ -26,7 +26,6 @@ var tablesWithoutSemesterID = []string{
 	"app_user",
 	"user_secret",
 	"email_template",
-	"planer",
 	"anny_config",
 	"generation_config",
 	"aaspf_degree",

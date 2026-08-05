@@ -28,6 +28,22 @@ type SemesterMeta struct {
 	LastDumpAt    *time.Time
 }
 
+// SemesterPlaner is a semester's planner override. Every field is optional and
+// nil means "inherit from the server config" -- which is why this is not
+// model.Planer: there Name and Email are non-null, because that type is the
+// *resolved* planner the rest of plexams works with.
+//
+// Name and Email are set or unset together (enforced by semester_planer_identity);
+// the four sender overrides are independent of each other and of the identity.
+type SemesterPlaner struct {
+	Name        *string
+	Email       *string
+	TestMail    *string
+	Cc          *string
+	NoreplyMail *string
+	NoreplyName *string
+}
+
 // ActiveSemester records the last activated semester, stored globally so the next
 // start can resume it.
 type ActiveSemester struct {

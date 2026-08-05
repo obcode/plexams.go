@@ -60,10 +60,14 @@ haben einen echten Stack und behalten die Standardgruppierung.
 - **`Config.transport` ist unexportiert** und existiert nur für die Tests: damit läuft ein
   echtes `Init` gegen `sentry.MockTransport`, die Tests decken also die ganze Kette
   zerolog → Writer → `BeforeSend` → Transport ab, nicht nur den Scrubber.
-- **`caller` ist ein absoluter Pfad** (`/workspace/plexams.go/graph/nta.resolvers.go:44`),
-  weil weder Dockerfile noch goreleaser mit `-trimpath` bauen. Stabil je Build-Umgebung,
-  also als Fingerprint brauchbar, aber Entwicklung und Produktion gruppieren getrennt. Wer
-  das ändern will: `zerolog.CallerMarshalFunc` — das ändert dann auch das lokale Log.
+- **`caller` ist repo-relativ** (`graph/nta.resolvers.go:44`), seit
+  `bootstrap.repoRelativeCaller` `zerolog.CallerMarshalFunc` setzt. zerologs Voreinstellung
+  ist der absolute Pfad der *Build*-Maschine — im Container also ein anderer als hier, und
+  weil der Fingerprint genau auf diesem Wert sitzt, landete ein lokal nachgestellter Fehler
+  in einem anderen Issue als der Produktionsfehler, den er erklären sollte. `selfPath` in
+  `bootstrap.go` benennt dafür die eigene Datei; wird sie umbenannt, fällt es auf den
+  absoluten Pfad zurück — deshalb hält ein Test in `bootstrap_test.go` fest, dass
+  `callerPrefix` nicht leer ist.
 
 ## Gegentesten
 

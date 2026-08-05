@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/logrusorgru/aurora"
@@ -69,6 +71,7 @@ func Serve() error {
 // reconfigureLogging's job.
 func setupLogging() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.CallerMarshalFunc = repoRelativeCaller
 
 	if verbose {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -76,6 +79,34 @@ func setupLogging() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 	log.Logger = zerolog.New(consoleWriter()).With().Caller().Timestamp().Logger()
+}
+
+// selfPath is this file, as the compiler recorded it. Used to work out how much
+// of every caller path is machine-specific noise.
+const selfPath = "bootstrap/bootstrap.go"
+
+// callerPrefix is the absolute path of the repository root the binary was built
+// from, or "" when it cannot be determined -- in which case caller paths are
+// left exactly as they are rather than mangled by guesswork.
+var callerPrefix = func() string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok || !strings.HasSuffix(file, selfPath) {
+		return ""
+	}
+	return strings.TrimSuffix(file, selfPath)
+}()
+
+// repoRelativeCaller renders the caller field as a path inside the repository:
+// graph/nta.resolvers.go:44, not /home/whoever/src/plexams.go/graph/... .
+//
+// zerolog's default is the compiler's absolute path, which is the build
+// machine's, so the same line reads differently in a container than it does
+// here. That matters more than tidiness: the error tracker fingerprints log
+// events ON this value (obs/scrub.go), so with the default a bug reproduced
+// locally lands in a different issue than the production one it was meant to
+// explain -- and the value is no longer a path anyone can click.
+func repoRelativeCaller(_ uintptr, file string, line int) string {
+	return strings.TrimPrefix(file, callerPrefix) + ":" + strconv.Itoa(line)
 }
 
 // consoleWriter is the human-readable writer, shared by setupLogging and

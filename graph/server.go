@@ -102,6 +102,8 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		KeepAlivePingInterval: 10 * time.Second,
 		Implementation:        originCheckedWebsocket{allowed: originSet, origins: origins},
 	})
+	srv.SetRecoverFunc(recoverFunc)
+
 	// In production the GraphQL introspection is turned off (server.production=true);
 	// locally it stays on for the playground and tooling.
 	production := viper.GetBool("server.production")

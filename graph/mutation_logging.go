@@ -10,6 +10,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/obs"
 	"github.com/obcode/plexams.go/plexams"
 )
 
@@ -39,10 +40,19 @@ func mutationLogMiddleware(p *plexams.Plexams) graphql.FieldMiddleware {
 			return next(ctx)
 		}
 
+		// Flattened before the call, not after it: the breadcrumb has to exist
+		// BEFORE the resolver runs, or it will be missing from the report of
+		// the very panic it was meant to explain.
+		args, ancodes := flattenArgs(fc.Args)
+
+		// Only the operation name and the ancodes reach the error tracker. The
+		// arguments stay here, in the audit log on this host -- see the note on
+		// flattenArgs.
+		obs.AddOperationBreadcrumb(ctx, fc.Field.Name, ancodes)
+
 		start := time.Now()
 		res, err := next(ctx)
 
-		args, ancodes := flattenArgs(fc.Args)
 		entry := &model.MutationLogEntry{
 			Time:       start,
 			Name:       fc.Field.Name,
@@ -65,6 +75,15 @@ func mutationLogMiddleware(p *plexams.Plexams) graphql.FieldMiddleware {
 // flattenArgs flattens resolved field arguments (incl. nested input objects and
 // arrays) into key/value pairs, and collects any ancode-like numeric values. The
 // args are JSON-round-tripped first so typed input structs become generic maps.
+//
+// WHAT COMES OUT OF HERE MUST NEVER BE SENT OFF THIS HOST. It is, by design,
+// every argument of every mutation: the mtknr of setNTA, the mail address of
+// setUser, the names in a student registration. That is right for the audit log
+// -- "who changed what", stored in the same database the data itself lives in --
+// and wrong for anything that leaves. If you are tempted to hand these pairs to
+// an error report to make it more helpful, that is exactly the mistake the
+// scrubber in obs/ was written to prevent; the ancodes above are the part that
+// may travel.
 func flattenArgs(args map[string]interface{}) ([]*model.MutationLogArg, []int) {
 	pairs := make([]*model.MutationLogArg, 0)
 	ancodeSet := make(map[int]struct{})

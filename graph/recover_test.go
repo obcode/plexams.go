@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/obcode/plexams.go/obs"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -94,4 +97,63 @@ func TestRecoverFuncRecordsOperationName(t *testing.T) {
 	if strings.Contains(buf.String(), "12345678") {
 		t.Errorf("student data leaked into the log entry: %s", buf.String())
 	}
+}
+
+// The log line must be marked so the error tracker ignores it: obs.CapturePanic
+// has already reported this panic with a stack that reaches the resolver, and
+// the log path would send a second copy showing zerolog's internals instead.
+func TestRecoverFuncKeepsItsLogLineOutOfTheErrorReport(t *testing.T) {
+	buf := captureLog(t)
+
+	_ = recoverFunc(context.Background(), "boom")
+
+	if entry := decode(t, buf); entry[obs.SkipField] != true {
+		t.Errorf("%s = %v, want true", obs.SkipField, entry[obs.SkipField])
+	}
+}
+
+func TestRecoverMiddlewareAnswersWithFiveHundred(t *testing.T) {
+	buf := captureLog(t)
+
+	handler := recoverMiddleware(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		panic("boom in an upload handler")
+	}))
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/upload/primuss-zip", nil))
+
+	// Without this middleware the panic unwinds into net/http, which drops the
+	// connection: the client gets no status code at all.
+	if recorder.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", recorder.Code)
+	}
+
+	entry := decode(t, buf)
+	if entry["panic"] != "boom in an upload handler" {
+		t.Errorf("panic = %v", entry["panic"])
+	}
+	if entry["path"] != "/upload/primuss-zip" {
+		t.Errorf("path = %v", entry["path"])
+	}
+	if entry[obs.SkipField] != true {
+		t.Errorf("%s = %v, want true", obs.SkipField, entry[obs.SkipField])
+	}
+}
+
+// http.ErrAbortHandler is the documented way for a handler to abandon a
+// response on purpose. net/http stays silent about it and so must we, or every
+// aborted download becomes a reported bug.
+func TestRecoverMiddlewarePassesErrAbortHandlerThrough(t *testing.T) {
+	handler := recoverMiddleware(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		panic(http.ErrAbortHandler)
+	}))
+
+	defer func() {
+		if rec := recover(); rec != http.ErrAbortHandler { //nolint:errorlint // identity, as net/http compares it
+			t.Errorf("recovered %v, want it re-panicked", rec)
+		}
+	}()
+
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/download/pdf/plan", nil))
+	t.Error("the panic was swallowed")
 }

@@ -177,6 +177,40 @@ func Flush() {
 	sentry.Flush(flushTimeout)
 }
 
+// AddOperationBreadcrumb records a mutating GraphQL operation on the hub of the
+// request it belongs to, so that a panic report says what was being done.
+//
+// Only the field name and the ancodes it touched. NOT the arguments: those are
+// where the mtknr, the names and the mail addresses live (see flattenArgs in
+// graph/mutation_logging.go, which builds exactly those pairs for the local
+// audit log, where they belong).
+//
+// Nothing happens without a request-scoped hub. That is not a fallback but the
+// point: breadcrumbs on the global hub would accumulate every operation of
+// every user for the lifetime of the process and hang the lot onto the next
+// unrelated error.
+func AddOperationBreadcrumb(ctx context.Context, operation string, ancodes []int) {
+	if !enabled {
+		return
+	}
+	hub := sentry.GetHubFromContext(ctx)
+	if hub == nil {
+		return
+	}
+
+	var data map[string]interface{}
+	if len(ancodes) > 0 {
+		data = map[string]interface{}{"ancodes": ancodes}
+	}
+	hub.AddBreadcrumb(&sentry.Breadcrumb{
+		Type:     "default",
+		Category: "graphql",
+		Message:  operation,
+		Level:    sentry.LevelInfo,
+		Data:     data,
+	}, nil)
+}
+
 // CapturePanic reports a recovered panic on the hub of the request it happened
 // in, so it carries that request's user and breadcrumbs.
 //

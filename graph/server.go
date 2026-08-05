@@ -15,8 +15,10 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	coderws "github.com/coder/websocket"
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/obcode/plexams.go/graph/generated"
+	"github.com/obcode/plexams.go/obs"
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
@@ -149,6 +151,20 @@ func StartServer(plexams *plexams.Plexams, port string) {
 
 	router := chi.NewRouter()
 
+	// FIRST, before everything else. It clones a Sentry hub onto every request
+	// context, which is what lets a panic report carry that request's user
+	// (graph/auth.go), its breadcrumbs (graph/mutation_logging.go) and its
+	// request data instead of the process-wide defaults.
+	//
+	// Repanic is on so it never swallows anything: the recovery belongs to
+	// recoverMiddleware right below, which also answers with a 500. A no-op
+	// when reporting is disabled.
+	router.Use(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
+
+	// Turn a panic anywhere below into a logged, reported 500 -- the REST
+	// upload/download routes have no protection of their own (see recover.go).
+	router.Use(recoverMiddleware)
+
 	router.Use(cors.New(cors.Options{
 		AllowedOrigins:   origins,
 		AllowCredentials: true,
@@ -246,6 +262,11 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		cancelDrain()
 	}
 	cancelScheduler()
+
+	// Last, and after the drains: an error raised while shutting down is
+	// exactly the kind that never gets noticed otherwise, and it can only be
+	// reported if the queue is flushed after it was queued.
+	obs.Flush()
 
 	// log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	// if err := http.ListenAndServe(":"+port, router); err != nil {

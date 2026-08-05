@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/obs"
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/obcode/plexams.go/principal"
 	"github.com/rs/zerolog/log"
@@ -99,6 +100,11 @@ func authMiddleware(p authProvider) func(http.Handler) http.Handler {
 				}
 				user = u
 			}
+
+			// Attach the actor to this request's error reports -- as a keyed
+			// pseudonym, so "how many people are affected" is answerable
+			// without the address leaving the host (obs/user.go).
+			obs.SetUser(r.Context(), user.Email)
 
 			ctx := principal.WithUser(r.Context(), user)
 			next.ServeHTTP(w, r.WithContext(ctx))

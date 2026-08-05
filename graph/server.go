@@ -14,8 +14,8 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
+	coderws "github.com/coder/websocket"
 	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/websocket"
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/plexams"
 	"github.com/rs/cors"
@@ -47,6 +47,43 @@ func allowedOriginsFromConfig() []string {
 	return defaultAllowedOrigins
 }
 
+// originCheckedWebsocket gates the websocket upgrade on server.allowedorigins
+// before handing the request to gqlgen's coder/websocket implementation.
+//
+// gqlgen 0.17.94 replaced the gorilla Upgrader (with its CheckOrigin callback)
+// by a pluggable Implementation backed by coder/websocket. That library checks
+// the origin itself, but only against the request host and without telling us
+// which origin it rejected — so the check stays here, and the embedded
+// implementation is set to skip its own (InsecureSkipVerify) rather than
+// running a second, differently-configured one behind our back.
+type originCheckedWebsocket struct {
+	allowed map[string]bool
+	origins []string
+}
+
+func (o originCheckedWebsocket) Accept(
+	w http.ResponseWriter,
+	r *http.Request,
+	options transport.WebsocketAcceptOptions,
+) (transport.WebsocketConn, error) {
+	origin := r.Header.Get("Origin")
+	// No Origin header → not a browser cross-origin request (same-origin, or a
+	// server-side/proxied client behind the reverse proxy). Browsers always send
+	// Origin on a cross-origin upgrade, so an empty Origin can never be a
+	// cross-site websocket hijack — allow it.
+	if origin != "" && !o.allowed[origin] {
+		// Log the rejected origin: gqlgen does not surface it, so a config
+		// mismatch (server.allowedorigins vs the real host) is otherwise a
+		// silent "request origin not allowed" with no clue what to fix.
+		log.Warn().Str("origin", origin).Strs("allowed", o.origins).
+			Msg("websocket upgrade rejected: origin not in server.allowedorigins")
+		return nil, fmt.Errorf("request origin not allowed")
+	}
+	return transport.CoderWebsocketImplementation{
+		AcceptOptions: coderws.AcceptOptions{InsecureSkipVerify: true},
+	}.Accept(w, r, options)
+}
+
 func StartServer(plexams *plexams.Plexams, port string) {
 	plexamsResolver := NewResolver(plexams)
 
@@ -63,27 +100,7 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	// output of long-running operations like invigilation generation).
 	srv.AddTransport(transport.Websocket{
 		KeepAlivePingInterval: 10 * time.Second,
-		Upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				origin := r.Header.Get("Origin")
-				// No Origin header → not a browser cross-origin request (same-origin,
-				// or a server-side/proxied client behind the reverse proxy). Browsers
-				// always send Origin on a cross-origin upgrade, so an empty Origin can
-				// never be a cross-site websocket hijack — allow it.
-				if origin == "" {
-					return true
-				}
-				if originSet[origin] {
-					return true
-				}
-				// Log the rejected origin: gqlgen does not surface it, so a config
-				// mismatch (server.allowedorigins vs the real host) is otherwise a
-				// silent "request origin not allowed" with no clue what to fix.
-				log.Warn().Str("origin", origin).Strs("allowed", origins).
-					Msg("websocket upgrade rejected: origin not in server.allowedorigins")
-				return false
-			},
-		},
+		Implementation:        originCheckedWebsocket{allowed: originSet, origins: origins},
 	})
 	// In production the GraphQL introspection is turned off (server.production=true);
 	// locally it stays on for the playground and tooling.

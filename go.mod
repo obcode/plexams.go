@@ -8,9 +8,9 @@ require (
 	github.com/99designs/gqlgen v0.17.94
 	github.com/agnivade/levenshtein v1.2.1
 	github.com/arran4/golang-ical v0.3.5
+	github.com/coder/websocket v1.8.15
 	github.com/deckarep/golang-set/v2 v2.9.0
 	github.com/go-chi/chi/v5 v5.3.1
-	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/johnfercher/maroto v1.0.0
 	github.com/jszwec/csvutil v1.10.0
@@ -29,7 +29,6 @@ require (
 
 require (
 	github.com/boombuler/barcode v1.0.1 // indirect
-	github.com/coder/websocket v1.8.15 // indirect
 	github.com/fatih/color v1.14.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect

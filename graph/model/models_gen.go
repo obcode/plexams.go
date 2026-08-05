@@ -1662,8 +1662,8 @@ type UnplacedExamReason struct {
 
 // A user is a login identity supplied by the auth proxy (Shibboleth/OIDC, matched by
 // email) together with a role. Users live in the global plexams DB and are the
-// authorization allow-list. Kept strictly separate from the planer (the shared email
-// sender identity).
+// authorization allow-list. Kept strictly separate from the planer (the per-semester
+// email sender identity).
 type User struct {
 	Email string `json:"email"`
 	Name  string `json:"name"`

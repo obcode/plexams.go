@@ -3,8 +3,17 @@
 --
 -- Rule of thumb applied throughout: relational where a constraint or a query
 -- predicate hangs on it, jsonb where the value is a document that is always read
--- and written whole. Every jsonb column carries a format_version so a renamed Go
--- field cannot be misread from an old blob in silence.
+-- and written whole.
+--
+-- Every jsonb column holding a projection of a Go domain model carries a
+-- format_version, so a renamed field cannot be misread from an old blob in
+-- silence. Two kinds deliberately have none:
+--
+--   * foreign payloads stored verbatim -- primuss_exam.raw, primuss_count.raw,
+--     studentreg.raw, anny_booking.status_reason. Their shape belongs to ZPA or
+--     Primuss; a version counter of ours would assert nothing about it.
+--   * mutation_log.args, a fixed {key, value} envelope rather than a model
+--     projection -- see that table.
 
 -- +goose Up
 
@@ -99,6 +108,12 @@ create table planning_state (
 -- args is jsonb (a list of key/value pairs, with secrets masked before it gets
 -- here). ancodes is an int[] because the Mongo query matched it by bare equality
 -- against the array -- that becomes `$1 = any(ancodes)`.
+--
+-- args has no format_version, and needs none: it decodes into
+-- []*model.MutationLogArg, a fixed {key, value} envelope of two strings. The
+-- mutation's own argument names sit inside as data, not as the blob's schema, so
+-- renaming a Go field elsewhere changes what new rows say -- it cannot make an
+-- old row decode wrongly. Add one if this ever grows into a typed document.
 create table mutation_log (
     id          bigint generated always as identity primary key,
     semester_id text not null references semester(id) on delete cascade,

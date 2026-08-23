@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -26,9 +27,11 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-// healthPath is the liveness endpoint the container health check calls. It is
-// exempt from authentication (graph/auth.go) and is not routed to this backend
-// by the reverse proxy, so it is only reachable from inside the compose network.
+// healthPath is the liveness endpoint. It is exempt from authentication
+// (graph/auth.go) and, since 2026-08-23, IS routed to this backend by the reverse
+// proxy (plexams.dev, deploy/Caddyfile) so that the deploy check and the uptime
+// monitor can reach it. It answers a constant plus the build version; nothing
+// about the semester, the database or a person passes through it.
 const healthPath = "/healthz"
 
 // defaultAllowedOrigins are the local dev frontends permitted for CORS and
@@ -191,9 +194,27 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	// Deliberately unauthenticated (see authMiddleware) and deliberately NOT a
 	// readiness check: the process is only listening once the database is up, so
 	// there is nothing left to probe that a 200 does not already say.
+	//
+	// It reports the running version, and that is not decoration. This server ran
+	// SEVENTEEN DAYS on a stale image once, because a deploy that never started is
+	// invisible: nothing turns red, the old container keeps answering, and every
+	// check that only asks "does something answer" says yes. Since the reverse
+	// proxy routes this path (plexams.dev, deploy/Caddyfile), the deploy job and
+	// the uptime monitor can ask WHICH build is answering instead.
+	//
+	// NOTE for anyone comparing the value: goreleaser sets it WITHOUT a leading
+	// "v" ("5.2.1"), while the deployed image tag has one ("v5.2.1"). Normalise
+	// both sides before comparing — see releaseURL() below, which exists for the
+	// same reason.
 	router.Get(healthPath, func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		_, _ = w.Write([]byte("ok\n"))
+		w.Header().Set("Content-Type", "application/json")
+		// A cached liveness answer is a lie waiting to happen.
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"status":  "ok",
+			"version": viper.GetString("Version"),
+			"commit":  viper.GetString("Commit"),
+		})
 	})
 
 	// Binary uploads (browser-generated PNGs, cover-page PDF ZIPs) for email

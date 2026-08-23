@@ -67,8 +67,11 @@ func authMiddleware(p authProvider) func(http.Handler) http.Handler {
 			// rather than mounted before this middleware because chi requires all
 			// middleware to be declared before any route.
 			//
-			// Nothing leaks by it: the handler answers a constant, and the reverse
-			// proxy does not route /healthz to this backend at all.
+			// Nothing leaks by it: the handler answers a constant plus the build
+			// version. It IS routed from outside since 2026-08-23 (plexams.dev,
+			// deploy/Caddyfile) so the deploy check and the uptime monitor can ask
+			// which build is answering -- this server once ran seventeen days on a
+			// stale image without anything noticing.
 			if r.URL.Path == healthPath {
 				next.ServeHTTP(w, r)
 				return

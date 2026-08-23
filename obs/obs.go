@@ -114,6 +114,11 @@ func Init(cfg Config) (zerolog.LevelWriter, error) {
 		// thing in the SDK's newer, finer-grained vocabulary -- explicitly,
 		// because the SDK's fallback for a nil DataCollection is derived from
 		// SendDefaultPII and would silently change with an SDK upgrade.
+		//
+		// Deprecated and set anyway, therefore, which is exactly what the
+		// suppression below says. tallox.go/internal/obs and glabs/web/obs carry
+		// the same line and the same comment; the three are meant to read alike.
+		//nolint:staticcheck // SA1019: kept as the safe fallback, see above
 		SendDefaultPII: false,
 		DataCollection: &sentry.DataCollection{
 			UserInfo:   sentry.Set(false),

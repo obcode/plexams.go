@@ -81,6 +81,31 @@ jobs:
           sqlc-version: "1.31.1"
       - name: sqlc diff
         run: sqlc diff
+  vulncheck:
+    name: vulncheck
+    runs-on: ubuntu-latest
+    # Was missing here while tallox.go -- the sibling backend, same author, same stack --
+    # has had it all along. Added 2026-09-14 after that job caught two DoS advisories in
+    # golang.org/x/crypto that had been sitting in the dependency graph for a week. This
+    # module was clean when the job went in; the point is noticing the next one.
+    #
+    # Deliberately NOT in the release job's `needs`, matching tallox.go. The trade-off is
+    # real and went the other way on purpose: gating would have stopped every deploy for
+    # that week over an advisory reachable only through a test helper. The cost is that a
+    # red vulncheck does not stop anything, so it has to be looked at -- which is exactly
+    # how tallox.go stayed red for a week while release kept publishing images.
+    #
+    # `@latest` for the scanner, unlike golangci-lint above: a vulnerability database is
+    # worthless pinned, and govulncheck reports findings rather than opinions, so it cannot
+    # go red on a rule that changed its mind.
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
   release:
     runs-on: ubuntu-latest
     needs:

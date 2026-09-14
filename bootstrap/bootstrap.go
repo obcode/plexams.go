@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/mitchellh/go-homedir"
@@ -316,12 +317,73 @@ func newPlexams() *plexams.Plexams {
 // read, and reading the registry is what needs the schema.
 func migrateSchema(dbURI string) error {
 	ctx := context.Background()
-	client, err := db.NewPG(ctx, dbURI, "")
+	client, err := openPGWaiting(ctx, dbURI, dbWaitBudget)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
 	return client.MigrateSchema(ctx)
+}
+
+// dbWaitBudget is how long a starting process waits for PostgreSQL to answer. It only has to
+// cover Postgres finishing its own startup, which takes seconds; past that the database is not
+// coming back and exiting is more useful than hanging.
+const dbWaitBudget = 90 * time.Second
+
+// openPGWaiting is db.NewPG with a bounded retry, and it exists because of what a host reboot
+// does. docker compose's `depends_on: condition: service_healthy` orders containers only
+// within a `docker compose up`; when the Docker DAEMON restarts them by their restart policy
+// after the machine comes back, it starts them in parallel and honours no dependency at all.
+// Measured on plexams on 2026-09-14: every container's StartedAt fell inside 30 ms of the
+// others, this process reached migrateSchema before Postgres was accepting connections, and
+// died with "connection refused". `restart: unless-stopped` brought it back 0.8 s later, so
+// the damage was one FATAL line per boot -- but a server that gives up because its database is
+// four seconds late is reporting a failure it does not have.
+//
+// Retries every error instead of trying to classify it: from the client side a database that
+// is still starting and a wrong password are not reliably distinguishable, and the expensive
+// case ends identically either way -- the budget runs out and the last error is returned, just
+// as a single attempt would have reported it. The first failure is logged at once, so a slow
+// start says why it is slow instead of going quiet.
+func openPGWaiting(ctx context.Context, dbURI string, timeout time.Duration) (*db.PG, error) {
+	const retryEvery = 500 * time.Millisecond
+
+	// Checked once, before the loop: an unparseable URI is not a database that is late, and
+	// retrying it for the whole budget would hide a typo behind a slow start. A test covers
+	// exactly this -- it is how the first version of this function was caught doing it.
+	if err := db.ValidateURI(dbURI); err != nil {
+		return nil, err
+	}
+
+	deadline := time.Now().Add(timeout)
+	notified := false
+
+	for {
+		client, err := db.NewPG(ctx, dbURI, "")
+		if err == nil {
+			return client, nil
+		}
+
+		if !notified {
+			log.Warn().Err(err).Msg("database not reachable yet, waiting")
+			notified = true
+		}
+
+		// A shutdown during startup is a shutdown, not an unreachable database; reporting it
+		// as the latter sends the reader looking at Postgres for a SIGTERM.
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("cancelled while waiting for the database: %w", ctx.Err())
+		}
+		if !time.Now().Add(retryEvery).Before(deadline) {
+			return nil, fmt.Errorf("database not reachable within %s: %w", timeout, err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("cancelled while waiting for the database: %w", ctx.Err())
+		case <-time.After(retryEvery):
+		}
+	}
 }
 
 // resolveStartSemester opens a temporary DB connection to pick the start semester

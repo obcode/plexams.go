@@ -51,6 +51,18 @@ type txKey struct{}
 // over plexams depends on time.Local being Europe/Berlin (set in main.go), and
 // several maps are keyed by time.Time -- where a value carrying a UTC location is
 // a *different key* for the same instant. See TestTimestamptzKeepsLocation.
+// ValidateURI reports whether uri is a well-formed PostgreSQL connection string, opening
+// nothing. It exists so that a caller which RETRIES NewPG can separate the two failures that
+// look alike from the outside: a database that is not up yet is worth waiting for, a URI that
+// cannot be parsed never will be. Waiting on the second only makes a typo in .env look like a
+// slow container.
+func ValidateURI(uri string) error {
+	if _, err := pgxpool.ParseConfig(uri); err != nil {
+		return fmt.Errorf("cannot parse postgres uri: %w", err)
+	}
+	return nil
+}
+
 func NewPG(ctx context.Context, uri, semesterID string) (*PG, error) {
 	cfg, err := pgxpool.ParseConfig(uri)
 	if err != nil {

@@ -26,7 +26,7 @@ require (
 	github.com/theckman/yacspin v0.13.12
 	github.com/vektah/gqlparser/v2 v2.5.36
 	github.com/wneessen/go-mail v0.8.1
-	github.com/xuri/excelize/v2 v2.11.0
+	github.com/xuri/excelize/v2 v2.11.1-0.20260728235842-f98df08a8f6a
 )
 
 require (

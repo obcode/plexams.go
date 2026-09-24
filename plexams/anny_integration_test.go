@@ -13,8 +13,8 @@ import (
 
 // Characterization tests for the DB-backed Anny booking logic that feeds the Terminplan
 // generator (annyBookedBySlot) and the room-request views (ExahmRoomsFromAnnyBookings).
-// They run against an ephemeral MongoDB (testcontainers or PLEXAMS_TEST_MONGO_URI) and are
-// skipped when neither is available. Pinned before decomposing the plexams package.
+// They run against a throwaway PostgreSQL database (internal/pgtest) and are skipped
+// when none is configured. Pinned before decomposing the plexams package.
 
 func intPtr(i int) *int { return &i }
 

@@ -163,7 +163,7 @@ and ZPA upload) plus the REST routes registered in
 | `GET /download/pdf/{kind}` | draft/plan PDFs (`exams-to-plan`, `constraints`, `draft-fk08/fk10/exahm/muc.dai/fs/lba-rep`, `same-module-name`; `draft-si` returns a ZIP) |
 | `GET /download/csv/{kind}` | draft CSVs (`draft?program=…`, `exahm`, `lba-repeater`) |
 | `GET /download/ics/{program}` | per-program exam calendar (ICS) |
-| `GET/POST /download|upload/semester-dump.zip`, `/dataset`, `/dataset-csv`, `/my-inputs-csv.zip` | backup/restore of a whole semester or a single dataset |
+| `GET/POST /download|upload/dataset-csv`, `GET /download/my-inputs-csv.zip` | CSV export/import of a single dataset, or of everything entered by hand |
 
 Emails and ZPA upload run as subscriptions with a `run`/`dryRun` argument; with
 `run: false`/`dryRun: true` they only mail the `smtp.testmail` recipient / do not

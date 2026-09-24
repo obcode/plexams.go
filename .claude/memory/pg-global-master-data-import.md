@@ -9,6 +9,10 @@ metadata:
 Für den Cut-over ([[postgres-migration]]). Gebaut am 2026-08-04, verifiziert gegen den
 echten Dump.
 
+**`tools/mongo2pg` ist seit 2026-09-24 gelöscht**, zusammen mit dem Mongo-Sidecar im
+DevContainer und `plexams.dev/scripts/mongo-prod.sh`. Die Notiz bleibt als Begründung der
+Datenlage in PostgreSQL. Den Code holt `git log --diff-filter=D -- tools/mongo2pg` zurück.
+
 **Die globalen Stammdaten sind der einzige Bestand, den niemand nachimportieren kann.**
 Semester werden ausdrücklich *nicht* migriert (sie kommen aus ZPA/Primuss/Anny zurück),
 Räume/NTAs/Studiengänge sind handgepflegt.

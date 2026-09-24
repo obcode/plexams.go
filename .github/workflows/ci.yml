@@ -103,8 +103,30 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+      # govulncheck has no suppression mechanism, so the JSON output is filtered instead:
+      # fail on every advisory reachable at symbol level (trace[0].function set -- the
+      # same set the text mode reports) unless it is listed in IGNORED. -format json
+      # always exits 0; the grep below is what fails the job.
+      #
+      # IGNORED -- each entry needs a reason and a condition for removal:
+      #   GO-2026-6452 (excelize, negative shared-string index): fixed upstream in
+      #     f98df08 (GHSA-wcg2-648h-mhxq), which go.mod pins as a pseudo-version, but the
+      #     Go vulndb entry has no fixed version and so matches every release. Remove once
+      #     excelize tags a release with the fix and go.mod is back on a tag.
       - name: govulncheck
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        env:
+          IGNORED: GO-2026-6452
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@latest -format json ./... > vuln.json
+          jq -r 'select(.finding) | select(.finding.trace[0].function != null) | .finding.osv' vuln.json \
+            | sort -u > called.txt
+          echo "reachable: $(tr '\n' ' ' < called.txt)"
+          grep -vxF -f <(tr ' ' '\n' <<< "$IGNORED") called.txt > failing.txt || true
+          if [ -s failing.txt ]; then
+            echo "::error::reachable vulnerabilities: $(tr '\n' ' ' < failing.txt)"
+            go run golang.org/x/vuln/cmd/govulncheck@latest ./... || true
+            exit 1
+          fi
 
   release:
     runs-on: ubuntu-latest

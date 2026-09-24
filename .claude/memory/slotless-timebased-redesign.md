@@ -43,7 +43,7 @@ Progress (backend, step-by-step then GUI catches up):
   deriveSemesterConfig). ExternalTime field removed → `External bool` flag (foreign)
   + Starttime (time). New `setExamTime` GraphQL mutation. cmd/plan.go deleted.
   Tests: plexams SlotForTime round-trip + db decoration (verified vs real mongod via
-  downloaded standalone mongod, see [[mongotest-without-docker]]).
+  downloaded standalone mongod; that test setup is gone with MongoDB).
 - **Step 3 DONE** (on main): conflicts classified by TIME/DURATION/NTA via shared
   conflictcalc.TimeProximity (OVERLAP/TOO_CLOSE/SAME_DAY/NEXT_DAY), used in the
   conflict list (ExamScheduleConflicts) and the ValidateConflicts scan, each with the

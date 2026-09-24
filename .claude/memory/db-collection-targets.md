@@ -12,6 +12,6 @@ Replaced on 2026-07-30 by `db.ReplaceAll(ctx, target, objects)` with a typed `db
 
 `CollectionName`, `getCollectionSemesterFromContext` and `collectionNameFromContext` are gone. So is `Save`, which had no callers.
 
-Because the delete and insert now sit in one place, `ReplaceAll` also runs through `withTransaction` (see [db-transactions.md](db-transactions.md)) and clears with `DeleteMany` so indexes survive.
+Because the delete and insert now sit in one place, `ReplaceAll` also runs in one transaction (`PG.InTransaction` in [db/save_pg.go](db/save_pg.go)).
 
 **Do not reintroduce the pattern.** If a new consumer needs a collection it cannot name, add a `ReplaceTarget` constant — never a string parameter and never a context value.

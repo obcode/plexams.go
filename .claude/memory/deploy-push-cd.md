@@ -47,6 +47,6 @@ ZIP prompt (NOT the gitlab.lrz.de push).
   cmd in header. Schedule via busybox `crond` (README). No offsite (add scp/rclone to extend).
 - Backend: `SemesterMeta.LastDumpAt` stamped in `HTTPDownloadSemesterDump`; `db.LatestMutationTime`;
   new GraphQL `backupStatus { hasUnsavedChanges, lastDumpAt, lastChangeAt }` (hasUnsavedChanges =
-  lastChangeAt after lastDumpAt, or never dumped). See [[semester-dump-restore]] for the ZIP.
+  lastChangeAt after lastDumpAt, or never dumped). The semester-dump ZIP that used to stamp it is gone with MongoDB; see [[csv-datasets-export-import]].
 - **GUI pending (Teil 3):** poll `backupStatus`, show a subtle prominent banner/button linking to
   `/download/semester-dump.zip` when hasUnsavedChanges; download stamps lastDumpAt → banner clears.

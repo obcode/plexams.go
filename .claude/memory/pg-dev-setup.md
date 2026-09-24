@@ -9,7 +9,7 @@ metadata:
 ---
 
 Für die PostgreSQL-Migration ([[postgres-migration]]). Der DevContainer hat **kein Docker**
-— dieselbe Lage wie beim Standalone-`mongod` in [[mongotest-without-docker]]. Der Server
+— dieselbe Lage wie früher beim Standalone-`mongod` für die Mongo-Tests. Der Server
 läuft deshalb direkt im Container, nicht als Compose-Dienst.
 
 **Server:** PostgreSQL 18 aus dem PGDG-Repo (Debians eigene Quelle hat nur 15).

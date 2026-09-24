@@ -9,7 +9,7 @@ metadata:
 
 Feature (branch `feat/csv-export`, off main, pushed 2026-07-06): human-readable **CSV**
 round-trip of the data Oliver enters by hand, in addition to (not replacing) the JSON
-semester dump [[semester-dump-restore]]. Files: `plexams/csv_export.go` (+test),
+semester dump (a MongoDB-era ZIP feature, deleted). Files: `plexams/csv_export.go` (+test),
 `db.UpsertPreplanExam` in `db/preplan_exams.go`, routes in `graph/server.go`, CLI in
 `cmd/export.go`/`cmd/import.go`.
 

@@ -24,3 +24,11 @@ Makefile (ssconvert → CSV → mongoimport). Go reads XLSX directly via `exceli
   per ancode → changed primuss ancodes; mapped to ZPA ancodes (affectedZpaAncodes) so the
   GUI can send Primuss-data update mails (existing sendEmailPrimussData(ancode, updated)).
 - Sammellisten dir is gitignored (real student data — never commit). [[zpa-import-behaviors]]
+- **A student can be registered twice for the same exam — do not make that unique.** The
+  Primuss source data really contains such duplicates, in the current semester and in
+  freshly imported data, so they come straight back with every import. A unique
+  constraint would make the import *fail* instead of protecting it; duplicates belong in
+  the validation report. PostgreSQL keeps this: `studentreg` has only the lookup indexes
+  `studentreg_by_exam_idx`/`studentreg_by_student_idx`
+  ([db/migrations/00004_primuss.sql](db/migrations/00004_primuss.sql)). Found 2026-07-30
+  under MongoDB (the former db-indexes note).

@@ -524,13 +524,11 @@ func (p *Plexams) TodoLinkSuggestions(ctx context.Context, kind model.TodoLinkKi
 		}
 	}
 
-	query = strings.ToLower(strings.TrimSpace(query))
+	words := strings.Fields(normaliseForSearch(query))
 	suggestions := make([]*model.TodoLink, 0, maxTodoLinkSuggestions)
 	for _, link := range candidates {
 		p.decorateTodoLink(link)
-		if query != "" &&
-			!strings.Contains(strings.ToLower(link.Key), query) &&
-			!strings.Contains(strings.ToLower(link.Label), query) {
+		if !matchesAllWords(normaliseForSearch(link.Key+" "+link.Label), words) {
 			continue
 		}
 		suggestions = append(suggestions, link)
@@ -539,6 +537,25 @@ func (p *Plexams) TodoLinkSuggestions(ctx context.Context, kind model.TodoLinkKi
 		}
 	}
 	return suggestions, nil
+}
+
+// searchReplacer folds umlauts, so "müller", "mueller" and "Müller" find the
+// same person -- ZPA spells names both ways.
+var searchReplacer = strings.NewReplacer("ä", "ae", "ö", "oe", "ü", "ue", "ß", "ss")
+
+func normaliseForSearch(s string) string {
+	return searchReplacer.Replace(strings.ToLower(s))
+}
+
+// matchesAllWords reports whether every word occurs in text, in any order: "braun
+// oliver" finds "Prof. Dr. Oliver Braun".
+func matchesAllWords(text string, words []string) bool {
+	for _, word := range words {
+		if !strings.Contains(text, word) {
+			return false
+		}
+	}
+	return true
 }
 
 // todoLinkKindsKeptOnCarryOver are the links that still mean something in the

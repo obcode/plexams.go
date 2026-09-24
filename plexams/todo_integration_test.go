@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -172,5 +173,42 @@ func TestCarryOverTodos(t *testing.T) {
 	stillDone, _ := p.Todo(ctx, everySemester.ID)
 	if stillDone.CommentCount != 0 {
 		t.Error("an already done recurring original got a carry-over comment")
+	}
+}
+
+func TestTodoLinkSuggestionsMatchWordsAndUmlauts(t *testing.T) {
+	pg := pgtest.NewDBWithSemester(t)
+	p := &Plexams{dbClient: pg}
+	ctx := context.Background()
+	if err := pg.CacheTeachers([]*model.Teacher{
+		{ID: 1, Fullname: "Prof. Dr. Oliver Braun"},
+		{ID: 2, Fullname: "Prof. Dr. Anna Müller"},
+		{ID: 3, Fullname: "Dr. Olga Brauner"},
+	}, "2026 WS"); err != nil {
+		t.Fatal(err)
+	}
+	keys := func(query string) string {
+		s, err := p.TodoLinkSuggestions(ctx, model.TodoLinkKindTeacher, query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var k []string
+		for _, l := range s {
+			k = append(k, l.Key)
+		}
+		slices.Sort(k)
+		return strings.Join(k, ",")
+	}
+	cases := map[string]string{
+		"braun oliver": "1",
+		"brau":         "1,3",
+		"mueller":      "2",
+		"MÜLLER":       "2",
+		"2":            "2",
+	}
+	for query, want := range cases {
+		if got := keys(query); got != want {
+			t.Errorf("%q = %s, want %s", query, got, want)
+		}
 	}
 }

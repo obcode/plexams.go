@@ -4,6 +4,14 @@ on:
     branches:
       - "**"
 
+# One run per ref and commit. On 2026-09-24 GitHub delivered the same push twice; both
+# runs reached the release job, both computed v5.3.2, and the slower one failed with
+# "422 Reference already exists" -- a red run for a release that had succeeded. Keyed
+# on the sha as well, so a real new push to the same branch still gets its own run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
+
 jobs:
   golangci:
     name: lint
